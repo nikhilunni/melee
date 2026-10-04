@@ -1,5 +1,6 @@
 """CPU callback lifecycle with fake memory; never launches Dolphin."""
 import json
+import struct
 
 import pytest
 
@@ -8,7 +9,8 @@ import remote_proto
 import run_scenario
 import tick_trace as tick
 import trace_common
-from test_walk import (_FakeController, _FakeStates, build_two_fighter_world)
+from test_walk import (FIGHTER_A, FIGHTER_B, GOBJ_A, GOBJ_B, _FakeController, _FakeStates,
+                       build_two_fighter_world)
 
 
 class Events:
@@ -343,3 +345,106 @@ def test_stadium_read_state_is_recorded_and_decoded_as_a_poll_event():
         events.append(decode.decode_events(io, previous)["stage_read_completed"])
         previous = io
     assert events == [False, False, False, True, False]
+
+
+# HSD_GObjProc records: each fighter's map proc, and another of fighter B's procs.
+MAP_PROC_A, MAP_PROC_B, OTHER_PROC_B = 0x80BD0000, 0x80BD0020, 0x80BD0040
+CUR_POS_Y = 0xB4   # Fighter.cur_pos.y (schema/fighter.yaml)
+
+
+def f32_bits(value: float) -> int:
+    return struct.unpack(">I", struct.pack(">f", value))[0]
+
+
+@pytest.fixture
+def after_map(tmp_path):
+    """A tracer sampling each fighter when its map proc returns."""
+    mem = build_two_fighter_world()
+    for addr, word in {**tick.BOUNDARY_CODE, **tick.PROC_LOOP_CODE}.items():
+        mem.write_u32(addr, word)
+    mem.write_u32(tick.WATCH_ADDR, 100)
+    procs = ((MAP_PROC_A, GOBJ_A, tick.FIGHTER_MAP_PROC), (MAP_PROC_B, GOBJ_B, tick.FIGHTER_MAP_PROC),
+             (OTHER_PROC_B, GOBJ_B, 0x8006C80C))
+    for proc, gobj, callback in procs:
+        mem.write_u32(proc + tick.PROC_GOBJ_OFF, gobj)
+        mem.write_u32(proc + tick.PROC_ON_INVOKE_OFF, callback)
+    watched = []
+    mem.add_memcheck = watched.append
+    mem.remove_memcheck = watched.remove
+    raw = tmp_path / "ticks.raw.jsonl"
+    tracer = tick.TickTracer({"frames": 2, "after_map": True}, raw.open("w"), tmp_path / "match.sav",
+                             {"seed": 123}, tmp_path / "ticks.raw.jsonl.done", mem, _FakeController(),
+                             _FakeStates(mem, 123), Events())
+    return tracer, mem, raw, watched
+
+
+def run_proc(tracer, mem, proc):
+    """The proc loop around one proc: it names the GObj and proc, runs it,
+    then zeroes the GObj word (the callback precedes the store) and the proc's."""
+    gobj = mem.read_u32(proc + tick.PROC_GOBJ_OFF)
+    tracer.on_memory(True, tick.CURRENT_GOBJ_ADDR, gobj)
+    mem.write_u32(tick.CURRENT_GOBJ_ADDR, gobj)
+    mem.write_u32(tick.CURRENT_PROC_ADDR, proc)
+    tracer.on_memory(True, tick.CURRENT_GOBJ_ADDR, 0)
+    mem.write_u32(tick.CURRENT_GOBJ_ADDR, 0)
+    mem.write_u32(tick.CURRENT_PROC_ADDR, 0)
+
+
+def test_after_map_samples_each_fighter_when_its_map_proc_returns(after_map, tmp_path):
+    tracer, mem, raw, watched = after_map
+    tracer.on_frame()
+    assert watched == [tick.WATCH_ADDR, tick.CURRENT_GOBJ_ADDR]
+    # Tick 0: the map procs leave fighter B on the floor it rode...
+    mem.write_u32(FIGHTER_A + CUR_POS_Y, f32_bits(5.0))
+    run_proc(tracer, mem, MAP_PROC_A)
+    mem.write_u32(FIGHTER_B + CUR_POS_Y, f32_bits(21.5))
+    tracer.on_memory(False, tick.CURRENT_GOBJ_ADDR, 0)   # a read of the word is no return
+    run_proc(tracer, mem, MAP_PROC_B)
+    # ...and a later proc of the tick pins it back; that proc's return is no sample.
+    mem.write_u32(FIGHTER_B + CUR_POS_Y, f32_bits(20.0))
+    run_proc(tracer, mem, OTHER_PROC_B)
+    store(tracer, mem, 101)
+    # Tick 1: fighter A's map proc does not run (its GObj is paused).
+    run_proc(tracer, mem, MAP_PROC_B)
+    store(tracer, mem, 102)
+    tracer.on_frame()
+    summary = json.loads((tmp_path / "ticks.raw.jsonl.done").read_text())
+    assert watched == [] and summary["after_map_samples"] == 3
+    rows = [json.loads(line) for line in raw.read_text().splitlines()]
+    assert [[s["fighter"] for s in row["after_map"]] for row in rows] == [[0, 1], [1]]
+    decoded = tmp_path / "decoded.jsonl"
+    decode.main(raw, decoded)
+    first, second = (json.loads(line) for line in decoded.read_text().splitlines())
+    assert first["after_map"]["p0.cur_pos.y"]["v"]["approx"] == 5.0
+    assert first["after_map"]["p1.cur_pos.y"]["v"]["approx"] == 21.5
+    assert first["state"]["p1.cur_pos.y"]["v"]["approx"] == 20.0
+    assert {key.split(".")[0] for key in second["after_map"]} == {"p1"}
+    assert set(first["after_map"]) == {key for key in first["state"] if key != "rng.seed"}
+
+
+def test_after_map_checks_the_proc_loops_code_and_the_sampled_fighters(after_map, tmp_path):
+    tracer, mem, raw, watched = after_map
+    tracer.on_frame()
+    # A map proc of a GObj outside the fighter list fails the record.
+    stray = 0x80BD0060
+    mem.write_u32(stray + tick.PROC_GOBJ_OFF, 0x80451000)
+    mem.write_u32(stray + tick.PROC_ON_INVOKE_OFF, tick.FIGHTER_MAP_PROC)
+    mem.write_u32(0x80451000 + trace_common.GOBJ_USER_DATA_OFF, 0x80458000)
+    run_proc(tracer, mem, stray)
+    store(tracer, mem, 101)
+    assert "not in the fighter list" in (tmp_path / "ticks.raw.jsonl.err").read_text()
+
+
+def test_after_map_refuses_a_proc_loop_that_is_not_retails(after_map, tmp_path):
+    tracer, mem, raw, watched = after_map
+    mem.write_u32(0x80390E7C, 0x60000000)
+    tracer.on_frame()
+    assert "retail code mismatch at 0x80390E7C" in (tmp_path / "ticks.raw.jsonl.err").read_text()
+
+
+def test_a_scenario_without_after_map_watches_only_the_tick_counter(capture):
+    tracer, mem, raw, done, calls = capture
+    tracer.on_frame()
+    store(tracer, mem, 101)
+    assert [call[:2] for call in calls] == [("add", tick.WATCH_ADDR)]
+    assert "after_map" not in json.loads(raw.read_text().splitlines()[0])

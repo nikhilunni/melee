@@ -96,7 +96,34 @@ fn simulation_with(scenario: &Scenario, pads: PadScript) -> Result<Simulation> {
     if let Some(seed) = scenario.boundary_seed {
         simulation.set_rng_seed(seed);
     }
+    simulation.capture_after_map(scenario.after_map);
     Ok(simulation)
+}
+/// Retail's after-map sample per tick (`trace_after_map`), for a scenario
+/// recorded with `after_map = true`; `None` rows otherwise.
+pub(crate) fn after_map_rows(scenario: &Scenario, ticks: usize) -> Result<Vec<Option<Record>>> {
+    if !scenario.after_map {
+        return Ok(vec![None; ticks]);
+    }
+    melee_trace_io::open(&scenario.expected_path())?
+        .lines()
+        .enumerate()
+        .map(|(frame, line)| {
+            crate::trace_after_map::expected(&serde_json::from_str(&line?)?, frame as u64).map(Some)
+        })
+        .collect()
+}
+/// The port's after-map record of the tick that produced `end`, against
+/// retail's sample.
+pub(crate) fn after_map_divergence(
+    simulation: &Simulation,
+    expected: &Record,
+    end: &Record,
+) -> Result<Option<String>> {
+    let after_map = simulation
+        .after_map_record(end)
+        .ok_or_else(|| anyhow::anyhow!("the simulation does not capture after its map procs"))?;
+    Ok(crate::trace_after_map::divergence(expected, &after_map))
 }
 pub(crate) fn simulation(scenario: &Scenario) -> Result<Simulation> {
     simulation_with(scenario, pad_script(scenario)?)
@@ -221,6 +248,7 @@ fn gate_with_recording(
         expected.len(),
         scenario.frames
     );
+    let after_map = after_map_rows(scenario, expected.len())?;
     let mut simulation = simulation(scenario)?;
     if !scenario.replay_inputs.is_empty() {
         simulation.tick()?;
@@ -228,7 +256,8 @@ fn gate_with_recording(
     if record_spawns {
         simulation.enable_spawn_recording();
     }
-    for (expected, expected_items) in expected.into_iter().zip(item_rows) {
+    let rows = expected.into_iter().zip(item_rows).zip(after_map);
+    for ((expected, expected_items), expected_after_map) in rows {
         let mut actual = simulation.tick()?;
         if !scenario.replay_inputs.is_empty() {
             actual.frame -= 1;
@@ -246,6 +275,11 @@ fn gate_with_recording(
             let actual_items = simulation.item_snapshot(actual.frame);
             if let Some(diff) = first_divergence([&expected_items], [&actual_items]) {
                 anyhow::bail!("{diff}\n{} ticks matched (item list order)", actual.frame);
+            }
+        }
+        if let Some(expected) = expected_after_map {
+            if let Some(diff) = after_map_divergence(&simulation, &expected, &actual)? {
+                anyhow::bail!("{diff}\n{} ticks matched", actual.frame);
             }
         }
     }

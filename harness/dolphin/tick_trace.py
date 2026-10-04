@@ -27,6 +27,23 @@ codes installed (MELEE_GECKO_HOOKS), the tick clock also rewrites the two
 entries before the injected one with the two previous ticks' pads, so the
 queue holds one poll per tick whatever Dolphin's own polls did, and the
 first record checks every injection holds its branch.
+
+After-map sample (`after_map = true`): each record also carries `after_map`,
+every fighter's struct as it stood when its map proc returned (Fighter_procMap,
+0x8006C27C, s_link 6), where Slippi before 3.4.0 reads Post Frame (hook
+0x8006C5D8, the proc's common exit). A later proc of the same tick may
+overwrite what the map proc left (the accessory pins a captured fighter back
+to its captor), so the tick's end state cannot show it.
+
+The scripting API has memory breakpoints only, and a breakpoint makes Dolphin
+take its slow memory path for the whole 128 KiB page around it. On a heap
+page (a fighter's struct or JObj) that changes emulated float results by an
+ulp, so the hook must be a word beside the ones already watched: the GObj
+proc loop (HSD_GObj_80390CFC) names the running GObj and proc in
+HSD_GObj_804D781C / HSD_GObj_804D7838 (.sbss, the RNG seed's page) and
+clears them when the proc returns (0x80390E7C, 0x80390E80). A zero stored to
+the first while the second still holds a proc whose callback is
+Fighter_procMap is the end of that fighter's map proc.
 """
 from __future__ import annotations
 
@@ -40,10 +57,11 @@ from pathlib import Path
 
 HERE = Path(globals().get("__file__") or sys._getframe().f_code.co_filename).resolve().parent
 sys.path.insert(0, str(HERE))
-from trace_common import Tracer, event, read_items, read_stage_io, run  # noqa: E402
+from trace_common import FIGHTER_SIZE, GOBJ_USER_DATA_OFF, Tracer, event, read_items, read_stage_io, run  # noqa: E402
 from item_kinds import ITEM_KIND_NAMES  # noqa: E402
 import remote_proto  # noqa: E402
 import symbols  # noqa: E402
+import walk  # noqa: E402
 
 sys.path.insert(0, str(HERE.parent))
 import gecko  # noqa: E402
@@ -68,6 +86,15 @@ PAD_PORTS = 4
 #: UCF's FETCH_INPUT wraps a negative queue index by this constant (qnum 5).
 UCF_QUEUE_WRAP = 5
 PAD_BUTTON_A, PAD_BUTTON_B = 0x100, 0x200
+# gobj.c:112-135 (HSD_GObj_80390CFC): the proc loop stores the GObj and the
+# proc it is about to run (0x80390DE8, 0x80390DEC) and zeroes both, in that
+# order, when the proc returns (0x80390E7C, 0x80390E80).
+CURRENT_GOBJ_ADDR = symbols.addr("HSD_GObj_804D781C")
+CURRENT_PROC_ADDR = symbols.addr("HSD_GObj_804D7838")
+PROC_LOOP_CODE = {0x80390E7C: 0x900DC17C, 0x80390E80: 0x900DC198}
+# gobjproc.h HSD_GObjProc: gobj +0x10, on_invoke +0x14.
+PROC_GOBJ_OFF, PROC_ON_INVOKE_OFF = 0x10, 0x14
+FIGHTER_MAP_PROC = symbols.addr("Fighter_procMap")   # 0x8006C27C, fighter.c:902
 
 
 def raw_pad_bytes(raw: dict) -> bytes:
@@ -106,7 +133,44 @@ class TickTracer(Tracer):
         stage_io = read_stage_io(mem)
         if stage_io is not None:
             record["stage_io"] = stage_io
+        if self.after_map:
+            record["after_map"] = self.take_after_map(record["fighters"])
         return record
+
+    def watch_map_procs(self) -> None:
+        """Break on the proc loop's current-GObj word (see the module header)."""
+        for addr, expected in PROC_LOOP_CODE.items():
+            actual = self.mem.read_u32(addr)
+            if actual != expected:
+                raise ValueError(f"retail code mismatch at 0x{addr:08X}: "
+                                 f"0x{actual:08X} != 0x{expected:08X}")
+        self.mem.add_memcheck(CURRENT_GOBJ_ADDR)
+
+    def sample_after_map(self, is_write: bool, value: int) -> None:
+        """The proc loop clearing its current GObj: when the proc that just
+        returned is a fighter's map proc, keep that fighter's struct."""
+        if not is_write or value != 0 or self.done or self.pending_finish or not self.installed:
+            return
+        proc = self.mem.read_u32(CURRENT_PROC_ADDR)
+        if not walk.MEM1_LO <= proc < walk.MEM1_HI or proc & 3:
+            return
+        if self.mem.read_u32(proc + PROC_ON_INVOKE_OFF) != FIGHTER_MAP_PROC:
+            return
+        gobj = self.mem.read_u32(proc + PROC_GOBJ_OFF)
+        base = self.mem.read_u32(gobj + GOBJ_USER_DATA_OFF)
+        self.after_map_samples[base] = walk.read_bytes(self.mem, base, FIGHTER_SIZE).hex()
+        self.after_map_count += 1
+
+    def take_after_map(self, fighters: list[dict]) -> list[dict]:
+        """This tick's samples, each with its index in the record's fighter list."""
+        bases = [int(fighter["base"], 16) for fighter in fighters]
+        samples, self.after_map_samples = self.after_map_samples, {}
+        unknown = sorted(set(samples) - set(bases))
+        if unknown:
+            raise ValueError(f"tick ordinal {self.frame}: map procs ran for fighters not in the "
+                             f"fighter list: {[f'0x{base:08X}' for base in unknown]}")
+        return [{"fighter": index, "bytes": samples[base]}
+                for index, base in enumerate(bases) if base in samples]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -132,6 +196,10 @@ class TickTracer(Tracer):
             # The held steps of the last two injected ticks, newest first.
             self.tick_history: list[dict[int, dict]] = []
         self.gecko_hooks = gecko.hooks_from_env()
+        # `after_map = true`: the current tick's samples (Fighter* -> struct hex).
+        self.after_map = bool(self.scenario.get("after_map", False))
+        self.after_map_samples: dict[int, str] = {}
+        self.after_map_count = 0
         self.vi_frame = -1
         self.last_tick_vi = 0
         self.last_tick: int | None = None
@@ -164,6 +232,8 @@ class TickTracer(Tracer):
             raise ValueError("game tick counter is saturated")
         self.events.on_memorybreakpoint(self.on_memory)
         self.mem.add_memcheck(WATCH_ADDR)  # binding takes just one positional address
+        if self.after_map:
+            self.watch_map_procs()
         self.installed = True
         if self.tick_clock:
             self.inject_tick_pads(0)
@@ -283,6 +353,17 @@ class TickTracer(Tracer):
             self.fail(traceback.format_exc())
 
     def on_memory(self, is_write: bool, addr: int, value: int) -> None:
+        if self.after_map and addr == CURRENT_GOBJ_ADDR:
+            if self.in_callback:
+                return
+            self.in_callback = True   # a failure must not remove memchecks from here
+            try:
+                self.sample_after_map(is_write, value)
+            except Exception:
+                self.fail(traceback.format_exc())
+            finally:
+                self.in_callback = False
+            return
         if self.done or self.pending_finish or not self.installed:
             return
         if not is_write or addr != WATCH_ADDR:
@@ -345,6 +426,8 @@ class TickTracer(Tracer):
             return  # next VI removes the memcheck even after an error
         if self.installed:
             self.mem.remove_memcheck(WATCH_ADDR)
+            if self.after_map:
+                self.mem.remove_memcheck(CURRENT_GOBJ_ADDR)
             self.installed = False
         # This fork accumulates listeners; done guards park ours without
         # registering more callbacks or relying on on_*(None).
@@ -373,6 +456,7 @@ class TickTracer(Tracer):
                 "duplicate_callbacks": self.duplicates, "reentrant_callbacks": self.reentrant,
                 "counter_reset_at_start": self.counter_reset_at_start,
                 "input_clock": "tick" if self.tick_clock else "vi",
+                **({"after_map_samples": self.after_map_count} if self.after_map else {}),
                 **({"injected_ticks": self.injected_ticks} if self.tick_clock else {})}
 
 

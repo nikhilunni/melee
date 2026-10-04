@@ -10,6 +10,12 @@ Output: melee-diff Records:
                "p0.cur_pos.x": {"t":"f32","v":{"bits":..., "approx":...}}, ...}}
 
 Float values carry their bit pattern so comparison is exact.
+
+A tick record sampled with `after_map` (tick_trace.py) also carries the
+fighters as they stood at the end of their map procs:
+    "after_map": [{"fighter": 1, "bytes": "<hex>"}, ...]
+which becomes `"after_map": {"p1.cur_pos.x": ..., ...}`, the keys of `state`
+for each sampled fighter (melee-sim trace_after_map.rs compares it).
 """
 from __future__ import annotations
 
@@ -181,6 +187,11 @@ def main(inp: Path, out: Path) -> None:
             if "stage_io" in d:
                 record["events"] = decode_events(d["stage_io"], previous_io)
                 previous_io = d["stage_io"]
+            if "after_map" in d:
+                record["after_map"] = {}
+                for sample in d["after_map"]:
+                    record["after_map"].update(
+                        decode_struct(fighter, bytes.fromhex(sample["bytes"]), f"p{sample['fighter']}"))
             if "items" in d:
                 record["items"] = [
                     {**item, "state": decode_item(bytes.fromhex(item["bytes"]))}

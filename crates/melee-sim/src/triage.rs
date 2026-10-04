@@ -127,8 +127,10 @@ fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
     if !scenario.replay_inputs.is_empty() {
         simulation.tick()?;
     }
+    let after_map = trace::after_map_rows(scenario, expected.len())?;
     let mut history = VecDeque::with_capacity(HISTORY + 1);
-    for (exp, exp_items) in expected.into_iter().zip(expected_items) {
+    let rows = expected.into_iter().zip(expected_items).zip(after_map);
+    for ((exp, exp_items), exp_after_map) in rows {
         let tick = exp.frame;
         let mut act = match simulation.tick() {
             Ok(record) => record,
@@ -167,6 +169,23 @@ fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
                 actual_items: act_items,
                 history,
             }));
+        }
+        // The tick's end state agrees; the fighters' state after their map
+        // procs (a scenario recorded with `after_map`) may still differ.
+        if let Some(exp_after_map) = exp_after_map {
+            if let Some(diff) = trace::after_map_divergence(&simulation, &exp_after_map, &act)? {
+                let port = simulation.after_map_record(&act).expect("captured");
+                return Ok(Some(Divergence {
+                    tick,
+                    summary: diff,
+                    rng_writers: format!("{:?}", simulation.rng_writers()),
+                    actual: Some(crate::trace_after_map::actual(&port, &exp_after_map)),
+                    expected: Some(exp_after_map),
+                    expected_items: None,
+                    actual_items: None,
+                    history,
+                }));
+            }
         }
         if history.len() == HISTORY {
             history.pop_front();

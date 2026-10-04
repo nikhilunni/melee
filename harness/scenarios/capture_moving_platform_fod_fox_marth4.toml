@@ -3,7 +3,14 @@
 # his platform, runs under Marth's, jumps onto it (tick 290) and waits; Z at
 # 625 (CatchPull 213 / CapturePulledLw 226), up at 660 (ThrowHi / ThrownHi).
 # The captured Marth rides the floor in Fighter_procUpdate's tail (0x8006BE48).
+# The accessory proc then pins him to Fox, so the tick's end shows nothing of
+# the ride: `after_map` samples each fighter when its map proc returns
+# (0x8006C5D8, Slippi's Post Frame before 3.4.0). In ThrownHi (ticks 660-665)
+# Marth's position there is the ridden one: y 18.675087 at tick 660 (one
+# platform step, 0.075, under the 18.750086 of a fighter that did not ride),
+# against 15.774691 at the tick's end.
 name = "capture_moving_platform_fod_fox_marth4"
+after_map = true
 input_clock = "tick"
 savestate = "harness/roms/start_fod_fox_marth4.sav"
 frames = 740

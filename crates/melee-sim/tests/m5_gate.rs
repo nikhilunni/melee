@@ -3648,8 +3648,17 @@ fn up_throw_on_fountain_of_dreams_floor_matches_retail() {
 /// tail (mpGetSpeed, 0x8006BE48) before the accessory pins it to the captor
 /// again, so the tick's end state does not show the ride; Slippi replays older
 /// than 3.4.0 (Post Frame at the map proc, 0x8006C5D8) do, and two of the
-/// corpus's FoD games check it.
+/// corpus's FoD games check it. The recording samples retail there too
+/// (`after_map`), and the gate compares it: thrown Marth's y is 18.675087 at
+/// tick 660, one platform step under where he stands without the ride.
 #[test]
 fn capture_and_throw_on_a_moving_platform_match_retail() {
-    combat_gate_ticks("capture_moving_platform_fod_fox_marth4", 740);
+    let name = "capture_moving_platform_fod_fox_marth4";
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
+    assert!(
+        Scenario::load(&path).unwrap().after_map,
+        "the witness is its after-map sample"
+    );
+    combat_gate_ticks(name, 740);
 }

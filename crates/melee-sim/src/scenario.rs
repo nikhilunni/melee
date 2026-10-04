@@ -40,6 +40,13 @@ pub struct Scenario {
     /// the setup draws.
     #[serde(default)]
     pub game_start_seed: Option<u32>,
+    /// The recording also samples each fighter at the end of its map proc
+    /// (Fighter_8006C27C, where Slippi before 3.4.0 reads Post Frame:
+    /// 0x8006C5D8), and the gate compares the port's after-map record with
+    /// it (`trace_after_map`). A state the same tick's later procs overwrite
+    /// (a captured fighter riding a moving floor) shows only there.
+    #[serde(default)]
+    pub after_map: bool,
     /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
     #[serde(default)]
     pub sudden_death: bool,

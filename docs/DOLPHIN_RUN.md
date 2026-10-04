@@ -258,6 +258,54 @@ The proposed 300-tick laser input script, offset sources, compatibility
 evidence and exact validation commands are in
 [`PORT_NOTES/C9_ITEM_ORACLE.md`](PORT_NOTES/C9_ITEM_ORACLE.md).
 
+## The after-map sample (2026-10-03)
+
+A tick record is the state when the scheduler's tick completes. What a
+fighter's later procs overwrite within the tick is not in it: a captured or
+thrown fighter on a moving floor rides it in Fighter_procUpdate (0x8006BE48),
+stands there through its map proc, and is pinned back to its captor by the
+accessory proc. Slippi before 3.4.0 reads Post Frame when the map proc ends
+(hook 0x8006C5D8, Fighter_procMap's common exit), so such a state decides
+whether an old replay matches, and it had no retail witness.
+
+A scenario with `after_map = true` records it. The tracer breaks on
+`HSD_GObj_804D781C`, the proc loop's current GObj (gobj.c:112-135,
+HSD_GObj_80390CFC): the loop zeroes it when a proc returns (0x80390E7C)
+while `HSD_GObj_804D7838` still names the proc, and when that proc's
+callback is `Fighter_procMap` (0x8006C27C) the fighter's whole struct is
+kept. Each raw record gains `after_map: [{fighter, bytes}]` (the index is
+into the record's fighter list; a fighter whose map proc did not run that
+tick has no entry), `decode.py` turns it into `after_map: {"pN.<key>": ...}`
+with the keys of `state`, and the `.done` summary counts the samples. The
+word is on the RNG seed's page (see "A memory breakpoint is not free of side
+effects" below): the first attempt, a breakpoint on each fighter's root JObj
+(the map proc's last store, 0x8006C570), changed retail's floats.
+
+`melee-sim gate` and `triage` then also compare the port's after-map record
+(`Simulation::capture_after_map`, the snapshot after each fighter's map
+proc) with it, every key of every sampled fighter, after the tick's end
+state has matched; a difference is reported with `phase after_map`. A
+scenario that asks for the comparison and whose recording lacks the sample
+fails. The sample costs a Python callback per proc invocation (the 740-tick
+witness records its tick trace in about 40 s instead of 7 s), so it is for
+scenarios that need it.
+
+Witness: `capture_moving_platform_fod_fox_marth4` (740 ticks; 1478 samples,
+none on the boundary's partial first tick). Its tick trace is identical to
+the recording made without the sample. On six ticks (660-665, Marth in
+ThrownHi on the descending platform) his after-map position differs from the
+tick's end: y 18.675087 at tick 660 against 15.774691. The build before the
+ride was ported (commit 212d80e reverted) passes the tick's end and stops
+there:
+
+```text
+first divergence at frame 660 phase after_map
+  field:    p1.cur_pos.y
+  expected: 18.675086975097656 (0x41956694)
+  actual:   18.750085830688477 (0x4196002D)
+(at the end of the fighter's map proc, retail 0x8006C5D8)
+```
+
 ## One-time machine setup
 
 1. Dolphin config lives in `~/Library/Application Support/Dolphin/` (the default
@@ -326,6 +374,20 @@ All **verified** on 2026-09-08.
   `-C Dolphin.Core.SIDevice1=6` so the game sees a second (idle) pad.
 - Savestates are ~19 MB and load fine into a fresh Dolphin process one frame
   after boot, as long as the SI devices match (`run_scenario.py --ports`).
+- **A memory breakpoint is not free of side effects (2026-10-03).** The
+  scripting API has `memory.add_memcheck` and no code breakpoint, so a hook
+  at an instruction is a breakpoint on a word that instruction reads or
+  writes. Dolphin then takes its slow memory path for the whole 128 KiB page
+  around the word (`OverlapsMemcheck`, BAT page size), and on a heap page
+  that changes emulated float results: with a breakpoint on a fighter's root
+  JObj (any word of it, hit or not) `capture_moving_platform_fod_fox_marth4`
+  leaves its own earlier recording at tick 65, Fox's y one ulp off
+  (0x41A684F5 against 0x41A684F6), and every tick after. The words watched
+  so far are safe: the tick counter (`gm_80479D58`, .bss), and the RNG seed
+  and the proc loop's current GObj (`seed`, `HSD_GObj_804D781C`: .sbss, one
+  page). A new hook belongs on one of those two pages, and its recording
+  must equal an existing recording of the same inputs tick for tick before
+  anything is concluded from it.
 
 ## The tools
 
