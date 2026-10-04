@@ -1,0 +1,31 @@
+# HELD ITEM directed witness (boundary start_ps_peach_fox4, Pokemon Stadium).
+# Both fighters idle until the rock form has risen and carried Peach onto it
+# (as stopwall_ps_fox_dash_rock: the first transformation from this boundary
+# is the rock form too). Peach pulls a turnip at 4450; at 4600 she holds the
+# stick left, turns and dashes into the wall behind her: ftCo_8009EDA4 enters
+# StopWall (249) with the turnip in hand. ftCo_StopWall.c has no item branch,
+# so she keeps it through the state and back to Wait and the walk.
+name = "held_item_stopwall_ps_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_peach_fox4.sav"
+frames = 4800
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4450, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 4452, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4600, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 4750, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

@@ -495,3 +495,12 @@ stage = "FinalDestination"
 players = ["GameAndWatch", "Samus"]
 stocks = 4
 seed = 1952299450
+
+[[boundary]]
+name = "start_ps_peach_fox4"
+cold = "start_ps_peach_fox4_cold"
+savestate = "harness/roms/start_ps_peach_fox4.sav"
+stage = "PokemonStadium"
+players = ["Peach", "Fox"]
+stocks = 4
+seed = 4075074114

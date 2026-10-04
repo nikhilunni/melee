@@ -1801,6 +1801,9 @@ const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
     // FtMoveId_SwordSwingDash, so the second is staled by the first.
     ("sword_swing_dash_fd_peach", 1640),
     ("sword_swing_run_fd_peach", 1640),
+    // StopWall with a turnip in hand (ftCo_StopWall.c has no item branch):
+    // Peach dashes into the wall of Pokemon Stadium's rock form.
+    ("held_item_stopwall_ps_peach", 4800),
 ];
 
 #[test]

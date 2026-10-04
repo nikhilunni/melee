@@ -137,7 +137,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 151] = [
+const HELD_ITEM_STATES: [S; 152] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -159,6 +159,9 @@ const HELD_ITEM_STATES: [S; 151] = [
     S::RunBrake,
     // ftCo_TurnRun_IASA only offers the running jump (fn_800CAF78).
     S::TurnRun,
+    // ftCo_StopWall.c (ftCo_8009EE30): a dash stopped by a wall; no item
+    // branch, and its IASA is empty.
+    S::StopWall,
     S::LightThrowDash,
     // Turning, crouching and rolls keep it too.
     S::Turn,
