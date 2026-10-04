@@ -20,7 +20,7 @@ pub struct Config {
     pub(crate) controller_fixes: Option<[String; 2]>,
 }
 
-const CHARACTERS: [(Character, &str); 21] = [
+const CHARACTERS: [(Character, &str); 22] = [
     (Character::Fox, "Fox"),
     (Character::Marth, "Marth"),
     (Character::Falco, "Falco"),
@@ -42,6 +42,7 @@ const CHARACTERS: [(Character, &str); 21] = [
     (Character::Link, "Link"),
     (Character::YoungLink, "YoungLink"),
     (Character::DonkeyKong, "DonkeyKong"),
+    (Character::Bowser, "Bowser"),
 ];
 const STAGES: [(Stage, &str); 6] = [
     (Stage::FinalDestination, "FinalDestination"),

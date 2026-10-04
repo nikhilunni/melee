@@ -525,6 +525,22 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-koopa"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
+ "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-link"
 version = "0.0.1"
 dependencies = [
@@ -1462,6 +1478,7 @@ dependencies = [
  "ft-fox-family",
  "ft-ganon",
  "ft-iceclimbers",
+ "ft-koopa",
  "ft-link",
  "ft-luigi",
  "ft-mario",

@@ -161,6 +161,7 @@ scene_characters! {
     "Sheik" => Sheik(ft_seak::init::Sheik) partner(ft_zelda::init::Zelda),
     "Zelda" => Zelda(ft_zelda::init::Zelda) partner(ft_seak::init::Sheik),
     "DonkeyKong" => DonkeyKong(ft_donkey::init::DonkeyKong),
+    "Bowser" => Bowser(ft_koopa::init::Koopa),
 }
 
 /// ftMapping_list's `has_transformation` (pl/player.c:62-63): a partner of

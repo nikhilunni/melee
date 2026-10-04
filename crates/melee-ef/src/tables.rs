@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 25] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 26] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
@@ -65,6 +65,14 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 25] = [
     ModelSpawn {
         request: 0x3FB,
         source: ModelSource::Graphics,
+        model: 0x16,
+        attached: false,
+    },
+    // The same row from a landing-effect command (Bowser's entry and
+    // heavy landings; ftCo_8009F834 block_70, efasync.c 0x3FB).
+    ModelSpawn {
+        request: 0x3FB,
+        source: ModelSource::Landing,
         model: 0x16,
         attached: false,
     },

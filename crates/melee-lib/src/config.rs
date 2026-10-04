@@ -52,6 +52,7 @@ pub enum Character {
     Link,
     YoungLink,
     DonkeyKong,
+    Bowser,
 }
 impl Character {
     pub(crate) fn name(self) -> &'static str {
@@ -77,6 +78,7 @@ impl Character {
             Self::Link => "Link",
             Self::YoungLink => "YoungLink",
             Self::DonkeyKong => "DonkeyKong",
+            Self::Bowser => "Bowser",
         }
     }
     pub(crate) fn descriptor(self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
@@ -106,6 +108,7 @@ impl Character {
             melee_types::FighterKind::Link => Self::Link,
             melee_types::FighterKind::CLink => Self::YoungLink,
             melee_types::FighterKind::Donkey => Self::DonkeyKong,
+            melee_types::FighterKind::Koopa => Self::Bowser,
             _ => unreachable!("unregistered match character"),
         }
     }
