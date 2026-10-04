@@ -1814,6 +1814,11 @@ const REPLAY_BRANCH_WITNESSES: &[(&str, usize)] = &[
     // from an upright model; his forward tilt hits it walking.
     ("dosei_knocked_jab_fd_peach", 600),
     ("dosei_knocked_tilt_fd_peach", 600),
+    // A C-stick flick in the air throws any held item (ftCo_800DF50C), a
+    // battering one included: the Beam Sword, forward and down
+    // (LightThrowAirF4, LightThrowAirLw4).
+    ("sword_cstick_air_throw_f_fd_peach", 1700),
+    ("sword_cstick_air_throw_lw_fd_peach", 1700),
 ];
 
 #[test]

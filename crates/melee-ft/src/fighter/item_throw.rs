@@ -142,11 +142,11 @@ impl Fighter {
             && fabsf(cstick.x) >= common.aerial_horizontal_threshold)
             || (fabsf(previous.y) < common.aerial_vertical_threshold
                 && fabsf(cstick.y) >= common.aerial_vertical_threshold);
+        // ftCo_800DF50C (800DF50C): outside the one-button mode
+        // (gm_8016B0FC, false in a versus match) the flick throws any held
+        // item, a battering one included; a flicked axis is past its
+        // threshold, so the throw is always one of the smash air throws.
         let (stick, horizontal_age, vertical_age) = if flicked {
-            assert!(
-                throwable,
-                "ftCo_800DF50C: gm_8016B0FC for a non-throwable item"
-            );
             (cstick, 0.0, 0.0)
         } else if input.pressed.intersects(Buttons::A) && (lr || throwable) {
             let stick = input.current.stick;
