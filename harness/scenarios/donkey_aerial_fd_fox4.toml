@@ -1,0 +1,41 @@
+# DONKEY KONG movement: the five aerials from full hops, with their landings.
+name = "donkey_aerial_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 110, port = 0, buttons = {  }, raw = {  } },
+  { frame = 112, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 114, port = 0, buttons = {  }, raw = {  } },
+  { frame = 210, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 220, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 224, port = 0, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+  { frame = 332, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 334, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 440, port = 0, buttons = {  }, raw = {  } },
+  { frame = 442, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 444, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 550, port = 0, buttons = {  }, raw = {  } },
+  { frame = 552, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 554, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,29 @@
+# DONKEY KONG movement: taunt, then a run off the left edge, the double jump back and a ledge grab and climb.
+name = "donkey_taunt_ledge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 286, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 424, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1638,6 +1638,32 @@ fn matrix_witnesses_match_retail() {
     gate_in_parallel(&MATRIX_WITNESSES);
 }
 
+/// Donkey Kong vs Fox on Final Destination (boundary
+/// `start_fd_donkeykong_fox4`): directed scenes and bridged explorer cases.
+const DONKEY_WITNESSES: &[(&str, usize)] = &[
+    // The start boundary's cold construction.
+    ("start_fd_donkeykong_fox4_cold", 600),
+    // Movement on the common rows with PlDk.dat's attributes and scripts:
+    // walks and turn, dash/run/turn-run/brake, jumps and landings, crouch,
+    // shield, rolls and dodges, jabs and tilts, smashes and the dash attack,
+    // the aerials with and without landing lag, the taunt and whiffed grabs.
+    ("donkey_walk_fd_fox4", 420),
+    ("donkey_dash_fd_fox4", 420),
+    ("donkey_jump_fd_fox4", 420),
+    ("donkey_squat_guard_fd_fox4", 520),
+    ("donkey_jab_tilt_fd_fox4", 620),
+    ("donkey_smash_fd_fox4", 620),
+    ("donkey_aerial_fd_fox4", 700),
+    ("donkey_aerial_land_fd_fox4", 520),
+    ("donkey_taunt_ledge_fd_fox4", 620),
+    ("donkey_grab_whiff_fd_fox4", 360),
+];
+
+#[test]
+fn donkey_witnesses_match_retail() {
+    gate_in_parallel(DONKEY_WITNESSES);
+}
+
 /// Controller-fix Gecko codes (melee_ft::input::controller_fix), each
 /// witness recorded in Dolphin without the code (`_off`) and with it
 /// (`gecko = [...]`, harness/gecko.py): UCF's dashback (0x800C9A44), shield
