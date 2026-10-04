@@ -417,13 +417,36 @@ impl ItemCore {
     /// velocity; unless the contact is a repeat, the bounce plays the kind's
     /// sound, sparks and scales the hitboxes' damage by ItemAttr x58.
     pub fn bounce_off_surfaces(&mut self, bits: u32, map: &melee_mp::CollMap, assets: &ItemAssets) {
+        self.bounce(bits, map, assets, None);
+    }
+
+    /// `bounce_off_surfaces` for a caller that draws afterwards in the same
+    /// callback (it_8026E15C's landing count): the spark's spread is drawn
+    /// here, where it_80278800 draws it, not when the scene resolves it.
+    pub(crate) fn bounce_off_surfaces_drawing(
+        &mut self,
+        bits: u32,
+        map: &melee_mp::CollMap,
+        assets: &ItemAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        self.bounce(bits, map, assets, Some(rng));
+    }
+
+    fn bounce(
+        &mut self,
+        bits: u32,
+        map: &melee_mp::CollMap,
+        assets: &ItemAssets,
+        rng: Option<&mut gekko_math::HsdRng>,
+    ) {
         self.reflect_velocity(map, assets);
         if !self.leave_repeated_contact(bits) {
             return;
         }
         // it_8027321C: xDCD b2 (muted) is never set for the ported kinds.
         self.sound_requests.push(assets.bounce_sound);
-        self.push_bounce_spark(bits);
+        self.push_bounce_spark(bits, rng);
         self.scale_hitbox_damage(assets.bounce_scale);
     }
 
@@ -532,7 +555,7 @@ impl ItemCore {
     /// it_80277C40 (80277C40): effect 0x405 at the ECB point on the touched
     /// side, through it_80278800 with no spread. xDCF b0 (no spark) is never
     /// set for the ported kinds.
-    fn push_bounce_spark(&mut self, bits: u32) {
+    fn push_bounce_spark(&mut self, bits: u32, rng: Option<&mut gekko_math::HsdRng>) {
         let ecb = self.collision.as_ref().expect("item map collision").ecb;
         let mut point = hsd_types::Vec2::default();
         if bits & 8 != 0 {
@@ -547,6 +570,21 @@ impl ItemCore {
         if bits & 1 != 0 {
             point = ecb.bottom;
         }
+        let offset = hsd_types::Vec3::new(point.x, point.y, 0.0);
+        if let Some(rng) = rng {
+            // it_80278800's three draws (retail 0x80278A30, 0x80278A54,
+            // 0x80278A78) scale a zero spread; then efAsync kind 2 queues
+            // on the item, as the scene does for a ScriptEffect.
+            for _ in 0..3 {
+                rng.randf();
+            }
+            self.queued_events.push(crate::ItemEvent::JointEffect {
+                id: BOUNCE_SPARK,
+                joint: 0,
+                offset,
+            });
+            return;
+        }
         self.events.push(crate::ItemEvent::ScriptEffect(
             melee_types::combat::GraphicsCommand {
                 bone: 0,
@@ -555,7 +593,7 @@ impl ItemCore {
                 destroy_on_state_change: false,
                 id: BOUNCE_SPARK,
                 parameter: 0.0,
-                offset: hsd_types::Vec3::new(point.x, point.y, 0.0),
+                offset,
                 range: hsd_types::Vec3::ZERO,
                 issued_facing: None,
             },

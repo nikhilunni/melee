@@ -33,7 +33,9 @@ impl ItemCore {
         if bits & 0xF == 0 {
             return AirLanding::Airborne;
         }
-        self.bounce_off_surfaces(bits, map, assets);
+        // it_80276FC4's spark draws (it_80278800) precede the landing
+        // count's (it_8026DDFC, retail 0x8026DE58).
+        self.bounce_off_surfaces_drawing(bits, map, assets, rng);
         if bits & 1 == 0 {
             return AirLanding::Airborne;
         }

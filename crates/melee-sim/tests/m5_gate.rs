@@ -2081,7 +2081,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 25] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 26] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2174,6 +2174,10 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 25] = [
     // (ftCommon_8007DB58): its four launch draws (it_802B00F4) precede the
     // reaction's (0x8008E124), so it falls with retail's gravity (1611).
     ("slp_bf_sheik_marth_needles_t1700_cold", 1700),
+    // Peach's thrown Mr. Saturn meets the floor (3025): the bounce spark's
+    // spread (it_80278800) is drawn before the landing's break roll
+    // (it_8026DDFC, 0x8026DE58), which spares it; it bounces on.
+    ("slp_bf_peach_falco_t3100_cold", 3100),
 ];
 
 #[test]
