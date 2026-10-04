@@ -35,6 +35,15 @@ pub struct CombatState {
     /// whenever the secondary slot empties (Samus's full charge glow, 53,
     /// while u.ss.x2230 == x18). The character keeps it current.
     pub secondary_color_fallback: Option<u8>,
+    /// What this cargo carrier's state changes ask of the fighter it
+    /// holds; the scene applies them after the proc (`cargo::apply`).
+    pub cargo_requests: super::cargo::CargoRequests,
+    /// ftCo_Shouldered_Anim found the mash timer spent: the scene ends the
+    /// carry for both fighters (`cargo::escape`).
+    pub shoulder_escape: bool,
+    /// The carrier's ground_or_air as this shouldered fighter's animation
+    /// callback reads it (the scene offers it before the proc).
+    pub carrier_airborne: bool,
     pub capture_geometry: super::grab_throw::CaptureGeometry,
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
     pub grab: Option<super::grab::GrabLink>,

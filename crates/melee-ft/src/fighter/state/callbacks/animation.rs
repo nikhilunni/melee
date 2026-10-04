@@ -72,6 +72,20 @@ pub fn throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
         fighter.physics.facing = -fighter.physics.facing;
     }
     // The linked release runs immediately after this callback in scene order.
+    // ftCo_ThrowF_Anim (800DD7DC): a kind with x2222_b0 keeps its victim
+    // on its shoulder at the forward throw's end (ftCo_8009B56C).
+    if fighter.motion_state.id == melee_types::CommonMotionState::ThrowF
+        && fighter.carries_cargo()
+    {
+        if !fighter
+            .core
+            .animation
+            .frames_remaining(&fighter.core.skeleton)
+        {
+            fighter.enter_cargo_wait(assets, true)?;
+        }
+        return Ok(None);
+    }
     fighter.jab_animation(assets)?;
     Ok(None)
 }

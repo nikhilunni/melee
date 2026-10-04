@@ -290,7 +290,7 @@ const LIGHT_HIT_DAMAGE: f32 = 6.0;
 /// XRotN points (release_thrown). Then the captured fighter's root takes its
 /// position. Fighter_UnkSetFlag_8006CFBC only acts on x2219_b7, whose
 /// source (x221A_b0) is unported.
-fn release_pair(
+pub(super) fn release_pair(
     captor: &mut Fighter,
     captured: &mut Fighter,
     captured_assets: &FighterAssets,

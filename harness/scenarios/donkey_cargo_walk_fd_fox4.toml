@@ -1,0 +1,38 @@
+# DONKEY KONG directed witness: Fox runs up, Donkey Kong grabs him and throws forward into the
+# cargo carry (ftCo_ThrowF_Anim -> ftCo_8009B56C; Fox in ShoulderedWait). He walks right at the three speeds
+# (ftCo_8009B6C8: Fox follows one row behind), stops, turns (ftCo_CargoTurn_Anim flips both) and
+# walks left, then throws forward (ftCo_8009C02C, Fox in ThrownFF).
+name = "donkey_cargo_walk_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 144, port = 1, buttons = {  }, raw = {  } },
+  { frame = 165, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 167, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 204, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { stickX = 30 } },
+  { frame = 260, port = 0, buttons = {  }, raw = { stickX = 55 } },
+  { frame = 290, port = 0, buttons = {  }, raw = { stickX = 100 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+  { frame = 350, port = 0, buttons = {  }, raw = { stickX = -100 } },
+  { frame = 410, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 432, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

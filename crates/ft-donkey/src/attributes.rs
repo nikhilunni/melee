@@ -5,6 +5,10 @@ use hsd_archive::{Archive, Reader};
 use melee_ft::desc::{special_attributes_offset, FighterDescError};
 type Result<T> = std::result::Result<T, FighterDescError>;
 
+/// ftDk_Init_OnLoad (8010D9AC): lbAnim_8001E8F8(ftData_80085E50(fp, 296..298)),
+/// the animations whose lengths become x8, xC and x10.
+pub const CARRY_WALK_ANIMATIONS: [i32; 3] = [296, 297, 298];
+
 /// sizeof(ftDonkeyAttributes).
 pub const DONKEY_ATTRIBUTES_SIZE: u32 = 0x74;
 

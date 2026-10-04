@@ -1,0 +1,32 @@
+# DONKEY KONG directed witness: Fox runs up, Donkey Kong grabs him and throws forward into the
+# cargo carry (ftCo_ThrowF_Anim -> ftCo_8009B56C; Fox in ShoulderedWait). He turns and walks off the left edge
+# (ftCo_CargoWait_Coll -> ftCo_8009BC58, the carry fall) and throws forward in the air below the stage.
+name = "donkey_cargo_edge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 144, port = 1, buttons = {  }, raw = {  } },
+  { frame = 165, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 167, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 204, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { stickX = -100 } },
+  { frame = 300, port = 0, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 302, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

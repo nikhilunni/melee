@@ -156,6 +156,15 @@ impl CharacterCallbacks for DonkeyKong {
     fn on_load(&mut self, capabilities: &mut Capabilities) {
         capabilities.specials = [true; 4];
         capabilities.air_specials = Some([true, true, true, false]);
+        let carry = &self.attributes.carry;
+        capabilities.cargo = Some(melee_ft::fighter::cargo::CargoCarry {
+            first_state: carry.cargo_first_state as u16,
+            walk_length_animations: crate::attributes::CARRY_WALK_ANIMATIONS,
+            walk_rates: carry.walk_speeds,
+            turn_frames: carry.turn_frames,
+            jump_squat_frames: carry.jump_squat_frames,
+            landing_frames: carry.landing_frames,
+        });
     }
     /// ftDk_Init_OnDeath (8010D740): the stored punch goes and
     /// ftParts_80074A4C(gobj, 0, 0).

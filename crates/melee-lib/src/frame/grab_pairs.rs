@@ -77,6 +77,16 @@ pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
                 | melee_types::CommonMotionState::ThrownLw
                 | melee_types::CommonMotionState::CaptureYoshi
                 | melee_types::CommonMotionState::CaptureCaptain
+                // ftCo_Shouldered_Phys and the cargo throws' victims: empty.
+                | melee_types::CommonMotionState::ShoulderedWait
+                | melee_types::CommonMotionState::ShoulderedWalkSlow
+                | melee_types::CommonMotionState::ShoulderedWalkMiddle
+                | melee_types::CommonMotionState::ShoulderedWalkFast
+                | melee_types::CommonMotionState::ShoulderedTurn
+                | melee_types::CommonMotionState::ThrownFF
+                | melee_types::CommonMotionState::ThrownFB
+                | melee_types::CommonMotionState::ThrownFHi
+                | melee_types::CommonMotionState::ThrownFLw
         ))
     {
         return Ok(());
@@ -206,13 +216,15 @@ pub(super) fn constrain(state: &mut InitialState, player: usize) {
 }
 
 pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
-    if !with_fighter!(&state.fighters[player], |f| matches!(
+    // The common throws and the cargo carrier's (ftCo_800DD724).
+    if !with_fighter!(&state.fighters[player], |f| (matches!(
         f.motion_state.id,
         melee_types::CommonMotionState::ThrowF
             | melee_types::CommonMotionState::ThrowB
             | melee_types::CommonMotionState::ThrowHi
             | melee_types::CommonMotionState::ThrowLw
-    ) && f.commands.grab_release)
+    ) || f.in_cargo_throw())
+        && f.commands.grab_release)
     {
         return Ok(());
     }
@@ -235,6 +247,114 @@ pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
             &mut state.map,
             &mut state.rng,
         )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// The cargo carrier's state changes move the fighter it holds
+/// (ftCo_8009C5A4, ftCo_8009C640, ftCo_800DE3FC within the carrier's
+/// callback). Returns the victim's index when its motion changed.
+pub(super) fn cargo(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
+    use melee_ft::fighter::cargo;
+    let requests = with_fighter!(&mut state.fighters[player], |f| std::mem::take(
+        &mut f.combat.cargo_requests
+    ));
+    if requests.is_empty() {
+        return Ok(None);
+    }
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Holding { victim, .. }) = link else {
+        panic!("cargo carry without a victim");
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == victim))
+        .expect("live carried fighter");
+    let (carrier, victim) = pair(&mut state.fighters, player, other);
+    with_fighter!(carrier, |c| with_fighter!(victim, |v| {
+        requests.iter().try_for_each(|request| {
+            cargo::apply(
+                *request,
+                v,
+                c,
+                &state.assets.fighters[other],
+                &state.assets.fighters[player],
+            )
+        })
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some(other))
+}
+
+/// ftCo_Shouldered_Anim reads its carrier's ground_or_air (the mash
+/// decrement's aerial scale).
+pub(super) fn offer_carrier_ground(state: &mut InitialState, player: usize) {
+    if !with_fighter!(&state.fighters[player], |f| f.shouldered()) {
+        return;
+    }
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Captured { captor }) = link else {
+        panic!("shouldered without a carrier");
+    };
+    let airborne = state
+        .fighters
+        .iter()
+        .find(|f| with_fighter!(f, |f| f.spawn_number == captor))
+        .is_some_and(|f| {
+            with_fighter!(f, |f| f.physics.ground_or_air
+                == melee_types::GroundOrAir::Air)
+        });
+    with_fighter!(&mut state.fighters[player], |f| f
+        .core
+        .combat
+        .carrier_airborne = airborne);
+}
+
+/// ftCo_Shouldered_Anim's breakout: the carried fighter's mashing spent
+/// its timer; both fighters are launched within its animation callback.
+/// Returns the carrier's index when the carry ended.
+pub(super) fn shoulder_escape(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
+    if !with_fighter!(&mut state.fighters[player], |f| std::mem::take(
+        &mut f.combat.shoulder_escape
+    )) {
+        return Ok(None);
+    }
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Captured { captor }) = link else {
+        panic!("shouldered without a carrier");
+    };
+    let other = state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == captor))
+        .expect("live carrier");
+    let (victim, carrier) = pair(&mut state.fighters, player, other);
+    with_fighter!(carrier, |c| with_fighter!(victim, |v| {
+        melee_ft::fighter::cargo::escape(
+            v,
+            c,
+            &state.assets.fighters[player],
+            &state.assets.fighters[other],
+            &mut state.map,
+            &mut state.rng,
+        )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some(other))
+}
+
+/// ftCo_800DD100: `dead` died while linked to `partner` (its link is
+/// already gone). A partner pinned to it (a thrown or carried fighter) is
+/// set down by ftCo_800DC920's constrained path first.
+pub(super) fn release_from_dead_partner(
+    state: &mut InitialState,
+    dead: usize,
+    partner: usize,
+) -> Result<()> {
+    let (dead_fighter, partner_fighter) = pair(&mut state.fighters, dead, partner);
+    with_fighter!(dead_fighter, |d| with_fighter!(partner_fighter, |p| {
+        p.release_from_dead_partner(d, &state.assets.fighters[partner], &mut state.map)
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
 }

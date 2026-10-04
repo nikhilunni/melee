@@ -1,0 +1,97 @@
+# DONKEY KONG directed witness: Fox runs up, Donkey Kong grabs him and throws forward into the
+# cargo carry (ftCo_ThrowF_Anim -> ftCo_8009B56C; Fox in ShoulderedWait). Fox mashes buttons and the stick: each input takes
+# PlCo +4A8 off his timer (ftCo_Shouldered_Anim) until the breakout launches both (ftCo_8009C744).
+name = "donkey_cargo_mash_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_donkeykong_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 144, port = 1, buttons = {  }, raw = {  } },
+  { frame = 165, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 167, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 204, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 232, port = 1, buttons = {  }, raw = {  } },
+  { frame = 233, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 235, port = 1, buttons = {  }, raw = {  } },
+  { frame = 236, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 238, port = 1, buttons = {  }, raw = {  } },
+  { frame = 239, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 241, port = 1, buttons = {  }, raw = {  } },
+  { frame = 242, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 244, port = 1, buttons = {  }, raw = {  } },
+  { frame = 245, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 247, port = 1, buttons = {  }, raw = {  } },
+  { frame = 248, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 250, port = 1, buttons = {  }, raw = {  } },
+  { frame = 251, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 253, port = 1, buttons = {  }, raw = {  } },
+  { frame = 254, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 256, port = 1, buttons = {  }, raw = {  } },
+  { frame = 257, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 259, port = 1, buttons = {  }, raw = {  } },
+  { frame = 260, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 262, port = 1, buttons = {  }, raw = {  } },
+  { frame = 263, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 265, port = 1, buttons = {  }, raw = {  } },
+  { frame = 266, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 268, port = 1, buttons = {  }, raw = {  } },
+  { frame = 269, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 271, port = 1, buttons = {  }, raw = {  } },
+  { frame = 272, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 274, port = 1, buttons = {  }, raw = {  } },
+  { frame = 275, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 277, port = 1, buttons = {  }, raw = {  } },
+  { frame = 278, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 280, port = 1, buttons = {  }, raw = {  } },
+  { frame = 281, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 283, port = 1, buttons = {  }, raw = {  } },
+  { frame = 284, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 286, port = 1, buttons = {  }, raw = {  } },
+  { frame = 287, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 289, port = 1, buttons = {  }, raw = {  } },
+  { frame = 290, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 292, port = 1, buttons = {  }, raw = {  } },
+  { frame = 293, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 295, port = 1, buttons = {  }, raw = {  } },
+  { frame = 296, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 298, port = 1, buttons = {  }, raw = {  } },
+  { frame = 299, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 301, port = 1, buttons = {  }, raw = {  } },
+  { frame = 302, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 304, port = 1, buttons = {  }, raw = {  } },
+  { frame = 305, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 307, port = 1, buttons = {  }, raw = {  } },
+  { frame = 308, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 310, port = 1, buttons = {  }, raw = {  } },
+  { frame = 311, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 313, port = 1, buttons = {  }, raw = {  } },
+  { frame = 314, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 316, port = 1, buttons = {  }, raw = {  } },
+  { frame = 317, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 319, port = 1, buttons = {  }, raw = {  } },
+  { frame = 320, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 322, port = 1, buttons = {  }, raw = {  } },
+  { frame = 323, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 325, port = 1, buttons = {  }, raw = {  } },
+  { frame = 326, port = 1, buttons = {  }, raw = { button = 512, stickX = -127 } },
+  { frame = 328, port = 1, buttons = {  }, raw = {  } },
+  { frame = 329, port = 1, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 331, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "DonkeyKong"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

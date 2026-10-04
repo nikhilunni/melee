@@ -67,6 +67,9 @@ pub struct CommonBehavior {
     pub item_hand: Option<ItemHandSlots>,
     /// ftCo_Guard.c inlineB0: Yoshi's shield keeps its initial size.
     pub fixed_shield_size: bool,
+    /// The kind's OnLoad sets x2222_b0 (ftDk_Init_OnLoad): its data holds
+    /// the shouldered and cargo-thrown rows its victims play.
+    pub cargo_carry: bool,
 }
 
 /// Fighter_OnItemPickup(gobj, flag, pose, shown) (ft/inlines.h:143): the
@@ -120,6 +123,7 @@ impl CommonBehavior {
             idle_variants_while_holding: matches!(kind, FighterKind::Fox | FighterKind::Mewtwo),
             stage_wind_dynamics: matches!(kind, FighterKind::Mars | FighterKind::Emblem),
             fixed_shield_size: matches!(kind, FighterKind::Yoshi),
+            cargo_carry: matches!(kind, FighterKind::Donkey),
             item_hand: match kind {
                 FighterKind::Mars | FighterKind::Emblem => {
                     Some(ItemHandSlots { pose: 0, shown: 1 })
@@ -189,6 +193,8 @@ pub struct FighterAssets {
     pub grab_friction_multiplier: f32,
     pub throw_weight_scale: f32,
     pub grab_escape: super::grab_escape::Parameters,
+    /// PlCo +4A0..+4AC: the cargo carry's mash timer.
+    pub cargo: super::cargo::Parameters,
     pub smash_sounds: Vec<u32>,
     /// Authored AJ availability for high, high-mid, low-mid and low forward smash.
     pub forward_smash_variants: [bool; 4],
@@ -357,10 +363,16 @@ impl FighterAssets {
         // row, or an unanimated shield stun (Yoshi's egg), still supplies
         // its flags and script.
         let mut unanimated = BTreeMap::new();
+        let cargo_motions: &[i32] = if descriptor.common_behavior.cargo_carry {
+            &super::cargo::VICTIM_MOTIONS
+        } else {
+            &[]
+        };
         let entered_unanimated = super::grab_throw::THROWS
             .iter()
             .map(|throw| throw.victim_motion)
-            .chain([GUARD_DAMAGE_ANIMATION]);
+            .chain([GUARD_DAMAGE_ANIMATION])
+            .chain(cargo_motions.iter().copied());
         for motion in entered_unanimated {
             let id = motion as u32;
             if !script_ids.contains(&id) {
@@ -480,6 +492,7 @@ impl FighterAssets {
             heavy_voices: read_sfx_array(data, root, 0x20)?,
             throw_weight_scale: common.reader().f32(common_data + 0x37C)?,
             grab_escape: super::grab_escape::Parameters::read(common, common_data)?,
+            cargo: super::cargo::Parameters::read(common, common_data)?,
             magnifier: super::offscreen::MagnifierDamage::read(common, common_data)?,
             kind: descriptor.kind,
             attributes: read_fighter_attributes(data, root)?,
@@ -587,7 +600,8 @@ impl FighterAssets {
                     .chain([
                         super::capture_yoshi::EGG_MOTION,
                         super::capture_captain::VICTIM_MOTION,
-                    ]);
+                    ])
+                    .chain(cargo_motions.iter().copied());
                 for borrowed in borrowed {
                     if let Some(motion) = motions.get_mut(&borrowed) {
                         let source = crate::desc::bones::AnimationSource::read(

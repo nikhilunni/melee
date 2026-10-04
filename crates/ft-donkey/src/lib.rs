@@ -1,5 +1,6 @@
 //! Donkey Kong: ft/kinds/ftDonkey. Common states live in melee-ft.
 pub mod attributes;
+mod cargo;
 pub mod common;
 pub mod init;
 pub mod special_hi;
@@ -22,6 +23,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         rows[i].action = ActionId(FIRST_ACTION + i as u16);
         i += 1;
     }
+    place_all(&mut rows, cargo::rows());
     place_all(&mut rows, special_n::rows());
     place_all(&mut rows, special_s::rows());
     place_all(&mut rows, special_hi::rows());

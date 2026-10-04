@@ -141,9 +141,38 @@ pub fn enter_throw(
     let rate = prepare_throw(throw, &victim.core, &mut attacker.core, aa);
     attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
-    let saved_translation = prepare_thrown_pose(&mut victim.core, &mut attacker.core, va);
-    let held_in_mouth = attacker.character.mouth_capture_scale().is_some();
-    let source = match aa.motions.get(&throw.victim_motion) {
+    enter_thrown(
+        victim,
+        attacker,
+        va,
+        aa,
+        throw.victim_state,
+        throw.victim_motion,
+        rate,
+    )?;
+    // ftCo_800DD398's tail, ftColl_8007B7A4(gobj, PlCo +348): x1994 =
+    // max(x1994, frames) and colour animation 9 (x198C's flash type is
+    // renderer state), as the revival platform's exit does.
+    let status = &mut attacker.core.status;
+    status.revival_invincibility = status
+        .revival_invincibility
+        .max(aa.grab_escape.throw_invincible_frames);
+    attacker
+        .core
+        .commands
+        .color_animations
+        .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
+    Ok(())
+}
+
+/// The thrower's animation and script for row `victim_motion`, which the
+/// victim plays (Fighter_ChangeMotionState's last argument, ftData_80085CD8).
+pub(super) fn throw_source<'a>(
+    aa: &'a FighterAssets,
+    va: &'a FighterAssets,
+    victim_motion: i32,
+) -> ThrowSource<'a> {
+    match aa.motions.get(&victim_motion) {
         Some(motion) => {
             let remap = motion.remap.as_ref().expect("prepared throw skeleton");
             ThrowSource {
@@ -161,7 +190,7 @@ pub fn enter_throw(
             }
         }
         None => {
-            let (flags, blend_frames) = aa.unanimated[&throw.victim_motion];
+            let (flags, blend_frames) = aa.unanimated[&victim_motion];
             ThrowSource {
                 assets: aa,
                 animation: None,
@@ -169,14 +198,26 @@ pub fn enter_throw(
                 blend_frames,
             }
         }
-    };
-    victim.change_motion_state_with_source(
-        throw.victim_state.into(),
-        va,
-        0.0,
-        rate,
-        Some(source),
-    )?;
+    }
+}
+
+/// ftCo_800DE3FC (800DE3FC): the victim's half of a throw's entry. Its
+/// XRotN is pinned to the thrower (ftCo_800DB368), it takes the thrower's
+/// facing and plays the thrower's row `victim_motion` in `victim_state` at
+/// `rate`.
+pub(super) fn enter_thrown(
+    victim: &mut Fighter,
+    attacker: &mut Fighter,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+    victim_state: S,
+    victim_motion: i32,
+    rate: f32,
+) -> Result<()> {
+    let saved_translation = prepare_thrown_pose(&mut victim.core, &mut attacker.core, va);
+    let held_in_mouth = attacker.character.mouth_capture_scale().is_some();
+    let source = throw_source(aa, va, victim_motion);
+    victim.change_motion_state_with_source(victim_state.into(), va, 0.0, rate, Some(source))?;
     if held_in_mouth {
         // ftCo_800DE3FC: ftColl_8007B62C(gobj, 2), intangible with colour
         // animation 2, before the pose is kept and the new motion animated.
@@ -194,18 +235,6 @@ pub fn enter_throw(
         aa,
         saved_translation,
     );
-    // ftCo_800DD398's tail, ftColl_8007B7A4(gobj, PlCo +348): x1994 =
-    // max(x1994, frames) and colour animation 9 (x198C's flash type is
-    // renderer state), as the revival platform's exit does.
-    let status = &mut attacker.core.status;
-    status.revival_invincibility = status
-        .revival_invincibility
-        .max(aa.grab_escape.throw_invincible_frames);
-    attacker
-        .core
-        .commands
-        .color_animations
-        .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
     Ok(())
 }
 

@@ -215,9 +215,23 @@ pub(super) fn capture_damage(
 ) -> Result<i32> {
     // CaptureCaptain (Falcon Dive's victim) is neither 0xE0/0xE1 nor
     // 0xE3/0xE4: like a throw it keeps its motion.
+    // The shouldered rows and the cargo throws' are none of them either.
     let thrown = matches!(
         f.motion_state.id,
-        S::ThrownF | S::ThrownB | S::ThrownHi | S::ThrownLw | S::CaptureCaptain
+        S::ThrownF
+            | S::ThrownB
+            | S::ThrownHi
+            | S::ThrownLw
+            | S::CaptureCaptain
+            | S::ShoulderedWait
+            | S::ShoulderedWalkSlow
+            | S::ShoulderedWalkMiddle
+            | S::ShoulderedWalkFast
+            | S::ShoulderedTurn
+            | S::ThrownFF
+            | S::ThrownFB
+            | S::ThrownFHi
+            | S::ThrownFLw
     );
     if !thrown
         && !matches!(

@@ -11,6 +11,7 @@ pub mod caches;
 pub mod cape_turn;
 pub mod capture_captain;
 pub mod capture_yoshi;
+pub mod cargo;
 pub mod clank;
 pub mod color_overlay;
 pub mod commands;
@@ -724,6 +725,9 @@ pub struct Capabilities {
     /// ftCo_800A101C's FTKIND_NANA arm: the CPU follows the player's own
     /// fighter (CpuFighter.xC 6).
     pub cpu_partner: bool,
+    /// x2222_b0 and x2CC: the kind's forward throw ends in the cargo carry
+    /// (Donkey Kong; ftCo_ThrowF_Anim).
+    pub cargo: Option<cargo::CargoCarry>,
 }
 
 /// Unsupported interactions are represented explicitly, never inferred from
@@ -1176,6 +1180,10 @@ pub enum MotionData {
     /// SwordSwing1..SwordSwingDash (mv.co.swing).
     Swing(item_swing::SwingState),
     Capture(grab_escape::CaptureState),
+    /// The cargo carrier's rows with scratch of their own.
+    Cargo(cargo::CargoState),
+    /// ShoulderedWait..ShoulderedTurn: the carried fighter's grab timer.
+    Shouldered(cargo::ShoulderedState),
     YoshiEgg(capture_yoshi::YoshiEggState),
     CaptureJump(grab_escape::CaptureJumpState),
     #[default]

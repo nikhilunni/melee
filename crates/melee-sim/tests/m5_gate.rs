@@ -1692,6 +1692,33 @@ const DONKEY_WITNESSES: &[(&str, usize)] = &[
     // air (ftData_SpecialAirLw[FTKIND_DONKEY] is NULL).
     ("donkey_kong_spin_edge_fd_fox4", 520),
     ("donkey_hand_slap_edge_fd_fox4", 620),
+    // The cargo carry (ftCo_Cargo*.c, ftCo_Shouldered.c): the forward throw
+    // ends with Fox on Donkey Kong's shoulder. The three carry walks (Fox
+    // one shouldered row behind), the turn that flips both, and the forward
+    // throw; carry jumps, landings and the upward throw; the backward and
+    // downward throws; A and B without a direction, a tap jump out of the
+    // turn and an aerial throw that lands into its grounded row.
+    ("donkey_cargo_walk_fd_fox4", 620),
+    ("donkey_cargo_jump_fd_fox4", 620),
+    ("donkey_cargo_throw_b_fd_fox4", 460),
+    ("donkey_cargo_throw_lw_fd_fox4", 460),
+    ("donkey_cargo_neutral_a_fd_fox4", 520),
+    // The other three aerial cargo throws.
+    ("donkey_cargo_air_throws_b_fd_fox4", 480),
+    ("donkey_cargo_air_throws_hi_fd_fox4", 480),
+    ("donkey_cargo_air_throws_lw_fd_fox4", 480),
+    // Fox mashes out (each input takes PlCo +4A8 off his timer, scaled by
+    // +4AC while Donkey Kong is airborne): both are launched by each
+    // other's throw record 1, on the ground and in the air.
+    ("donkey_cargo_mash_fd_fox4", 520),
+    ("donkey_cargo_mash_air_fd_fox4", 520),
+    // Carried off an edge: the carry fall and an aerial throw below the
+    // stage; and Donkey Kong dying with Fox still on his shoulder, who is
+    // set down by ftCo_800DC920's constrained path and falls after him.
+    ("donkey_cargo_edge_fd_fox4", 520),
+    ("donkey_cargo_fall_ko_fd_fox4", 620),
+    // An explorer match through a carry and a mash-out.
+    ("corpus_v3_fd_donkeykong_fox4_e720659b1_p0", 4020),
 ];
 
 #[test]

@@ -702,13 +702,26 @@ impl Fighter {
         // x6C / x70 keep the fatal motion id for the stale-move stats.
     }
     /// ftCo_800DD100's other half: the partner of a fighter that died while
-    /// linked loses the link (ftCo_800DC920's unconstrained path) and
-    /// ftCommon_8007D92C (8007D92C) settles it: Fall in the air, else Wait.
-    pub fn release_from_dead_partner(&mut self, assets: &FighterAssets) -> Result<()> {
-        assert!(
-            self.core.combat.thrown_pose.is_none(),
-            "ftCo_800DC920: a thrown fighter's constraint release"
-        );
+    /// linked loses the link (ftCo_800DC920; a fighter pinned to the dead
+    /// one, thrown or carried, is first set down where its XRotN points)
+    /// and ftCommon_8007D92C (8007D92C) settles it: Fall in the air, else
+    /// Wait.
+    pub fn release_from_dead_partner(
+        &mut self,
+        dead: &mut Fighter,
+        assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        if self.core.combat.thrown_pose.is_some() {
+            assert!(
+                matches!(
+                    self.core.combat.grab,
+                    Some(super::grab::GrabLink::Captured { .. })
+                ),
+                "ftCo_800DC920: a constrained captor's release (Falcon Dive) on its victim's death"
+            );
+            super::grab_damage::release_pair(dead, self, assets, map);
+        }
         self.core.combat.grab = None;
         let state = if self.core.physics.ground_or_air == GroundOrAir::Air {
             S::Fall

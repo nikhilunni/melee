@@ -1121,6 +1121,9 @@ impl Runtime {
                     }
                 }
                 grab_pairs::constrain(state, player);
+                if proc == FighterProc::Animation {
+                    grab_pairs::offer_carrier_ground(state, player);
+                }
                 if proc == FighterProc::Grab {
                     grab_pairs::select(state, player)?;
                 }
@@ -1408,9 +1411,7 @@ impl Runtime {
                         .iter()
                         .position(|f| f.0.spawn_number == partner)
                         .expect("linked partner");
-                    crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
-                        .release_from_dead_partner(&state.assets.fighters[index]))
-                    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+                    grab_pairs::release_from_dead_partner(state, player, index)?;
                 }
                 partner_fighters::share_fall(state, player);
                 if proc == FighterProc::Animation {
@@ -1459,6 +1460,38 @@ impl Runtime {
                                 &state.assets.particle_bank,
                                 &mut state.particles,
                                 &mut state.rng,
+                            )?;
+                        }
+                    }
+                }
+                // A cargo carrier's Anim, IASA and Coll callbacks change the
+                // carried fighter's motion too; the shouldered fighter's
+                // Anim may end the carry for both. Each
+                // Fighter_ChangeMotionState flushes that fighter's efAsync
+                // queue then (fighter.c:951).
+                if matches!(
+                    proc,
+                    FighterProc::Animation | FighterProc::Input | FighterProc::Map
+                ) {
+                    let mut moved = grab_pairs::cargo(state, player)?;
+                    if proc == FighterProc::Animation {
+                        if let Some(carrier) = grab_pairs::shoulder_escape(state, player)? {
+                            moved = Some(carrier);
+                        }
+                    }
+                    if let Some(other) = moved {
+                        for member in [player, other] {
+                            crate::scene_fighter::with_fighter!(
+                                &mut state.fighters[member],
+                                |f| state.effects.flush::<RetailTrig>(
+                                    melee_ef::EffectTiming::Immediate,
+                                    member,
+                                    &mut f.core,
+                                    &state.assets.common_particle_bank,
+                                    &state.assets.particle_bank,
+                                    &mut state.particles,
+                                    &mut state.rng,
+                                )
                             )?;
                         }
                     }

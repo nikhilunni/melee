@@ -41,6 +41,16 @@ fn walk_state(
     }
 }
 
+/// ftWalkCommon_GetWalkType (800DFB54): 0 slow, 1 middle, 2 fast.
+pub(super) fn walk_tier(
+    speed: f32,
+    max_speed: f32,
+    multiplier: f32,
+    common: &MovementParameters,
+) -> u16 {
+    walk_state(speed, max_speed, multiplier, common) as u16 - CommonMotionState::WalkSlow as u16
+}
+
 impl Fighter {
     /// ftCo_800DEBD0 -> ftCo_800DEAE8 (800DEAE8), the default arm of the
     /// ftCo_800DEA28 taunt entry: clear IASA, select authored left variant,

@@ -1870,6 +1870,40 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 265,
         ..rows[S::ThrownB as usize]
     };
+    // ftCo_MS_ShoulderedWait..ShoulderedTurn = 266..270: the carrier's
+    // animations 267..271 on the fighter it carries (ftCo_Shouldered.c;
+    // IASA, Phys and Coll are empty).
+    let mut i = 0;
+    while i < 5 {
+        let state = [
+            S::ShoulderedWait,
+            S::ShoulderedWalkSlow,
+            S::ShoulderedWalkMiddle,
+            S::ShoulderedWalkFast,
+            S::ShoulderedTurn,
+        ][i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation: crate::fighter::cargo::VICTIM_MOTIONS[i],
+            anim: crate::fighter::cargo::shouldered_anim,
+            ..rows[S::ThrownB as usize]
+        };
+        i += 1;
+    }
+    // ftCo_MS_ThrownFF..ThrownFLw = 271..274: the cargo throws' victim, on
+    // the ordinary thrown callbacks.
+    let mut i = 0;
+    while i < 4 {
+        let state = [S::ThrownFF, S::ThrownFB, S::ThrownFHi, S::ThrownFLw][i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation: crate::fighter::cargo::VICTIM_MOTIONS[5 + i],
+            ..rows[S::ThrownB as usize]
+        };
+        i += 1;
+    }
     rows[S::CliffAttackQuick as usize] = MotionRow {
         action: ActionId(S::CliffAttackQuick as u16),
         id: S::CliffAttackQuick,
