@@ -5,13 +5,13 @@ use support::{archive, word};
 
 #[test]
 fn common_data_uses_root_slot_zero_and_reads_only_selected_fields() {
-    let mut data = vec![0; 0x80C];
-    for offset in (0..0x808).step_by(4) {
+    let mut data = vec![0; 0x818];
+    for offset in (0..0x814).step_by(4) {
         word(&mut data, offset, 0x3F00_0000 | offset as u32);
     }
     word(&mut data, 0x40, (-3_i32) as u32);
     word(&mut data, 0x74, 7);
-    let a = archive(&data, &[0x808], Some(("ftLoadCommonData", 0x808)));
+    let a = archive(&data, &[0x814], Some(("ftLoadCommonData", 0x814)));
     let c = read_common_data(&a).unwrap();
     let fields = [
         (c.input.horizontal_stick_deadzone, 0x000),
@@ -30,6 +30,9 @@ fn common_data_uses_root_slot_zero_and_reads_only_selected_fields() {
         (c.ground_knockback_speed_limit, 0x164),
         (c.ledge_snap_height_multiplier, 0x1CC),
         (c.ground_pose_max_angle_degrees, 0x804),
+        (c.pinned_hip_offset.x, 0x808),
+        (c.pinned_hip_offset.y, 0x80C),
+        (c.pinned_hip_offset.z, 0x810),
     ];
     for (value, offset) in fields {
         assert_eq!(value.to_bits(), 0x3F00_0000 | offset);
