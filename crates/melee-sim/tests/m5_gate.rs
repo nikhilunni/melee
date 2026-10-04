@@ -1673,10 +1673,9 @@ fn matrix_witnesses_match_retail() {
 }
 
 /// Donkey Kong vs Fox on Final Destination (boundary
-/// `start_fd_donkeykong_fox4`): directed scenes and bridged explorer cases.
+/// `start_fd_donkeykong_fox4`, whose cold construction is gated in m4_gate):
+/// directed scenes and bridged explorer cases.
 const DONKEY_WITNESSES: &[(&str, usize)] = &[
-    // The start boundary's cold construction.
-    ("start_fd_donkeykong_fox4_cold", 600),
     // Movement on the common rows with PlDk.dat's attributes and scripts:
     // walks and turn, dash/run/turn-run/brake, jumps and landings, crouch,
     // shield, rolls and dodges, jabs and tilts, smashes and the dash attack,

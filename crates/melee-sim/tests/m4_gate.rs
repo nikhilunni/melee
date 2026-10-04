@@ -1561,6 +1561,18 @@ fn start_iceclimbers_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_iceclimbers_fox4", 600, "ledger600");
 }
 
+/// Donkey Kong vs Fox on Final Destination: the twenty-first character's
+/// cold construction.
+#[test]
+fn start_fd_donkeykong_fox4_cold_600() {
+    movement_gate_ticks("start_fd_donkeykong_fox4_cold", 600);
+}
+
+#[test]
+fn start_donkeykong_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_donkeykong_fox4", 600, "ledger600");
+}
+
 /// Ice Climbers vs Fox on Yoshi's Story: every think of Nana's asks whether
 /// her island's joint moved (ftCo_800A2718 -> mpIsland_8005AC8C, 0x8005AC8C).
 #[test]
