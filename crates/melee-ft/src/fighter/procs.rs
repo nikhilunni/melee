@@ -744,6 +744,16 @@ impl FighterCore {
         if self.combat.reflector_enabled {
             self.shield.reflect.volume.position_cached = false;
         }
+        // ftCo_GuardReflect_Phys (retail 0x80094060): ftColl_8007AEF8 runs
+        // whether or not a shield bubble exists. A delayed powershield
+        // (ftCo_8009388C) has only the reflect bubble (x221B_b0 clear), and
+        // it follows the sliding fighter.
+        if state_physics_ran
+            && self.shield.reflecting
+            && self.motion_state.id == melee_types::CommonMotionState::GuardReflect
+        {
+            self.shield.reflect.volume.position_cached = false;
+        }
         if self.shield.active {
             if state_physics_ran {
                 self.physics.shield_position_cached = false;
