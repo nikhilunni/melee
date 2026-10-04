@@ -1,0 +1,38 @@
+# MEWTWO movement: crouch, shield, rolls both ways, spot dodge, air dodge.
+name = "mewtwo_squat_guard_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_mewtwo_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 130, port = 0, buttons = {  }, raw = {  } },
+  { frame = 150, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255 } },
+  { frame = 180, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255, stickX = 127 } },
+  { frame = 204, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255 } },
+  { frame = 244, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255, stickX = -127 } },
+  { frame = 264, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255 } },
+  { frame = 304, port = 0, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255, stickY = -127 } },
+  { frame = 324, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255 } },
+  { frame = 354, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 410, port = 0, buttons = {  }, raw = {  } },
+  { frame = 425, port = 0, buttons = {  }, raw = { button = 32, triggerR = 255, stickX = 90 } },
+  { frame = 429, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Mewtwo"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

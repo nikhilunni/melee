@@ -153,7 +153,7 @@ impl super::FighterCore {
                 });
                 continue;
             }
-            if id == 0x446 {
+            if matches!(id, 0x446 | 0x4E1) {
                 // ftCo_09F7.c:136-142: efAsync kind 7 with the command's
                 // offset as given, before the randomized branches.
                 self.effects
@@ -174,6 +174,8 @@ impl super::FighterCore {
                     | 0x422
                     | 0x487
                     | 0x4D1
+                    | 0x4E5
+                    | 0x4E6
                     | 0x4FE
                     | 0x4FF
                     | 0x500
@@ -235,6 +237,9 @@ impl super::FighterCore {
                         | 0x426
                         | 0x44B
                         | 0x4D9
+                        | 0x4E2
+                        | 0x4E3
+                        | 0x4E4
                         | NO_EFFECT
                 ))
             {

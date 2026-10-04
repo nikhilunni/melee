@@ -110,6 +110,10 @@ struct Effect {
     /// animation, the root sits at (player, bone)'s world position plus a
     /// world-axis offset.
     follow_bone: Option<(usize, usize, Vec3)>,
+    /// efLib_Cb_SetOffsetY_FromParamY (eflib.c:1066): after each update's
+    /// animation, the root sits at (player, bone)'s world position, raised
+    /// by a height.
+    follow_bone_height: Option<(usize, usize, f32)>,
     /// efLib_Cb_LifetimeEndSpawn (eflib.c:1219): with one frame of life
     /// left, the common generator 0x1AB on this bone of the attached
     /// fighter, and 0x27 more frames.
@@ -1013,6 +1017,38 @@ impl Effects {
                 self.spawn_following_generator::<T>(player, bone, offset, bank, particles, rng)?;
                 continue;
             }
+            if let EffectRequest::FollowingGenerator {
+                id: 0x4E1,
+                bone,
+                offset,
+            } = request
+            {
+                // efAsync kind 7 -> efSync_Spawn 0x4E1 (efsync.c:376-392):
+                // efLib_Create(0x32C9) owned by the fighter, following the
+                // joint through efLib_Cb_SetOffsetY_FromParamY; the height is
+                // the command's Y offset times the fighter root's Y scale
+                // (fmuls). The root stays where the model has it until the
+                // first update's callback.
+                let mut effect = self.acquire(0x32C9, particles);
+                effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+                self.next_joint += effect.tree.len();
+                effect.owner = Some(ModelOwner::Fighter(player));
+                effect.hitlag_pause = HitlagPause::Active;
+                effect.follow_bone_height =
+                    Some((player, bone, offset.y * fighter.effect_scale().y));
+                effect.animate_banks::<T>(
+                    resources::Banks {
+                        common: bank,
+                        characters: &self.character_banks,
+                    },
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                )?;
+                self.instances.push(effect);
+                continue;
+            }
             if let EffectRequest::ShieldBreak { bone, scale } = request {
                 // efasync.c:506-519 -> efLib_CreateGenerator_AddAppSRT(0x31).
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
@@ -1311,6 +1347,9 @@ impl Effects {
             if matches!(
                 request,
                 EffectRequest::BoneModel { .. } | EffectRequest::PositionalModel { id: 0x447, .. }
+            ) || matches!(
+                request,
+                EffectRequest::Graphics { id, .. } if positional_model_graphics(id)
             ) {
                 // efSync_Spawn's own rows (efsync.c:84) and efAsync 0x447
                 // (efasync.c:818) create with EF_LOADKIND_SYNC: no ASYNC
@@ -1508,6 +1547,7 @@ impl Effects {
                         id,
                         0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x404 | 0x406 | 0x41D | 0x423 | 0x424
                     ) && !scaled_facing_graphics(id)
+                        && !positional_model_graphics(id)
                     {
                         effect.tree.set_rotation_y(
                             effect.root,
@@ -1522,7 +1562,9 @@ impl Effects {
                     // efasync.c:199-246: 0x3F6 and 0x3FA-0x3FC (queued as kind 2,
                     // ftCo_09F7.c:219-245, with no floor angle) and
                     // efasync.c:524-529: 0x41D set no rotation at all.
-                    if !matches!(id, 0x3F5 | 0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x41D | 0x4D9) {
+                    if !matches!(id, 0x3F5 | 0x3F6 | 0x3FA | 0x3FB | 0x3FC | 0x41D | 0x4D9)
+                        && !positional_model_graphics(id)
+                    {
                         effect.tree.set_rotation_z(effect.root, floor_angle);
                     }
                     if id == 0x4D9 {
@@ -1563,7 +1605,12 @@ impl Effects {
             }
             effect.tree.set_translate(effect.root, &position);
             // efasync.c:1122-1126 drains initial HSD_JObjAnimAll immediately.
+            let positional_graphics = matches!(
+                request,
+                EffectRequest::Graphics { id, .. } if positional_model_graphics(id)
+            );
             if scaled_facing
+                || positional_graphics
                 || matches!(
                     request,
                     EffectRequest::PositionalModel { .. }
@@ -1701,6 +1748,14 @@ impl Effects {
                     ),
                 );
             }
+            if let Some((player, bone, height)) = effect.follow_bone_height {
+                let matrix = bone_matrix(player, Some(bone));
+                // lb_8000B1CC, then one fadds on Y.
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(matrix.0[0][3], matrix.0[1][3] + height, matrix.0[2][3]),
+                );
+            }
             if let Some((item, offset)) = effect.follow_item {
                 let root = self
                     .item_roots
@@ -1720,6 +1775,7 @@ impl Effects {
                 || effect.callback_rotation_z.is_some()
                 || effect.facing_rotation.is_some()
                 || effect.follow_bone.is_some()
+                || effect.follow_bone_height.is_some()
                 || effect.follow_item.is_some()
             {
                 if let Some(rotation) = effect.callback_rotation {
@@ -1847,6 +1903,7 @@ impl Effect {
             callback_rotation_z: None,
             facing_rotation: None,
             follow_bone: None,
+            follow_bone_height: None,
             lifetime_end_spawn: None,
             follow_item: None,
             hitlag_pause: HitlagPause::Ignore,

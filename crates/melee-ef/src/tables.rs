@@ -16,7 +16,7 @@ pub(super) struct ModelSpawn {
     pub attached: bool,
 }
 // efasync.c:205-212,262-293,750-756; efsync.c shield dispatch.
-pub(super) static MODEL_SPAWNS: [ModelSpawn; 29] = [
+pub(super) static MODEL_SPAWNS: [ModelSpawn; 30] = [
     // efasync.c:192-197: model 0x10 at a position, facing only (kind 5).
     ModelSpawn {
         request: 0x3F5,
@@ -212,7 +212,22 @@ pub(super) static MODEL_SPAWNS: [ModelSpawn; 29] = [
         model: 0x1B5C,
         attached: true,
     },
+    // efsync.c:394-396: efLib_Create_Attach_Pos(0x32CA), Mewtwo's dark
+    // burst at the script's point.
+    ModelSpawn {
+        request: 0x4E2,
+        source: ModelSource::Graphics,
+        model: 0x32CA,
+        attached: false,
+    },
 ];
+/// Graphics rows efAsync hands to efSync_Spawn with the resolved point
+/// (EF_SPAWN_POS_OFFSET, efasync.c:1342-1344) for efLib_Create_Attach_Pos:
+/// the model is translated only, created synchronously and animated from
+/// its character bank.
+pub(super) const fn positional_model_graphics(request: u16) -> bool {
+    matches!(request, 0x4E2)
+}
 /// efSync's efLib_Create_Attach_Scale_FacingDir rows among `MODEL_SPAWNS`.
 pub(super) const fn scaled_facing_graphics(request: u16) -> bool {
     matches!(request, 0x4C1 | 0x4C2 | 0x4C4 | 0x4C5)
@@ -231,7 +246,19 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 27] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 29] = [
+    // efsync.c:397-402: efLib_CreateGenerator(0x18A / 0x194) at the
+    // script's point (Mewtwo's dark sparks).
+    DustSpawn {
+        request: 0x4E3,
+        particle: 0x18A,
+        directional: false,
+    },
+    DustSpawn {
+        request: 0x4E4,
+        particle: 0x194,
+        directional: false,
+    },
     // efsync.c:532-534: efLib_CreateGenerator(0x6A) at the point (Sheik's
     // needle throw).
     DustSpawn {
@@ -410,7 +437,7 @@ pub(super) static POSITIONAL_MODELS: [(u16, u32); 3] = [
 ];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
-pub(super) static ATTACHED_SPAWNS: [(u16, u32); 9] = [
+pub(super) static ATTACHED_SPAWNS: [(u16, u32); 11] = [
     (0x402, 0x59),
     (0x403, 0x5E),
     (0x412, 0x13),
@@ -424,6 +451,10 @@ pub(super) static ATTACHED_SPAWNS: [(u16, u32); 9] = [
     (0x4D1, 0x64),
     // efsync.c:523-525: Zelda's script sparkle, hsd_8039EFAC(0, 0, 0x1A6).
     (0x502, 0x1A6),
+    // efsync.c:403-408: Mewtwo's script sparkles, hsd_8039EFAC(0, 0, 0x17D /
+    // 0x17E).
+    (0x4E5, 0x17D),
+    (0x4E6, 0x17E),
 ];
 // eflib.c:761-768: efLib_CreateGenerator_Attach clears PSAPPSRT_UNK_B10
 // after hsd_8039EFAC; the other attached rows keep it.
@@ -431,9 +462,12 @@ pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 // 418: Din's Fire's cast (model 0x426C) and Zelda's up-air.
 // 427: Nayru's Love's crystal (model 0x4268).
-pub(super) static PARTICLE_KINDS: [i32; 35] = [
+pub(super) static PARTICLE_KINDS: [i32; 37] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
     374, 375, 376, 377, 445, 448, 449, 272, 295, 531, 418, 427,
     // Donkey Kong's models (EfDkData.dat): Headbutt's 96, Hand Slap's 273.
     96, 273,
+    // Mewtwo's models (EfMtData.dat): the dark burst's 387 (0x32CA) and the
+    // following orb's 391 (0x32C9).
+    387, 391,
 ];
