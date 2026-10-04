@@ -208,6 +208,11 @@ pub struct Transformation {
     /// FreezePokemon.asm): 0x801D45FC's `bge` becomes an unconditional
     /// branch to the function's end, so the wait never ends.
     pub frozen: bool,
+    /// "Disable Pokemon Stadium Transformations" (0x801D1548,
+    /// grStadium_801D1520's `bl grStadium_801D4548`, is a nop): the
+    /// controller never runs, so neither the timer nor Slippi's preload
+    /// draw (hooked inside it) happens.
+    pub disabled: bool,
 }
 
 impl Transformation {
@@ -227,6 +232,7 @@ impl Transformation {
             archive: None,
             preload: Preload::Off,
             frozen: false,
+            disabled: false,
         }
     }
 

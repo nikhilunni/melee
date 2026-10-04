@@ -42,6 +42,10 @@ pub struct Story {
     pub previous_pattern: i8,
     pub spawn_count: i8,
     pub lights: Vec<crate::battle::lights::Light>,
+    /// "Disable Yoshi's Story Shyguys" (0x801E3348, grStory_801E3334's
+    /// `bl grStory_801E3418`, is a nop): the spawner never runs, so its
+    /// timer stays where creation left it.
+    pub shy_guys_disabled: bool,
 }
 impl Story {
     /// grStory_801E3234 / grStory_801E3370: Ground creation starts the
@@ -58,6 +62,7 @@ impl Story {
             previous_pattern: 0,
             spawn_count: 0,
             lights: Vec::new(),
+            shy_guys_disabled: false,
         }
     }
 
@@ -81,7 +86,7 @@ impl Story {
         shy_guys_live: bool,
         mut spawn: impl FnMut(&mut HsdRng, ShyGuySpawn),
     ) {
-        if shy_guys_live {
+        if self.shy_guys_disabled || shy_guys_live {
             return;
         }
         if self.shy_timer != 0 {
@@ -161,6 +166,16 @@ mod tests {
         stage.tick_shy_guys(&mut rng, true, |_, _| unreachable!());
         assert_eq!(stage.shy_timer, SHY_GUY_DELAY);
         assert_eq!(rng.seed, 1);
+    }
+
+    #[test]
+    fn the_frozen_stage_never_runs_the_spawner() {
+        let mut stage = story();
+        stage.shy_guys_disabled = true;
+        stage.shy_timer = 0;
+        let mut rng = HsdRng::new(1);
+        stage.tick_shy_guys(&mut rng, false, |_, _| unreachable!());
+        assert_eq!((stage.shy_timer, rng.seed), (0, 1));
     }
 
     #[test]

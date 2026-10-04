@@ -29,6 +29,8 @@ pub struct Parameters {
     pub vertical_bounds: [f32; 2],
     pub blink_delay: [i32; 2],
 }
+/// The cycle step (xC4) whose state is the wind.
+const BLOWING_STEP: i32 = 2;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Phase {
     Waiting,
@@ -59,6 +61,10 @@ pub struct Pupupu {
     pub background_timer: i16,
     pub secondary: Option<(Phase, bool)>,
     pub lights: Vec<crate::battle::lights::Light>,
+    /// "Frozen Stages" (0x803E67E0, the third entry of the cycle's state
+    /// table grOp_803E67D8, is 0): the cycle's blowing step is a second
+    /// wait, so Whispy turns to the fighters and waits again.
+    pub wind_disabled: bool,
 }
 impl Pupupu {
     /// grOldPupupu_8021119C / 80210C7C: Whispy is created before the
@@ -79,6 +85,7 @@ impl Pupupu {
             background_timer,
             secondary: Some((Phase::Waiting, true)),
             lights: Vec::new(),
+            wind_disabled: false,
         }
     }
     fn sync_secondary(&mut self) {
@@ -86,7 +93,13 @@ impl Pupupu {
     }
     fn advance(&mut self) {
         self.cycle = (self.cycle + 1) % 3;
-        self.phase = Phase::from_saved(self.cycle);
+        // grOp_803E67D8 = { 0, 1, 2 }: the cycle step is its own state,
+        // except under the frozen-stage code, whose table ends in 0.
+        self.phase = if self.wind_disabled && self.cycle == BLOWING_STEP {
+            Phase::Waiting
+        } else {
+            Phase::from_saved(self.cycle)
+        };
         self.entering = true;
         self.sync_secondary();
     }
@@ -285,6 +298,25 @@ mod tests {
         stage.tick_whispy(false, 0, &mut rng);
         assert_eq!(stage.wind, 0);
         assert_eq!(rng.seed, 9);
+    }
+    #[test]
+    fn the_frozen_stage_waits_again_where_it_would_blow() {
+        // Whispy already faces the fighters, so the turn goes straight to
+        // the cycle's third step: the wind, or under the code a new wait.
+        for (frozen, phase) in [(false, Phase::Blowing), (true, Phase::Waiting)] {
+            let mut stage = stage();
+            stage.wind_disabled = frozen;
+            stage.cycle = 1;
+            stage.phase = Phase::Turning;
+            stage.entering = true;
+            let mut rng = HsdRng::new(9);
+            stage.tick_whispy(false, 1, &mut rng);
+            assert_eq!((stage.cycle, stage.phase, rng.seed), (2, phase, 9));
+            // The new wait draws its two timers; the wind draws nothing.
+            stage.tick_whispy(false, 1, &mut rng);
+            assert_eq!(rng.seed != 9, frozen);
+            assert_eq!(stage.wind, 0);
+        }
     }
     #[test]
     fn blink_delay_counts_only_after_animation_completion() {

@@ -64,6 +64,10 @@ pub struct Scenario {
     /// (`melee_lib::slippi::SlippiCodes::stadium_frozen`).
     #[serde(default)]
     pub stadium_frozen: bool,
+    /// 20XX TE's Frozen Mode stage writes
+    /// (`melee_lib::slippi::SlippiCodes::frozen_stages`).
+    #[serde(default)]
+    pub frozen_stages: bool,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -82,7 +86,8 @@ pub struct Scenario {
     /// Gecko codes the recording's Dolphin ran (`harness/gecko.py`), such as
     /// `["ucf-0.8"]`. Every fighter then names the matching
     /// `controller_fix`, and `"ps-preload"` and `"ps-frozen"` go with
-    /// `stadium_preload` and `stadium_frozen`; the port reads only those.
+    /// `stadium_preload` and `stadium_frozen`, `"frozen-stages"` with
+    /// `frozen_stages`; the port reads only those.
     #[serde(default)]
     pub gecko: Vec<String>,
     #[serde(skip)]
@@ -227,6 +232,7 @@ impl Scenario {
         let stage_codes = [
             (STADIUM_PRELOAD_GECKO, self.stadium_preload),
             (STADIUM_FROZEN_GECKO, self.stadium_frozen),
+            (FROZEN_STAGES_GECKO, self.frozen_stages),
         ];
         // Codes that are not controller fixes (`neutral-spawn`) have no
         // per-fighter setting.
@@ -432,6 +438,7 @@ impl Scenario {
                 spawn: self.spawn,
                 stadium_preload: self.stadium_preload,
                 stadium_frozen: self.stadium_frozen,
+                frozen_stages: self.frozen_stages,
             },
         }
     }
@@ -587,6 +594,8 @@ controller_fix = "ucf-0.8"
 const STADIUM_PRELOAD_GECKO: &str = "ps-preload";
 /// The `gecko` name of Slippi's Frozen Stadium code.
 const STADIUM_FROZEN_GECKO: &str = "ps-frozen";
+/// The `gecko` name of 20XX TE's Frozen Mode stage writes.
+const FROZEN_STAGES_GECKO: &str = "frozen-stages";
 
 /// `spawn = "retail" | "neutral-2019" | "neutral-2019-entry" | "neutral-2020"`
 /// in scenario TOML.

@@ -68,6 +68,10 @@ pub struct Ground {
     pub environment_colors: [Rgb; 9],
     pub background: Option<BackgroundMotion>,
     pub fog_enabled: bool,
+    /// "Disable FD Background Transitions" (0x8021AAE4, the controller's
+    /// `bl grLast_8021B2E8`, is a nop): the phase update never runs. Not
+    /// game state, so not in the snapshot.
+    pub phase_update_disabled: bool,
 }
 impl Ground {
     /// `grLast_8021A9C4`, retail 0x8021A9C4; phase entry is performed by init.rs.
@@ -84,6 +88,7 @@ impl Ground {
             environment_colors: dark_palette(),
             background: None,
             fog_enabled: true,
+            phase_update_disabled: false,
         }
     }
     /// `grLast_8021A9AC`, retail 0x8021A9AC, deferred by Ground_801C10B8

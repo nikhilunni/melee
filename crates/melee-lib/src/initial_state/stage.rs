@@ -289,6 +289,7 @@ fn restore_story(saved: &SavedPose, assets: &Assets) -> Result<(SceneStage, Anim
         spawn_count: 0,
         lights: melee_gr::battle::lights::load_model(&assets.stage, &assets.stage_desc, 3)
             .map_err(|e| anyhow::anyhow!("{e}"))?,
+        shy_guys_disabled: false,
     };
     let mut animations = BTreeMap::new();
     let mut maps = Vec::new();

@@ -61,6 +61,7 @@ impl InitialState {
             }
             stadium.transformation.frozen = scenario.slippi.stadium_frozen;
         }
+        stage.set_frozen_stages(scenario.slippi.frozen_stages);
         // Fountain of Dreams binds its collision joints during creation.
         let archive_bindings = !matches!(stage, SceneStage::Izumi(_));
         if matches!(stage, SceneStage::Stadium(_)) {

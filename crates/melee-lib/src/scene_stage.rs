@@ -108,6 +108,17 @@ pub enum SceneStage {
     Stadium(Box<melee_gr::stadium::Stadium>),
 }
 impl SceneStage {
+    /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
+    /// stage's own site. Battlefield and Fountain of Dreams have none.
+    pub fn set_frozen_stages(&mut self, frozen: bool) {
+        match self {
+            Self::FinalDestination(s) => s.ground.phase_update_disabled = frozen,
+            Self::Story(s) => s.shy_guys_disabled = frozen,
+            Self::Pupupu(s) => s.wind_disabled = frozen,
+            Self::Stadium(s) => s.transformation.disabled = frozen,
+            Self::Battlefield(_) | Self::Izumi(_) => {}
+        }
+    }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
         match self {
             Self::FinalDestination(s) => s.proc_table(),

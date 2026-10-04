@@ -1,0 +1,27 @@
+# FROZEN-STAGES witness: Fox and Marth idle on Yoshi's Story from the
+# start_ys_fox_marth4 boundary with the "Frozen Stages" Gecko code
+# (slippi-ssbm-asm External/Frozen All/Core/4.asm: 0x801E3348, the
+# `bl grStory_801E3418` in grStory_801E3334, is a nop). Retail without the
+# code draws the first Shy Guy group at tick 120 and another each time the
+# last one has left. With it the spawner never runs: no Shy Guy item is ever
+# created and the only stage draws are Randall's puffs.
+name = "frozen_stages_ys_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_fox_marth4.sav"
+frames = 2400
+seed = 1
+stage = "YoshisStory"
+gecko = ["frozen-stages"]
+frozen_stages = true
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

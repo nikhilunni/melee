@@ -1888,6 +1888,20 @@ fn pokemon_stadium_slippi_codes_match_retail() {
     combat_gate_ticks("slippi_ps_frozen_fox_marth4", 4600);
 }
 
+/// "Frozen Stages" (slippi-ssbm-asm External/Frozen All/Core, the code
+/// tournament consoles ran beside Slippi), recorded with its Gecko text:
+/// no Shy Guy spawner (0x801E3348), no Final Destination phase update
+/// (0x8021AAE4; the background keeps its first phase past the star field's
+/// tick), no Stadium controller (0x801D1548; not even the preload code's
+/// form draw) and Whispy's cycle waiting where it would blow (0x803E67E0).
+#[test]
+fn frozen_stages_code_matches_retail() {
+    combat_gate_ticks("frozen_stages_ys_fox_marth4", 2400);
+    combat_gate_ticks("frozen_stages_fd_marth_marth4", 13600);
+    combat_gate_ticks("frozen_stages_ps_fox_marth4", 7500);
+    combat_gate_ticks("frozen_stages_dl_fox_marth4", 5000);
+}
+
 /// Pokemon Stadium's jumbotron close-up ends when the player's camera bone
 /// leaves the main CObj as last rendered (grStadium_801D32D0): a throw's
 /// graphics 0x514 shakes it with a Medium quake (efAsync kind 8 ->

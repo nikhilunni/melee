@@ -1,0 +1,31 @@
+# FROZEN-STAGES witness: slippi_ps_preload_fox_marth4 recorded with the
+# "Frozen Stages" Gecko code on top of Slippi's preload code, as the 2020
+# tournament consoles ran them (slippi-ssbm-asm External/Frozen All/Core/
+# 3.asm, the older "Disable Pokemon Stadium Transformations": 0x801D1548,
+# the `bl grStadium_801D4548` in grStadium_801D1520, is a nop). The
+# transformation controller never runs, so retail makes neither the preload
+# code's form draw on the first waiting tick (85 in
+# slippi_ps_preload_fox_marth4; the hook at 0x801D45EC is inside the
+# controller) nor any transformation; the base duration is never counted
+# down. The jumbotron and the audience flashes go on drawing.
+name = "frozen_stages_ps_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_fox_marth4.sav"
+frames = 7500
+seed = 1
+stage = "PokemonStadium"
+gecko = ["ps-preload", "frozen-stages"]
+stadium_preload = true
+frozen_stages = true
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

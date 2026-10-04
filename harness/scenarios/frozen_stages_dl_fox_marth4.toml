@@ -1,0 +1,27 @@
+# FROZEN-STAGES witness: stage_dl_idle_fox_marth4 recorded with the "Frozen
+# Stages" Gecko code (slippi-ssbm-asm External/Frozen All/Core/1.asm:
+# 0x803E67E0, the third entry of Whispy's cycle table grOp_803E67D8
+# { 0, 1, 2 }, is 0). When the wait runs out Whispy still turns to the
+# fighters (state 1), but the cycle's third step is the wait again instead
+# of the wind: retail draws a new wait and blink timer there (two draws the
+# game without the code does not make) and nobody is ever pushed.
+name = "frozen_stages_dl_fox_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_dl_fox_marth4.sav"
+frames = 5000
+seed = 1
+stage = "DreamLand"
+gecko = ["frozen-stages"]
+frozen_stages = true
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

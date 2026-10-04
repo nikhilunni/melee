@@ -132,7 +132,14 @@ impl FinalDestination {
         if self.ground.demo_frozen || self.ground.waiting_for_start {
             return 0;
         }
-        let mut draws = self.update_phase(rng);
+        // The frozen-stage code replaces this call (0x8021AAE4) with a nop:
+        // the hold timer, the phase's own work and the fog fade all stop,
+        // so the 1800-frame hold never enables a transition.
+        let mut draws = if self.ground.phase_update_disabled {
+            0
+        } else {
+            self.update_phase(rng)
+        };
         if self.ground.transition_enabled {
             if let Some(phase) = self.next_phase(status) {
                 let before = self.ground.background.is_some();
@@ -252,6 +259,18 @@ mod tests {
         assert!(stage.ground.transition_enabled);
         assert_eq!(stage.ground.elapsed, 1802.0);
         assert_eq!(rng.seed, 1);
+    }
+    #[test]
+    fn the_frozen_stage_never_counts_the_hold() {
+        let mut stage = stage();
+        stage.ground.start();
+        stage.ground.phase_update_disabled = true;
+        stage.ground.elapsed = 1801.0;
+        let mut rng = HsdRng::new(1);
+        let draws = stage.tick_controller(&AnimationStatus::default(), &mut rng);
+        assert_eq!((draws, rng.seed), (0, 1));
+        assert!(!stage.ground.transition_enabled);
+        assert_eq!(stage.ground.elapsed, 1801.0);
     }
     #[test]
     fn animation_transition_requires_all_five_layers() {

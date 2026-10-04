@@ -117,7 +117,9 @@ fn run_controller(
     let SceneStage::Stadium(stage) = &state.stage else {
         unreachable!()
     };
-    if stage.transformation.waiting_for_start {
+    // grStadium_801D1520: the call at 0x801D1548, which the frozen-stage
+    // code removes.
+    if stage.transformation.waiting_for_start || stage.transformation.disabled {
         return Ok(());
     }
     let mut transformation = stage.transformation.clone();

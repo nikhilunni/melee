@@ -21,6 +21,25 @@ pub struct SlippiCodes {
     /// "frozen PS" flag, Slippi 2.0.0): Pokémon Stadium never transforms.
     /// With the preload code the first form is still drawn and read.
     pub stadium_frozen: bool,
+    /// "Frozen Stages" [UnclePunch, Fizzi] (External/Frozen All/Core/1-4.asm,
+    /// `Output/Console/g_stages_all`; in the Slippi tree from 2021-06, on
+    /// tournament consoles a year earlier). A replay does not record it.
+    /// Four writes, three of them older standalone codes (Dolphin's
+    /// GALE01r2.ini, by Zauron: "Disable Yoshi's Story Shyguys", "Disable
+    /// Pokemon Stadium Transformations"; Slippi's netplay list: "Disable FD
+    /// Background Transitions" by Achilles and Dan Salvato):
+    /// - 0x801E3348 `bl grStory_801E3418` is a nop: no Shy Guys;
+    /// - 0x8021AAE4 `bl grLast_8021B2E8` is a nop: Final Destination's
+    ///   background never leaves its first phase;
+    /// - 0x801D1548 `bl grStadium_801D4548` is a nop: Pokémon Stadium's
+    ///   transformation controller never runs (nor the preload code's draw
+    ///   inside it);
+    /// - 0x803E67E0, grOp_803E67D8[2], is 0: Whispy's cycle waits where it
+    ///   would blow.
+    ///
+    /// 20XX TE's Frozen Mode (`frozen_mode.mgc`) has the three nops but
+    /// stops Whispy at 0x802115B4 instead, which is not ported.
+    pub frozen_stages: bool,
 }
 
 /// Where each player starts.
