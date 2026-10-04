@@ -3291,7 +3291,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 509] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 517] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4090,6 +4090,18 @@ const CORPUS_V3_MATCHES: [(&str, usize); 509] = [
     ("corpus_v3_fd_gameandwatch_fox4_e7254fba4_p0", 6001),
     ("corpus_v3_fd_gameandwatch_fox4_ed486ea18_p1", 4880),
     ("corpus_v3_fd_gameandwatch_fox4_e3e98e6dc_p0", 4673),
+    // Fire caught on a ledge makes the catch's effect twice:
+    // ftGw_SpecialAirHi_Coll calls ftCliffCommon_80081370 after
+    // ftCliffCommon_80081298 already has (ftgamewatchspecialhi.c:274-275).
+    // Then six whole random matches.
+    ("corpus_v3_fd_gameandwatch_fox4_e0e8bd8a9_p2", 3900),
+    ("corpus_v3_fd_gameandwatch_fox4_ead5738ac_p0", 3215),
+    ("corpus_v3_fd_gameandwatch_fox4_e7f8dc4fa_p0", 5023),
+    ("corpus_v3_fd_gameandwatch_fox4_e2b553419_p2", 2439),
+    ("corpus_v3_fd_gameandwatch_fox4_ef9f3df79_p2", 4836),
+    ("corpus_v3_fd_gameandwatch_fox4_e929b49af_p2", 5336),
+    ("corpus_v3_fd_gameandwatch_fox4_e52b08364_p2", 4004),
+    ("corpus_v3_fd_gameandwatch_fox4_ed7fcdf51_p2", 2550),
 ];
 
 #[test]

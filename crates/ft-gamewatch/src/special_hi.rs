@@ -195,8 +195,12 @@ fn collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
         }
     } else if common::lands_facing(f, &mut p) {
         f.enter_special_landing(assets, false, lag)?;
-    } else {
-        f.try_grab_ledge(assets, p.map)?;
+    } else if f.try_grab_ledge(assets, p.map)? {
+        // ftCliffCommon_80081298 enters CliffCatch itself; the callback
+        // then calls ftCliffCommon_80081370 a second time
+        // (ftgamewatchspecialhi.c:274-275), so the catch's effect is made
+        // twice.
+        f.enter_cliff_catch(assets, p.map)?;
     }
     Ok(())
 }
