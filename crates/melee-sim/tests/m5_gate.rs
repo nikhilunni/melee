@@ -118,6 +118,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("peach2_")
         || name.starts_with("slope_")
         || name.starts_with("peach3_")
+        || name.starts_with("held_item_")
         || matches!(
             name,
             "illusion_start_landing_fd_fox"
@@ -975,7 +976,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 434] = [
+const MATRIX_WITNESSES: [(&str, usize); 437] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1609,6 +1610,16 @@ const MATRIX_WITNESSES: [(&str, usize); 434] = [
     ("tilt_angled_fd_zelda", 300),
     ("tilt_angled_fd_zelda_as_sheik", 430),
     ("tilt_angled_fd_sheik", 300),
+    // A held item (Peach's turnip, Link's bomb) thrown out of a dash keeps
+    // Dash's interrupt friction (0x800CA2AC); the C-stick in a dash throws
+    // it without turning (checkItemThrow, 0x8008C1E4); A in the jump squat
+    // is ftCo_Catch_CheckInput's ground throw (ftCo_800951D0); the smash
+    // windows read x673/x674 (0x800953DC, 0x80095A88), which Dash's entry
+    // does not reset, nor Pass's entry x674 (a turnip thrown down out of a
+    // platform drop is LightThrowAirLw4, 0x800953E4).
+    ("held_item_throws_fd_peach", 700),
+    ("held_item_throws_fd_link", 760),
+    ("held_item_pass_throw_ys_peach", 400),
 ];
 
 #[test]

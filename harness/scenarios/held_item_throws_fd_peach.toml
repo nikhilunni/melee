@@ -1,0 +1,55 @@
+# HELD ITEM directed witness (Peach's turnips, start_fd_peach_fox4 boundary:
+# P1 Peach at x=-60 facing right, P2 Fox idle at x=60). Four pulls, four
+# throws:
+# - a dash, then A on its second frame: LightThrowF4 through Dash's interrupt
+#   friction (ftCo_Dash_IASA, retail 0x800CA2AC b .L_800CA500);
+# - a dash, then the C-stick backward: LightThrowB4 from checkItemThrow
+#   (ftCo_AttackS4_8008C114, retail 0x8008C1E4), the facing unchanged;
+# - a jump, then A in the jump squat: ftCo_Catch_CheckInput's ground throw
+#   (ftCo_800951D0, called from ftCo_KneeBend_IASA);
+# - a dash jump, then A on the way up with the stick still forward: the
+#   smash air throw LightThrowAirF4, timed by x673 (retail 0x800953DC), which
+#   Dash's entry does not reset as it does x670.
+name = "held_item_throws_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 107, port = 0, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 161, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 163, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 232, port = 0, buttons = {  }, raw = {  } },
+  { frame = 290, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 292, port = 0, buttons = {  }, raw = { stickX = 127, substickX = -127 } },
+  { frame = 294, port = 0, buttons = {  }, raw = {  } },
+  { frame = 360, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 362, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 422, port = 0, buttons = {  }, raw = { button = 1280 } },
+  { frame = 424, port = 0, buttons = {  }, raw = {  } },
+  { frame = 490, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 492, port = 0, buttons = {  }, raw = {  } },
+  { frame = 550, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 551, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 557, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 559, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 620, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

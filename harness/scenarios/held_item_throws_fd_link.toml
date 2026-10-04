@@ -1,0 +1,55 @@
+# HELD ITEM directed witness (Link's bombs, start_fd_link_fox4 boundary: P1
+# Link facing right, P2 Fox idle). The four throws of
+# held_item_throws_fd_peach with a bomb in hand:
+# - a dash, then A on its second frame: LightThrowF4 through Dash's interrupt
+#   friction (ftCo_Dash_IASA, retail 0x800CA2AC b .L_800CA500);
+# - a dash, then the C-stick backward: LightThrowB4 from checkItemThrow
+#   (ftCo_AttackS4_8008C114, retail 0x8008C1E4), the facing unchanged;
+# - a jump, then A in the jump squat: ftCo_Catch_CheckInput's ground throw
+#   (ftCo_800951D0, called from ftCo_KneeBend_IASA);
+# - a dash jump, then A on the way up with the stick still forward: the
+#   smash air throw LightThrowAirF4, timed by x673 (retail 0x800953DC), which
+#   Dash's entry does not reset as it does x670.
+name = "held_item_throws_fd_link"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 760
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 180, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 181, port = 0, buttons = {  }, raw = { button = 256, stickX = 127 } },
+  { frame = 183, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 252, port = 0, buttons = {  }, raw = {  } },
+  { frame = 320, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 322, port = 0, buttons = {  }, raw = { stickX = 127, substickX = -127 } },
+  { frame = 324, port = 0, buttons = {  }, raw = {  } },
+  { frame = 390, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 392, port = 0, buttons = {  }, raw = {  } },
+  { frame = 460, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 462, port = 0, buttons = {  }, raw = { button = 1280 } },
+  { frame = 464, port = 0, buttons = {  }, raw = {  } },
+  { frame = 530, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 532, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 601, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 607, port = 0, buttons = {  }, raw = { button = 256, stickX = -127 } },
+  { frame = 609, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 680, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

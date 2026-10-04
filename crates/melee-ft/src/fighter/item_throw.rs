@@ -81,8 +81,11 @@ impl Fighter {
         let common = &assets.input;
         let stick = input.current.stick;
         let forward = stick.x * self.core.physics.facing >= 0.0;
-        let horizontal_age = f32::from(input.horizontal.tilt);
-        let vertical_age = f32::from(input.vertical.tilt);
+        // The smash windows read x673/x674 (retail 0x80095A88, 0x80095B0C;
+        // 0x800953DC/E4 in the air): unlike x670/x671, no motion entry
+        // (Dash, Pass, a jump) resets them.
+        let horizontal_age = f32::from(input.horizontal.held);
+        let vertical_age = f32::from(input.vertical.held);
         // ftCo_GetLStickAngle (8007D964): atan2f(y, |x|).
         let angle = melee_lb::trigf::atan2f(stick.y, fabsf(stick.x));
         let state = if fabsf(stick.x) >= common.thresholds.dash_smash_stick_threshold
@@ -149,8 +152,8 @@ impl Fighter {
             let stick = input.current.stick;
             (
                 stick,
-                f32::from(input.horizontal.tilt),
-                f32::from(input.vertical.tilt),
+                f32::from(input.horizontal.held),
+                f32::from(input.vertical.held),
             )
         } else {
             return Ok(false);

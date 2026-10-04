@@ -1,0 +1,33 @@
+# HELD ITEM directed witness: a turnip thrown out of a platform drop. From
+# the start_ys_peach_yoshi4 boundary Peach stands on Yoshi's Story's left
+# platform. She pulls a turnip, holds the stick down (Squat, then Pass) and
+# presses A on Pass's second frame: ftCo_Pass_IASA's ftCo_80095328 throws it
+# down as the smash throw LightThrowAirLw4, because the window reads x674
+# (retail 0x800953E4), which Pass's entry (ftCo_8009A228 sets x671 = 0xFE)
+# does not reset.
+name = "held_item_pass_throw_ys_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_peach_yoshi4.sav"
+frames = 400
+seed = 1
+stage = "YoshisStory"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 112, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 176, port = 0, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 178, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Yoshi"
+controller = "scripted"
