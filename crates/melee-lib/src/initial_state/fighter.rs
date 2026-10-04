@@ -82,6 +82,11 @@ pub(crate) fn import(
     f.physics.fast_fall = raw[0x221A] & 8 != 0;
     f.physics.ground_or_air = melee_types::GroundOrAir::try_from(word(raw, 0xE0) as i32).unwrap();
     f.input = import_input(raw);
+    // dmg.x18C4 / x18C8: the KO credit (6: no source; -1: not counting).
+    f.combat.ko_source = melee_ft::fighter::ko_source::KoSource {
+        player: u8::try_from(word(raw, 0x18C4)).ok().filter(|&p| p != 6),
+        countdown: u32::try_from(word(raw, 0x18C8) as i32).ok(),
+    };
     f.cpu.buttons = word(raw, 0x1A88);
     f.cpu.stick = [raw[0x1A8C] as i8, raw[0x1A8D] as i8];
     f.cpu.mode = word(raw, 0x1A94) as i32;
