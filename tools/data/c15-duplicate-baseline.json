@@ -52,7 +52,12 @@
       "ft-younglink": 1,
       "ft-zelda": 1,
       "melee-ft": 20,
-      "melee-sim": 7
+      "melee-sim": 7,
+      "ft-donkey": 1,
+      "ft-gamewatch": 1,
+      "ft-koopa": 1,
+      "ft-mewtwo": 1,
+      "ft-ness": 1
     },
     "labels": {
       "ft-captain": 43,
@@ -70,7 +75,8 @@
   },
   "notes": [
     "2026-09-10 S3: cross-crate 99 -> 100: melee_ft::physics::airborne::drift_acceleration, a 20-line leaf that rustc auto-inlines into ft-mars (Dolphin Slash drift); a cross-crate inline of a concrete leaf, not a per-character instantiation.",
-    "2026-09-28 wave C (user-approved): per-crate duplicate labels 0 -> 1 for the character crates added since C15 (ft-drmario, ft-emblem, ft-ganon, ft-iceclimbers, ft-link, ft-luigi, ft-mario, ft-pichu, ft-pikachu, ft-samus, ft-seak, ft-younglink, ft-zelda): `melee_ft::fighter::character::CharacterTable::new::{{closure}}`, the table's per-hook closures, which share one label; every C15 character crate was accepted at 1 for the same label. Naming them would add one cross-crate label per hook instead."
+    "2026-09-28 wave C (user-approved): per-crate duplicate labels 0 -> 1 for the character crates added since C15 (ft-drmario, ft-emblem, ft-ganon, ft-iceclimbers, ft-link, ft-luigi, ft-mario, ft-pichu, ft-pikachu, ft-samus, ft-seak, ft-younglink, ft-zelda): `melee_ft::fighter::character::CharacterTable::new::{{closure}}`, the table's per-hook closures, which share one label; every C15 character crate was accepted at 1 for the same label. Naming them would add one cross-crate label per hook instead.",
+    "2026-10-04 (user-approved): per-crate duplicate labels 0 -> 1 for the five character crates added since wave C (ft-donkey, ft-gamewatch, ft-koopa, ft-mewtwo, ft-ness): the same `melee_ft::fighter::character::CharacterTable::new::{{closure}}` label every other character crate is accepted at. Their other duplicate labels, and the two new ones in melee-ft, were removed instead (f4ac64d7)."
   ],
   "revision": "4bb9f072f7794c8663c4a02e5c1dbb30a8c9e96a",
   "rustc": "rustc 1.96.0 (ac68faa20 2026-05-25)"

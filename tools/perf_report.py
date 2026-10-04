@@ -75,13 +75,15 @@ def compare_duplicates(current, previous, reviewed=None):
 
 # Size baseline raised by the user (2026-09-28) after feature growth: the
 # Fox-Marth milestone's gameplay and the melee-sim search/triage tools took
-# the stripped binary from 3.52 MB (C15) to 4.96 MB. Size compares against the
-# larger of the last PASS block and this reviewed floor until a PASS block is
-# recorded after the review date; from then on the ordinary ratchet applies.
-# The fixed ceiling is the floor plus 5%.
-REVIEWED_SIZE = {"stripped_bytes": 6_444_304, "text_bytes": 5_865_472}
-REVIEWED_SIZE_DATE = "2026-09-28T21:45"
-C15_STRIPPED_LIMIT = 6_766_519
+# the stripped binary from 3.52 MB (C15) to 4.96 MB. Raised again by the
+# user (2026-10-04) for five new characters (Donkey Kong, Bowser, Mr. Game &
+# Watch, Ness, Mewtwo) and their items: 6.14 MB to 6.55 MB, time unchanged.
+# Size compares against the larger of the last PASS block and this reviewed
+# floor until a PASS block is recorded after the review date; from then on
+# the ordinary ratchet applies. The fixed ceiling is the floor plus 5%.
+REVIEWED_SIZE = {"stripped_bytes": 6_549_232, "text_bytes": 5_898_240}
+REVIEWED_SIZE_DATE = "2026-10-04T17:30"
+C15_STRIPPED_LIMIT = 6_876_693
 C15_P1_TIME_LIMITS = {"load_ns": 182_600_000, "ticks_600_ns": 25_947_000}
 PAIR_HELPERS = {
     "melee_ft::fighter::grab::capture_pair",
