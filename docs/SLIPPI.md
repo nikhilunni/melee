@@ -1336,7 +1336,8 @@ Climbers stopped on `input_seed` or `seed`. For each, the port's distance
 from the recorded Pre Frame seed was measured on the drift tick and the
 window played back on retail where a boundary can be made. Five causes are
 fixed, each with the replay's own window as its witness
-(`SLIPPI_REPLAY_WITNESSES`):
+(`SLIPPI_REPLAY_WITNESSES`); the first was fixed on main in the same hours
+(8778d6a2), and this wave adds its Donkey Kong witness:
 
 | Fault | Retail | Witness | Replays |
 |---|---|---|---|
