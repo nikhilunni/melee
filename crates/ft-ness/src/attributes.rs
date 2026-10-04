@@ -35,12 +35,14 @@ pub struct PkFlashAttributes {
     /// +0x0C xC_PKFLASH_MINCHARGEFRAMES: frames before a released B
     /// detonates the flash.
     pub release_delay: i32,
-    /// +0x10 x10_PKFLASH_UNK1: aerial entry x velocity divisor.
-    pub entry_velocity_divisor: f32,
+    /// +0x10 x10_PKFLASH_UNK1.
+    // TODO(meaning): no retail reader found.
+    pub unknown_10: f32,
     /// +0x14 x14_PKFLASH_FALL_ACCEL.
     pub fall_acceleration: f32,
-    /// +0x18 x18_PKFLASH_UNK2: the fall's terminal speed.
-    pub terminal_velocity: f32,
+    /// +0x18 x18_PKFLASH_UNK2.
+    // TODO(meaning): no retail reader found.
+    pub unknown_18: f32,
     /// +0x1C x1C_PKFLASH_LANDING_LAG (0: plain fall).
     pub landing_lag: f32,
 }
@@ -171,9 +173,9 @@ impl NessAttributes {
                 air_loop_frames: r.s32(0x04)?,
                 gravity_delay: r.s32(0x08)?,
                 release_delay: r.s32(0x0C)?,
-                entry_velocity_divisor: r.f32(0x10)?,
+                unknown_10: r.f32(0x10)?,
                 fall_acceleration: r.f32(0x14)?,
-                terminal_velocity: r.f32(0x18)?,
+                unknown_18: r.f32(0x18)?,
                 landing_lag: r.f32(0x1C)?,
             },
             pk_fire: PkFireAttributes {

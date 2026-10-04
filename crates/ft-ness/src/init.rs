@@ -18,6 +18,8 @@ pub struct Ness {
     pub damage_callbacks: bool,
     /// The accessory4 callback a special installed.
     pub accessory: Accessory,
+    /// PK Flash's motion scratch and Ness's hold on the flash.
+    pub pk_flash: crate::special_n::PkFlash,
     /// PSI Magnet's motion scratch.
     pub magnet: crate::special_lw::Magnet,
     /// mv+4 while a row that never writes it is current (PK Fire, PSI
@@ -42,6 +44,7 @@ impl Ness {
             bat: false,
             damage_callbacks: false,
             accessory: Accessory::None,
+            pk_flash: Default::default(),
             magnet: Default::default(),
             retained_word: None,
         }
@@ -54,6 +57,9 @@ fn damage_callback(f: &mut Fighter) {
     if !f.character.get::<Ness>().damage_callbacks {
         return;
     }
+    // ftNs_SpecialN_ItemPKFlushSetNULL clears both callbacks; the rest of
+    // this call still runs.
+    crate::special_n::orphan_flash(f);
     crate::attack_s4::remove_bat(f);
 }
 
@@ -61,8 +67,11 @@ fn damage_callback(f: &mut Fighter) {
 /// clears its owner's pointer (itNessbat_ClearOwnerRef ->
 /// ftNs_AttackS4_ItemNessBatSetNULL).
 fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
-    if kind == melee_types::ItemKind::NessBat {
-        f.character.get_mut::<Ness>().bat = false;
+    match kind {
+        melee_types::ItemKind::NessBat => f.character.get_mut::<Ness>().bat = false,
+        // it_2725_Logic102_Destroyed -> ftNs_SpecialN_SetNULL.
+        melee_types::ItemKind::NessPKFlush => crate::special_n::flash_gone(f),
+        _ => {}
     }
 }
 
@@ -90,7 +99,7 @@ impl CharacterCallbacks for Ness {
     fn enter_special(f: &mut Fighter, slot: SpecialSlot, airborne: bool, assets: &FighterAssets) {
         match slot {
             SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
-            SpecialSlot::Neutral => unimplemented!("ftNs_SpecialN_Enter (ftnessspecialn.c)"),
+            SpecialSlot::Neutral => crate::special_n::enter(f, airborne, assets),
             SpecialSlot::Up => unimplemented!("ftNs_SpecialHi_Enter (ftnessspecialhi.c)"),
             SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
         }
@@ -120,6 +129,30 @@ impl CharacterCallbacks for Ness {
             .then(|| state.get::<Self>().retained_word)
             .flatten()
     };
+    /// What Ness's articles read of him: the flash, whether he still
+    /// holds it in the hold row (ftNs_SpecialN_CheckSpecialNHold).
+    fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+        melee_it::ItemOwner {
+            illusion: None,
+            position: f.physics.position,
+            facing: f.physics.facing,
+            hold_position: f.physics.position,
+            blaster_action: 9,
+            remove_blaster: true,
+            motion: f.motion_state.action.0,
+            articles_fired: 0,
+            charge: None,
+            holds_needles: false,
+            stick: hsd_types::Vec2::new(f.input.current.stick.x, f.input.current.stick.y),
+            steering_article: crate::special_n::holding(f),
+            detonating_article: false,
+            motion_flags: f.motion_flags(),
+            in_hitlag: f.core.in_hitlag(),
+            anchor: f.physics.position,
+            article_stage: None,
+            model_scale: f.player.scale * f.attributes.size.model_scaling,
+        }
+    }
     /// ftCo_AttackS4.c decideFighter: ftNs_AttackS4_Enter.
     const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> = Some(crate::attack_s4::enter);
     /// ftColl_CreateReflectHit(gobj, &xB8_BASEBALL_BAT, ftNs_AttackS4_OnReflect).

@@ -161,6 +161,7 @@ pub enum ItemScratch {
     ChargeShot(ChargeShotState),
     SamusBomb(SamusBombState),
     DinFire(DinFireState),
+    PkFlash(PkFlashState),
     Boomerang(BoomerangState),
     Bow(BowState),
     Arrow(ArrowState),
@@ -304,6 +305,21 @@ pub struct DinFireState {
     pub speed: f32,
     /// xDF4 (the fire) / xDE0 (the explosion): its generators are live.
     pub effects: bool,
+    /// The explosion's xDD8: the hitbox's authored size, once read.
+    pub hitbox_size: f32,
+}
+/// Item.xDD4_itemVar.pkflush (itnesspkflash.c) and .pkflushexplode: Ness's
+/// PK Flash and its explosion.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct PkFlashState {
+    /// xDD8 (the flash) / xDD4 (the explosion): the charge, one per frame
+    /// of flight up to the attribute.
+    pub charge: f32,
+    /// xDDC: a reflection took the flash out of its creator's hands.
+    pub reflected: bool,
+    /// xDE0: the creator, who steers it and whose release bursts it while
+    /// it owns it (it_802AAA50 clears it).
+    pub creator: Option<u8>,
     /// The explosion's xDD8: the hitbox's authored size, once read.
     pub hitbox_size: f32,
 }

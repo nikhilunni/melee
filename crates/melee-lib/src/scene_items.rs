@@ -77,6 +77,8 @@ melee_it::item_kinds! {
         NessBat: it_ness::NessBat,
         NessPKFire: it_ness::NessPkFire,
         NessPKFireFlame: it_ness::NessPkFirePillar,
+        NessPKFlush: it_ness::NessPkFlash,
+        NessPKFlushExplode: it_ness::NessPkFlashExplode,
     }
 }
 
@@ -851,6 +853,18 @@ impl Resources {
                     it_ness::pk_fire::PILLAR_ARTICLE_INDEX,
                     &it_ness::pk_fire::PILLAR_ARTICLE_STATES[..],
                     it_ness::pk_fire::PILLAR_SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::NessPKFlush,
+                    it_ness::pk_flash::FLASH_ARTICLE_INDEX,
+                    &it_ness::pk_flash::FLASH_ARTICLE_STATES[..],
+                    it_ness::pk_flash::FLASH_SPECIAL_ATTRIBUTES,
+                ),
+                (
+                    ItemKind::NessPKFlushExplode,
+                    it_ness::pk_flash::EXPLODE_ARTICLE_INDEX,
+                    &it_ness::pk_flash::EXPLODE_ARTICLE_STATES[..],
+                    it_ness::pk_flash::EXPLODE_SPECIAL_ATTRIBUTES,
                 ),
             ] {
                 let mut assets =
