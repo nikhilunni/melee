@@ -104,6 +104,11 @@ jab window, now gated) and taught the decoder to encode stale NaN words.
 | `melee-ft/fighter/state/callbacks/collision.rs` ftCo_StopWall | Running into a wall | Unreachable on FD, for the same grounded-ECB reason as DownReflect |
 | `melee-it/map.rs` it_80276D9C | An item pressed between two walls | Unreachable: FD's opposite walls are at least 107 units apart |
 | `ft-fox-family/special_hi.rs` | Fire Fox platform skip | FD has no platforms: out of scope |
+| `ft-koopa/special_s.rs` ftKp_SpecialS_801332C4 (ftkoopaspecials.c:214) | The Koopa Klaw's holder losing its floor (the pair drops): `unimplemented!` | Unreachable on FD: the hold, bite and throw rows keep their floor through ft_800827A0, which stops at an edge, and FD's floor does not move away |
+| `ft-koopa/special_n.rs` ftKp_SpecialAirNEnd_Coll (80135714) | The aerial Fire Breath's end row landing in the grounded end: ported with the helper the start and loop rows use (`bowser_breath_air_start_land_fd_fox4`, `bowser_breath_air_fd_fox4`) | Unwitnessed: a `melee-sim search` over jump, double-jump and breath timing, 324 candidates, none reached (the end row outlasts Bowser's airtime by about 4 frames) |
+| `ft-koopa/special_n.rs` ftKp_SpecialNLoop_Coll / ftKp_SpecialNEnd_Coll | The grounded Fire Breath loop and end rows sliding off an edge into the aerial rows: ported with the start row's helper (`bowser_breath_slide_off_fd_fox4`) | Unwitnessed: two searches over the run-up and breath timing at the edge, 32 candidates each, none reached |
+| `ft-koopa/special_n.rs` ftKp_SpecialLw_80134ACC, `special_s.rs` ftColl_8007ABD0 | A scaled Bowser's flame offset and Klaw knockback: `unimplemented!` | Needs a model scale other than 1 (mushrooms, Giga Bowser): out of scope |
+| `ft-koopa/special_hi.rs`, `melee-ft/fighter/capture_koopa.rs` | Whirling Fortress with a held item; a Klaw victim that holds an item or another fighter: fail closed | Items are off in the Bowser scenes; a victim holding a fighter needs three fighters |
 
 ### Out of scope (other characters, stages, CPU or modes)
 

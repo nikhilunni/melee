@@ -1,0 +1,42 @@
+# BOWSER directed witness: Bowser Bomb from a double jump beside the ledge:
+# once the script arms the landing (cmd_vars[0]) the drop catches the ledge
+# (ftKp_SpecialAirLw_Coll 801348C0, ftCliffCommon_80081298 / 80081370).
+# BOWSER directed witness base: Bowser walks to the left edge, turns, hops
+# back off the stage and grabs the ledge (CliffWait from tick 443).
+# melee-sim search: reached [p0.motion_id == 362; p0.motion_id == CliffCatch] at ticks [513, 541].
+name = "bowser_bomb_ledge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 641
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = -30 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+  { frame = 360, port = 0, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 363, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 402, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 416, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 476, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 502, port = 0, buttons = {  }, raw = {  } },
+  { frame = 503, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 505, port = 0, buttons = {  }, raw = {  } },
+  { frame = 509, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 512, port = 0, buttons = {  }, raw = {  } },
+  { frame = 513, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 543, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

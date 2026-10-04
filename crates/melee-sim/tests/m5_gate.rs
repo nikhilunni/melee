@@ -1803,6 +1803,120 @@ fn donkey_witnesses_match_retail() {
     gate_in_parallel(DONKEY_WITNESSES);
 }
 
+/// Bowser (ft-koopa, it-koopaflame, melee-ft capture_koopa), all from the
+/// start_fd_bowser_fox4 boundary, with 0 differing particle ticks.
+const BOWSER_WITNESSES: [(&str, usize); 82] = [
+    // Movement and common states from start_fd_bowser_fox4: his run dust (efAsync 0x426) and
+    // landing models (0x3F8, 0x3FB, 0x3FC), every ground and air attack, grabs both ways.
+    ("bowser_walk_dash_run_fd_fox4", 520),
+    ("bowser_jumps_fd_fox4", 680),
+    ("bowser_crouch_shield_fd_fox4", 720),
+    ("bowser_jab_tilts_fd_fox4", 760),
+    ("bowser_smashes_fd_fox4", 900),
+    ("bowser_aerials_fd_fox4", 900),
+    ("bowser_grab_taunt_fd_fox4", 620),
+    ("bowser_edge_fd_fox4", 700),
+    ("bowser_hit_by_fox_fd_fox4", 700),
+    ("bowser_hits_fox_fd_fox4", 760),
+    // Bowser Bomb (ftkoopaspeciallw.c): grounded hop and hand-off, aerial entry, the hop and the
+    // drop hitting, on a shield, and off-stage.
+    ("bowser_bomb_ground_fd_fox4", 420),
+    ("bowser_bomb_air_fd_fox4", 420),
+    ("bowser_bomb_hit_fd_fox4", 460),
+    ("bowser_bomb_drop_hit_fd_fox4", 460),
+    ("bowser_bomb_shield_fd_fox4", 460),
+    ("bowser_bomb_offstage_fd_fox4", 520),
+    // Whirling Fortress (ftkoopaspecialhi.c): grounded slide, aerial rise and special fall, hits,
+    // a shield, sliding off the edge into the aerial row.
+    ("bowser_fortress_ground_fd_fox4", 420),
+    ("bowser_fortress_air_fd_fox4", 460),
+    ("bowser_fortress_hit_fd_fox4", 460),
+    ("bowser_fortress_shield_fd_fox4", 460),
+    ("bowser_fortress_slide_off_fd_fox4", 520),
+    ("bowser_fortress_air_land_fd_fox4", 460),
+    ("bowser_fortress_air_hit_fd_fox4", 460),
+    // Fire Breath (ftkoopaspecialn.c, itkoopaflame.c): a tap, a held breath shrinking to its
+    // floor, aerial with a landing in the loop, hits, flames off a shield and a Reflector.
+    ("bowser_breath_tap_fd_fox4", 420),
+    ("bowser_breath_hold_fd_fox4", 760),
+    ("bowser_breath_air_fd_fox4", 460),
+    ("bowser_breath_hit_fd_fox4", 520),
+    ("bowser_breath_shield_fd_fox4", 520),
+    ("bowser_breath_reflect_fd_fox4", 520),
+    ("bowser_breath_slide_off_fd_fox4", 520),
+    // Koopa Klaw (ftkoopaspecials.c, ftCo_CaptureKoopa.c): whiffs, the hold to its timer, mashing
+    // out, bites, both throws, a shielding victim, the claw's plain hit; the aerial catch with
+    // its landing, bites and throws (a `melee-sim search` recipe).
+    ("bowser_klaw_whiff_fd_fox4", 360),
+    ("bowser_klaw_air_whiff_fd_fox4", 400),
+    ("bowser_klaw_hold_fd_fox4", 640),
+    ("bowser_klaw_mash_fd_fox4", 520),
+    ("bowser_klaw_bite_fd_fox4", 640),
+    ("bowser_klaw_throw_f_fd_fox4", 520),
+    ("bowser_klaw_throw_b_fd_fox4", 520),
+    ("bowser_klaw_shield_fd_fox4", 520),
+    ("bowser_klaw_air_hit_fd_fox4", 520),
+    ("bowser_klaw_air_catch_fd_fox4", 520),
+    ("bowser_klaw_air_hold_fd_fox4", 600),
+    ("bowser_klaw_air_bite_fd_fox4", 600),
+    ("bowser_klaw_air_wait_bite_fd_fox4", 600),
+    ("bowser_klaw_air_throw_f_fd_fox4", 600),
+    ("bowser_klaw_air_throw_b_fd_fox4", 600),
+    ("bowser_klaw_air_wait_throw_f_fd_fox4", 600),
+    ("bowser_klaw_air_wait_throw_b_fd_fox4", 600),
+    // Edges and landings (three are `melee-sim search` recipes): an aerial breath start landing,
+    // the Klaw stepping off the edge, an aerial Fortress landing in the grounded row and
+    // catching the ledge, the Bomb catching the ledge.
+    ("bowser_breath_air_start_land_fd_fox4", 400),
+    ("bowser_klaw_edge_fd_fox4", 520),
+    ("bowser_fortress_air_to_ground_fd_fox4", 670),
+    ("bowser_fortress_ledge_fd_fox4", 672),
+    ("bowser_bomb_ledge_fd_fox4", 641),
+    // Throws both ways. The back throw turns round (throw_flags_b4) and steps back along
+    // facing_dir1 (ft_80085004); Fox's throws of the heaviest victim.
+    ("bowser_throw_f_fd_fox4", 560),
+    ("bowser_throw_b_fd_fox4", 560),
+    ("bowser_throw_hi_fd_fox4", 560),
+    ("bowser_throw_lw_fd_fox4", 560),
+    ("bowser_thrown_f_fd_fox4", 620),
+    ("bowser_thrown_b_fd_fox4", 620),
+    ("bowser_thrown_hi_fd_fox4", 620),
+    ("bowser_thrown_lw_fd_fox4", 620),
+    // Explorer cases. The first five stopped at the unported specials (side B, then the rest).
+    ("corpus_v3_fd_bowser_fox4_e00f31913_p0", 224),
+    ("corpus_v3_fd_bowser_fox4_e0dee256e_p1", 189),
+    ("corpus_v3_fd_bowser_fox4_ec13743d5_p2", 87),
+    ("corpus_v3_fd_bowser_fox4_ee133b82f_p1", 1732),
+    ("corpus_v3_fd_bowser_fox4_eeda0d0fc_p0", 88),
+    // Bowser dies holding Fox in the Klaw: ftCo_800DD100 sets the pinned victim down.
+    ("corpus_v3_fd_bowser_fox4_ec13743d5_p0", 1744),
+    // The back throw's step back along facing_dir1 (ft_80085004).
+    ("corpus_v3_fd_bowser_fox4_e1611c835_p1", 3629),
+    ("corpus_v3_fd_bowser_fox4_e7ff378da_p2", 5416),
+    ("corpus_v3_fd_bowser_fox4_edb2b114a_p2", 5234),
+    // A flame hits Fox past his shield as another hits the shield: the knockback branch of
+    // Fighter_ProcessHit leaves the shield impact without a response (fighter.c:2907).
+    ("corpus_v3_fd_bowser_fox4_efc6a328f_p0", 5873),
+    // Full random matches, exact as found.
+    ("corpus_v3_fd_bowser_fox4_e00f31913_p2", 2310),
+    ("corpus_v3_fd_bowser_fox4_e2b9e1400_p0", 5747),
+    ("corpus_v3_fd_bowser_fox4_ec3145eb3_p1", 5322),
+    ("corpus_v3_fd_bowser_fox4_edafcfddf_p0", 3618),
+    ("corpus_v3_fd_bowser_fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_bowser_fox4_e0fcf0c70_p0", 3655),
+    ("corpus_v3_fd_bowser_fox4_e9f348009_p2", 4760),
+    ("corpus_v3_fd_bowser_fox4_e00f160ee_p2", 4110),
+    ("corpus_v3_fd_bowser_fox4_e6007e4e9_p1", 4951),
+    ("corpus_v3_fd_bowser_fox4_e121faf54_p0", 6001),
+    ("corpus_v3_fd_bowser_fox4_ef6b5a67f_p0", 6001),
+    ("corpus_v3_fd_bowser_fox4_e3e98e6dc_p0", 6001),
+];
+
+#[test]
+fn bowser_witnesses_match_retail() {
+    gate_in_parallel(&BOWSER_WITNESSES);
+}
+
 /// Controller-fix Gecko codes (melee_ft::input::controller_fix), each
 /// witness recorded in Dolphin without the code (`_off`) and with it
 /// (`gecko = [...]`, harness/gecko.py): UCF's dashback (0x800C9A44), shield

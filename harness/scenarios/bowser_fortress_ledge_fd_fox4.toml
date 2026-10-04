@@ -1,0 +1,40 @@
+# BOWSER directed witness: aerial Whirling Fortress from a ledge drop: while
+# the spin falls with no floor under it, ftKp_SpecialAirHi_Coll (80135F6C)
+# catches the ledge (ftCliffCommon_80081298, then ftCliffCommon_80081370).
+# BOWSER directed witness base: Bowser walks to the left edge, turns, hops
+# back off the stage and grabs the ledge (CliffWait from tick 443).
+# melee-sim search: reached [p0.motion_id == 360; p0.motion_id == CliffCatch] at ticks [509, 552].
+name = "bowser_fortress_ledge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_bowser_fox4.sav"
+frames = 672
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = -30 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+  { frame = 360, port = 0, buttons = {  }, raw = { stickX = 40 } },
+  { frame = 363, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 402, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 416, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 476, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 502, port = 0, buttons = {  }, raw = {  } },
+  { frame = 505, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 508, port = 0, buttons = {  }, raw = {  } },
+  { frame = 509, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 579, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Bowser"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
