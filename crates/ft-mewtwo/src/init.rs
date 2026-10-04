@@ -261,10 +261,12 @@ impl CharacterCallbacks for Mewtwo {
     /// ftMt_Init_OnLoad (80144E48): PUSH_ATTRS, parts[FtPart_TransN].flags_b4
     /// and x2221_b2 (the model follows TransN's extracted motion). The two
     /// item registrations (it_8026B3F8: Disable, Shadow Ball) belong to the
-    /// item scene.
+    /// item scene. ftCo_8009DD94's kind arm for the tail's chains is a
+    /// capability too.
     fn on_load(&mut self, capabilities: &mut Capabilities) {
         capabilities.specials = [true; 4];
         capabilities.compensates_root_motion = true;
+        capabilities.captured_dynamics_meet_floor = true;
     }
     /// ftMt_Init_OnDeath (80144DFC): ftParts_80074A4C(gobj, 0, 0) and the
     /// FighterVars reset.

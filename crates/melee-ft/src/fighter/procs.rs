@@ -367,6 +367,9 @@ impl FighterCore {
             {
                 pose.saved_translation = self.skeleton.translation(joint);
             }
+            if self.capabilities.compensates_root_motion {
+                self.follow_hip_while_pinned(assets);
+            }
         }
     }
     /// ftAction_80072CD8 (80072CD8): a footstep on the ground asks the
@@ -837,6 +840,37 @@ impl FighterCore {
 }
 
 /// Dynamics inputs sampled once before the per-set character hooks.
+impl FighterCore {
+    /// ftAnim_8006DF0C (8006DF0C), ftCo_800DB500's second half for a pinned
+    /// fighter with x2221_b2 (Mewtwo): the model's translation joint
+    /// (parts[ftData.x8.x10]) goes to HipN's point at PlCo +808, taken into
+    /// the root's space (HSD_MtxInverse, PSMTXMultVec). No fused sites.
+    fn follow_hip_while_pinned(&mut self, assets: &FighterAssets) {
+        let hip = usize::from(
+            assets
+                .parts
+                .joint(melee_types::FtPart::HipN)
+                .expect("HipN"),
+        );
+        let point = caches::part_position(
+            &mut self.skeleton,
+            &self.animation,
+            hip,
+            assets.common.pinned_hip_offset,
+        );
+        let root = *self.skeleton.get_mtx(self.animation.root);
+        let mut inverse = hsd_types::Mtx::default();
+        hsd_anim::mtx::hsd_mtx_inverse(&root, &mut inverse);
+        let mut local = hsd_types::Vec3::ZERO;
+        hsd_anim::mtx::mtx_mult_vec(&inverse, &point, &mut local);
+        let joint = self.animation.parts[usize::from(self.bones.model.animation_translation)].joint;
+        self.skeleton.set_translate(joint, &local);
+    }
+}
+
+/// ftCo_MS_CapturePulledHi (0xDF) ..= ftCo_MS_CaptureFoot (0xE8).
+const CAPTURED_ROWS: std::ops::RangeInclusive<u16> = 223..=232;
+
 struct DynamicsFrame {
     // Fighter +0x1670..0x1828 holds eleven 0x28-byte collider records
     // (ft/types.h); assets::read_dynamic_colliders already enforces this bound.
@@ -873,8 +907,12 @@ impl FighterCore {
         DynamicsFrame {
             colliders,
             collider_count: self.dynamic_colliders.len(),
+            // ftdynamics.c:379-393: never at another scale; a kind with the
+            // captured-row arm in those rows, otherwise only on the ground.
             ground_check: self.player.scale == 1.0
-                && self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
+                && ((self.capabilities.captured_dynamics_meet_floor
+                    && CAPTURED_ROWS.contains(&self.motion_state.action.0))
+                    || self.physics.ground_or_air == melee_types::GroundOrAir::Ground),
             plane: self.dynamics_use_floor_plane,
             height: self.physics.position.y,
         }

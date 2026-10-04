@@ -60,6 +60,10 @@ pub struct CommonFighterData {
     pub ledge_snap_height_multiplier: f32,
     /// ft/types.h:552, +804 (x804); grounded pose clamp, ft_0899.c:225.
     pub ground_pose_max_angle_degrees: f32,
+    /// +808 (x808): the offset from HipN that ftAnim_8006DF0C keeps the
+    /// model's translation joint at while a fighter with x2221_b2 hangs
+    /// from a captor.
+    pub pinned_hip_offset: hsd_types::Vec3,
 }
 
 pub fn read_common_data(archive: &Archive) -> Result<CommonFighterData> {
@@ -98,6 +102,11 @@ impl CommonFighterData {
             over_drift_air_friction: archive.reader().f32(add_offset(offset, 0x1FC)?)?,
             ledge_snap_height_multiplier: r.f32(0x1CC)?,
             ground_pose_max_angle_degrees: archive.reader().f32(add_offset(offset, 0x804)?)?,
+            pinned_hip_offset: hsd_types::Vec3::new(
+                archive.reader().f32(add_offset(offset, 0x808)?)?,
+                archive.reader().f32(add_offset(offset, 0x80C)?)?,
+                archive.reader().f32(add_offset(offset, 0x810)?)?,
+            ),
         })
     }
 }

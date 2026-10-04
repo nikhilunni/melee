@@ -805,6 +805,10 @@ pub struct Capabilities {
     /// motion back out of the model's translation joint, so the model does
     /// not move with an animation whose motion the physics applies.
     pub compensates_root_motion: bool,
+    /// ftCo_8009DD94's FTKIND_MEWTWO arm (ftdynamics.c:383-386): the dynamic
+    /// chains test the floor in the captured rows (motions 223..232) even
+    /// in the air.
+    pub captured_dynamics_meet_floor: bool,
 }
 
 /// Unsupported interactions are represented explicitly, never inferred from

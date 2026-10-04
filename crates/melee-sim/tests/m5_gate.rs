@@ -2225,6 +2225,10 @@ const MEWTWO_WITNESSES: &[(&str, usize)] = &[
     ("mewtwo_throw_b_fd_fox4", 520),
     ("mewtwo_throw_hi_fd_fox4", 520),
     ("mewtwo_throw_lw_fd_fox4", 520),
+    // Fox grabs, pummels and throws Mewtwo: the pinned victim keeps his
+    // model at HipN (ftAnim_8006DF0C) and his tail tests the floor in the
+    // captured rows (ftCo_8009DD94's FTKIND_MEWTWO arm).
+    ("mewtwo_grabbed_fd_fox4", 460),
 ];
 
 #[test]

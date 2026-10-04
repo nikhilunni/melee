@@ -66,7 +66,9 @@ def main() -> None:
     ticks = int(os.environ.get("MELEE_BONES_TICKS", "2"))
     saved = Path(os.environ["MELEE_BONES_SAVESTATE"]).resolve()
     # Reuse trace_common.run by synthesising the scenario it expects.
-    scenario = HERE / "traces" / (out.stem + ".bones_scenario.toml")
+    # Beside the dump: the traces directory of the data root (a worktree has
+    # none of its own, harness/data_root.py).
+    scenario = out.parent / (out.stem + ".bones_scenario.toml")
     inputs = "inputs = []\n"
     clock = ""
 

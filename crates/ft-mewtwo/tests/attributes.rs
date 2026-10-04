@@ -53,6 +53,7 @@ fn load_enables_every_special_and_the_root_motion_compensation() {
     assert_eq!(capabilities.specials, [true; 4]);
     assert_eq!(capabilities.air_specials, None);
     assert!(capabilities.compensates_root_motion);
+    assert!(capabilities.captured_dynamics_meet_floor);
     assert_eq!(mewtwo.aerial_jump_style(), AerialJumpStyle::Mewtwo);
     assert_eq!(mewtwo.dynamics_first_force_bone(0, 1), 8);
 }
