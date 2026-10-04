@@ -39,6 +39,8 @@ const GRANDCHILD_JOINT: usize = 2;
 const HOMING_EXPLOSION: u16 = 0x40C;
 const SUPER_EXPLOSION: u16 = 0x40E;
 const EXPLOSION_SOUND: u32 = 0x74;
+/// it_2725_Logic52_ShieldBounced's MTXDegToRad(270) (retail @455).
+const THREE_HALVES_PI: f32 = 4.712389;
 /// it_802B64FC: the difference's y must pass this to turn.
 const TURN_EPSILON: f32 = 0.001;
 
@@ -213,11 +215,20 @@ impl ItemLogic for SamusMissile {
         explode_unless_exploding(item, context.assets);
         false
     }
-    /// it_2725_Logic52_ShieldBounced: a super missile bounces off
-    /// (itColl_BounceOffShield); a homing one does nothing.
-    fn shield_bounced(item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
+    /// it_2725_Logic52_ShieldBounced (802B6D24): a super missile bounces off
+    /// (itColl_BounceOffShield) and its model's child pitches along the new
+    /// heading; a homing one does nothing and flies on through the shield.
+    fn shield_bounced(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
         if missile(item).smash {
-            unimplemented!("it_2725_Logic52_ShieldBounced: itColl_BounceOffShield (super missile)");
+            item.bounce_off_shield(context.shield_normal);
+            // atan2f(vel.x, vel.y): the heading measured from straight up.
+            let heading = melee_lb::trigf::atan2f(item.velocity.x, item.velocity.y);
+            // retail 802B6D74 / 802B6D80: fsubs either way.
+            missile_mut(item).turn = if item.facing == 1.0 {
+                heading - std::f32::consts::FRAC_PI_2
+            } else {
+                THREE_HALVES_PI - heading
+            };
         }
         false
     }

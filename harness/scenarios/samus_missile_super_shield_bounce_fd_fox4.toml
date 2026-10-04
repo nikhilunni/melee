@@ -1,0 +1,29 @@
+# SAMUS directed witness: an aerial super missile fired on the way down meets the
+# top of Fox's shield at a glancing angle and bounces off it
+# (it_2725_Logic52_ShieldBounced, 802B6D24: itColl_BounceOffShield, the model's
+# child pitched along the new heading); it flies on upward and explodes at its lifetime's end.
+name = "samus_missile_super_shield_bounce_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 330
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 96, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 98, port = 0, buttons = {  }, raw = {  } },
+  { frame = 110, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 134, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 136, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

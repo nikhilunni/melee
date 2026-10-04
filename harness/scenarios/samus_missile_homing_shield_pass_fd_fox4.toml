@@ -1,0 +1,29 @@
+# SAMUS directed witness: Samus runs at the shielding Fox, jumps and fires a homing
+# missile that meets his shield at a glancing angle. it_2725_Logic52_ShieldBounced
+# (802B6D24) does nothing for a homing missile: it neither bounces nor explodes and
+# flies on through the shield.
+name = "samus_missile_homing_shield_pass_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 330
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 96, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 97, port = 1, buttons = {  }, raw = { button = 32 } },
+  { frame = 115, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 155, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 157, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
