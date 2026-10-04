@@ -28,9 +28,11 @@ impl MagnifierDamage {
 }
 
 impl FighterCore {
-    /// fighter.c:1595-1610. `x221F_b4` (the Ice Climbers' partner) is never set.
+    /// fighter.c:1595-1610. A player's second fighter (x221F_b4, Nana) takes
+    /// none and counts nothing: retail 0x8006A830 tests the bit before the
+    /// camera's zoom.
     pub(crate) fn apply_magnifier_damage(&mut self, parameters: &MagnifierDamage) {
-        if !self.offscreen.camera_unzoomed {
+        if self.player.secondary || !self.offscreen.camera_unzoomed {
             return;
         }
         if self.physics.percent >= parameters.percent_limit as f32 {
