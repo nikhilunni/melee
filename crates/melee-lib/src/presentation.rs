@@ -148,6 +148,35 @@ impl ModelSource {
         }
     }
 }
+/// The stage's camera limits in world coordinates (`Ground_801C39C0`'s
+/// camera range and the blast zone, both offset by the camera centre) and
+/// the field of view its standard camera uses.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StageFrame {
+    /// Camera bounds: left, right, bottom, top.
+    pub camera: [f32; 4],
+    /// Blast zone: left, right, bottom, top.
+    pub blast_zone: [f32; 4],
+    /// Vertical field of view, degrees.
+    pub fov: f32,
+}
+impl StageFrame {
+    fn of(camera: &melee_cm::StageCamera) -> Self {
+        let world = |r: melee_cm::Rect| {
+            [
+                r.left + camera.offset_x,
+                r.right + camera.offset_x,
+                r.bottom + camera.offset_y,
+                r.top + camera.offset_y,
+            ]
+        };
+        Self {
+            camera: world(camera.bounds),
+            blast_zone: world(camera.blast_zone),
+            fov: camera.fov,
+        }
+    }
+}
 /// GPU-independent scene data. Immutable meshes are decoded once; matrices and
 /// visibility are refreshed in place. A renderer may upload meshes once and
 /// copy only the matrix/visibility changes each frame.
@@ -169,6 +198,7 @@ pub struct Presentation {
     instance_ranges: Vec<std::ops::Range<u32>>,
     camera_targets: [Option<[f32; 2]>; 2],
     view: ViewCamera,
+    stage_frame: StageFrame,
     fog_desc: Option<melee_gr::desc::FogDesc>,
     fog: Option<Fog>,
     /// Per fighter slot: model-part groups and draw gates.
@@ -195,6 +225,7 @@ impl Presentation {
             visible: Vec::new(),
             camera_targets: [None; 2],
             view: ViewCamera::capture(game),
+            stage_frame: StageFrame::of(&game.engine.state().assets.stage_camera),
             fog_desc: stage::fog_desc(&game.assets.inner)?,
             fog: None,
             fighter_parts: Vec::new(),
@@ -327,6 +358,19 @@ impl Presentation {
     /// The retail main camera for the captured tick.
     pub fn view_camera(&self) -> &ViewCamera {
         &self.view
+    }
+    /// The stage's fixed camera limits, for framings of the stage alone.
+    pub fn stage_frame(&self) -> &StageFrame {
+        &self.stage_frame
+    }
+    /// Whether mesh `mesh` belongs to the stage (its ground models and
+    /// stage items) rather than a fighter, an item or an effect. Read-only:
+    /// a consumer may draw the stage alone without changing the match.
+    pub fn is_stage_mesh(&self, mesh: usize) -> bool {
+        matches!(
+            self.models[self.parts[mesh].model].source,
+            ModelSource::Stage { .. } | ModelSource::StageItem(_)
+        )
     }
     pub fn sprites(&self) -> &[Sprite] {
         &self.sprites.live
