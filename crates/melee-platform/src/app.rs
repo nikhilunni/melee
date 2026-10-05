@@ -9,9 +9,11 @@
 //!               +--------------------- quit ---+--------+ continue
 //! ```
 use crate::{
+    art::{Art, ArtFile, Image, Piece},
     disc::{DiscFiles, FileRequest},
     session::{Action, Session},
 };
+use std::sync::Arc;
 use melee_lib::{
     Character, Costume, MatchConfig, MatchOutcome, MatchStatus, PlayerConfig, Port, Seed, Stage,
 };
@@ -85,6 +87,8 @@ pub const DEFAULT_STOCKS: u8 = 4;
 pub struct App {
     screen: Screen,
     disc: Option<DiscFiles>,
+    /// Menu art from the open disc's menu archives.
+    art: Art,
     slots: [Slot; 2],
     stocks: u8,
     loading: Option<Loading>,
@@ -112,6 +116,7 @@ impl App {
         Self {
             screen: Screen::Disc,
             disc: None,
+            art: Art::new(),
             slots: [Slot::default(); 2],
             stocks: DEFAULT_STOCKS,
             loading: None,
@@ -147,18 +152,88 @@ impl App {
     // --- Disc -----------------------------------------------------------
 
     /// Use a validated disc; the menus open on character select. A new disc
-    /// replaces the old one and its fetched files.
+    /// replaces the old one, its fetched files and its art; the host then
+    /// reads [`App::art_requests`] (natively, [`App::load_art`]).
     pub fn open_disc(&mut self, disc: DiscFiles) -> Result<(), String> {
         if matches!(self.screen, Screen::Loading | Screen::Match) {
             return Err(wrong_screen("change discs", self.screen));
         }
         self.disc = Some(disc);
+        self.art = Art::new();
         self.results = None;
         self.screen = Screen::Characters;
         Ok(())
     }
     pub fn disc(&self) -> Option<&DiscFiles> {
         self.disc.as_ref()
+    }
+
+    // --- Menu art -----------------------------------------------------------
+
+    /// The menu archives still to read from the open disc, on any screen.
+    /// Hosts hand them over with [`App::provide_file`]; menus show
+    /// placeholders until [`App::art_ready`].
+    pub fn art_requests(&self) -> Vec<FileRequest> {
+        let Some(disc) = &self.disc else {
+            return Vec::new();
+        };
+        self.art
+            .missing()
+            .into_iter()
+            .filter_map(|file| disc.request(file.name()).ok())
+            .collect()
+    }
+    /// Whether every menu archive is in.
+    pub fn art_ready(&self) -> bool {
+        self.disc.is_some() && self.art.is_ready()
+    }
+    /// Menu archives read so far, out of all of them.
+    pub fn art_progress(&self) -> LoadProgress {
+        let Some(disc) = &self.disc else {
+            return LoadProgress::default();
+        };
+        let mut progress = LoadProgress::default();
+        for file in ArtFile::ALL {
+            let Ok(request) = disc.request(file.name()) else {
+                continue;
+            };
+            progress.files_total += 1;
+            progress.bytes_total += request.len();
+            if self.art.has(file) {
+                progress.files_done += 1;
+                progress.bytes_done += request.len();
+            }
+        }
+        progress
+    }
+    /// Natively the core reads the menu archives itself, all at once
+    /// (about 5 MB). Art is optional: a failure leaves placeholders and is
+    /// returned, not raised as a notice.
+    #[cfg(not(target_arch = "wasm32"))]
+    pub fn load_art(&mut self) -> Result<(), String> {
+        for request in self.art_requests() {
+            let disc = self.disc.as_mut().ok_or("no disc is open")?;
+            let bytes = disc.read_native(&request)?;
+            self.provide_file(request.name, bytes)?;
+        }
+        Ok(())
+    }
+    /// One piece of menu art, decoded on first use. Fails (with the reason)
+    /// while its archive is still loading or when retail has no such image.
+    pub fn art_image(&mut self, piece: Piece) -> Result<Arc<Image>, String> {
+        if self.disc.is_none() {
+            return Err("no disc is open".into());
+        }
+        self.art.image(piece)
+    }
+    /// The art store itself, for its per-piece helpers.
+    pub fn art(&mut self) -> &mut Art {
+        &mut self.art
+    }
+    fn provide_art(&mut self, file: ArtFile, bytes: &[u8]) -> Result<(), String> {
+        let disc = self.disc.as_ref().ok_or("no disc is open")?;
+        disc.check_len(file.name(), bytes.len())?;
+        self.art.insert(file, bytes)
     }
 
     // --- Character select -----------------------------------------------
@@ -320,8 +395,23 @@ impl App {
             .map(|l| l.progress)
             .unwrap_or_default()
     }
-    /// Hand over a file the host read for a pending request.
+    /// Hand over a file the host read for a pending request: a match file
+    /// while loading, or a menu archive from [`App::art_requests`] on any
+    /// screen.
     pub fn provide_file(&mut self, name: &str, bytes: Vec<u8>) -> Result<(), String> {
+        let art_file = ArtFile::from_name(name).filter(|f| !self.art.has(*f));
+        let loading_wants = self
+            .loading
+            .as_ref()
+            .is_some_and(|l| l.pending.iter().any(|r| r.name == name));
+        if let Some(file) = art_file {
+            // A match also reads IfAll.usd: one read serves both, and art
+            // that fails to parse never fails the match's load.
+            let art = self.provide_art(file, &bytes);
+            if !loading_wants {
+                return art;
+            }
+        }
         self.expect(Screen::Loading, "provide files")?;
         let (Some(loading), Some(disc)) = (self.loading.as_mut(), self.disc.as_mut()) else {
             return Err("nothing is loading".into());
@@ -682,6 +772,66 @@ mod tests {
         let needed = app.pending_requests();
         assert!(!needed.is_empty());
         assert!(needed.iter().all(|r| r.name.contains("Fc")), "{needed:?}");
+    }
+
+    /// An empty but well-formed HSD archive: a header and nothing else.
+    fn empty_archive() -> Vec<u8> {
+        let mut bytes = vec![0u8; 0x20];
+        bytes[..4].copy_from_slice(&0x20u32.to_be_bytes());
+        bytes
+    }
+
+    #[test]
+    fn menu_art_is_requested_after_the_disc_opens_and_arrives_on_any_screen() {
+        let mut builder = ImageBuilder::melee();
+        for file in ArtFile::ALL {
+            builder = builder.file(file.name(), empty_archive());
+        }
+        let image = builder.build();
+        let header = gc_disc::DiscHeader::parse(&image).unwrap();
+        let fst = header.fst_range().unwrap();
+        let disc = || {
+            DiscFiles::from_parts(
+                &image[..gc_disc::HEADER_LEN as usize],
+                &image[fst.start as usize..fst.end as usize],
+                image.len() as u64,
+            )
+            .unwrap()
+        };
+        let mut app = App::new();
+        assert!(app.art_requests().is_empty(), "no disc, nothing to read");
+        assert!(!app.art_ready());
+        app.open_disc(disc()).unwrap();
+        let requests = app.art_requests();
+        let names: Vec<_> = requests.iter().map(|r| r.name).collect();
+        assert_eq!(names, ["MnSlChr.usd", "MnSlMap.usd", "IfAll.usd"]);
+        assert!(requests.iter().all(|r| r.len() == 0x20));
+        assert_eq!(app.art_progress().files_total, 3);
+        assert_eq!(app.art_progress().files_done, 0);
+        let pending = app.art_image(Piece::Face(Character::Fox)).unwrap_err();
+        assert!(pending.contains("not loaded yet"), "{pending}");
+
+        // Lengths are checked against the file table; any screen accepts art.
+        assert!(app.provide_file("MnSlChr.usd", vec![0; 3]).is_err());
+        app.choose_character(0, Character::Fox).unwrap();
+        for request in requests {
+            app.provide_file(request.name, empty_archive()).unwrap();
+        }
+        assert!(app.art_ready());
+        assert!(app.art_requests().is_empty());
+        let progress = app.art_progress();
+        assert_eq!((progress.files_done, progress.bytes_done), (3, 0x60));
+        // An archive without the menu's tables fails per piece, not overall.
+        assert!(app.art_image(Piece::Face(Character::Fox)).is_err());
+        assert!(app.art_image(Piece::StageIcon(Stage::Battlefield)).is_err());
+        // A second copy of a delivered archive is not art and not a match file.
+        assert!(app.provide_file("IfAll.usd", empty_archive()).is_err());
+
+        // A new disc starts its art over.
+        app.back();
+        app.open_disc(disc()).unwrap();
+        assert!(!app.art_ready());
+        assert_eq!(app.art_requests().len(), 3);
     }
 
     #[test]

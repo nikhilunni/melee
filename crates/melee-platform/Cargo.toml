@@ -11,6 +11,8 @@ crate-type = ["rlib", "staticlib"]
 [dependencies]
 gc-disc = { path = "../gc-disc" }
 gekko-math = { path = "../gekko-math" }
+hsd-anim = { path = "../hsd-anim" }
+hsd-archive = { path = "../hsd-archive" }
 melee-lib = { path = "../melee-lib" }
 melee-replay = { path = "../melee-replay" }
 anyhow = { workspace = true }

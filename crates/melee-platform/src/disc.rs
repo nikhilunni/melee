@@ -74,34 +74,42 @@ impl DiscFiles {
         names
             .into_iter()
             .filter(|name| !self.cache.contains_key(*name))
-            .map(|name| {
-                let entry = self
-                    .disc
-                    .fst
-                    .file(name)
-                    .ok_or_else(|| format!("{name} is not on this disc"))?;
-                Ok(FileRequest {
-                    name,
-                    range: entry.range(),
-                })
-            })
+            .map(|name| self.request(name))
             .collect()
     }
 
-    /// Keep a fetched file. Its length must match the file table.
-    pub fn insert(&mut self, name: &str, bytes: Vec<u8>) -> Result<(), String> {
+    /// The byte range of one file on the disc.
+    pub fn request(&self, name: &'static str) -> Result<FileRequest, String> {
         let entry = self
             .disc
             .fst
             .file(name)
             .ok_or_else(|| format!("{name} is not on this disc"))?;
-        if bytes.len() as u64 != u64::from(entry.len) {
+        Ok(FileRequest {
+            name,
+            range: entry.range(),
+        })
+    }
+
+    /// Whether `len` bytes is the whole of file `name`, per the file table.
+    pub fn check_len(&self, name: &str, len: usize) -> Result<(), String> {
+        let entry = self
+            .disc
+            .fst
+            .file(name)
+            .ok_or_else(|| format!("{name} is not on this disc"))?;
+        if len as u64 != u64::from(entry.len) {
             return Err(format!(
-                "{name}: read {} bytes, the disc says {}",
-                bytes.len(),
+                "{name}: read {len} bytes, the disc says {}",
                 entry.len
             ));
         }
+        Ok(())
+    }
+
+    /// Keep a fetched file. Its length must match the file table.
+    pub fn insert(&mut self, name: &str, bytes: Vec<u8>) -> Result<(), String> {
+        self.check_len(name, bytes.len())?;
         self.cache.insert(name.to_owned(), bytes);
         Ok(())
     }

@@ -1678,6 +1678,8 @@ dependencies = [
  "bytemuck",
  "gc-disc",
  "gekko-math",
+ "hsd-anim",
+ "hsd-archive",
  "melee-lib",
  "melee-replay",
  "melee-test-support",

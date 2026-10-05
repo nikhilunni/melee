@@ -3,6 +3,7 @@
 //! hosts (the macOS app through the C API in `include/melee_platform.h`, the
 //! web page through `melee-web`) draw menus and forward user intent.
 pub mod app;
+pub mod art;
 pub mod catalog;
 pub mod disc;
 #[cfg(not(target_arch = "wasm32"))]
