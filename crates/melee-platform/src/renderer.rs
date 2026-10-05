@@ -16,10 +16,10 @@ struct Vertex {
     normal: [f32; 3],
     billboard: u32,
 }
+/// One mesh: its range in the shared index buffer and its first vertex.
 struct Draw {
-    vertices: wgpu::Buffer,
-    indices: wgpu::Buffer,
-    count: u32,
+    indices: std::ops::Range<u32>,
+    base_vertex: i32,
     image: usize,
     pipeline: usize,
 }
@@ -39,6 +39,8 @@ pub struct Renderer {
     scene: wgpu::BindGroup,
     images: Vec<(usize, material::GpuMaterial)>,
     draws: Vec<Draw>,
+    vertices: wgpu::Buffer,
+    indices: wgpu::Buffer,
     depth: wgpu::TextureView,
     multisampled: Option<wgpu::TextureView>,
     samples: u32,
@@ -274,6 +276,8 @@ impl Renderer {
         let mut image_cache = material::Images::default();
         let mut cache = BTreeMap::new();
         let mut draws = Vec::new();
+        let mut vertices = Vec::new();
+        let mut indices = Vec::new();
         for (mesh_index, mesh) in scene.meshes().iter().enumerate() {
             let key = Arc::as_ptr(&mesh.material) as usize;
             let image = if let Some(&image) = cache.get(&key) {
@@ -297,10 +301,10 @@ impl Renderer {
                 cache.insert(key, image);
                 image
             };
-            let vertices: Vec<_> = mesh
-                .vertices
-                .iter()
-                .map(|v| Vertex {
+            let base_vertex = vertices.len() as i32;
+            let first_index = indices.len() as u32;
+            indices.extend_from_slice(&mesh.indices);
+            vertices.extend(mesh.vertices.iter().map(|v| Vertex {
                     position: v.position,
                     uv: v.uv,
                     color: std::array::from_fn(|i| f32::from(v.color[i]) / 255.0),
@@ -311,24 +315,25 @@ impl Renderer {
                         melee_lib::presentation::Billboard::ViewPlane => 1,
                         melee_lib::presentation::Billboard::ViewPoint => 2,
                     },
-                })
-                .collect();
+                }));
             draws.push(Draw {
-                vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Mesh vertices"),
-                    contents: bytemuck::cast_slice(&vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                }),
-                indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("Mesh indices"),
-                    contents: bytemuck::cast_slice(&mesh.indices),
-                    usage: wgpu::BufferUsages::INDEX,
-                }),
-                count: mesh.indices.len() as u32,
+                indices: first_index..first_index + mesh.indices.len() as u32,
+                base_vertex,
                 image,
                 pipeline: pipeline_ids[&pipeline_key(mesh)],
             });
         }
+        // Every mesh shares one vertex and one index buffer, bound once a frame.
+        let vertices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Scene vertices"),
+            contents: bytemuck::cast_slice(&vertices),
+            usage: wgpu::BufferUsages::VERTEX,
+        });
+        let indices = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+            label: Some("Scene indices"),
+            contents: bytemuck::cast_slice(&indices),
+            usage: wgpu::BufferUsages::INDEX,
+        });
         let sprites =
             crate::sprites::Sprites::new(&device, &queue, format, samples, &camera, scene)?;
         let depth = attachment(&device, size, DEPTH_FORMAT, samples);
@@ -349,6 +354,8 @@ impl Renderer {
             scene: scene_group,
             images,
             draws,
+            vertices,
+            indices,
             depth,
             multisampled,
             samples,
@@ -477,18 +484,27 @@ impl Renderer {
             });
             pass.set_stencil_reference(1);
             pass.set_bind_group(0, &self.scene, &[0]);
+            pass.set_vertex_buffer(0, self.vertices.slice(..));
+            pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
+            // Skip state that is already set: each call costs on the web.
+            let mut pipeline = usize::MAX;
+            let mut image = usize::MAX;
             for &i in &self.order {
                 let draw = &self.draws[i];
                 if !scene.visibility()[i] {
                     continue;
                 }
-                pass.set_pipeline(&self.pipelines[draw.pipeline]);
-                pass.set_bind_group(1, self.images[draw.image].1.bind(0), &[0]);
-                pass.set_vertex_buffer(0, draw.vertices.slice(..));
-                pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
+                if pipeline != draw.pipeline {
+                    pipeline = draw.pipeline;
+                    pass.set_pipeline(&self.pipelines[pipeline]);
+                }
+                if image != draw.image {
+                    image = draw.image;
+                    pass.set_bind_group(1, self.images[image].1.bind(0), &[0]);
+                }
                 pass.draw_indexed(
-                    0..draw.count,
-                    0,
+                    draw.indices.clone(),
+                    draw.base_vertex,
                     scene.instance_range(scene.meshes()[i].instance_group),
                 );
             }
@@ -503,14 +519,20 @@ impl Renderer {
                     continue;
                 }
                 let draw = &self.draws[i];
-                pass.set_vertex_buffer(0, draw.vertices.slice(..));
-                pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..draw.count, 0, owner as u32..owner as u32 + 1);
+                pass.draw_indexed(
+                    draw.indices.clone(),
+                    draw.base_vertex,
+                    owner as u32..owner as u32 + 1,
+                );
             }
+            let mut pipeline = usize::MAX;
             for effect in scene.effect_draws() {
                 let draw = &self.draws[effect.mesh];
                 let material = &self.images[draw.image].1;
-                pass.set_pipeline(&self.pipelines[draw.pipeline]);
+                if pipeline != draw.pipeline {
+                    pipeline = draw.pipeline;
+                    pass.set_pipeline(&self.pipelines[pipeline]);
+                }
                 pass.set_bind_group(
                     0,
                     &self.scene,
@@ -521,9 +543,7 @@ impl Renderer {
                     material.bind(effect.slot),
                     &[material.offset(effect.slot)],
                 );
-                pass.set_vertex_buffer(0, draw.vertices.slice(..));
-                pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
-                pass.draw_indexed(0..draw.count, 0, 0..1);
+                pass.draw_indexed(draw.indices.clone(), draw.base_vertex, 0..1);
             }
             self.sprites.draw(&mut pass);
         }
