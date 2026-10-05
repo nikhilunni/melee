@@ -2,6 +2,7 @@
 //! [`crate::app::App`] plus the native surface. Only plain C types cross.
 use crate::{
     app::{App, Hud, Outcome, Screen},
+    art::{ArtKind, Image, Piece},
     catalog,
     disc::DiscFiles,
     panic_text,
@@ -11,17 +12,29 @@ use crate::{
 use std::{
     ffi::{c_char, CStr, CString},
     panic::{catch_unwind, AssertUnwindSafe},
-    sync::OnceLock,
+    sync::{Arc, OnceLock},
     time::{Duration, Instant},
 };
 
-pub const API_VERSION: u32 = 1;
+/// 2: menu art (`melee_app_art` and friends).
+pub const API_VERSION: u32 = 2;
 
 pub struct Handle {
     app: App,
     surface: Option<WindowRenderer>,
     last_frame: Option<Instant>,
     error: String,
+    /// The image `melee_app_art` last returned; its pixels stay valid
+    /// until the next call.
+    image: Option<Arc<Image>>,
+}
+
+#[repr(C)]
+pub struct ImageOut {
+    width: u32,
+    height: u32,
+    rgba: *const u8,
+    len: usize,
 }
 
 #[repr(C)]
@@ -237,6 +250,7 @@ pub extern "C" fn melee_app_new() -> *mut Handle {
         surface: None,
         last_frame: None,
         error: String::new(),
+        image: None,
     }))
 }
 /// # Safety
@@ -286,7 +300,70 @@ pub unsafe extern "C" fn melee_app_open_disc(app: *mut Handle, path: *const c_ch
     h.perform(|h| {
         let path = unsafe { string(path) }?;
         let disc = DiscFiles::open_path(std::path::Path::new(&path))?;
-        h.app.open_disc(disc)
+        h.app.open_disc(disc)?;
+        // Menu art is optional: a read failure leaves placeholders, and
+        // melee_app_load_art retries and reports it.
+        let _ = h.app.load_art();
+        Ok(())
+    })
+}
+
+/// # Safety
+/// `app` is null or live.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_load_art(app: *mut Handle) -> bool {
+    let h = handle!(app);
+    h.perform(|h| h.app.load_art())
+}
+/// # Safety
+/// `app` is null or live.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_art_ready(app: *const Handle) -> bool {
+    unsafe { app.as_ref() }.is_some_and(|h| h.app.art_ready())
+}
+/// # Safety
+/// `app` is null or live; `out` is null or writable.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_art_progress(app: *const Handle, out: *mut LoadProgress) {
+    let (Some(h), Some(out)) = (unsafe { app.as_ref() }, unsafe { out.as_mut() }) else {
+        return;
+    };
+    let p = h.app.art_progress();
+    *out = LoadProgress {
+        files_done: p.files_done,
+        files_total: p.files_total,
+        bytes_done: p.bytes_done,
+        bytes_total: p.bytes_total,
+    };
+}
+/// # Safety
+/// `app` is null or live; `out` is null or writable. The pixels `out`
+/// points at stay valid until the next `melee_app_art` call or
+/// `melee_app_free`.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_art(
+    app: *mut Handle,
+    kind: u32,
+    id: u32,
+    costume: u8,
+    out: *mut ImageOut,
+) -> bool {
+    let h = handle!(app);
+    let Some(out) = (unsafe { out.as_mut() }) else {
+        h.error = "missing image output".into();
+        return false;
+    };
+    h.perform(|h| {
+        let kind = ArtKind::from_u32(kind).ok_or("no art kind with that number")?;
+        let image = h.app.art_image(Piece::new(kind, id, costume)?)?;
+        *out = ImageOut {
+            width: image.width,
+            height: image.height,
+            rgba: image.rgba.as_ptr(),
+            len: image.rgba.len(),
+        };
+        h.image = Some(image);
+        Ok(())
     })
 }
 /// # Safety

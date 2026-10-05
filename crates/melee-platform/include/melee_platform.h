@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 /* Bumped on any incompatible change; hosts check it at startup. */
-#define MELEE_API_VERSION 1
+#define MELEE_API_VERSION 2
 uint32_t melee_api_version(void);
 
 typedef struct melee_app_s melee_app_t;
@@ -83,11 +83,54 @@ typedef struct {
     uint64_t cached_bytes;
 } melee_disc_info_s;
 /* Open and validate an image (Melee NTSC-U 1.02 .iso/.gcm). On success the
- * screen becomes MELEE_SCREEN_CHARACTERS. */
+ * screen becomes MELEE_SCREEN_CHARACTERS and the menu art is read (about
+ * 5 MB; a read failure only leaves the art missing). */
 bool melee_app_open_disc(melee_app_t *app, const char *path);
 bool melee_app_disc_info(const melee_app_t *app, melee_disc_info_s *out);
 /* From the disc screen, continue with the open disc. */
 bool melee_app_resume_disc(melee_app_t *app);
+
+/* Files read so far out of a set: the menu art, or a match's files. */
+typedef struct {
+    uint32_t files_done;
+    uint32_t files_total;
+    uint64_t bytes_done;
+    uint64_t bytes_total;
+} melee_load_progress_s;
+
+/* ---- Menu art, decoded from the open disc ----
+ * Images are RGBA8, rows top to bottom, straight (unassociated) alpha, at
+ * the texture's native size (never resampled; scale with nearest-neighbour
+ * for pixel fidelity). Intensity images (emblems, stage names) carry the
+ * intensity in every channel: use their alpha as a mask and tint it. */
+typedef enum {
+    MELEE_ART_PORTRAIT = 0,         /* character, costume: 136x188 select portrait */
+    MELEE_ART_FACE = 1,             /* character: 64x56 select grid face with name */
+    MELEE_ART_STOCK = 2,            /* character, costume: 24x24 stock icon */
+    MELEE_ART_CHARACTER_EMBLEM = 3, /* character: 80x64 series emblem (intensity) */
+    MELEE_ART_STAGE_ICON = 4,       /* stage: 64x56 icon (48x48 for Past Stages) */
+    MELEE_ART_STAGE_NAME = 5,       /* stage: 224x56 name plate (intensity) */
+    MELEE_ART_STAGE_EMBLEM = 6,     /* stage: 64x64 faint series watermark (intensity) */
+} melee_art_e;
+typedef struct {
+    uint32_t width;
+    uint32_t height;
+    const uint8_t *rgba;    /* width * height * 4 bytes, owned by the core */
+    size_t len;
+} melee_image_s;
+/* Whether every menu archive has been read. */
+bool melee_app_art_ready(const melee_app_t *app);
+void melee_app_art_progress(const melee_app_t *app, melee_load_progress_s *out);
+/* Read the menu archives again after a failure. */
+bool melee_app_load_art(melee_app_t *app);
+/* One image. id is a character id for character kinds and a stage id for
+ * stage kinds; costume is ignored where it does not apply. out->rgba stays
+ * valid until the next melee_app_art call or melee_app_free; copy it to
+ * keep it. Fails (see melee_app_last_error) before the art is read, for an
+ * unknown id or costume, and where retail has no such image (Sheik has no
+ * portrait or face: she is picked through Zelda's). */
+bool melee_app_art(melee_app_t *app, melee_art_e kind, uint32_t id, uint8_t costume,
+                   melee_image_s *out);
 
 /* ---- Character select ---- */
 typedef struct {
@@ -110,12 +153,6 @@ bool melee_app_confirm_characters(melee_app_t *app);
 void melee_app_back(melee_app_t *app);
 
 /* ---- Stage select and loading ---- */
-typedef struct {
-    uint32_t files_done;
-    uint32_t files_total;
-    uint64_t bytes_done;
-    uint64_t bytes_total;
-} melee_load_progress_s;
 /* seed: any random number from the host; it is recorded in the replay. */
 bool melee_app_choose_stage(melee_app_t *app, uint32_t stage, uint32_t seed);
 void melee_app_load_progress(const melee_app_t *app, melee_load_progress_s *out);
