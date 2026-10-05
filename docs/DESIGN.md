@@ -18,7 +18,7 @@ placeholders, test fixtures or screenshots (user, 2026-10-04). Disc art is
 decoded at runtime by libmelee `art` after the user presents their ISO. Until
 it is ready (and if an image is missing) hosts show our own art: what is in
 the repo is original work (CSS/SwiftUI shapes, our own vector emblem and
-silhouettes) or openly licensed (the OFL fonts below, with their licences).
+silhouettes) or openly licensed (the OFL fonts in `assets/fonts/`, with their licences).
 
 ## Principles
 
@@ -59,12 +59,13 @@ Port colours glow: the same hue at 45% opacity, 24–40 px blur.
 
 ### Type
 
-- **Display:** *Saira Condensed* Black Italic (OFL), all caps, tracking
-  +2%. Screen titles 44, player names 34, stage names 30, buttons 20.
-  Bundle the font in both hosts (`assets/fonts/`, with its licence) so they
-  match; fall back to SF Pro Expanded Heavy Italic / system italic.
-- **UI:** *Inter* (OFL) Medium/Semibold, 13–15; numbers with tabular
-  figures. Fall back to the system UI font.
+- **Display:** *Barlow Condensed* Black Italic (ExtraBold Italic for
+  smaller sizes), all caps, tracking +2%. Screen titles 44, player names 34,
+  stage names 30, buttons 20.
+- **UI:** *Barlow* Medium/SemiBold/Bold, 13–15; tabular figures for numbers.
+- Both are OFL and live in `assets/fonts/` with `OFL.txt`; every host bundles
+  that folder (the macOS app's Resources, the web build's `fonts/`). Fall
+  back to the system italic/UI fonts.
 - Percentages in the HUD: display face, 44, with a 2 px dark outline and a
   soft drop shadow, the way Melee's damage digits read over any stage.
 
