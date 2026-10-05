@@ -20,6 +20,23 @@ it is ready (and if an image is missing) hosts show our own art: what is in
 the repo is original work (CSS/SwiftUI shapes, our own vector emblem and
 silhouettes) or openly licensed (the OFL fonts in `assets/fonts/`, with their licences).
 
+## What the disc provides (libmelee `art`, docs/APP.md)
+
+| Art | Size | Notes |
+|---|---|---|
+| Portrait (character, costume) | 136x188 | clean cut-out with alpha; the hero of the character select; scale smoothly to ~2.5x |
+| Face (character) | 64x56 | grid face with the name plate baked in |
+| Stock icon (character, costume) | 24x24 | HUD, costume chips; scale by integers, pixelated |
+| Character emblem | 80x64 | series emblem, intensity mask: tint |
+| Stage icon | 64x56 (48x48) | small; tiles and placeholders |
+| Stage name plate | 224x56 | intensity mask: tint |
+| Stage emblem | 64x64 | faint watermark; boost alpha when scaled |
+| Stage preview | rendered at runtime | see Stage select |
+
+Sheik has no portrait or face on the disc (retail picks her through
+Zelda's cell): her tile and panel use her stock icon scaled up inside our
+own silhouette art.
+
 ## Principles
 
 1. **The game's art is the hero.** Portraits, stage previews and emblems
@@ -143,9 +160,17 @@ Layout (landscape, scales down to 1024×640):
 
 ### Stage select
 
-- **Hero preview** (top 55%): the hovered/focused stage's preview art large
-  in a slanted glass frame with a port-neutral glow, the stage name in display
-  type overlapping the frame's lower edge, the series emblem faint behind it.
+Retail's stage select shows small 3D models, not 2D previews, so libmelee
+renders our own previews at runtime from the disc (`MELEE_ART_STAGE_PREVIEW`,
+a wide frame of the stage through its retail camera, no fighters). Until a
+preview is ready the hero shows the stage icon blurred and scaled behind the
+name plate.
+
+- **Hero preview** (top 55%): the hovered/focused stage's rendered preview
+  large in a slanted glass frame with a soft glow, the disc's stage name
+  plate (`MELEE_ART_STAGE_NAME`, an intensity mask: tint it white with a
+  dark shadow) overlapping the frame's lower edge, the series emblem
+  (`MELEE_ART_STAGE_EMBLEM`, scaled up, alpha boosted) faint behind it.
   Cross-fade between stages (150 ms).
 - **Stage row** (bottom): the six stages as slanted tiles with their
   icon/preview art, name underneath in UI caps; hover/focus lifts and glows.
