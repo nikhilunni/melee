@@ -14,7 +14,7 @@ struct StageSelectView: View {
             VStack(spacing: 0) {
                 topBar(m).padding(.top, titleBarInset).staggerIn(0)
                 StageHero(model: model, index: model.stageCursor, m: m)
-                    .frame(height: geo.size.height * 0.53)
+                    .frame(height: min(geo.size.height * 0.6, geo.size.height - m(300)))
                     .padding(.top, m(12))
                     .padding(.bottom, m(20))
                     .staggerIn(1)
@@ -107,6 +107,12 @@ struct StageHero: View {
         let stage = index < model.stages.count ? model.stages[index] : nil
         let shape = Slanted(radius: m(16), maxShift: m(60))
         GeometryReader { geo in
+            // A 16:9 window onto the 1920x1080 preview, widened by the slant
+            // so the image covers the parallelogram.
+            let frameHeight = geo.size.height - m(34)
+            let frameWidth = min(geo.size.width * 0.9,
+                                 frameHeight * 16 / 9 + shape.shift(height: frameHeight))
+            let frameX = (geo.size.width - frameWidth) / 2
             ZStack {
                 ZStack {
                     picture(stage, size: geo.size)
@@ -119,20 +125,20 @@ struct StageHero: View {
                     // the preview is pending.
                     if let stage, let emblem = model.core.stageEmblem(stage.id) {
                         let pending = model.core.stagePreview(stage.id) == nil
-                        let side = geo.size.height * (pending ? 0.8 : 0.62)
+                        let side = frameHeight * (pending ? 0.8 : 0.62)
                         ArtImage(image: emblem, tint: .white)
                             .opacity(pending ? 0.3 : 0.22)
                             .blendMode(.plusLighter)
                             .frame(width: side, height: side)
                             .frame(maxWidth: .infinity, maxHeight: .infinity,
                                    alignment: pending ? .trailing : .bottomTrailing)
-                            .padding(.trailing, pending ? geo.size.width * 0.12 : m(40))
-                            .padding(.bottom, pending ? m(30) : -geo.size.height * 0.06)
+                            .padding(.trailing, pending ? frameWidth * 0.12 : m(40))
+                            .padding(.bottom, pending ? m(30) : -frameHeight * 0.06)
                             .id("emblem-\(index)")
                             .transition(.opacity)
                     }
                 }
-                .frame(width: geo.size.width * 0.84, height: geo.size.height - m(34))
+                .frame(width: frameWidth, height: frameHeight)
                 .clipShape(shape)
                 .overlay { shape.strokeBorder(.white.opacity(0.22), lineWidth: 1) }
                 .overlay {
@@ -145,7 +151,7 @@ struct StageHero: View {
                 namePlate(stage)
                     .frame(maxHeight: .infinity, alignment: .bottom)
                     .offset(y: -m(22))
-                    .padding(.leading, geo.size.width * 0.08 + m(10))
+                    .padding(.leading, frameX + m(10))
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .id("plate-\(index)")
                     .transition(.opacity)

@@ -107,13 +107,15 @@ final class AppModel: ObservableObject {
     private func pollPreviews() {
         previewTimer?.invalidate()
         previewTimer = nil
-        guard !stages.allSatisfy({ core.stagePreview($0.id) != nil }) else { return }
+        guard !core.stagePreviewsReady else { return }
         var seen = 0
-        previewTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] timer in
+        previewTimer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { [weak self] timer in
             guard let self else { return timer.invalidate() }
+            // Each preview shows as soon as it is drawn.
             let ready = self.stages.filter { self.core.stagePreview($0.id) != nil }.count
             if ready != seen { seen = ready; self.artGeneration &+= 1 }
-            if ready == self.stages.count || self.screen != .stages {
+            if self.core.stagePreviewsReady || self.screen != .stages {
+                if ready != self.stages.count { self.artGeneration &+= 1 }
                 timer.invalidate()
                 self.previewTimer = nil
             }
