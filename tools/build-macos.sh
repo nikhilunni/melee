@@ -8,6 +8,10 @@ cargo build --release -p melee-platform
 bundle="$PWD/target/macos/Melee.app"
 mkdir -p "$bundle/Contents/MacOS" "$bundle/Contents/Resources"
 cp apps/macos/Info.plist "$bundle/Contents/Info.plist"
+# The menu fonts (SIL OFL 1.1) and their licence; registered at launch.
+rm -rf "$bundle/Contents/Resources/Fonts"
+mkdir -p "$bundle/Contents/Resources/Fonts"
+cp assets/fonts/*.ttf assets/fonts/OFL.txt "$bundle/Contents/Resources/Fonts/"
 mkdir -p target/swift-module-cache target/clang-module-cache
 xcrun swiftc -O -module-name Melee \
     -module-cache-path target/swift-module-cache -Xcc -fmodules-cache-path=target/clang-module-cache \
