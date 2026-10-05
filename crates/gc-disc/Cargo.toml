@@ -1,0 +1,11 @@
+[package]
+name = "gc-disc"
+description = "GameCube disc image header and file table parsing, sans IO"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+
+[dev-dependencies]
+melee-test-support = { path = "../melee-test-support" }

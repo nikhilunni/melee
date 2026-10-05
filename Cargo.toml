@@ -7,6 +7,7 @@ members = [
     "crates/gekko-math",
     "crates/hsd-types",
     "crates/melee-types",
+    "crates/gc-disc", # Disc image header and FST, sans IO.
     # Layer 1: HSD engine.
     "crates/hsd-archive",
     "crates/hsd-gobj",

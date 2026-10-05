@@ -896,6 +896,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "gc-disc"
+version = "0.0.1"
+dependencies = [
+ "melee-test-support",
+]
+
+[[package]]
 name = "gekko-math"
 version = "0.0.1"
 dependencies = [
