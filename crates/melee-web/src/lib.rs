@@ -5,11 +5,12 @@
 //! `Blob.slice()`; this crate holds no rules of its own.
 #![cfg(target_arch = "wasm32")]
 
-use js_sys::{Array, Object, Reflect, Uint8Array};
+use js_sys::{Array, Object, Reflect, Uint8Array, Uint8ClampedArray};
 use melee_platform::{
-    app::{App, Hud, Outcome, Screen},
+    app::{App, Hud, LoadProgress, Outcome, Screen},
+    art::{ArtKind, Piece},
     catalog,
-    disc::DiscFiles,
+    disc::{DiscFiles, FileRequest},
     session::{panic_replay, Action},
     surface::WindowRenderer,
 };
@@ -42,6 +43,26 @@ fn object(fields: &[(&str, JsValue)]) -> JsValue {
         Reflect::set(&object, &(*key).into(), value).expect("plain object");
     }
     object.into()
+}
+fn progress_object(p: LoadProgress) -> JsValue {
+    object(&[
+        ("filesDone", p.files_done.into()),
+        ("filesTotal", p.files_total.into()),
+        ("bytesDone", (p.bytes_done as f64).into()),
+        ("bytesTotal", (p.bytes_total as f64).into()),
+    ])
+}
+fn file_requests(requests: &[FileRequest]) -> Array {
+    requests
+        .iter()
+        .map(|r| {
+            object(&[
+                ("name", r.name.into()),
+                ("start", (r.range.start as f64).into()),
+                ("end", (r.range.end as f64).into()),
+            ])
+        })
+        .collect()
 }
 fn error(message: impl AsRef<str>) -> JsError {
     JsError::new(message.as_ref())
@@ -184,6 +205,38 @@ impl WebApp {
         self.app.resume_disc().map_err(error)
     }
 
+    // --- Menu art
+    /// `[{name, start, end}]`: the menu archives still to read; hand each
+    /// to `provide_file` (any screen) after `open_disc`.
+    pub fn art_files(&self) -> Array {
+        file_requests(&self.app.art_requests())
+    }
+    pub fn art_ready(&self) -> bool {
+        self.app.art_ready()
+    }
+    /// `{filesDone, filesTotal, bytesDone, bytesTotal}` of the menu archives.
+    pub fn art_progress(&self) -> JsValue {
+        progress_object(self.app.art_progress())
+    }
+    /// `{width, height, data}` with `data` a `Uint8ClampedArray` of RGBA8
+    /// (straight alpha, native size: `new ImageData(data, width, height)`).
+    /// `kind` is `melee_art_e`'s number (0 portrait, 1 face, 2 stock,
+    /// 3 character emblem, 4 stage icon, 5 stage name, 6 stage emblem); `id`
+    /// a character or stage id. Throws until the art is read and where
+    /// retail has no such image.
+    pub fn art(&mut self, kind: u32, id: u32, costume: u8) -> Result<JsValue, JsError> {
+        let kind = ArtKind::from_u32(kind).ok_or(error("no art kind with that number"))?;
+        let piece = Piece::new(kind, id, costume).map_err(error)?;
+        let image = self.app.art_image(piece).map_err(error)?;
+        let data = Uint8ClampedArray::new_with_length(image.rgba.len() as u32);
+        data.copy_from(&image.rgba);
+        Ok(object(&[
+            ("width", image.width.into()),
+            ("height", image.height.into()),
+            ("data", data.into()),
+        ]))
+    }
+
     // --- Character select
     /// `{players: [{character (id or -1), costume}], stocks, ready}`.
     pub fn selection(&self) -> JsValue {
@@ -245,27 +298,11 @@ impl WebApp {
     }
     /// `{filesDone, filesTotal, bytesDone, bytesTotal}`.
     pub fn load_progress(&self) -> JsValue {
-        let p = self.app.load_progress();
-        object(&[
-            ("filesDone", p.files_done.into()),
-            ("filesTotal", p.files_total.into()),
-            ("bytesDone", (p.bytes_done as f64).into()),
-            ("bytesTotal", (p.bytes_total as f64).into()),
-        ])
+        progress_object(self.app.load_progress())
     }
     /// `[{name, start, end}]`: the disc byte ranges still to read.
     pub fn pending_files(&self) -> Array {
-        self.app
-            .pending_requests()
-            .iter()
-            .map(|r| {
-                object(&[
-                    ("name", r.name.into()),
-                    ("start", (r.range.start as f64).into()),
-                    ("end", (r.range.end as f64).into()),
-                ])
-            })
-            .collect()
+        file_requests(&self.app.pending_requests())
     }
     pub fn provide_file(&mut self, name: &str, bytes: Vec<u8>) -> Result<(), JsError> {
         self.app.provide_file(name, bytes).map_err(error)

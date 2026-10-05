@@ -53,11 +53,51 @@ async function openDisc(file) {
     const fst = await readRange(file, start, end);
     app.open_disc(header, fst, file.size);
     discFile = file;
+    artCache.clear();
+    loadArt(file);
   } catch (e) {
     message('That disc image cannot be used', e.message ?? String(e));
   }
   render();
 }
+
+// ---- Menu art: the menu archives (about 5 MB), read right after the disc
+// opens; menus show placeholders until app.art_ready().
+
+async function loadArt(file) {
+  try {
+    for (const { name, start, end } of app.art_files()) {
+      const bytes = await readRange(file, start, end);
+      if (file !== discFile) return; // another disc replaced this one
+      app.provide_file(name, bytes);
+    }
+  } catch (e) {
+    console.warn(`Menu art unavailable: ${e.message ?? e}`);
+  }
+  render();
+}
+
+// One piece of menu art as ImageData at its native size, or null while the
+// art loads (and where retail has none). kind: ART below; id: a character
+// or stage id.
+const ART = { portrait: 0, face: 1, stock: 2, characterEmblem: 3, stageIcon: 4, stageName: 5, stageEmblem: 6 };
+const artCache = new Map();
+function artImage(kind, id, costume = 0) {
+  if (!app?.art_ready()) return null;
+  const key = `${kind}:${id}:${costume}`;
+  if (!artCache.has(key)) {
+    try {
+      const { width, height, data } = app.art(kind, id, costume);
+      artCache.set(key, new ImageData(data, width, height));
+    } catch {
+      artCache.set(key, null);
+    }
+  }
+  return artCache.get(key);
+}
+// For the console and page tests: meleeArt(ART.portrait, 0, 0).
+window.meleeArt = artImage;
+window.meleeArtKinds = ART;
 
 // The last disc, where the browser can keep a file handle (Chromium's File
 // System Access API). The handle is stored, not the 1.4 GB file.
