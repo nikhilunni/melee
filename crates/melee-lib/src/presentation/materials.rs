@@ -19,12 +19,7 @@ impl Presentation {
             }
             let mut material = (*mesh.material).clone();
             let model = &mut self.models[part.model];
-            let live = model
-                .source
-                .tree(game)
-                .dobj(part.owner)
-                .and_then(|ds| ds.get(part.display))
-                .and_then(|d| d.mobj.as_ref());
+            let live = live_material(&self.fighter_parts, &model.source, part, game);
             for (index, layer) in material.textures.iter().enumerate() {
                 let mut bank = vec![Arc::clone(&layer.image)];
                 if let Some(live) = live {
@@ -70,6 +65,20 @@ impl Presentation {
                                 .find(|m| m.descriptor == *id)
                                 .unwrap();
                             Some(effects::archive(&self.assets, definition.bank))
+                        }
+                        ModelSource::Fighter(slot) => {
+                            // ftAnim_80070200: costume texture animations.
+                            let texture = &live.textures[index];
+                            images.extend(texture.image_variants().iter().flatten().copied());
+                            palettes.extend(
+                                texture
+                                    .palette_variants()
+                                    .iter()
+                                    .filter(|p| p.is_some())
+                                    .copied(),
+                            );
+                            let costume = game.engine.state().fighters[*slot].0.player.costume;
+                            Some(self.assets.characters[*slot].costume(costume))
                         }
                         ModelSource::Article(article) | ModelSource::StageItem(article) => {
                             for texture in article.texture_states(part.owner, part.display, index) {
@@ -151,21 +160,43 @@ impl Presentation {
                         [0.0; 4]
                     }
                 }
+                ModelSource::Fighter(slot) => {
+                    let joint = model.source.tree(game).get(part.owner).id;
+                    self.fighter_parts[*slot]
+                        .overlay(joint, part.display)
+                        .unwrap_or([0.0; 4])
+                }
                 _ => [0.0; 4],
             };
-            let Some(live) = model
-                .source
-                .tree(game)
-                .dobj(part.owner)
-                .and_then(|ds| ds.get(part.display))
-                .and_then(|d| d.mobj.as_ref())
-            else {
+            let Some(live) = live_material(&self.fighter_parts, &model.source, part, game) else {
                 continue;
             };
             capture_material(material, live, &model.images)?;
         }
         Ok(())
     }
+}
+
+/// The display's current MObj: a fighter's comes from its costume material
+/// state (ftAnim_80070308), which the simulation's skeleton does not carry.
+fn live_material<'a>(
+    fighter_parts: &'a [fighters::FighterParts],
+    source: &'a ModelSource,
+    part: &Part,
+    game: &'a Match,
+) -> Option<&'a hsd_anim::mobj::MObj> {
+    let tree = source.tree(game);
+    if let ModelSource::Fighter(slot) = *source {
+        if let Some(live) = fighter_parts
+            .get(slot)
+            .and_then(|parts| parts.material(tree.get(part.owner).id, part.display))
+        {
+            return Some(live);
+        }
+    }
+    tree.dobj(part.owner)
+        .and_then(|ds| ds.get(part.display))
+        .and_then(|d| d.mobj.as_ref())
 }
 
 pub(super) fn capture_material(

@@ -390,8 +390,23 @@ impl Renderer {
             let transparent = |m: &melee_lib::presentation::Mesh| {
                 m.material.pixel.blend[0] != 0 || !m.material.pixel.depth_write
             };
-            mb.background
-                .cmp(&ma.background)
+            // Background, opaque world, fighter underlays (drawn over the
+            // world without depth writes), opaque fighters, translucent.
+            let rank = |m: &melee_lib::presentation::Mesh| {
+                if m.background {
+                    0
+                } else if transparent(m) && !m.underlay {
+                    4
+                } else if m.underlay {
+                    2
+                } else if m.shadow_owner.is_some() {
+                    3
+                } else {
+                    1
+                }
+            };
+            rank(ma)
+                .cmp(&rank(mb))
                 .then_with(|| transparent(ma).cmp(&transparent(mb)))
                 .then_with(|| {
                     if transparent(ma) {

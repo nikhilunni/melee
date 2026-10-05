@@ -341,11 +341,37 @@ impl CharacterArchive {
     pub(crate) fn costume(&self, costume: u8) -> &Archive {
         &self.costumes[usize::from(costume)]
     }
-    /// The costume's joint description with OnLoad's grafted joint.
-    pub(crate) fn model_desc(&self, costume: u8) -> hsd_archive::desc::JObjDesc {
+    /// The part number OnLoad's grafted joint takes (its pre-order index in
+    /// [`Self::model_desc`]), if the kind grafts one.
+    pub(crate) fn graft_part(&self) -> Option<u8> {
+        self.graft.as_ref().map(|(_, placement)| placement.part)
+    }
+    /// The costume's own joint description, before OnLoad's graft.
+    pub(crate) fn costume_desc(&self, costume: u8) -> hsd_archive::desc::JObjDesc {
         let archive = &self.costumes[usize::from(costume)];
         let symbol = self.descriptor.costumes[usize::from(costume)].joint_symbol;
-        let mut desc = read_public_jobj(archive, symbol).unwrap();
+        read_public_jobj(archive, symbol).unwrap()
+    }
+    /// `costume_list[costume].x4`, the costume's `MatAnimJoint`
+    /// (ftAnim_80070308): the joint symbol's `_matanim_joint` sibling.
+    pub(crate) fn costume_material_animation(
+        &self,
+        costume: u8,
+    ) -> Result<Option<hsd_archive::desc::MatAnimJoint>> {
+        let archive = &self.costumes[usize::from(costume)];
+        let symbol = self.descriptor.costumes[usize::from(costume)].joint_symbol;
+        let Some(stem) = symbol.strip_suffix("_joint") else {
+            return Ok(None);
+        };
+        archive
+            .public(&format!("{stem}_matanim_joint"))
+            .map(|offset| hsd_archive::desc::MatAnimJoint::read(archive, offset))
+            .transpose()
+            .map_err(Into::into)
+    }
+    /// The costume's joint description with OnLoad's grafted joint.
+    pub(crate) fn model_desc(&self, costume: u8) -> hsd_archive::desc::JObjDesc {
+        let mut desc = self.costume_desc(costume);
         if let Some((joint, placement)) = &self.graft {
             melee_ft::desc::graft_conditional_joint(&mut desc, joint, *placement);
         }

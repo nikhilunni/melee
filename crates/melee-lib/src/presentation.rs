@@ -2,6 +2,7 @@
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
 mod effects;
+mod fighters;
 mod items;
 mod lighting;
 pub use effects::EffectDraw;
@@ -68,6 +69,10 @@ pub struct Mesh {
     pub instance_group: usize,
     /// Stage background geometry is composited before the world, without depth writes.
     pub background: bool,
+    /// Drawn after other opaque geometry but before fighters' opaque meshes,
+    /// without depth writes: Mr. Game & Watch's outline
+    /// (ftDrawCommon_80080E18_inline0).
+    pub underlay: bool,
 }
 /// Renderer-independent material values. Meshes retain authored initial values;
 /// `Presentation::materials` supplies the current values without reparsing bytes.
@@ -163,6 +168,8 @@ pub struct Presentation {
     view: ViewCamera,
     fog_desc: Option<melee_gr::desc::FogDesc>,
     fog: Option<Fog>,
+    /// Per fighter slot: model-part groups and draw gates.
+    fighter_parts: Vec<fighters::FighterParts>,
 }
 impl Presentation {
     pub fn new(game: &Match) -> Result<Self, PresentationError> {
@@ -187,6 +194,7 @@ impl Presentation {
             view: ViewCamera::capture(game),
             fog_desc: stage::fog_desc(&game.assets.inner)?,
             fog: None,
+            fighter_parts: Vec::new(),
             instances: vec![[
                 [1.0, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 0.0],
@@ -204,6 +212,17 @@ impl Presentation {
             let desc = character.model_desc(costume);
             let tree = &game.engine.state().fighters[slot].0.skeleton;
             result.add_model(archive, &desc, tree, ModelSource::Fighter(slot))?;
+            let parts = fighters::FighterParts::new(character, costume, &desc, tree)?;
+            let model = result.models.len() - 1;
+            for (mesh, part) in result.meshes.iter_mut().zip(&result.parts) {
+                if part.model == model && parts.is_outline(tree.get(part.owner).id, part.display) {
+                    let mut material = (*mesh.material).clone();
+                    material.pixel.depth_write = false;
+                    mesh.material = Arc::new(material);
+                    mesh.underlay = true;
+                }
+            }
+            result.fighter_parts.push(parts);
         }
         result.add_stage_models(game)?;
         for (kind, archive, _) in assets.items.visual_models() {
@@ -417,6 +436,13 @@ impl Presentation {
                 return Err(error("presentation skeleton shape changed"));
             }
         }
+        for (parts, fighter) in self
+            .fighter_parts
+            .iter_mut()
+            .zip(&game.engine.state().fighters)
+        {
+            parts.capture(&fighter.0);
+        }
         self.capture_materials(game)?;
         for (slot, fighter) in game.engine.state().fighters.iter().enumerate() {
             let f = &fighter.0;
@@ -466,6 +492,9 @@ impl Presentation {
             let mut hidden = match &model.source {
                 ModelSource::Stage { key, .. } => !stage::live(game, *key),
                 ModelSource::Article(held) | ModelSource::StageItem(held) => !held.visible,
+                ModelSource::Fighter(slot) => {
+                    self.fighter_parts[*slot].hides(tree.get(part.owner).id, part.display)
+                }
                 ModelSource::Effect(_) => true,
                 _ => false,
             };
@@ -655,6 +684,7 @@ impl Presentation {
                         ModelSource::Stage { map, .. }
                             if stage::is_background(self.assets.stage_desc.kind, map)
                     ),
+                    underlay: false,
                 });
                 self.parts.push(Part {
                     model,
