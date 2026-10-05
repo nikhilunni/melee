@@ -100,7 +100,7 @@ fn distinct_pieces_show_distinct_images() {
             Piece::Face(_) => 2,
             Piece::StageIcon(_) => 3,
             Piece::StageName(_) => 4,
-            Piece::CharacterEmblem(_) | Piece::StageEmblem(_) => continue,
+            Piece::CharacterEmblem(_) | Piece::StageEmblem(_) | Piece::StagePreview(_) => continue,
         };
         let Ok(image) = app.art_image(piece) else {
             continue;

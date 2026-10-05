@@ -8,6 +8,46 @@ pub fn clear_color(rgb: [u8; 3]) -> wgpu::Color {
         a: 1.0,
     }
 }
+/// Linear light in sixteen bits, for averaging sRGB images exactly enough
+/// and fast (the stage previews' downsampling).
+pub(crate) struct Linear16 {
+    decode: [u16; 256],
+    encode: Vec<u8>,
+}
+impl Linear16 {
+    pub(crate) fn get() -> &'static Self {
+        static TABLES: std::sync::OnceLock<Linear16> = std::sync::OnceLock::new();
+        TABLES.get_or_init(|| {
+            let scale = f64::from(u16::MAX);
+            let encode = (0..=u16::MAX)
+                .map(|value| {
+                    let linear = f64::from(value) / scale;
+                    // The nearest code: the first at or above, or the one below.
+                    let above = LINEAR.partition_point(|&l| l < linear);
+                    if above == LINEAR.len()
+                        || (above > 0 && linear - LINEAR[above - 1] < LINEAR[above] - linear)
+                    {
+                        (above - 1) as u8
+                    } else {
+                        above as u8
+                    }
+                })
+                .collect();
+            Self {
+                decode: std::array::from_fn(|code| (LINEAR[code] * scale + 0.5) as u16),
+                encode,
+            }
+        })
+    }
+    /// An 8-bit sRGB code's linear value, 0..=65535.
+    pub(crate) fn decode(&self, code: u8) -> u32 {
+        u32::from(self.decode[usize::from(code)])
+    }
+    /// The 8-bit sRGB code nearest a linear value, 0..=65535.
+    pub(crate) fn encode(&self, linear: u32) -> u8 {
+        self.encode[linear.min(u32::from(u16::MAX)) as usize]
+    }
+}
 // For c=i/255: c/12.92 when c<=0.04045, otherwise ((c+0.055)/1.055)^2.4.
 const LINEAR: [f64; 256] = [
     0.0000000000,

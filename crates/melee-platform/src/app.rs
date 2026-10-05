@@ -11,6 +11,7 @@
 use crate::{
     art::{Art, ArtFile, Image, Piece},
     disc::{DiscFiles, FileRequest},
+    preview::{self, Previews},
     session::{Action, Session},
 };
 use std::sync::Arc;
@@ -89,6 +90,10 @@ pub struct App {
     disc: Option<DiscFiles>,
     /// Menu art from the open disc's menu archives.
     art: Art,
+    /// The stage previews rendered from the open disc.
+    previews: Previews,
+    /// Whether a host took the preview job for this disc.
+    previews_started: bool,
     slots: [Slot; 2],
     stocks: u8,
     loading: Option<Loading>,
@@ -117,6 +122,8 @@ impl App {
             screen: Screen::Disc,
             disc: None,
             art: Art::new(),
+            previews: Previews::default(),
+            previews_started: false,
             slots: [Slot::default(); 2],
             stocks: DEFAULT_STOCKS,
             loading: None,
@@ -160,6 +167,8 @@ impl App {
         }
         self.disc = Some(disc);
         self.art = Art::new();
+        self.previews = Previews::default();
+        self.previews_started = false;
         self.results = None;
         self.screen = Screen::Characters;
         Ok(())
@@ -170,18 +179,27 @@ impl App {
 
     // --- Menu art -----------------------------------------------------------
 
-    /// The menu archives still to read from the open disc, on any screen.
-    /// Hosts hand them over with [`App::provide_file`]; menus show
-    /// placeholders until [`App::art_ready`].
+    /// The menu archives still to read from the open disc, then the files
+    /// the stage previews need ([`preview::files`], about 16 MB), on any
+    /// screen. Hosts hand them over with [`App::provide_file`]; menus show
+    /// placeholders until [`App::art_ready`] (the menu archives) and
+    /// [`App::stage_previews_ready`].
     pub fn art_requests(&self) -> Vec<FileRequest> {
         let Some(disc) = &self.disc else {
             return Vec::new();
         };
-        self.art
+        let mut requests: Vec<_> = self
+            .art
             .missing()
             .into_iter()
             .filter_map(|file| disc.request(file.name()).ok())
-            .collect()
+            .collect();
+        for name in preview::files() {
+            if !disc.is_cached(name) && !requests.iter().any(|r| r.name == name) {
+                requests.extend(disc.request(name).ok());
+            }
+        }
+        requests
     }
     /// Whether every menu archive is in.
     pub fn art_ready(&self) -> bool {
@@ -224,7 +242,35 @@ impl App {
         if self.disc.is_none() {
             return Err("no disc is open".into());
         }
-        self.art.image(piece)
+        match piece {
+            Piece::StagePreview(stage) => self.previews.image(stage),
+            _ => self.art.image(piece),
+        }
+    }
+
+    // --- Stage previews -----------------------------------------------------
+
+    /// Whether every stage preview is settled (rendered, or failed and left
+    /// to the host's placeholder).
+    pub fn stage_previews_ready(&self) -> bool {
+        self.disc.is_some() && self.previews.ready()
+    }
+    pub fn stage_previews(&self) -> &Previews {
+        &self.previews
+    }
+    /// The previews' work, once per disc, when their files are in. The host
+    /// binding runs it on its window's GPU ([`preview::spawn`] natively,
+    /// [`preview::run`] on the web).
+    pub fn stage_preview_job(&mut self) -> Option<preview::Job> {
+        if self.previews_started {
+            return None;
+        }
+        let files = self.disc.as_ref()?.copy_cached(&preview::files())?;
+        self.previews_started = true;
+        Some(preview::Job {
+            files,
+            previews: self.previews.clone(),
+        })
     }
     /// The art store itself, for its per-piece helpers.
     pub fn art(&mut self) -> &mut Art {
@@ -404,13 +450,20 @@ impl App {
             .loading
             .as_ref()
             .is_some_and(|l| l.pending.iter().any(|r| r.name == name));
+        let preview_wants = preview::files().contains(&name)
+            && self.disc.as_ref().is_some_and(|d| !d.is_cached(name));
         if let Some(file) = art_file {
             // A match also reads IfAll.usd: one read serves both, and art
             // that fails to parse never fails the match's load.
             let art = self.provide_art(file, &bytes);
-            if !loading_wants {
+            if !loading_wants && !preview_wants {
                 return art;
             }
+        }
+        if preview_wants && !loading_wants {
+            // Kept like a match's files: a match on that stage reuses them.
+            let disc = self.disc.as_mut().ok_or("no disc is open")?;
+            return disc.insert(name, bytes);
         }
         self.expect(Screen::Loading, "provide files")?;
         let (Some(loading), Some(disc)) = (self.loading.as_mut(), self.disc.as_mut()) else {
@@ -882,6 +935,50 @@ mod tests {
         // A concurrent art read handing it over again is harmless.
         app.provide_file("IfAll.usd", empty_archive()).unwrap();
         assert_eq!(app.load_progress().files_done as usize, pending.len());
+    }
+
+    #[test]
+    fn stage_preview_files_follow_the_menu_archives_and_start_one_job() {
+        let mut builder = ImageBuilder::melee();
+        let mut names: Vec<&str> = ArtFile::ALL.iter().map(|f| f.name()).collect();
+        names.extend(preview::files());
+        names.sort_unstable();
+        names.dedup();
+        for &name in &names {
+            builder = builder.file(name, empty_archive());
+        }
+        let image = builder.build();
+        let header = gc_disc::DiscHeader::parse(&image).unwrap();
+        let fst = header.fst_range().unwrap();
+        let disc = DiscFiles::from_parts(
+            &image[..gc_disc::HEADER_LEN as usize],
+            &image[fst.start as usize..fst.end as usize],
+            image.len() as u64,
+        )
+        .unwrap();
+        let mut app = App::new();
+        app.open_disc(disc).unwrap();
+        let requests = app.art_requests();
+        let requested: Vec<_> = requests.iter().map(|r| r.name).collect();
+        assert_eq!(requested[..3], ["MnSlChr.usd", "MnSlMap.usd", "IfAll.usd"]);
+        assert_eq!(requested.len(), names.len(), "each file once");
+        assert!(preview::files().iter().all(|f| requested.contains(f)));
+        assert!(app.stage_preview_job().is_none(), "nothing read yet");
+        let piece = Piece::StagePreview(Stage::Battlefield);
+        for request in requests {
+            app.provide_file(request.name, empty_archive()).unwrap();
+            assert!(app.art_image(piece).is_err());
+        }
+        assert!(app.art_ready());
+        assert!(app.art_requests().is_empty());
+        assert!(!app.stage_previews_ready());
+        let job = app.stage_preview_job().expect("every preview file is in");
+        assert_eq!(job.files.len(), preview::files().len());
+        assert!(app.stage_preview_job().is_none(), "handed out once per disc");
+        // A new disc starts over.
+        app.back();
+        app.open_disc(disc_for(&[])).unwrap();
+        assert!(app.stage_preview_job().is_none());
     }
 
     #[test]

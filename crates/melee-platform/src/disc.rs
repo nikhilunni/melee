@@ -129,6 +129,13 @@ impl DiscFiles {
         Ok(bytes)
     }
 
+    /// Copies of fetched files, or `None` while any is missing.
+    pub fn copy_cached(&self, names: &[&str]) -> Option<BTreeMap<String, Vec<u8>>> {
+        names
+            .iter()
+            .map(|&name| Some((name.to_owned(), self.cache.get(name)?.clone())))
+            .collect()
+    }
     pub fn is_cached(&self, name: &str) -> bool {
         self.cache.contains_key(name)
     }

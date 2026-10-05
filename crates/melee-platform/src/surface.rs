@@ -182,6 +182,14 @@ impl WindowRenderer {
     pub fn queue(&self) -> &wgpu::Queue {
         &self.queue
     }
+    /// The window's device for the stage previews: the same device, never
+    /// a second one.
+    pub fn preview_gpu(&self) -> crate::preview::Gpu {
+        crate::preview::Gpu {
+            device: self.device.clone(),
+            queue: self.queue.clone(),
+        }
+    }
     fn clear(&self, view: &wgpu::TextureView) {
         let mut encoder = self.device.create_command_encoder(&Default::default());
         encoder.begin_render_pass(&wgpu::RenderPassDescriptor {

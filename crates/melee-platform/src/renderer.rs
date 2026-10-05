@@ -46,6 +46,8 @@ pub struct Renderer {
     samples: u32,
     format: wgpu::TextureFormat,
     size: [u32; 2],
+    /// Built for the stage's meshes alone ([`Renderer::stage_only`]).
+    stage_only: bool,
 }
 impl Renderer {
     pub async fn new(
@@ -72,6 +74,31 @@ impl Renderer {
         scene: &Presentation,
         size: [u32; 2],
     ) -> Result<Self, String> {
+        Self::build(device, queue, samples, format, scene, size, false)
+    }
+    /// A renderer of the stage alone (the stage previews): fighters, items
+    /// and effects are neither uploaded nor drawn, and neither are shadows
+    /// or sprites. The scene itself is read as it is.
+    pub fn stage_only(
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        samples: u32,
+        format: wgpu::TextureFormat,
+        scene: &Presentation,
+        size: [u32; 2],
+    ) -> Result<Self, String> {
+        Self::build(device, queue, samples, format, scene, size, true)
+    }
+    fn build(
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        samples: u32,
+        format: wgpu::TextureFormat,
+        scene: &Presentation,
+        size: [u32; 2],
+        stage_only: bool,
+    ) -> Result<Self, String> {
+        let included = |mesh: usize| !stage_only || scene.is_stage_mesh(mesh);
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Melee basic materials"),
             source: wgpu::ShaderSource::Wgsl(material::shader().into()),
@@ -139,7 +166,7 @@ impl Renderer {
         });
         let mut pipelines = Vec::new();
         let mut pipeline_ids = BTreeMap::new();
-        for mesh in scene.meshes() {
+        for (_, mesh) in scene.meshes().iter().enumerate().filter(|(i, _)| included(*i)) {
             let key = pipeline_key(mesh);
             if pipeline_ids.contains_key(&key) {
                 continue;
@@ -279,6 +306,16 @@ impl Renderer {
         let mut vertices = Vec::new();
         let mut indices = Vec::new();
         for (mesh_index, mesh) in scene.meshes().iter().enumerate() {
+            if !included(mesh_index) {
+                // Never drawn: no material, no geometry.
+                draws.push(Draw {
+                    indices: 0..0,
+                    base_vertex: 0,
+                    image: usize::MAX,
+                    pipeline: usize::MAX,
+                });
+                continue;
+            }
             let key = Arc::as_ptr(&mesh.material) as usize;
             let image = if let Some(&image) = cache.get(&key) {
                 image
@@ -361,6 +398,7 @@ impl Renderer {
             samples,
             format,
             size,
+            stage_only,
         })
     }
     pub fn resize(&mut self, size: [u32; 2]) {
@@ -372,6 +410,16 @@ impl Renderer {
         }
     }
     pub fn draw(&mut self, view: &wgpu::TextureView, scene: &Presentation) {
+        self.draw_with(view, scene, &DrawOptions::default());
+    }
+    /// Draw with a framing or filter of the host's choosing (the stage
+    /// previews). Options only select what is drawn; the scene is read-only.
+    pub fn draw_with(
+        &mut self,
+        view: &wgpu::TextureView,
+        scene: &Presentation,
+        options: &DrawOptions,
+    ) {
         for (mesh, material) in &mut self.images {
             if scene.is_effect_mesh(*mesh) {
                 continue;
@@ -396,7 +444,12 @@ impl Renderer {
                 bytemuck::cast_slice(poses),
             );
         }
-        for effect in scene.effect_draws() {
+        let effects = if self.stage_only {
+            &[][..]
+        } else {
+            scene.effect_draws()
+        };
+        for effect in effects {
             let material = &mut self.images[self.draws[effect.mesh].image].1;
             material.update_slot(
                 &self.device,
@@ -405,7 +458,10 @@ impl Renderer {
                 effect.slot,
             );
         }
-        let camera = crate::camera::retail(scene.view_camera(), self.size);
+        let camera = crate::camera::retail(
+            options.camera.as_ref().unwrap_or(scene.view_camera()),
+            self.size,
+        );
         // Draw opaque depth writers first, then translucent meshes back-to-front.
         // Index tie-breaking preserves authored order without a sorting allocation.
         self.order.sort_unstable_by(|&a, &b| {
@@ -491,7 +547,7 @@ impl Renderer {
             let mut image = usize::MAX;
             for &i in &self.order {
                 let draw = &self.draws[i];
-                if !scene.visibility()[i] {
+                if !scene.visibility()[i] || draw.image == usize::MAX {
                     continue;
                 }
                 if pipeline != draw.pipeline {
@@ -508,47 +564,60 @@ impl Renderer {
                     scene.instance_range(scene.meshes()[i].instance_group),
                 );
             }
-            // Stencil marks visible stage pixels; incrementing on the first hit
-            // prevents overlapping caster triangles from darkening them twice.
-            pass.set_pipeline(&self.shadows);
-            for (i, mesh) in scene.meshes().iter().enumerate() {
-                let Some(owner) = mesh.shadow_owner else {
-                    continue;
-                };
-                if !scene.visibility()[i] {
-                    continue;
-                }
-                let draw = &self.draws[i];
-                pass.draw_indexed(
-                    draw.indices.clone(),
-                    draw.base_vertex,
-                    owner as u32..owner as u32 + 1,
-                );
+            // A stage-only view has no fighters: no shadows, effects or sprites.
+            if !self.stage_only {
+                self.draw_overlays(&mut pass, scene);
             }
-            let mut pipeline = usize::MAX;
-            for effect in scene.effect_draws() {
-                let draw = &self.draws[effect.mesh];
-                let material = &self.images[draw.image].1;
-                if pipeline != draw.pipeline {
-                    pipeline = draw.pipeline;
-                    pass.set_pipeline(&self.pipelines[pipeline]);
-                }
-                pass.set_bind_group(
-                    0,
-                    &self.scene,
-                    &[self.pose_stride * (effect.slot as u32 + 1)],
-                );
-                pass.set_bind_group(
-                    1,
-                    material.bind(effect.slot),
-                    &[material.offset(effect.slot)],
-                );
-                pass.draw_indexed(draw.indices.clone(), draw.base_vertex, 0..1);
-            }
-            self.sprites.draw(&mut pass);
         }
         self.queue.submit([encoder.finish()]);
     }
+    /// Fighter shadows, effects and sprites, after the meshes.
+    fn draw_overlays(&self, pass: &mut wgpu::RenderPass<'_>, scene: &Presentation) {
+        // Stencil marks visible stage pixels; incrementing on the first hit
+        // prevents overlapping caster triangles from darkening them twice.
+        pass.set_pipeline(&self.shadows);
+        for (i, mesh) in scene.meshes().iter().enumerate() {
+            let Some(owner) = mesh.shadow_owner else {
+                continue;
+            };
+            if !scene.visibility()[i] {
+                continue;
+            }
+            let draw = &self.draws[i];
+            pass.draw_indexed(
+                draw.indices.clone(),
+                draw.base_vertex,
+                owner as u32..owner as u32 + 1,
+            );
+        }
+        let mut pipeline = usize::MAX;
+        for effect in scene.effect_draws() {
+            let draw = &self.draws[effect.mesh];
+            let material = &self.images[draw.image].1;
+            if pipeline != draw.pipeline {
+                pipeline = draw.pipeline;
+                pass.set_pipeline(&self.pipelines[pipeline]);
+            }
+            pass.set_bind_group(
+                0,
+                &self.scene,
+                &[self.pose_stride * (effect.slot as u32 + 1)],
+            );
+            pass.set_bind_group(
+                1,
+                material.bind(effect.slot),
+                &[material.offset(effect.slot)],
+            );
+            pass.draw_indexed(draw.indices.clone(), draw.base_vertex, 0..1);
+        }
+        self.sprites.draw(pass);
+    }
+}
+/// What [`Renderer::draw_with`] draws and from where.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DrawOptions {
+    /// A view in place of the retail main camera.
+    pub camera: Option<melee_lib::presentation::ViewCamera>,
 }
 /// 4x MSAA where the adapter supports it for colour and depth, else none.
 pub fn sample_count(adapter: &wgpu::Adapter, format: wgpu::TextureFormat) -> u32 {

@@ -90,6 +90,7 @@ pub(super) fn locate(archive: &Archive, piece: Piece) -> Result<Texture, String>
             let frame = 50.0 * f32::from(stage_row(stage).name_frame);
             animated(archive, SSS_MODELS, 6, 108, frame)
         }
+        Piece::StagePreview(_) => Err("retail has no 2D stage preview".into()),
     }
 }
 

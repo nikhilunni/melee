@@ -25,7 +25,8 @@
 //! retail's faint watermarks (alpha peaks at 119).
 //!
 //! Retail has no 2D stage preview: the stage select shows miniature 3D
-//! models, so the icon is the stage's picture. Sheik has no portrait or
+//! models. [`Piece::StagePreview`] is rendered at runtime instead
+//! (`crate::preview`). Sheik has no portrait or
 //! face either (she is chosen through Zelda's); her emblem is Zelda's and
 //! her stock icons are her own.
 mod retail;
@@ -89,6 +90,9 @@ pub enum Piece {
     StageName(Stage),
     /// The series emblem the stage select shows for the stage.
     StageEmblem(Stage),
+    /// A wide picture of the stage, rendered at runtime (`crate::preview`):
+    /// the disc has no 2D stage preview to decode.
+    StagePreview(Stage),
 }
 /// The kinds of [`Piece`], numbered for the C and wasm bindings
 /// (`melee_art_e` in `melee_platform.h`).
@@ -102,9 +106,10 @@ pub enum ArtKind {
     StageIcon = 4,
     StageName = 5,
     StageEmblem = 6,
+    StagePreview = 7,
 }
 impl ArtKind {
-    pub const ALL: [Self; 7] = [
+    pub const ALL: [Self; 8] = [
         Self::Portrait,
         Self::Face,
         Self::Stock,
@@ -112,6 +117,7 @@ impl ArtKind {
         Self::StageIcon,
         Self::StageName,
         Self::StageEmblem,
+        Self::StagePreview,
     ];
     pub fn from_u32(value: u32) -> Option<Self> {
         Self::ALL.get(value as usize).copied()
@@ -133,16 +139,20 @@ impl Piece {
             ArtKind::StageIcon => Self::StageIcon(stage()?),
             ArtKind::StageName => Self::StageName(stage()?),
             ArtKind::StageEmblem => Self::StageEmblem(stage()?),
+            ArtKind::StagePreview => Self::StagePreview(stage()?),
         })
     }
-    pub fn file(self) -> ArtFile {
-        match self {
+    /// The menu archive the piece is decoded from; `None` for the stage
+    /// previews, which are rendered.
+    pub fn file(self) -> Option<ArtFile> {
+        Some(match self {
             Self::Portrait(..) | Self::Face(_) | Self::CharacterEmblem(_) => {
                 ArtFile::CharacterSelect
             }
             Self::Stock(..) => ArtFile::Interface,
             Self::StageIcon(_) | Self::StageName(_) | Self::StageEmblem(_) => ArtFile::StageSelect,
-        }
+            Self::StagePreview(_) => return None,
+        })
     }
     /// A stable, ordered cache key.
     fn key(self) -> (u8, u32, u8) {
@@ -156,6 +166,7 @@ impl Piece {
             Self::StageIcon(st) => (4, s(st), 0),
             Self::StageName(st) => (5, s(st), 0),
             Self::StageEmblem(st) => (6, s(st), 0),
+            Self::StagePreview(st) => (7, s(st), 0),
         }
     }
 }
@@ -203,7 +214,7 @@ impl Art {
         }
         let decoded = self.decode(piece).map(Arc::new);
         // Remember failures too, except a missing archive (it may arrive).
-        if decoded.is_ok() || self.has(piece.file()) {
+        if decoded.is_ok() || piece.file().is_some_and(|file| self.has(file)) {
             self.cache.insert(key, decoded.clone());
         }
         decoded
@@ -236,7 +247,9 @@ impl Art {
     }
 
     fn decode(&self, piece: Piece) -> Result<Image, String> {
-        let file = piece.file();
+        let file = piece
+            .file()
+            .ok_or("stage previews are rendered, not decoded (App::art_image)")?;
         let archive = self
             .archives
             .get(&file)
