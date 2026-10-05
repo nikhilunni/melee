@@ -126,6 +126,7 @@ impl Presentation {
                                     .1
                             })
                         }
+                        ModelSource::Accessory(_) => None,
                     };
                     let Some(archive) = archive else {
                         material.texture_banks.push(bank.into());
@@ -181,6 +182,9 @@ impl Presentation {
                         [0.0; 4]
                     }
                 }
+                ModelSource::Accessory(accessory) => self.fighter_parts[accessory.slot]
+                    .color_overlay()
+                    .unwrap_or([0.0; 4]),
                 ModelSource::Fighter(slot) => {
                     let joint = model.source.tree(game).get(part.owner).id;
                     self.fighter_parts[*slot]

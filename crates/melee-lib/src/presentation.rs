@@ -1,6 +1,7 @@
 //! Optional renderer-independent visual resources and reusable pose capture.
 //! Construction decodes assets; capture only reads a compatible healthy match.
 use crate::{Match, MatchStatus, PlayerConfig};
+mod accessories;
 mod effects;
 mod fighters;
 mod items;
@@ -123,6 +124,7 @@ enum ModelSource {
     /// An animated item whose model lives in the stage archive; its
     /// `owner` is a slot among the live items of its kind.
     StageItem(items::ArticleModel),
+    Accessory(accessories::Accessory),
 }
 impl ModelSource {
     fn tree<'a>(&'a self, game: &'a Match) -> &'a JObjTree {
@@ -142,6 +144,7 @@ impl ModelSource {
                 self::stage::animation(game, *key, template).pose_tree()
             }
             Self::Item(pose) => pose.tree(),
+            Self::Accessory(accessory) => &accessory.tree,
         }
     }
 }
@@ -223,6 +226,21 @@ impl Presentation {
                 }
             }
             result.fighter_parts.push(parts);
+        }
+        // Accessories draw after every fighter's model (ftPr_Init_8013C360).
+        for slot in 0..game.engine.state().fighters.len() {
+            let costume = game.engine.state().fighters[slot].0.player.costume;
+            let character = &assets.characters[slot];
+            if let Some((accessory, desc)) = accessories::Accessory::load(character, costume, slot)?
+            {
+                let tree = accessory.tree.clone();
+                result.add_model(
+                    character.costume(costume),
+                    &desc,
+                    &tree,
+                    ModelSource::Accessory(accessory),
+                )?;
+            }
         }
         result.add_stage_models(game)?;
         for (kind, archive, _) in assets.items.visual_models() {
@@ -417,6 +435,14 @@ impl Presentation {
             if let ModelSource::StageItem(held) = &mut model.source {
                 stage::capture_item(game, held)?;
             }
+            if let ModelSource::Accessory(accessory) = &mut model.source {
+                let fighter = &game.engine.state().fighters[accessory.slot].0;
+                let joint = fighter
+                    .skeleton
+                    .bone(fighter.animation.root, accessory.bone)
+                    .ok_or_else(|| error("accessory joint missing"))?;
+                accessory.attach(&previous[accessory.slot].pose.matrix(joint));
+            }
             if let ModelSource::Item(pose) = &mut model.source {
                 let kind = pose.kind;
                 let live = |item: &&melee_it::ItemCore| item.kind == kind && !item.destroyed;
@@ -501,6 +527,10 @@ impl Presentation {
                 ModelSource::Article(held) | ModelSource::StageItem(held) => !held.visible,
                 ModelSource::Fighter(slot) => {
                     self.fighter_parts[*slot].hides(tree.get(part.owner).id, part.display)
+                }
+                ModelSource::Accessory(accessory) => {
+                    !self.fighter_parts[accessory.slot].drawn()
+                        || accessory.hides(tree.get(part.owner).id, part.display)
                 }
                 ModelSource::Effect(_) => true,
                 _ => false,
@@ -666,6 +696,7 @@ impl Presentation {
                     },
                     shadow_owner: match &self.models[model].source {
                         ModelSource::Fighter(slot) => Some(*slot),
+                        ModelSource::Accessory(accessory) => Some(accessory.slot),
                         ModelSource::Article(article)
                             if crate::scene_items::SceneItems::logic(article.kind)
                                 .held_part

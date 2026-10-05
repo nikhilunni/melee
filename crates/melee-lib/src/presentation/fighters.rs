@@ -11,7 +11,7 @@ use melee_types::FighterKind;
 const HIGH_POLY: usize = 0;
 const LOW_POLY: usize = 1;
 const METAL_EXTRA: usize = 3;
-const SET_COUNT: usize = 4;
+pub(super) const SET_COUNT: usize = 4;
 /// `ftParts_80074194`'s DObj list capacity (ftparts.c:369).
 const DOBJ_CAPACITY: usize = 128;
 /// `CostumeTObjList.costume_tobjs` capacity (ftanim.c:1007).
@@ -190,20 +190,7 @@ impl FighterParts {
         skeleton: &JObjTree,
     ) -> Result<Self, PresentationError> {
         let data = read_part_data(character, costume)?;
-        let mut slots = BTreeMap::new();
-        let mut grafted = Vec::new();
-        Walk {
-            graft: character.graft_part().map(usize::from),
-            joint_index: 0,
-            next: 0,
-            slots: &mut slots,
-            grafted: &mut grafted,
-        }
-        .number(model)?;
-        for (key, slot) in grafted {
-            slots.retain(|_, existing| *existing != slot);
-            slots.insert(key, slot);
-        }
+        let slots = number_dobjs(model, character.graft_part().map(usize::from))?;
         let outline = Outline::read(character, costume, data.group_count)?;
         let materials = CostumeMaterials::new(
             character,
@@ -291,6 +278,16 @@ impl FighterParts {
             self.color.shown
         };
         color.map(|c| c.map(|v| f32::from(v) / 255.0))
+    }
+
+    /// Whether the fighter's model draws this frame.
+    pub fn drawn(&self) -> bool {
+        self.drawn
+    }
+
+    /// The colour overlay mixed over the fighter's materials this frame.
+    pub fn color_overlay(&self) -> Option<[f32; 4]> {
+        self.color.shown.map(|c| c.map(|v| f32::from(v) / 255.0))
     }
 
     /// Mr. Game & Watch's body colour (ftGw_Init_8014A7F4), which his
@@ -536,7 +533,7 @@ fn read_part_data(
 
 /// One `FtPartsVisLookup[group_count]` array: per group `{ variant count,
 /// TempS* }`, per variant `{ DObj count, u8* dobj_list indices }`.
-fn read_lookup(
+pub(super) fn read_lookup(
     data: &Archive,
     groups: u32,
     group_count: usize,
@@ -566,6 +563,30 @@ fn read_lookup(
         lookup.push(variants);
     }
     Ok(lookup)
+}
+
+/// Each DObj's `dobj_list` slot, keyed by its joint's description offset
+/// and its position in the joint's chain; `graft` is the grafted joint's
+/// pre-order index.
+pub(super) fn number_dobjs(
+    model: &JObjDesc,
+    graft: Option<usize>,
+) -> Result<BTreeMap<(u32, usize), u8>, PresentationError> {
+    let mut slots = BTreeMap::new();
+    let mut grafted = Vec::new();
+    Walk {
+        graft,
+        joint_index: 0,
+        next: 0,
+        slots: &mut slots,
+        grafted: &mut grafted,
+    }
+    .number(model)?;
+    for (key, slot) in grafted {
+        slots.retain(|_, existing| *existing != slot);
+        slots.insert(key, slot);
+    }
+    Ok(slots)
 }
 
 /// ftParts_SetupParts / ftParts_80074194: DObjs numbered in the joint
