@@ -1,5 +1,8 @@
 # Native application boundaries
 
+> Superseded for the app's current shape (menus, disc image input, the C
+> API, the web host) by `docs/APP.md`; this note records the first build.
+
 The library extraction is committed as e995c04. This next milestone follows
 Ghostty's separation of shared application behavior and native runtime adapters:
 https://github.com/ghostty-org/ghostty/blob/main/src/apprt.zig

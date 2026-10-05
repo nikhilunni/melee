@@ -26,7 +26,10 @@ trusted: nothing merges with a known divergence.
 | `crates/melee-lib` | Match composition and the curated create/step/inspect/clone API. |
 | `crates/melee-sim` | Oracle tooling binary: `gate`, `triage`, `dry-run`, `search`, `particle-sites`, `particles-diff`, `bones-diff`, `replay`, `replay-batch`. |
 | `crates/melee-replay` | Recording format and the corpus explorer (`--example explore`). |
-| `crates/melee-platform` | Native graphical consumer (wgpu, macOS app). |
+| `crates/gc-disc` | GameCube disc image header and file table, sans IO; accepts only Melee NTSC-U 1.02. |
+| `crates/melee-platform` | libmelee, the app core every host shares (`docs/APP.md`): disc reading and file cache, catalog, menu flow (`App`), session, wgpu renderer; C API in `include/melee_platform.h`. |
+| `apps/macos` | The macOS host: Swift/AppKit (SwiftUI menus) over the C API. |
+| `crates/melee-web` | The web host: wasm-bindgen binding mirroring the C API, HTML/CSS/JS menus in `www/`, WebGPU canvas. |
 | `crates/slp`, `melee-diff`, `melee-trace-io` | Slippi parsing; trace diffing; `.jsonl`/`.jsonl.zst` trace reading. |
 | `harness/` | Python oracle tooling (Dolphin scripts, recorder, decoder, bridges). Run with `cd harness && uv run ...`. |
 | `docs/` | `ORACLE.md` (verification design), `SLIPPI.md` (replay runner, Slippi codes, the replay-to-retail bridge), `DOLPHIN_RUN.md`, `ASM.md`, `PERF.md`, `INTERACTION_MATRIX.md`, `COVERAGE_AUDIT.md`, per-character `*_DATA.md`. `docs/PORT_NOTES/` holds per-task reports: look up, do not preload. |
@@ -67,6 +70,11 @@ melee-sim replay <game.slp> --all-characters-unlocked true [--controller-fix ucf
 melee-sim replay-batch ~/melee-data/replays/public-v3.7 --jsonl out.jsonl
 melee-sim replay <game.slp> --all-characters-unlocked true --retail-inputs inputs.jsonl  # then, to play it on retail:
 cd harness && uv run python slippi_to_scenario.py inputs.jsonl --name <n> --boundary <start scene> [--ticks N]
+
+# The playable app (docs/APP.md): give it the disc image, nothing else
+tools/run-macos.sh                 # build target/macos/Melee.app and launch it
+tools/run-web.sh [--disc harness/roms/GALE01.iso]   # build target/web, serve on :8080 (WebGPU browsers)
+cargo check --target wasm32-unknown-unknown -p melee-web
 ```
 
 Oracle tests fail on missing local data with the path and recovery command;
