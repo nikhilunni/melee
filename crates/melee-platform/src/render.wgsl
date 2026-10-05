@@ -153,27 +153,22 @@ struct Composition {
 // MObjMakeTExp (0x80363284): diffuse/ambient textures -> raster lighting -> specular
 // textures and raster -> EXT textures. Alpha runs once per texture across
 // categories, but every texture within the first category contributes.
-fn texture_stage(color:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, category:u32, done:u32)->vec4<f32> {
-    var result=color;
-    for(var i=0u;i<mat.count;i++) {
-        let mask=u32(mat.parameters[i].y);
-        if (mask&category)==0u {continue;}
-        var operations=mat.operations[i];
-        operations.w=select(1u,0u,(mask&done)!=0u);
-        result=combine_values(result,texels[i],operations,mat.parameters[i].x);
-    }
-    return result;
-}
+// Each stage is unrolled by layer (STAGE_<category>, generated in material.rs):
+// a loop over the layer count indexes the texels dynamically, which spills
+// them to memory and made composition most of the frame's GPU time.
 fn compose_material(base:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, diffuse_light:vec3<f32>, specular_light:vec3<f32>)->vec4<f32> {
-    var color=texture_stage(base,mat,texels,0x50u,0u);
+    var color=base;
+    // STAGE color 0x50u 0u
     if (mat.mode&4u)!=0u {color=vec4(color.rgb*clamp(diffuse_light,vec3(0.0),vec3(1.0)),color.a);}
     var done=0x50u;
     if (mat.mode&8u)!=0u {
-        let spec=texture_stage(vec4(mat.specular,color.a),mat,texels,0x20u,done);
+        var spec=vec4(mat.specular,color.a);
+        // STAGE spec 0x20u done
         color=vec4(clamp(color.rgb+clamp(spec.rgb*specular_light,vec3(0.0),vec3(1.0)),vec3(0.0),vec3(1.0)),spec.a);
         done|=0x20u;
     }
-    return texture_stage(color,mat,texels,0x80u,done);
+    // STAGE color 0x80u done
+    return color;
 }
 // Pipelines whose alpha test always passes compile without `discard`, so
 // tiled GPUs keep hidden-surface removal for opaque meshes.

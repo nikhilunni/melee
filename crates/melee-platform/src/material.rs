@@ -522,7 +522,21 @@ pub fn shader() -> String {
         bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
         samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=textureSampleBias(image{i},sampler{i},coordinates(in,layer),layer.lod.x); texels[{i}]=custom_texture(tex,layer); composition.operations[{i}]=layer.operations; composition.parameters[{i}]=vec2(layer.translation.z,f32(layer.activation.y)); }}\n"));
     }
+    // One texture stage of MObjMakeTExp, unrolled: `// STAGE target category done`.
+    let stage = |target: &str, category: &str, done: &str| {
+        let mut code = String::new();
+        for i in 0..MAX_LAYERS {
+            code.push_str(&format!(
+                "if mat.count > {i}u {{ let mask=u32(mat.parameters[{i}].y); if (mask&{category})!=0u {{ \
+                 {target}=combine_values({target},texels[{i}],vec4(mat.operations[{i}].xyz,select(1u,0u,(mask&{done})!=0u)),mat.parameters[{i}].x); }} }}\n"
+            ));
+        }
+        code
+    };
     include_str!("render.wgsl")
+        .replace("// STAGE color 0x50u 0u", &stage("color", "0x50u", "0u"))
+        .replace("// STAGE spec 0x20u done", &stage("spec", "0x20u", "done"))
+        .replace("// STAGE color 0x80u done", &stage("color", "0x80u", "done"))
         .replace("// CAMERA", include_str!("camera.wgsl"))
         .replace("// PIXEL", include_str!("pixel.wgsl"))
         .replace("// CUSTOM_COMBINERS", include_str!("tev.wgsl"))
