@@ -57,7 +57,7 @@ struct LoadingView: View {
                         .frame(width: height * 0.9, height: height * 0.9)
                     FighterPortrait(model: model, character: id, costume: slot.costume, tint: color)
                         .frame(height: height)
-                        .featheredEdges()
+                        .fadedCutEdges()
                         // P2 mirrored: the two face each other.
                         .scaleEffect(x: player == 1 ? -1 : 1, y: 1)
                         .shadow(color: color.opacity(0.5), radius: m(20))
@@ -380,7 +380,7 @@ struct ResultsView: View {
             if let winner {
                 FighterPortrait(model: model, character: winner.character, costume: winner.costume, tint: color)
                     .frame(height: height * 0.92)
-                    .featheredEdges()
+                    .fadedCutEdges()
                     .shadow(color: color.opacity(0.55), radius: m(26))
                     .staggerIn(0)
             } else {

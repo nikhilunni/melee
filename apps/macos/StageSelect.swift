@@ -269,15 +269,12 @@ struct StageTile: View {
         if let stage, let preview = model.core.stagePreview(stage.id) {
             Color.clear.overlay { ArtImage(image: preview).aspectRatio(contentMode: .fill) }.clipped()
         } else if let stage, let icon = model.core.stageIcon(stage.id) {
-            // The icon at 1x-2x (an integer scale, crisp) on the stage's
-            // gradient, until the preview is rendered.
-            // One scale for the row, from the 64x56 icons (Dream Land's is 48x48).
-            let fit = min(width * 0.8 / 64, width * 0.62 * 0.85 / 56)
-            let scale = min(max(fit.rounded(.down), 1), 2)
+            // The icon at 1x on the stage's gradient until the preview is
+            // rendered (DESIGN.md refinement 8).
             ZStack {
                 StageGradient(key: stage.key)
                 ArtImage(image: icon, pixel: true)
-                    .frame(width: CGFloat(icon.width) * scale, height: CGFloat(icon.height) * scale)
+                    .frame(width: CGFloat(icon.width), height: CGFloat(icon.height))
                     .clipShape(RoundedRectangle(cornerRadius: 3))
                     .shadow(color: .black.opacity(0.45), radius: 6, y: 3)
             }

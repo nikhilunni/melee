@@ -29,9 +29,12 @@ struct CharacterSelectView: View {
                     .staggerIn(1)
                 // The READY TO FIGHT row between the grid and the panels.
                 ZStack { readyBanner(m) }
+                    .frame(maxWidth: geo.size.height * 1.75)
                     .frame(height: m(60))
                     .padding(.vertical, m(10))
-                panels(m).staggerIn(2)
+                panels(m)
+                    .frame(maxWidth: geo.size.height * 1.75)
+                    .staggerIn(2)
                 legend(m).padding(.top, m(12)).staggerIn(3)
             }
             .padding(.horizontal, pad)
@@ -79,9 +82,8 @@ struct CharacterSelectView: View {
     // MARK: Panels
 
     private func panels(_ m: MenuMetrics) -> some View {
-        HStack(alignment: .bottom, spacing: m(18)) {
+        HStack(spacing: m(36)) {
             PlayerPanel(model: model, player: 0, m: m)
-            ControlsCard(m: m).frame(width: m(230)).frame(maxHeight: .infinity)
             PlayerPanel(model: model, player: 1, m: m)
         }
         .frame(minHeight: m(200), maxHeight: m(420))
@@ -116,9 +118,9 @@ struct CharacterSelectView: View {
             legendItem(["Tab"], "Switch player", m)
             legendItem(["Q", "E"], "Costume", m)
             legendItem(["⌫"], "Clear", m)
-            legendItem(["-", "="], "Stocks", m)
-            legendItem(["Esc"], "Back", m)
-            Spacer()
+                        legendItem(["Esc"], "Back", m)
+            Spacer(minLength: m(16))
+            ControlsLegend(m: m)
         }
         .animation(nil, value: model.selection.ready)
     }
@@ -213,7 +215,14 @@ struct CharacterTile: View {
                     shape.inset(by: CGFloat(index) * m(3)).strokeBorder(Palette.port(player), lineWidth: m(2.5))
                 }
             }
-            .overlay { shape.strokeBorder(Color.white.opacity(focused ? 0.95 : 0.12), lineWidth: focused ? 2 : 1) }
+            .overlay {
+                if focused {
+                    shape.strokeBorder(Color.white, lineWidth: m(2))
+                    shape.inset(by: -m(3)).strokeBorder(active, lineWidth: m(2.5))
+                } else {
+                    shape.strokeBorder(Color.white.opacity(0.12), lineWidth: 1)
+                }
+            }
             .overlay(alignment: .topTrailing) {
                 HStack(spacing: -m(5)) {
                     ForEach(pickedBy, id: \.self) { PortCoin(port: $0, size: m(20)) }
@@ -250,18 +259,22 @@ struct CharacterTile: View {
     /// at these sizes, and it has no name baked in.
     private var face: some View {
         FaceCrop(model: model, character: character.id, size: size, span: 0.92)
-            .offset(y: -size.height * 0.04)
     }
 }
 
 // MARK: Player panel
 
+/// A player's tall glass card: the big port mark, the selected costume's
+/// portrait with a port-coloured light, the name and costume chips. P2's
+/// card mirrors P1's layout (mark and name on the right).
 struct PlayerPanel: View {
     @ObservedObject var model: AppModel
     let player: Int
     let m: MenuMetrics
-    @State private var parallax: CGSize = .zero
+    @State private var parallax: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var mirrored: Bool { player == 1 }
 
     var body: some View {
         let slot = model.selection.players[player]
@@ -269,126 +282,139 @@ struct PlayerPanel: View {
         let active = model.picking == player
         let color = Palette.port(player)
         let shape = Slanted(radius: m(14), maxShift: m(34))
-        ZStack(alignment: .bottomLeading) {
-            // The big port number, corner watermark.
-            Text("P\(player + 1)")
-                .font(.display(m(96)))
-                .foregroundStyle(LinearGradient(colors: [color.opacity(active ? 0.75 : 0.4), color.opacity(0.05)],
-                                                startPoint: .top, endPoint: .bottom))
-                .padding(.leading, m(46))
-                .padding(.top, -m(4))
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .accessibilityHidden(true)
-            if let character {
-                portrait(character, costume: slot.costume, color: color)
-                namePlate(character, color: color)
-            } else {
-                empty(active: active, color: color)
+        GeometryReader { geo in
+            let lean = shape.shift(height: geo.size.height)
+            ZStack {
+                portMark(height: geo.size.height, lean: lean, active: active, color: color)
+                if let character {
+                    portrait(character, costume: slot.costume, color: color, size: geo.size)
+                    namePlate(character, color: color, lean: lean)
+                } else {
+                    empty(active: active, size: geo.size)
+                }
+            }
+            .onContinuousHover { phase in
+                guard !reduceMotion else { return }
+                switch phase {
+                case .active(let point): parallax = (point.x / max(1, geo.size.width) - 0.5) * 8
+                case .ended: parallax = 0
+                }
             }
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .clipShape(shape)
         .glass(shape, tint: color, tintAmount: active ? (character == nil ? 0.16 : 0.26) : 0.12)
         .overlay { shape.strokeBorder(color.opacity(active ? 0.9 : 0.0), lineWidth: 2) }
         .shadow(color: active ? color.opacity(0.45) : .black.opacity(0.3), radius: active ? m(22) : m(10))
-        .overlay(alignment: .topTrailing) {
-            if character != nil {
-                Button { model.clear(player: player) } label: {
-                    Image(systemName: "xmark").font(.system(size: m(11), weight: .heavy))
-                        .frame(width: m(26), height: m(26))
-                        .background(Circle().fill(.black.opacity(0.35)))
-                        .overlay(Circle().strokeBorder(.white.opacity(0.25)))
-                }
-                .buttonStyle(.plain)
-                .padding(.top, m(12)).padding(.trailing, m(18))
-                .accessibilityLabel("Clear P\(player + 1)'s fighter")
-            }
-        }
         .contentShape(shape)
         .onTapGesture { model.activate(player: player) }
-        .onContinuousHover { phase in
-            guard !reduceMotion else { return }
-            switch phase {
-            case .active(let point):
-                parallax = CGSize(width: (point.x / max(1, panelWidth) - 0.5) * 8, height: 0)
-            case .ended: parallax = .zero
-            }
-        }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: active)
         .accessibilityElement(children: .contain)
         .accessibilityLabel("Player \(player + 1)\(active ? ", choosing" : "")")
         .accessibilityValue(character?.name ?? "no fighter")
         .accessibilityAddTraits(.isButton)
-        .background(GeometryReader { geo in Color.clear.onAppear { panelWidth = geo.size.width } })
     }
 
-    @State private var panelWidth: CGFloat = 400
+    /// "P1" / "P2" in display type, about a quarter of the panel's height.
+    private func portMark(height: CGFloat, lean: CGFloat, active: Bool, color: Color) -> some View {
+        Text("P\(player + 1)")
+            .font(.display(height * 0.26))
+            .foregroundStyle(LinearGradient(colors: [color.opacity(active ? 1 : 0.6), color.opacity(active ? 0.55 : 0.25)],
+                                            startPoint: .top, endPoint: .bottom))
+            .shadow(color: color.opacity(active ? 0.5 : 0), radius: m(12))
+            .padding(mirrored ? .trailing : .leading, mirrored ? m(22) : lean + m(14))
+            .padding(.top, m(6))
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: mirrored ? .topTrailing : .topLeading)
+            .accessibilityHidden(true)
+    }
 
-    private func portrait(_ character: CharacterInfo, costume: Int, color: Color) -> some View {
-        GeometryReader { geo in
-            let height = geo.size.height * 0.98
-            ZStack {
-                // Port-coloured light behind the fighter.
-                Ellipse()
-                    .fill(RadialGradient(colors: [color.opacity(0.55), color.opacity(0)], center: .center,
-                                         startRadius: 0, endRadius: height * 0.45))
-                    .frame(width: height * 0.95, height: height * 0.8)
-                FighterPortrait(model: model, character: character.id, costume: costume, tint: color)
-                    .frame(height: height)
-                    .featheredEdges()
-                    .shadow(color: color.opacity(0.45), radius: m(16))
-                    .offset(x: parallax.width, y: parallax.height)
-                    .id("\(character.id)-\(costume)")
-                    .transition(reduceMotion ? .opacity
-                        : .offset(x: m(30), y: -m(30) * Slant.lean).combined(with: .opacity))
-            }
-            .frame(width: geo.size.width * 0.62, height: geo.size.height)
-            .position(x: geo.size.width * (player == 0 ? 0.62 : 0.6), y: geo.size.height * 0.53)
-            .animation(.spring(response: 0.35, dampingFraction: 0.8), value: "\(character.id)-\(costume)")
-            .animation(.spring(response: 0.25, dampingFraction: 0.85), value: parallax)
+    private func portrait(_ character: CharacterInfo, costume: Int, color: Color, size: CGSize) -> some View {
+        let height = size.height * 0.98
+        let key = "\(character.id)-\(costume)"
+        return ZStack {
+            // Port-coloured light behind the fighter.
+            Ellipse()
+                .fill(RadialGradient(colors: [color.opacity(0.55), color.opacity(0)], center: .center,
+                                     startRadius: 0, endRadius: height * 0.45))
+                .frame(width: height * 0.95, height: height * 0.8)
+            FighterPortrait(model: model, character: character.id, costume: costume, tint: color)
+                .frame(height: height)
+                .fadedCutEdges()
+                .shadow(color: color.opacity(0.45), radius: m(16))
+                .offset(x: parallax)
+                .id(key)
+                .transition(reduceMotion ? .opacity
+                    : .offset(x: m(30), y: -m(30) * Slant.lean).combined(with: .opacity))
         }
+        .frame(width: size.width * 0.62, height: size.height)
+        .position(x: size.width * (mirrored ? 0.4 : 0.6), y: size.height * 0.53)
+        .animation(.spring(response: 0.35, dampingFraction: 0.8), value: key)
+        .animation(.spring(response: 0.25, dampingFraction: 0.85), value: parallax)
     }
 
-    private func namePlate(_ character: CharacterInfo, color: Color) -> some View {
+    private func namePlate(_ character: CharacterInfo, color: Color, lean: CGFloat) -> some View {
         let slot = model.selection.players[player]
-        return VStack(alignment: .leading, spacing: m(8)) {
+        let edge: HorizontalAlignment = mirrored ? .trailing : .leading
+        return VStack(alignment: edge, spacing: m(8)) {
             CostumeChips(model: model, player: player, character: character, current: slot.costume, m: m)
-            Text(character.name)
-                .displayStyle(m(34))
-                .lineLimit(1)
-                .minimumScaleFactor(0.5)
-                .foregroundStyle(.white)
-                .shadow(color: .black.opacity(0.6), radius: 3, y: 2)
-                .padding(.horizontal, m(18))
-                .padding(.vertical, m(4))
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .background {
-                    Slanted(radius: m(6), maxShift: m(12))
-                        .fill(LinearGradient(colors: [.black.opacity(0.7), .black.opacity(0.2)],
-                                             startPoint: .leading, endPoint: .trailing))
-                        .overlay(alignment: .leading) {
-                            Slanted(radius: 2).fill(color).frame(width: m(6)).padding(.vertical, m(4))
-                        }
-                }
+            HStack(spacing: m(10)) {
+                if mirrored { clearButton }
+                Text(character.name)
+                    .displayStyle(m(40))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.5)
+                    .foregroundStyle(.white)
+                    .shadow(color: .black.opacity(0.6), radius: 3, y: 2)
+                if !mirrored { clearButton }
+            }
+            .padding(.horizontal, m(18))
+            .padding(.vertical, m(2))
+            .frame(maxWidth: .infinity, alignment: mirrored ? .trailing : .leading)
+            .background {
+                Slanted(radius: m(6), maxShift: m(12))
+                    .fill(LinearGradient(colors: [.black.opacity(0.7), .black.opacity(0.15)],
+                                         startPoint: mirrored ? .trailing : .leading,
+                                         endPoint: mirrored ? .leading : .trailing))
+                    .overlay(alignment: mirrored ? .trailing : .leading) {
+                        Slanted(radius: 2).fill(color).frame(width: m(6)).padding(.vertical, m(4))
+                    }
+            }
         }
-        .padding(.leading, m(16))
-        .padding(.trailing, m(40))
+        .padding(.leading, mirrored ? m(40) : m(16))
+        .padding(.trailing, mirrored ? lean + m(16) : m(40))
         .padding(.bottom, m(16))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: mirrored ? .bottomTrailing : .bottomLeading)
     }
 
-    private func empty(active: Bool, color: Color) -> some View {
-        VStack(spacing: m(10)) {
-            Silhouette(color: .white.opacity(active ? 0.13 : 0.07))
-                .frame(height: m(150))
-            Text(active ? "Click a fighter" : "Waiting")
-                .displayStyle(m(26))
-                .foregroundStyle(Palette.text.opacity(active ? 0.9 : 0.4))
-            Text(active ? "or press Enter on the grid" : "Tab or click to choose")
-                .font(.ui(m(12)))
-                .foregroundStyle(Palette.textDim.opacity(active ? 1 : 0.6))
+    private var clearButton: some View {
+        Button { model.clear(player: player) } label: {
+            Image(systemName: "xmark").font(.system(size: m(10), weight: .heavy))
+                .frame(width: m(22), height: m(22))
+                .background(Circle().fill(.black.opacity(0.35)))
+                .overlay(Circle().strokeBorder(.white.opacity(0.25)))
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .padding(.top, m(18))
+        .buttonStyle(.plain)
+        .foregroundStyle(Palette.textDim)
+        .accessibilityLabel("Clear P\(player + 1)'s fighter")
+    }
+
+    /// No fighter yet: our emblem, large and faint.
+    private func empty(active: Bool, size: CGSize) -> some View {
+        ZStack {
+            EmblemShape()
+                .fill(.white.opacity(active ? 0.10 : 0.05))
+                .frame(width: size.height * 0.62, height: size.height * 0.62)
+                .position(x: size.width * 0.5, y: size.height * 0.45)
+            VStack(spacing: m(6)) {
+                Text(active ? "Click a fighter" : "Waiting")
+                    .displayStyle(m(26))
+                    .foregroundStyle(Palette.text.opacity(active ? 0.9 : 0.4))
+                Text(active ? "or press Enter on the grid" : "Tab or click to choose")
+                    .font(.ui(m(12)))
+                    .foregroundStyle(Palette.textDim.opacity(active ? 1 : 0.6))
+            }
+            .frame(maxHeight: .infinity, alignment: .bottom)
+            .padding(.bottom, m(28))
+        }
     }
 }
 
@@ -433,36 +459,34 @@ struct CostumeChips: View {
 
 // MARK: Controls
 
-/// The in-game controls for both players, between the panels.
-struct ControlsCard: View {
+/// The in-game keys for both players, two compact rows bottom right.
+struct ControlsLegend: View {
     let m: MenuMetrics
-    private let actions = ["Move", "Attack", "Special", "Jump", "Shield", "Grab"]
-    private let keys = [["W A S D", "K", "J", "Space", "L", "I"], ["Arrows", "N", "M", ",", ".", "/"]]
+    private static let rows: [[(keys: [String], action: String)]] = [
+        [(["W", "A", "S", "D"], "move"), (["K"], "attack"), (["J"], "special"), (["Space"], "jump"),
+         (["L"], "shield"), (["I"], "grab")],
+        [(["←↑↓→"], "move"), (["N"], "attack"), (["M"], "special"), ([","], "jump"), (["."], "shield"),
+         (["/"], "grab")],
+    ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: m(8)) {
-            Text("Controls").font(.displayBold(m(16))).tracking(m(1)).textCase(.uppercase)
-                .foregroundStyle(Palette.textDim)
-            Grid(alignment: .leading, horizontalSpacing: m(8), verticalSpacing: m(5)) {
-                GridRow {
-                    Color.clear.gridCellUnsizedAxes([.horizontal, .vertical])
-                    PortCoin(port: 0, size: m(20))
-                    PortCoin(port: 1, size: m(20))
-                }
-                ForEach(actions.indices, id: \.self) { index in
-                    GridRow {
-                        Text(actions[index]).font(.ui(m(12))).foregroundStyle(Palette.textDim)
-                        KeyCap(label: keys[0][index], size: m(11))
-                        KeyCap(label: keys[1][index], size: m(11))
+        VStack(alignment: .trailing, spacing: m(5)) {
+            ForEach(0..<2, id: \.self) { player in
+                HStack(spacing: m(4)) {
+                    Text("P\(player + 1)").font(.display(m(13))).foregroundStyle(Palette.port(player))
+                        .padding(.trailing, m(2))
+                    ForEach(Self.rows[player].indices, id: \.self) { index in
+                        let item = Self.rows[player][index]
+                        ForEach(item.keys, id: \.self) { KeyCap(label: $0, size: m(10)) }
+                        Text(item.action).font(.ui(m(11))).foregroundStyle(Palette.textDim)
+                            .padding(.trailing, m(4))
                     }
                 }
             }
-            Text("Esc pauses").font(.ui(m(11))).foregroundStyle(Palette.textDim.opacity(0.8))
         }
-        .padding(m(16))
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        .glass(RoundedRectangle(cornerRadius: m(14), style: .continuous), edge: 0.8)
         .accessibilityElement(children: .combine)
+        .accessibilityLabel("Controls: P1 W A S D move, K attack, J special, Space jump, L shield, I grab. " +
+                            "P2 arrows move, N attack, M special, comma jump, period shield, slash grab.")
     }
 }
 
@@ -514,7 +538,7 @@ struct ReadyBanner: View {
         .buttonStyle(.plain)
         .onHover { hover = $0 }
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: hover)
-        .padding(.horizontal, -m(8))
+        .padding(.horizontal, m(32))
         .onAppear {
             guard !reduceMotion else { return }
             withAnimation(.easeInOut(duration: 1.1).delay(0.25).repeatForever(autoreverses: false).delay(1.4)) {

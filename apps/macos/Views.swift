@@ -115,15 +115,20 @@ struct NoticeCard: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .lineLimit(8)
             HStack(spacing: 10) {
-                Spacer()
-                Button(copied ? "Copied" : "Copy Details") {
+                // Copy is a small link; OK is the one obvious action.
+                Button(copied ? "Copied" : "Copy details") {
                     NSPasteboard.general.clearContents()
                     NSPasteboard.general.setString("\(notice.title)\n\(notice.message)", forType: .string)
                     copied = true
                 }
-                .buttonStyle(SlantButtonStyle(kind: .glass, size: 14))
+                .buttonStyle(.plain)
+                .font(.ui(12, .semibold))
+                .foregroundStyle(Palette.textDim)
+                .underline()
+                .onHover { inside in if inside { NSCursor.pointingHand.push() } else { NSCursor.pop() } }
+                Spacer()
                 Button("OK", action: dismiss)
-                    .buttonStyle(SlantButtonStyle(kind: .danger, focused: true, size: 14, minWidth: 80))
+                    .buttonStyle(SlantButtonStyle(kind: .accent, focused: true, size: 15, minWidth: 90))
             }
         }
         .padding(18)
@@ -136,30 +141,9 @@ struct NoticeCard: View {
 
 // MARK: Shared art
 
-/// Our own fighter silhouette (original art): head and shoulders.
-struct Silhouette: View {
-    var color: Color = .white
-    var body: some View {
-        GeometryReader { geo in
-            let w = geo.size.width, h = geo.size.height
-            ZStack {
-                Ellipse()
-                    .frame(width: w * 0.36, height: h * 0.30)
-                    .position(x: w * 0.5, y: h * 0.27)
-                UnevenRoundedRectangle(topLeadingRadius: w * 0.3, bottomLeadingRadius: 0, bottomTrailingRadius: 0,
-                                       topTrailingRadius: w * 0.3, style: .continuous)
-                    .frame(width: w * 0.86, height: h * 0.42)
-                    .position(x: w * 0.5, y: h * 0.79)
-            }
-            .foregroundStyle(color)
-        }
-        .aspectRatio(136 / 188, contentMode: .fit)
-    }
-}
-
 /// A fighter's select portrait (136x188) from the disc. Where the disc has
-/// none (Sheik) or the art is not read yet: our silhouette, with the stock
-/// icon over it when there is one.
+/// none (Sheik) or the art is not read yet: the stock icon at an integer
+/// scale, pixel-sharp, over our emblem.
 struct FighterPortrait: View {
     @ObservedObject var model: AppModel
     let character: Int32
@@ -170,43 +154,64 @@ struct FighterPortrait: View {
         if let image = model.core.portrait(character: character, costume: costume) {
             ArtImage(image: image).aspectRatio(136 / 188, contentMode: .fit)
         } else {
-            ZStack {
-                Silhouette(color: tint.opacity(0.22))
-                if let stock = model.core.stockIcon(character: character, costume: costume) {
-                    GeometryReader { geo in
-                        // Integer multiples of 24 keep the icon's pixels crisp.
-                        let side = max(24, (geo.size.width * 0.42 / 24).rounded(.down) * 24)
+            GeometryReader { geo in
+                ZStack {
+                    EmblemShape()
+                        .fill(tint.opacity(0.14))
+                        .frame(width: geo.size.width * 0.85, height: geo.size.width * 0.85)
+                    if let stock = model.core.stockIcon(character: character, costume: costume) {
+                        let side = max(24, (geo.size.width * 0.5 / 24).rounded(.down) * 24)
                         ArtImage(image: stock, pixel: true)
                             .frame(width: side, height: side)
                             .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
-                            .position(x: geo.size.width / 2, y: geo.size.height * 0.27)
                     }
                 }
+                .position(x: geo.size.width / 2, y: geo.size.height * 0.42)
             }
             .aspectRatio(136 / 188, contentMode: .fit)
         }
     }
 }
 
-/// Where each fighter's face sits in their 136x188 select portrait, as
-/// fractions of its width and height (our own measurements; the grid and
-/// HUD crop around it).
+/// Where a portrait's face is, computed from its alpha (DESIGN.md
+/// refinement 10): the top of the figure, and the centre of the mass of
+/// its top third. Retail's soft drop shadow (alpha under ~0.6) is ignored.
 enum FaceFocus {
-    private static let table: [String: CGPoint] = [
-        "DrMario": CGPoint(x: 0.62, y: 0.25), "Mario": CGPoint(x: 0.58, y: 0.24),
-        "Luigi": CGPoint(x: 0.6, y: 0.21), "Bowser": CGPoint(x: 0.42, y: 0.3),
-        "Peach": CGPoint(x: 0.55, y: 0.21), "Yoshi": CGPoint(x: 0.42, y: 0.18),
-        "DonkeyKong": CGPoint(x: 0.72, y: 0.36), "CaptainFalcon": CGPoint(x: 0.66, y: 0.17),
-        "Ganondorf": CGPoint(x: 0.62, y: 0.17), "Falco": CGPoint(x: 0.6, y: 0.27),
-        "Fox": CGPoint(x: 0.58, y: 0.25), "Ness": CGPoint(x: 0.5, y: 0.22),
-        "IceClimbers": CGPoint(x: 0.5, y: 0.27), "Samus": CGPoint(x: 0.62, y: 0.17),
-        "Zelda": CGPoint(x: 0.58, y: 0.2), "Link": CGPoint(x: 0.62, y: 0.17),
-        "YoungLink": CGPoint(x: 0.56, y: 0.2), "Pichu": CGPoint(x: 0.42, y: 0.26),
-        "Pikachu": CGPoint(x: 0.5, y: 0.24), "Jigglypuff": CGPoint(x: 0.5, y: 0.32),
-        "Mewtwo": CGPoint(x: 0.56, y: 0.22), "GameAndWatch": CGPoint(x: 0.42, y: 0.22),
-        "Marth": CGPoint(x: 0.56, y: 0.2), "Roy": CGPoint(x: 0.52, y: 0.18),
-    ]
-    static func of(_ key: String) -> CGPoint { table[key] ?? CGPoint(x: 0.55, y: 0.22) }
+    struct Focus { var x: CGFloat; var top: CGFloat }
+    private static var cache: [String: Focus] = [:]
+
+    static func of(_ image: CGImage, key: String) -> Focus {
+        if let known = cache[key] { return known }
+        let focus = measure(image)
+        cache[key] = focus
+        return focus
+    }
+
+    private static func measure(_ image: CGImage) -> Focus {
+        let width = image.width, height = image.height
+        var pixels = [UInt8](repeating: 0, count: width * height * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: width, height: height,
+                                          bitsPerComponent: 8, bytesPerRow: width * 4,
+                                          space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue)
+            else { return false }
+            context.draw(image, in: CGRect(x: 0, y: 0, width: width, height: height))
+            return true
+        }
+        guard drawn else { return Focus(x: 0.5, top: 0) }
+        // Rows from the top (the bitmap's first row is the image's top).
+        func solid(_ x: Int, _ y: Int) -> Bool { pixels[(y * width + x) * 4 + 3] > 160 }
+        let threshold = max(2, width / 40)
+        var top = 0
+        while top < height, (0..<width).filter({ solid($0, top) }).count < threshold { top += 1 }
+        if top >= height { return Focus(x: 0.5, top: 0) }
+        let third = top + (height - top) / 3
+        var sum = 0, count = 0
+        for y in top..<third { for x in 0..<width where solid(x, y) { sum += x; count += 1 } }
+        let x = count > 0 ? CGFloat(sum) / CGFloat(count) + 0.5 : CGFloat(width) / 2
+        return Focus(x: x / CGFloat(width), top: CGFloat(top) / CGFloat(height))
+    }
 }
 
 /// A fighter's portrait cropped around the face to fill `size`; `span` is
@@ -222,10 +227,11 @@ struct FaceCrop: View {
         if let portrait = model.core.portrait(character: character, costume: costume) {
             let scale = size.width / (136 * span)
             let image = CGSize(width: 136 * scale, height: 188 * scale)
-            let focus = FaceFocus.of(model.character(character)?.key ?? "")
-            // Centre the face, then keep the image covering the frame.
+            let focus = FaceFocus.of(portrait, key: "\(character)-\(costume)")
+            // The figure's top just inside the frame, its upper mass centred;
+            // the image always covers the frame.
             let x = min(max(size.width / 2 - focus.x * image.width, size.width - image.width), 0)
-            let y = min(max(size.height * 0.46 - focus.y * image.height, size.height - image.height), 0)
+            let y = min(max(size.height * 0.05 - focus.top * image.height, size.height - image.height), 0)
             ArtImage(image: portrait)
                 .frame(width: image.width, height: image.height)
                 .offset(x: x + (image.width - size.width) / 2, y: y + (image.height - size.height) / 2)
@@ -237,21 +243,23 @@ struct FaceCrop: View {
                 .frame(width: side, height: side)
                 .frame(width: size.width, height: size.height)
         } else {
-            Silhouette(color: .white.opacity(0.15)).padding(size.height * 0.1)
+            EmblemShape().fill(.white.opacity(0.12))
+                .frame(width: size.height * 0.6, height: size.height * 0.6)
                 .frame(width: size.width, height: size.height)
         }
     }
 }
 
 extension View {
-    /// Soften the hard edges where retail's portrait texture crops a fighter.
-    func featheredEdges(horizontal: CGFloat = 0.1, top: CGFloat = 0.04, bottom: CGFloat = 0.14) -> some View {
+    /// Fade the flat edges where retail's portrait texture crops a fighter
+    /// (its right and bottom; DESIGN.md refinement 5).
+    func fadedCutEdges(right: CGFloat = 0.09, bottom: CGFloat = 0.12) -> some View {
         mask {
-            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: horizontal),
-                                   .init(color: .white, location: 1 - horizontal), .init(color: .clear, location: 1)],
+            LinearGradient(stops: [.init(color: .white, location: 0), .init(color: .white, location: 1 - right),
+                                   .init(color: .clear, location: 1)],
                            startPoint: .leading, endPoint: .trailing)
                 .mask {
-                    LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: top),
+                    LinearGradient(stops: [.init(color: .white, location: 0),
                                            .init(color: .white, location: 1 - bottom),
                                            .init(color: .clear, location: 1)],
                                    startPoint: .top, endPoint: .bottom)
