@@ -266,3 +266,64 @@ final class BackdropView: NSView {
                        provider: provider, decode: nil, shouldInterpolate: false, intent: .defaultIntent)
     }
 }
+
+/// A band of light crossing its view along the slant every 2.5 s, animated
+/// by the render server (a SwiftUI repeat-forever animation would cost the
+/// app a frame of work every display refresh).
+struct LightSweep: NSViewRepresentable {
+    var bandWidth: CGFloat
+
+    final class SweepView: NSView {
+        let band = CAGradientLayer()
+        var bandWidth: CGFloat = 160
+        private var animatedSize: CGSize = .zero
+
+        override init(frame: NSRect) {
+            super.init(frame: frame)
+            wantsLayer = true
+            layer = CALayer()
+            band.colors = [NSColor.white.withAlphaComponent(0).cgColor, NSColor.white.withAlphaComponent(0.55).cgColor,
+                           NSColor.white.withAlphaComponent(0).cgColor]
+            band.startPoint = CGPoint(x: 0, y: 0.5)
+            band.endPoint = CGPoint(x: 1, y: 0.5)
+            layer?.addSublayer(band)
+        }
+        required init?(coder: NSCoder) { fatalError("not used") }
+        override func hitTest(_ point: NSPoint) -> NSView? { nil }
+
+        override func layout() {
+            super.layout()
+            guard bounds.size != animatedSize, bounds.width > 0 else { return }
+            animatedSize = bounds.size
+            CATransaction.begin()
+            CATransaction.setDisableActions(true)
+            band.bounds = CGRect(x: 0, y: 0, width: bandWidth, height: bounds.height * 2)
+            band.position = CGPoint(x: -bandWidth * 2, y: bounds.midY)
+            band.setAffineTransform(CGAffineTransform(rotationAngle: -12 * .pi / 180))
+            CATransaction.commit()
+            band.removeAllAnimations()
+            let move = CABasicAnimation(keyPath: "position.x")
+            move.fromValue = -bandWidth * 2
+            move.toValue = bounds.width + bandWidth * 2
+            move.duration = 1.1
+            move.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            let group = CAAnimationGroup()
+            group.animations = [move]
+            group.duration = 2.5
+            group.repeatCount = .infinity
+            group.beginTime = CACurrentMediaTime() + 0.25
+            band.add(group, forKey: "sweep")
+        }
+    }
+
+    func makeNSView(context: Context) -> SweepView {
+        let view = SweepView()
+        view.bandWidth = bandWidth
+        return view
+    }
+    func updateNSView(_ view: SweepView, context: Context) {
+        guard view.bandWidth != bandWidth else { return }
+        view.bandWidth = bandWidth
+        view.needsLayout = true
+    }
+}

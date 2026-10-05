@@ -497,7 +497,6 @@ struct ControlsLegend: View {
 struct ReadyBanner: View {
     let m: MenuMetrics
     let action: () -> Void
-    @State private var sweep = false
     @State private var hover = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -520,15 +519,10 @@ struct ReadyBanner: View {
                     shape.fill(Palette.accent)
                     shape.fill(LinearGradient(colors: [.white.opacity(0.4), .clear], startPoint: .top,
                                               endPoint: .center))
-                    // Light sweep along the slant.
-                    GeometryReader { geo in
-                        LinearGradient(colors: [.clear, .white.opacity(0.55), .clear], startPoint: .leading,
-                                       endPoint: .trailing)
-                            .frame(width: m(160))
-                            .rotationEffect(.degrees(12))
-                            .offset(x: sweep ? geo.size.width + m(160) : -m(320))
+                    // Light sweep along the slant (Core Animation: no app work per frame).
+                    if !reduceMotion {
+                        LightSweep(bandWidth: m(160)).clipShape(shape)
                     }
-                    .clipShape(shape)
                 }
             }
             .overlay { shape.strokeBorder(.white.opacity(0.55), lineWidth: 1.5) }
@@ -539,12 +533,6 @@ struct ReadyBanner: View {
         .onHover { hover = $0 }
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: hover)
         .padding(.horizontal, m(32))
-        .onAppear {
-            guard !reduceMotion else { return }
-            withAnimation(.easeInOut(duration: 1.1).delay(0.25).repeatForever(autoreverses: false).delay(1.4)) {
-                sweep = true
-            }
-        }
         .accessibilityLabel("Ready to fight: choose a stage")
     }
 }
