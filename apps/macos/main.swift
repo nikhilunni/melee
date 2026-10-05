@@ -120,11 +120,13 @@ final class GameView: NSView {
     }
 }
 
-/// The overlay host. Mouse clicks on empty overlay space reach the game view.
+/// The overlay host. SwiftUI hit-tests its buttons inside the hosting view
+/// itself (they are not subviews), so the overlay takes every click except
+/// during play, when it only shows the HUD and clicks belong to the game view.
 final class OverlayHostingView<Content: View>: NSHostingView<Content> {
+    var passesClicksThrough: () -> Bool = { false }
     override func hitTest(_ point: NSPoint) -> NSView? {
-        let hit = super.hitTest(point)
-        return hit === self ? nil : hit
+        passesClicksThrough() ? nil : super.hitTest(point)
     }
 }
 
@@ -158,6 +160,9 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         backdrop.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(backdrop)
         overlay = OverlayHostingView(rootView: RootView(model: model))
+        overlay.passesClicksThrough = { [unowned model] in
+            model.screen == .match && !model.paused && !model.showsResults
+        }
         model.openPanel = { [weak self] in self?.openDiscPanel() }
         model.saveReplayPanel = { [weak self] in self?.saveReplay() }
         // The window sets its own size; SwiftUI's ideal size must not shrink it.
@@ -462,6 +467,7 @@ enum Autostart {
             fflush(stdout)
         }
         if env["MELEE_APP_SCREEN"] == "disc-empty" { model.hideRecentDiscs() }
+        if let spec = env["MELEE_APP_CLICK"] { click(spec, model: model) }
         guard let spec = env["MELEE_APP_AUTOSTART"] else { return }
         // Fewer fields stop earlier: "iso" at an empty character select, "iso:P1:P2" with the picks made.
         let parts = spec.split(separator: ":").map(String.init)
@@ -550,6 +556,32 @@ enum Autostart {
                 let handled = model.handle(key)
                 print("key \(name): \(handled ? "handled" : "passed") screen \(model.screen) cursor \(model.cursor) " +
                       "picking P\(model.picking + 1) stage \(model.stageCursor) focus \(model.focus)")
+                fflush(stdout)
+            }
+        }
+    }
+
+    /// MELEE_APP_CLICK=x,y: one left click at that point of the window's
+    /// content (fractions, top-left origin), delivered to the window itself
+    /// after 1 s, then the result 1 s later (development: real hit-testing
+    /// without global synthetic events).
+    private static func click(_ spec: String, model: AppModel) {
+        let values = spec.split(separator: ",").compactMap { Double($0) }
+        guard values.count == 2 else { return fail("MELEE_APP_CLICK wants x,y fractions") }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+            guard let window = NSApp.windows.first(where: { $0.contentView != nil }),
+                  let content = window.contentView else { return fail("no window") }
+            let point = NSPoint(x: content.bounds.width * values[0], y: content.bounds.height * (1 - values[1]))
+            let location = content.convert(point, to: nil)
+            for type in [NSEvent.EventType.leftMouseDown, .leftMouseUp] {
+                guard let event = NSEvent.mouseEvent(with: type, location: location, modifierFlags: [],
+                                                     timestamp: ProcessInfo.processInfo.systemUptime,
+                                                     windowNumber: window.windowNumber, context: nil,
+                                                     eventNumber: 0, clickCount: 1, pressure: 1) else { continue }
+                window.sendEvent(event)
+            }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
+                print("click: screen \(model.screen) sheet \(window.attachedSheet != nil)")
                 fflush(stdout)
             }
         }

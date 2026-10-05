@@ -180,6 +180,12 @@ the running match after `MELEE_APP_SCREEN_DELAY` seconds; results are a
 preview with P1 winning); `MELEE_APP_PREVIEW_PERCENTS=57,142` shows those
 HUD percents. `MELEE_APP_KEYS=right,down,enter,tab,e,...` feeds menu keys
 to the model 0.25 s apart and prints the cursor after each.
+`MELEE_APP_CLICK=x,y` (fractions of the window content, top-left origin)
+delivers one real left click to the window after 1 s and prints the screen
+and whether a sheet opened: it exercises hit-testing, which `MELEE_APP_KEYS`
+bypasses (e.g. `0.438,0.758` is Open Disc… at 1280x800 with a recent disc).
+Never test with global synthetic events (`osascript` key codes, `CGEvent`):
+they reach whatever app is frontmost.
 
 ## Web (`crates/melee-web`)
 
