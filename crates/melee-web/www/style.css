@@ -1,0 +1,125 @@
+:root {
+  --background: #0f1119;
+  --panel: #1c1f2b;
+  --raised: #292e40;
+  --text: #f4f5f8;
+  --muted: #9aa0b4;
+  --accent: #f9c73d;
+  --p1: #ee4545;
+  --p2: #4785f5;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body {
+  background: var(--background);
+  color: var(--text);
+  font: 16px/1.4 system-ui, -apple-system, "Segoe UI", sans-serif;
+}
+[hidden] { display: none !important; }
+h1 { font-size: 34px; font-weight: 800; margin: 0; letter-spacing: -0.01em; }
+h2 { margin: 0 0 8px; }
+.subtitle { font-size: 19px; color: var(--muted); margin: 6px 0 0; }
+.muted { color: var(--muted); }
+.small { font-size: 13px; }
+.row { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+
+button, .button {
+  font: inherit; color: var(--text); background: var(--raised);
+  border: 1px solid #ffffff14; border-radius: 10px; padding: 8px 16px;
+  cursor: pointer; text-decoration: none; display: inline-block; text-align: center;
+}
+button:hover, .button:hover { filter: brightness(1.15); }
+button:focus-visible, .button:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { opacity: 0.4; cursor: default; filter: none; }
+button.big, .button.big { font-size: 19px; font-weight: 600; min-width: 220px; padding: 12px 22px; border-radius: 14px; }
+button.prominent, .button.prominent { background: var(--accent); color: #17130a; border: none; }
+button.ghost { background: transparent; }
+.small-button { padding: 2px 10px; }
+
+#game { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; background: #000; }
+#ui { position: fixed; inset: 0; }
+.screen {
+  position: absolute; inset: 0; background: var(--background);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 22px; padding: 28px; overflow: auto;
+}
+.overlay-screen { position: absolute; inset: 0; pointer-events: none; }
+.overlay-screen .scrim, .overlay-screen .dialog { pointer-events: auto; }
+
+.dropzone {
+  width: min(520px, 100%); height: 260px; border-radius: 22px; background: var(--panel);
+  border: 2px dashed #ffffff40; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 14px; transition: background 0.15s;
+}
+.dropzone.targeted { background: var(--raised); border-color: var(--accent); }
+.disc-icon { font-size: 54px; }
+
+.bar { width: 100%; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+.bar .titles { text-align: center; }
+.stocks { font-size: 19px; display: flex; align-items: center; gap: 8px; }
+.stocks span { min-width: 2ch; text-align: center; font-weight: 700; }
+
+.character-grid { display: flex; flex-direction: column; gap: 8px; align-items: center; }
+.character-row { display: flex; gap: 8px; }
+.character {
+  position: relative; width: 104px; height: 66px; border-radius: 10px; background: var(--panel);
+  border: 1px solid #ffffff14; font-weight: 700; font-size: 14px; padding: 4px;
+}
+.character.p1 { border: 3px solid var(--p1); }
+.character.p2 { border: 3px solid var(--p2); }
+.badges { position: absolute; top: 3px; right: 3px; display: flex; gap: 2px; }
+.badge { font-size: 10px; font-weight: 900; border-radius: 6px; padding: 0 4px; }
+.badge.p1, .p1-bg { background: var(--p1); }
+.badge.p2, .p2-bg { background: var(--p2); }
+th.p1 { color: var(--p1); } th.p2 { color: var(--p2); }
+
+.players { width: 100%; display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+.player-panel {
+  background: var(--panel); border-radius: 14px; padding: 16px; border: 2px solid transparent;
+  cursor: pointer; min-height: 104px;
+}
+.player-panel.active[data-player="0"] { border-color: var(--p1); }
+.player-panel.active[data-player="1"] { border-color: var(--p2); }
+.player-title { display: flex; align-items: center; gap: 10px; font-size: 24px; font-weight: 700; }
+.player-title .tag { font-weight: 900; }
+.player-title .clear { margin-left: auto; font-size: 14px; padding: 2px 10px; }
+.costumes { display: flex; align-items: center; gap: 6px; margin-top: 10px; }
+.costume { width: 30px; height: 30px; border-radius: 50%; padding: 0; font-weight: 700; }
+
+.controls { font: 14px ui-monospace, Menlo, monospace; border-spacing: 14px 2px; }
+.controls th { text-align: left; color: var(--muted); font-weight: 400; }
+.controls th.p1, .controls th.p2 { font-weight: 900; }
+
+.stage-grid {
+  width: min(840px, 100%); display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 14px;
+}
+.stage { min-height: 110px; font-size: 20px; font-weight: 700; background: var(--panel); border-radius: 14px; }
+
+progress { width: min(420px, 90vw); height: 10px; accent-color: var(--accent); }
+
+.hud { position: absolute; left: 0; right: 0; bottom: 18px; display: flex; justify-content: center; gap: 40px; }
+.hud.static { position: static; margin: 4px 0 10px; }
+.card {
+  position: relative; background: #00000073; border-radius: 12px; padding: 8px 22px; text-align: center;
+  text-shadow: 0 1px 3px #000;
+}
+.card .percent { font-size: 40px; font-weight: 900; font-variant-numeric: tabular-nums; }
+.card .name { font-weight: 700; }
+.card .tag { position: absolute; top: 4px; left: 6px; font-size: 12px; font-weight: 900; }
+.card .stocks-row { display: flex; gap: 4px; justify-content: center; margin-top: 2px; min-height: 10px; }
+.card .stock { width: 10px; height: 10px; border-radius: 50%; }
+
+.scrim { position: absolute; inset: 0; background: #0000008c; display: flex; align-items: center; justify-content: center; }
+.dialog {
+  background: #1c1f2bf5; border-radius: 20px; padding: 32px; display: flex; flex-direction: column;
+  align-items: center; gap: 14px; max-width: min(720px, 92vw);
+}
+.dialog pre, dialog pre { white-space: pre-wrap; max-height: 40vh; overflow: auto; font-size: 13px; text-align: left; }
+
+dialog {
+  background: var(--panel); color: var(--text); border: none; border-radius: 16px; padding: 24px;
+  max-width: min(640px, 92vw);
+}
+dialog::backdrop { background: #0000008c; }
+.fatal { position: fixed; inset: 0; background: #000000cc; display: flex; align-items: center; justify-content: center; z-index: 10; }

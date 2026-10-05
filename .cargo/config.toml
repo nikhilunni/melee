@@ -10,6 +10,11 @@
 # and epilogue scheduling can change; float operations cannot.
 rustflags = ["-C", "split-debuginfo=unpacked", "-C", "force-unwind-tables=no"]
 
+# The web build (tools/run-web.sh): split-debuginfo is unstable on wasm32.
+# A non-empty target list replaces the [build] list for this target.
+[target.wasm32-unknown-unknown]
+rustflags = ["-C", "force-unwind-tables=no"]
+
 [alias]
 # Full oracle gate. Add integration scenarios here as milestones land.
 gate = "test --workspace"

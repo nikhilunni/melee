@@ -84,6 +84,7 @@ members = [
     "crates/melee-lib",
     "crates/melee-sim",
     "crates/melee-platform",
+    "crates/melee-web", # wasm32 only: the browser host's binding to melee-platform.
     "crates/melee-replay",
     "crates/melee-diff",
     "crates/slp",

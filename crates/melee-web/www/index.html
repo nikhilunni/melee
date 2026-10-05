@@ -1,0 +1,140 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Melee</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<canvas id="game"></canvas>
+
+<main id="ui">
+  <!-- Disc -->
+  <section id="screen-disc" class="screen" hidden>
+    <h1>Super Smash Bros. Melee</h1>
+    <p class="subtitle">Drop your Melee disc image here to begin</p>
+    <div id="dropzone" class="dropzone" tabindex="0">
+      <div class="disc-icon">&#x1F4BF;</div>
+      <p class="muted">NTSC-U 1.02 (GALE01) &middot; uncompressed .iso or .gcm</p>
+      <button id="choose-disc" class="big prominent">Choose Disc Image&hellip;</button>
+      <input id="disc-input" type="file" accept=".iso,.gcm" hidden>
+    </div>
+    <div id="disc-actions" class="row"></div>
+    <p class="muted small">The disc never leaves your computer: the page reads only the files a match needs.</p>
+  </section>
+
+  <!-- Character select -->
+  <section id="screen-characters" class="screen" hidden>
+    <header class="bar">
+      <button data-action="back" class="ghost">&lsaquo; Back</button>
+      <h1>Choose Your Fighters</h1>
+      <label class="stocks">Stocks
+        <button data-action="stocks-down" class="small-button" aria-label="Fewer stocks">&minus;</button>
+        <span id="stocks">4</span>
+        <button data-action="stocks-up" class="small-button" aria-label="More stocks">+</button>
+      </label>
+    </header>
+    <div id="character-grid" class="character-grid"></div>
+    <div class="players">
+      <div class="player-panel" data-player="0"></div>
+      <div class="player-panel" data-player="1"></div>
+    </div>
+    <footer class="bar">
+      <table class="controls">
+        <tr><th></th><th>Move</th><th>Attack</th><th>Special</th><th>Jump</th><th>Shield</th><th>Grab</th></tr>
+        <tr><th class="p1">P1</th><td>W A S D</td><td>K</td><td>J</td><td>Space</td><td>L</td><td>I</td></tr>
+        <tr><th class="p2">P2</th><td>Arrows</td><td>N</td><td>M</td><td>,</td><td>.</td><td>/</td></tr>
+      </table>
+      <button id="confirm-characters" data-action="confirm" class="big prominent">Choose Stage</button>
+    </footer>
+  </section>
+
+  <!-- Stage select -->
+  <section id="screen-stages" class="screen" hidden>
+    <header class="bar">
+      <button data-action="back" class="ghost">&lsaquo; Back</button>
+      <div class="titles"><h1>Choose a Stage</h1><p id="matchup" class="subtitle"></p></div>
+      <span></span>
+    </header>
+    <div id="stage-grid" class="stage-grid"></div>
+  </section>
+
+  <!-- Loading -->
+  <section id="screen-loading" class="screen" hidden>
+    <h1>Loading</h1>
+    <progress id="load-bar" max="1" value="0"></progress>
+    <p id="load-detail" class="muted"></p>
+    <button data-action="back">Cancel</button>
+  </section>
+
+  <!-- Match HUD, pause and results float over the canvas. -->
+  <section id="screen-match" class="overlay-screen" hidden>
+    <div id="hud" class="hud"></div>
+    <div id="pause" class="scrim" hidden>
+      <div class="dialog">
+        <h1>Paused</h1>
+        <button data-action="resume" class="big prominent">Resume</button>
+        <button data-action="restart" class="big">Restart</button>
+        <button data-action="save-replay" class="big">Save Replay</button>
+        <button data-action="quit" class="big">Quit to Character Select</button>
+      </div>
+    </div>
+  </section>
+  <section id="screen-results" class="overlay-screen" hidden>
+    <div class="scrim">
+      <div class="dialog">
+        <h1 id="results-title"></h1>
+        <div id="results-players" class="hud static"></div>
+        <button data-action="rematch" class="big prominent">Rematch</button>
+        <button data-action="quit" class="big">Character Select</button>
+        <button data-action="save-replay" class="big">Save Replay</button>
+      </div>
+    </div>
+  </section>
+</main>
+
+<!-- Messages: load errors, faults. -->
+<dialog id="message">
+  <h2 id="message-title"></h2>
+  <pre id="message-text"></pre>
+  <div class="row" id="message-actions"></div>
+</dialog>
+
+<!-- Shown when WebGPU is missing or the module crashes. -->
+<div id="fatal" class="fatal" hidden>
+  <div class="dialog">
+    <h1 id="fatal-title">Something went wrong</h1>
+    <pre id="fatal-text"></pre>
+    <div class="row">
+      <a id="fatal-replay" class="button big" hidden>Download Replay</a>
+      <button class="big prominent" onclick="location.reload()">Reload</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// Before the module loads, so a crash during startup still shows.
+window.meleeFatal = (title, text, replay) => {
+  window.meleeCrashed = true;
+  document.getElementById('fatal-title').textContent = title;
+  document.getElementById('fatal-text').textContent = text;
+  const link = document.getElementById('fatal-replay');
+  if (replay) {
+    link.href = URL.createObjectURL(new Blob([replay], { type: 'application/json' }));
+    link.download = `melee-fault-${Date.now()}.json`;
+    link.hidden = false;
+  }
+  document.getElementById('fatal').hidden = false;
+};
+// Called by the Rust panic hook just before the module aborts.
+window.meleePanic = (message, replay) =>
+  window.meleeFatal('The game crashed', message +
+    (replay ? '\n\nThe replay of this match reproduces the crash.' : ''), replay);
+window.addEventListener('unhandledrejection', (e) => {
+  if (document.getElementById('fatal').hidden) window.meleeFatal('Something went wrong', String(e.reason));
+});
+</script>
+<script type="module" src="app.js"></script>
+</body>
+</html>
