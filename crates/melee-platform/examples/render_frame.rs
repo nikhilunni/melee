@@ -251,7 +251,7 @@ fn crop_fighter(
 ) -> Result<(Vec<u8>, u32, u32), Box<dyn std::error::Error>> {
     let targets = session.presentation().camera_targets();
     let target = targets[player].ok_or("cropped fighter has no camera target")?;
-    let uniform = camera::Camera::frame(targets, size).uniform();
+    let uniform = camera::retail(session.presentation().view_camera(), size);
     let project = |x: f32, y: f32| {
         let p = [x - uniform.eye[0], y - uniform.eye[1], -uniform.eye[2], 1.0];
         let clip: [f32; 4] =
