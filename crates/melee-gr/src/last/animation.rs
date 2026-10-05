@@ -222,6 +222,10 @@ impl BackgroundAnimation {
         let z = self.tree.rotation_z(joint);
         self.tree.set_rotation_z(joint, z + delta);
     }
+    /// Read-only: the JObj behind a Ground_801C3FA4 descendant index.
+    pub fn joint_id(&self, bone: usize) -> Option<JObjId> {
+        self.joints.get(bone).copied()
+    }
     /// The descendant indices of `bone`'s subtree in HSD_JObjWalkTree order
     /// (the bone first, instances not entered).
     pub fn subtree(&self, bone: usize) -> Vec<usize> {

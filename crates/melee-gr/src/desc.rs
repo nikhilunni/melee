@@ -506,6 +506,72 @@ pub fn read_static_lights(
         .collect()
 }
 
+/// `HSD_FogDesc` (fog.h): GX fog type, then start and end depth and color.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FogDesc {
+    /// `GXFogType`.
+    pub kind: u32,
+    pub start: f32,
+    pub end: f32,
+    pub color: [u8; 4],
+}
+/// The fog a map row carries (`ModelDesc::fog_offset`).
+pub fn read_fog(archive: &Archive, offset: u32) -> ReadResult<FogDesc> {
+    let reader = archive.reader();
+    Ok(FogDesc {
+        kind: reader.u32(offset)?,
+        start: reader.f32(offset + 8)?,
+        end: reader.f32(offset + 12)?,
+        color: reader.array(offset + 0x10)?,
+    })
+}
+
+/// One `LightOverrideEntry` of map_head's fourth table (`UnkStageDat.unk18`,
+/// 8 bytes: the light descriptor, then bits a, b, c of one byte).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LightOverride {
+    pub descriptor: Option<u32>,
+    /// Bit a: `LOBJ_SPECULAR` (0x8).
+    pub specular: bool,
+    /// Bit b: `LOBJ_DIFFUSE` (0x4).
+    pub diffuse: bool,
+    /// Bit c: light flag 0x400.
+    pub flag_400: bool,
+}
+/// `Ground_801C20E0` (0x801C20E0) reads these light overrides.
+pub fn read_light_overrides(archive: &Archive) -> ReadResult<Vec<LightOverride>> {
+    let header = public(archive, "map_head")?;
+    let reader = archive.reader();
+    let n = count(&reader, header + 0x1C)?;
+    let base = array(archive, header + 0x18, n, 8)?;
+    (0..n as u32)
+        .map(|i| {
+            let entry = base + i * 8;
+            let bits = reader.u8(entry + 4)?;
+            Ok(LightOverride {
+                descriptor: archive.link(entry)?,
+                specular: bits & 0x80 != 0,
+                diffuse: bits & 0x40 != 0,
+                flag_400: bits & 0x20 != 0,
+            })
+        })
+        .collect()
+}
+/// `Ground_801C43C4` (0x801C43C4): map_head's fifth table (`unk20`, 8-byte
+/// `GroundShadowEntry`) pairs each light animation with its loop bit.
+pub fn read_light_animation_loops(archive: &Archive) -> ReadResult<Vec<(Option<u32>, bool)>> {
+    let header = public(archive, "map_head")?;
+    let reader = archive.reader();
+    let n = count(&reader, header + 0x24)?;
+    let base = array(archive, header + 0x20, n, 8)?;
+    (0..n as u32)
+        .map(|i| {
+            let entry = base + i * 8;
+            Ok((archive.link(entry)?, reader.u8(entry + 4)? & 0x80 != 0))
+        })
+        .collect()
+}
+
 /// grAnime_801C7C1C (0x801C7C1C): animation arrays contain consecutive
 /// HSD_AnimJoint records, indexed by Ground's descendant number.
 pub fn animation_subtree(
