@@ -75,3 +75,28 @@ fn a_match_loads_from_the_disc_image_and_plays() {
     load(&mut app);
     assert_eq!(app.screen(), Screen::Match);
 }
+
+#[test]
+fn the_hud_shows_one_entry_per_player_when_players_own_two_fighters() {
+    let Some(iso) = iso() else {
+        return;
+    };
+    let mut app = App::new();
+    app.open_disc(DiscFiles::open_path(&iso).unwrap()).unwrap();
+    // Zelda loads Sheik beside her; Ice Climbers are Popo and Nana.
+    app.choose_character(0, Character::Zelda).unwrap();
+    app.choose_character(1, Character::IceClimbers).unwrap();
+    app.confirm_characters().unwrap();
+    app.choose_stage(Stage::Battlefield, 7).unwrap();
+    load(&mut app);
+    app.advance(Duration::from_nanos(16_666_667)).unwrap();
+    let hud = app.hud().unwrap();
+    let players = hud.players.map(|p| (p.port, p.character));
+    assert_eq!(
+        players,
+        [
+            (melee_lib::Port::P1, Character::Zelda),
+            (melee_lib::Port::P2, Character::IceClimbers),
+        ]
+    );
+}

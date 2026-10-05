@@ -103,6 +103,11 @@ impl FighterObservation<'_> {
     pub fn character(self) -> Character {
         Character::from_kind(self.0.kind)
     }
+    /// Whether this fighter stands for its player: not a partner (Nana) and
+    /// not the inactive form of a transforming pair (Zelda/Sheik).
+    pub fn leads_player(self) -> bool {
+        !self.0.player.secondary && !self.0.status.disabled
+    }
     pub fn position(self) -> Vec3 {
         self.0.physics.position
     }

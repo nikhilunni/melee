@@ -455,28 +455,25 @@ impl App {
     pub fn hud(&self) -> Option<Hud> {
         let session = self.session.as_ref()?;
         let view = session.game().observe().ok()?;
-        let mut players = view.fighters().map(|f| PlayerHud {
-            port: f.port(),
-            character: f.character(),
-            costume: 0,
-            percent: f.percent(),
-            stocks: f.stocks(),
-        });
-        let mut players = [players.next()?, players.next()?];
-        for player in &mut players {
-            if let Some(config) = session
-                .game()
-                .config()
-                .players
-                .iter()
-                .find(|p| p.port == player.port)
-            {
-                // The observed character of a transformed Zelda/Sheik is
-                // the current form; the pick is what the menus show.
-                player.character = config.character;
-                player.costume = config.costume.0;
-            }
-        }
+        // One entry per configured player. A player may own several fighters
+        // (Nana, the sleeping Zelda/Sheik form): show the one that leads.
+        let config = session.game().config();
+        let player = |index: usize| -> Option<PlayerHud> {
+            let pick = &config.players[index];
+            let fighter = view
+                .fighters()
+                .filter(|f| f.port() == pick.port)
+                .min_by_key(|f| !f.leads_player())?;
+            Some(PlayerHud {
+                port: pick.port,
+                // The pick, not a transformed Zelda/Sheik's current form.
+                character: pick.character,
+                costume: pick.costume.0,
+                percent: fighter.percent(),
+                stocks: fighter.stocks(),
+            })
+        };
+        let players = [player(0)?, player(1)?];
         Some(Hud {
             tick: view.tick.0,
             paused: session.is_paused(),
