@@ -64,14 +64,39 @@ Disc -> Characters -> Stages -> Loading -> Match -> Results
 - **Results.** Winner (or draw), final percents and stocks; Rematch (same
   picks, new seed) or back to character select.
 
+**Menu art** (`art.rs`) comes from the user's disc at runtime, never from
+the repository. After `open_disc` the core asks for `MnSlChr.usd`,
+`MnSlMap.usd` and `IfAll.usd` (about 5 MB; `art_requests`, handed over
+through `provide_file` on any screen; natively `load_art`, which the C
+API's open-disc call runs) and decodes each image on first use, found the
+way the retail menus find it (model, joint, texture animation frame;
+`art/retail.rs` cites the code). Images are RGBA8, straight alpha, native
+size:
+
+| Piece | Size | Notes |
+|---|---|---|
+| Portrait (character, costume) | 136x188 | the select-screen portrait; the best art for a modern menu |
+| Face (character) | 64x56 | grid face with its name plate |
+| Stock (character, costume) | 24x24 | in-match stock icon |
+| Character emblem | 80x64 | series emblem, intensity (tint its alpha) |
+| Stage icon | 64x56 | 48x48 for Past Stages (Dream Land); retail has no 2D preview (the stage select shows 3D miniatures) |
+| Stage name | 224x56 | series above the stage name, intensity |
+| Stage emblem | 64x64 | retail's faint watermark (alpha peaks at 119) |
+
+Sheik has no portrait or face (retail picks her through Zelda's); her
+emblem is Zelda's, her stock icons her own. `examples/art_survey.rs` dumps
+every texture of an archive to `target/` for exploring.
+
 Everything above is unit-tested without a GPU (`cargo test -p
-melee-platform`: flow, costume rules, config, caching) and on the real disc
-(`tests/disc_flow.rs`: open the image, load, play, rematch, reuse cache).
+melee-platform`: flow, costume rules, config, caching, art requests) and
+on the real disc (`tests/disc_flow.rs`: open the image, load, play,
+rematch, reuse cache; `tests/disc_art.rs`: every piece's size, distinct
+picks decode to distinct images, determinism).
 
 ## The C API
 
 `crates/melee-platform/include/melee_platform.h`, version
-`MELEE_API_VERSION` (1; bump on any incompatible change, hosts check it at
+`MELEE_API_VERSION` (2; bump on any incompatible change, hosts check it at
 start). One opaque `melee_app_t` on one thread; plain structs out; static
 strings in catalog structs; calls that can fail return `bool` and leave
 the message in `melee_app_last_error`; user-facing notices come from
@@ -186,8 +211,8 @@ FNV-1a of `diagnostics::inspect` and `observe`.
 - **Input.** Two players on one keyboard; gamepads are not supported yet.
 - **Rendering.** Some characters and stages cannot be presented yet;
   the app reports the error and returns to stage select.
-- **Art.** Menus show names, not portraits or stage previews (the next
-  step: decode CSS icons and stock icons from `MnSlChr.usd`/`IfAll.usd` in
-  the core and hand RGBA to the hosts).
+- **Art.** The core decodes the menu art (above) and both bindings hand
+  it out (`melee_app_art`, `WebApp.art`); the menu views do not draw it
+  yet.
 - The fetched-file cache keeps every file read for the session (about
   15 MB per new character/stage pair).
