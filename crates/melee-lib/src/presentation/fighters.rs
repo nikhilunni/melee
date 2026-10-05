@@ -293,6 +293,12 @@ impl FighterParts {
         color.map(|c| c.map(|v| f32::from(v) / 255.0))
     }
 
+    /// Mr. Game & Watch's body colour (ftGw_Init_8014A7F4), which his
+    /// articles also take.
+    pub fn body_color(&self) -> Option<[u8; 4]> {
+        self.outline.as_ref().map(|o| o.body)
+    }
+
     /// The costume material state of `joint`'s `display`th DObj, if the
     /// costume's own model has that joint (OnLoad's graft has none).
     pub fn material(&self, joint: u32, display: usize) -> Option<&hsd_anim::mobj::MObj> {

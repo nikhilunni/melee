@@ -80,6 +80,28 @@ impl Presentation {
                             let costume = game.engine.state().fighters[*slot].0.player.costume;
                             Some(self.assets.characters[*slot].costume(costume))
                         }
+                        ModelSource::Item(pose) => {
+                            for texture in pose.texture_states(part.owner, part.display, index) {
+                                images.push(texture.descriptor.image);
+                                palettes.push(texture.descriptor.palette);
+                                images.extend(texture.image_variants().iter().flatten().copied());
+                                palettes.extend(
+                                    texture
+                                        .palette_variants()
+                                        .iter()
+                                        .filter(|p| p.is_some())
+                                        .copied(),
+                                );
+                            }
+                            Some(
+                                self.assets
+                                    .items
+                                    .visual_models()
+                                    .find(|(kind, _, _)| *kind == pose.kind)
+                                    .unwrap()
+                                    .1,
+                            )
+                        }
                         ModelSource::Article(article) | ModelSource::StageItem(article) => {
                             for texture in article.texture_states(part.owner, part.display, index) {
                                 images.push(texture.descriptor.image);
@@ -104,7 +126,6 @@ impl Presentation {
                                     .1
                             })
                         }
-                        _ => None,
                     };
                     let Some(archive) = archive else {
                         material.texture_banks.push(bank.into());
@@ -172,6 +193,20 @@ impl Presentation {
                 continue;
             };
             capture_material(material, live, &model.images)?;
+            if let ModelSource::Item(pose) = &model.source {
+                // it_80278574: the owner's colour on every MObj.
+                let owner = pose.owner.filter(|_| items::takes_owner_color(pose.kind));
+                let color = owner.and_then(|(player, secondary)| {
+                    let slot = game.engine.state().fighters.iter().position(|f| {
+                        f.0.player.id == player && f.0.player.secondary == secondary
+                    })?;
+                    self.fighter_parts.get(slot)?.body_color()
+                });
+                if let Some([r, g, b, _]) = color {
+                    let diffuse = [r, g, b].map(|v| f32::from(v) / 255.0);
+                    material.diffuse[..3].copy_from_slice(&diffuse);
+                }
+            }
         }
         Ok(())
     }

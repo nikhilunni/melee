@@ -119,7 +119,7 @@ enum ModelSource {
         form: Option<usize>,
         template: Option<Box<melee_gr::last::animation::BackgroundAnimation>>,
     },
-    Item(melee_types::ItemKind, JObjTree),
+    Item(items::ItemPose),
     /// An animated item whose model lives in the stage archive; its
     /// `owner` is a slot among the live items of its kind.
     StageItem(items::ArticleModel),
@@ -141,7 +141,7 @@ impl ModelSource {
             Self::Stage { key, template, .. } => {
                 self::stage::animation(game, *key, template).pose_tree()
             }
-            Self::Item(_, tree) => tree,
+            Self::Item(pose) => pose.tree(),
         }
     }
 }
@@ -254,15 +254,9 @@ impl Presentation {
                 }
                 continue;
             }
-            let desc = &visual.model;
-            let (mut tree, root) = hsd_anim::load::load_joint_tree(archive, desc).map_err(error)?;
-            // Retail items overwrite their root SRT with ItemCore's world SRT.
-            tree.set_translate(root, &hsd_types::Vec3::default());
-            tree.set_rotation_x(root, 0.0);
-            tree.set_rotation_y(root, 0.0);
-            tree.set_rotation_z(root, 0.0);
-            tree.set_scale(root, &hsd_types::Vec3::new(1.0, 1.0, 1.0));
-            result.add_model(archive, desc, &tree, ModelSource::Item(kind, tree.clone()))?;
+            let pose = items::ItemPose::new(archive, visual, kind)?;
+            let tree = pose.tree().clone();
+            result.add_model(archive, &visual.model, &tree, ModelSource::Item(pose))?;
         }
         result.add_stage_items()?;
         for model in assets.effect_resources.visual_models() {
@@ -423,16 +417,14 @@ impl Presentation {
             if let ModelSource::StageItem(held) = &mut model.source {
                 stage::capture_item(game, held)?;
             }
-            if let ModelSource::Item(kind, _) = &model.source {
+            if let ModelSource::Item(pose) = &mut model.source {
+                let kind = pose.kind;
+                let live = |item: &&melee_it::ItemCore| item.kind == kind && !item.destroyed;
+                let items = &game.engine.state().items;
+                pose.capture(items.iter().find(live));
                 let start = self.instance_ranges[model.instance_group].start;
                 let mut count = 0;
-                for item in game
-                    .engine
-                    .state()
-                    .items
-                    .iter()
-                    .filter(|item| item.kind == *kind && !item.destroyed)
-                {
+                for item in items.iter().filter(live) {
                     let mut matrix = hsd_types::Mtx::default();
                     hsd_anim::mtx::hsd_mtx_srt(
                         &mut matrix,
@@ -551,7 +543,7 @@ impl Presentation {
     ) -> Result<(), PresentationError> {
         let index = self.models.len();
         let ids: BTreeMap<_, _> = tree.ids().map(|id| (tree.get(id).id, id)).collect();
-        let instance_group = if matches!(source, ModelSource::Item(_, _)) {
+        let instance_group = if matches!(source, ModelSource::Item(_)) {
             let index = self.instance_ranges.len();
             let start = self.instances.len() as u32;
             self.instances.resize(

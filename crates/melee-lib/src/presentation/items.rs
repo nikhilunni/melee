@@ -157,6 +157,133 @@ impl ArticleModel {
     }
 }
 
+/// An instanced item kind's model: every live item of the kind draws with
+/// one pose, the first live item's state animation at its frame
+/// (it_80272CC0's per-state joint and material animations). The root SRT
+/// is ItemCore's world SRT, supplied per instance.
+pub(super) struct ItemPose {
+    pub kind: ItemKind,
+    /// The posed item's owner: its player and secondary (Nana) flag.
+    pub owner: Option<(u8, bool)>,
+    root: JObjId,
+    selected: usize,
+    rest: JObjTree,
+    /// The rest pose followed by one tree per visual state.
+    states: Vec<JObjTree>,
+}
+impl ItemPose {
+    pub fn new(
+        archive: &Archive,
+        visual: &hsd_archive::desc::item_visual::ItemVisual,
+        kind: ItemKind,
+    ) -> Result<Self, PresentationError> {
+        let (mut rest, root) =
+            hsd_anim::load::load_joint_tree(archive, &visual.model).map_err(error)?;
+        clear_root_srt(&mut rest, root);
+        let mut states = vec![rest.clone()];
+        for state in &visual.states {
+            // Shape animation is not evaluated: such a state keeps its
+            // authored vertices.
+            let mut tree = rest.clone();
+            if let Some(anim) = &state.joint {
+                hsd_anim::load::attach_anim_joint(&mut tree, root, anim, archive).map_err(error)?;
+            }
+            if let Some(anim) = &state.material {
+                let material = hsd_anim::load::material_animation(archive, anim).map_err(error)?;
+                tree.add_anim_all(root, None, Some(&material));
+            }
+            states.push(tree);
+        }
+        Ok(Self {
+            kind,
+            owner: None,
+            root,
+            selected: 0,
+            rest,
+            states,
+        })
+    }
+    pub fn tree(&self) -> &JObjTree {
+        &self.states[self.selected]
+    }
+    pub fn texture_states(
+        &self,
+        joint: JObjId,
+        display: usize,
+        texture: usize,
+    ) -> impl Iterator<Item = &hsd_anim::tobj::TObj> {
+        self.states.iter().filter_map(move |tree| {
+            tree.dobj(joint)?
+                .get(display)?
+                .mobj
+                .as_ref()?
+                .textures
+                .get(texture)
+        })
+    }
+    /// Pose the model at `item`'s state animation and frame; without an
+    /// item, or for a state without an animation, the rest pose.
+    pub fn capture(&mut self, item: Option<&ItemCore>) {
+        let logic = crate::scene_items::SceneItems::logic(self.kind);
+        self.owner = item.and_then(|item| Some((item.owner?, item.owner_secondary)));
+        let Some(item) = item else {
+            self.selected = 0;
+            return;
+        };
+        let animation = logic.states[usize::from(item.motion)].animation_id;
+        self.selected = usize::try_from(animation)
+            .ok()
+            .map(|index| index + 1)
+            .filter(|index| *index < self.states.len())
+            .unwrap_or(0);
+        if self.selected == 0 {
+            return;
+        }
+        let tree = &mut self.states[self.selected];
+        for id in self.rest.ids() {
+            let rest = self.rest.get(id);
+            let node = tree.get_mut(id);
+            node.flags = rest.flags;
+            node.translate = rest.translate;
+            node.rotate = rest.rotate;
+            node.scale = rest.scale;
+            node.mtx = rest.mtx;
+            node.scl = rest.scl;
+        }
+        tree.req_anim_all(self.root, item.animation_frame);
+        tree.anim_all::<melee_ft::fighter::RetailTrig>(self.root);
+        clear_root_srt(tree, self.root);
+    }
+}
+
+/// it_8027CE64 callers (Item_AttachGameWatchArticle and the specials):
+/// Mr. Game & Watch's articles, which take his body colour
+/// (ftGw_Init_8014A7F4 -> it_80278574).
+pub(super) fn takes_owner_color(kind: ItemKind) -> bool {
+    matches!(
+        kind,
+        ItemKind::GameWatchGreenhouse
+            | ItemKind::GameWatchManhole
+            | ItemKind::GameWatchFire
+            | ItemKind::GameWatchParachute
+            | ItemKind::GameWatchTurtle
+            | ItemKind::GameWatchBreath
+            | ItemKind::GameWatchChef
+            | ItemKind::GameWatchJudge
+            | ItemKind::GameWatchPanic
+            | ItemKind::GameWatchRescue
+    )
+}
+
+/// Retail items overwrite their root SRT with ItemCore's world SRT.
+fn clear_root_srt(tree: &mut JObjTree, root: JObjId) {
+    tree.set_translate(root, &hsd_types::Vec3::default());
+    tree.set_rotation_x(root, 0.0);
+    tree.set_rotation_y(root, 0.0);
+    tree.set_rotation_z(root, 0.0);
+    tree.set_scale(root, &hsd_types::Vec3::new(1.0, 1.0, 1.0));
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
