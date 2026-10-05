@@ -3,7 +3,6 @@ name = "ft-mars"
 description = "Marth character data and callbacks (ftMars)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 ft-mars-family = { path = "../ft-mars-family" }

@@ -3,7 +3,6 @@ name = "ft-pikachu-family"
 description = "Pikachu/Pichu shared specials (ftPikachu, used by ftPichu)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

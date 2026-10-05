@@ -3,7 +3,6 @@ name = "melee-lib"
 description = "Deterministic Melee matches: create, step, inspect, and clone"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 ft-fox-family = { path = "../ft-fox-family" }

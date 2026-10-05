@@ -3,7 +3,6 @@ name = "ft-koopa"
 description = "Fighter: Bowser (decomp src/melee/ft/kinds/ftKoopa)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

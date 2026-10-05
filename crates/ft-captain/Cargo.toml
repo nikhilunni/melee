@@ -3,7 +3,6 @@ name = "ft-captain"
 description = "Captain Falcon character data and callbacks (ftCaptain)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 ft-captain-family = { path = "../ft-captain-family" }

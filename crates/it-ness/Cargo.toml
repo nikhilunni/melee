@@ -3,7 +3,6 @@ name = "it-ness"
 description = "Ness's articles: the bat, the yo-yo, PK Fire, PK Flash and PK Thunder"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

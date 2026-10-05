@@ -3,7 +3,6 @@ name = "hsd-anim"
 description = "HSD scene graph and animation: JObj/DObj/AObj/FObj matrix and keyframe evaluation, no rendering (decomp src/sysdolphin/baselib/{jobj,aobj,fobj,mobj}.c)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 hsd-types = { path = "../hsd-types" }

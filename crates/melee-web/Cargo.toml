@@ -3,7 +3,6 @@ name = "melee-web"
 description = "The browser host's binding to libmelee (melee-platform): wasm-bindgen API mirroring the C API"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [lib]
 crate-type = ["cdylib", "rlib"]

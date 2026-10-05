@@ -3,7 +3,6 @@ name = "melee-platform"
 description = "libmelee: the shared application core (disc, menu flow, session, wgpu renderer) with a C API"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [lib]
 crate-type = ["rlib", "staticlib"]

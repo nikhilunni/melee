@@ -3,7 +3,6 @@ name = "ft-mewtwo"
 description = "Fighter: Mewtwo (decomp src/melee/ft/kinds/ftMewtwo)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

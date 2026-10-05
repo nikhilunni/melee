@@ -3,7 +3,6 @@ name = "ft-purin"
 description = "Jigglypuff character data and callbacks (ftPurin)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-coll = { path = "../melee-coll" }

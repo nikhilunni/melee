@@ -3,7 +3,6 @@ name = "ft-emblem"
 description = "Roy character data and callbacks (ftEmblem)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 ft-mars-family = { path = "../ft-mars-family" }

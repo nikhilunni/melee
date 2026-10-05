@@ -3,7 +3,6 @@ name = "melee-diff"
 description = "Compare canonical state traces from the Dolphin oracle and the Rust port; report the first divergence"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

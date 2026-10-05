@@ -3,7 +3,6 @@ name = "ft-mario-family"
 description = "Shared Mario and Dr. Mario special moves (retail ftMr_)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

@@ -3,7 +3,6 @@ name = "it-mariocape"
 description = "Mario's cape item (itmariocape.c)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

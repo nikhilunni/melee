@@ -3,7 +3,6 @@ name = "melee-replay"
 description = "Bounded application input recordings and headless reproduction"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-lib = { path = "../melee-lib" }

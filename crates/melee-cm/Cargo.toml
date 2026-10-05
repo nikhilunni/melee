@@ -3,7 +3,6 @@ name = "melee-cm"
 description = "Gameplay camera: subject framing, standard-mode tracking and screen projection (decomp src/melee/cm)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 gekko-math = { path = "../gekko-math" }

@@ -3,7 +3,6 @@ name = "melee-sim"
 description = "Headless simulator binary: wires every crate, runs a scenario file, emits a canonical JSONL trace for melee-diff"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-lib = { path = "../melee-lib" }

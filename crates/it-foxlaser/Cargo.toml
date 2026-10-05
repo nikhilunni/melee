@@ -3,7 +3,6 @@ name = "it-foxlaser"
 description = "Fox/Falco laser and blaster item state tables"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

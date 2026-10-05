@@ -3,7 +3,6 @@ name = "melee-gr"
 description = "Stage logic and stage-specific behaviour (decomp src/melee/gr). Split per stage if it grows past ~30k lines"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 hsd-archive = { path = "../hsd-archive" }

@@ -3,6 +3,5 @@ name = "hsd-types"
 description = "Plain shared data types for the HSD port: Vec3, Mtx, ids, flags. Leaf crate: keep tiny and stable so nothing rebuilds when logic changes"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]

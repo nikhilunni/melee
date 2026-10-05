@@ -3,7 +3,6 @@ name = "melee-if"
 description = "RNG-relevant Melee interface state"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 gekko-math = { path = "../gekko-math" }

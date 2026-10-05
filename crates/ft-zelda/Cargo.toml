@@ -3,7 +3,6 @@ name = "ft-zelda"
 description = "Fighter: Zelda (decomp src/melee/ft/kinds/ftZelda)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

@@ -3,7 +3,6 @@ name = "it-link"
 description = "Link's and Young Link's articles (itlink*.c): the boomerang and the hookshot"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

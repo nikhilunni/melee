@@ -3,7 +3,6 @@ name = "it-pikachu"
 description = "Pikachu's articles: the Thunder Jolt ball and crawler (itpikachutjolt*.c)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

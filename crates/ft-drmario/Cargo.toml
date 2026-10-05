@@ -3,7 +3,6 @@ name = "ft-drmario"
 description = "Fighter: Dr. Mario (decomp src/melee/ft/kinds/ftDrMario)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 ft-mario-family = { path = "../ft-mario-family" }

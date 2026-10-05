@@ -3,7 +3,6 @@ name = "melee-ef"
 description = "Effect requests, fixed model pools and efLib animation/particle dispatch"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 hsd-particle = { path = "../hsd-particle" }

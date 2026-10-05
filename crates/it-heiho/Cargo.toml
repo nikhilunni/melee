@@ -2,7 +2,6 @@
 name = "it-heiho"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

@@ -3,7 +3,6 @@ name = "ft-fox-family"
 description = "Shared Fox and Falco special moves (retail ftFx_)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-coll = { path = "../melee-coll" }

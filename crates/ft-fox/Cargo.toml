@@ -3,7 +3,6 @@ name = "ft-fox"
 description = "Fighter: Fox (decomp src/melee/ft/kinds/ftFox). One crate per character so fighters build in parallel and independently"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

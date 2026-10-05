@@ -3,7 +3,6 @@ name = "melee-ft"
 description = "Common fighter logic: physics, action states, ftCo_* shared behaviours, collision (decomp src/melee/ft minus kinds/ and CPU)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

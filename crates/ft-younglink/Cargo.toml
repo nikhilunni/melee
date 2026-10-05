@@ -3,7 +3,6 @@ name = "ft-younglink"
 description = "Young Link character data and callbacks (ftCLink)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

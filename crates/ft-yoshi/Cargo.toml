@@ -3,7 +3,6 @@ name = "ft-yoshi"
 description = "Yoshi character data and callbacks (ftYoshi)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-coll = { path = "../melee-coll" }

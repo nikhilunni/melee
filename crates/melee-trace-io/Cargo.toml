@@ -3,7 +3,6 @@ name = "melee-trace-io"
 description = "Read recorded oracle traces, plain or zstd-compressed; tooling and tests only, never gameplay"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 zstd = { version = "0.13", default-features = false }

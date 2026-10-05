@@ -3,7 +3,6 @@ name = "ft-ganon"
 description = "Ganondorf character data and callbacks (ftGanon)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 ft-captain-family = { path = "../ft-captain-family" }

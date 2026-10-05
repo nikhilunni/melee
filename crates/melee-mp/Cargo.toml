@@ -3,7 +3,6 @@ name = "melee-mp"
 description = "Stage collision map: floors, walls, ledges, line queries (decomp src/melee/mp)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 hsd-archive = { path = "../hsd-archive" }

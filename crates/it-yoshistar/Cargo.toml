@@ -3,7 +3,6 @@ name = "it-yoshistar"
 description = "Yoshi Bomb star item (ityoshistar.c)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

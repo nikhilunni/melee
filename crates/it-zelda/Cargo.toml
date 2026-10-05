@@ -3,7 +3,6 @@ name = "it-zelda"
 description = "Zelda's articles: Din's Fire and its explosion"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

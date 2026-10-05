@@ -3,7 +3,6 @@ name = "it-drmariopill"
 description = "Dr. Mario's Megavitamin item (itdrmariopill.c)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

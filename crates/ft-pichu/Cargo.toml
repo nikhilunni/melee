@@ -3,7 +3,6 @@ name = "ft-pichu"
 description = "Pichu character data and callbacks (ftPichu)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

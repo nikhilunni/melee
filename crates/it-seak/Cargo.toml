@@ -3,7 +3,6 @@ name = "it-seak"
 description = "Sheik's articles: the needles, the chain and the Vanish smoke"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

@@ -3,7 +3,6 @@ name = "ft-peach"
 description = "Peach character data and callbacks (ftPeach)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }

@@ -3,7 +3,6 @@ name = "it-gamewatch"
 description = "Mr. Game & Watch's articles (it/kinds/itgamewatch*.c)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

@@ -3,7 +3,6 @@ name = "it-peach"
 description = "Peach's articles: parasol, Toad and Toad's spores"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

@@ -3,7 +3,6 @@ name = "it-mewtwo"
 description = "Mewtwo's articles: Disable and Shadow Ball (itmewtwodisable.c, itmewtwoshadowball.c)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }

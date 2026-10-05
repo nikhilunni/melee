@@ -3,7 +3,6 @@ name = "ft-ness"
 description = "Fighter: Ness (decomp src/melee/ft/kinds/ftNess)"
 version.workspace = true
 edition.workspace = true
-license.workspace = true
 
 [dependencies]
 melee-types = { path = "../melee-types" }
