@@ -47,6 +47,66 @@ pub(super) struct FighterParts {
     drawn: bool,
     materials: CostumeMaterials,
     outline: Option<Outline>,
+    color: ColorOverlayView,
+}
+
+/// ftMaterial_800BF6BC with `x7C_color_enable`: the colour overlay
+/// (ftCo_800C0658: the primary slot x408 while it holds a program, else the
+/// secondary x488) mixed over the material by its alpha.
+///
+/// The simulation keeps each program's last colour command, not the
+/// colour lb_80014258 integrates each frame, so this tracks the blend from
+/// the ticks between captures: a capture after the command changes starts
+/// it from the colour last shown.
+#[derive(Default)]
+struct ColorOverlayView {
+    /// The command last seen: (secondary slot, id, rgba, frames).
+    command: Option<(bool, u8, u32, u32)>,
+    /// Tick the command was first seen.
+    since: u64,
+    /// x30..x3C when the command ran, and x40..x4C per frame.
+    start: [f32; 4],
+    rate: [f32; 4],
+    /// `x2C_hex` as last shown.
+    shown: Option<[u8; 4]>,
+}
+impl ColorOverlayView {
+    fn capture(&mut self, fighter: &melee_ft::fighter::Fighter, tick: u64) {
+        let primary = &fighter.combat.color_overlay;
+        let (secondary, slot) = if primary.id != 0 {
+            (false, primary)
+        } else {
+            (true, &fighter.combat.secondary_color_overlay)
+        };
+        let Some((rgba, frames)) = slot.program.color.filter(|_| slot.id != 0) else {
+            self.command = None;
+            self.shown = None;
+            return;
+        };
+        let target = rgba.to_be_bytes();
+        let key = Some((secondary, slot.id, rgba, frames));
+        if self.command != key {
+            self.command = key;
+            self.since = tick;
+            let current = self.shown.unwrap_or(target);
+            if frames == 0 {
+                // lb_80014014: the colour is set outright.
+                self.start = target.map(f32::from);
+                self.rate = [0.0; 4];
+            } else {
+                // lb_800140F8: blend from the current colour over `frames`.
+                self.start = current.map(f32::from);
+                self.rate = std::array::from_fn(|c| {
+                    (0.5 + f32::from(target[c]) - f32::from(current[c])) / frames as f32
+                });
+            }
+        }
+        // lb_80014258 adds the rate every frame, the command's included.
+        let steps = (tick - self.since + 1) as f32;
+        self.shown = Some(std::array::from_fn(|c| {
+            (self.start[c] + self.rate[c] * steps).clamp(0.0, 255.0) as u8
+        }));
+    }
 }
 
 /// ftGw_Init_OnLoad (ftgamewatch.c:522-541): Mr. Game & Watch's body colour
@@ -163,6 +223,7 @@ impl FighterParts {
             drawn: true,
             materials,
             outline,
+            color: ColorOverlayView::default(),
         })
     }
 
@@ -171,7 +232,7 @@ impl FighterParts {
     /// and 3 (metal-only parts) stay hidden as ftParts_8007487C left them;
     /// set 0 shows each group's selected variant and hides its others
     /// (ftParts_80074B6C). Then the costume materials at this frame.
-    pub fn capture(&mut self, fighter: &melee_ft::fighter::Fighter) {
+    pub fn capture(&mut self, fighter: &melee_ft::fighter::Fighter, tick: u64) {
         self.hidden = [false; DOBJ_CAPACITY];
         for set in [LOW_POLY, METAL_EXTRA] {
             for slot in self.sets[set].iter().flatten().flatten().flatten() {
@@ -196,6 +257,7 @@ impl FighterParts {
             || fighter.effect_state.invisible
             || fighter.commands.fighter_hidden);
         self.materials.capture(fighter);
+        self.color.capture(fighter, tick);
     }
 
     /// Whether the mesh from `joint`'s `display`th DObj is hidden this frame.
@@ -220,13 +282,15 @@ impl FighterParts {
     }
 
     /// The post-texture colour overlay for the mesh, if any: the outline
-    /// colour for outline geometry (ftMaterial_800BF6BC, `x2223_b2`).
+    /// colour for outline geometry (ftMaterial_800BF6BC, `x2223_b2`), else
+    /// the colour overlay's.
     pub fn overlay(&self, joint: u32, display: usize) -> Option<[f32; 4]> {
-        self.is_outline(joint, display).then(|| {
-            self.outline
-                .as_ref()
-                .map_or([0.0; 4], |o| o.color.map(|v| f32::from(v) / 255.0))
-        })
+        let color = if self.is_outline(joint, display) {
+            self.outline.as_ref().map(|o| o.color)
+        } else {
+            self.color.shown
+        };
+        color.map(|c| c.map(|v| f32::from(v) / 255.0))
     }
 
     /// The costume material state of `joint`'s `display`th DObj, if the

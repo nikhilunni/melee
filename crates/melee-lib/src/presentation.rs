@@ -441,7 +441,7 @@ impl Presentation {
             .iter_mut()
             .zip(&game.engine.state().fighters)
         {
-            parts.capture(&fighter.0);
+            parts.capture(&fighter.0, game.tick().0);
         }
         self.capture_materials(game)?;
         for (slot, fighter) in game.engine.state().fighters.iter().enumerate() {
