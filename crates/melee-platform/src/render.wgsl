@@ -5,7 +5,7 @@
 @group(0) @binding(0) var<storage, read> poses: array<mat4x4<f32>>;
 @group(0) @binding(2) var<storage, read> instances: array<mat4x4<f32>>;
 @group(0) @binding(1) var<uniform> camera: Camera;
-struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32>, image:vec4<u32>, addressing:vec4<u32>, lod:vec4<f32> }
+struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32>, lod:vec4<f32> }
 struct Material { overlay:vec4<f32>, diffuse: vec4<f32>, ambient:vec4<f32>, specular:vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
 @group(1) @binding(0) var<uniform> material: Material;
 struct DirectionalLight { direction:vec4<f32>, color:vec4<f32>, attenuation:vec4<f32> }
@@ -48,53 +48,9 @@ fn specular_weight_for_view(normal:vec3<f32>, toward_light:vec3<f32>, shininess:
     // HSD_LObjSetup uses GX's rational specular attenuation, not a pow lobe.
     return squared/max(half_shininess+(1.0-half_shininess)*squared,0.000001);
 }
-// Address each tap within the selected image, even when array layers have
-// different sizes. Padding never leaks into repeat, mirror or linear filter_modeing.
-fn address_texel(value:i32, size:i32, mode:u32)->i32 {
-    if mode==0u { return clamp(value,0,size-1); }
-    let period=select(size,size*2,mode==2u);
-    let wrapped=((value%period)+period)%period;
-    return select(wrapped,period-1-wrapped,wrapped>=size);
-}
-fn image_texel(image:texture_2d_array<f32>, p:vec2<i32>, layer:Layer, level:u32)->vec4<f32> {
-    let size=max(layer.image.yz>>vec2(level),vec2(1u));
-    let at=vec2(address_texel(p.x,i32(size.x),layer.addressing.x),
-                address_texel(p.y,i32(size.y),layer.addressing.y));
-    return textureLoad(image,at,i32(layer.image.x),i32(level));
-}
-fn sample_level(image:texture_2d_array<f32>, uv:vec2<f32>, layer:Layer, level:u32, nearest:bool)->vec4<f32> {
-    let position=uv*vec2<f32>(max(layer.image.yz>>vec2(level),vec2(1u)));
-    if nearest { return image_texel(image,vec2<i32>(floor(position)),layer,level); }
-    let pixel=position-vec2(0.5); let base=vec2<i32>(floor(pixel)); let fraction=fract(pixel);
-    return mix(mix(image_texel(image,base,layer,level),image_texel(image,base+vec2(1,0),layer,level),fraction.x),
-               mix(image_texel(image,base+vec2(0,1),layer,level),image_texel(image,base+vec2(1,1),layer,level),fraction.x),fraction.y);
-}
-fn sample_lod(image:texture_2d_array<f32>, uv:vec2<f32>, layer:Layer, lod:f32)->vec4<f32> {
-    if lod<=0.0 {return sample_level(image,uv,layer,0u,layer.addressing.z!=0u);}
-    let filter_mode=layer.addressing.w;
-    let nearest=(filter_mode==0u || filter_mode==2u || filter_mode==4u);
-    if filter_mode<2u {return sample_level(image,uv,layer,0u,nearest);}
-    let level=clamp(lod,layer.lod.y,min(layer.lod.z,f32(layer.image.w)));
-    if filter_mode<4u {return sample_level(image,uv,layer,u32(floor(level+0.5)),nearest);}
-    let lower=u32(floor(level));
-    return mix(sample_level(image,uv,layer,lower,nearest),
-        sample_level(image,uv,layer,min(lower+1u,layer.image.w),nearest),fract(level));
-}
-fn sample_image(image:texture_2d_array<f32>, uv:vec2<f32>, layer:Layer)->vec4<f32> {
-    let dx=dpdx(uv)*vec2<f32>(layer.image.yz);
-    let dy=dpdy(uv)*vec2<f32>(layer.image.yz);
-    let xx=dot(dx,dx); let yy=dot(dy,dy);
-    let major=select(dy,dx,xx>=yy);
-    let taps=max(1u,u32(layer.lod.w));
-    let footprint=max(min(xx,yy),max(xx,yy)/f32(taps*taps));
-    let lod=0.5*log2(max(footprint,0.000001))+layer.lod.x;
-    var color=vec4(0.0);
-    for(var i=0u;i<taps;i+=1u) {
-        let offset=(f32(i)+0.5)/f32(taps)-0.5;
-        color+=sample_lod(image,uv+offset*major/vec2<f32>(layer.image.yz),layer,lod);
-    }
-    return color/f32(taps);
-}
+// Texture layers sample through hardware samplers (material.rs): GX wrap,
+// filter, LOD range and anisotropy are sampler state; the LOD bias is
+// `layer.lod.x`.
 fn specular_weight(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32)->f32 {
     return specular_weight_for_view(normal,toward_light,shininess,vec3(0.0,0.0,1.0));
 }

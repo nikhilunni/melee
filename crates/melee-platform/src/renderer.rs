@@ -363,7 +363,7 @@ impl Renderer {
             if scene.is_effect_mesh(*mesh) {
                 continue;
             }
-            material.update(&self.queue, &scene.materials()[*mesh]);
+            material.update(&self.device, &self.queue, &scene.materials()[*mesh]);
         }
         self.queue.write_buffer(
             &self.lighting,
@@ -385,7 +385,12 @@ impl Renderer {
         }
         for effect in scene.effect_draws() {
             let material = &mut self.images[self.draws[effect.mesh].image].1;
-            material.update_slot(&self.queue, scene.effect_material(*effect), effect.slot);
+            material.update_slot(
+                &self.device,
+                &self.queue,
+                scene.effect_material(*effect),
+                effect.slot,
+            );
         }
         let camera = crate::camera::retail(scene.view_camera(), self.size);
         // Draw opaque depth writers first, then translucent meshes back-to-front.
@@ -472,7 +477,7 @@ impl Renderer {
                     continue;
                 }
                 pass.set_pipeline(&self.pipelines[draw.pipeline]);
-                pass.set_bind_group(1, &self.images[draw.image].1.bind, &[0]);
+                pass.set_bind_group(1, self.images[draw.image].1.bind(0), &[0]);
                 pass.set_vertex_buffer(0, draw.vertices.slice(..));
                 pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(
@@ -505,7 +510,11 @@ impl Renderer {
                     &self.scene,
                     &[self.pose_stride * (effect.slot as u32 + 1)],
                 );
-                pass.set_bind_group(1, &material.bind, &[material.offset(effect.slot)]);
+                pass.set_bind_group(
+                    1,
+                    material.bind(effect.slot),
+                    &[material.offset(effect.slot)],
+                );
                 pass.set_vertex_buffer(0, draw.vertices.slice(..));
                 pass.set_index_buffer(draw.indices.slice(..), wgpu::IndexFormat::Uint32);
                 pass.draw_indexed(0..draw.count, 0, 0..1);

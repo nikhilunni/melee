@@ -1,7 +1,13 @@
 //! GPU material resources, cached by immutable image/material identity.
 //! HSD's common color/alpha operations run in one fragment shader. These are
 //! display calculations, independent of the retail simulation math kernels.
-use melee_lib::presentation::{Material, PixelState};
+//!
+//! Each decoded image is its own texture with its authored mip chain, sampled
+//! by hardware: GX wrap modes become address modes, GX filters and LOD range
+//! become sampler state. An animated texture bank selects its current image
+//! by bind group: one per combination of bank images in use, made on first
+//! use and kept.
+use melee_lib::presentation::{Material, PixelState, Texture, TextureLayer};
 use std::{collections::BTreeMap, sync::Arc};
 
 pub const MAX_LAYERS: usize = 8;
@@ -18,8 +24,7 @@ struct Layer {
     alpha_inputs: [u32; 4],
     constants: [[f32; 4]; 3],
     active: [u32; 4],
-    image: [u32; 4],
-    addressing: [u32; 4],
+    /// x: GX LOD bias; the rest is padding.
     lod: [f32; 4],
 }
 #[repr(C)]
@@ -50,7 +55,7 @@ pub fn layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
             visibility: wgpu::ShaderStages::FRAGMENT,
             ty: wgpu::BindingType::Texture {
                 sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                view_dimension: wgpu::TextureViewDimension::D2Array,
+                view_dimension: wgpu::TextureViewDimension::D2,
                 multisampled: false,
             },
             count: None,
@@ -67,12 +72,115 @@ pub fn layout(device: &wgpu::Device) -> wgpu::BindGroupLayout {
         entries: &entries,
     })
 }
+/// Hardware sampler state for one GX texture layer and image.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct SamplerKey {
+    wrap: [u32; 2],
+    magnify_nearest: bool,
+    min_filter: u32,
+    /// `lod_min_clamp` and `lod_max_clamp` as f32 bits.
+    lod: [u32; 2],
+    anisotropy: u16,
+}
+impl SamplerKey {
+    /// GX_NEAR, GX_LINEAR, GX_NEAR_MIP_NEAR, GX_LIN_MIP_NEAR, GX_NEAR_MIP_LIN
+    /// and GX_LIN_MIP_LIN (`min_filter` 0..=5) as hardware filter modes; the
+    /// image's LOD range, limited to its decoded levels, as the LOD clamp.
+    fn new(layer: &TextureLayer, image: &Texture) -> Self {
+        let min_filter = layer.lod.min_filter;
+        let lod = if min_filter < 2 {
+            // No mip filter: the base level only.
+            [0.0, 0.0]
+        } else {
+            let levels = image.mipmaps.len() as f32;
+            let max = gekko_math::cmp::min(image.lod_range[1], levels);
+            [gekko_math::cmp::min(image.lod_range[0], max), max]
+        };
+        // GX anisotropy 0/1/2 takes 1, 2 or 4 taps. Hardware anisotropy
+        // needs every filter linear; other layers sample isotropically.
+        let all_linear = !layer.nearest && min_filter == 5;
+        Self {
+            wrap: [layer.wrap_s, layer.wrap_t],
+            magnify_nearest: layer.nearest,
+            min_filter,
+            lod: lod.map(f32::to_bits),
+            anisotropy: if all_linear {
+                1 << layer.lod.anisotropy.min(2)
+            } else {
+                1
+            },
+        }
+    }
+    fn descriptor(self) -> wgpu::SamplerDescriptor<'static> {
+        let filter = |nearest: bool| {
+            if nearest {
+                wgpu::FilterMode::Nearest
+            } else {
+                wgpu::FilterMode::Linear
+            }
+        };
+        wgpu::SamplerDescriptor {
+            label: Some("Authored texture sampling"),
+            address_mode_u: address(self.wrap[0]),
+            address_mode_v: address(self.wrap[1]),
+            mag_filter: filter(self.magnify_nearest),
+            min_filter: filter(matches!(self.min_filter, 0 | 2 | 4)),
+            mipmap_filter: if self.min_filter >= 4 {
+                wgpu::MipmapFilterMode::Linear
+            } else {
+                wgpu::MipmapFilterMode::Nearest
+            },
+            lod_min_clamp: f32::from_bits(self.lod[0]),
+            lod_max_clamp: f32::from_bits(self.lod[1]),
+            anisotropy_clamp: self.anisotropy,
+            ..Default::default()
+        }
+    }
+}
+/// Scene-wide image and sampler cache: each decoded image uploads once.
 #[derive(Default)]
 pub struct Images {
-    views: BTreeMap<Vec<usize>, wgpu::TextureView>,
-    samplers: BTreeMap<(u32, u32, bool), wgpu::Sampler>,
+    views: BTreeMap<usize, wgpu::TextureView>,
+    samplers: BTreeMap<SamplerKey, wgpu::Sampler>,
+    blank: Option<Binding>,
 }
+type Binding = (wgpu::TextureView, wgpu::Sampler);
 impl Images {
+    fn view(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        image: &Arc<Texture>,
+    ) -> wgpu::TextureView {
+        self.views
+            .entry(Arc::as_ptr(image) as usize)
+            .or_insert_with(|| upload(device, queue, image))
+            .clone()
+    }
+    fn sampler(&mut self, device: &wgpu::Device, key: SamplerKey) -> wgpu::Sampler {
+        self.samplers
+            .entry(key)
+            .or_insert_with(|| device.create_sampler(&key.descriptor()))
+            .clone()
+    }
+    /// An opaque white texel for unused layer bindings.
+    fn blank(&mut self, device: &wgpu::Device, queue: &wgpu::Queue) -> Binding {
+        self.blank
+            .get_or_insert_with(|| {
+                let white = Texture {
+                    mipmaps: Vec::new(),
+                    lod_range: [0.0; 2],
+                    width: 1,
+                    height: 1,
+                    rgba: vec![255; 4],
+                };
+                (
+                    upload(device, queue, &white),
+                    device.create_sampler(&Default::default()),
+                )
+            })
+            .clone()
+    }
     pub fn bind(
         &mut self,
         device: &wgpu::Device,
@@ -85,105 +193,30 @@ impl Images {
             return Err("material exceeds eight GX texture maps".into());
         }
         let uniform = capture(material);
-        let mut keys = Vec::with_capacity(MAX_LAYERS);
+        let mut layers = Vec::with_capacity(MAX_LAYERS);
         for i in 0..MAX_LAYERS {
-            let layer = material.textures.get(i);
-            let bank = material
-                .texture_banks
-                .get(i)
-                .map(AsRef::as_ref)
-                .unwrap_or_else(|| layer.map_or(&[], |t| std::slice::from_ref(&t.image)));
-            let image_key: Vec<_> = bank
-                .iter()
-                .map(|image| Arc::as_ptr(image) as usize)
-                .collect();
-            let sampler_key = layer.map_or((0, 0, false), |t| (t.wrap_s, t.wrap_t, t.nearest));
-            if bank.len() > device.limits().max_texture_array_layers as usize {
-                return Err("animated texture exceeds device array layer limit".into());
-            }
-            self.views.entry(image_key.clone()).or_insert_with(|| {
-                let w = bank.iter().map(|t| u32::from(t.width)).max().unwrap_or(1);
-                let h = bank.iter().map(|t| u32::from(t.height)).max().unwrap_or(1);
-                let texture = device.create_texture(&wgpu::TextureDescriptor {
-                    label: Some("Prepared animated texture"),
-                    size: wgpu::Extent3d {
-                        width: w,
-                        height: h,
-                        depth_or_array_layers: bank.len().max(1) as u32,
-                    },
-                    mip_level_count: bank
-                        .iter()
-                        .map(|t| t.mipmaps.len() as u32 + 1)
-                        .max()
-                        .unwrap_or(1),
-                    sample_count: 1,
-                    dimension: wgpu::TextureDimension::D2,
-                    format: wgpu::TextureFormat::Rgba8Unorm,
-                    usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
-                    view_formats: &[],
-                });
-                for index in 0..bank.len().max(1) {
-                    let (width, height, bytes) =
-                        bank.get(index).map_or((1, 1, &[255u8; 4][..]), |t| {
-                            (u32::from(t.width), u32::from(t.height), t.rgba.as_slice())
-                        });
-                    let mut destination = texture.as_image_copy();
-                    destination.origin.z = index as u32;
-                    queue.write_texture(
-                        destination,
-                        bytes,
-                        wgpu::TexelCopyBufferLayout {
-                            offset: 0,
-                            bytes_per_row: Some(width * 4),
-                            rows_per_image: Some(height),
-                        },
-                        wgpu::Extent3d {
-                            width,
-                            height,
-                            depth_or_array_layers: 1,
-                        },
-                    );
-                    if let Some(image) = bank.get(index) {
-                        for (level, mip) in image.mipmaps.iter().enumerate() {
-                            destination.mip_level = level as u32 + 1;
-                            queue.write_texture(
-                                destination,
-                                &mip.rgba,
-                                wgpu::TexelCopyBufferLayout {
-                                    offset: 0,
-                                    bytes_per_row: Some(u32::from(mip.width) * 4),
-                                    rows_per_image: Some(u32::from(mip.height)),
-                                },
-                                wgpu::Extent3d {
-                                    width: u32::from(mip.width),
-                                    height: u32::from(mip.height),
-                                    depth_or_array_layers: 1,
-                                },
-                            );
-                        }
-                    }
+            let mut images = LayerImages::default();
+            if let Some(layer) = material.textures.get(i) {
+                let bank = material
+                    .texture_banks
+                    .get(i)
+                    .map(AsRef::as_ref)
+                    .unwrap_or_else(|| std::slice::from_ref(&layer.image));
+                if bank.len() > usize::from(u16::MAX) {
+                    return Err("animated texture bank exceeds 65535 images".into());
                 }
-                texture.create_view(&wgpu::TextureViewDescriptor {
-                    dimension: Some(wgpu::TextureViewDimension::D2Array),
-                    ..Default::default()
-                })
-            });
-            let (s, t, nearest) = sampler_key;
-            self.samplers.entry(sampler_key).or_insert_with(|| {
-                device.create_sampler(&wgpu::SamplerDescriptor {
-                    label: Some("Authored texture addressing"),
-                    address_mode_u: address(s),
-                    address_mode_v: address(t),
-                    mag_filter: if nearest {
-                        wgpu::FilterMode::Nearest
-                    } else {
-                        wgpu::FilterMode::Linear
-                    },
-                    min_filter: wgpu::FilterMode::Linear,
-                    ..Default::default()
-                })
-            });
-            keys.push((image_key, sampler_key));
+                for image in bank {
+                    images.identities.push(Arc::as_ptr(image) as usize);
+                    images.bindings.push((
+                        self.view(device, queue, image),
+                        self.sampler(device, SamplerKey::new(layer, image)),
+                    ));
+                }
+            }
+            if images.bindings.is_empty() {
+                images.bindings.push(self.blank(device, queue));
+            }
+            layers.push(images);
         }
         let size = std::mem::size_of::<Uniform>() as u64;
         let alignment = u64::from(device.limits().min_uniform_buffer_offset_alignment);
@@ -197,36 +230,66 @@ impl Images {
         for slot in 0..slots {
             queue.write_buffer(&buffer, stride * slot as u64, bytemuck::bytes_of(&uniform));
         }
-        let mut entries = vec![wgpu::BindGroupEntry {
-            binding: 0,
-            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
-                buffer: &buffer,
-                offset: 0,
-                size: std::num::NonZeroU64::new(size),
-            }),
-        }];
-        for (i, (image, sampler)) in keys.iter().enumerate() {
-            entries.push(wgpu::BindGroupEntry {
-                binding: 1 + i as u32 * 2,
-                resource: wgpu::BindingResource::TextureView(&self.views[image]),
-            });
-            entries.push(wgpu::BindGroupEntry {
-                binding: 2 + i as u32 * 2,
-                resource: wgpu::BindingResource::Sampler(&self.samplers[sampler]),
-            });
-        }
-        let bind = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("Material"),
-            layout,
-            entries: &entries,
-        });
-        Ok(GpuMaterial {
-            bind,
+        let mut gpu = GpuMaterial {
+            layout: layout.clone(),
             buffer,
             uniforms: vec![uniform; slots],
             stride: stride as u32,
-        })
+            layers,
+            groups: Vec::new(),
+            selected: vec![0; slots],
+        };
+        let initial = gpu.group(device, gpu.selection(material));
+        gpu.selected.fill(initial);
+        Ok(gpu)
     }
+}
+/// One texture layer's bank: image identities and bindings, in bank order.
+#[derive(Default)]
+struct LayerImages {
+    identities: Vec<usize>,
+    bindings: Vec<Binding>,
+}
+fn upload(device: &wgpu::Device, queue: &wgpu::Queue, image: &Texture) -> wgpu::TextureView {
+    let texture = device.create_texture(&wgpu::TextureDescriptor {
+        label: Some("Authored texture"),
+        size: wgpu::Extent3d {
+            width: u32::from(image.width),
+            height: u32::from(image.height),
+            depth_or_array_layers: 1,
+        },
+        mip_level_count: image.mipmaps.len() as u32 + 1,
+        sample_count: 1,
+        dimension: wgpu::TextureDimension::D2,
+        format: wgpu::TextureFormat::Rgba8Unorm,
+        usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+        view_formats: &[],
+    });
+    let levels = std::iter::once((image.width, image.height, image.rgba.as_slice())).chain(
+        image
+            .mipmaps
+            .iter()
+            .map(|mip| (mip.width, mip.height, mip.rgba.as_slice())),
+    );
+    for (level, (width, height, rgba)) in levels.enumerate() {
+        let mut destination = texture.as_image_copy();
+        destination.mip_level = level as u32;
+        queue.write_texture(
+            destination,
+            rgba,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(u32::from(width) * 4),
+                rows_per_image: Some(u32::from(height)),
+            },
+            wgpu::Extent3d {
+                width: u32::from(width),
+                height: u32::from(height),
+                depth_or_array_layers: 1,
+            },
+        );
+    }
+    texture.create_view(&Default::default())
 }
 fn capture(material: &Material) -> Uniform {
     let mut uniform = Uniform {
@@ -299,42 +362,42 @@ fn capture(material: &Material) -> Uniform {
                 layer.active[0] = tev.active;
             }
             uniform.layers[i].active[1] = t.flags & 0x1f0;
-            uniform.layers[i].image = [
-                material
-                    .texture_banks
-                    .get(i)
-                    .and_then(|bank| bank.iter().position(|image| Arc::ptr_eq(image, &t.image)))
-                    .unwrap_or(0) as u32,
-                u32::from(t.image.width),
-                u32::from(t.image.height),
-                t.image.mipmaps.len() as u32,
-            ];
-            uniform.layers[i].addressing =
-                [t.wrap_s, t.wrap_t, u32::from(t.nearest), t.lod.min_filter];
-            uniform.layers[i].lod = [
-                t.lod.bias,
-                t.image.lod_range[0],
-                t.image.lod_range[1],
-                (1u32 << t.lod.anisotropy.min(2)) as f32,
-            ];
+            uniform.layers[i].lod = [t.lod.bias, 0.0, 0.0, 0.0];
         }
     }
     uniform
 }
+/// The bank image each layer shows, as indices into the layers' banks.
+type Selection = [u16; MAX_LAYERS];
 pub struct GpuMaterial {
-    pub bind: wgpu::BindGroup,
+    layout: wgpu::BindGroupLayout,
     buffer: wgpu::Buffer,
     uniforms: Vec<Uniform>,
     stride: u32,
+    layers: Vec<LayerImages>,
+    /// Bind groups for the bank selections seen so far.
+    groups: Vec<(Selection, wgpu::BindGroup)>,
+    /// Per slot: the index in `groups` of its current selection.
+    selected: Vec<usize>,
 }
 impl GpuMaterial {
-    pub fn update(&mut self, queue: &wgpu::Queue, material: &Material) {
-        self.update_slot(queue, material, 0);
+    pub fn update(&mut self, device: &wgpu::Device, queue: &wgpu::Queue, material: &Material) {
+        self.update_slot(device, queue, material, 0);
     }
     pub fn offset(&self, slot: usize) -> u32 {
         self.stride * slot as u32
     }
-    pub fn update_slot(&mut self, queue: &wgpu::Queue, material: &Material, slot: usize) {
+    /// The bind group for a slot's current images.
+    pub fn bind(&self, slot: usize) -> &wgpu::BindGroup {
+        &self.groups[self.selected[slot]].1
+    }
+    pub fn update_slot(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        material: &Material,
+        slot: usize,
+    ) {
         let uniform = capture(material);
         if uniform != self.uniforms[slot] {
             queue.write_buffer(
@@ -344,6 +407,57 @@ impl GpuMaterial {
             );
             self.uniforms[slot] = uniform;
         }
+        let selection = self.selection(material);
+        if self.groups[self.selected[slot]].0 != selection {
+            self.selected[slot] = self.group(device, selection);
+        }
+    }
+    /// Each layer's current image, by identity within its bank (the first
+    /// image when the layer shows one outside it).
+    fn selection(&self, material: &Material) -> Selection {
+        std::array::from_fn(|i| {
+            material.textures.get(i).map_or(0, |layer| {
+                let image = Arc::as_ptr(&layer.image) as usize;
+                self.layers[i]
+                    .identities
+                    .iter()
+                    .position(|&identity| identity == image)
+                    .unwrap_or(0) as u16
+            })
+        })
+    }
+    /// The bind group for a selection, created on its first use.
+    fn group(&mut self, device: &wgpu::Device, selection: Selection) -> usize {
+        if let Some(index) = self.groups.iter().position(|(s, _)| *s == selection) {
+            return index;
+        }
+        let size = std::mem::size_of::<Uniform>() as u64;
+        let mut entries = vec![wgpu::BindGroupEntry {
+            binding: 0,
+            resource: wgpu::BindingResource::Buffer(wgpu::BufferBinding {
+                buffer: &self.buffer,
+                offset: 0,
+                size: std::num::NonZeroU64::new(size),
+            }),
+        }];
+        for (i, layer) in self.layers.iter().enumerate() {
+            let (view, sampler) = &layer.bindings[usize::from(selection[i])];
+            entries.push(wgpu::BindGroupEntry {
+                binding: 1 + i as u32 * 2,
+                resource: wgpu::BindingResource::TextureView(view),
+            });
+            entries.push(wgpu::BindGroupEntry {
+                binding: 2 + i as u32 * 2,
+                resource: wgpu::BindingResource::Sampler(sampler),
+            });
+        }
+        let group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("Material"),
+            layout: &self.layout,
+            entries: &entries,
+        });
+        self.groups.push((selection, group));
+        self.groups.len() - 1
     }
 }
 fn address(value: u32) -> wgpu::AddressMode {
@@ -405,8 +519,8 @@ pub fn shader() -> String {
     let mut bindings = String::new();
     let mut samples = String::new();
     for i in 0..MAX_LAYERS {
-        bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d_array<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
-        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=sample_image(image{i},coordinates(in,layer),layer); texels[{i}]=custom_texture(tex,layer); composition.operations[{i}]=layer.operations; composition.parameters[{i}]=vec2(layer.translation.z,f32(layer.activation.y)); }}\n"));
+        bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
+        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=textureSampleBias(image{i},sampler{i},coordinates(in,layer),layer.lod.x); texels[{i}]=custom_texture(tex,layer); composition.operations[{i}]=layer.operations; composition.parameters[{i}]=vec2(layer.translation.z,f32(layer.activation.y)); }}\n"));
     }
     include_str!("render.wgsl")
         .replace("// CAMERA", include_str!("camera.wgsl"))

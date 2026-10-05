@@ -4,7 +4,8 @@
 //! Inspection flags: `--size WxH` (default 1280x720); `--costume1 N` and
 //! `--costume2 N`; `--then P:Action[+Action]:ticks` (repeatable, in order)
 //! holds those actions for player P, then releases them; `--crop P` writes
-//! only a square around player P's fighter and prints its size.
+//! only a square around player P's fighter and prints its size; `--advance N`
+//! draws N more ticks on the same renderer before the written frame.
 use melee_lib::{Character, Costume, PlayerConfig, Port, Stage};
 use melee_platform::{
     renderer::Renderer,
@@ -195,6 +196,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &texture.create_view(&Default::default()),
         session.presentation(),
     );
+    // `--advance N`: keep the renderer and draw N more ticks, so the frame
+    // shows per-frame updates (animated texture banks, materials).
+    if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--advance") {
+        let view = texture.create_view(&Default::default());
+        for _ in 0..pair[1].parse::<u32>()? {
+            session.advance(TICK)?;
+            renderer.draw(&view, session.presentation());
+            renderer.device.poll(wgpu::PollType::wait_indefinitely())?;
+        }
+    }
     // `--bench N`: time N frames, each waited on, to measure GPU frame cost.
     if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--bench") {
         let frames = pair[1].parse::<u32>()?;
