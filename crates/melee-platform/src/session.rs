@@ -173,12 +173,36 @@ impl Session {
     pub fn save_replay(&self, path: &Path) -> Result<(), String> {
         self.recording.save(path)
     }
+    /// The replay as file bytes, for hosts that save through their own API.
+    pub fn replay_bytes(&self) -> Result<Vec<u8>, String> {
+        let mut bytes = Vec::new();
+        self.recording.write(&mut bytes)?;
+        Ok(bytes)
+    }
+    /// The first fault's message, once the session has stopped on one.
+    pub fn failure(&self) -> Option<&str> {
+        self.failure.as_deref()
+    }
 
     /// Called only after an error; disk I/O and formatting never run on a healthy tick.
     fn stop_with_replay(&mut self, error: String) -> String {
         if let Some(previous) = &self.failure {
             return previous.clone();
         }
+        let message = self.save_fault_replay(error);
+        self.failure = Some(message.clone());
+        message
+    }
+
+    /// The web has no file system: the host offers [`Session::replay_bytes`]
+    /// as a download instead.
+    #[cfg(target_arch = "wasm32")]
+    fn save_fault_replay(&self, error: String) -> String {
+        format!("{error}\nUse Save Replay to download the replay.")
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
+    fn save_fault_replay(&self, error: String) -> String {
         let directory = std::env::temp_dir().join("melee-replays");
         let stamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
@@ -188,17 +212,15 @@ impl Session {
         let saved = std::fs::create_dir_all(&directory)
             .map_err(|e| e.to_string())
             .and_then(|()| self.recording.save_new(&path));
-        let message = match saved {
+        match saved {
             Ok(()) => format!("{error}\nReplay saved: {}", path.display()),
             Err(save_error) => {
                 format!("{error}\nReplay save failed: {save_error}. Use Save Replay to retry.")
             }
-        };
-        self.failure = Some(message.clone());
-        message
+        }
     }
 
-    pub(crate) fn stop_after_host_fault(&mut self, message: String) -> String {
+    pub fn stop_after_host_fault(&mut self, message: String) -> String {
         // Host/presentation faults happen outside Match::step: all recorded
         // inputs succeeded. Do not mislabel the last successful tick as a fault.
         self.stop_with_replay(format!(
@@ -236,7 +258,8 @@ impl Session {
             }
             let inputs = self.keyboard.sample();
             self.recording.push(inputs).map_err(str::to_owned)?;
-            if let Err(error) = self.game.step(&inputs) {
+            let game = &mut self.game;
+            if let Err(error) = panic_replay::stepping(&self.recording, || game.step(&inputs)) {
                 let message = format!("attempted tick {}: {error}", self.recording.samples().len());
                 self.recording.fail(error.to_string());
                 return Err(self.stop_with_replay(message));
@@ -249,6 +272,53 @@ impl Session {
             }
         }
         Ok(())
+    }
+}
+
+/// wasm32-unknown-unknown aborts on panic, so `Match::step`'s `catch_unwind`
+/// never returns a fault there. While a tick runs, the session's recording
+/// (already holding that tick's input) is reachable from a panic hook, which
+/// can offer it for download before the module aborts. Natively a panic
+/// unwinds into a normal fault and this does nothing.
+pub mod panic_replay {
+    use melee_replay::Recording;
+
+    #[cfg(target_arch = "wasm32")]
+    thread_local! {
+        static STEPPING: std::cell::Cell<*const Recording> =
+            const { std::cell::Cell::new(std::ptr::null()) };
+    }
+
+    /// Run one tick with `recording` published to [`bytes`]. The caller
+    /// borrows only the match mutably; the recording is not touched until
+    /// `step` returns, so the hook's shared read cannot race a write.
+    #[cfg(target_arch = "wasm32")]
+    pub(crate) fn stepping<T>(recording: &Recording, step: impl FnOnce() -> T) -> T {
+        STEPPING.with(|current| current.set(recording));
+        let result = step();
+        STEPPING.with(|current| current.set(std::ptr::null()));
+        result
+    }
+    #[cfg(not(target_arch = "wasm32"))]
+    pub(crate) fn stepping<T>(_recording: &Recording, step: impl FnOnce() -> T) -> T {
+        step()
+    }
+
+    /// From a panic hook: the replay of the match whose tick is panicking.
+    pub fn bytes() -> Option<Vec<u8>> {
+        #[cfg(target_arch = "wasm32")]
+        {
+            let recording = STEPPING.with(|current| current.get());
+            // SAFETY: non-null only inside `stepping`, whose caller holds a
+            // shared borrow of the recording for the whole tick; wasm32 is
+            // single-threaded, so the hook runs on that stack.
+            let recording = unsafe { recording.as_ref() }?;
+            let mut out = Vec::new();
+            recording.write(&mut out).ok()?;
+            Some(out)
+        }
+        #[cfg(not(target_arch = "wasm32"))]
+        None
     }
 }
 #[cfg(test)]

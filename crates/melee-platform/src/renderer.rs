@@ -52,23 +52,24 @@ impl Renderer {
         scene: &Presentation,
         size: [u32; 2],
     ) -> Result<Self, String> {
-        let samples = if [format, DEPTH_FORMAT].into_iter().all(|format| {
-            adapter
-                .get_texture_format_features(format)
-                .flags
-                .sample_count_supported(4)
-        }) {
-            4
-        } else {
-            1
-        };
+        let samples = sample_count(adapter, format);
         let (device, queue) = adapter
-            .request_device(&wgpu::DeviceDescriptor {
-                label: Some("Melee renderer"),
-                ..Default::default()
-            })
+            .request_device(&device_descriptor())
             .await
             .map_err(|e| e.to_string())?;
+        Self::with_device(device, queue, samples, format, scene, size)
+    }
+    /// Build one scene's pipelines and buffers on a device the host owns, so
+    /// a window keeps one device across matches. `samples` comes from
+    /// [`sample_count`]; the device was requested with [`device_descriptor`].
+    pub fn with_device(
+        device: wgpu::Device,
+        queue: wgpu::Queue,
+        samples: u32,
+        format: wgpu::TextureFormat,
+        scene: &Presentation,
+        size: [u32; 2],
+    ) -> Result<Self, String> {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("Melee basic materials"),
             source: wgpu::ShaderSource::Wgsl(material::shader().into()),
@@ -484,6 +485,26 @@ impl Renderer {
             self.sprites.draw(&mut pass);
         }
         self.queue.submit([encoder.finish()]);
+    }
+}
+/// 4x MSAA where the adapter supports it for colour and depth, else none.
+pub fn sample_count(adapter: &wgpu::Adapter, format: wgpu::TextureFormat) -> u32 {
+    if [format, DEPTH_FORMAT].into_iter().all(|format| {
+        adapter
+            .get_texture_format_features(format)
+            .flags
+            .sample_count_supported(4)
+    }) {
+        4
+    } else {
+        1
+    }
+}
+/// The device the renderer needs: default features and limits.
+pub fn device_descriptor() -> wgpu::DeviceDescriptor<'static> {
+    wgpu::DeviceDescriptor {
+        label: Some("Melee renderer"),
+        ..Default::default()
     }
 }
 fn attachment(

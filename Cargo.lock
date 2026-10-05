@@ -1674,7 +1674,9 @@ dependencies = [
 name = "melee-platform"
 version = "0.0.1"
 dependencies = [
+ "anyhow",
  "bytemuck",
+ "gc-disc",
  "melee-lib",
  "melee-replay",
  "melee-test-support",
