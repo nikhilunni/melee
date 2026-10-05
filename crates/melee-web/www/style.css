@@ -473,14 +473,32 @@ b.p2, .p2-text { color: var(--p2); }
   background: #0b0e2a;
 }
 .hero-layer {
-  position: absolute; inset: 0 -25%; transform: skewX(var(--unslant));
+  position: absolute; inset: 0 -6.2%; /* just covers the 16:9 parallelogram: a 1080p preview loses ~11% of its height */ transform: skewX(var(--unslant));
   opacity: 0; transition: opacity 150ms linear;
 }
 .hero-layer.shown { opacity: 1; }
-.hero-layer img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
-.hero-layer img.preview { image-rendering: auto; }
-.hero-layer img.icon { filter: blur(18px) saturate(1.3) brightness(0.8); transform: scale(1.25); }
+/* The rendered preview (1920x1080) is shown at or below native size. */
+.hero-layer img.preview { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; image-rendering: auto;
+  transition: opacity 200ms; }
 .hero-layer img:not([data-state="ready"]) { opacity: 0; }
+/* Until it is ready: our own art, the stage's gradient and its emblem. */
+.stage-placeholder {
+  position: absolute; inset: 0; overflow: hidden;
+  background:
+    radial-gradient(70% 90% at 70% 15%, color-mix(in srgb, var(--stage-c) 55%, transparent), transparent 70%),
+    radial-gradient(90% 80% at 20% 100%, color-mix(in srgb, var(--stage-c) 25%, transparent), transparent 70%),
+    linear-gradient(165deg, var(--stage-a), var(--stage-b) 75%);
+}
+.stage-placeholder::after {
+  content: ""; position: absolute; inset: 0;
+  background: linear-gradient(105deg, transparent 40%, rgba(255, 255, 255, 0.10) 50%, transparent 60%);
+  transform: translateX(-100%); animation: shine 2.8s var(--ease-out) infinite;
+}
+.stage-placeholder-emblem {
+  position: absolute; left: 50%; top: 42%; height: 78%; aspect-ratio: 1; translate: -50% -50%;
+  background: #fff; opacity: 0.16;
+}
+.stage-placeholder:has(~ img.preview[data-state="ready"])::after { animation: none; }
 .hero-layer .random-art { position: absolute; inset: 0; display: grid; place-items: center;
   background: radial-gradient(circle at 50% 45%, #2a2f7a, #0b0e2a 70%); }
 .hero-layer .random-art span { font: 900 italic 10rem/1 var(--display); color: rgba(255, 255, 255, 0.12); }
@@ -519,12 +537,17 @@ b.p2, .p2-text { color: var(--p2); }
   box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 8px 20px rgba(0, 0, 0, 0.4);
   transition: transform 320ms var(--spring), box-shadow 200ms, border-color 150ms;
 }
-.stage-card img {
-  position: absolute; inset: 0 -22%; width: 144%; height: 100%; object-fit: cover; transform: skewX(var(--unslant));
+.stage-card img.preview {
+  position: absolute; inset: 0 -7%; width: 114%; height: 100%; object-fit: cover; transform: skewX(var(--unslant));
+  image-rendering: auto; transition: opacity 200ms;
 }
-.stage-card img:not([data-state="ready"]) { opacity: 0; }
-.stage-card img.icon { image-rendering: auto; }
-.stage-card img.preview[data-state="ready"] + img.icon { display: none; }
+.stage-card img.preview:not([data-state="ready"]) { opacity: 0; }
+.stage-card .stage-placeholder { inset: 0 -7%; transform: skewX(var(--unslant)); display: grid; place-items: center; }
+.stage-card .stage-placeholder::after { animation: none; }
+/* The disc icon at 1x while the preview renders: never stretched or blurred. */
+.stage-card img.icon { width: auto; height: auto; image-rendering: auto; border-radius: 4px;
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 6px 16px rgba(0, 0, 0, 0.45); }
+.stage-card img.icon:not([data-state="ready"]) { opacity: 0; }
 .stage-card .random-glyph {
   position: absolute; inset: 0; display: grid; place-items: center; transform: skewX(var(--unslant));
   font: 900 italic 2.75rem/1 var(--display); color: rgba(255, 255, 255, 0.85);
@@ -547,9 +570,11 @@ b.p2, .p2-text { color: var(--p2); }
 
 .loading-screen { align-items: center; justify-content: center; gap: 1.75rem; }
 .loading-bg { position: absolute; inset: 0; z-index: -1; }
-.loading-bg img { width: 100%; height: 100%; object-fit: cover; filter: blur(6px) brightness(0.35) saturate(1.2); transform: scale(1.05); }
+.loading-bg img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: brightness(0.4) saturate(1.1); }
 .loading-bg img:not([data-state="ready"]) { display: none; }
-.loading-bg::after { content: ""; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent, rgba(5, 6, 15, 0.8)); }
+.loading-bg .stage-placeholder { filter: brightness(0.5); }
+.loading-bg .stage-placeholder::after { animation: none; }
+.loading-bg::after { content: ""; z-index: 1; position: absolute; inset: 0; background: radial-gradient(circle at 50% 50%, transparent, rgba(5, 6, 15, 0.8)); }
 .versus { display: flex; align-items: center; justify-content: center; gap: 1rem; height: min(26rem, 56vh); }
 .versus-side { --port: var(--p1); --glow: var(--p1-glow); position: relative; height: 100%; aspect-ratio: 136 / 188;
   display: flex; flex-direction: column; justify-content: flex-end; align-items: center; animation: enter 420ms var(--spring) both; }
@@ -694,7 +719,8 @@ dialog::backdrop { background: rgba(5, 6, 15, 0.6); -webkit-backdrop-filter: blu
   margin: 0; white-space: pre-wrap; max-height: 40vh; overflow: auto; font: 500 0.875rem/1.5 var(--ui);
   user-select: text; color: var(--text);
 }
-.message.danger pre { font-family: ui-monospace, Menlo, monospace; font-size: 0.8125rem; padding: 0.75rem 1rem;
+.message.mono pre { font-family: ui-monospace, Menlo, monospace; font-size: 0.8125rem; }
+.message.danger pre { padding: 0.75rem 1rem;
   border-radius: 8px; background: rgba(0, 0, 0, 0.3); }
 .message .row { justify-content: flex-end; align-items: center; margin-top: 0.25rem; }
 .message .row .copy { margin-right: auto; align-self: center; }
@@ -718,7 +744,7 @@ dialog::backdrop { background: rgba(5, 6, 15, 0.6); -webkit-backdrop-filter: blu
   :root { --glass: rgba(10, 12, 30, 0.92); --text-dim: rgba(235, 240, 255, 0.85); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .stars, .backdrop-emblem, .sweep, .burst, .ready-banner::after, .art-status::before,
+  .stars, .backdrop-emblem, .sweep, .burst, .ready-banner::after, .stage-placeholder::after, .art-status::before,
   .player-panel.active .panel-status { animation: none !important; }
   .enter, .screen.leaving .enter, .menu-card, .results-body, .results-portrait, .versus-side, .vs, .coin { animation-name: fade !important; }
   .screen.leaving .enter { animation-name: fade-out !important; }

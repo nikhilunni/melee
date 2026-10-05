@@ -48,7 +48,8 @@ const portClass = (port) => `port-${Math.min(port, 3)}`;
 
 function message(title, text, actions = [], tone = 'neutral') {
   const dialog = $('message');
-  dialog.classList.toggle('danger', tone === 'danger');
+  dialog.classList.toggle('danger', tone !== 'neutral');
+  dialog.classList.toggle('mono', tone === 'fault');
   $('message-title').textContent = title;
   $('message-text').textContent = text;
   const button = (label, run, className = 'btn') =>
@@ -57,7 +58,7 @@ function message(title, text, actions = [], tone = 'neutral') {
     navigator.clipboard?.writeText(text);
     copy.textContent = 'Copied';
   } });
-  $('message-actions').replaceChildren(...(tone === 'danger' ? [copy] : []),
+  $('message-actions').replaceChildren(...(tone !== 'neutral' ? [copy] : []),
     ...actions.map(([label, run]) => button(label, run)), button('OK', null, 'btn accent'));
   if (!dialog.open) dialog.showModal();
   dialog.querySelector('.btn.accent').focus();
@@ -154,7 +155,14 @@ const art = {
     const known = this.urls.get(key);
     if (known !== undefined) return known === PENDING ? null : known;
     let image;
-    try { image = app.art(kind, id, costume); } catch { this.urls.set(key, NONE); return NONE; }
+    try {
+      image = app.art(kind, id, costume);
+    } catch {
+      // A preview still rendering is not missing; ask again later.
+      if (kind === ART.stagePreview && previewsPending()) return null;
+      this.urls.set(key, NONE);
+      return NONE;
+    }
     if (!image) return null; // a stage preview not rendered yet
     const data = new ImageData(image.data, image.width, image.height);
     if (kind === ART.portrait && !this.heads.has(id)) this.heads.set(id, findHead(data));
@@ -376,9 +384,9 @@ function render() {
   const notice = app.take_notice();
   if (notice) {
     const faulted = app.faulted();
-    message(faulted ? 'The match stopped on a fault' : 'Melee', notice,
+    message(faulted ? 'The match stopped on a fault' : (real === 'stages' ? 'The match could not start' : 'Melee'), notice,
       faulted ? [['Save Replay', saveReplay], ['Quit to Character Select', () => attempt(() => app.quit_to_menu())]] : [],
-      'danger');
+      faulted ? 'fault' : 'danger');
   }
   ({ disc: updateDisc, characters: updateCharacters, stages: updateStages, loading: updateLoading,
      match: updateMatch, results: updateResults })[screen](entered);
@@ -586,7 +594,7 @@ function buildStages() {
       preview.dataset.art = `${ART.stagePreview}:${id}:0`;
       const icon = el('img', { className: 'icon', alt: '' });
       icon.dataset.art = `${ART.stageIcon}:${id}:0`;
-      card.append(preview, icon);
+      card.append(stagePlaceholder(id, icon), preview);
     }
     const tile = el('button', {
       className: 'stage-tile', role: 'option', tabIndex: -1, ariaLabel: random ? 'Random stage' : cat.stages[id].name,
@@ -629,6 +637,26 @@ function shuffleStage() {
   };
   tick();
 }
+// Our own colours for each stage, shown until its rendered preview is
+// ready (and behind its icon on a tile). Disc icons are never blurred or
+// scaled past 2x (DESIGN.md).
+const STAGE_GRADIENTS = {
+  Battlefield: ['#5a3fa8', '#1a1240', '#f0a65a'],
+  FinalDestination: ['#40206e', '#07061a', '#d05cff'],
+  DreamLand: ['#4fa3e8', '#1d4a7a', '#9be36a'],
+  FountainOfDreams: ['#3a2a8a', '#0d0a2e', '#ff8ad8'],
+  PokemonStadium: ['#3d8fd8', '#123058', '#5ed27a'],
+  YoshisStory: ['#7ccf5a', '#245a2a', '#ffd25a'],
+};
+/** A stage's gradient with `children` on it (an emblem, its icon). */
+function stagePlaceholder(id, ...children) {
+  const [a, b, c] = STAGE_GRADIENTS[cat.stages[id].key] ?? ['#2a2f63', '#141735', '#6a74ff'];
+  const node = el('div', { className: 'stage-placeholder' }, ...children);
+  node.style.setProperty('--stage-a', a);
+  node.style.setProperty('--stage-b', b);
+  node.style.setProperty('--stage-c', c);
+  return node;
+}
 function showHero(id) {
   id = id === RANDOM ? RANDOM : Number(id);
   if (heroShown === id) return;
@@ -640,9 +668,9 @@ function showHero(id) {
   } else {
     const preview = el('img', { className: 'preview', alt: '' });
     preview.dataset.art = `${ART.stagePreview}:${id}:0`;
-    const icon = el('img', { className: 'icon', alt: '' });
-    icon.dataset.art = `${ART.stageIcon}:${id}:0`;
-    layer.replaceChildren(icon, preview);
+    const emblem = el('div', { className: 'stage-placeholder-emblem mask' });
+    emblem.dataset.art = `${ART.stageEmblem}:${id}:0`;
+    layer.replaceChildren(stagePlaceholder(id, emblem), preview);
   }
   art.hydrate(layer);
   layer.classList.add('shown');
@@ -679,6 +707,8 @@ function updateStages(entered) {
   art.hydrate($('screen-stages'));
   pollPreviews();
 }
+/** Stage previews are rendered by the core (newer builds) and not ready yet. */
+const previewsPending = () => typeof app.stage_previews_ready === 'function' && !app.stage_previews_ready();
 /** Stage previews render in the core after the art loads; look again until they are all in. */
 function pollPreviews() {
   if (previewPoll || typeof app.stage_previews_ready !== 'function') return;
@@ -712,9 +742,7 @@ function updateLoading(entered) {
     if (chosenStage !== null) {
       const preview = el('img', { alt: '' });
       preview.dataset.art = `${ART.stagePreview}:${chosenStage}:0`;
-      const icon = el('img', { alt: '' });
-      icon.dataset.art = `${ART.stageIcon}:${chosenStage}:0`;
-      background.replaceChildren(icon, preview);
+      background.replaceChildren(stagePlaceholder(chosenStage), preview);
     }
     art.hydrate($('screen-loading'));
   }
@@ -1108,7 +1136,7 @@ async function developmentStart() {
   }
   if (view === 'error') {
     message('The match stopped on a fault', "panicked at crates/ft-fox/src/special.rs:412:9:\nnot implemented: ftFox_SpecialHi: wall bounce (ftfox_specialhi.c:688)",
-      [['Save Replay', saveReplay], ['Quit to Character Select', () => {}]], 'danger');
+      [['Save Replay', saveReplay], ['Quit to Character Select', () => {}]], 'fault');
   }
   if (view === 'notice') message('Melee', 'Yoshi\'s Story cannot be presented yet: its background renderer is not ported. Choose another stage.', [], 'danger');
   render();
