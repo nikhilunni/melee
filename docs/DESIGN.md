@@ -31,7 +31,7 @@ silhouettes) or openly licensed (the OFL fonts in `assets/fonts/`, with their li
 | Stage icon | 64x56 (48x48) | small; tiles and placeholders |
 | Stage name plate | 224x56 | intensity mask: tint |
 | Stage emblem | 64x64 | faint watermark; boost alpha when scaled |
-| Stage preview | rendered at runtime | see Stage select |
+| Stage preview | 1920x1080, rendered at runtime | see Stage select |
 
 Sheik has no portrait or face on the disc (retail picks her through
 Zelda's cell): her tile and panel use her stock icon scaled up inside our
@@ -162,9 +162,11 @@ Layout (landscape, scales down to 1024×640):
 
 Retail's stage select shows small 3D models, not 2D previews, so libmelee
 renders our own previews at runtime from the disc (`MELEE_ART_STAGE_PREVIEW`,
-a wide frame of the stage through its retail camera, no fighters). Until a
-preview is ready the hero shows the stage icon blurred and scaled behind the
-name plate.
+1920x1080, the stage framed tightly through its retail camera, no
+fighters). Never upscale the 64x56 disc icons beyond 2x, and never blur them
+into a backdrop: they smear. Until a preview is ready the hero shows our own
+art (the stage's gradient, the series emblem large and faint, the name plate)
+with a subtle shimmer; previews take well under a second.
 
 - **Hero preview** (top 55%): the hovered/focused stage's rendered preview
   large in a slanted glass frame with a soft glow, the disc's stage name
@@ -172,8 +174,9 @@ name plate.
   dark shadow) overlapping the frame's lower edge, the series emblem
   (`MELEE_ART_STAGE_EMBLEM`, scaled up, alpha boosted) faint behind it.
   Cross-fade between stages (150 ms).
-- **Stage row** (bottom): the six stages as slanted tiles with their
-  icon/preview art, name underneath in UI caps; hover/focus lifts and glows.
+- **Stage row** (bottom): the six stages as slanted tiles showing a crop of
+  the rendered preview (the disc icon at 1x-2x only while the preview is
+  pending), name underneath in UI caps; hover/focus lifts and glows.
   Arrow keys move, Enter starts, Esc goes back. A small "RANDOM" tile at the
   end picks one with a quick shuffle animation.
 
