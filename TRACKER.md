@@ -144,8 +144,19 @@ Fountain of Dreams platforms code (text not found), netplay codes.
 **Out of the gate by design**: the in-game Start pause, menus, results and
 single-player modes.
 
-**Native app** (`melee-platform`): all planned rendering features exist.
-Retail pixel fidelity, exact camera tracking and GX rounding quirks remain.
+**App** (`docs/APP.md`, 2026-10-04): Ghostty-style split. libmelee
+(`melee-platform`: disc via `gc-disc`, file cache, catalog, menu flow,
+session, wgpu renderer; C API) under native hosts: `apps/macos` (AppKit,
+SwiftUI menus) and `crates/melee-web` (HTML/DOM menus, WebGPU canvas). The
+only input is the Melee NTSC-U 1.02 disc image. All 25 characters and six
+stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
+108 replays run inside wasm). Open:
+- menu art (portraits, stage previews from MnSlChr/MnSlMap), gamepads;
+- render-to-texture (FoD reflection, Stadium screen feed), Link's bow,
+  metal/low-poly, same-costume second-player tint, item poses per instance;
+- wasm panics abort (no catch_unwind): the page offers the replay;
+- [~] wasm float edge cases (subnormal `fmaf`, wasi `fma` signed zero,
+  `f32::max/min` with ±0): agent in flight.
 ## Backlog
 
 - [ ] CI: `cargo gate`, clippy, harness pytest, `gen_schema.py --check`.
