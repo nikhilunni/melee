@@ -167,6 +167,16 @@ stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
   bans std float math); `tools/wasm-check.sh` diffs match hashes.
 ## Backlog
 
+- [ ] Benchmark faults (`sim_bench throughput`, random inputs): Ice
+      Climbers vs Peach on Stadium hits `grounded.rs:50` (Air == Ground
+      assertion, possibly a real bug), `itClimbersIce` shield bounce
+      (unimplemented) and `ftCoD5A30` revival platform reaching the floor
+      (unimplemented); 5 faults per 60k ticks, deterministic.
+- [ ] Perf gate: stripped `melee-sim` is 6,939,624 bytes, over the
+      6,766,519 ceiling (user decides whether to raise `REVIEWED_SIZE`).
+- [ ] `Match` is 96 MB and clone/new/reset cost 8-10 ms; a smaller state
+      would make rollouts and tree search cheap.
+
 - [ ] CI: `cargo gate`, clippy, harness pytest, `gen_schema.py --check`.
 - [ ] 109 `unimplemented!` boundaries remain (26 in `melee-ft`): each is a
       branch no gated scenario reaches; port them as explorer faults or new

@@ -35,6 +35,51 @@ uploaded.
 
 `TRACKER.md` has the current state in detail.
 
+## Performance
+
+The simulator runs the game logic only (no rendering or audio), so it is much
+faster than emulating the console. Measured on an Apple M2 Max (8 performance
++ 4 efficiency cores), release build, random controller inputs over full
+matches:
+
+| Match | µs per tick | ticks/s, one core | × real time (60 fps) |
+|---|---:|---:|---:|
+| Samus vs Link, Yoshi's Story | 48 | 21,000 | 350× |
+| Fox vs Marth, Final Destination | 53 | 19,000 | 317× |
+| Fox vs Marth, Battlefield | 69 | 14,500 | 242× |
+| Fox vs Marth, Pokémon Stadium | 77 | 12,900 | 215× |
+| Zelda vs Pikachu, Fountain of Dreams | 97 | 10,400 | 173× |
+| Ice Climbers vs Peach, Pokémon Stadium | 118 | 8,500 | 142× |
+
+Independent matches scale across cores: 12 Fox vs Marth matches on 12 threads
+run 142,000 ticks/s together, about 2,400× real time.
+
+Against Dolphin on the same machine (headless, Null video, no audio,
+unlimited speed, the same Fox vs Marth match from a savestate), the
+simulator is about 20× faster per core:
+
+| | Battlefield | Pokémon Stadium |
+|---|---:|---:|
+| Dolphin | 750 fps (12.5×) | 660 fps (11×) |
+| This simulator | 14,500–17,100 ticks/s (242–285×) | 12,900–15,200 ticks/s (215–254×) |
+
+Sizes and costs:
+
+| | |
+|---|---:|
+| Minimal headless simulator binary, stripped | 4.5 MB (1.8 MB gzipped) |
+| Simulator compiled to WebAssembly | 4.0 MB (1.2 MB gzipped) |
+| Browser app, renderer included | 5.0 MB (1.6 MB gzipped) |
+| Disc files read for one match | 16–21 MB of the 1.4 GB image |
+| Memory per match | 96 MB |
+| Create, reset or clone a match | 8–10 ms |
+
+A match's state is large (it mirrors the game's memory pools), so cloning
+costs about as much as 180 ticks; plan tree search around that. The numbers
+were taken with other applications running and vary by about 3%. To
+reproduce: `cargo run --release -p melee-lib --example sim_bench --
+throughput <disc files dir>` (also `parallel` and `lifecycle`).
+
 ## What you need
 
 - A disc image of Super Smash Bros. Melee for the GameCube, NTSC-U version
