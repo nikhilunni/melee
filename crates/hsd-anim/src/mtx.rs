@@ -1004,6 +1004,7 @@ pub fn hsd_mtx_scaled_add(arg0: &Mtx, arg1: &Mtx, arg2: &mut Mtx, arg3: f32) {
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)] // std math is the tolerance reference here
 mod tests {
     use super::*;
 

@@ -525,6 +525,7 @@ pub fn fpclassifyd(x: f64) -> FloatType {
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)] // std math is the tolerance reference here
 mod tests {
     use super::*;
 

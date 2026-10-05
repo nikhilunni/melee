@@ -484,9 +484,12 @@ impl DamageParameters {
         }
         let fraction = (knockback - self.grounded_angle_threshold)
             / (self.sakurai_maximum_threshold - self.grounded_angle_threshold);
-        // retail 8008D8AC: fmadds, then separately rounded degree conversion.
-        (DEG_TO_RAD * fmadds(self.sakurai_ground_angle, fraction, 1.0))
-            .min(DEG_TO_RAD * self.sakurai_ground_angle)
+        // retail 8008D8AC: fmadds, then separately rounded degree conversion;
+        // 8008D8B4: fcmpo angle, maximum; ble.
+        gekko_math::cmp::min(
+            DEG_TO_RAD * fmadds(self.sakurai_ground_angle, fraction, 1.0),
+            DEG_TO_RAD * self.sakurai_ground_angle,
+        )
     }
     /// ftCommon_CalcHitlag (8007DA74) in full, before any caller's clamps:
     /// 8007DAA8 fmadds and an integer conversion, 8007DACC fmuls by the
@@ -1173,9 +1176,13 @@ impl Fighter {
             let hitlag = assets
                 .damage
                 .frozen_frames(hit_damage, hitlag_multiplier, crouching);
-            self.core.combat.hitlag_remaining = hitlag
-                .max(self.core.combat.minimum_hitlag)
-                .min(assets.damage.maximum_hitlag);
+            // fighter.c:2968-2977. retail 8006D714: fcmpo hitlag, x1964; bge.
+            // 8006D738 caps only a positive hitlag: fcmpo hitlag, x194; ble.
+            let mut hitlag = gekko_math::cmp::max(hitlag, self.core.combat.minimum_hitlag);
+            if hitlag > 0.0 {
+                hitlag = gekko_math::cmp::min(hitlag, assets.damage.maximum_hitlag);
+            }
+            self.core.combat.hitlag_remaining = hitlag;
             if self.core.combat.hitlag_remaining > 0.0 {
                 self.core.status.interaction = Interaction::Hitlag;
                 if phantom_hitlag {

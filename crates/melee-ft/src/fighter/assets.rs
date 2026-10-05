@@ -465,10 +465,11 @@ impl FighterAssets {
             let source = desc::AnimJoint::read(data, offset)?;
             let mut nodes = Vec::new();
             flatten_part(&source, &mut nodes)?;
+            // A load-time summary, not a retail comparison: the longest track.
             let duration = nodes
                 .iter()
                 .filter_map(|n| n.aobjdesc.as_ref().map(|a| a.end_frame))
-                .fold(0.0, f32::max);
+                .fold(0.0, gekko_math::cmp::max);
             part_animations.insert(
                 (group, variant),
                 PartResource {

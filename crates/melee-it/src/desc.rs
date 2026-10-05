@@ -583,7 +583,8 @@ fn animation_end(state: &hsd_archive::desc::item_visual::ItemVisualState) -> Opt
             if aobj.flags & hsd_anim::aobj::AOBJ_LOOP != 0 {
                 return None;
             }
-            end = Some(end.map_or(aobj.end_frame, |e| e.max(aobj.end_frame)));
+            // The latest end frame; a load-time summary of lb_8000B09C's scan.
+            end = Some(end.map_or(aobj.end_frame, |e| gekko_math::cmp::max(e, aobj.end_frame)));
         }
         stack.extend(joint.child.as_deref());
         stack.extend(joint.next.as_deref());

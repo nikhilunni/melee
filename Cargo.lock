@@ -1677,6 +1677,7 @@ dependencies = [
  "anyhow",
  "bytemuck",
  "gc-disc",
+ "gekko-math",
  "melee-lib",
  "melee-replay",
  "melee-test-support",

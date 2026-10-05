@@ -146,7 +146,9 @@ impl RadialForces {
             if self.fields[i].rectangle.is_some() {
                 directional += self.fields[i].strength;
             }
-            self.fields[i].strength = (self.fields[i].strength - self.decay[i]).max(0.0);
+            // retail 0x80011630: fcmpo strength, 0; bge.
+            self.fields[i].strength =
+                gekko_math::cmp::max(self.fields[i].strength - self.decay[i], 0.0);
             if self.timers[i] > 0 {
                 self.timers[i] -= 1;
             }

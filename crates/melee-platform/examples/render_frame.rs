@@ -276,9 +276,10 @@ fn crop_fighter(
     };
     let center = project(target[0], target[1] + 10.0);
     let top = project(target[0], target[1] + 30.0);
-    let half = (center[1] - top[1]).abs().max(8.0);
-    let x0 = (center[0] - half).max(0.0) as u32;
-    let y0 = (center[1] - half).max(0.0) as u32;
+    let half = gekko_math::cmp::max((center[1] - top[1]).abs(), 8.0);
+    // Negative pixels saturate to 0 in the cast.
+    let x0 = (center[0] - half) as u32;
+    let y0 = (center[1] - half) as u32;
     let x1 = ((center[0] + half) as u32).min(size[0]);
     let y1 = ((center[1] + half) as u32).min(size[1]);
     let mut out = Vec::new();

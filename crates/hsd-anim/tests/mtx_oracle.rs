@@ -20,6 +20,7 @@
 //!
 //! If no `cc` is on `PATH`, or the decomp submodule is not checked out, the
 //! test prints a notice and passes; the in-crate unit tests still run.
+#![allow(clippy::disallowed_methods)] // std math builds inputs and tolerances
 
 use std::path::{Path, PathBuf};
 use std::process::Command;

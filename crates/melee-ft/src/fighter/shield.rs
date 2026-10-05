@@ -282,8 +282,9 @@ impl Fighter {
             };
             self.core.shield.on_reflect = Some(ReflectHitCallback::Powershield);
         }
-        // ftCo_800921DC (800921DC): no fused arithmetic in retail.
-        self.core.shield.lightshield = self.lightshield_input(assets).max(0.0);
+        // ftCo_800921DC (800921DC): no fused arithmetic in retail. 800922B0:
+        // fcmpo input, 0; bge, else the just-zeroed guard.x2C (+0).
+        self.core.shield.lightshield = gekko_math::cmp::max(self.lightshield_input(assets), 0.0);
         let joint = self.core.animation.parts[usize::from(self.core.bones.model.shield)].joint;
         self.core.skeleton.set_translate(joint, &Vec3::ZERO);
         self.queue_shield_effect(0x417);
@@ -673,7 +674,8 @@ impl FighterCore {
             return; // Guard Anim owns the motion transition.
         }
         if self.guard().minimum_hold > 0.0 {
-            self.guard().minimum_hold = (self.guard().minimum_hold - 1.0).max(0.0);
+            // retail 800926B4: fcmpo hold, 0; bge.
+            self.guard().minimum_hold = gekko_math::cmp::max(self.guard().minimum_hold - 1.0, 0.0);
         }
     }
     /// ftCo_80091BC4 (0x80091BC4), stick-angle wrap and magnitude smoothing.
@@ -700,8 +702,9 @@ impl FighterCore {
             angle += 360.0;
         }
         g.tilt_frame = 10.0 + angle;
-        // retail 80091CB4..CC0: separately rounded squares and sum.
-        let magnitude = sqrtf(stick.x * stick.x + stick.y * stick.y).min(1.0);
+        // retail 80091CB4..CC0: separately rounded squares and sum; 80091D20:
+        // fcmpo magnitude, 1; ble.
+        let magnitude = gekko_math::cmp::min(sqrtf(stick.x * stick.x + stick.y * stick.y), 1.0);
         // retail 80091D3C fmadds.
         g.tilt_magnitude = fmadds(
             assets.shield.tilt_smoothing,
@@ -804,8 +807,11 @@ impl FighterCore {
                 return true;
             }
         } else if self.status.shield_health < assets.shield_health {
-            self.status.shield_health =
-                (self.status.shield_health + assets.shield.regeneration).min(assets.shield_health);
+            // retail 8006D264: fcmpo health, start health; ble.
+            self.status.shield_health = gekko_math::cmp::min(
+                self.status.shield_health + assets.shield.regeneration,
+                assets.shield_health,
+            );
         }
         false
     }
@@ -836,7 +842,8 @@ impl FighterCore {
         if !self.shield.powershield_window {
             push *= p.ordinary_pushback_multiplier;
         }
-        let push = push.min(p.pushback_maximum);
+        // retail 800930A4: fcmpo push, maximum; ble.
+        let push = gekko_math::cmp::min(push, p.pushback_maximum);
         // ftCo_80092F2C(gobj, true): a cape leaves gr_vel alone.
         if !cape {
             self.physics.ground_velocity = if impact.facing < 0.0 { push } else { -push };

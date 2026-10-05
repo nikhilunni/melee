@@ -240,6 +240,7 @@ pub fn quat_slerp<T: InverseTrig>(p: &Quaternion, q: &Quaternion, out: &mut Quat
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)] // std math is the tolerance reference here
 mod tests {
     use super::*;
     use crate::mtx::{hsd_mk_rotation_mtx, mtx_quat};

@@ -107,7 +107,9 @@ impl Fighter {
         let p = &assets.shield;
         self.core.status.shield_health = p.break_health;
         self.core.state_data = MotionData::Dizzy(DizzyState {
-            remaining: (p.dizzy_base - self.core.physics.percent).max(0.0) + p.dizzy_extra,
+            // retail 80099060: fcmpo base - percent, 0; bge.
+            remaining: gekko_math::cmp::max(p.dizzy_base - self.core.physics.percent, 0.0)
+                + p.dizzy_extra,
             stick_directions: [0; 2],
             retained_word,
         });

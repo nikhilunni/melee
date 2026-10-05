@@ -491,6 +491,7 @@ pub fn stick_angle(y: f32, x: f32) -> f32 {
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)] // std math is the tolerance reference here
 mod tests {
     use super::*;
 

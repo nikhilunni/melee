@@ -17,7 +17,8 @@ pub struct Uniform {
 /// rows), then `MTXPerspective` mapped to wgpu's 0..1 depth range.
 pub fn retail(view: &melee_lib::presentation::ViewCamera, size: [u32; 2]) -> Uniform {
     let aspect = size[0].max(1) as f32 / size[1].max(1) as f32;
-    let sy = 1.0 / (view.fov.to_radians() * 0.5).tan();
+    // MTXPerspective's cotangent, with MSL tanf as retail computes it.
+    let sy = 1.0 / gekko_math::msl::tanf(view.fov.to_radians() * 0.5);
     let sx = sy / aspect;
     let depth = view.far / (view.far - view.near);
     let column = |j: usize| {
@@ -45,6 +46,7 @@ pub fn retail(view: &melee_lib::presentation::ViewCamera, size: [u32; 2]) -> Uni
 }
 
 #[cfg(test)]
+#[allow(clippy::disallowed_methods)] // std sqrt builds a unit test vector
 mod tests {
     use super::*;
     use melee_lib::presentation::ViewCamera;

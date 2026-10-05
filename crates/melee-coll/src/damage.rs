@@ -71,9 +71,10 @@ impl KnockbackParameters {
         }
     }
 }
-/// ftCommon_CalcHitlag (8007DA74), 8007DAA8 fmadds then fctiwz.
+/// ftCommon_CalcHitlag (8007DA74), 8007DAA8 fmadds then fctiwz, with the
+/// caller's cap (Fighter_ProcessHit 8006D738: fcmpo hitlag, x194; ble).
 pub fn hitlag(damage: i32, scale: f32, base: f32, maximum: f32) -> f32 {
-    (fctiwz(fmadds(damage as f32, scale, base)) as f32).min(maximum)
+    gekko_math::cmp::min(fctiwz(fmadds(damage as f32, scale, base)) as f32, maximum)
 }
 /// Fighter_8006A1BC: report expiry so each owner applies its reaction flags.
 pub fn tick_hitlag(remaining: &mut f32) -> bool {

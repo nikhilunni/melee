@@ -10,6 +10,7 @@ crate-type = ["rlib", "staticlib"]
 
 [dependencies]
 gc-disc = { path = "../gc-disc" }
+gekko-math = { path = "../gekko-math" }
 melee-lib = { path = "../melee-lib" }
 melee-replay = { path = "../melee-replay" }
 anyhow = { workspace = true }

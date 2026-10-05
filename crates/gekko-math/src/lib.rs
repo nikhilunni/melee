@@ -18,6 +18,7 @@
 //! The decomp sources these are ported from live in the `melee-decomp`
 //! submodule under `src/MSL/` and `src/sysdolphin/baselib/random.c`.
 
+pub mod cmp;
 pub mod estimate;
 pub mod fma;
 pub mod msl;

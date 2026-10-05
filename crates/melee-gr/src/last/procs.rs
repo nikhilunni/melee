@@ -184,13 +184,15 @@ impl FinalDestination {
             Tilt => {
                 if let Some(bg) = &mut self.ground.background {
                     // retail 0x8021B478: fadds; constant .sdata2 0x804DBBD0.
-                    bg.amplitude = (bg.amplitude + 1.0 / 180.0).min(1.0);
+                    // 0x8021B484: fcmpo amplitude, 1; ble.
+                    bg.amplitude = gekko_math::cmp::min(bg.amplitude + 1.0 / 180.0, 1.0);
                 }
             }
             Flash => {
                 if let Some(bg) = &mut self.ground.background {
                     // retail 0x8021B4A4: fsubs; 1/58 is rounded at compile time.
-                    bg.amplitude = (bg.amplitude - 1.0 / 58.0).max(0.0);
+                    // 0x8021B4B4: fcmpo amplitude, 0; bge.
+                    bg.amplitude = gekko_math::cmp::max(bg.amplitude - 1.0 / 58.0, 0.0);
                 }
                 self.actions.push(StageAction::Quake);
             }

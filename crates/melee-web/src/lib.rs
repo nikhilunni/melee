@@ -295,7 +295,9 @@ impl WebApp {
     // --- Match
     /// Advance by `elapsed_ms` of page time and draw at the canvas size.
     pub fn frame(&mut self, elapsed_ms: f64, width: u32, height: u32) -> Result<(), JsError> {
-        let elapsed = Duration::from_secs_f64((elapsed_ms / 1000.0).max(0.0));
+        // Page time can step backwards, and NaN must not reach Duration.
+        let seconds = if elapsed_ms > 0.0 { elapsed_ms / 1000.0 } else { 0.0 };
+        let elapsed = Duration::from_secs_f64(seconds);
         let advanced = self.app.advance(elapsed);
         self.sync_scene();
         if let Some(surface) = &mut self.surface {

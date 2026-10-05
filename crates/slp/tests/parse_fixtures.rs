@@ -336,8 +336,8 @@ fn joystick_inputs_reach_the_scenario() {
         .frames
         .values()
         .flat_map(|f| f.ports.iter().filter_map(|p| p.leader.pre.as_ref()))
-        .map(|pre| pre.joystick_x.abs().max(pre.joystick_y.abs()))
-        .fold(0.0f32, f32::max);
+        .flat_map(|pre| [pre.joystick_x.abs(), pre.joystick_y.abs()])
+        .fold(0.0f32, |max, v| if v > max { v } else { max });
     assert!(max_x > 0.95, "max stick deflection {max_x}");
     assert!(
         toml.contains("stick = [0.9875, 0.0]")

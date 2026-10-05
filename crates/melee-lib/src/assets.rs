@@ -222,11 +222,15 @@ impl Assets {
                 .any(|b| b.stage_position == index);
             bound.then(|| marker(index)).transpose()
         })?;
+        // Ground_801C3BB4 (ground.c:2259-2272): one ordered comparison per
+        // axis picks both bounds; equal markers take the second (0x98) as low.
+        let (left, right) = if low.x < high.x { (low.x, high.x) } else { (high.x, low.x) };
+        let (bottom, top) = if low.y < high.y { (low.y, high.y) } else { (high.y, low.y) };
         let arena = melee_ft::fighter::life::Arena {
-            left: low.x.min(high.x),
-            right: low.x.max(high.x),
-            top: low.y.max(high.y),
-            bottom: low.y.min(high.y),
+            left,
+            right,
+            top,
+            bottom,
             // Ground_801C39C0 subtracts the camera centre before Stage adds it back.
             camera_top: camera_range.bounds.top + camera_range.offset.y,
             revival_positions: [

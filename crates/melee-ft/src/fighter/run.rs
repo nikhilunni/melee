@@ -120,7 +120,8 @@ impl Fighter {
             }
         }
         if brake.remaining_frames != 0.0 {
-            brake.remaining_frames = (brake.remaining_frames - 1.0).max(0.0);
+            // retail 800CAD64: fcmpo frames, 0; bge (`if (frames < 0) frames = 0`).
+            brake.remaining_frames = gekko_math::cmp::max(brake.remaining_frames - 1.0, 0.0);
         }
         if !(self.core.animation.frames_remaining(&self.core.skeleton)
             && brake.remaining_frames != 0.0)

@@ -494,7 +494,8 @@ pub fn force_at(fields: &[ForceField], position: Vec3) -> (f32, Vec3) {
             let delta = difference(position, field.direction_or_center);
             let length = arithmetic::length(delta);
             let direction = normalize(delta);
-            let distance = ((0.05 * f64::from(length)) as f32).max(1.0);
+            // retail 8001031C: fcmpo distance, 1; bge.
+            let distance = gekko_math::cmp::max((0.05 * f64::from(length)) as f32, 1.0);
             let attenuation = (1.0 / f64::from(distance * distance)) as f32;
             // retail 80010340/354/368: fmadds; scale direction first.
             total.x = fmadds(attenuation, direction.x * scale, total.x);

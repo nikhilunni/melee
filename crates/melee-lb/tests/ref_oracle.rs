@@ -23,6 +23,7 @@
 //! `expf` and `powf` never return for some inputs (see the module docs in
 //! `src/trigf.rs`); the sweeps for those two steer clear of them, since a
 //! hang would stall the C and the Rust alike.
+#![allow(clippy::disallowed_methods)] // std math builds inputs and tolerances
 
 // The sweeps spell the C's constants exactly as the C does.
 #![allow(clippy::excessive_precision)]
