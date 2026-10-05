@@ -1,6 +1,9 @@
 //! A host's drawable (a CAMetalLayer, a canvas) and the GPU device behind it.
 //! The device lives as long as the window; each match builds its scene on it.
-use crate::renderer::{self, Renderer};
+use crate::{
+    app::App,
+    renderer::{self, Renderer},
+};
 use melee_lib::presentation::Presentation;
 
 pub struct WindowRenderer {
@@ -12,6 +15,8 @@ pub struct WindowRenderer {
     view_format: wgpu::TextureFormat,
     samples: u32,
     renderer: Option<Renderer>,
+    /// The app session generation the scene was built for.
+    generation: Option<u64>,
 }
 impl WindowRenderer {
     /// Request an adapter and device for `surface`. On the web this awaits
@@ -56,6 +61,7 @@ impl WindowRenderer {
             config,
             view_format,
             renderer: None,
+            generation: None,
         })
     }
     /// Upload a match's scene; replaces the previous match's.
@@ -73,6 +79,28 @@ impl WindowRenderer {
     }
     pub fn clear_scene(&mut self) {
         self.renderer = None;
+        self.generation = None;
+    }
+    /// Upload or drop the scene so it shows the app's current session. A
+    /// scene the renderer cannot build fails the match start (the app
+    /// returns to stage select with the error).
+    pub fn follow(&mut self, app: &mut App) {
+        let generation = app.session().map(|_| app.generation());
+        if generation == self.generation {
+            return;
+        }
+        let built = match app.session() {
+            Some(session) => self.set_scene(session.presentation()),
+            None => Ok(()),
+        };
+        match built {
+            Ok(()) if generation.is_some() => self.generation = generation,
+            Ok(()) => self.clear_scene(),
+            Err(error) => {
+                self.clear_scene();
+                app.fail_match_start(error);
+            }
+        }
     }
     pub fn has_scene(&self) -> bool {
         self.renderer.is_some()

@@ -20,8 +20,6 @@ pub const API_VERSION: u32 = 1;
 pub struct Handle {
     app: App,
     surface: Option<WindowRenderer>,
-    /// The session generation whose scene the surface holds.
-    scene: Option<u64>,
     last_frame: Option<Instant>,
     error: String,
 }
@@ -154,28 +152,9 @@ impl Handle {
     }
     /// Keep the surface's scene in step with the app's session.
     fn sync_scene(&mut self) {
-        let generation = self.app.session().map(|_| self.app.generation());
-        if generation == self.scene {
-            return;
+        if let Some(surface) = &mut self.surface {
+            surface.follow(&mut self.app);
         }
-        let Some(surface) = &mut self.surface else {
-            return;
-        };
-        match self.app.session() {
-            Some(session) => match surface.set_scene(session.presentation()) {
-                Ok(()) => self.scene = generation,
-                Err(error) => {
-                    surface.clear_scene();
-                    self.scene = None;
-                    self.app.fail_match_start(error);
-                }
-            },
-            None => {
-                surface.clear_scene();
-                self.scene = None;
-            }
-        }
-        self.last_frame = None;
     }
     fn hud(&self) -> Option<HudOut> {
         self.app.hud().map(|hud| self.hud_out(hud))
@@ -256,7 +235,6 @@ pub extern "C" fn melee_app_new() -> *mut Handle {
     Box::into_raw(Box::new(Handle {
         app: App::new(),
         surface: None,
-        scene: None,
         last_frame: None,
         error: String::new(),
     }))
@@ -483,7 +461,6 @@ pub unsafe extern "C" fn melee_app_attach_metal_layer(
         }
         .map_err(|e| e.to_string())?;
         h.surface = None;
-        h.scene = None;
         h.surface = Some(pollster::block_on(WindowRenderer::new(
             &instance,
             surface,
@@ -499,7 +476,6 @@ pub unsafe extern "C" fn melee_app_attach_metal_layer(
 pub unsafe extern "C" fn melee_app_detach_surface(app: *mut Handle) {
     let h = handle!(app);
     h.surface = None;
-    h.scene = None;
 }
 
 /// # Safety
