@@ -206,9 +206,20 @@ impl Presentation {
             result.add_model(archive, &desc, tree, ModelSource::Fighter(slot))?;
         }
         result.add_stage_models(game)?;
-        for (kind, archive, offset) in assets.items.visual_models() {
+        for (kind, archive, _) in assets.items.visual_models() {
+            let visual = &assets.items.get(kind).visual;
+            // Item_80267978 (item.c:738-745): an article without a model
+            // (Peach's bomber blast, Bowser's flame, Pikachu's thunder...)
+            // gets a bare identity JObj, which displays nothing.
+            if visual
+                .model
+                .descendants()
+                .iter()
+                .all(|d| d.u.dobj().is_none())
+            {
+                continue;
+            }
             if crate::scene_items::SceneItems::logic(kind).model_copies > 0 {
-                let visual = &assets.items.get(kind).visual;
                 for owner in 0..2 {
                     for copy in 0..crate::scene_items::SceneItems::logic(kind).model_copies {
                         let held = items::ArticleModel::new(archive, visual, owner, kind, copy)?;
@@ -223,16 +234,15 @@ impl Presentation {
                 }
                 continue;
             }
-            let desc = JObjDesc::read(archive, offset).map_err(error)?;
-            let (mut tree, root) =
-                hsd_anim::load::load_joint_tree(archive, &desc).map_err(error)?;
+            let desc = &visual.model;
+            let (mut tree, root) = hsd_anim::load::load_joint_tree(archive, desc).map_err(error)?;
             // Retail items overwrite their root SRT with ItemCore's world SRT.
             tree.set_translate(root, &hsd_types::Vec3::default());
             tree.set_rotation_x(root, 0.0);
             tree.set_rotation_y(root, 0.0);
             tree.set_rotation_z(root, 0.0);
             tree.set_scale(root, &hsd_types::Vec3::new(1.0, 1.0, 1.0));
-            result.add_model(archive, &desc, &tree, ModelSource::Item(kind, tree.clone()))?;
+            result.add_model(archive, desc, &tree, ModelSource::Item(kind, tree.clone()))?;
         }
         result.add_stage_items()?;
         for model in assets.effect_resources.visual_models() {
