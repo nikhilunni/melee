@@ -479,6 +479,7 @@ enum Autostart {
             reportStagePreviews(model: model, since: Date())
         }
         let screen = env["MELEE_APP_SCREEN"]
+        if let keys = env["MELEE_APP_KEYS"] { return press(keys, model: model) }
         if screen == "disc" { return model.back() }
         guard parts.count >= 3 else { return }
         for (player, key) in parts[1...2].enumerated() {
@@ -535,6 +536,25 @@ enum Autostart {
             fflush(stdout)
         }
     }
+    /// MELEE_APP_KEYS=right,right,enter,...: menu keys fed to the model 0.25 s
+    /// apart (development: the keyboard paths without synthetic events).
+    private static func press(_ spec: String, model: AppModel) {
+        let names: [String: MenuKey] = [
+            "left": .left, "right": .right, "up": .up, "down": .down, "enter": .enter, "escape": .escape,
+            "tab": .tab, "backtab": .backTab, "q": .costumePrevious, "e": .costumeNext, "clear": .clear,
+            "minus": .fewerStocks, "plus": .moreStocks,
+        ]
+        for (index, name) in spec.split(separator: ",").enumerated() {
+            guard let key = names[String(name)] else { return fail("unknown key \(name); keys: \(names.keys.sorted())") }
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25 * Double(index + 1)) {
+                let handled = model.handle(key)
+                print("key \(name): \(handled ? "handled" : "passed") screen \(model.screen) cursor \(model.cursor) " +
+                      "picking P\(model.picking + 1) stage \(model.stageCursor) focus \(model.focus)")
+                fflush(stdout)
+            }
+        }
+    }
+
     private static func fail(_ message: String) {
         print("autostart: \(message)")
         fflush(stdout)

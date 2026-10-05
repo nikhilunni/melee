@@ -149,8 +149,14 @@ files with the C header as the bridging header. The app: an NSWindow with
 the standard menu bar (File: Open Disc, Open Recent, Save Replay; Match:
 Pause, Restart, Quit to Character Select; Window; Help), drag and drop of
 the image onto the window or the Dock icon, recent discs kept as bookmarks
-in UserDefaults. The menus are SwiftUI views in an `NSHostingView` above the
-`CAMetalLayer` view; errors and faults are sheets.
+in UserDefaults. The menus (docs/DESIGN.md) are SwiftUI views in an
+`NSHostingView` above a Core Animation backdrop and the `CAMetalLayer` view,
+drawing the disc's art; the Barlow fonts are registered from the bundle.
+Notices and load errors are glass cards; a match fault is a sheet that
+offers Save Replay. One file per screen: `DiscScreen.swift`,
+`CharacterSelect.swift`, `StageSelect.swift`, `MatchScreens.swift`
+(loading, HUD, pause, results); `Theme.swift` holds the tokens and
+components, `Navigation.swift` the keyboard paths.
 
 Development smoke test (walks the menus, prints the HUD, exits 0 when the
 match is running):
@@ -166,6 +172,14 @@ With `MELEE_APP_SMOKE_SECONDS` set it also prints the art sizes and, once
 the stage previews are rendered, `previews: ready after N s` with their
 sizes (the core logs each preview's time on stderr).
 `MELEE_APP_PRINT_WINDOW=1` prints the window id for `screencapture -l`.
+
+For screenshots: `MELEE_APP_WINDOW_SIZE=1280x800` sizes the window;
+`MELEE_APP_SCREEN` stops on a screen (`disc-empty`, `disc` with the disc
+open, `stages` with `iso:P1:P2`, `loading` held, `pause` or `results` over
+the running match after `MELEE_APP_SCREEN_DELAY` seconds; results are a
+preview with P1 winning); `MELEE_APP_PREVIEW_PERCENTS=57,142` shows those
+HUD percents. `MELEE_APP_KEYS=right,down,enter,tab,e,...` feeds menu keys
+to the model 0.25 s apart and prints the cursor after each.
 
 ## Web (`crates/melee-web`)
 

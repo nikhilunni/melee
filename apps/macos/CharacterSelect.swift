@@ -401,7 +401,7 @@ struct PlayerPanel: View {
     private func empty(active: Bool, size: CGSize) -> some View {
         ZStack {
             EmblemShape()
-                .fill(.white.opacity(active ? 0.10 : 0.05))
+                .fill(.white.opacity(active ? 0.08 : 0.04))
                 .frame(width: size.height * 0.62, height: size.height * 0.62)
                 .position(x: size.width * 0.5, y: size.height * 0.45)
             VStack(spacing: m(6)) {
