@@ -392,6 +392,14 @@ enum Autostart {
             return fail("MELEE_APP_AUTOSTART wants iso[:P1:P2[:Stage]]")
         }
         model.openDisc(URL(fileURLWithPath: parts[0]))
+        if env["MELEE_APP_SMOKE_SECONDS"] != nil {
+            // Menu art decodes from the disc: report a portrait and a stage icon.
+            let portrait = model.core.portrait(character: 0, costume: 0)
+            let icon = model.core.stageIcon(0)
+            print("art: ready \(model.core.artReady) portrait \(portrait.map { "\($0.width)x\($0.height)" } ?? "none") " +
+                  "stage icon \(icon.map { "\($0.width)x\($0.height)" } ?? "none")")
+            fflush(stdout)
+        }
         guard parts.count >= 3 else { return }
         for (player, key) in parts[1...2].enumerated() {
             guard let character = model.characters.first(where: { $0.key == key }) else {

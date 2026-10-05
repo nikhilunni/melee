@@ -1,3 +1,4 @@
+import AppKit
 import Foundation
 
 // Swift face of libmelee (crates/melee-platform/include/melee_platform.h).
@@ -73,6 +74,12 @@ struct DiscInfo: Equatable {
     var cachedBytes: UInt64
 }
 
+/// Menu art kinds (melee_art_e). Character kinds take a character id,
+/// stage kinds a stage id.
+enum ArtKind: UInt32 {
+    case portrait = 0, face, stock, characterEmblem, stageIcon, stageName, stageEmblem
+}
+
 struct CoreError: LocalizedError {
     let message: String
     var errorDescription: String? { message }
@@ -134,7 +141,10 @@ final class Core {
     }
 
     // Disc
-    func openDisc(path: String) throws { try check(melee_app_open_disc(app, path)) }
+    func openDisc(path: String) throws {
+        artCache.removeAll()
+        try check(melee_app_open_disc(app, path))
+    }
     func resumeDisc() throws { try check(melee_app_resume_disc(app)) }
     var disc: DiscInfo? {
         var info = melee_disc_info_s()
@@ -142,6 +152,54 @@ final class Core {
         return DiscInfo(gameID: text(info.game_id), title: text(info.title), revision: Int(info.revision),
                         cachedFiles: Int(info.cached_files), cachedBytes: info.cached_bytes)
     }
+
+    // Menu art, decoded by the core from the open disc. Images are at their
+    // native size (portrait 136x188, face 64x56, stock 24x24, emblem 80x64,
+    // stage icon 64x56, stage name 224x56); draw them with
+    // `.interpolation(.none)` to keep the pixels. nil until the art is read,
+    // and where retail has none (Sheik's portrait and face).
+    private struct ArtKey: Hashable { let kind: ArtKind; let id: UInt32; let costume: UInt8 }
+    private var artCache: [ArtKey: CGImage] = [:]
+
+    var artReady: Bool { melee_app_art_ready(app) }
+    var artProgress: LoadProgress {
+        var raw = melee_load_progress_s()
+        melee_app_art_progress(app, &raw)
+        return LoadProgress(filesDone: Int(raw.files_done), filesTotal: Int(raw.files_total),
+                            bytesDone: raw.bytes_done, bytesTotal: raw.bytes_total)
+    }
+    /// Read the menu archives again (open-disc already tries once).
+    func loadArt() throws { try check(melee_app_load_art(app)) }
+
+    func art(_ kind: ArtKind, id: UInt32, costume: Int = 0) -> CGImage? {
+        let key = ArtKey(kind: kind, id: id, costume: UInt8(clamping: costume))
+        if let cached = artCache[key] { return cached }
+        var raw = melee_image_s()
+        guard melee_app_art(app, melee_art_e(rawValue: kind.rawValue), id, key.costume, &raw),
+              let pixels = raw.rgba else { return nil }
+        // Copy: the core's pointer is valid only until the next call.
+        let data = Data(bytes: pixels, count: raw.len) as CFData
+        guard let provider = CGDataProvider(data: data),
+              let image = CGImage(width: Int(raw.width), height: Int(raw.height),
+                                  bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: Int(raw.width) * 4,
+                                  space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                  bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
+                                  provider: provider, decode: nil, shouldInterpolate: false,
+                                  intent: .defaultIntent)
+        else { return nil }
+        artCache[key] = image
+        return image
+    }
+    func artImage(_ kind: ArtKind, id: UInt32, costume: Int = 0) -> NSImage? {
+        art(kind, id: id, costume: costume).map { NSImage(cgImage: $0, size: NSSize(width: $0.width, height: $0.height)) }
+    }
+    func portrait(character: Int32, costume: Int) -> CGImage? { art(.portrait, id: UInt32(character), costume: costume) }
+    func face(character: Int32) -> CGImage? { art(.face, id: UInt32(character)) }
+    func stockIcon(character: Int32, costume: Int) -> CGImage? { art(.stock, id: UInt32(character), costume: costume) }
+    func emblem(character: Int32) -> CGImage? { art(.characterEmblem, id: UInt32(character)) }
+    func stageIcon(_ stage: UInt32) -> CGImage? { art(.stageIcon, id: stage) }
+    func stageName(_ stage: UInt32) -> CGImage? { art(.stageName, id: stage) }
+    func stageEmblem(_ stage: UInt32) -> CGImage? { art(.stageEmblem, id: stage) }
 
     // Character select
     var selection: Selection {
