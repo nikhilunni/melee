@@ -49,6 +49,7 @@ live human play and menu driving (`dolphin/drive.py`).
 cargo gate                         # alias: cargo test --workspace (debug); also run --release at boundaries
 cargo clippy --workspace --all-targets -- -D warnings
 tools/perf-gate.sh                 # release size/time/duplicate-label regressions (docs/PERF.md)
+tools/wasm-check.sh                # wasm32 = native: pure crates under wasmtime, match hashes diffed (docs/APP.md)
 cd harness && uv run python -m pytest -q
 cargo test --release -p melee-sim --test m5_gate corpus     # focused combat/corpus oracle
 
@@ -183,7 +184,9 @@ build directory.
 ## Exactness rules
 
 - All float arithmetic goes through `gekko-math`. `std`/`libm` math functions
-  are banned outside `gekko-math` and tests.
+  are banned outside `gekko-math` and tests (`clippy.toml`). Clamps use
+  `gekko_math::cmp::{max, min}` in retail's comparison order, never
+  `f32::max`/`min` (unspecified for mixed zeros, so target-dependent).
 - Check every multiply-add against the retail asm (`asm.py <symbol> --fused`).
   `fmadds`/`fmsubs`/`fnmsubs`/`ps_madd*` become `gekko_math::fma::*` with
   operands in PowerPC order (a, c, b); separate `fmuls`/`fadds` stay separate.

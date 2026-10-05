@@ -15,6 +15,10 @@ rustflags = ["-C", "split-debuginfo=unpacked", "-C", "force-unwind-tables=no"]
 [target.wasm32-unknown-unknown]
 rustflags = ["-C", "force-unwind-tables=no"]
 
+# Cross-target tests under wasmtime (tools/wasm-check.sh); same reason.
+[target.wasm32-wasip1]
+rustflags = ["-C", "force-unwind-tables=no"]
+
 [alias]
 # Full oracle gate. Add integration scenarios here as milestones land.
 gate = "test --workspace"

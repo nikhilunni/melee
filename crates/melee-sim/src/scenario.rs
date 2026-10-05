@@ -138,9 +138,14 @@ pub struct InputStep {
 }
 impl Scenario {
     pub fn load(path: &Path) -> Result<Self> {
-        let path = path
-            .canonicalize()
-            .with_context(|| format!("scenario {}", path.display()))?;
+        let path = match path.canonicalize() {
+            Ok(path) => path,
+            // WASI has no realpath; a preopened absolute path works as given.
+            Err(_) if cfg!(target_os = "wasi") => path.to_path_buf(),
+            Err(error) => {
+                return Err(error).with_context(|| format!("scenario {}", path.display()))
+            }
+        };
         let mut scenario: Self = toml::from_str(&fs::read_to_string(&path)?)?;
         if let Some(twin) = &scenario.gate {
             ensure!(

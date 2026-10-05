@@ -133,6 +133,46 @@ the image read-only at `/disc.iso` (with HTTP Range), and
 `http://localhost:8080/?disc=disc.iso&autostart=Fox:Marth:FinalDestination`
 walks the menus (`autostart=Fox:Marth` stops at character select).
 
+### Same bits as native
+
+The simulation on wasm32 must produce the bits native aarch64 does. Three
+std float operations are target-dependent, and the game never uses them:
+
+- **Single-precision fma.** wasm has no fma instruction, so `f32::mul_add`
+  calls musl's `fmaf`, which rounds twice for results in the single
+  subnormal range. `gekko_math::fma` keeps the instruction on aarch64 (and
+  x86_64 with `fma`) and elsewhere computes the exact double product, a
+  TwoSum and a round-to-odd before one conversion to single.
+- **Double fma on WASI.** wasi-libc's `fma` returns `x*y + z` when `z` is
+  zero, losing an underflowed product's sign. `gekko_math::fma` returns the
+  product itself there (`cfg(target_os = "wasi")`); the browser target's
+  compiler-builtins `fma` is already correct.
+- **`max`/`min` of mixed zeros.** Rust leaves `f32::max(+0, -0)`
+  unspecified (aarch64 gives `+0`; wasm follows argument order).
+  `gekko_math::cmp::{max, min}` are retail's `fcmpo`-and-branch clamps,
+  keeping the first argument on a tie; each call site cites the retail
+  comparison it transcribes.
+
+The workspace `clippy.toml` forbids `f32`/`f64` `max`, `min`,
+`minimum`, `maximum`, `mul_add` and the libm functions (`sqrt`, `sin`,
+`powf` and the rest) outside gekko-math; tests that compare against std
+allow them locally.
+
+```sh
+tools/wasm-check.sh               # pure crates' tests under wasmtime, then
+                                  # 3 matches x 2000 ticks hashed native vs wasm
+tools/wasm-check.sh --tests-only
+```
+
+It needs `rustup target add wasm32-wasip1` and a wasmtime binary on `PATH`
+or in `MELEE_WASMTIME` (a release archive from
+github.com/bytecodealliance/wasmtime, unpacked anywhere; the script installs
+nothing). The tests run debug and release (LLVM's folds only appear
+optimized). From a worktree, set `MELEE_DATA_ROOT` to the main checkout for
+the match hash and `MELEE_ALLOW_MISSING_DATA=1` for the crate tests. The
+match hash is `crates/melee-lib/examples/cross_target_hash.rs`: per tick, an
+FNV-1a of `diagnostics::inspect` and `observe`.
+
 ## Known limits
 
 - **Panics on the web.** wasm32-unknown-unknown aborts on panic, so the
