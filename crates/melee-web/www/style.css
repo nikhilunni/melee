@@ -123,3 +123,18 @@ dialog {
 }
 dialog::backdrop { background: #0000008c; }
 .fatal { position: fixed; inset: 0; background: #000000cc; display: flex; align-items: center; justify-content: center; z-index: 10; }
+
+/* ?perf overlay */
+.perf {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  margin: 0;
+  padding: 4px 8px;
+  font: 12px ui-monospace, monospace;
+  color: #9f9;
+  background: rgb(0 0 0 / 0.6);
+  border-radius: 4px;
+  pointer-events: none;
+  z-index: 100;
+}

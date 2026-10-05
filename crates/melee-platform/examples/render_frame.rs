@@ -195,6 +195,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &texture.create_view(&Default::default()),
         session.presentation(),
     );
+    // `--bench N`: time N frames, each waited on, to measure GPU frame cost.
+    if let Some(pair) = args.windows(2).find(|pair| pair[0] == "--bench") {
+        let frames = pair[1].parse::<u32>()?;
+        let view = texture.create_view(&Default::default());
+        renderer.device.poll(wgpu::PollType::wait_indefinitely())?;
+        let start = std::time::Instant::now();
+        for _ in 0..frames {
+            renderer.draw(&view, session.presentation());
+            renderer.device.poll(wgpu::PollType::wait_indefinitely())?;
+        }
+        let per_frame = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+        println!("{width}x{height}: {per_frame:.2} ms per frame over {frames} frames");
+    }
     let buffer = renderer.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Preview readback"),
         size: u64::from(width * height * 4),

@@ -354,6 +354,23 @@ function fitCanvas() {
   }
   return `${width}x${height}`;
 }
+// ?perf shows frame rate, time spent in the core per frame, simulation
+// ticks per second and the canvas size (diagnosing slow machines).
+const perf = new URLSearchParams(location.search).has('perf') ? {
+  element: Object.assign(document.body.appendChild(document.createElement('pre')), { className: 'perf' }),
+  frames: 0, busy: 0, since: performance.now(), tick: 0,
+  sample(start) {
+    this.frames++;
+    this.busy += performance.now() - start;
+    const elapsed = performance.now() - this.since;
+    if (elapsed < 500) return;
+    const tick = app.hud()?.tick ?? 0;
+    this.element.textContent = `${(this.frames * 1000 / elapsed).toFixed(1)} fps  ` +
+      `${(this.busy / this.frames).toFixed(2)} ms/frame in core  ` +
+      `${(Math.max(0, tick - this.tick) * 1000 / elapsed).toFixed(0)} ticks/s  ${canvas.width}x${canvas.height}`;
+    Object.assign(this, { frames: 0, busy: 0, since: performance.now(), tick });
+  },
+} : null;
 function frame(now) {
   if (window.meleeCrashed) return;
   requestAnimationFrame(frame);
@@ -366,7 +383,9 @@ function frame(now) {
     lastFrame = now;
     sized = size;
     try {
+      const start = performance.now();
       app.frame(elapsed, canvas.width, canvas.height);
+      perf?.sample(start);
     } catch (e) {
       // After a wasm abort the module is unusable: stop (the panic hook has
       // already shown the crash). Other errors are faults with a notice.
