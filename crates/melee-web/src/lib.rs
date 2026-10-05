@@ -310,6 +310,32 @@ impl WebApp {
         }
         advanced.map_err(error)
     }
+    /// Benchmarking (`?perf`): queue `frames` offscreen draws of the current
+    /// scene at the canvas size. Time it with [`WebApp::gpu_idle`]; works in
+    /// background tabs, where animation frames stop.
+    pub fn draw_offscreen(&mut self, frames: u32) -> Result<(), JsError> {
+        let surface = self.surface.as_mut().ok_or_else(|| error("no surface"))?;
+        let scene = self
+            .app
+            .session()
+            .map(|s| s.presentation())
+            .ok_or_else(|| error("no match is running"))?;
+        surface.draw_offscreen(scene, frames).map_err(error)
+    }
+    /// Resolves once the GPU has finished all submitted work.
+    pub fn gpu_idle(&self) -> Result<js_sys::Promise, JsError> {
+        let queue = self
+            .surface
+            .as_ref()
+            .ok_or_else(|| error("no surface"))?
+            .queue()
+            .clone();
+        Ok(js_sys::Promise::new(&mut |resolve, _| {
+            queue.on_submitted_work_done(move || {
+                let _ = resolve.call0(&JsValue::NULL);
+            });
+        }))
+    }
     pub fn needs_frame(&self) -> bool {
         self.app.screen() == Screen::Match && self.app.session().is_some_and(|s| s.needs_frame())
     }

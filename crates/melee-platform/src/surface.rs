@@ -18,6 +18,17 @@ pub struct WindowRenderer {
     /// The app session generation the scene was built for.
     generation: Option<u64>,
 }
+/// Natively 4x MSAA where supported. In the browser none: Chrome's WebGPU
+/// (Dawn on Metal) cannot keep multisampled targets in tile memory, and 4x
+/// cost 112 ms per 3456x1814 frame against 12.9 ms without (Battlefield,
+/// M-series, 2026-10-04); at Retina density aliasing is barely visible.
+fn window_samples(adapter: &wgpu::Adapter, format: wgpu::TextureFormat) -> u32 {
+    if cfg!(target_arch = "wasm32") {
+        1
+    } else {
+        renderer::sample_count(adapter, format)
+    }
+}
 impl WindowRenderer {
     /// Request an adapter and device for `surface`. On the web this awaits
     /// the browser; natively hosts block on it.
@@ -54,7 +65,7 @@ impl WindowRenderer {
         config.desired_maximum_frame_latency = 2;
         surface.configure(&device, &config);
         Ok(Self {
-            samples: renderer::sample_count(&adapter, view_format),
+            samples: window_samples(&adapter, view_format),
             surface,
             device,
             queue,
@@ -142,6 +153,34 @@ impl WindowRenderer {
         }
         self.queue.present(frame);
         Ok(())
+    }
+    /// Benchmarking: draw the scene `frames` times into an offscreen target
+    /// the size and format of the surface, without presenting. Await
+    /// [`WindowRenderer::queue`]'s submitted work to time the GPU.
+    pub fn draw_offscreen(&mut self, scene: &Presentation, frames: u32) -> Result<(), String> {
+        let renderer = self.renderer.as_mut().ok_or("no match scene to draw")?;
+        let texture = self.device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("Benchmark target"),
+            size: wgpu::Extent3d {
+                width: self.config.width,
+                height: self.config.height,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: self.view_format,
+            usage: wgpu::TextureUsages::RENDER_ATTACHMENT,
+            view_formats: &[],
+        });
+        let view = texture.create_view(&Default::default());
+        for _ in 0..frames {
+            renderer.draw(&view, scene);
+        }
+        Ok(())
+    }
+    pub fn queue(&self) -> &wgpu::Queue {
+        &self.queue
     }
     fn clear(&self, view: &wgpu::TextureView) {
         let mut encoder = self.device.create_command_encoder(&Default::default());
