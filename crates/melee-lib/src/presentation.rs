@@ -239,7 +239,8 @@ impl Presentation {
                 continue;
             }
             if crate::scene_items::SceneItems::logic(kind).model_copies > 0 {
-                for owner in 0..2 {
+                // One set per fighter slot: Nana's articles are her own.
+                for owner in 0..game.engine.state().fighters.len() {
                     for copy in 0..crate::scene_items::SceneItems::logic(kind).model_copies {
                         let held = items::ArticleModel::new(archive, visual, owner, kind, copy)?;
                         let tree = held.tree().clone();
@@ -381,6 +382,7 @@ impl Presentation {
                 let item = game.engine.state().items.iter().find(|item| {
                     item.kind == held.kind
                         && item.owner == Some(fighter.player.id)
+                        && item.owner_secondary == fighter.player.secondary
                         && !item.destroyed
                 });
                 let hand = if item.is_some()
@@ -404,6 +406,19 @@ impl Presentation {
                     hsd_types::Mtx::default()
                 };
                 held.capture(item, hand)?;
+                // ftLib_800868D4: the item in hand hides with its invisible
+                // or hidden owner, or while a subaction hides it (x221E_b3).
+                if item.is_some_and(|item| {
+                    fighter
+                        .held_item
+                        .as_ref()
+                        .is_some_and(|h| h.item == item.id)
+                }) && (fighter.effect_state.invisible
+                    || fighter.commands.fighter_hidden
+                    || fighter.commands.held_item_hidden)
+                {
+                    held.visible = false;
+                }
             }
             if let ModelSource::StageItem(held) = &mut model.source {
                 stage::capture_item(game, held)?;
