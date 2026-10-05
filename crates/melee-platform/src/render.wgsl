@@ -219,6 +219,9 @@ fn compose_material(base:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, 
     }
     return texture_stage(color,mat,texels,0x80u,done);
 }
+// Pipelines whose alpha test always passes compile without `discard`, so
+// tiled GPUs keep hidden-surface removal for opaque meshes.
+override ALPHA_TEST: bool = true;
 // PIXEL
 @fragment fn fragment(in: Out) -> @location(0) vec4<f32> {
     var color=material.diffuse;
@@ -241,7 +244,7 @@ fn compose_material(base:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, 
     let b=alpha_compare(color.a,material.alpha.w,material.alpha.z);
     var visible=a && b;
     switch material.config.z { case 1u: { visible=a||b; } case 2u: { visible=a!=b; } case 3u: { visible=a==b; } default: {} }
-    if !visible { discard; }
+    if ALPHA_TEST && !visible { discard; }
     // GX_FOG_PERSP_LIN after the TEV and alpha test: eye depth from start to end.
     if lighting.fog_color.w!=0.0 {
         let amount=clamp((in.eye_depth-lighting.fog_range.x)/max(lighting.fog_range.y-lighting.fog_range.x,0.000001),0.0,1.0);

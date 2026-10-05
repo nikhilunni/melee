@@ -176,7 +176,13 @@ impl Renderer {
                 fragment: Some(wgpu::FragmentState {
                     module: &shader,
                     entry_point: Some("fragment"),
-                    compilation_options: Default::default(),
+                    compilation_options: wgpu::PipelineCompilationOptions {
+                        constants: &[(
+                            "ALPHA_TEST",
+                            if alpha_test_can_fail(pixel) { 1.0 } else { 0.0 },
+                        )],
+                        ..Default::default()
+                    },
                     targets: &[Some(wgpu::ColorTargetState {
                         format,
                         blend: material::blend(pixel)?,
@@ -433,7 +439,14 @@ impl Renderer {
                         load: wgpu::LoadOp::Clear(crate::srgb::clear_color(
                             scene.background_color(),
                         )),
-                        store: wgpu::StoreOp::Store,
+                        // Only the resolve target is read: discarding the
+                        // multisampled samples lets tiled GPUs keep them on
+                        // chip instead of writing 4x the frame to memory.
+                        store: if self.multisampled.is_some() {
+                            wgpu::StoreOp::Discard
+                        } else {
+                            wgpu::StoreOp::Store
+                        },
                     },
                 })],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
@@ -553,6 +566,26 @@ fn pixel_state(mesh: &melee_lib::presentation::Mesh) -> melee_lib::presentation:
         pixel.depth_compare = 7;
     }
     pixel
+}
+
+/// Whether GX's two alpha compares, combined by the alpha operation, can
+/// reject a fragment. Compare functions are static per material (only the
+/// references animate), so a pipeline whose test always passes drops `discard`.
+fn alpha_test_can_fail(pixel: melee_lib::presentation::PixelState) -> bool {
+    const NEVER: u8 = 0;
+    const ALWAYS: u8 = 7;
+    let [first, second] = pixel.alpha_compare;
+    let always_passes = match pixel.alpha_operation {
+        // AND
+        0 => first == ALWAYS && second == ALWAYS,
+        // OR
+        1 => first == ALWAYS || second == ALWAYS,
+        // XNOR: both results equal.
+        3 => (first == ALWAYS && second == ALWAYS) || (first == NEVER && second == NEVER),
+        // XOR, or an unknown operation: keep the test.
+        _ => false,
+    };
+    !always_passes
 }
 
 fn receiver_stencil(receiver: bool) -> wgpu::StencilState {
