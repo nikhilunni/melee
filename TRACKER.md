@@ -155,8 +155,12 @@ stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
 - render-to-texture (FoD reflection, Stadium screen feed), Link's bow,
   metal/low-poly, same-costume second-player tint, item poses per instance;
 - wasm panics abort (no catch_unwind): the page offers the replay;
-- [~] wasm float edge cases (subnormal `fmaf`, wasi `fma` signed zero,
-  `f32::max/min` with ±0): agent in flight.
+- renderer speed (2026-10-04): hardware sampling, unrolled and
+  shape-specialised material pipelines, shared geometry buffers, no MSAA in
+  the browser (Dawn: 112 -> 12.9 ms). Chrome full Retina: ~0.5 ms GPU,
+  ~0.5 ms sim per tick; native 0.3-0.5 ms per frame (`render_frame --bench`);
+- wasm float edge cases fixed (software fma, `gekko_math::cmp`, clippy
+  bans std float math); `tools/wasm-check.sh` diffs match hashes.
 ## Backlog
 
 - [ ] CI: `cargo gate`, clippy, harness pytest, `gen_schema.py --check`.
