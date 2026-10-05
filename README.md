@@ -39,7 +39,7 @@ uploaded.
 
 The simulator runs the game logic only (no rendering or audio), so it is much
 faster than emulating the console. Measured on an Apple M2 Max (8 performance
-+ 4 efficiency cores), release build, random controller inputs over full
+and 4 efficiency cores), release build, random controller inputs over full
 matches:
 
 | Match | µs per tick | ticks/s, one core | × real time (60 fps) |
