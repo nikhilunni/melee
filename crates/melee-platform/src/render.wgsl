@@ -173,6 +173,10 @@ fn compose_material(base:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, 
 // Pipelines whose alpha test always passes compile without `discard`, so
 // tiled GPUs keep hidden-surface removal for opaque meshes.
 override ALPHA_TEST: bool = true;
+// The pipeline's material shape (material::Shape): texture layers present,
+// and a bit per layer with a custom TEV combiner.
+override LAYERS: u32 = 8u;
+override TEV_LAYERS: u32 = 255u;
 // PIXEL
 @fragment fn fragment(in: Out) -> @location(0) vec4<f32> {
     var color=material.diffuse;

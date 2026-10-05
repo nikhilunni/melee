@@ -514,20 +514,47 @@ fn factor(value: u8) -> Result<wgpu::BlendFactor, String> {
         _ => return Err("invalid GX blend factor".into()),
     })
 }
+/// The material structure a pipeline compiles in (shader `override`s): its
+/// texture layer count and which layers have a custom TEV combiner. Both
+/// are authored, never animated, so code for absent layers compiles away.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub struct Shape {
+    pub layers: u8,
+    /// Bit i: layer i has an active custom combiner.
+    pub custom_combiners: u8,
+}
+impl Shape {
+    pub fn of(material: &Material) -> Self {
+        let mut custom_combiners = 0;
+        for (i, layer) in material.textures.iter().enumerate().take(MAX_LAYERS) {
+            if layer
+                .combiner
+                .is_some_and(|tev| tev.active & 0xC000_0000 != 0)
+            {
+                custom_combiners |= 1 << i;
+            }
+        }
+        Self {
+            layers: material.textures.len().min(MAX_LAYERS) as u8,
+            custom_combiners,
+        }
+    }
+}
 /// Explicit bindings avoid non-portable texture binding-array features.
 pub fn shader() -> String {
     let mut bindings = String::new();
     let mut samples = String::new();
     for i in 0..MAX_LAYERS {
         bindings.push_str(&format!("@group(1) @binding({}) var image{i}: texture_2d<f32>;\n@group(1) @binding({}) var sampler{i}: sampler;\n",1+i*2,2+i*2));
-        samples.push_str(&format!("if material.config.y > {i}u {{ let layer=material.layers[{i}]; let tex=textureSampleBias(image{i},sampler{i},coordinates(in,layer),layer.lod.x); texels[{i}]=custom_texture(tex,layer); composition.operations[{i}]=layer.operations; composition.parameters[{i}]=vec2(layer.translation.z,f32(layer.activation.y)); }}\n"));
+        samples.push_str(&format!("if LAYERS > {i}u && material.config.y > {i}u {{ let layer=material.layers[{i}]; var tex=textureSampleBias(image{i},sampler{i},coordinates(in,layer),layer.lod.x); if (TEV_LAYERS & {})!=0u {{ tex=custom_texture(tex,layer); }} texels[{i}]=tex;", 1 << i));
+        samples.push_str(&format!(" composition.operations[{i}]=layer.operations; composition.parameters[{i}]=vec2(layer.translation.z,f32(layer.activation.y)); }}\n"));
     }
     // One texture stage of MObjMakeTExp, unrolled: `// STAGE target category done`.
     let stage = |target: &str, category: &str, done: &str| {
         let mut code = String::new();
         for i in 0..MAX_LAYERS {
             code.push_str(&format!(
-                "if mat.count > {i}u {{ let mask=u32(mat.parameters[{i}].y); if (mask&{category})!=0u {{ \
+                "if LAYERS > {i}u && mat.count > {i}u {{ let mask=u32(mat.parameters[{i}].y); if (mask&{category})!=0u {{ \
                  {target}=combine_values({target},texels[{i}],vec4(mat.operations[{i}].xyz,select(1u,0u,(mask&{done})!=0u)),mat.parameters[{i}].x); }} }}\n"
             ));
         }

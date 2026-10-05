@@ -138,10 +138,12 @@ impl Renderer {
         let mut pipelines = Vec::new();
         let mut pipeline_ids = BTreeMap::new();
         for mesh in scene.meshes() {
-            let pixel = pixel_state(mesh);
-            if pipeline_ids.contains_key(&(pixel, mesh.culling, mesh.shadow_receiver)) {
+            let key = pipeline_key(mesh);
+            if pipeline_ids.contains_key(&key) {
                 continue;
             }
+            let pixel = key.pixel;
+            let shape = key.shape;
             let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
                 label: Some("Melee textured geometry"),
                 layout: Some(&pipeline_layout),
@@ -177,10 +179,14 @@ impl Renderer {
                     module: &shader,
                     entry_point: Some("fragment"),
                     compilation_options: wgpu::PipelineCompilationOptions {
-                        constants: &[(
-                            "ALPHA_TEST",
-                            if alpha_test_can_fail(pixel) { 1.0 } else { 0.0 },
-                        )],
+                        constants: &[
+                            (
+                                "ALPHA_TEST",
+                                if alpha_test_can_fail(pixel) { 1.0 } else { 0.0 },
+                            ),
+                            ("LAYERS", f64::from(shape.layers)),
+                            ("TEV_LAYERS", f64::from(shape.custom_combiners)),
+                        ],
                         ..Default::default()
                     },
                     targets: &[Some(wgpu::ColorTargetState {
@@ -200,7 +206,7 @@ impl Renderer {
                 multiview_mask: None,
                 cache: None,
             });
-            pipeline_ids.insert((pixel, mesh.culling, mesh.shadow_receiver), pipelines.len());
+            pipeline_ids.insert(key, pipelines.len());
             pipelines.push(pipeline);
         }
         let pose_bytes = std::mem::size_of_val(scene.matrices()) as u64;
@@ -320,7 +326,7 @@ impl Renderer {
                 }),
                 count: mesh.indices.len() as u32,
                 image,
-                pipeline: pipeline_ids[&(pixel_state(mesh), mesh.culling, mesh.shadow_receiver)],
+                pipeline: pipeline_ids[&pipeline_key(mesh)],
             });
         }
         let sprites =
@@ -568,6 +574,23 @@ fn attachment(
         .create_view(&Default::default())
 }
 
+/// What one mesh pipeline is specialised on: fixed-function pixel state and
+/// the material's shape, which compiles unused shader code away.
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+struct PipelineKey {
+    pixel: melee_lib::presentation::PixelState,
+    culling: melee_lib::presentation::FaceCulling,
+    shadow_receiver: bool,
+    shape: material::Shape,
+}
+fn pipeline_key(mesh: &melee_lib::presentation::Mesh) -> PipelineKey {
+    PipelineKey {
+        pixel: pixel_state(mesh),
+        culling: mesh.culling,
+        shadow_receiver: mesh.shadow_receiver,
+        shape: material::Shape::of(&mesh.material),
+    }
+}
 fn pixel_state(mesh: &melee_lib::presentation::Mesh) -> melee_lib::presentation::PixelState {
     let mut pixel = mesh.material.pixel;
     if mesh.background {
