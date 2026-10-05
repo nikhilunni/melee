@@ -1,6 +1,6 @@
 //! Shared wgpu renderer. Native shells supply a surface; no asset parsing or
 //! match state enters this module. Geometry/images upload once per scene.
-use crate::{camera::Camera, material};
+use crate::material;
 use melee_lib::presentation::Presentation;
 use std::{collections::BTreeMap, sync::Arc};
 use wgpu::util::DeviceExt;
@@ -381,7 +381,7 @@ impl Renderer {
             let material = &mut self.images[self.draws[effect.mesh].image].1;
             material.update_slot(&self.queue, scene.effect_material(*effect), effect.slot);
         }
-        let camera = Camera::frame(scene.camera_targets(), self.size).uniform();
+        let camera = crate::camera::retail(scene.view_camera(), self.size);
         // Draw opaque depth writers first, then translucent meshes back-to-front.
         // Index tie-breaking preserves authored order without a sorting allocation.
         self.order.sort_unstable_by(|&a, &b| {

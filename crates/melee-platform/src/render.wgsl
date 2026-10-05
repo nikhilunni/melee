@@ -8,8 +8,8 @@
 struct Layer { scale: vec4<f32>, translation: vec4<f32>, rotation: vec4<f32>, operations: vec4<u32>, color_operation:vec4<u32>, alpha_operation:vec4<u32>, color_inputs:vec4<u32>, alpha_inputs:vec4<u32>, constants:array<vec4<f32>,3>, activation:vec4<u32>, image:vec4<u32>, addressing:vec4<u32>, lod:vec4<f32> }
 struct Material { overlay:vec4<f32>, diffuse: vec4<f32>, ambient:vec4<f32>, specular:vec4<f32>, config: vec4<u32>, alpha: vec4<u32>, layers: array<Layer,8> }
 @group(1) @binding(0) var<uniform> material: Material;
-struct DirectionalLight { direction:vec4<f32>, color:vec4<f32> }
-struct Lighting { ambient:vec4<f32>, lights:array<DirectionalLight,8> }
+struct DirectionalLight { direction:vec4<f32>, color:vec4<f32>, attenuation:vec4<f32> }
+struct Lighting { ambient:vec4<f32>, lights:array<DirectionalLight,8>, fog_color:vec4<f32>, fog_range:vec4<f32> }
 @group(0) @binding(3) var<uniform> lighting:Lighting;
 fn safe_normalize(v:vec3<f32>)->vec3<f32> {
     return v/max(length(v),0.000001);
@@ -102,7 +102,8 @@ fn specular_weight(normal:vec3<f32>, toward_light:vec3<f32>, shininess:f32)->f32
 struct Out {
     @builtin(position) position: vec4<f32>,
     @location(0) uv: vec2<f32>, @location(1) color: vec4<f32>, @location(2) normal: vec3<f32>,
-    @location(3) diffuse_light:vec3<f32>, @location(4) specular_light:vec3<f32>
+    @location(3) diffuse_light:vec3<f32>, @location(4) specular_light:vec3<f32>,
+    @location(5) eye_depth:f32
 }
 @vertex fn vertex(@location(0) position: vec3<f32>, @location(1) uv: vec2<f32>, @location(2) color: vec4<f32>, @location(3) matrix: u32, @location(4) normal: vec3<f32>, @location(5) billboard: u32, @builtin(instance_index) instance: u32) -> Out {
     let transform=billboard_transform(instances[instance]*poses[matrix],billboard,camera.eye.xyz,camera.toward_eye.xyz);
@@ -110,15 +111,25 @@ struct Out {
     var out: Out;
     out.position = project(p.xyz);
     out.uv = uv; out.color = color;
+    out.eye_depth = dot(camera.eye.xyz-p.xyz,camera.toward_eye.xyz);
     out.normal = normal_transform(transform,normal);
     let surface_normal=out.normal;
     var diffuse_light=material.ambient.rgb*lighting.ambient.rgb;
     var specular_light=vec3(0.0);
     for (var i=0u;i<u32(lighting.ambient.w);i++) {
         let light=lighting.lights[i];
-        let direction=safe_normalize(light.direction.xyz);
-        diffuse_light+=light.color.rgb*max(dot(surface_normal,direction),0.0)*light.direction.w;
-        specular_light+=light.color.rgb*specular_weight_for_view(surface_normal,direction,material.specular.w,safe_normalize(camera.eye.xyz-p.xyz))*light.color.w;
+        var direction=safe_normalize(light.direction.xyz);
+        var attenuation=1.0;
+        if light.attenuation.w!=0.0 {
+            // GX point light, spot off (setup_point_lightobj): toward the
+            // light from the vertex, 1/(k0+k1 d+k2 d^2) distance attenuation.
+            let toward=light.direction.xyz-p.xyz;
+            let d=length(toward);
+            direction=safe_normalize(toward);
+            attenuation=1.0/max(light.attenuation.x+light.attenuation.y*d+light.attenuation.z*d*d,0.000001);
+        }
+        diffuse_light+=light.color.rgb*max(dot(surface_normal,direction),0.0)*light.direction.w*attenuation;
+        specular_light+=light.color.rgb*specular_weight_for_view(surface_normal,direction,material.specular.w,safe_normalize(camera.eye.xyz-p.xyz))*light.color.w*attenuation;
     }
     out.diffuse_light=clamp(diffuse_light,vec3(0.0),vec3(1.0));
     out.specular_light=specular_light;
@@ -231,6 +242,11 @@ fn compose_material(base:vec4<f32>, mat:Composition, texels:array<vec4<f32>,8>, 
     var visible=a && b;
     switch material.config.z { case 1u: { visible=a||b; } case 2u: { visible=a!=b; } case 3u: { visible=a==b; } default: {} }
     if !visible { discard; }
+    // GX_FOG_PERSP_LIN after the TEV and alpha test: eye depth from start to end.
+    if lighting.fog_color.w!=0.0 {
+        let amount=clamp((in.eye_depth-lighting.fog_range.x)/max(lighting.fog_range.y-lighting.fog_range.x,0.000001),0.0,1.0);
+        color=vec4(mix(color.rgb,lighting.fog_color.rgb,amount),color.a);
+    }
     // GX expressions operate on encoded colors; the sRGB target encodes again.
     let linear=select(color.rgb/12.92,pow((color.rgb+0.055)/1.055,vec3(2.4)),color.rgb>vec3(0.04045));
     return vec4(linear,color.a);
