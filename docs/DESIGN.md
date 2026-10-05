@@ -260,3 +260,22 @@ Both hosts follow these; they supersede anything above that disagrees.
 10. **Face crops** (grid, HUD, results rows) are computed from each portrait
     (top of the figure, centred on the mass of its top third), not tabled
     per character.
+
+## Refinements from the macOS build (2026-10-04)
+
+11. **Pause blur:** blur the game layer itself (radius ~10) plus a dim, not a
+    full-window material, which turns the stage to grey mush (web:
+    `filter: blur(10px)` on the canvas).
+12. **Stage hero keeps 16:9** (plus the slant's coverage) instead of spanning
+    the full width, so tall stages (Battlefield's top platform) are not cut.
+    The name plate sits on the frame's lower-left edge.
+13. **No per-frame UI loops for looping light:** sweeps and shimmers are Core
+    Animation or CSS transforms/animations, never SwiftUI repeat-forever
+    state or JS loops (a SwiftUI sweep cost ~15% CPU; Core Animation ~0).
+14. **Name plates are disc images too:** cap them at 2x like icons.
+15. **Port marks on slanted panels** are offset by the slant's lean so they
+    are never clipped.
+16. **Prompt row before ready:** where READY TO FIGHT will appear, show
+    "P1 · Choose your fighter" (the active player) so the gap is not empty.
+17. **Short tile names** on the 9-wide grid: DK, C. Falcon, G&W; full names
+    in panels and results.

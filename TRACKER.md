@@ -151,7 +151,11 @@ SwiftUI menus) and `crates/melee-web` (HTML/DOM menus, WebGPU canvas). The
 only input is the Melee NTSC-U 1.02 disc image. All 25 characters and six
 stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
 108 replays run inside wasm). Open:
-- menu art (portraits, stage previews from MnSlChr/MnSlMap), gamepads;
+- menus redesigned on both hosts (docs/DESIGN.md): disc art decoded at
+  runtime (portraits, faces, stocks, emblems, name plates), stage previews
+  rendered at runtime (1080p, ~1.5 s native, ~3.4 s web); nothing from the
+  disc is committed. Open: web adopts DESIGN.md items 11-17; a rendered
+  Sheik portrait (none on the disc); gamepads;
 - render-to-texture (FoD reflection, Stadium screen feed), Link's bow,
   metal/low-poly, same-costume second-player tint, item poses per instance;
 - wasm panics abort (no catch_unwind): the page offers the replay;
