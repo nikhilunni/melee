@@ -44,6 +44,9 @@ if command -v wasm-opt >/dev/null; then
         "$out/pkg/melee_web_bg.wasm" -o "$out/pkg/melee_web_bg.wasm"
 fi
 cp crates/melee-web/www/* "$out/"
+# The menu fonts (SIL OFL 1.1), with their licence.
+mkdir -p "$out/fonts"
+cp assets/fonts/*.ttf assets/fonts/OFL.txt "$out/fonts/"
 printf 'built %s (%s)\n' "$out" "$(du -sh "$out/pkg/melee_web_bg.wasm" | cut -f1)"
 
 [[ $build_only == 1 ]] && exit 0
