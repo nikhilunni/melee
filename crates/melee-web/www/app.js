@@ -1,5 +1,9 @@
 // The web app runtime: HTML menus, file access, keyboard and the frame
-// loop. Every rule lives in libmelee (WebApp, from crates/melee-web).
+// loop. Every rule lives in libmelee (WebApp, from crates/melee-web); the
+// look follows docs/DESIGN.md.
+//
+// The menus are built once and updated in place (classes, text, image
+// sources), so hovers, focus and animations survive state changes.
 import init, { WebApp, catalog, header_len, fst_range, create_surface } from './pkg/melee_web.js';
 
 const SCREENS = ['disc', 'characters', 'stages', 'loading', 'match', 'results'];
@@ -14,31 +18,53 @@ const KEYS = {
 
 const $ = (id) => document.getElementById(id);
 const canvas = $('game');
+const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
+const SPRING = 'cubic-bezier(0.2, 0.9, 0.25, 1.15)';
 let app, cat, discFile = null, picking = 0, lastFrame = null;
 // One load at a time; a new token abandons the previous one.
 let loadActive = false, loadToken = 0;
+// The stage of the match being loaded or played (the loading backdrop).
+let chosenStage = null;
+// Development (?screen=): show a screen the core is not on, for screenshots.
+let devView = null, devResults = null;
 
 function el(tag, props = {}, ...children) {
   const node = Object.assign(document.createElement(tag), props);
-  for (const child of children) node.append(child);
+  for (const child of children) if (child != null) node.append(child);
   return node;
+}
+function svgUse(symbol, className) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  svg.setAttribute('class', className);
+  svg.setAttribute('aria-hidden', 'true');
+  const use = document.createElementNS('http://www.w3.org/2000/svg', 'use');
+  use.setAttribute('href', `#${symbol}`);
+  svg.append(use);
+  return svg;
 }
 const characterName = (id) => cat.characters[id]?.name ?? '';
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
+const portClass = (port) => `port-${Math.min(port, 3)}`;
 
-function message(title, text, actions = []) {
+function message(title, text, actions = [], tone = 'neutral') {
   const dialog = $('message');
+  dialog.classList.toggle('danger', tone === 'danger');
   $('message-title').textContent = title;
   $('message-text').textContent = text;
-  const row = $('message-actions');
-  row.replaceChildren(...actions.map(([label, run]) =>
-    el('button', { className: 'big', textContent: label, onclick: () => { dialog.close(); run(); } })),
-    el('button', { className: 'big prominent', textContent: 'OK', onclick: () => dialog.close() }));
+  const button = (label, run, className = 'btn') =>
+    el('button', { className, onclick: () => { dialog.close(); run?.(); } }, el('span', { textContent: label }));
+  const copy = el('button', { className: 'link-button copy', textContent: 'Copy details', onclick: () => {
+    navigator.clipboard?.writeText(text);
+    copy.textContent = 'Copied';
+  } });
+  $('message-actions').replaceChildren(...(tone === 'danger' ? [copy] : []),
+    ...actions.map(([label, run]) => button(label, run)), button('OK', null, 'btn accent'));
   if (!dialog.open) dialog.showModal();
+  dialog.querySelector('.btn.accent').focus();
 }
 /** Run a core call; a thrown error becomes a message. */
 function attempt(run, title = 'Melee') {
-  try { run(); } catch (e) { message(title, e.message ?? String(e)); }
+  try { run(); } catch (e) { message(title, e.message ?? String(e), [], 'danger'); }
   render();
 }
 
@@ -53,16 +79,28 @@ async function openDisc(file) {
     const fst = await readRange(file, start, end);
     app.open_disc(header, fst, file.size);
     discFile = file;
-    artCache.clear();
+    art.reset();
+    showDiscError(null);
     loadArt(file);
   } catch (e) {
-    message('That disc image cannot be used', e.message ?? String(e));
+    const text = e.message ?? String(e);
+    if (app.screen() === 0) showDiscError(file.name, text);
+    else message('That disc image cannot be used', text, [], 'danger');
   }
   render();
 }
+function showDiscError(name, text) {
+  const card = $('disc-error');
+  card.hidden = !name;
+  if (!name) return;
+  card.replaceChildren(
+    el('h2', { textContent: 'That disc image cannot be used' }),
+    el('p', { textContent: `${name}: ${text}` }),
+    el('p', { className: 'hint', textContent: 'Melee needs an uncompressed NTSC-U 1.02 image (.iso or .gcm).' }));
+}
 
 // ---- Menu art: the menu archives (about 5 MB), read right after the disc
-// opens; menus show placeholders until app.art_ready().
+// opens; menus show our own placeholders until app.art_ready().
 
 async function loadArt(file) {
   try {
@@ -70,34 +108,142 @@ async function loadArt(file) {
       const bytes = await readRange(file, start, end);
       if (file !== discFile) return; // another disc replaced this one
       app.provide_file(name, bytes);
+      updateArtStatus();
     }
   } catch (e) {
     console.warn(`Menu art unavailable: ${e.message ?? e}`);
   }
-  render();
+  updateArtStatus();
+  art.refresh();
+}
+function updateArtStatus() {
+  const status = $('art-status');
+  const ready = !app || app.art_ready() || !discFile;
+  status.hidden = ready;
+  if (!ready) {
+    const p = app.art_progress();
+    status.textContent = `Reading menu art · ${Math.round(100 * p.bytesDone / Math.max(1, p.bytesTotal))}%`;
+  }
 }
 
-// One piece of menu art as ImageData at its native size, or null while the
-// art loads (and where retail has none). kind: ART below; id: a character
-// or stage id.
-const ART = { portrait: 0, face: 1, stock: 2, characterEmblem: 3, stageIcon: 4, stageName: 5, stageEmblem: 6 };
-const artCache = new Map();
-function artImage(kind, id, costume = 0) {
-  if (!app?.art_ready()) return null;
-  const key = `${kind}:${id}:${costume}`;
-  if (!artCache.has(key)) {
-    try {
-      const { width, height, data } = app.art(kind, id, costume);
-      artCache.set(key, new ImageData(data, width, height));
-    } catch {
-      artCache.set(key, null);
+// Disc art, decoded once by the core and kept as blob: URLs. Elements ask
+// for a piece with data-art="kind:id:costume"; art.hydrate() fills in
+// <img> sources, CSS masks (class "mask": intensity art, tinted by its
+// background colour) and portrait crops (data-crop), and sets data-state to
+// "ready" or "none" (retail has no such image). kind: ART below.
+const ART = { portrait: 0, face: 1, stock: 2, characterEmblem: 3, stageIcon: 4, stageName: 5, stageEmblem: 6,
+  stagePreview: 7 };
+const NONE = 'none', PENDING = 'pending';
+// Portrait framings: [aspect of the element (height / width), zoom (the
+// portrait's width over the element's)]. Tile art is 1.44x the tile wide
+// (it extends under the slant).
+const CROPS = { tile: [0.56, 0.8], face: [1, 1.9], row: [1, 1.9] };
+const art = {
+  urls: new Map(),
+  heads: new Map(), // character id -> {x, top}: where the face is in the portrait (fractions)
+  queued: false,
+  reset() {
+    for (const url of this.urls.values()) if (url.startsWith?.('blob:')) URL.revokeObjectURL(url);
+    this.urls.clear();
+    this.heads.clear();
+  },
+  /** A blob: URL, NONE, or null while it is not available yet. */
+  get(kind, id, costume = 0) {
+    if (!app?.art_ready()) return null;
+    const key = `${kind}:${id}:${costume}`;
+    const known = this.urls.get(key);
+    if (known !== undefined) return known === PENDING ? null : known;
+    let image;
+    try { image = app.art(kind, id, costume); } catch { this.urls.set(key, NONE); return NONE; }
+    if (!image) return null; // a stage preview not rendered yet
+    const data = new ImageData(image.data, image.width, image.height);
+    if (kind === ART.portrait && !this.heads.has(id)) this.heads.set(id, findHead(data));
+    this.urls.set(key, PENDING);
+    const surface = new OffscreenCanvas(image.width, image.height);
+    surface.getContext('2d').putImageData(data, 0, 0);
+    surface.convertToBlob().then((blob) => {
+      if (this.urls.get(key) !== PENDING) return; // reset since
+      this.urls.set(key, URL.createObjectURL(blob));
+      this.refresh();
+    });
+    return null;
+  },
+  /** Hydrate everything on the next animation frame (coalesced). */
+  refresh() {
+    if (this.queued) return;
+    this.queued = true;
+    requestAnimationFrame(() => { this.queued = false; this.hydrate(document); });
+    // Hidden tabs have no animation frames.
+    setTimeout(() => { if (this.queued) { this.queued = false; this.hydrate(document); } }, 100);
+  },
+  hydrate(root) {
+    for (const node of root.querySelectorAll('[data-art]')) this.apply(node);
+  },
+  apply(node) {
+    const spec = node.dataset.art;
+    const [kind, id, costume] = spec ? spec.split(':').map(Number) : [];
+    const value = spec ? this.get(kind, id, costume) : null;
+    const state = value === NONE ? 'none' : value ? 'ready' : '';
+    if (state === 'ready') {
+      if (node.tagName === 'IMG') {
+        if (node.getAttribute('src') !== value) {
+          node.src = value;
+          if (node.classList.contains('slide-in')) slideIn(node);
+        }
+      } else if (node.classList.contains('mask')) {
+        const image = `url("${value}")`;
+        node.style.webkitMaskImage = image;
+        node.style.maskImage = image;
+      } else {
+        node.style.backgroundImage = `url("${value}")`;
+        if (node.dataset.crop) Object.assign(node.style, cropStyle(id, ...CROPS[node.dataset.crop]));
+      }
+    } else if (node.tagName === 'IMG' && node.hasAttribute('src')) {
+      node.removeAttribute('src');
     }
-  }
-  return artCache.get(key);
-}
-// For the console and page tests: meleeArt(ART.portrait, 0, 0).
-window.meleeArt = artImage;
+    if (node.dataset.state !== state) node.dataset.state = state;
+  },
+};
+// For the console and page tests: meleeArt(ART.portrait, 0, 0) is ImageData.
+window.meleeArt = (kind, id, costume = 0) => {
+  if (!app?.art_ready()) return null;
+  try {
+    const { width, height, data } = app.art(kind, id, costume);
+    return new ImageData(data, width, height);
+  } catch { return null; }
+};
 window.meleeArtKinds = ART;
+
+/** Where the face is: the top of the figure, centred on the mass of its top third. */
+function findHead({ width, height, data }) {
+  const opaque = (x, y) => data[(y * width + x) * 4 + 3] > 120;
+  let top = 0;
+  find: for (; top < height; top++) {
+    let count = 0;
+    for (let x = 0; x < width; x++) if (opaque(x, top) && ++count >= 4) break find;
+  }
+  let sum = 0, n = 0;
+  const bottom = Math.min(height, top + Math.round(height * 0.3));
+  for (let y = top; y < bottom; y++) {
+    for (let x = 0; x < width; x++) if (opaque(x, y)) { sum += x; n++; }
+  }
+  return { x: n ? sum / n / width : 0.5, top: Math.max(0, top / height - 0.015) };
+}
+/** Background size and position showing the face of `id`'s portrait. */
+function cropStyle(id, aspect, zoom) {
+  const head = art.heads.get(id) ?? { x: 0.5, top: 0 };
+  const clamp = (v) => Math.min(1, Math.max(0, v));
+  const tall = zoom * 188 / 136; // portrait height over the element's width
+  const x = zoom === 1 ? 0.5 : clamp((0.5 - head.x * zoom) / (1 - zoom));
+  const y = tall <= aspect ? 0 : clamp(head.top * tall / (tall - aspect));
+  return { backgroundSize: `${zoom * 100}% auto`, backgroundPosition: `${x * 100}% ${y * 100}%` };
+}
+function slideIn(node) {
+  if (reducedMotion.matches) return;
+  const from = node.closest('[data-player="1"]') ? -24 : 24;
+  node.animate([{ opacity: 0, transform: `translateX(${from}px)` }, { opacity: 1, transform: 'none' }],
+    { duration: 360, easing: SPRING });
+}
 
 // The last disc, where the browser can keep a file handle (Chromium's File
 // System Access API). The handle is stored, not the 1.4 GB file.
@@ -157,7 +303,9 @@ for (const target of [dropzone, document.body]) {
     e.preventDefault();
     if (app?.screen() === 0) dropzone.classList.add('targeted');
   });
-  target.addEventListener('dragleave', () => dropzone.classList.remove('targeted'));
+  target.addEventListener('dragleave', (e) => {
+    if (!e.relatedTarget || !dropzone.contains(e.relatedTarget)) dropzone.classList.remove('targeted');
+  });
   target.addEventListener('drop', async (e) => {
     e.preventDefault();
     dropzone.classList.remove('targeted');
@@ -179,7 +327,7 @@ async function load() {
       const bytes = await readRange(discFile, start, end);
       if (run !== loadToken || app.screen() !== 3) return;
       app.provide_file(name, bytes);
-      renderLoading();
+      updateLoading();
     }
     // Let the full bar paint before the match build blocks briefly.
     await new Promise((resolve) => setTimeout(resolve, 0));
@@ -192,21 +340,49 @@ async function load() {
   render();
 }
 
-// ---- Rendering the screens from the core's state.
+// ---- Screens.
+
+let shownScreen = null;
+const MENUS = ['disc', 'characters', 'stages', 'loading'];
+/** Show one screen; menus slide the outgoing one away. True when it changed. */
+function showScreen(name) {
+  if (name === shownScreen) return false;
+  const previous = shownScreen;
+  shownScreen = name;
+  const next = $(`screen-${name}`);
+  next.classList.remove('leaving');
+  next.hidden = false;
+  if (previous) {
+    const old = $(`screen-${previous}`);
+    if (MENUS.includes(previous) && MENUS.includes(name) && !reducedMotion.matches) {
+      old.classList.add('leaving');
+      setTimeout(() => {
+        if (shownScreen !== previous) { old.hidden = true; old.classList.remove('leaving'); }
+      }, 180);
+    } else {
+      old.hidden = true;
+    }
+  }
+  const menu = MENUS.includes(name);
+  $('backdrop').classList.toggle('off', !menu);
+  canvas.style.visibility = menu ? 'hidden' : 'visible';
+  return true;
+}
 
 function render() {
-  const screen = SCREENS[app.screen()];
-  for (const name of SCREENS) $(`screen-${name}`).hidden = name !== screen;
-  canvas.style.visibility = screen === 'match' || screen === 'results' ? 'visible' : 'hidden';
+  const real = SCREENS[app.screen()];
+  const screen = devView ?? real;
+  const entered = showScreen(screen);
   const notice = app.take_notice();
   if (notice) {
     const faulted = app.faulted();
     message(faulted ? 'The match stopped on a fault' : 'Melee', notice,
-      faulted ? [['Save Replay', saveReplay], ['Quit to Character Select', () => attempt(() => app.quit_to_menu())]] : []);
+      faulted ? [['Save Replay', saveReplay], ['Quit to Character Select', () => attempt(() => app.quit_to_menu())]] : [],
+      'danger');
   }
-  ({ disc: renderDisc, characters: renderCharacters, stages: renderStages, loading: renderLoading,
-     match: renderMatch, results: renderResults })[screen]();
-  if (screen === 'loading' && !loadActive) {
+  ({ disc: updateDisc, characters: updateCharacters, stages: updateStages, loading: updateLoading,
+     match: updateMatch, results: updateResults })[screen](entered);
+  if (real === 'loading' && !loadActive) {
     loadActive = true;
     load().finally(() => {
       loadActive = false;
@@ -215,111 +391,456 @@ function render() {
   }
 }
 
-async function renderDisc() {
+// ---- Disc.
+
+async function updateDisc(entered) {
+  if (!entered) return;
   const row = $('disc-actions');
-  row.replaceChildren();
+  for (const extra of row.querySelectorAll('.extra')) extra.remove();
   const info = app.disc_info();
   if (info && discFile) {
-    row.append(el('button', { className: 'big', textContent: `Continue with ${info.gameId}`,
-      onclick: () => attempt(() => app.resume_disc()) }));
+    row.append(el('button', { className: 'btn extra', onclick: () => attempt(() => app.resume_disc()) },
+      el('span', { textContent: `Continue with ${info.gameId}` })));
+    return;
   }
   const handle = await remembered.get();
-  if (handle && !discFile) {
-    row.append(el('button', { className: 'big', textContent: `Open ${handle.name}`, onclick: () => openHandle(handle) }));
+  if (handle && !discFile && !row.querySelector('.extra')) {
+    row.append(el('button', { className: 'btn extra', onclick: () => openHandle(handle) },
+      el('span', { textContent: `Open ${handle.name}` })));
   }
 }
 
-function renderCharacters() {
-  const selection = app.selection();
-  $('stocks').textContent = selection.stocks;
+// ---- Character select.
+
+let tiles = []; // by character id
+let characterCursor = 10; // Fox
+function buildCharacters() {
   const grid = $('character-grid');
   const rows = [];
   for (const c of cat.characters) (rows[c.row] ??= []).push(c);
-  grid.replaceChildren(...rows.map((row) => el('div', { className: 'character-row' },
-    ...row.sort((a, b) => a.column - b.column).map((c) => {
-      const by = [0, 1].filter((p) => selection.players[p].character === c.id);
-      const cell = el('button', { className: `character ${by.length ? `p${by[0] + 1}` : ''}`, title: c.name,
-        onclick: () => choose(c.id) }, c.name);
-      cell.append(el('span', { className: 'badges' },
-        ...by.map((p) => el('span', { className: `badge p${p + 1}`, textContent: `P${p + 1}` }))));
-      return cell;
-    }))));
+  for (const row of rows) {
+    const line = el('div', { className: 'character-row', role: 'row' });
+    for (const c of row.sort((a, b) => a.column - b.column)) {
+      const tile = el('button', { className: 'tile', role: 'gridcell', tabIndex: -1,
+        onclick: () => choose(c.id), onfocus: () => { characterCursor = c.id; },
+        onpointerenter: (e) => e.currentTarget.focus({ preventScroll: true }) },
+      el('div', { className: 'art' }),
+      el('div', { className: 'fallback' }, svgUse('emblem', ''), el('img', { alt: '' })),
+      el('span', { className: 'name', textContent: c.name }),
+      el('span', { className: 'coins' }));
+      tile.querySelector('.art').dataset.art = `${ART.portrait}:${c.id}:0`;
+      tile.querySelector('.art').dataset.crop = 'tile';
+      tile.querySelector('.fallback img').dataset.art = `${ART.stock}:${c.id}:0`;
+      tile.dataset.id = c.id;
+      tiles[c.id] = tile;
+      line.append(tile);
+    }
+    grid.append(line);
+  }
+  // Portrait parallax: ±4 px following the pointer.
+  grid.addEventListener('pointermove', (e) => {
+    const tile = e.target.closest('.tile');
+    if (!tile) return;
+    const box = tile.getBoundingClientRect();
+    tile.style.setProperty('--px', `${((e.clientX - box.left) / box.width - 0.5) * 8}px`);
+    tile.style.setProperty('--py', `${((e.clientY - box.top) / box.height - 0.5) * 8}px`);
+  });
+
+  for (const panel of document.querySelectorAll('.player-panel')) {
+    const player = Number(panel.dataset.player);
+    const portrait = el('img', { className: 'main slide-in', alt: '' });
+    panel.append(
+      el('div', { className: 'panel-tag', textContent: `P${player + 1}`, ariaHidden: 'true' }),
+      el('p', { className: 'panel-status', textContent: 'Choosing' }),
+      el('div', { className: 'panel-emblem mask' }),
+      el('div', { className: 'panel-portrait' }, svgUse('emblem', 'placeholder'),
+        el('img', { className: 'stock-hero', alt: '' }), portrait),
+      el('div', { className: 'panel-info' },
+        el('div', { className: 'name-row' }, el('p', { className: 'panel-name' }),
+          el('button', { className: 'clear-pick', textContent: '✕', ariaLabel: `Clear player ${player + 1}'s character`,
+            onclick: (e) => { e.stopPropagation(); picking = player; attempt(() => app.choose_character(player, -1)); } })),
+        el('p', { className: 'panel-sub' }),
+        el('div', { className: 'chips', role: 'radiogroup', ariaLabel: `Player ${player + 1} costume` })));
+    panel.setAttribute('role', 'group');
+    panel.addEventListener('click', () => {
+      picking = player;
+      updateCharacters();
+      tiles[characterCursor]?.focus({ preventScroll: true });
+    });
+  }
+}
+
+function updateCharacters(entered) {
+  const selection = app.selection();
+  const ready = selection.ready;
+  $('stocks').textContent = selection.stocks;
+  const grid = $('character-grid');
+  grid.dataset.active = picking;
+  for (const tile of tiles) {
+    const id = Number(tile.dataset.id);
+    const by = [0, 1].filter((p) => selection.players[p].character === id);
+    tile.classList.toggle('taken-p1', by.includes(0));
+    tile.classList.toggle('taken-p2', by.includes(1));
+    const coins = tile.querySelector('.coins');
+    const want = by.map((p) => `p${p + 1}`).join();
+    if (coins.dataset.by !== want) {
+      coins.dataset.by = want;
+      coins.replaceChildren(...by.map((p) => el('span', { className: `coin p${p + 1}`, textContent: `P${p + 1}` })));
+    }
+    tile.setAttribute('aria-label', `${characterName(id)}${by.length ? `, chosen by ${by.map((p) => `P${p + 1}`).join(' and ')}` : ''}`);
+  }
+
   for (const panel of document.querySelectorAll('.player-panel')) {
     const player = Number(panel.dataset.player);
     const slot = selection.players[player];
     const other = selection.players[1 - player];
-    const character = cat.characters[slot.character];
-    panel.classList.toggle('active', picking === player);
-    panel.onclick = () => { picking = player; renderCharacters(); };
-    const title = el('div', { className: 'player-title' },
-      el('span', { className: 'tag', textContent: `P${player + 1}`, style: `color: var(--p${player + 1})` }),
-      el('span', { textContent: character?.name ?? 'Choose a character', className: character ? '' : 'muted' }));
-    if (character) {
-      title.append(el('button', { className: 'clear', textContent: 'Clear', onclick: (e) => {
-        e.stopPropagation(); picking = player; attempt(() => app.choose_character(player, -1));
-      } }));
+    const id = slot.character;
+    const character = cat.characters[id];
+    panel.classList.toggle('active', picking === player && !ready);
+    panel.setAttribute('aria-label', `Player ${player + 1}${character ? `: ${character.name}` : ''}`);
+    panel.querySelector('.panel-portrait .main').dataset.art = character ? `${ART.portrait}:${id}:${slot.costume}` : '';
+    panel.querySelector('.stock-hero').dataset.art = character ? `${ART.stock}:${id}:${slot.costume}` : '';
+    panel.querySelector('.panel-emblem').dataset.art = character ? `${ART.characterEmblem}:${id}:0` : '';
+    panel.querySelector('.clear-pick').hidden = !character;
+    const name = panel.querySelector('.panel-name');
+    name.textContent = character?.name ?? 'Choose a fighter';
+    name.classList.toggle('empty', !character);
+    panel.querySelector('.panel-sub').textContent = character
+      ? `Costume ${slot.costume + 1} of ${character.costumes}`
+      : picking === player ? 'Click a fighter or press Enter' : 'Waiting…';
+    const chips = panel.querySelector('.chips');
+    const signature = character ? `${id}/${slot.costume}/${other.character === id ? other.costume : -1}` : '';
+    if (chips.dataset.signature !== signature) {
+      chips.dataset.signature = signature;
+      chips.replaceChildren(...Array.from({ length: character?.costumes ?? 0 }, (_, costume) => {
+        const taken = other.character === id && other.costume === costume;
+        const chip = el('button', {
+          className: `chip ${slot.costume === costume ? 'on' : ''}`, role: 'radio', tabIndex: -1,
+          ariaChecked: String(slot.costume === costume), ariaLabel: `Costume ${costume + 1}${taken ? ' (taken)' : ''}`,
+          disabled: taken,
+          onclick: (e) => { e.stopPropagation(); attempt(() => app.set_costume(player, costume)); },
+        }, el('img', { alt: '' }));
+        chip.firstChild.dataset.art = `${ART.stock}:${id}:${costume}`;
+        return chip;
+      }));
     }
-    const body = character
-      ? el('div', { className: 'costumes' }, el('span', { className: 'muted', textContent: 'Costume' }),
-          ...Array.from({ length: character.costumes }, (_, costume) => el('button', {
-            className: `costume ${slot.costume === costume ? `p${player + 1}-bg` : ''}`,
-            textContent: costume + 1,
-            disabled: other.character === slot.character && other.costume === costume,
-            onclick: (e) => { e.stopPropagation(); attempt(() => app.set_costume(player, costume)); },
-          })))
-      : el('p', { className: 'muted', textContent: picking === player ? 'Click a character above' : 'Waiting…' });
-    panel.replaceChildren(title, body);
   }
-  $('confirm-characters').disabled = !selection.ready;
+
+  const slot = $('screen-characters').querySelector('.ready-slot');
+  const wasReady = slot.classList.contains('ready');
+  slot.classList.toggle('ready', ready);
+  const tag = `<b class="p${picking + 1}">P${picking + 1}</b>`;
+  $('pick-hint').innerHTML = ready ? '' : `${tag} &middot; choose your fighter`;
+  if (ready && !wasReady) $('ready-banner').focus({ preventScroll: true });
+  if (!ready && document.activeElement === $('ready-banner')) tiles[characterCursor]?.focus({ preventScroll: true });
+  if (entered) {
+    const mine = selection.players[picking].character;
+    if (mine >= 0) characterCursor = mine;
+    (ready ? $('ready-banner') : tiles[characterCursor])?.focus({ preventScroll: true });
+  }
+  updateArtStatus();
+  art.hydrate($('screen-characters'));
 }
 function choose(id) {
   attempt(() => app.choose_character(picking, id));
   if (app.selection().players[1 - picking].character < 0) picking = 1 - picking;
-  renderCharacters();
+  updateCharacters();
+}
+/** Arrow keys over the grid: the nearest tile in that direction. */
+function moveCursor(dx, dy) {
+  const from = tiles[characterCursor].getBoundingClientRect();
+  const fx = from.left + from.width / 2, fy = from.top + from.height / 2;
+  let best = null, bestScore = Infinity;
+  for (const tile of tiles) {
+    const box = tile.getBoundingClientRect();
+    const x = box.left + box.width / 2 - fx, y = box.top + box.height / 2 - fy;
+    const along = dx ? x * dx : y * dy;
+    const across = Math.abs(dx ? y : x);
+    if (along <= 1) continue;
+    const score = along + across * 3;
+    if (score < bestScore) { bestScore = score; best = tile; }
+  }
+  if (!best && dx) { // wrap within the row
+    const row = tiles[characterCursor].parentElement.children;
+    best = dx > 0 ? row[0] : row[row.length - 1];
+  }
+  best?.focus({ preventScroll: true });
 }
 
-function renderStages() {
+// ---- Stage select.
+
+let stageTiles = [];
+let stageCursor = 0, heroShown = null, heroFront = 'a', shuffling = false;
+let previewPoll = 0;
+const RANDOM = 'random';
+function buildStages() {
+  const row = $('stage-row');
+  const options = [...cat.stages.map((s) => s.id), RANDOM];
+  for (const [index, id] of options.entries()) {
+    const random = id === RANDOM;
+    const card = el('div', { className: 'stage-card' });
+    if (random) {
+      card.append(el('div', { className: 'random-glyph', textContent: '?' }));
+    } else {
+      const preview = el('img', { className: 'preview', alt: '' });
+      preview.dataset.art = `${ART.stagePreview}:${id}:0`;
+      const icon = el('img', { className: 'icon', alt: '' });
+      icon.dataset.art = `${ART.stageIcon}:${id}:0`;
+      card.append(preview, icon);
+    }
+    const tile = el('button', {
+      className: 'stage-tile', role: 'option', tabIndex: -1, ariaLabel: random ? 'Random stage' : cat.stages[id].name,
+      onclick: () => (random ? shuffleStage() : startStage(id)),
+      onfocus: () => { stageCursor = index; markStageCursor(); showHero(id); },
+      // One cursor for mouse and keyboard, as in retail.
+      onpointerenter: () => { if (!shuffling) tile.focus({ preventScroll: true }); },
+    }, card, el('span', { className: 'stage-label', textContent: random ? 'Random' : cat.stages[id].name }));
+    tile.dataset.stage = id;
+    stageTiles.push(tile);
+    row.append(tile);
+  }
+}
+/** The keyboard cursor stays visible after a mouse click (focus rings do not). */
+function markStageCursor() {
+  stageTiles.forEach((tile, i) => tile.classList.toggle('current', i === stageCursor));
+}
+function startStage(id) {
+  chosenStage = id;
+  attempt(() => app.choose_stage(id, randomSeed()));
+}
+/** RANDOM: a quick shuffle across the stages, then the pick. */
+function shuffleStage() {
+  if (shuffling) return;
+  const pick = Math.floor(Math.random() * cat.stages.length);
+  if (reducedMotion.matches) return startStage(pick);
+  shuffling = true;
+  let step = 0;
+  const steps = 10 + pick;
+  const tick = () => {
+    const index = step % cat.stages.length;
+    stageTiles.forEach((t, i) => t.classList.toggle('flash', i === index));
+    showHero(index);
+    if (step++ < steps) return setTimeout(tick, 40 + step * 6);
+    setTimeout(() => {
+      shuffling = false;
+      stageTiles.forEach((t) => t.classList.remove('flash'));
+      startStage(pick);
+    }, 260);
+  };
+  tick();
+}
+function showHero(id) {
+  id = id === RANDOM ? RANDOM : Number(id);
+  if (heroShown === id) return;
+  heroShown = id;
+  const back = heroFront === 'a' ? 'b' : 'a';
+  const layer = $(`hero-${back}`);
+  if (id === RANDOM) {
+    layer.replaceChildren(el('div', { className: 'random-art' }, el('span', { textContent: '?' })));
+  } else {
+    const preview = el('img', { className: 'preview', alt: '' });
+    preview.dataset.art = `${ART.stagePreview}:${id}:0`;
+    const icon = el('img', { className: 'icon', alt: '' });
+    icon.dataset.art = `${ART.stageIcon}:${id}:0`;
+    layer.replaceChildren(icon, preview);
+  }
+  art.hydrate(layer);
+  layer.classList.add('shown');
+  $(`hero-${heroFront}`).classList.remove('shown');
+  heroFront = back;
+  const name = $('stage-hero-name');
+  name.dataset.art = id === RANDOM ? '' : `${ART.stageName}:${id}:0`;
+  name.setAttribute('aria-label', id === RANDOM ? 'Random' : cat.stages[id].name);
+  $('stage-hero-text').textContent = id === RANDOM ? 'Random' : cat.stages[id].name;
+  $('stage-hero-emblem').dataset.art = id === RANDOM ? '' : `${ART.stageEmblem}:${id}:0`;
+  art.apply(name);
+  art.apply($('stage-hero-emblem'));
+}
+function updateStages(entered) {
   const selection = app.selection();
-  const names = selection.players.map((p) => characterName(p.character));
-  $('matchup').textContent = `${names[0]} vs ${names[1]} · ${selection.stocks} stocks`;
-  $('stage-grid').replaceChildren(...cat.stages.map((s) => el('button', { className: 'stage', textContent: s.name,
-    onclick: () => attempt(() => app.choose_stage(s.id, randomSeed())) })));
+  const matchup = $('matchup');
+  const signature = JSON.stringify(selection);
+  if (matchup.dataset.signature !== signature) {
+    matchup.dataset.signature = signature;
+    const side = (p, i) => {
+      const icon = el('img', { alt: '' });
+      icon.dataset.art = `${ART.stock}:${p.character}:${p.costume}`;
+      return [icon, el('span', { className: `p${i + 1}-text`, textContent: characterName(p.character) })];
+    };
+    matchup.replaceChildren(...side(selection.players[0], 0), el('span', { className: 'vs-small', textContent: 'vs' }),
+      ...side(selection.players[1], 1),
+      el('span', { className: 'stocks-note', textContent: `${selection.stocks} stock${selection.stocks === 1 ? '' : 's'}` }));
+  }
+  if (entered) {
+    heroShown = null;
+    stageTiles[stageCursor]?.focus({ preventScroll: true });
+    showHero(stageTiles[stageCursor].dataset.stage);
+  }
+  art.hydrate($('screen-stages'));
+  pollPreviews();
+}
+/** Stage previews render in the core after the art loads; look again until they are all in. */
+function pollPreviews() {
+  if (previewPoll || typeof app.stage_previews_ready !== 'function') return;
+  previewPoll = setTimeout(() => {
+    previewPoll = 0;
+    const screen = devView ?? SCREENS[app.screen()];
+    if (screen !== 'stages' && screen !== 'loading') return;
+    const done = app.art_ready() && app.stage_previews_ready()
+      && cat.stages.every((s) => art.get(ART.stagePreview, s.id) !== null);
+    art.refresh();
+    if (!done) pollPreviews();
+  }, 400);
 }
 
-function renderLoading() {
-  const p = app.load_progress();
+// ---- Loading.
+
+let loadingSignature = '';
+function updateLoading(entered) {
+  if (entered || loadingSignature === '') {
+    const selection = app.selection();
+    loadingSignature = JSON.stringify(selection);
+    for (const side of document.querySelectorAll('.versus-side')) {
+      const i = Number(side.dataset.side);
+      const p = selection.players[i];
+      const portrait = el('img', { alt: '' });
+      portrait.dataset.art = `${ART.portrait}:${p.character}:${p.costume}`;
+      side.replaceChildren(portrait, el('p', { className: 'vs-name' },
+        el('span', { className: 'vs-tag', textContent: `P${i + 1}` }), characterName(p.character)));
+    }
+    const background = $('loading-bg');
+    if (chosenStage !== null) {
+      const preview = el('img', { alt: '' });
+      preview.dataset.art = `${ART.stagePreview}:${chosenStage}:0`;
+      const icon = el('img', { alt: '' });
+      icon.dataset.art = `${ART.stageIcon}:${chosenStage}:0`;
+      background.replaceChildren(icon, preview);
+    }
+    art.hydrate($('screen-loading'));
+  }
+  const p = devView === 'loading' ? { filesDone: 5, filesTotal: 9, bytesDone: 9e6, bytesTotal: 15e6 } : app.load_progress();
   const mb = (bytes) => `${(bytes / 1048576).toFixed(1)} MB`;
-  $('load-bar').value = p.bytesTotal ? p.bytesDone / p.bytesTotal : 1;
+  const fraction = p.bytesTotal ? p.bytesDone / p.bytesTotal : 1;
+  $('load-fill').style.width = `${fraction * 100}%`;
+  $('screen-loading').querySelector('.load-track').setAttribute('aria-valuenow', Math.round(fraction * 100));
   $('load-detail').textContent = p.filesTotal
     ? `${p.filesDone} of ${p.filesTotal} files · ${mb(p.bytesDone)} of ${mb(p.bytesTotal)}`
     : 'Starting the match…';
 }
 
-function card(player) {
-  const tag = `p${Math.min(player.port, 1) + 1}`;
-  return el('div', { className: 'card' },
-    el('span', { className: 'tag', textContent: `P${player.port + 1}`, style: `color: var(--${tag})` }),
-    el('div', { className: 'percent', textContent: `${Math.floor(player.percent)}%` }),
-    el('div', { className: 'name', textContent: characterName(player.character) }),
-    el('div', { className: 'stocks-row' }, ...Array.from({ length: Math.min(player.stocks, 12) },
-      () => el('span', { className: `stock ${tag}-bg` }))));
+// ---- Match HUD.
+
+/** Melee's damage colour: white at 0%, orange at 100%, deep red from 200%. */
+function percentColour(percent) {
+  const stops = [[0, [255, 255, 255]], [100, [255, 160, 60]], [200, [208, 24, 40]]];
+  const p = Math.min(200, Math.max(0, percent));
+  const [a, b] = p <= 100 ? [stops[0], stops[1]] : [stops[1], stops[2]];
+  const t = (p - a[0]) / (b[0] - a[0]);
+  const c = a[1].map((v, i) => Math.round(v + (b[1][i] - v) * t));
+  return `rgb(${c[0]} ${c[1]} ${c[2]})`;
 }
-let hudKey = '';
-function renderMatch() {
-  const hud = app.hud();
-  const key = hud ? hud.players.map((p) => `${Math.floor(p.percent)}/${p.stocks}`).join() : '';
-  if (key !== hudKey) {
-    hudKey = key;
-    $('hud').replaceChildren(...(hud?.players.map(card) ?? []));
+function faceCrop(player, className) {
+  const face = el('div', { className });
+  const crop = el('div', { className: 'art' });
+  crop.dataset.art = `${ART.portrait}:${player.character}:${player.costume}`;
+  crop.dataset.crop = 'face';
+  const stock = el('img', { className: 'stock-big', alt: '' });
+  stock.dataset.art = `${ART.stock}:${player.character}:${player.costume}`;
+  face.append(crop, stock);
+  return face;
+}
+function stockIcons(container, player, max) {
+  const icons = [];
+  const shown = player.stocks > max ? 1 : player.stocks;
+  for (let i = 0; i < shown; i++) {
+    const icon = el('img', { alt: '' });
+    icon.dataset.art = `${ART.stock}:${player.character}:${player.costume}`;
+    icons.push(icon);
   }
-  $('pause').hidden = !(app.is_paused() && !app.faulted() && document.hasFocus());
+  if (player.stocks > max) icons.push(el('span', { className: 'more', textContent: `×${player.stocks}` }));
+  container.replaceChildren(...icons);
+  container.setAttribute('aria-label', `${player.stocks} stock${player.stocks === 1 ? '' : 's'}`);
 }
-function renderResults() {
-  const results = app.results();
+
+let hudPlayers = '', hudValues = [];
+function updateMatch() {
+  const hud = app.hud();
+  const players = hud?.players ?? [];
+  const container = $('hud');
+  const signature = players.map((p) => `${p.port}:${p.character}:${p.costume}`).join();
+  if (signature !== hudPlayers) {
+    hudPlayers = signature;
+    hudValues = [];
+    container.replaceChildren(...players.map((p) => {
+      const plate = el('div', { className: `plate ${portClass(p.port)}`, role: 'group',
+        ariaLabel: `P${p.port + 1} ${characterName(p.character)}` });
+      plate.append(el('div', { className: 'plate-stocks' }),
+        el('div', { className: 'plate-body' }, faceCrop(p, 'plate-face'),
+          el('span', { className: 'plate-tag', textContent: `P${p.port + 1}` }),
+          el('div', { className: 'plate-percent', ariaLive: 'off' })));
+      return plate;
+    }));
+  }
+  let changed = false;
+  players.forEach((p, i) => {
+    const percent = Math.floor(p.percent);
+    const before = hudValues[i];
+    if (before?.percent === percent && before?.stocks === p.stocks) return;
+    hudValues[i] = { percent, stocks: p.stocks };
+    changed = true;
+    const plate = container.children[i];
+    const text = plate.querySelector('.plate-percent');
+    text.replaceChildren(String(percent), el('small', { textContent: '%' }));
+    text.style.setProperty('--pct', percentColour(percent));
+    if (before?.stocks !== p.stocks) stockIcons(plate.querySelector('.plate-stocks'), p, 5);
+    if (before && percent > before.percent && !reducedMotion.matches) {
+      const kick = Math.min(6, 2 + (percent - before.percent) / 4);
+      text.animate([{ transform: 'translate(0,0)' }, { transform: `translate(${kick}px,${-kick}px)` },
+        { transform: `translate(${-kick}px,${kick / 2}px)` }, { transform: 'translate(0,0)' }],
+      { duration: 160, easing: 'ease-out' });
+    }
+  });
+  if (changed) art.hydrate(container);
+  const pause = $('pause');
+  const paused = app.is_paused() && !app.faulted() && (document.hasFocus() || devView !== null);
+  if (pause.hidden === paused) {
+    pause.hidden = !paused;
+    if (paused) pause.querySelector('.btn').focus({ preventScroll: true });
+  }
+}
+
+// ---- Results.
+
+function updateResults(entered) {
+  const results = app.results() ?? devResults;
   if (!results) return;
-  const winner = results.hud.players[results.winner];
-  $('results-title').textContent = winner ? `P${winner.port + 1} ${characterName(winner.character)} Wins!` : 'Draw';
-  $('results-players').replaceChildren(...results.hud.players.map(card));
+  if (!entered) return;
+  $('hud').replaceChildren();
+  hudPlayers = '';
+  const players = results.hud.players;
+  const winner = players[results.winner];
+  const view = $('screen-results').querySelector('.results');
+  view.classList.remove('port-0', 'port-1', 'port-2', 'port-3', 'draw');
+  view.classList.add(winner ? portClass(winner.port) : 'draw');
+  $('results-kicker').textContent = winner ? `Player ${winner.port + 1}` : 'Draw';
+  $('results-title').textContent = winner ? 'Winner' : 'No contest';
+  $('results-name').replaceChildren(...(winner ? [el('span', { textContent: characterName(winner.character) })] : []));
+  const portrait = $('results-portrait');
+  portrait.dataset.art = winner ? `${ART.portrait}:${winner.character}:${winner.costume}` : '';
+  $('results-emblem').dataset.art = winner ? `${ART.characterEmblem}:${winner.character}:0` : '';
+  $('results-table').replaceChildren(...players.map((p, i) => {
+    const icons = el('div', { className: 'stock-icons' });
+    if (p.stocks > 0) stockIcons(icons, p, 4);
+    else icons.append(el('span', { className: 'none', textContent: 'out' }));
+    return el('div', { className: `result-row ${portClass(p.port)} ${i === results.winner ? 'winner' : ''}`, role: 'row' },
+      el('span', { className: 'tag', textContent: `P${p.port + 1}` }),
+      faceCrop(p, 'face'),
+      el('span', { className: 'who', textContent: characterName(p.character) }),
+      icons,
+      el('span', { className: 'pct', textContent: `${Math.floor(p.percent)}%`, style: `color: ${percentColour(p.percent)}` }));
+  }));
+  art.hydrate($('screen-results'));
+  if (entered) $('screen-results').querySelector('.btn.accent').focus({ preventScroll: true });
 }
 
 function saveReplay() {
@@ -330,7 +851,7 @@ function saveReplay() {
     link.click();
     setTimeout(() => URL.revokeObjectURL(link.href), 10000);
   } catch (e) {
-    message('Could not save the replay', e.message ?? String(e));
+    message('Could not save the replay', e.message ?? String(e), [], 'danger');
   }
 }
 
@@ -345,23 +866,116 @@ const ACTIONS_BY_NAME = {
   restart: () => { app.restart(); lastFrame = null; },
   quit: () => app.quit_to_menu(),
   rematch: () => app.rematch(randomSeed()),
+  'stage-select': () => { app.quit_to_menu(); app.confirm_characters(); },
   'save-replay': saveReplay,
 };
 document.addEventListener('click', (e) => {
   const action = e.target.closest('[data-action]')?.dataset.action;
-  if (action) attempt(ACTIONS_BY_NAME[action]);
+  if (!action) return;
+  if (devView && action !== 'save-replay') { devView = null; devResults = null; }
+  attempt(ACTIONS_BY_NAME[action]);
 });
 
 // ---- Keyboard.
 
+const focusIn = (selector) => {
+  const items = [...document.querySelectorAll(selector)].filter((b) => b.offsetParent && !b.disabled);
+  return { items, index: items.indexOf(document.activeElement) };
+};
+/** Up/down (or left/right) through a column of buttons. */
+function stepFocus(selector, step) {
+  const { items, index } = focusIn(selector);
+  if (!items.length) return;
+  items[(index + step + items.length) % items.length].focus();
+}
+function menuKey(e, screen) {
+  const onButton = document.activeElement?.matches?.('button, a');
+  switch (screen) {
+    case 'characters': {
+      const selection = app.selection();
+      const onBanner = document.activeElement === $('ready-banner');
+      const arrows = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+      if (arrows[e.code]) {
+        if (!onBanner && !document.activeElement?.classList.contains('tile')) {
+          tiles[characterCursor].focus({ preventScroll: true });
+        } else if (onBanner) {
+          if (e.code === 'ArrowUp') tiles[characterCursor].focus({ preventScroll: true });
+        } else {
+          if (e.code === 'ArrowDown' && selection.ready
+              && tiles[characterCursor].parentElement === tiles[characterCursor].parentElement.parentElement.lastChild) {
+            $('ready-banner').focus({ preventScroll: true });
+          } else moveCursor(...arrows[e.code]);
+        }
+        return true;
+      }
+      if (e.code === 'Tab') { picking = 1 - picking; updateCharacters(); return true; }
+      if (e.code === 'Enter') {
+        // Ready: Enter starts from the grid too (like Start); other buttons keep their own Enter.
+        const onGrid = document.activeElement?.classList.contains('tile') || onBanner;
+        if (selection.ready && (onGrid || !onButton)) { attempt(ACTIONS_BY_NAME.confirm); return true; }
+        if (!onButton) { choose(characterCursor); return true; }
+        return false;
+      }
+      if (['KeyQ', 'KeyE', 'BracketLeft', 'BracketRight'].includes(e.code)) {
+        if (selection.players[picking].character >= 0) {
+          attempt(() => app.cycle_costume(picking, e.code === 'KeyQ' || e.code === 'BracketLeft' ? -1 : 1));
+        }
+        return true;
+      }
+      if (e.code === 'Backspace' || e.code === 'Delete') {
+        if (selection.players[picking].character >= 0) attempt(() => app.choose_character(picking, -1));
+        else if (selection.players[1 - picking].character >= 0) {
+          picking = 1 - picking;
+          attempt(() => app.choose_character(picking, -1));
+        }
+        return true;
+      }
+      if (e.code === 'Minus' || e.code === 'Equal') {
+        attempt(ACTIONS_BY_NAME[e.code === 'Minus' ? 'stocks-down' : 'stocks-up']);
+        return true;
+      }
+      if (e.code === 'Escape') { attempt(ACTIONS_BY_NAME.back); return true; }
+      return false;
+    }
+    case 'stages': {
+      if (shuffling) return true;
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowRight') {
+        const step = e.code === 'ArrowLeft' ? -1 : 1;
+        stageTiles[(stageCursor + step + stageTiles.length) % stageTiles.length].focus({ preventScroll: true });
+        return true;
+      }
+      if (e.code === 'Enter' && !onButton) { stageTiles[stageCursor].click(); return true; }
+      if (e.code === 'Escape') { attempt(ACTIONS_BY_NAME.back); return true; }
+      return false;
+    }
+    case 'loading':
+      if (e.code === 'Escape') { attempt(ACTIONS_BY_NAME.back); return true; }
+      return false;
+    case 'results':
+      if (e.code === 'ArrowLeft' || e.code === 'ArrowUp') { stepFocus('#screen-results .btn', -1); return true; }
+      if (e.code === 'ArrowRight' || e.code === 'ArrowDown') { stepFocus('#screen-results .btn', 1); return true; }
+      if (e.code === 'Enter' && !onButton) { devView = null; attempt(ACTIONS_BY_NAME.rematch); return true; }
+      if (e.code === 'Escape') { devView = null; attempt(ACTIONS_BY_NAME.quit); return true; }
+      return false;
+    default:
+      return false;
+  }
+}
 document.addEventListener('keydown', (e) => {
-  if ($('message').open || e.metaKey || e.ctrlKey || e.altKey) return;
-  const screen = SCREENS[app.screen()];
+  if ($('message').open || !app || e.metaKey || e.ctrlKey || e.altKey) return;
+  const screen = devView ?? SCREENS[app.screen()];
   if (screen === 'match') {
     if (e.code === 'Escape') {
       e.preventDefault();
       if (!e.repeat && !app.faulted()) { app.set_paused(!app.is_paused()); lastFrame = null; render(); }
       return;
+    }
+    if (!$('pause').hidden) {
+      if (e.code === 'ArrowUp' || e.code === 'ArrowDown') {
+        e.preventDefault();
+        stepFocus('#pause .btn', e.code === 'ArrowUp' ? -1 : 1);
+      }
+      return; // Enter and Space reach the focused button
     }
     const binding = KEYS[e.code];
     if (binding) {
@@ -370,16 +984,15 @@ document.addEventListener('keydown', (e) => {
     }
     return;
   }
-  if (e.code === 'Escape' && ['characters', 'stages', 'loading'].includes(screen)) attempt(ACTIONS_BY_NAME.back);
-  if (e.code === 'Enter' && screen === 'characters' && app.selection().ready) attempt(ACTIONS_BY_NAME.confirm);
-  if (e.code === 'Enter' && screen === 'results') attempt(ACTIONS_BY_NAME.rematch);
+  if (menuKey(e, screen)) e.preventDefault();
 });
+// Releases always reach the core, so a key held into the pause is not stuck.
 document.addEventListener('keyup', (e) => {
   const binding = KEYS[e.code];
   if (binding && app?.screen() === 4) app.action(binding[0], ACTIONS[binding[1]], false);
 });
-window.addEventListener('blur', () => { app?.set_focused(false); lastFrame = null; render(); });
-window.addEventListener('focus', () => { app?.set_focused(true); lastFrame = null; render(); });
+window.addEventListener('blur', () => { app?.set_focused(false); lastFrame = null; if (app) render(); });
+window.addEventListener('focus', () => { app?.set_focused(true); lastFrame = null; if (app) render(); });
 
 // ---- Frame loop.
 
@@ -435,14 +1048,16 @@ function frame(now) {
       }
     }
     if (app.screen() !== screen || app.faulted()) render();
-    else if (screen === 4) renderMatch();
+    else if (screen === 4 && !devView) updateMatch();
   } else {
     lastFrame = null;
   }
 }
 
 // ---- Development: ?disc=<url> reads an image served with HTTP Range
-// (tools/run-web.sh --disc); ?autostart=P1:P2[:Stage] walks the menus.
+// (tools/run-web.sh --disc); ?autostart=P1:P2[:Stage] walks the menus;
+// ?screen=stages|loading|pause|results|draw|error|disc-error shows that
+// screen over the reached state, for screenshots.
 
 class RemoteFile {
   constructor(url, size) { Object.assign(this, { url, size, name: url.split('/').pop() }); }
@@ -462,14 +1077,41 @@ class RemoteFile {
 }
 async function developmentStart() {
   const params = new URLSearchParams(location.search);
+  const view = params.get('screen');
+  if (view === 'disc-error') return showDiscError('Melee (PAL).iso', 'this is the PAL release (GALM01); Melee NTSC-U 1.02 is GALE01 revision 2');
   if (!params.get('disc')) return;
   await openDisc(await RemoteFile.open(params.get('disc')));
   const [p1, p2, stage] = (params.get('autostart') ?? '').split(':');
   const key = (list, name) => list.find((x) => x.key === name)?.id;
-  if (p1 && p2) {
-    attempt(() => { app.choose_character(0, key(cat.characters, p1)); app.choose_character(1, key(cat.characters, p2)); });
+  if (p1) attempt(() => { app.choose_character(0, key(cat.characters, p1)); picking = 1; });
+  if (p2) attempt(() => { app.choose_character(1, key(cat.characters, p2)); picking = 1; });
+  if (p1 && params.get('costumes')) {
+    const [c1, c2] = params.get('costumes').split(':').map(Number);
+    attempt(() => { app.set_costume(0, c1 || 0); if (p2) app.set_costume(1, c2 || 0); });
   }
-  if (stage) attempt(() => { app.confirm_characters(); app.choose_stage(key(cat.stages, stage), randomSeed()); });
+  if (stage) attempt(() => { app.confirm_characters(); startStage(key(cat.stages, stage)); });
+  else if (view === 'stages' || view === 'loading') attempt(() => app.confirm_characters());
+  if (!view) return;
+  await new Promise((resolve) => setTimeout(resolve, 600));
+  if (view === 'loading') { chosenStage ??= 1; devView = 'loading'; }
+  if (view === 'pause') { app.set_paused(true); devView = 'match'; }
+  if (view === 'results' || view === 'draw') {
+    // Let the match run a moment for a believable HUD.
+    await new Promise((resolve) => setTimeout(resolve, 1500));
+    const hud = app.hud();
+    if (hud) {
+      app.set_paused(true);
+      devResults = { winner: view === 'draw' ? -1 : 1, hud: { ...hud,
+        players: hud.players.map((p, i) => ({ ...p, percent: i ? 84.3 : 162.9, stocks: i ? 2 : 0 })) } };
+      devView = 'results';
+    }
+  }
+  if (view === 'error') {
+    message('The match stopped on a fault', "panicked at crates/ft-fox/src/special.rs:412:9:\nnot implemented: ftFox_SpecialHi: wall bounce (ftfox_specialhi.c:688)",
+      [['Save Replay', saveReplay], ['Quit to Character Select', () => {}]], 'danger');
+  }
+  if (view === 'notice') message('Melee', 'Yoshi\'s Story cannot be presented yet: its background renderer is not ported. Choose another stage.', [], 'danger');
+  render();
 }
 
 // ---- Start.
@@ -482,6 +1124,8 @@ async function main() {
   await init();
   cat = catalog();
   app = new WebApp();
+  buildCharacters();
+  buildStages();
   fitCanvas();
   try {
     app.set_surface(await create_surface(canvas));

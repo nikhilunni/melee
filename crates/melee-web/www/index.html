@@ -3,112 +3,196 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
 <title>Melee</title>
+<link rel="preload" href="fonts/BarlowCondensed-BlackItalic.ttf" as="font" type="font/ttf" crossorigin>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
+<!-- Our own artwork: the circle-and-cross emblem and a
+     disc. Nothing here comes from the game disc (docs/DESIGN.md). -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <mask id="emblem-cut" maskContentUnits="objectBoundingBox">
+      <rect width="1" height="1" fill="#fff"/>
+      <rect x="0.395" y="-0.1" width="0.075" height="1.2" fill="#000"/>
+      <rect x="-0.1" y="0.605" width="1.2" height="0.075" fill="#000"/>
+    </mask>
+    <symbol id="emblem" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="48" fill="currentColor" mask="url(#emblem-cut)"/>
+    </symbol>
+    <symbol id="disc" viewBox="0 0 100 100">
+      <circle cx="50" cy="50" r="46" fill="none" stroke="currentColor" stroke-width="3"/>
+      <circle cx="50" cy="50" r="12" fill="none" stroke="currentColor" stroke-width="3"/>
+      <path d="M50 14a36 36 0 0 1 33 22" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".55"/>
+      <path d="M50 24a26 26 0 0 1 22 13" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" opacity=".3"/>
+    </symbol>
+  </defs>
+</svg>
+
 <canvas id="game"></canvas>
+
+<!-- The living backdrop behind every menu: CSS only, no frame loop. -->
+<div id="backdrop" class="backdrop" aria-hidden="true">
+  <div class="stars stars-far"></div>
+  <div class="stars stars-near"></div>
+  <svg class="backdrop-emblem"><use href="#emblem"/></svg>
+  <div class="sweep"></div>
+  <div class="grain"></div>
+</div>
 
 <main id="ui">
   <!-- Disc -->
-  <section id="screen-disc" class="screen" hidden>
-    <h1>Super Smash Bros. Melee</h1>
-    <p class="subtitle">Drop your Melee disc image here to begin</p>
-    <div id="dropzone" class="dropzone" tabindex="0">
-      <div class="disc-icon">&#x1F4BF;</div>
-      <p class="muted">NTSC-U 1.02 (GALE01) &middot; uncompressed .iso or .gcm</p>
-      <button id="choose-disc" class="big prominent">Choose Disc Image&hellip;</button>
-      <input id="disc-input" type="file" accept=".iso,.gcm" hidden>
+  <section id="screen-disc" class="screen disc-screen" hidden aria-labelledby="disc-title">
+    <div class="disc-stack">
+      <svg class="hero-emblem enter" aria-hidden="true"><use href="#emblem"/></svg>
+      <div class="enter" style="--i:1">
+        <h1 id="disc-title" class="display title-xl">Super Smash Bros. Melee</h1>
+        <p class="eyebrow">Port</p>
+      </div>
+      <div id="dropzone" class="dropzone enter" style="--i:2">
+        <div class="dropzone-frame" aria-hidden="true"></div>
+        <svg class="disc-glyph" aria-hidden="true"><use href="#disc"/></svg>
+        <p class="dropzone-text">Drop your Melee disc image</p>
+        <div class="row" id="disc-actions">
+          <button id="choose-disc" class="btn accent"><span>Open Disc&hellip;</span></button>
+        </div>
+        <input id="disc-input" type="file" accept=".iso,.gcm" hidden>
+      </div>
+      <div id="disc-error" class="card danger enter" role="alert" hidden></div>
+      <p class="footnote enter" style="--i:3">NTSC-U 1.02 (GALE01, revision 2) &middot; nothing leaves your machine</p>
     </div>
-    <div id="disc-actions" class="row"></div>
-    <p class="muted small">The disc never leaves your computer: the page reads only the files a match needs.</p>
   </section>
 
   <!-- Character select -->
-  <section id="screen-characters" class="screen" hidden>
-    <header class="bar">
-      <button data-action="back" class="ghost">&lsaquo; Back</button>
-      <h1>Choose Your Fighters</h1>
-      <label class="stocks">Stocks
-        <button data-action="stocks-down" class="small-button" aria-label="Fewer stocks">&minus;</button>
-        <span id="stocks">4</span>
-        <button data-action="stocks-up" class="small-button" aria-label="More stocks">+</button>
-      </label>
+  <section id="screen-characters" class="screen select-screen" hidden aria-labelledby="characters-title">
+    <header class="topbar enter">
+      <button data-action="back" class="btn pill ghost back" aria-label="Back to the disc screen"><span>&lsaquo; Back</span></button>
+      <h1 id="characters-title" class="display title">Choose your character</h1>
+      <div class="stepper" role="group" aria-label="Stocks">
+        <span class="stepper-label">Stock</span>
+        <button data-action="stocks-down" class="stepper-arrow" aria-label="Fewer stocks">&#x25C0;</button>
+        <output id="stocks" class="stepper-value" aria-live="polite">4</output>
+        <button data-action="stocks-up" class="stepper-arrow" aria-label="More stocks">&#x25B6;</button>
+      </div>
     </header>
-    <div id="character-grid" class="character-grid"></div>
-    <div class="players">
+    <div id="character-grid" class="character-grid enter" style="--i:1" role="grid" aria-label="Characters"></div>
+    <div class="ready-slot enter" style="--i:2">
+      <p id="pick-hint" class="pick-hint" aria-live="polite"></p>
+      <button id="ready-banner" class="ready-banner" data-action="confirm" aria-label="Ready to fight: choose a stage">
+        <span class="ready-text">Ready to fight</span>
+      </button>
+    </div>
+    <div class="players enter" style="--i:3">
       <div class="player-panel" data-player="0"></div>
       <div class="player-panel" data-player="1"></div>
     </div>
-    <footer class="bar">
-      <table class="controls">
-        <tr><th></th><th>Move</th><th>Attack</th><th>Special</th><th>Jump</th><th>Shield</th><th>Grab</th></tr>
-        <tr><th class="p1">P1</th><td>W A S D</td><td>K</td><td>J</td><td>Space</td><td>L</td><td>I</td></tr>
-        <tr><th class="p2">P2</th><td>Arrows</td><td>N</td><td>M</td><td>,</td><td>.</td><td>/</td></tr>
-      </table>
-      <button id="confirm-characters" data-action="confirm" class="big prominent">Choose Stage</button>
+    <footer class="legend enter" style="--i:4">
+      <p class="keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd> Move <kbd>Enter</kbd> Pick <kbd>Tab</kbd> Player
+        <kbd>Q</kbd><kbd>E</kbd> Costume <kbd>&#x232B;</kbd> Clear <kbd>Esc</kbd> Back</p>
+      <p id="art-status" class="art-status" hidden></p>
+      <div class="match-keys" aria-label="Match controls">
+        <p><b class="p1">P1</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move <kbd>K</kbd> attack <kbd>J</kbd> special <kbd>Space</kbd> jump <kbd>L</kbd> shield <kbd>I</kbd> grab</p>
+        <p><b class="p2">P2</b> <kbd>&larr;&uarr;&darr;&rarr;</kbd> move <kbd>N</kbd> attack <kbd>M</kbd> special <kbd>,</kbd> jump <kbd>.</kbd> shield <kbd>/</kbd> grab</p>
+      </div>
     </footer>
   </section>
 
   <!-- Stage select -->
-  <section id="screen-stages" class="screen" hidden>
-    <header class="bar">
-      <button data-action="back" class="ghost">&lsaquo; Back</button>
-      <div class="titles"><h1>Choose a Stage</h1><p id="matchup" class="subtitle"></p></div>
-      <span></span>
+  <section id="screen-stages" class="screen select-screen" hidden aria-labelledby="stages-title">
+    <header class="topbar enter">
+      <button data-action="back" class="btn pill ghost back" aria-label="Back to character select"><span>&lsaquo; Back</span></button>
+      <h1 id="stages-title" class="display title">Choose a stage</h1>
+      <div id="matchup" class="matchup"></div>
     </header>
-    <div id="stage-grid" class="stage-grid"></div>
+    <div class="stage-hero enter" style="--i:1">
+      <div id="stage-hero-emblem" class="hero-watermark mask" aria-hidden="true"></div>
+      <div class="hero-frame">
+        <div class="hero-layer" id="hero-a"></div>
+        <div class="hero-layer" id="hero-b"></div>
+        <div class="hero-shade"></div>
+      </div>
+      <div class="hero-plate">
+        <div id="stage-hero-name" class="name-plate mask" role="img"></div>
+        <p id="stage-hero-text" class="display name-plate-text"></p>
+      </div>
+    </div>
+    <div id="stage-row" class="stage-row enter" style="--i:2" role="listbox" aria-label="Stages"></div>
+    <footer class="legend enter" style="--i:3">
+      <p class="keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd> Move <kbd>Enter</kbd> Fight <kbd>Esc</kbd> Back</p>
+    </footer>
   </section>
 
   <!-- Loading -->
-  <section id="screen-loading" class="screen" hidden>
-    <h1>Loading</h1>
-    <progress id="load-bar" max="1" value="0"></progress>
-    <p id="load-detail" class="muted"></p>
-    <button data-action="back">Cancel</button>
+  <section id="screen-loading" class="screen loading-screen" hidden aria-label="Loading the match">
+    <div id="loading-bg" class="loading-bg" aria-hidden="true"></div>
+    <div class="versus">
+      <div class="versus-side" data-side="0"></div>
+      <div class="vs display" aria-hidden="true"><span>VS</span></div>
+      <div class="versus-side" data-side="1"></div>
+    </div>
+    <div class="load-track" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100"><div id="load-fill" class="load-fill"></div></div>
+    <p id="load-detail" class="load-detail"></p>
+    <button data-action="back" class="btn pill ghost"><span>Cancel</span></button>
   </section>
 
   <!-- Match HUD, pause and results float over the canvas. -->
-  <section id="screen-match" class="overlay-screen" hidden>
+  <section id="screen-match" class="overlay-screen" hidden aria-label="Match">
     <div id="hud" class="hud"></div>
     <div id="pause" class="scrim" hidden>
-      <div class="dialog">
-        <h1>Paused</h1>
-        <button data-action="resume" class="big prominent">Resume</button>
-        <button data-action="restart" class="big">Restart</button>
-        <button data-action="save-replay" class="big">Save Replay</button>
-        <button data-action="quit" class="big">Quit to Character Select</button>
+      <div class="card glass menu-card" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+        <h1 id="pause-title" class="display title">Paused</h1>
+        <div class="menu-buttons">
+          <button data-action="resume" class="btn accent"><span>Resume</span></button>
+          <button data-action="restart" class="btn"><span>Restart</span></button>
+          <button data-action="save-replay" class="btn"><span>Save Replay</span></button>
+          <button data-action="quit" class="btn"><span>Quit to Character Select</span></button>
+        </div>
       </div>
     </div>
   </section>
-  <section id="screen-results" class="overlay-screen" hidden>
-    <div class="scrim">
-      <div class="dialog">
-        <h1 id="results-title"></h1>
-        <div id="results-players" class="hud static"></div>
-        <button data-action="rematch" class="big prominent">Rematch</button>
-        <button data-action="quit" class="big">Character Select</button>
-        <button data-action="save-replay" class="big">Save Replay</button>
+  <section id="screen-results" class="overlay-screen" hidden aria-labelledby="results-title">
+    <div class="scrim results-scrim">
+      <div class="results">
+        <div class="results-hero" aria-hidden="true">
+          <div class="burst"></div>
+          <div id="results-emblem" class="results-emblem mask"></div>
+          <img id="results-portrait" class="results-portrait" alt="">
+          <svg id="results-placeholder" class="results-placeholder"><use href="#emblem"/></svg>
+        </div>
+        <div class="results-body">
+          <p id="results-kicker" class="eyebrow"></p>
+          <h1 id="results-title" class="display title-xl"></h1>
+          <div id="results-name" class="results-name"></div>
+          <div id="results-table" class="results-table" role="table" aria-label="Final stocks and percent"></div>
+          <div class="results-buttons">
+            <button data-action="rematch" class="btn accent"><span>Rematch</span></button>
+            <button data-action="quit" class="btn"><span>Character Select</span></button>
+            <button data-action="stage-select" class="btn"><span>Stage Select</span></button>
+          </div>
+          <button data-action="save-replay" class="link-button">Save replay</button>
+        </div>
       </div>
     </div>
   </section>
 </main>
 
 <!-- Messages: load errors, faults. -->
-<dialog id="message">
-  <h2 id="message-title"></h2>
+<dialog id="message" class="card glass message" aria-labelledby="message-title">
+  <h2 id="message-title" class="display"></h2>
   <pre id="message-text"></pre>
   <div class="row" id="message-actions"></div>
 </dialog>
 
 <!-- Shown when WebGPU is missing or the module crashes. -->
 <div id="fatal" class="fatal" hidden>
-  <div class="dialog">
-    <h1 id="fatal-title">Something went wrong</h1>
+  <div class="card glass danger message" role="alertdialog" aria-labelledby="fatal-title">
+    <h1 id="fatal-title" class="display">Something went wrong</h1>
     <pre id="fatal-text"></pre>
     <div class="row">
-      <a id="fatal-replay" class="button big" hidden>Download Replay</a>
-      <button class="big prominent" onclick="location.reload()">Reload</button>
+      <button class="btn ghost" onclick="navigator.clipboard?.writeText(document.getElementById('fatal-text').textContent)"><span>Copy Details</span></button>
+      <a id="fatal-replay" class="btn" hidden><span>Download Replay</span></a>
+      <button class="btn accent" onclick="location.reload()"><span>Reload</span></button>
     </div>
   </div>
 </div>
