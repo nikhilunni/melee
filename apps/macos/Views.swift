@@ -1,434 +1,261 @@
 import SwiftUI
-import UniformTypeIdentifiers
 
 // The menus and overlays, in SwiftUI hosted by the AppKit window. They read
-// the model and send intent; the core decides what is allowed.
-
-enum Palette {
-    static let background = Color(red: 0.06, green: 0.07, blue: 0.10)
-    static let panel = Color(red: 0.11, green: 0.12, blue: 0.17)
-    static let raised = Color(red: 0.16, green: 0.18, blue: 0.25)
-    static let players = [Color(red: 0.93, green: 0.27, blue: 0.27), Color(red: 0.28, green: 0.52, blue: 0.96)]
-    static let accent = Color(red: 0.98, green: 0.78, blue: 0.24)
-}
+// the model and send intent; the core decides what is allowed. The design is
+// docs/DESIGN.md; tokens and components are in Theme.swift, the backdrop in
+// Backdrop.swift (an AppKit layer under this view).
 
 struct RootView: View {
     @ObservedObject var model: AppModel
-    var openPanel: () -> Void
-    var saveReplay: () -> Void
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        let motion = MotionPolicy(reduce: reduceMotion)
         ZStack {
-            switch model.screen {
-            case .disc: DiscView(model: model, openPanel: openPanel).screenBackground()
-            case .characters: CharacterSelectView(model: model).screenBackground()
-            case .stages: StageSelectView(model: model).screenBackground()
-            case .loading: LoadingView(model: model).screenBackground()
-            case .match: MatchOverlay(model: model, saveReplay: saveReplay)
-            case .results: ResultsView(model: model, saveReplay: saveReplay)
+            Group {
+                if model.showsResults {
+                    ResultsView(model: model)
+                } else {
+                    switch model.screen {
+                    case .disc: DiscView(model: model)
+                    case .characters: CharacterSelectView(model: model)
+                    case .stages: StageSelectView(model: model)
+                    case .loading: LoadingView(model: model)
+                    case .match: MatchOverlay(model: model)
+                    case .results: ResultsView(model: model)
+                    }
+                }
+            }
+            .id(model.showsResults ? 100 : Int(model.screen.rawValue))
+            .transition(screenTransition(reduce: reduceMotion))
+
+            if let notice = model.notice, model.screen != .disc {
+                NoticeCard(notice: notice) { model.notice = nil }
+                    .frame(maxWidth: 520)
+                    .padding(.top, 52)
+                    .frame(maxHeight: .infinity, alignment: .top)
+                    .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
+                    .zIndex(10)
             }
         }
-        .foregroundStyle(.white)
+        .animation(motion.spring, value: model.screen)
+        .animation(motion.spring, value: model.showsResults)
+        .animation(motion.spring, value: model.notice)
+        .foregroundStyle(Palette.text)
         .preferredColorScheme(.dark)
     }
-}
 
-private extension View {
-    func screenBackground() -> some View {
-        frame(maxWidth: .infinity, maxHeight: .infinity).background(Palette.background)
+    /// Outgoing content slides 40 pt along the slant and fades; incoming
+    /// comes from the other side. Reduce Motion: cross-fade only.
+    private func screenTransition(reduce: Bool) -> AnyTransition {
+        if reduce { return .opacity }
+        let lean = 40 * Slant.lean
+        return .asymmetric(insertion: .offset(x: 40, y: -lean).combined(with: .opacity),
+                           removal: .offset(x: -40, y: lean).combined(with: .opacity))
     }
 }
 
-struct Title: View {
-    let text: String
-    var subtitle: String?
-    var body: some View {
-        VStack(spacing: 6) {
-            Text(text).font(.system(size: 34, weight: .heavy, design: .rounded))
-            if let subtitle { Text(subtitle).font(.title3).foregroundStyle(.secondary) }
-        }
-    }
+// MARK: Layout
+
+/// Scale for a menu laid out at 1280x800, so the composition holds from
+/// 1024x640 to a large full-screen window.
+struct MenuMetrics {
+    let size: CGSize
+    var scale: CGFloat { min(max(min(size.width / 1280, size.height / 800), 0.8), 1.7) }
+    func callAsFunction(_ value: CGFloat) -> CGFloat { (value * scale).rounded() }
 }
 
-struct BigButton: View {
-    let title: String
-    var prominent = false
-    let action: () -> Void
-    var body: some View {
-        Button(action: action) {
-            Text(title).font(.title3.weight(.semibold)).frame(minWidth: 180).padding(.vertical, 6)
-        }
-        .buttonStyle(.borderedProminent)
-        .tint(prominent ? Palette.accent.opacity(0.85) : Palette.raised)
-        .controlSize(.large)
-    }
-}
+/// Space for the transparent title bar's window buttons.
+let titleBarInset: CGFloat = 28
 
-// MARK: Disc
+/// Elements of a screen arrive in groups, 60 ms apart, sliding along the slant.
+struct StaggerIn: ViewModifier {
+    let index: Int
+    @State private var shown = false
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-struct DiscView: View {
-    @ObservedObject var model: AppModel
-    var openPanel: () -> Void
-    @State private var targeted = false
-
-    var body: some View {
-        VStack(spacing: 28) {
-            Title(text: "Super Smash Bros. Melee",
-                  subtitle: "Drop your Melee disc image here to begin")
-            VStack(spacing: 14) {
-                Image(systemName: "opticaldisc").font(.system(size: 56, weight: .light))
-                Text("NTSC-U 1.02 (GALE01) · uncompressed .iso or .gcm").foregroundStyle(.secondary)
-                BigButton(title: "Choose Disc Image…", prominent: true, action: openPanel)
+    func body(content: Content) -> some View {
+        content
+            .opacity(shown ? 1 : 0)
+            .offset(x: shown || reduceMotion ? 0 : 24, y: shown || reduceMotion ? 0 : -24 * Slant.lean)
+            .onAppear {
+                let animation: Animation = reduceMotion ? .easeInOut(duration: 0.15)
+                    : .spring(response: 0.35, dampingFraction: 0.8).delay(0.06 * Double(index))
+                withAnimation(animation) { shown = true }
             }
-            .frame(width: 520, height: 260)
-            .background(RoundedRectangle(cornerRadius: 22).fill(targeted ? Palette.raised : Palette.panel))
-            .overlay(RoundedRectangle(cornerRadius: 22)
-                .strokeBorder(style: StrokeStyle(lineWidth: 2, dash: [10, 8]))
-                .foregroundStyle(targeted ? Palette.accent : .secondary.opacity(0.5)))
-            .onDrop(of: [.fileURL], isTargeted: $targeted) { providers in
-                guard let provider = providers.first else { return false }
-                _ = provider.loadObject(ofClass: URL.self) { url, _ in
-                    if let url { DispatchQueue.main.async { model.openDisc(url) } }
-                }
-                return true
-            }
-            if let disc = model.disc {
-                BigButton(title: "Continue with \(disc.gameID)", action: model.resumeDisc)
-            }
-            if !model.recent.isEmpty {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("Recent discs").font(.headline).foregroundStyle(.secondary)
-                    ForEach(model.recent) { disc in
-                        Button { model.openRecent(disc) } label: {
-                            Label(disc.name, systemImage: "clock.arrow.circlepath")
-                        }
-                        .buttonStyle(.link)
-                    }
-                }
-                .frame(width: 520, alignment: .leading)
-            }
-        }
-        .padding(40)
     }
 }
 
-// MARK: Character select
+extension View {
+    func staggerIn(_ index: Int) -> some View { modifier(StaggerIn(index: index)) }
+}
 
-struct CharacterSelectView: View {
-    @ObservedObject var model: AppModel
+// MARK: Notices
 
-    private var rows: [[CharacterInfo]] {
-        Dictionary(grouping: model.characters, by: \.row)
-            .sorted { $0.key < $1.key }
-            .map { $0.value.sorted { $0.column < $1.column } }
-    }
+/// An error or notice: a danger-tinted glass card, the message, a copy
+/// button for the details and one obvious action.
+struct NoticeCard: View {
+    let notice: Notice
+    var dismiss: () -> Void
+    @State private var copied = false
 
     var body: some View {
-        VStack(spacing: 18) {
-            HStack {
-                Button("Back", systemImage: "chevron.left", action: model.back)
-                    .keyboardShortcut(.cancelAction)
-                Spacer()
-                Title(text: "Choose Your Fighters")
-                Spacer()
-                Stepper("Stocks: \(model.selection.stocks)",
-                        value: Binding(get: { model.selection.stocks }, set: { model.setStocks($0) }),
-                        in: 1...99)
-                    .font(.title3)
-                    .frame(width: 170)
-            }
-            VStack(spacing: 8) {
-                ForEach(rows, id: \.first?.id) { row in
-                    HStack(spacing: 8) {
-                        ForEach(row) { character in
-                            CharacterCell(character: character, selection: model.selection) {
-                                model.choose(character)
-                            }
-                        }
-                    }
-                }
-            }
-            HStack(alignment: .top, spacing: 18) {
-                ForEach(0..<2, id: \.self) { player in PlayerPanel(model: model, player: player) }
-            }
-            HStack(spacing: 24) {
-                ControlsLegend()
-                Spacer()
-                BigButton(title: "Choose Stage", prominent: true, action: model.confirmCharacters)
-                    .disabled(!model.selection.ready)
-                    .keyboardShortcut(.defaultAction)
-            }
-        }
-        .padding(28)
-    }
-}
-
-struct CharacterCell: View {
-    let character: CharacterInfo
-    let selection: Selection
-    let action: () -> Void
-
-    var body: some View {
-        let pickedBy = (0..<2).filter { selection.players[$0].character == character.id }
-        Button(action: action) {
-            ZStack(alignment: .topTrailing) {
-                Text(character.name)
-                    .font(.system(size: 13, weight: .bold, design: .rounded))
-                    .multilineTextAlignment(.center)
-                    .lineLimit(2)
-                    .minimumScaleFactor(0.7)
-                    .frame(width: 92, height: 62)
-                    .background(RoundedRectangle(cornerRadius: 10).fill(Palette.panel))
-                HStack(spacing: 2) {
-                    ForEach(pickedBy, id: \.self) { player in
-                        Text("P\(player + 1)").font(.caption2.weight(.heavy))
-                            .padding(.horizontal, 4).padding(.vertical, 1)
-                            .background(Capsule().fill(Palette.players[player]))
-                    }
-                }
-                .padding(4)
-            }
-            .overlay(RoundedRectangle(cornerRadius: 10)
-                .strokeBorder(pickedBy.isEmpty ? Color.white.opacity(0.08) : Palette.players[pickedBy[0]],
-                              lineWidth: pickedBy.isEmpty ? 1 : 3))
-        }
-        .buttonStyle(.plain)
-        .help(character.name)
-    }
-}
-
-struct PlayerPanel: View {
-    @ObservedObject var model: AppModel
-    let player: Int
-
-    var body: some View {
-        let slot = model.selection.players[player]
-        let character = model.character(slot.character)
-        let active = model.picking == player
         VStack(alignment: .leading, spacing: 10) {
-            HStack {
-                Text("P\(player + 1)").font(.title2.weight(.heavy)).foregroundStyle(Palette.players[player])
-                Text(character?.name ?? "Choose a character").font(.title2.weight(.bold))
-                    .foregroundStyle(character == nil ? .secondary : .primary)
-                Spacer()
-                if character != nil {
-                    Button("Clear", systemImage: "xmark.circle.fill") { model.clear(player: player) }
-                        .buttonStyle(.borderless).labelStyle(.iconOnly)
-                }
+            HStack(spacing: 10) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .font(.system(size: 16, weight: .bold))
+                    .foregroundStyle(Palette.danger)
+                Text(notice.title).font(.ui(16, .bold))
+                Spacer(minLength: 0)
             }
-            if let character {
-                HStack(spacing: 6) {
-                    Text("Costume").foregroundStyle(.secondary)
-                    ForEach(0..<character.costumeCount, id: \.self) { costume in
-                        let taken = model.selection.players[1 - player].character == character.id
-                            && model.selection.players[1 - player].costume == costume
-                        Button { model.setCostume(player: player, costume: costume) } label: {
-                            Text("\(costume + 1)").font(.callout.weight(.bold)).frame(width: 26, height: 26)
-                                .background(Circle().fill(slot.costume == costume
-                                    ? Palette.players[player] : Palette.raised))
-                        }
-                        .buttonStyle(.plain)
-                        .disabled(taken)
-                        .opacity(taken ? 0.3 : 1)
+            Text(notice.message)
+                .font(.ui(14))
+                .foregroundStyle(Palette.text.opacity(0.85))
+                .textSelection(.enabled)
+                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(8)
+            HStack(spacing: 10) {
+                Spacer()
+                Button(copied ? "Copied" : "Copy Details") {
+                    NSPasteboard.general.clearContents()
+                    NSPasteboard.general.setString("\(notice.title)\n\(notice.message)", forType: .string)
+                    copied = true
+                }
+                .buttonStyle(SlantButtonStyle(kind: .glass, size: 14))
+                Button("OK", action: dismiss)
+                    .buttonStyle(SlantButtonStyle(kind: .danger, focused: true, size: 14, minWidth: 80))
+            }
+        }
+        .padding(18)
+        .glass(RoundedRectangle(cornerRadius: 14, style: .continuous), tint: Palette.danger, tintAmount: 0.22)
+        .shadow(color: Palette.danger.opacity(0.25), radius: 24)
+        .shadow(color: .black.opacity(0.4), radius: 12, y: 6)
+        .accessibilityElement(children: .contain)
+    }
+}
+
+// MARK: Shared art
+
+/// Our own fighter silhouette (original art): head and shoulders.
+struct Silhouette: View {
+    var color: Color = .white
+    var body: some View {
+        GeometryReader { geo in
+            let w = geo.size.width, h = geo.size.height
+            ZStack {
+                Ellipse()
+                    .frame(width: w * 0.36, height: h * 0.30)
+                    .position(x: w * 0.5, y: h * 0.27)
+                UnevenRoundedRectangle(topLeadingRadius: w * 0.3, bottomLeadingRadius: 0, bottomTrailingRadius: 0,
+                                       topTrailingRadius: w * 0.3, style: .continuous)
+                    .frame(width: w * 0.86, height: h * 0.42)
+                    .position(x: w * 0.5, y: h * 0.79)
+            }
+            .foregroundStyle(color)
+        }
+        .aspectRatio(136 / 188, contentMode: .fit)
+    }
+}
+
+/// A fighter's select portrait (136x188) from the disc. Where the disc has
+/// none (Sheik) or the art is not read yet: our silhouette, with the stock
+/// icon over it when there is one.
+struct FighterPortrait: View {
+    @ObservedObject var model: AppModel
+    let character: Int32
+    let costume: Int
+    var tint: Color = .white
+
+    var body: some View {
+        if let image = model.core.portrait(character: character, costume: costume) {
+            ArtImage(image: image).aspectRatio(136 / 188, contentMode: .fit)
+        } else {
+            ZStack {
+                Silhouette(color: tint.opacity(0.22))
+                if let stock = model.core.stockIcon(character: character, costume: costume) {
+                    GeometryReader { geo in
+                        // Integer multiples of 24 keep the icon's pixels crisp.
+                        let side = max(24, (geo.size.width * 0.42 / 24).rounded(.down) * 24)
+                        ArtImage(image: stock, pixel: true)
+                            .frame(width: side, height: side)
+                            .shadow(color: .black.opacity(0.5), radius: 4, y: 2)
+                            .position(x: geo.size.width / 2, y: geo.size.height * 0.27)
                     }
                 }
-            } else {
-                Text(active ? "Click a character above" : "Waiting…").foregroundStyle(.secondary)
             }
+            .aspectRatio(136 / 188, contentMode: .fit)
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(RoundedRectangle(cornerRadius: 14).fill(Palette.panel))
-        .overlay(RoundedRectangle(cornerRadius: 14)
-            .strokeBorder(active ? Palette.players[player] : .clear, lineWidth: 2))
-        .contentShape(Rectangle())
-        .onTapGesture { model.picking = player }
     }
 }
 
-struct ControlsLegend: View {
-    var body: some View {
-        Grid(alignment: .leading, horizontalSpacing: 14, verticalSpacing: 3) {
-            GridRow {
-                Text("")
-                ForEach(["Move", "Attack", "Special", "Jump", "Shield", "Grab"], id: \.self) {
-                    Text($0).foregroundStyle(.secondary)
-                }
-            }
-            GridRow {
-                Text("P1").foregroundStyle(Palette.players[0]).fontWeight(.heavy)
-                ForEach(["W A S D", "K", "J", "Space", "L", "I"], id: \.self) { Text($0) }
-            }
-            GridRow {
-                Text("P2").foregroundStyle(Palette.players[1]).fontWeight(.heavy)
-                ForEach(["Arrows", "N", "M", ",", ".", "/"], id: \.self) { Text($0) }
-            }
-        }
-        .font(.system(.callout, design: .monospaced))
-    }
+/// Where each fighter's face sits in their 136x188 select portrait, as
+/// fractions of its width and height (our own measurements; the grid and
+/// HUD crop around it).
+enum FaceFocus {
+    private static let table: [String: CGPoint] = [
+        "DrMario": CGPoint(x: 0.62, y: 0.25), "Mario": CGPoint(x: 0.58, y: 0.24),
+        "Luigi": CGPoint(x: 0.6, y: 0.21), "Bowser": CGPoint(x: 0.42, y: 0.3),
+        "Peach": CGPoint(x: 0.55, y: 0.21), "Yoshi": CGPoint(x: 0.42, y: 0.18),
+        "DonkeyKong": CGPoint(x: 0.72, y: 0.36), "CaptainFalcon": CGPoint(x: 0.66, y: 0.17),
+        "Ganondorf": CGPoint(x: 0.62, y: 0.17), "Falco": CGPoint(x: 0.6, y: 0.27),
+        "Fox": CGPoint(x: 0.58, y: 0.25), "Ness": CGPoint(x: 0.5, y: 0.22),
+        "IceClimbers": CGPoint(x: 0.5, y: 0.27), "Samus": CGPoint(x: 0.62, y: 0.17),
+        "Zelda": CGPoint(x: 0.58, y: 0.2), "Link": CGPoint(x: 0.62, y: 0.17),
+        "YoungLink": CGPoint(x: 0.56, y: 0.2), "Pichu": CGPoint(x: 0.42, y: 0.26),
+        "Pikachu": CGPoint(x: 0.5, y: 0.24), "Jigglypuff": CGPoint(x: 0.5, y: 0.32),
+        "Mewtwo": CGPoint(x: 0.56, y: 0.22), "GameAndWatch": CGPoint(x: 0.42, y: 0.22),
+        "Marth": CGPoint(x: 0.56, y: 0.2), "Roy": CGPoint(x: 0.52, y: 0.18),
+    ]
+    static func of(_ key: String) -> CGPoint { table[key] ?? CGPoint(x: 0.55, y: 0.22) }
 }
 
-// MARK: Stage select
-
-struct StageSelectView: View {
+/// A fighter's portrait cropped around the face to fill `size`; `span` is
+/// how much of the portrait's width shows.
+struct FaceCrop: View {
     @ObservedObject var model: AppModel
-    private let columns = [GridItem(.adaptive(minimum: 230), spacing: 14)]
+    let character: Int32
+    var costume = 0
+    let size: CGSize
+    var span: CGFloat = 0.78
 
     var body: some View {
-        VStack(spacing: 24) {
-            HStack {
-                Button("Back", systemImage: "chevron.left", action: model.back).keyboardShortcut(.cancelAction)
-                Spacer()
-                Title(text: "Choose a Stage", subtitle: matchup)
-                Spacer()
-                Color.clear.frame(width: 60, height: 1)
-            }
-            LazyVGrid(columns: columns, spacing: 14) {
-                ForEach(model.stages) { stage in
-                    Button { model.chooseStage(stage) } label: {
-                        Text(stage.name).font(.title3.weight(.bold))
-                            .frame(maxWidth: .infinity, minHeight: 110)
-                            .background(RoundedRectangle(cornerRadius: 14).fill(Palette.panel))
-                            .overlay(RoundedRectangle(cornerRadius: 14).strokeBorder(.white.opacity(0.1)))
-                    }
-                    .buttonStyle(.plain)
+        if let portrait = model.core.portrait(character: character, costume: costume) {
+            let scale = size.width / (136 * span)
+            let image = CGSize(width: 136 * scale, height: 188 * scale)
+            let focus = FaceFocus.of(model.character(character)?.key ?? "")
+            // Centre the face, then keep the image covering the frame.
+            let x = min(max(size.width / 2 - focus.x * image.width, size.width - image.width), 0)
+            let y = min(max(size.height * 0.46 - focus.y * image.height, size.height - image.height), 0)
+            ArtImage(image: portrait)
+                .frame(width: image.width, height: image.height)
+                .offset(x: x + (image.width - size.width) / 2, y: y + (image.height - size.height) / 2)
+                .frame(width: size.width, height: size.height)
+                .clipped()
+        } else if let stock = model.core.stockIcon(character: character, costume: costume) {
+            let side = max(24, (min(size.width, size.height) * 0.9 / 24).rounded(.down) * 24)
+            ArtImage(image: stock, pixel: true)
+                .frame(width: side, height: side)
+                .frame(width: size.width, height: size.height)
+        } else {
+            Silhouette(color: .white.opacity(0.15)).padding(size.height * 0.1)
+                .frame(width: size.width, height: size.height)
+        }
+    }
+}
+
+extension View {
+    /// Soften the hard edges where retail's portrait texture crops a fighter.
+    func featheredEdges(horizontal: CGFloat = 0.1, top: CGFloat = 0.04, bottom: CGFloat = 0.14) -> some View {
+        mask {
+            LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: horizontal),
+                                   .init(color: .white, location: 1 - horizontal), .init(color: .clear, location: 1)],
+                           startPoint: .leading, endPoint: .trailing)
+                .mask {
+                    LinearGradient(stops: [.init(color: .clear, location: 0), .init(color: .white, location: top),
+                                           .init(color: .white, location: 1 - bottom),
+                                           .init(color: .clear, location: 1)],
+                                   startPoint: .top, endPoint: .bottom)
                 }
-            }
-            .frame(maxWidth: 820)
-            Spacer()
         }
-        .padding(28)
-    }
-
-    private var matchup: String {
-        let names = model.selection.players.map { model.character($0.character)?.name ?? "?" }
-        return "\(names[0]) vs \(names[1]) · \(model.selection.stocks) stocks"
-    }
-}
-
-// MARK: Loading
-
-struct LoadingView: View {
-    @ObservedObject var model: AppModel
-    var body: some View {
-        VStack(spacing: 20) {
-            Title(text: "Loading")
-            ProgressView(value: model.progress.fraction).frame(width: 420).tint(Palette.accent)
-            Text(detail).foregroundStyle(.secondary).monospacedDigit()
-            Button("Cancel", action: model.back).keyboardShortcut(.cancelAction)
-        }
-    }
-    private var detail: String {
-        let p = model.progress
-        let mb = { (bytes: UInt64) in String(format: "%.1f MB", Double(bytes) / 1_048_576) }
-        if p.filesTotal == 0 { return "Starting the match…" }
-        return "\(p.filesDone) of \(p.filesTotal) files · \(mb(p.bytesDone)) of \(mb(p.bytesTotal))"
-    }
-}
-
-// MARK: Match
-
-struct HudBar: View {
-    @ObservedObject var model: AppModel
-    var body: some View {
-        if let hud = model.hud {
-            HStack(spacing: 40) {
-                ForEach(0..<hud.players.count, id: \.self) { index in
-                    PlayerCard(player: hud.players[index], name: model.character(hud.players[index].character)?.name ?? "")
-                }
-            }
-            .padding(.bottom, 18)
-        }
-    }
-}
-
-struct PlayerCard: View {
-    let player: PlayerHud
-    let name: String
-    var body: some View {
-        VStack(spacing: 2) {
-            Text("\(Int(player.percent))%")
-                .font(.system(size: 40, weight: .heavy, design: .rounded))
-                .monospacedDigit()
-                .shadow(color: .black, radius: 3)
-            Text(name).font(.headline).shadow(color: .black, radius: 2)
-            HStack(spacing: 4) {
-                ForEach(0..<min(player.stocks, 12), id: \.self) { _ in
-                    Circle().fill(Palette.players[min(player.port, 1)]).frame(width: 10, height: 10)
-                }
-                if player.stocks > 12 { Text("×\(player.stocks)").font(.caption.bold()) }
-            }
-        }
-        .padding(.horizontal, 18).padding(.vertical, 8)
-        .background(RoundedRectangle(cornerRadius: 12).fill(.black.opacity(0.45)))
-        .overlay(alignment: .topLeading) {
-            Text("P\(player.port + 1)").font(.caption.weight(.heavy))
-                .foregroundStyle(Palette.players[min(player.port, 1)]).padding(6)
-        }
-    }
-}
-
-struct MatchOverlay: View {
-    @ObservedObject var model: AppModel
-    var saveReplay: () -> Void
-    var body: some View {
-        ZStack {
-            VStack { Spacer(); HudBar(model: model) }.allowsHitTesting(false)
-            if model.paused {
-                Color.black.opacity(0.55)
-                Dialog(title: "Paused") {
-                    BigButton(title: "Resume", prominent: true) { model.setPaused(false) }
-                        .keyboardShortcut(.cancelAction)
-                    BigButton(title: "Restart", action: model.restart)
-                    BigButton(title: "Save Replay…", action: saveReplay)
-                    BigButton(title: "Quit to Character Select", action: model.quitToMenu)
-                }
-            }
-        }
-    }
-}
-
-struct Dialog<Content: View>: View {
-    let title: String
-    var subtitle: String?
-    @ViewBuilder let content: Content
-    var body: some View {
-        VStack(spacing: 14) {
-            Title(text: title, subtitle: subtitle).padding(.bottom, 6)
-            content
-        }
-        .padding(32)
-        .background(RoundedRectangle(cornerRadius: 20).fill(Palette.panel.opacity(0.96)))
-    }
-}
-
-struct ResultsView: View {
-    @ObservedObject var model: AppModel
-    var saveReplay: () -> Void
-    var body: some View {
-        ZStack {
-            Color.black.opacity(0.55)
-            if let results = model.results {
-                Dialog(title: headline(results)) {
-                    HStack(spacing: 24) {
-                        ForEach(0..<results.hud.players.count, id: \.self) { index in
-                            PlayerCard(player: results.hud.players[index],
-                                       name: model.character(results.hud.players[index].character)?.name ?? "")
-                        }
-                    }
-                    .padding(.bottom, 8)
-                    BigButton(title: "Rematch", prominent: true, action: model.rematch)
-                        .keyboardShortcut(.defaultAction)
-                    BigButton(title: "Character Select", action: model.quitToMenu)
-                        .keyboardShortcut(.cancelAction)
-                    BigButton(title: "Save Replay…", action: saveReplay)
-                }
-            }
-        }
-    }
-    private func headline(_ results: MatchResults) -> String {
-        guard let winner = results.winner else { return "Draw" }
-        let player = results.hud.players[winner]
-        return "P\(player.port + 1) \(model.character(player.character)?.name ?? "") Wins!"
     }
 }

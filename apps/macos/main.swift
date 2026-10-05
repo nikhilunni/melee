@@ -43,7 +43,7 @@ final class GameView: NSView {
             try model.core.attach(layer: Unmanaged.passUnretained(metal).toOpaque(), width: width, height: height)
             attached = true
         } catch {
-            model.present?("Metal is unavailable", error.localizedDescription)
+            model.present("Metal is unavailable", error.localizedDescription)
         }
         displayLink = self.displayLink(target: self, selector: #selector(step(_:)))
         displayLink?.add(to: .main, forMode: .common)
@@ -64,6 +64,22 @@ final class GameView: NSView {
     /// Run the display link only while the match needs frames.
     func synchronize() {
         displayLink?.isPaused = !(model?.needsFrame ?? false)
+        blurred = model.map { $0.screen == .match && ($0.paused || $0.showsResults) } ?? false
+    }
+
+    /// Paused: the stage blurs behind the pause card (a Core Image filter
+    /// composited by the window server; the paused game draws nothing new).
+    private var blurred = false {
+        didSet {
+            guard blurred != oldValue, let layer else { return }
+            layerUsesCoreImageFilters = true
+            if blurred, let blur = CIFilter(name: "CIGaussianBlur") {
+                blur.setValue(10, forKey: kCIInputRadiusKey)
+                layer.filters = [blur]
+            } else {
+                layer.filters = nil
+            }
+        }
     }
 
     @objc private func step(_ link: CADisplayLink) {
@@ -116,30 +132,39 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     let model: AppModel
     let game: GameView
     private var overlay: OverlayHostingView<RootView>!
+    /// The menus' living backdrop, between the game and the SwiftUI overlay.
+    let backdrop = BackdropView(frame: NSRect(x: 0, y: 0, width: 1280, height: 800))
+    private var keyMonitor: Any?
 
     init(model: AppModel) {
         self.model = model
         game = GameView(frame: NSRect(x: 0, y: 0, width: 1280, height: 800))
         let window = NSWindow(contentRect: NSRect(x: 0, y: 0, width: 1280, height: 800),
-                              styleMask: [.titled, .closable, .miniaturizable, .resizable],
+                              styleMask: [.titled, .closable, .miniaturizable, .resizable, .fullSizeContentView],
                               backing: .buffered, defer: false)
         window.title = "Melee"
-        window.minSize = NSSize(width: 960, height: 640)
-        window.backgroundColor = .black
+        // The menus draw under a transparent title bar.
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.minSize = NSSize(width: 1024, height: 640)
+        window.backgroundColor = NSColor(srgbRed: 5 / 255, green: 6 / 255, blue: 15 / 255, alpha: 1)
         window.tabbingMode = .disallowed
+        window.collectionBehavior.insert(.fullScreenPrimary)
         super.init(window: window)
         game.model = model
         let container = NSView()
         game.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(game)
-        overlay = OverlayHostingView(rootView: RootView(model: model,
-                                                        openPanel: { [weak self] in self?.openDiscPanel() },
-                                                        saveReplay: { [weak self] in self?.saveReplay() }))
+        backdrop.translatesAutoresizingMaskIntoConstraints = false
+        container.addSubview(backdrop)
+        overlay = OverlayHostingView(rootView: RootView(model: model))
+        model.openPanel = { [weak self] in self?.openDiscPanel() }
+        model.saveReplayPanel = { [weak self] in self?.saveReplay() }
         // The window sets its own size; SwiftUI's ideal size must not shrink it.
         overlay.sizingOptions = []
         overlay.translatesAutoresizingMaskIntoConstraints = false
         container.addSubview(overlay)
-        for view in [game, overlay!] {
+        for view in [game, backdrop, overlay!] {
             NSLayoutConstraint.activate([
                 view.leadingAnchor.constraint(equalTo: container.leadingAnchor),
                 view.trailingAnchor.constraint(equalTo: container.trailingAnchor),
@@ -152,15 +177,51 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         window.setFrameAutosaveName("MeleeMain")
         if !window.setFrameUsingName("MeleeMain") { window.center() }
 
-        model.present = { [weak self] title, message in self?.alert(title, message) }
+        keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
+            guard let self, let key = self.menuKey(event) else { return event }
+            guard self.model.handle(key) else { return event }
+            self.game.synchronize()
+            return nil
+        }
+        model.framesChanged = { [weak self] in self?.game.synchronize() }
         model.presentFault = { [weak self] message in self?.fault(message) }
         model.screenChanged = { [weak self] screen in self?.screenChanged(screen) }
         screenChanged(model.screen)
     }
     required init?(coder: NSCoder) { fatalError("not used") }
 
+    /// Menu keys: arrows (and WASD), Enter/Space, Esc, Tab, Q/E or [ ] for
+    /// costumes, Backspace to clear, - and = for stocks. Nil while a sheet
+    /// is up, with Command held, or for keys the menus do not use.
+    private func menuKey(_ event: NSEvent) -> MenuKey? {
+        guard let window, event.window === window, window.attachedSheet == nil,
+              event.modifierFlags.intersection([.command, .control, .option]).isEmpty else { return nil }
+        // During play only Esc and the pause card's keys are the menus'.
+        let inPlay = model.screen == .match && !model.paused && !model.showsResults
+        if inPlay && model.notice == nil { return nil }
+        let shift = event.modifierFlags.contains(.shift)
+        switch event.keyCode {
+        case 123, 0: return .left
+        case 124, 2: return .right
+        case 126, 13: return .up
+        case 125, 1: return .down
+        case 36, 76, 49: return .enter
+        case 53: return .escape
+        case 48: return shift ? .backTab : .tab
+        case 12, 33: return .costumePrevious
+        case 14, 30: return .costumeNext
+        case 51, 117: return .clear
+        case 27: return .fewerStocks
+        case 24: return .moreStocks
+        default: return nil
+        }
+    }
+
     private func screenChanged(_ screen: Screen) {
-        game.isHidden = !(screen == .match || screen == .results)
+        let inGame = screen == .match || screen == .results
+        game.isHidden = !inGame
+        backdrop.isHidden = inGame
+        if !inGame { window?.makeFirstResponder(overlay) }
         if screen == .match {
             window?.makeFirstResponder(game)
         }
@@ -261,6 +322,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     private let recentMenu = NSMenu(title: "Open Recent")
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        Fonts.register()
         controller = WindowController(model: model)
         NSApp.mainMenu = buildMenu()
         controller.showWindow(nil)
@@ -272,7 +334,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     func application(_ application: NSApplication, open urls: [URL]) {
         guard let url = urls.first else { return }
         if model.screen == .match || model.screen == .loading {
-            controller?.alert("Finish the match first", "Quit to character select before changing discs.")
+            model.present("Finish the match first", "Quit to character select before changing discs.")
             return
         }
         model.openDisc(url)
@@ -377,14 +439,29 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
 /// Development smoke test: MELEE_APP_AUTOSTART=/path/to.iso[:Fox:Marth[:FinalDestination]]
 /// walks the menus; MELEE_APP_SMOKE_SECONDS=N then prints the HUD and quits.
+///
+/// For screenshots: MELEE_APP_WINDOW_SIZE=WxH sizes the window, and
+/// MELEE_APP_SCREEN stops the walk on a screen: `disc` (the disc screen
+/// with the disc open), `stages` (with iso:P1:P2), `loading` (held, with a
+/// full autostart), `pause` or `results` (over the running match, after
+/// MELEE_APP_SCREEN_DELAY seconds, default 1.5; results are a preview with
+/// P1 winning). MELEE_APP_PREVIEW_PERCENTS=57,142 shows those HUD percents.
 enum Autostart {
     static func run(model: AppModel) {
         let env = ProcessInfo.processInfo.environment
+        if let size = env["MELEE_APP_WINDOW_SIZE"], let window = NSApp.windows.first {
+            let parts = size.split(separator: "x").compactMap { Double($0) }
+            if parts.count == 2 {
+                window.setContentSize(NSSize(width: parts[0], height: parts[1]))
+                window.center()
+            }
+        }
         if env["MELEE_APP_PRINT_WINDOW"] != nil, let window = NSApp.windows.first {
             // For screencapture -l during development.
             print("window \(window.windowNumber)")
             fflush(stdout)
         }
+        if env["MELEE_APP_SCREEN"] == "disc-empty" { model.hideRecentDiscs() }
         guard let spec = env["MELEE_APP_AUTOSTART"] else { return }
         // Fewer fields stop earlier: "iso" at an empty character select, "iso:P1:P2" with the picks made.
         let parts = spec.split(separator: ":").map(String.init)
@@ -401,6 +478,8 @@ enum Autostart {
             fflush(stdout)
             reportStagePreviews(model: model, since: Date())
         }
+        let screen = env["MELEE_APP_SCREEN"]
+        if screen == "disc" { return model.back() }
         guard parts.count >= 3 else { return }
         for (player, key) in parts[1...2].enumerated() {
             guard let character = model.characters.first(where: { $0.key == key }) else {
@@ -409,12 +488,29 @@ enum Autostart {
             model.picking = player
             model.choose(character)
         }
+        if screen == "stages" { return model.confirmCharacters() }
         guard parts.count == 4 else { return }
         model.confirmCharacters()
         guard let stage = model.stages.first(where: { $0.key == parts[3] }) else {
             return fail("unknown stage \(parts[3]); keys: \(model.stages.map(\.key))")
         }
+        model.holdLoading = screen == "loading"
+        model.previewPercents = env["MELEE_APP_PREVIEW_PERCENTS"].map {
+            $0.split(separator: ",").compactMap { Float($0) }
+        }
         model.chooseStage(stage)
+        if screen == "pause" || screen == "results" {
+            let delay = env["MELEE_APP_SCREEN_DELAY"].flatMap(Double.init) ?? 1.5
+            DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
+                model.setPaused(true)
+                guard screen == "results", var hud = model.core.hud else { return }
+                for index in hud.players.indices {
+                    hud.players[index].percent = model.previewPercents?[safe: index] ?? hud.players[index].percent
+                }
+                hud.players[1].stocks = 0
+                model.previewResults = MatchResults(winner: 0, hud: hud)
+            }
+        }
         guard let seconds = env["MELEE_APP_SMOKE_SECONDS"].flatMap(Double.init) else { return }
         DispatchQueue.main.asyncAfter(deadline: .now() + seconds) {
             let hud = model.core.hud
@@ -444,6 +540,10 @@ enum Autostart {
         fflush(stdout)
         exit(2)
     }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? { indices.contains(index) ? self[index] : nil }
 }
 
 let application = NSApplication.shared
