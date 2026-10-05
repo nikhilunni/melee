@@ -1,13 +1,44 @@
 //! Render an offscreen frame through the same renderer used by native windows.
 //! Writes tightly packed RGBA8; intended for local visual inspection, not assets.
+use melee_lib::{Character, PlayerConfig, Port, Stage};
 use melee_platform::{renderer::Renderer, session::Session};
+
+/// `--stage Battlefield --p1 Peach --p2 Fox` (enum names) replace the default match.
+fn config(args: &[String]) -> Result<melee_lib::MatchConfig, String> {
+    let flag = |name: &str| {
+        args.windows(2)
+            .find(|pair| pair[0] == name)
+            .map(|pair| pair[1].as_str())
+    };
+    let mut config = Session::default_config();
+    if let Some(name) = flag("--stage") {
+        config.stage = *Stage::ALL
+            .iter()
+            .find(|s| format!("{s:?}") == name)
+            .ok_or_else(|| format!("unknown stage {name}"))?;
+    }
+    for (index, (port, name)) in [(Port::P1, "--p1"), (Port::P2, "--p2")]
+        .into_iter()
+        .enumerate()
+    {
+        if let Some(name) = flag(name) {
+            let character = *Character::ALL
+                .iter()
+                .find(|c| format!("{c:?}") == name)
+                .ok_or_else(|| format!("unknown character {name}"))?;
+            config.players[index] = PlayerConfig::new(port, character);
+        }
+    }
+    Ok(config)
+}
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<_> = std::env::args().collect();
-    let files = args
-        .get(1)
-        .ok_or("usage: render_frame <asset-directory> <output.rgba>")?;
+    let files = args.get(1).ok_or(
+        "usage: render_frame <asset-directory> <output.rgba> [--stage S] [--p1 C] [--p2 C]",
+    )?;
     let output = args.get(2).ok_or("missing output path")?;
-    let mut session = Session::new(files)?;
+    let mut session = Session::new(&std::path::Path::new(files), config(&args)?)?;
     let ticks = args
         .windows(2)
         .find(|pair| pair[0] == "--ticks")

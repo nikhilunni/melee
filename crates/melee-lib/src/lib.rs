@@ -23,6 +23,7 @@ mod events;
 mod game;
 mod input;
 mod observation;
+pub use assets::FileSource;
 pub use config::{
     Character, ControllerFix, Costume, MatchConfig, MatchRules, PlayerConfig, Port, Seed, Stage,
 };

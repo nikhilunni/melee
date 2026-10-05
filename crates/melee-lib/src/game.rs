@@ -15,14 +15,24 @@ pub struct GameAssets {
 }
 impl GameAssets {
     pub fn load(directory: impl AsRef<Path>, config: &MatchConfig) -> Result<Self, StartError> {
+        Self::load_from(&directory.as_ref(), config)
+    }
+    /// Load from any file source, such as a disc image or files fetched
+    /// ahead of time (see [`GameAssets::files`]).
+    pub fn load_from(source: &dyn FileSource, config: &MatchConfig) -> Result<Self, StartError> {
         let setup = config.setup()?;
-        let inner = Assets::load(directory.as_ref(), &setup.roster_descriptors(), setup.stage)
+        let inner = Assets::load(source, &setup.roster_descriptors(), setup.stage)
             .map_err(|e| StartError::Load(format!("{e:#}")))?;
         Ok(Self {
             inner: Arc::new(inner),
             stage: config.stage,
             characters: config.players.each_ref().map(|p| p.character),
         })
+    }
+    /// Every file [`GameAssets::load_from`] reads for this configuration.
+    pub fn files(config: &MatchConfig) -> Result<Vec<&'static str>, StartError> {
+        let setup = config.setup()?;
+        Ok(Assets::files(&setup.roster_descriptors(), setup.stage))
     }
     fn compatible(&self, config: &MatchConfig) -> bool {
         self.stage == config.stage

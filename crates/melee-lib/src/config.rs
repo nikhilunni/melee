@@ -59,6 +59,51 @@ pub enum Character {
     Mewtwo,
 }
 impl Character {
+    /// Every registered character, in the retail character select screen's
+    /// reading order (top row left to right, then the bottom row).
+    pub const ALL: [Self; 25] = [
+        Self::DrMario,
+        Self::Mario,
+        Self::Luigi,
+        Self::Bowser,
+        Self::Peach,
+        Self::Yoshi,
+        Self::DonkeyKong,
+        Self::CaptainFalcon,
+        Self::Ganondorf,
+        Self::Falco,
+        Self::Fox,
+        Self::Ness,
+        Self::IceClimbers,
+        Self::Samus,
+        Self::Zelda,
+        Self::Sheik,
+        Self::Link,
+        Self::YoungLink,
+        Self::Pichu,
+        Self::Pikachu,
+        Self::Jigglypuff,
+        Self::Mewtwo,
+        Self::GameAndWatch,
+        Self::Marth,
+        Self::Roy,
+    ];
+    /// The name as the game spells it.
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::CaptainFalcon => "Captain Falcon",
+            Self::DrMario => "Dr. Mario",
+            Self::IceClimbers => "Ice Climbers",
+            Self::YoungLink => "Young Link",
+            Self::DonkeyKong => "Donkey Kong",
+            Self::GameAndWatch => "Mr. Game & Watch",
+            other => other.name(),
+        }
+    }
+    /// How many costumes the character has; [`Costume`] indexes below this.
+    pub fn costume_count(self) -> u8 {
+        self.descriptor().costumes.len() as u8
+    }
     pub(crate) fn name(self) -> &'static str {
         match self {
             Self::Fox => "Fox",
@@ -134,6 +179,25 @@ pub enum Stage {
     PokemonStadium,
 }
 impl Stage {
+    pub const ALL: [Self; 6] = [
+        Self::Battlefield,
+        Self::FinalDestination,
+        Self::DreamLand,
+        Self::FountainOfDreams,
+        Self::PokemonStadium,
+        Self::YoshisStory,
+    ];
+    /// The name as the game spells it.
+    pub fn display_name(self) -> &'static str {
+        match self {
+            Self::FinalDestination => "Final Destination",
+            Self::Battlefield => "Battlefield",
+            Self::YoshisStory => "Yoshi's Story",
+            Self::DreamLand => "Dream Land N64",
+            Self::FountainOfDreams => "Fountain of Dreams",
+            Self::PokemonStadium => "Pokémon Stadium",
+        }
+    }
     pub(crate) fn descriptor(self) -> &'static crate::scene_stage::StageDescriptor {
         use crate::scene_stage::*;
         match self {

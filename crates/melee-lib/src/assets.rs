@@ -7,7 +7,36 @@ use hsd_anim::{
 use hsd_archive::{desc::read_public_jobj, Archive};
 use hsd_particle::bank::ParticleBank;
 use melee_ft::fighter::assets::{CharacterDescriptor, FighterAssets};
-use std::{fs, path::Path};
+use std::path::{Path, PathBuf};
+
+/// Where match assets come from: the disc's files by name (`PlCo.dat`).
+/// Native hosts read an extracted directory or a disc image; browser hosts
+/// fetch [`crate::GameAssets::files`] before loading and serve them from memory.
+pub trait FileSource {
+    fn read(&self, name: &str) -> Result<Vec<u8>>;
+}
+impl FileSource for Path {
+    fn read(&self, name: &str) -> Result<Vec<u8>> {
+        std::fs::read(self.join(name)).map_err(Into::into)
+    }
+}
+impl FileSource for PathBuf {
+    fn read(&self, name: &str) -> Result<Vec<u8>> {
+        self.as_path().read(name)
+    }
+}
+impl<T: FileSource + ?Sized> FileSource for &T {
+    fn read(&self, name: &str) -> Result<Vec<u8>> {
+        (**self).read(name)
+    }
+}
+impl FileSource for std::collections::BTreeMap<String, Vec<u8>> {
+    fn read(&self, name: &str) -> Result<Vec<u8>> {
+        self.get(name)
+            .cloned()
+            .with_context(|| format!("{name} was not fetched"))
+    }
+}
 
 pub struct Assets {
     /// FNV-1a over named source bytes in load order; diagnostic identity, not security.
@@ -41,20 +70,57 @@ pub struct FormArchive {
     pub archive: Archive,
     pub models: Vec<melee_gr::desc::ModelDesc>,
 }
+/// Files every match reads whatever its roster: the common fighter, item,
+/// interface and effect archives, and the fighter archives whose articles
+/// `scene_items` registers in every scene (Fox's and Falco's lasers and
+/// Yoshi's egg).
+const SHARED_FILES: [&str; 7] = [
+    "PlCo.dat",
+    "EfCoData.dat",
+    "IfAll.usd",
+    "ItCo.dat",
+    "PlFx.dat",
+    "PlFc.dat",
+    "PlYs.dat",
+];
+const STADIUM_FORM_FILES: [&str; 4] = ["GrPs1.dat", "GrPs2.dat", "GrPs3.dat", "GrPs4.dat"];
+
 impl Assets {
+    /// Every file [`Assets::load`] reads for this roster and stage, so a host
+    /// without synchronous file access can fetch them first.
+    pub fn files(
+        descriptors: &[&'static CharacterDescriptor],
+        stage_descriptor: &'static crate::scene_stage::StageDescriptor,
+    ) -> Vec<&'static str> {
+        let mut files: Vec<&'static str> = SHARED_FILES.to_vec();
+        files.extend(melee_ef::CHARACTER_EFFECT_FILES.iter().map(|f| f.file));
+        for descriptor in descriptors {
+            files.extend([descriptor.data_file, descriptor.animation_file]);
+            files.extend(descriptor.costumes.iter().map(|c| c.file));
+        }
+        files.push(stage_descriptor.file);
+        if stage_descriptor.kind == melee_types::GrKind::PStadium {
+            files.extend(STADIUM_FORM_FILES);
+        }
+        files.sort_unstable();
+        files.dedup();
+        files
+    }
     pub fn fighters(&self) -> &[FighterAssets] {
         &self.fighters
     }
 
     pub fn load(
-        files: &Path,
+        files: &dyn FileSource,
         descriptors: &[&'static CharacterDescriptor],
         stage_descriptor: &'static crate::scene_stage::StageDescriptor,
     ) -> Result<Self> {
         use std::hash::Hasher;
         let fingerprint = std::cell::RefCell::new(std::hash::DefaultHasher::new());
         let read = |name: &str| -> Result<Vec<u8>> {
-            let bytes = fs::read(files.join(name)).with_context(|| format!("loading {name}"))?;
+            let bytes = files
+                .read(name)
+                .with_context(|| format!("loading {name}"))?;
             let mut hash = fingerprint.borrow_mut();
             hash.write(name.as_bytes());
             hash.write(&[0]);
@@ -92,13 +158,11 @@ impl Assets {
                 let partner = crate::scene_fighter::SceneFighter::partner_for(owner)?;
                 let borrows = partner.kind == descriptor.kind
                     && !crate::scene_fighter::transforms(partner.kind);
-                borrows.then_some(
-                    melee_ft::fighter::assets::AnimationFallback {
-                        descriptor: owner,
-                        data,
-                        aj,
-                    },
-                )
+                borrows.then_some(melee_ft::fighter::assets::AnimationFallback {
+                    descriptor: owner,
+                    data,
+                    aj,
+                })
             });
             let resources =
                 FighterAssets::load_with_fallback(descriptor, &data, &common, &aj, fallback)
@@ -125,7 +189,7 @@ impl Assets {
         let stage_desc = (stage_descriptor.read)(&stage).map_err(|e| anyhow::anyhow!("{e}"))?;
         let particle_bank = ParticleBank::from_archive(&stage, "map_ptcl", "map_texg")?;
         let stage_forms = if stage_desc.kind == melee_types::GrKind::PStadium {
-            ["GrPs1.dat", "GrPs2.dat", "GrPs3.dat", "GrPs4.dat"]
+            STADIUM_FORM_FILES
                 .into_iter()
                 .map(|name| -> Result<FormArchive> {
                     let archive = archive(name)?;

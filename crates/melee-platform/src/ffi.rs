@@ -89,7 +89,7 @@ pub unsafe extern "C" fn melee_session_create(
         let path = unsafe { CStr::from_ptr(directory) }
             .to_str()
             .map_err(|e| e.to_string())?;
-        Session::new(path)
+        Session::new(&std::path::Path::new(path), Session::default_config())
     });
     match result {
         Ok(Ok(session)) => Box::into_raw(Box::new(Handle {

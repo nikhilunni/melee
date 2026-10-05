@@ -97,6 +97,7 @@ impl TickClock {
     }
 }
 pub struct Session {
+    seed: Seed,
     game: Match,
     presentation: Presentation,
     keyboard: Keyboard,
@@ -107,20 +108,25 @@ pub struct Session {
     failure: Option<String>,
 }
 impl Session {
-    pub fn new(directory: impl AsRef<Path>) -> Result<Self, String> {
-        let config = MatchConfig::versus(
+    /// The match the app starts when nothing else is chosen.
+    pub fn default_config() -> MatchConfig {
+        MatchConfig::versus(
             Stage::FinalDestination,
             [
                 PlayerConfig::new(Port::P1, Character::Fox),
                 PlayerConfig::new(Port::P2, Character::Marth),
             ],
         )
-        .with_seed(Seed(42));
-        let assets = GameAssets::load(directory, &config).map_err(|e| e.to_string())?;
+        .with_seed(Seed(42))
+    }
+    pub fn new(source: &dyn FileSource, config: MatchConfig) -> Result<Self, String> {
+        let assets = GameAssets::load_from(source, &config).map_err(|e| e.to_string())?;
         let recording = Recording::new(&config, &assets);
+        let seed = config.seed;
         let game = Match::new(&assets, config).map_err(|e| e.to_string())?;
         let presentation = Presentation::new(&game).map_err(|e| e.to_string())?;
         Ok(Self {
+            seed,
             game,
             presentation,
             keyboard: Keyboard::default(),
@@ -201,7 +207,7 @@ impl Session {
         ))
     }
     pub fn reset(&mut self) -> Result<(), String> {
-        self.game.reset(Seed(42)).map_err(|e| e.to_string())?;
+        self.game.reset(self.seed).map_err(|e| e.to_string())?;
         self.recording.reset();
         self.failure = None;
         self.paused = false;

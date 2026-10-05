@@ -15,7 +15,7 @@ fn ui_consumed_inputs_replay_after_pause_focus_and_reset() {
     let Some(files) = directory() else {
         return;
     };
-    let mut session = Session::new(&files).unwrap();
+    let mut session = Session::new(&files, Session::default_config()).unwrap();
     for _ in 0..110 {
         tick(&mut session).unwrap();
     }
@@ -54,7 +54,7 @@ fn ui_playtest_exports_first_fault_and_stops_until_reset() {
     let Some(files) = directory() else {
         return;
     };
-    let mut session = Session::new(&files).unwrap();
+    let mut session = Session::new(&files, Session::default_config()).unwrap();
     for _ in 0..110 {
         tick(&mut session).unwrap();
     }
