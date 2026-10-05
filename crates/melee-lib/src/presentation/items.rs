@@ -79,6 +79,21 @@ impl ArticleModel {
     pub fn tree(&self) -> &JObjTree {
         &self.states[self.selected]
     }
+    /// The root's SRT, as the item's own transform replaces it.
+    pub fn set_root_srt(
+        &mut self,
+        position: &hsd_types::Vec3,
+        rotation: &hsd_types::Vec3,
+        scale: &hsd_types::Vec3,
+    ) {
+        let tree = &mut self.states[self.selected];
+        let root = JObjId(0);
+        tree.set_translate(root, position);
+        tree.set_rotation_x(root, rotation.x);
+        tree.set_rotation_y(root, rotation.y);
+        tree.set_rotation_z(root, rotation.z);
+        tree.set_scale(root, scale);
+    }
     pub fn capture(
         &mut self,
         item: Option<&ItemCore>,

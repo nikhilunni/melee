@@ -981,6 +981,10 @@ impl Resources {
             .iter()
             .map(|(kind, archive)| (*kind, &**archive, self.get(*kind).model))
     }
+    /// Read-only: the kind's assets when this scene registered it.
+    pub fn try_get(&self, kind: ItemKind) -> Option<&ItemAssets> {
+        self.kinds.iter().find(|(k, _)| *k == kind).map(|(_, a)| a)
+    }
     pub fn get(&self, kind: ItemKind) -> &ItemAssets {
         &self
             .kinds

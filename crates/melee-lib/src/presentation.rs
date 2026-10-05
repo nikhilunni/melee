@@ -9,6 +9,12 @@ use melee_it::ItemDispatch;
 mod materials;
 mod shadows;
 mod sprites;
+mod stage;
+mod view;
+pub use stage::Fog;
+pub use view::ViewCamera;
+#[cfg(test)]
+mod stage_tests;
 use hsd_anim::jobj::{JObjId, JObjTree, MatrixPose, JOBJ_HIDDEN};
 pub use hsd_archive::visual::{PixelState, Texture, TextureCombiner, TextureLayer, Vertex};
 use hsd_archive::{
@@ -100,14 +106,23 @@ enum ModelSource {
     Fighter(usize),
     Effect(u32),
     Article(items::ArticleModel),
-    Stage(u8),
-    Static(u8, JObjTree),
+    /// A Ground model by scheduler key; `form` selects a Pokemon Stadium form
+    /// archive. The template poses a model the simulation has not created yet.
+    Stage {
+        key: u8,
+        map: u8,
+        form: Option<usize>,
+        template: Option<Box<melee_gr::last::animation::BackgroundAnimation>>,
+    },
     Item(melee_types::ItemKind, JObjTree),
+    /// An animated item whose model lives in the stage archive; its
+    /// `owner` is a slot among the live items of its kind.
+    StageItem(items::ArticleModel),
 }
 impl ModelSource {
     fn tree<'a>(&'a self, game: &'a Match) -> &'a JObjTree {
         match self {
-            Self::Article(held) => held.tree(),
+            Self::Article(held) | Self::StageItem(held) => held.tree(),
             Self::Effect(descriptor) => {
                 game.assets
                     .inner
@@ -118,8 +133,10 @@ impl ModelSource {
                     .tree
             }
             Self::Fighter(slot) => &game.engine.state().fighters[*slot].0.skeleton,
-            Self::Stage(map) => game.engine.state().stage_animations[map].pose_tree(),
-            Self::Static(_, tree) | Self::Item(_, tree) => tree,
+            Self::Stage { key, template, .. } => {
+                self::stage::animation(game, *key, template).pose_tree()
+            }
+            Self::Item(_, tree) => tree,
         }
     }
 }
@@ -143,6 +160,9 @@ pub struct Presentation {
     instances: Vec<[[f32; 4]; 4]>,
     instance_ranges: Vec<std::ops::Range<u32>>,
     camera_targets: [Option<[f32; 2]>; 2],
+    view: ViewCamera,
+    fog_desc: Option<melee_gr::desc::FogDesc>,
+    fog: Option<Fog>,
 }
 impl Presentation {
     pub fn new(game: &Match) -> Result<Self, PresentationError> {
@@ -164,6 +184,9 @@ impl Presentation {
             matrices: Vec::new(),
             visible: Vec::new(),
             camera_targets: [None; 2],
+            view: ViewCamera::capture(game),
+            fog_desc: stage::fog_desc(&game.assets.inner)?,
+            fog: None,
             instances: vec![[
                 [1.0, 0.0, 0.0, 0.0],
                 [0.0, 1.0, 0.0, 0.0],
@@ -182,36 +205,7 @@ impl Presentation {
             let tree = &game.engine.state().fighters[slot].0.skeleton;
             result.add_model(archive, &desc, tree, ModelSource::Fighter(slot))?;
         }
-        // Reuse live stage poses where available; static models retain their
-        // authored hierarchy. No renderer-owned animation clock or RNG.
-        for (map, desc) in assets.stage_desc.models.iter().enumerate() {
-            // A null map_head entry (Pokemon Stadium's forms) has no model
-            // here; its archive is read mid-match. TODO(presentation): forms.
-            if !desc.present {
-                continue;
-            }
-            if let Some(animation) = game.engine.state().stage_animations.get(&(map as u8)) {
-                result.add_model(
-                    &assets.stage,
-                    &desc.joint,
-                    animation.pose_tree(),
-                    ModelSource::Stage(map as u8),
-                )?;
-                continue;
-            }
-            let (mut tree, root) =
-                hsd_anim::load::load_joint_tree(&assets.stage, &desc.joint).map_err(error)?;
-            let wrapper = tree.alloc();
-            let scale = assets.stage_desc.parameters.map_scale;
-            tree.set_scale(wrapper, &hsd_types::Vec3::new(scale, scale, scale));
-            tree.add_child(wrapper, root);
-            result.add_model(
-                &assets.stage,
-                &desc.joint,
-                &tree,
-                ModelSource::Static(map as u8, tree.clone()),
-            )?;
-        }
+        result.add_stage_models(game)?;
         for (kind, archive, offset) in assets.items.visual_models() {
             if crate::scene_items::SceneItems::logic(kind).model_copies > 0 {
                 let visual = &assets.items.get(kind).visual;
@@ -240,6 +234,7 @@ impl Presentation {
             tree.set_scale(root, &hsd_types::Vec3::new(1.0, 1.0, 1.0));
             result.add_model(archive, &desc, &tree, ModelSource::Item(kind, tree.clone()))?;
         }
+        result.add_stage_items()?;
         for model in assets.effect_resources.visual_models() {
             if let Some(shape) = &model.definition.shape {
                 if shape
@@ -282,6 +277,14 @@ impl Presentation {
     }
     pub fn camera_targets(&self) -> &[Option<[f32; 2]>; 2] {
         &self.camera_targets
+    }
+    /// The stage fog for the captured tick, if any.
+    pub fn fog(&self) -> Option<Fog> {
+        self.fog
+    }
+    /// The retail main camera for the captured tick.
+    pub fn view_camera(&self) -> &ViewCamera {
+        &self.view
     }
     pub fn sprites(&self) -> &[Sprite] {
         &self.sprites.live
@@ -336,6 +339,8 @@ impl Presentation {
             self.background_color = stage.ground.fog;
         }
 
+        self.view = ViewCamera::capture(game);
+        self.fog = stage::fog(game, &self.fog_desc);
         self.shadow_floors = shadows::floors(game);
         self.sprites.capture(game)?;
         self.lighting.capture(game.tick());
@@ -370,6 +375,9 @@ impl Presentation {
                     hsd_types::Mtx::default()
                 };
                 held.capture(item, hand)?;
+            }
+            if let ModelSource::StageItem(held) = &mut model.source {
+                stage::capture_item(game, held)?;
             }
             if let ModelSource::Item(kind, _) = &model.source {
                 let start = self.instance_ranges[model.instance_group].start;
@@ -445,17 +453,17 @@ impl Presentation {
             let model = &mut self.models[part.model];
             let tree = model.source.tree(game);
             let mut ancestor = Some(part.owner);
-            let mut hidden = match (&model.source, &game.engine.state().stage) {
-                (
-                    ModelSource::Stage(map) | ModelSource::Static(map, _),
-                    crate::scene_stage::SceneStage::FinalDestination(stage),
-                ) => !stage.ground.live_maps[usize::from(*map)],
-                (ModelSource::Article(held), _) => !held.visible,
-                (ModelSource::Effect(_), _) => true,
+            let mut hidden = match &model.source {
+                ModelSource::Stage { key, .. } => !stage::live(game, *key),
+                ModelSource::Article(held) | ModelSource::StageItem(held) => !held.visible,
+                ModelSource::Effect(_) => true,
                 _ => false,
             };
             while let Some(id) = ancestor {
                 hidden |= tree.get(id).flags & JOBJ_HIDDEN != 0;
+                if let ModelSource::Stage { key, .. } = &model.source {
+                    hidden |= stage::hides_joint(game, *key, id);
+                }
                 ancestor = tree.parent(id);
             }
             self.visible[i] = self.meshes[i].culling != FaceCulling::Both
@@ -566,6 +574,11 @@ impl Presentation {
                 flags,
             } in hsd_archive::visual::read_polygons(archive, dobj.pobjdesc).map_err(error)?
             {
+                let (vertices, indices) = if indices.is_empty() {
+                    stage::point_quads(&vertices)
+                } else {
+                    (vertices, indices)
+                };
                 let resolve = |id| {
                     ids.get(&id)
                         .copied()
@@ -618,7 +631,8 @@ impl Presentation {
                     },
                     shadow_receiver: matches!(
                         self.models[model].source,
-                        ModelSource::Stage(0..=3) | ModelSource::Static(0..=3, _)
+                        ModelSource::Stage { map, .. }
+                            if !stage::is_background(self.assets.stage_desc.kind, map)
                     ),
                     culling,
                     vertices,
@@ -628,7 +642,8 @@ impl Presentation {
                     instance_group: self.models[model].instance_group,
                     background: matches!(
                         self.models[model].source,
-                        ModelSource::Stage(4..) | ModelSource::Static(4.., _)
+                        ModelSource::Stage { map, .. }
+                            if stage::is_background(self.assets.stage_desc.kind, map)
                     ),
                 });
                 self.parts.push(Part {

@@ -2333,6 +2333,14 @@ impl Simulation {
     pub(crate) fn state(&self) -> &InitialState {
         &self.runtime.state
     }
+    /// Read-only, for presentation: whether the Ground GObj with this
+    /// scheduler key (a map id, or a stage's extra key) currently exists.
+    pub(crate) fn stage_object_live(&self, key: u8) -> bool {
+        self.runtime
+            .stage_objects
+            .get(usize::from(key))
+            .is_some_and(Option::is_some)
+    }
     pub(crate) fn is_faulted(&self) -> bool {
         self.runtime.error.is_some()
     }

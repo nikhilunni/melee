@@ -32,8 +32,13 @@ impl Presentation {
                     let mut images = vec![descriptor.image];
                     let mut palettes = vec![descriptor.palette];
                     let archive = match &model.source {
-                        ModelSource::Stage(map) => {
-                            for program in game.engine.state().stage_animations[map]
+                        ModelSource::Stage {
+                            key,
+                            form,
+                            template,
+                            ..
+                        } => {
+                            for program in super::stage::animation(game, *key, template)
                                 .material_programs(part.owner, part.display)
                             {
                                 if let Some(tables) = program.texture_tables(descriptor.id) {
@@ -43,7 +48,10 @@ impl Presentation {
                                     );
                                 }
                             }
-                            Some(&self.assets.stage)
+                            Some(match form {
+                                Some(index) => &self.assets.stage_forms[*index].archive,
+                                None => &self.assets.stage,
+                            })
                         }
                         ModelSource::Effect(id) => {
                             let texture = &live.textures[index];
@@ -63,7 +71,7 @@ impl Presentation {
                                 .unwrap();
                             Some(effects::archive(&self.assets, definition.bank))
                         }
-                        ModelSource::Article(article) => {
+                        ModelSource::Article(article) | ModelSource::StageItem(article) => {
                             for texture in article.texture_states(part.owner, part.display, index) {
                                 images.push(texture.descriptor.image);
                                 palettes.push(texture.descriptor.palette);
@@ -76,14 +84,16 @@ impl Presentation {
                                         .copied(),
                                 );
                             }
-                            Some(
+                            Some(if matches!(model.source, ModelSource::StageItem(_)) {
+                                &self.assets.stage
+                            } else {
                                 self.assets
                                     .items
                                     .visual_models()
                                     .find(|(kind, _, _)| *kind == article.kind)
                                     .unwrap()
-                                    .1,
-                            )
+                                    .1
+                            })
                         }
                         _ => None,
                     };
@@ -97,9 +107,17 @@ impl Presentation {
                     palettes.dedup();
                     let mut decoder =
                         TextureDecoder::with_images(archive, std::mem::take(&mut model.images));
+                    let authored = (descriptor.image, descriptor.palette);
                     for image in images {
                         for &palette in &palettes {
-                            let decoded = decoder.image(image, palette).map_err(error)?;
+                            // Texture tables pair each image with its own palette;
+                            // a cross pairing may index past a smaller palette and
+                            // is never selected (Pokemon Stadium's screen).
+                            let decoded = match decoder.image(image, palette) {
+                                Ok(decoded) => decoded,
+                                Err(_) if (image, palette) != authored => continue,
+                                Err(e) => return Err(error(e)),
+                            };
                             if !bank.iter().any(|old| Arc::ptr_eq(old, &decoded)) {
                                 bank.push(decoded);
                             }
@@ -120,8 +138,13 @@ impl Presentation {
         for (material, part) in self.materials.iter_mut().zip(&self.parts) {
             let model = &self.models[part.model];
             material.overlay = match &model.source {
-                ModelSource::Stage(map) => {
-                    let overlay = &game.engine.state().stage_animations[map].overlay;
+                ModelSource::Stage { key, .. }
+                    if super::stage::is_screen_feed(game, *key, part.owner) =>
+                {
+                    super::stage::SCREEN_OFF
+                }
+                ModelSource::Stage { key, template, .. } => {
+                    let overlay = &super::stage::animation(game, *key, template).overlay;
                     if overlay.enabled {
                         overlay.color.map(|v| f32::from(v) / 255.0)
                     } else {
