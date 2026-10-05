@@ -231,7 +231,8 @@ fn read_attribute(r: Reader<'_>, offset: u32, a: &Attribute, v: &mut Vertex) -> 
             }
             Ok(size)
         }
-        9 | 10 | 13..=20 => {
+        // GX_VA_NBT (25) stores the normal, binormal and tangent together.
+        9 | 10 | 13..=20 | 25 => {
             let n = match a.semantic {
                 9 => match a.components {
                     0 => 2,
@@ -243,6 +244,10 @@ fn read_attribute(r: Reader<'_>, offset: u32, a: &Attribute, v: &mut Vertex) -> 
                     1 => 9,
                     _ => return Err(unsupported(offset, "normal component count", a.components)),
                 },
+                25 => match a.components {
+                    0 | 1 => 9,
+                    _ => return Err(unsupported(offset, "NBT component count", a.components)),
+                },
                 _ => match a.components {
                     0 => 1,
                     1 => 2,
@@ -251,7 +256,7 @@ fn read_attribute(r: Reader<'_>, offset: u32, a: &Attribute, v: &mut Vertex) -> 
             };
             let mut size = 0;
             for i in 0..n {
-                let frac = if a.semantic == 10 {
+                let frac = if matches!(a.semantic, 10 | 25) {
                     match a.component_type {
                         1 => 6,
                         3 => 14,
@@ -267,7 +272,7 @@ fn read_attribute(r: Reader<'_>, offset: u32, a: &Attribute, v: &mut Vertex) -> 
                 if a.semantic == 9 {
                     v.position[i] = value;
                 }
-                if a.semantic == 10 && i < 3 {
+                if matches!(a.semantic, 10 | 25) && i < 3 {
                     v.normal[i] = value;
                 }
                 if a.semantic == 13 {
@@ -296,7 +301,8 @@ fn display_list(
             continue;
         }
         let primitive = command & 0xf8;
-        if !matches!(primitive, 0x80 | 0x90 | 0x98 | 0xa0) {
+        // GX_POINTS (0xb8) keeps its vertices without triangles.
+        if !matches!(primitive, 0x80 | 0x90 | 0x98 | 0xa0 | 0xb8) {
             return Err(unsupported(cursor - 1, "GX primitive", u32::from(command)));
         }
         let count = u32::from(r.u16(cursor)?);
@@ -369,6 +375,7 @@ fn triangulate(primitive: u8, start: u32, count: u32, out: &mut Vec<u32>) -> Res
                 out.extend([start, start + i - 1, start + i]);
             }
         }
+        0xb8 => {}
         _ => return Err(invalid(start, "invalid primitive vertex count")),
     }
     Ok(())

@@ -8,6 +8,11 @@ use crate::{
 
 pub struct Light {
     pub descriptor: LightDesc,
+    /// Data offset of the `HSD_LightDesc` (Ground's light overrides name it).
+    pub descriptor_offset: u32,
+    /// Data offset of the first `HSD_LightAnim` (`anims[0]`; Ground's loop
+    /// table names it).
+    pub animation_offset: Option<u32>,
     pub has_animation_set: bool,
     pub color_animation: Option<AObjDesc>,
     pub position_animation: Option<AObjDesc>,
@@ -21,10 +26,10 @@ pub fn read_lights(archive: &Archive, offset: u32) -> Result<Vec<Light>> {
         if result.len() == 8 {
             return Err(invalid(cursor, "light set exceeds eight slots"));
         }
-        let descriptor = archive
+        let descriptor_offset = archive
             .link(entry)?
             .ok_or_else(|| invalid(entry, "missing light descriptor"))?;
-        let descriptor = LightDesc::read(archive, descriptor)
+        let descriptor = LightDesc::read(archive, descriptor_offset)
             .map_err(|_| invalid(entry, "invalid light descriptor"))?;
         if descriptor.next_offset.is_some() {
             return Err(invalid(entry, "chained light descriptors unsupported"));
@@ -36,6 +41,8 @@ pub fn read_lights(archive: &Archive, offset: u32) -> Result<Vec<Light>> {
             .flatten();
         let mut light = Light {
             descriptor,
+            descriptor_offset,
+            animation_offset: animation,
             has_animation_set: animation_set.is_some(),
             color_animation: None,
             position_animation: None,
