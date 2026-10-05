@@ -11,10 +11,11 @@ use melee_platform::{
     art::{ArtKind, Piece},
     catalog,
     disc::{DiscFiles, FileRequest},
+    preview,
     session::{panic_replay, Action},
     surface::WindowRenderer,
 };
-use std::time::Duration;
+use std::{future::Future, time::Duration};
 use wasm_bindgen::prelude::*;
 
 #[wasm_bindgen]
@@ -66,6 +67,32 @@ fn file_requests(requests: &[FileRequest]) -> Array {
 }
 fn error(message: impl AsRef<str>) -> JsError {
     JsError::new(message.as_ref())
+}
+
+/// Resolves in a later page task, so the page renders and handles input
+/// between two steps of preview work. A `MessageChannel` message rather
+/// than `setTimeout(0)`: timers are clamped (4 ms when nested, a second in
+/// hidden tabs), messages are not.
+fn next_task() -> impl Future<Output = ()> {
+    let promise = js_sys::Promise::new(&mut |resolve, _| {
+        let posted = (|| -> Result<(), JsValue> {
+            let constructor: js_sys::Function =
+                Reflect::get(&js_sys::global(), &"MessageChannel".into())?.dyn_into()?;
+            let channel = Reflect::construct(&constructor, &Array::new())?;
+            let receiver = Reflect::get(&channel, &"port1".into())?;
+            let sender = Reflect::get(&channel, &"port2".into())?;
+            Reflect::set(&receiver, &"onmessage".into(), &resolve)?;
+            let post: js_sys::Function = Reflect::get(&sender, &"postMessage".into())?.dyn_into()?;
+            post.call1(&sender, &0.into())?;
+            Ok(())
+        })();
+        if posted.is_err() {
+            let _ = resolve.call0(&JsValue::NULL);
+        }
+    });
+    async move {
+        let _ = wasm_bindgen_futures::JsFuture::from(promise).await;
+    }
 }
 
 /// `{characters: [{id, name, key, costumes, row, column}], stages: [{id, name, key}]}`.
@@ -186,7 +213,9 @@ impl WebApp {
     /// Open a disc from its header, file table and the image's size.
     pub fn open_disc(&mut self, header: &[u8], fst: &[u8], image_len: f64) -> Result<(), JsError> {
         let disc = DiscFiles::from_parts(header, fst, image_len as u64).map_err(error)?;
-        self.app.open_disc(disc).map_err(error)
+        self.app.open_disc(disc).map_err(error)?;
+        self.start_previews();
+        Ok(())
     }
     /// `{gameId, title, revision, cachedFiles, cachedBytes}` or null.
     pub fn disc_info(&self) -> JsValue {
@@ -206,8 +235,10 @@ impl WebApp {
     }
 
     // --- Menu art
-    /// `[{name, start, end}]`: the menu archives still to read; hand each
-    /// to `provide_file` (any screen) after `open_disc`.
+    /// `[{name, start, end}]`: the menu archives still to read, then the
+    /// files the stage previews render from (about 16 MB); hand each to
+    /// `provide_file` (any screen) after `open_disc`. `art_ready()` turns
+    /// true once the menu archives are in.
     pub fn art_files(&self) -> Array {
         file_requests(&self.app.art_requests())
     }
@@ -221,13 +252,20 @@ impl WebApp {
     /// `{width, height, data}` with `data` a `Uint8ClampedArray` of RGBA8
     /// (straight alpha, native size: `new ImageData(data, width, height)`).
     /// `kind` is `melee_art_e`'s number (0 portrait, 1 face, 2 stock,
-    /// 3 character emblem, 4 stage icon, 5 stage name, 6 stage emblem); `id`
-    /// a character or stage id. Throws until the art is read and where
-    /// retail has no such image.
+    /// 3 character emblem, 4 stage icon, 5 stage name, 6 stage emblem,
+    /// 7 stage preview); `id` a character or stage id. Throws until the art
+    /// is read and where retail has no such image. A stage preview (1920x1080,
+    /// opaque, rendered by the core once the disc's files are in and a
+    /// surface is set) is null until it is rendered, and stays null if it
+    /// could not be: poll it when redrawing, with a placeholder meanwhile.
     pub fn art(&mut self, kind: u32, id: u32, costume: u8) -> Result<JsValue, JsError> {
         let kind = ArtKind::from_u32(kind).ok_or(error("no art kind with that number"))?;
         let piece = Piece::new(kind, id, costume).map_err(error)?;
-        let image = self.app.art_image(piece).map_err(error)?;
+        let image = match (kind, self.app.art_image(piece)) {
+            (_, Ok(image)) => image,
+            (ArtKind::StagePreview, Err(_)) => return Ok(JsValue::NULL),
+            (_, Err(message)) => return Err(error(message)),
+        };
         let data = Uint8ClampedArray::new_with_length(image.rgba.len() as u32);
         data.copy_from(&image.rgba);
         Ok(object(&[
@@ -305,7 +343,14 @@ impl WebApp {
         file_requests(&self.app.pending_requests())
     }
     pub fn provide_file(&mut self, name: &str, bytes: Vec<u8>) -> Result<(), JsError> {
-        self.app.provide_file(name, bytes).map_err(error)
+        self.app.provide_file(name, bytes).map_err(error)?;
+        self.start_previews();
+        Ok(())
+    }
+    /// Whether every stage preview is rendered (or failed and left to the
+    /// page's placeholder).
+    pub fn stage_previews_ready(&self) -> bool {
+        self.app.stage_previews_ready()
     }
     /// The page could not read a file: back to stage select with `message`.
     pub fn fail_loading(&mut self, message: String) {
@@ -327,6 +372,7 @@ impl WebApp {
     pub fn set_surface(&mut self, surface: WebSurface) {
         self.surface = Some(surface.0);
         self.sync_scene();
+        self.start_previews();
     }
 
     // --- Match
@@ -442,6 +488,54 @@ impl Default for WebApp {
 }
 
 impl WebApp {
+    /// Render the stage previews once the disc's files are in and the
+    /// canvas gives a device: one step at a time between page tasks, on the
+    /// canvas's own device. Each preview logs its time to the console.
+    fn start_previews(&mut self) {
+        let Some(surface) = &self.surface else {
+            return;
+        };
+        let Some(job) = self.app.stage_preview_job() else {
+            return;
+        };
+        let gpu = surface.preview_gpu();
+        wasm_bindgen_futures::spawn_local(async move {
+            let start = js_sys::Date::now();
+            let previews = job.previews.clone();
+            // The longest stretch of work between two pauses: how long the
+            // page could not render.
+            let last = std::rc::Rc::new(std::cell::Cell::new(start));
+            let longest = std::rc::Rc::new(std::cell::Cell::new(0.0f64));
+            let pause = || {
+                let worked = js_sys::Date::now() - last.get();
+                if worked > longest.get() {
+                    longest.set(worked);
+                }
+                let last = std::rc::Rc::clone(&last);
+                async move {
+                    next_task().await;
+                    last.set(js_sys::Date::now());
+                }
+            };
+            preview::run(job, gpu, pause, js_sys::Date::now, |stage, result, ms| {
+                let line = preview::describe(stage, result, ms);
+                match result {
+                    Ok(_) => web_sys::console::log_1(&line.into()),
+                    Err(_) => web_sys::console::warn_1(&line.into()),
+                }
+            })
+            .await;
+            web_sys::console::log_1(
+                &format!(
+                    "stage previews: {} in {:.0} ms, at most {:.0} ms between pauses",
+                    if previews.ready() { "ready" } else { "incomplete" },
+                    js_sys::Date::now() - start,
+                    longest.get()
+                )
+                .into(),
+            );
+        });
+    }
     fn sync_scene(&mut self) {
         if let Some(surface) = &mut self.surface {
             surface.follow(&mut self.app);

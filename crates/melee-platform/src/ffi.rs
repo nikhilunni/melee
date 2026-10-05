@@ -17,7 +17,8 @@ use std::{
 };
 
 /// 2: menu art (`melee_app_art` and friends).
-pub const API_VERSION: u32 = 2;
+/// 3: stage previews (`MELEE_ART_STAGE_PREVIEW`, `melee_app_stage_previews_ready`).
+pub const API_VERSION: u32 = 3;
 
 pub struct Handle {
     app: App,
@@ -163,6 +164,19 @@ impl Handle {
             }
         }
     }
+    /// Start the stage previews on a background thread once the disc's
+    /// files are in and a surface gives a device; idempotent. A failure to
+    /// start leaves the previews pending: hosts keep their placeholders.
+    fn start_previews(&mut self) {
+        let Some(surface) = &self.surface else {
+            return;
+        };
+        if let Some(job) = self.app.stage_preview_job() {
+            if let Err(error) = crate::preview::spawn(job, surface.preview_gpu()) {
+                eprintln!("stage previews could not start: {error}");
+            }
+        }
+    }
     /// Keep the surface's scene in step with the app's session.
     fn sync_scene(&mut self) {
         if let Some(surface) = &mut self.surface {
@@ -304,6 +318,7 @@ pub unsafe extern "C" fn melee_app_open_disc(app: *mut Handle, path: *const c_ch
         // Menu art is optional: a read failure leaves placeholders, and
         // melee_app_load_art retries and reports it.
         let _ = h.app.load_art();
+        h.start_previews();
         Ok(())
     })
 }
@@ -313,13 +328,21 @@ pub unsafe extern "C" fn melee_app_open_disc(app: *mut Handle, path: *const c_ch
 #[no_mangle]
 pub unsafe extern "C" fn melee_app_load_art(app: *mut Handle) -> bool {
     let h = handle!(app);
-    h.perform(|h| h.app.load_art())
+    let ok = h.perform(|h| h.app.load_art());
+    h.start_previews();
+    ok
 }
 /// # Safety
 /// `app` is null or live.
 #[no_mangle]
 pub unsafe extern "C" fn melee_app_art_ready(app: *const Handle) -> bool {
     unsafe { app.as_ref() }.is_some_and(|h| h.app.art_ready())
+}
+/// # Safety
+/// `app` is null or live.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_stage_previews_ready(app: *const Handle) -> bool {
+    unsafe { app.as_ref() }.is_some_and(|h| h.app.stage_previews_ready())
 }
 /// # Safety
 /// `app` is null or live; `out` is null or writable.
@@ -544,6 +567,7 @@ pub unsafe extern "C" fn melee_app_attach_metal_layer(
             [width, height],
         ))?);
         h.sync_scene();
+        h.start_previews();
         Ok(())
     })
 }

@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 /* Bumped on any incompatible change; hosts check it at startup. */
-#define MELEE_API_VERSION 2
+#define MELEE_API_VERSION 3
 uint32_t melee_api_version(void);
 
 typedef struct melee_app_s melee_app_t;
@@ -84,7 +84,8 @@ typedef struct {
 } melee_disc_info_s;
 /* Open and validate an image (Melee NTSC-U 1.02 .iso/.gcm). On success the
  * screen becomes MELEE_SCREEN_CHARACTERS and the menu art is read (about
- * 5 MB; a read failure only leaves the art missing). */
+ * 5 MB, plus about 16 MB the stage previews render from; a read failure
+ * only leaves the art missing). */
 bool melee_app_open_disc(melee_app_t *app, const char *path);
 bool melee_app_disc_info(const melee_app_t *app, melee_disc_info_s *out);
 /* From the disc screen, continue with the open disc. */
@@ -111,6 +112,7 @@ typedef enum {
     MELEE_ART_STAGE_ICON = 4,       /* stage: 64x56 icon (48x48 for Past Stages) */
     MELEE_ART_STAGE_NAME = 5,       /* stage: 224x56 name plate (intensity) */
     MELEE_ART_STAGE_EMBLEM = 6,     /* stage: 64x64 faint series watermark (intensity) */
+    MELEE_ART_STAGE_PREVIEW = 7,    /* stage: 1920x1080 opaque picture, rendered (see below) */
 } melee_art_e;
 typedef struct {
     uint32_t width;
@@ -120,6 +122,16 @@ typedef struct {
 } melee_image_s;
 /* Whether every menu archive has been read. */
 bool melee_app_art_ready(const melee_app_t *app);
+/* Stage previews: retail has no 2D stage picture, so the core renders one
+ * per stage (the stage alone through a wide framing, 2x2 supersampled, sRGB, smooth:
+ * scale it with filtering). Rendering starts by itself once the disc is
+ * open and a surface is attached, on a background thread sharing the
+ * surface's GPU device, about a quarter second per stage. Until a preview is
+ * rendered melee_app_art(MELEE_ART_STAGE_PREVIEW) fails: poll it when
+ * redrawing and show a placeholder meanwhile. A preview that cannot be
+ * rendered stays unavailable. True once every preview is rendered or has
+ * failed. */
+bool melee_app_stage_previews_ready(const melee_app_t *app);
 void melee_app_art_progress(const melee_app_t *app, melee_load_progress_s *out);
 /* Read the menu archives again after a failure. */
 bool melee_app_load_art(melee_app_t *app);

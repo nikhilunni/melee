@@ -399,6 +399,7 @@ enum Autostart {
             print("art: ready \(model.core.artReady) portrait \(portrait.map { "\($0.width)x\($0.height)" } ?? "none") " +
                   "stage icon \(icon.map { "\($0.width)x\($0.height)" } ?? "none")")
             fflush(stdout)
+            reportStagePreviews(model: model, since: Date())
         }
         guard parts.count >= 3 else { return }
         for (player, key) in parts[1...2].enumerated() {
@@ -422,6 +423,20 @@ enum Autostart {
             print(line)
             fflush(stdout)
             exit(model.core.screen == .match && (hud?.tick ?? 0) > 0 ? 0 : 1)
+        }
+    }
+    /// Poll until the stage previews are rendered and say how long it took.
+    private static func reportStagePreviews(model: AppModel, since start: Date) {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+            guard model.core.stagePreviewsReady else {
+                return reportStagePreviews(model: model, since: start)
+            }
+            let sizes = model.stages.map { stage in
+                model.core.stagePreview(stage.id).map { "\($0.width)x\($0.height)" } ?? "none"
+            }
+            print(String(format: "previews: ready after %.2f s: %@", Date().timeIntervalSince(start),
+                         sizes.joined(separator: " ")))
+            fflush(stdout)
         }
     }
     private static func fail(_ message: String) {

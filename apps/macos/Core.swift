@@ -77,7 +77,7 @@ struct DiscInfo: Equatable {
 /// Menu art kinds (melee_art_e). Character kinds take a character id,
 /// stage kinds a stage id.
 enum ArtKind: UInt32 {
-    case portrait = 0, face, stock, characterEmblem, stageIcon, stageName, stageEmblem
+    case portrait = 0, face, stock, characterEmblem, stageIcon, stageName, stageEmblem, stagePreview
 }
 
 struct CoreError: LocalizedError {
@@ -184,7 +184,9 @@ final class Core {
                                   bitsPerComponent: 8, bitsPerPixel: 32, bytesPerRow: Int(raw.width) * 4,
                                   space: CGColorSpace(name: CGColorSpace.sRGB)!,
                                   bitmapInfo: CGBitmapInfo(rawValue: CGImageAlphaInfo.last.rawValue),
-                                  provider: provider, decode: nil, shouldInterpolate: false,
+                                  provider: provider, decode: nil,
+                                  // Stage previews are rendered pictures: smooth when scaled.
+                                  shouldInterpolate: kind == .stagePreview,
                                   intent: .defaultIntent)
         else { return nil }
         artCache[key] = image
@@ -200,6 +202,12 @@ final class Core {
     func stageIcon(_ stage: UInt32) -> CGImage? { art(.stageIcon, id: stage) }
     func stageName(_ stage: UInt32) -> CGImage? { art(.stageName, id: stage) }
     func stageEmblem(_ stage: UInt32) -> CGImage? { art(.stageEmblem, id: stage) }
+
+    // Stage previews (1920x1080, opaque), rendered by the core from the disc
+    // in the background once it is open; nil until each is ready. Poll when
+    // redrawing and show a placeholder meanwhile.
+    var stagePreviewsReady: Bool { melee_app_stage_previews_ready(app) }
+    func stagePreview(_ stage: UInt32) -> CGImage? { art(.stagePreview, id: stage) }
 
     // Character select
     var selection: Selection {

@@ -21,6 +21,7 @@ the game into. Hosts hold no game or menu rules.
             | session.rs    fixed 60 Hz ticks, input latching, pause, recording         |
             | surface.rs    WindowRenderer: one wgpu device per surface, scene follows  |
             | renderer.rs   the match renderer (shared with render_frame)               |
+            | preview.rs    stage previews rendered from the disc at runtime            |
             +-------------------+--------------------------------+----------------------+
                                 |                                |
                C API (ffi.rs, include/melee_platform.h)   wasm-bindgen (crates/melee-web)
@@ -83,20 +84,49 @@ size:
 | Stage name | 224x56 | series above the stage name, intensity |
 | Stage emblem | 64x64 | retail's faint watermark (alpha peaks at 119) |
 
+| Stage preview | 1920x1080 | rendered, not decoded (below); opaque, smooth: scale with filtering |
+
 Sheik has no portrait or face (retail picks her through Zelda's); her
 emblem is Zelda's, her stock icons her own. `examples/art_survey.rs` dumps
 every texture of an archive to `target/` for exploring.
+
+**Stage previews** (`preview.rs`, `MELEE_ART_STAGE_PREVIEW`): the disc
+has no 2D stage picture, so the core renders one per stage. The art
+requests also list the files the previews need (about 16 MB: the six
+stages, Jigglypuff twice, the common fighter and effect files; kept in the
+fetched-file cache, so a match on that stage reuses them). Once they are in
+and a surface exists, the core runs a short match per stage (Jigglypuff
+twice, 300 neutral ticks so platforms, water and backgrounds settle;
+Pokemon Stadium stays in its neutral form), builds a stage-only renderer
+(`Renderer::stage_only`: no fighters, items, effects, shadows or sprites;
+the match is only read) and draws it through a per-stage hero framing
+(`preview::framing`: visible width, interest height and a slightly
+elevated pitch, chosen by eye) at 3840x2160, then averages 2x2 blocks in
+linear light to 1920x1080 RGBA8 sRGB. The match and renderer are dropped
+after each image; the six images (8.3 MB each, about 50 MB) stay. It
+runs on the surface's own device: natively on a background thread (0.15 to
+0.3 s per stage on an M-series Mac, about 1.25 s for all six), on the web
+as steps between page tasks (a `MessageChannel` message, which hidden tabs
+do not throttle; 0.4 to 0.7 s per stage in Chrome, 3.4 s for all six, the
+page blocked at most about 0.35 s at a time by one step: posing the scene or
+building the renderer). Until a preview is rendered the art call fails (C)
+or returns null (wasm); a preview that fails stays so and is logged.
+`melee_app_stage_previews_ready` / `stage_previews_ready()` turn
+true when all six are settled. `examples/stage_previews.rs` writes them to
+`target/` for inspection (never commit them).
 
 Everything above is unit-tested without a GPU (`cargo test -p
 melee-platform`: flow, costume rules, config, caching, art requests) and
 on the real disc (`tests/disc_flow.rs`: open the image, load, play,
 rematch, reuse cache; `tests/disc_art.rs`: every piece's size, distinct
-picks decode to distinct images, determinism).
+picks decode to distinct images, determinism; `tests/stage_previews.rs`,
+skipped without a GPU adapter: every preview's size, variety, distinctness
+and determinism, compared in memory).
 
 ## The C API
 
 `crates/melee-platform/include/melee_platform.h`, version
-`MELEE_API_VERSION` (2; bump on any incompatible change, hosts check it at
+`MELEE_API_VERSION` (3; bump on any incompatible change, hosts check it at
 start). One opaque `melee_app_t` on one thread; plain structs out; static
 strings in catalog structs; calls that can fail return `bool` and leave
 the message in `melee_app_last_error`; user-facing notices come from
@@ -132,6 +162,9 @@ MELEE_APP_SMOKE_SECONDS=5 target/macos/Melee.app/Contents/MacOS/Melee
 
 Fewer fields stop earlier (`iso` at character select, `iso:P1:P2` with the
 picks made). Keys are the catalog's (`CaptainFalcon`, `FinalDestination`).
+With `MELEE_APP_SMOKE_SECONDS` set it also prints the art sizes and, once
+the stage previews are rendered, `previews: ready after N s` with their
+sizes (the core logs each preview's time on stderr).
 `MELEE_APP_PRINT_WINDOW=1` prints the window id for `screencapture -l`.
 
 ## Web (`crates/melee-web`)
@@ -211,8 +244,10 @@ FNV-1a of `diagnostics::inspect` and `observe`.
 - **Input.** Two players on one keyboard; gamepads are not supported yet.
 - **Rendering.** Some characters and stages cannot be presented yet;
   the app reports the error and returns to stage select.
-- **Art.** The core decodes the menu art (above) and both bindings hand
-  it out (`melee_app_art`, `WebApp.art`); the menu views do not draw it
-  yet.
+- **Art.** The core decodes the menu art and renders the stage previews
+  (above); both bindings hand them out (`melee_app_art`, `WebApp.art`).
+  On the web the preview steps run on the page's thread, so the menus
+  may skip frames for up to about 0.35 s at a time while the previews
+  render (3.4 s after the files are read).
 - The fetched-file cache keeps every file read for the session (about
   15 MB per new character/stage pair).
