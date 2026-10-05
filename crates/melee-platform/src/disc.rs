@@ -129,6 +129,9 @@ impl DiscFiles {
         Ok(bytes)
     }
 
+    pub fn is_cached(&self, name: &str) -> bool {
+        self.cache.contains_key(name)
+    }
     pub fn cached_files(&self) -> usize {
         self.cache.len()
     }

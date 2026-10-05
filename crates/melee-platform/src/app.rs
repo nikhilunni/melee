@@ -416,11 +416,14 @@ impl App {
         let (Some(loading), Some(disc)) = (self.loading.as_mut(), self.disc.as_mut()) else {
             return Err("nothing is loading".into());
         };
-        let index = loading
-            .pending
-            .iter()
-            .position(|r| r.name == name)
-            .ok_or_else(|| format!("{name} was not requested"))?;
+        let Some(index) = loading.pending.iter().position(|r| r.name == name) else {
+            // A host reading art and match files concurrently may hand over
+            // a file twice (IfAll.usd); the first copy already counted.
+            if disc.is_cached(name) {
+                return Ok(());
+            }
+            return Err(format!("{name} was not requested"));
+        };
         let len = bytes.len() as u64;
         disc.insert(name, bytes)?;
         loading.pending.remove(index);
@@ -832,6 +835,53 @@ mod tests {
         app.open_disc(disc()).unwrap();
         assert!(!app.art_ready());
         assert_eq!(app.art_requests().len(), 3);
+    }
+
+    #[test]
+    fn one_read_of_the_interface_archive_serves_the_match_and_the_art() {
+        let config = versus(Stage::Battlefield, Character::Fox, Character::Marth);
+        let mut builder = ImageBuilder::melee();
+        for name in melee_lib::GameAssets::files(&config).unwrap() {
+            let contents = if name == "IfAll.usd" {
+                empty_archive()
+            } else {
+                name.as_bytes().to_vec()
+            };
+            builder = builder.file(name, contents);
+        }
+        let image = builder.build();
+        let header = gc_disc::DiscHeader::parse(&image).unwrap();
+        let fst = header.fst_range().unwrap();
+        let disc = DiscFiles::from_parts(
+            &image[..gc_disc::HEADER_LEN as usize],
+            &image[fst.start as usize..fst.end as usize],
+            image.len() as u64,
+        )
+        .unwrap();
+        let mut app = App::new();
+        app.open_disc(disc).unwrap();
+        app.choose_character(0, Character::Fox).unwrap();
+        app.choose_character(1, Character::Marth).unwrap();
+        app.confirm_characters().unwrap();
+        app.choose_stage(Stage::Battlefield, 1).unwrap();
+        let pending = app.pending_requests();
+        assert!(pending.iter().any(|r| r.name == "IfAll.usd"));
+        for request in &pending {
+            let bytes = if request.name == "IfAll.usd" {
+                empty_archive()
+            } else {
+                request.name.as_bytes().to_vec()
+            };
+            app.provide_file(request.name, bytes).unwrap();
+        }
+        assert!(app.next_request().is_none(), "the match counted IfAll.usd");
+        assert!(
+            !app.art_requests().iter().any(|r| r.name == "IfAll.usd"),
+            "and so did the art"
+        );
+        // A concurrent art read handing it over again is harmless.
+        app.provide_file("IfAll.usd", empty_archive()).unwrap();
+        assert_eq!(app.load_progress().files_done as usize, pending.len());
     }
 
     #[test]
