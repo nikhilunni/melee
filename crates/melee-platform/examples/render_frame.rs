@@ -172,12 +172,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         }
         None => [1280, 720],
     };
-    let mut renderer = pollster::block_on(Renderer::new(
-        &adapter,
+    // `--samples N` overrides the MSAA count (the web host draws with 1).
+    let samples = match args.windows(2).find(|pair| pair[0] == "--samples") {
+        Some(pair) => pair[1].parse::<u32>()?,
+        None => melee_platform::renderer::sample_count(&adapter, format),
+    };
+    let (device, queue) = pollster::block_on(
+        adapter.request_device(&melee_platform::renderer::device_descriptor()),
+    )?;
+    let mut renderer = Renderer::with_device(
+        device,
+        queue,
+        samples,
         format,
         session.presentation(),
         [width, height],
-    ))?;
+    )?;
     let texture = renderer.device.create_texture(&wgpu::TextureDescriptor {
         label: Some("Offscreen preview"),
         size: wgpu::Extent3d {
@@ -217,7 +227,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             renderer.device.poll(wgpu::PollType::wait_indefinitely())?;
         }
         let per_frame = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
-        println!("{width}x{height}: {per_frame:.2} ms per frame over {frames} frames");
+        // Then pipelined, waiting once at the end: the frame rate a
+        // GPU-bound host reaches, without each frame's round trip.
+        let start = std::time::Instant::now();
+        for _ in 0..frames {
+            renderer.draw(&view, session.presentation());
+        }
+        let cpu = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+        renderer.device.poll(wgpu::PollType::wait_indefinitely())?;
+        let pipelined = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+        println!(
+            "{width}x{height}: {per_frame:.2} ms per frame over {frames} frames; {pipelined:.2} ms pipelined ({cpu:.2} ms CPU encoding)"
+        );
     }
     let buffer = renderer.device.create_buffer(&wgpu::BufferDescriptor {
         label: Some("Preview readback"),
