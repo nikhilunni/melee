@@ -227,3 +227,36 @@ for faults that offer Save Replay is fine).
   `prefers-reduced-motion`.
 - Both: the game view keeps rendering behind overlays (pause, results) where
   it does today; menus never block the render loop.
+
+## Refinements from the first build (web, 2026-10-04)
+
+Both hosts follow these; they supersede anything above that disagrees.
+
+1. **Placeholders:** an empty player panel shows our emblem large and
+   faint, not a silhouette. Sheik (no portrait on the disc) shows her stock
+   icon at an integer scale, pixel-sharp, over the faint emblem.
+2. **Hover vs taken:** hover/focus is a white inner ring plus an outer ring
+   and glow in the active player's colour; a taken tile is the solid port
+   ring with its coin. The two must never look alike.
+3. **One cursor:** pointer hover moves the keyboard cursor; only one tile is
+   highlighted at a time, as in retail.
+4. **Enter when ready:** once both players have picked, Enter starts from
+   anywhere on the grid (like Start). Re-picking is by click or Backspace.
+5. **Fade cut edges:** disc portraits are cropped flat at the right and
+   bottom; wherever they stand free (panels, VS, results) fade those edges
+   (~12% bottom, ~9% right).
+6. **Responsive panels:** the big "P1"/"P2" is ~26% of the panel height;
+   panels and the banner cap their width at ~175% of the window height on
+   ultra-wide windows.
+7. **Sizes:** player names 40 (not 34). The READY TO FIGHT banner is inset
+   32 from each side so both slanted ends show.
+8. **Previews in a slanted frame:** extend the counter-skewed image just
+   enough to cover the parallelogram (~6% of the width per side at 16:9).
+   Tiles crop the preview; pending tiles show the icon at 1x on the stage
+   gradient.
+9. **Error cards:** monospace only for fault details; load errors use UI
+   type in the danger card; "Copy details" is a small link on the left and
+   OK the accent button.
+10. **Face crops** (grid, HUD, results rows) are computed from each portrait
+    (top of the figure, centred on the mass of its top third), not tabled
+    per character.
