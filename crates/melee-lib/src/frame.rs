@@ -3880,9 +3880,10 @@ fn item_hits_by_items(
         };
         // Items sharing an owner (or both unowned) pass each other unless
         // the hitter reaches kindred items (xDCD b7) or the victim was
-        // dropped or thrown (xDCE b2). Teams are off.
-        let kindred =
-            victim.owner == other.owner && victim.owner_secondary == other.owner_secondary;
+        // dropped or thrown (xDCE b2). Teams are off. Two owners are one
+        // when their player is (ftLib_80086FD4, itcoll.c:555-560): Popo's
+        // and Nana's ice blocks pass each other.
+        let kindred = victim.owner == other.owner;
         if kindred && !other.strikes_kindred_items && !victim.hurt_by_owner {
             continue;
         }
