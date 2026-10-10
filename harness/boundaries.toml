@@ -522,3 +522,12 @@ stage = "FinalDestination"
 players = ["Mewtwo", "Fox"]
 stocks = 4
 seed = 2728150190
+
+[[boundary]]
+name = "start_ps_iceclimbers_peach4"
+cold = "start_ps_iceclimbers_peach4_cold"
+savestate = "harness/roms/start_ps_iceclimbers_peach4.sav"
+stage = "PokemonStadium"
+players = ["IceClimbers", "Peach"]
+stocks = 4
+seed = 3306616091

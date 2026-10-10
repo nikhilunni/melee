@@ -308,13 +308,20 @@ impl FighterCore {
             self.collision.data.floor.normal,
             map.floor_speed_scale(&self.collision.data),
         );
-        crate::physics::grounded::finish_ground_update(
-            &mut self.physics,
-            &self.collision.data,
-            &params,
-            map,
-            wind,
-        );
+        // Fighter_procUpdate's tail follows the footing, not the row
+        // (0x8006BA00: fp->ground_or_air): the partner's Blizzard row can
+        // run airborne (ftCo_800B0AF4).
+        if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            crate::physics::grounded::finish_ground_update(
+                &mut self.physics,
+                &self.collision.data,
+                &params,
+                map,
+                wind,
+            );
+        } else {
+            self.finish_air_update(assets, wind);
+        }
     }
     fn physics_escape(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase { assets, map, wind } = phase;

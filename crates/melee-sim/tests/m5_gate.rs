@@ -3660,7 +3660,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 553] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 558] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4524,6 +4524,15 @@ const CORPUS_V3_MATCHES: [(&str, usize); 553] = [
     ("corpus_v3_fd_gameandwatch_fox4_e3250caea_p0", 5537),
     ("corpus_v3_fd_gameandwatch_fox4_e45a17231_p2", 3745),
     ("corpus_v3_fd_gameandwatch_fox4_e188c0a9b_p2", 3806),
+    // ICECLIMBERS: an airborne Nana joins Popo's grounded Blizzard through
+    // its grounded entry (ftCo_800B0AF4 -> ftPp_SpecialLw_Enter): ft_80084F3C
+    // runs airborne, then ftPp_SpecialLw_Coll moves her to the aerial row, or
+    // (eeda0d0fc) keeps her in the grounded one until ft_8008A348 lands her.
+    ("corpus_v3_ys_iceclimbers_fox4_ea7c88fe6_p1", 123),
+    ("corpus_v3_ys_iceclimbers_fox4_ee133b82f_p0", 128),
+    ("corpus_v3_bf_iceclimbers_fox4_e7254fba4_p1", 132),
+    ("corpus_v3_ps_iceclimbers_peach4_eeda0d0fc_p2", 335),
+    ("corpus_v3_fd_iceclimbers_fox4_eeda0d0fc_p2_long", 335),
 ];
 
 #[test]

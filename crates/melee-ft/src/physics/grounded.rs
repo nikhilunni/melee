@@ -6,7 +6,7 @@ use crate::desc::{common::CommonFighterData, FighterAttributes};
 use hsd_types::Vec3;
 use melee_gr::wind::Wind;
 use melee_mp::CollMap;
-use melee_types::{mp::CollData, GroundOrAir};
+use melee_types::mp::CollData;
 
 #[derive(Clone, Copy, Debug)]
 pub struct GroundedParameters {
@@ -41,13 +41,19 @@ pub fn wait_physics(
 }
 
 /// ft_80084F3C (0x80084F3C): friction and projection, without shield invalidation.
+///
+/// Retail never reads `ground_or_air` here, and one caller is airborne:
+/// ftCo_800B0AF4 puts a falling Nana into the grounded Blizzard row
+/// (ftPp_SpecialLw_Enter), whose Phys is this function. Her ground speed
+/// and the normal of the floor she last stood on then replace her falling
+/// speed for that tick, before ftPp_SpecialLw_Coll moves her to the aerial
+/// row.
 pub fn friction_physics(
     state: &mut FighterPhysics,
     params: &GroundedParameters,
     normal: Vec3,
     terrain: f32,
 ) {
-    assert_eq!(state.ground_or_air, GroundOrAir::Ground);
     let friction = wait_friction(
         state.ground_velocity,
         params.friction,

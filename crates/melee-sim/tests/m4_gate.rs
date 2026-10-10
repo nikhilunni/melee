@@ -1628,6 +1628,19 @@ fn start_ps_peach_particle_draw_order() {
     particle_rng_sites_with_ledger("start_ps_peach_fox4", 600, "ledger600");
 }
 
+/// Ice Climbers vs Peach on Pokemon Stadium: the benchmark matchup
+/// (`sim_bench throughput`) and the boundary of the witness where Nana runs
+/// the grounded Blizzard row airborne.
+#[test]
+fn start_ps_iceclimbers_peach4_cold_600() {
+    movement_gate_ticks("start_ps_iceclimbers_peach4_cold", 600);
+}
+
+#[test]
+fn start_ps_iceclimbers_peach_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_ps_iceclimbers_peach4", 600, "ledger600");
+}
+
 /// Ice Climbers vs Fox on Yoshi's Story: every think of Nana's asks whether
 /// her island's joint moved (ftCo_800A2718 -> mpIsland_8005AC8C, 0x8005AC8C).
 #[test]

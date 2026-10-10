@@ -87,18 +87,25 @@ pub fn play_voice(f: &mut Fighter, id: u32) {
     });
 }
 
-/// ft_8008A2BC on the ground, ftCo_Fall_Enter in the air.
+/// ft_8008A2BC from a grounded row, ftCo_Fall_Enter from an aerial one.
+///
+/// A grounded row is not always on the ground: the partner joins the
+/// Blizzard through its grounded entry whatever her footing
+/// (ftCo_800B0AF4), and ftPp_SpecialLw_Coll keeps that row while the floor
+/// she last stood on still supports her. ft_8008A348 (8008A348) then lands
+/// her first (ftCommon_8007D7FC) and enters Wait.
 pub fn finish(
     f: &mut Fighter,
     assets: &FighterAssets,
     air: bool,
 ) -> melee_ft::fighter::assets::Result<()> {
-    let state = if air {
-        melee_types::CommonMotionState::Fall
-    } else {
-        melee_types::CommonMotionState::Wait
-    };
-    f.change_motion_state(state.into(), assets)
+    if air {
+        return f.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets);
+    }
+    if f.physics.ground_or_air == melee_types::GroundOrAir::Air {
+        f.core.land();
+    }
+    f.change_motion_state(melee_types::CommonMotionState::Wait.into(), assets)
 }
 
 /// ft_80082708 (80082708): ordinary ground collision that lets the fighter
