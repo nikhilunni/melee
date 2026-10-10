@@ -121,6 +121,7 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
         || name.starts_with("held_item_")
         || REPLAY_BRANCH_WITNESSES.iter().any(|(n, _)| *n == name)
         || name.starts_with("ness_")
+        || name.starts_with("pair_light_hit_")
         || name.starts_with("mewtwo_")
         || matches!(
             name,
@@ -979,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 514] = [
+const MATRIX_WITNESSES: [(&str, usize); 517] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1779,6 +1780,19 @@ const MATRIX_WITNESSES: [(&str, usize); 514] = [
     ("gamewatch_ice_mashout_fd_fox4", 434),
     ("gamewatch_ice_hit_fd_fox4", 460),
     ("gamewatch_ice_firethaw_fd_fox4", 464),
+    // ftCo_8008EC90 (ftCo_Damage.c:875-880): a captured fighter, processed
+    // before its captor, takes a hit under PlCo +3C0 on the tick its captor
+    // is launched. It is thrown off by the captor's throw record 1
+    // (ftCo_800DE854, knockback from its percent with the hit's damage
+    // already taken) and the captor follows x1828 = 1. Fox throws Ness into
+    // Ness's own PK Fire pillar (whose creation precedes the bolt's
+    // efLib_DestroyAll in the generator list); Fox's grab reaches Ness on
+    // the tick PK Thunder's head appears, and an unowned segment's electric
+    // hit keeps its hitlag scale (x1960) through the record's element; Fox
+    // throws Popo while Nana's smash launches Fox on Yoshi's Story.
+    ("pair_light_hit_captor_launched_pkfire_fd_ness_fox4", 1875),
+    ("pair_light_hit_captor_launched_thunder_fd_ness_fox4", 1678),
+    ("pair_light_hit_captor_launched_ys_iceclimbers_fox4", 1250),
 ];
 
 #[test]
@@ -2178,6 +2192,13 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_ness_fox4_e05ae623b_p0", 6001),
     ("corpus_v3_fd_ness_fox4_ef89b3e70_p0", 6001),
     ("corpus_v3_fd_ness_fox4_e8827478e_p2", 6001),
+    // Explorer: a light hit on captured Ness while his captor Fox is
+    // launched (ftCo_8008EC90, ftCo_Damage.c:875-880; see the
+    // pair_light_hit_captor_launched_* scenes in MATRIX_WITNESSES), as the
+    // explorer cut them, and a whole match that passes through one.
+    ("corpus_v3_fd_ness_fox4_e7b868c1e_p1", 1575),
+    ("corpus_v3_fd_ness_fox4_ee1f42459_p2", 1378),
+    ("corpus_v3_fd_ness_fox4_e336c503c_p1", 3695),
 ];
 
 #[test]
@@ -3668,7 +3689,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 580] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 581] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4574,6 +4595,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 580] = [
     ("corpus_v3_ys_iceclimbers_fox4_e929b49af_p0", 382),
     ("corpus_v3_fd_iceclimbers_fox4_e75fb4a9a_p2", 435),
     ("corpus_v3_ys_iceclimbers_fox4_e1daf2f01_p0", 418),
+    // Fox throws Popo as Nana's smash launches Fox: the light hit on the
+    // captured member whose captor is launched (ftCo_Damage.c:875-880).
+    ("corpus_v3_ys_iceclimbers_fox4_e0c0cbed8_p0", 950),
 ];
 
 #[test]

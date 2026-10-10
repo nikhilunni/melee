@@ -77,11 +77,35 @@ pub fn resolve_linked_hit(
             if fighter.combat.pending_from_captor || fighter.combat.frame_damage < LIGHT_HIT_DAMAGE
             {
                 if partner_launched {
-                    // ftCo_8008EC90 (8008ED9C..): the captor's own launch
-                    // (inlineB0 pair order 3, or ftCo_800DE854) is unported.
-                    unimplemented!(
-                        "ftCo_8008EC90: a light hit on a captured member whose captor is launched"
+                    // inlineB0(captor), ftCo_Damage.c:866-874: an armoured
+                    // captor keeps the grab and follows x1828 = 3.
+                    if partner.combat.armor != 0.0 {
+                        unimplemented!(
+                            "ftCo_8008EC90 (ftCo_Damage.c:866-874): a light hit on a captured \
+                             member whose armoured captor is launched (x1828 = 3)"
+                        );
+                    }
+                    // ftCo_Damage.c:875-880: the captor's launch throws this
+                    // fighter off with its throw record 1 (ftCo_800DE854),
+                    // then ftCo_800DCE34(captor, gobj) and this fighter's
+                    // launch; the captor follows x1828 = 1.
+                    //
+                    // This is the fighter's own ProcessHit, which took the
+                    // hit's damage first (Fighter_UnkTakeDamage_8006CC30,
+                    // fighter.c:2856): ftColl_80079C70 reads x1830_percent
+                    // with it, and the record's damage adds after it.
+                    let own_damage = hit.percent_damage;
+                    fighter.core.take_percent_damage(own_damage);
+                    fighter.combat.pending_percent_taken = true;
+                    take_captor_throw_hit(fighter, partner, fighter_assets, partner_assets);
+                    assert!(
+                        fighter.combat.pending.as_ref().is_some_and(|h| h.knockback != 0.0),
+                        "ftCo_800DE854: throw record 1 without knockback"
                     );
+                    release_pair(partner, fighter, fighter_assets, map);
+                    fighter.combat.pair_order = Some(PairHitOrder::Launch);
+                    partner.combat.pair_order = Some(PairHitOrder::Launch);
+                    return Ok(false);
                 }
                 return Ok(keep_capture_on_light_hit(fighter, partner, partner_assets));
             }
@@ -178,11 +202,15 @@ fn take_captor_throw_hit(
         captor.commands.throw_damage_counts[1],
     );
     let damage = descriptor.damage;
-    let hit = captured
-        .combat
+    let combat = &mut captured.core.combat;
+    let hit = combat
         .pending
         .as_mut()
         .expect("ftCo_800DE854: the captured fighter's hit");
+    // x1960_vibrateMult is ftColl_8007A06C's, from the hit this record
+    // replaces: an electric one keeps its hitlag scale.
+    combat.pending_electric_hitlag =
+        hit.descriptor.element == melee_types::HitElement::Electric;
     hit.descriptor = descriptor;
     hit.knockback = knockback;
     hit.facing = -captor.physics.facing;

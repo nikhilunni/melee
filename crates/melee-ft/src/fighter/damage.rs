@@ -90,6 +90,15 @@ pub struct CombatState {
     pub light_capture_hit: bool,
     /// x1828: the grab partner's ftCo_8008EC90 order for this ProcessHit.
     pub pair_order: Option<super::grab_damage::PairHitOrder>,
+    /// Fighter_UnkTakeDamage_8006CC30 already ran for the pending hit:
+    /// `resolve_linked_hit` needed x1830_percent as ftCo_8008EC90 sees it
+    /// (fighter.c:2856, before ftCo_800DE854's knockback), so the reaction
+    /// does not add x1838_percentTemp again.
+    pub pending_percent_taken: bool,
+    /// x1960_vibrateMult is PlCo +1A4 although the pending hit is no longer
+    /// electric: ftCo_800DE854 replaced an electric hit's element with the
+    /// captor's throw record's, not the scale ftColl_8007A06C set.
+    pub pending_electric_hitlag: bool,
     /// The captor (spawn number) that ftCo_800DE2F0 launches once this
     /// fighter's ProcessHit has launched it out of that captor's grab.
     pub release_captor: Option<u32>,
@@ -976,7 +985,8 @@ impl Fighter {
                 unimplemented!("ftCo_8008EC90: a hit on Egg Lay's catch");
             }
             // ftColl_8007A06C: only the electric-hit victim gets x1960 = PlCo +1A4.
-            if hit.descriptor.element == melee_types::HitElement::Electric {
+            let replaced_electric = std::mem::take(&mut self.core.combat.pending_electric_hitlag);
+            if hit.descriptor.element == melee_types::HitElement::Electric || replaced_electric {
                 hitlag_multiplier = assets.damage.electric_hitlag_scale;
             }
             if hit.knockback != 0.0 {
@@ -2308,7 +2318,8 @@ impl FighterCore {
             REACTIONS[level][height]
         };
         // Fighter_ProcessHit: Fighter_UnkTakeDamage_8006CC30(fp, x1838_percentTemp).
-        if !percent_pending {
+        let percent_taken = std::mem::take(&mut self.combat.pending_percent_taken);
+        if !percent_pending && !percent_taken {
             self.physics.percent += hit.percent_damage;
         }
         let angle = assets.damage.launch_angle(
