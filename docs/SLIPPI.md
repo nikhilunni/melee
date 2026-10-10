@@ -1365,21 +1365,23 @@ The port names an item victim by its unique id, and the hitbox strikes
 again (spark, glance roll, bounce spark). Following retail needs the GObj
 allocator's free list, which every GObj kind shares.
 
-**Open, not diagnosed.** `FALCO/Game_20190420T213132` (2336;
-`slp_fod_fox_falco_t2400`, local data, follows the replay). Fox techs
-Fountain of Dreams' wall into PassiveWallJump at 2333 out of DamageFlyTop:
-the particle dump's newest generators are 261 and then 57 and 58 in retail
-(115 particle draws on the tick), 58, 59 and 354 and then 261 in the port
-(111). Fox is smoking from Falco's Fire Bird, so two requests meet on that
-tick: the body smoke (`Attached { id: 1043 }`, which the port flushes first)
-and the tech's flash (efAsync 0x41D from ftCo_800C1E64, model 0xF). Either
-their order or the flash model's first frames differ; not followed further.
+**Fixed 2026-10-10.** `FALCO/Game_20190420T213132` (2336, now complete;
+`slp_fod_fox_falco_t2400`). Fox techs Fountain of Dreams' wall while smoking
+from Falco's Fire Bird. ftCo_800C1E64 calls efAsync_Spawn (0x800C1F88, the
+flash 0x41D) after Fighter_ChangeMotionState (0x800C1F1C), whose color step
+(ftCo_800C0408) has already queued the smoke (0x413); the queue is newest
+first, so retail creates the flash's generator before the smoke's. The port
+pushed the flash ahead of the smoke. The ceiling tech (ftCo_800C23FC) has
+the same shape and the same fix, without a retail witness.
 
-`LINK/16_45_19 [YETI] Fox + Link (FD)` (7127; `slp_fd_fox_link_t7200`,
-local data, follows the replay). Fox's Reflector hits Link below the stage
-at 7125 (4.3 to 8.25 percent): the port's percent display draws its eight
-shake values on that tick and its particles 100; retail draws no shake
-there and 92 (the port has one generator more, 332). Not followed further.
+`LINK/16_45_19 [YETI] Fox + Link (FD)` (7127, now complete;
+`slp_fd_fox_link_t7200`). The fault was Link's, not the Reflector's: Link
+is hit out of his aerial hookshot, and it_802A2B10 removes the article with
+Item_8026A8EC (0x802A2B88), whose efLib_DestroyAll (0x8026A988) leaves the
+generator insertion cursor at the list's tail. The hit's electric sparks
+then go in behind the head and do not emit on that tick; the port had them
+emit (child generator 332, eight extra draws). Retail draws the percent
+shake on 7126 as the port does.
 
 **Retail in Dolphin equals the port; the console drew otherwise.** As with
 the wall tether above: `PIKACHU/13_03_44 Samus + Pikachu (FD)` played back

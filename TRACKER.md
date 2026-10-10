@@ -5,7 +5,7 @@ Legend: `[ ]` todo, `[~]` in progress (add date), `[x]` done, `[!]` blocked
 and what is next. Finished work lives in git history and `docs/PORT_NOTES/`;
 do not keep a session log here.
 
-## Current state (2026-10-04, third Slippi wave and four characters)
+## Current state (2026-10-10, fourth Slippi wave: Ice Climbers, Ness, effect order)
 
 - **25 of 26 characters and all six tournament stages run bit-exact.**
   Registered: Fox, Falco, Marth, Roy, Captain Falcon, Ganondorf, Peach,
@@ -17,12 +17,13 @@ do not keep a session log here.
   and explorer matches.
 - **Slippi replays** (every tick's Pre Frame seed is checked, so a complete
   game has no random-stream drift):
-  - `~/melee-data/replays/public-v3.7` (108 games): **106 complete**, 98.4%
+  - `~/melee-data/replays/public-v3.7` (108 games): **107 complete**, 99.1%
     of frames;
   - `~/melee-data/replays/public-v3.7-b` (502 games, sampled 2026-10-03;
-    triage in its `_triage/` folder): **396 complete**, 83.7% of frames
-    (247 when sampled); 48 are refused at setup (unregistered Kirby,
-    online games, doubles, CPU players).
+    triage in its `_triage/` folder): **409 complete**, 85.8% of frames
+    (247 when sampled); 58 diverge, 2 stop at an unported branch, 33 are
+    refused at setup (unregistered Kirby, online games, doubles, CPU
+    players, other stages, one setup-seed mismatch).
 - **Console codes a replay does not record are read from its frames** by a
   dry pass that compares the candidate setups and then runs the whole
   comparison under one (never a switch mid-run; the report prints each
@@ -34,10 +35,13 @@ do not keep a session log here.
   magnifier's damage tick and some star-KO positions follow display passes a
   console skipped, which a replay does not record; a few Samus tether games
   where retail in Dolphin equals the port but the console drew otherwise.
-- Gates at the checkpoint (2026-10-04): release workspace 1743/0 (incl.
-  `m4_gate` 316 and `m5_gate` 286), clippy clean, pytest 301, schema check
-  clean. Perf gate passes: 6.55 MB stripped (size floor raised by the
-  user for the five new characters), 19.9 ms per 600 ticks, 163 ms load.
+- Gates at the checkpoint (2026-10-10): release workspace 1780/0 (incl.
+  `m4_gate` 318 and `m5_gate` 286), clippy clean, pytest 301, schema check
+  clean. **The debug gate is red**: eight debug test binaries (`melee-lib`
+  lib/allocation/api, `melee-sim` alloc_gate and m2-m5) overflow the 2 MB
+  test-thread stack; they pass with `RUST_MIN_STACK` of 3 MB. The same
+  overflow is on c39611fc, so it predates this wave (Backlog). The perf
+  gate was not run at this checkpoint.
 - Tooling (`CLAUDE.md` "Slippi replays", `docs/SLIPPI.md`):
   - `make_boundary.py`: any stage, characters, costumes; with
     `--no-register`, ports, Gecko codes, spawn rule, timer, and
@@ -54,23 +58,43 @@ do not keep a session log here.
 
 ## Next (recommended order)
 
-1. [~] **Slippi corpus.** Remaining stops in `public-v3.7-b`, by kind:
-   - RNG drift with no shared cause left (each a separate fault): the
-     hit-log victim keyed by GObj address (retail reuses a freed address;
-     the port keys by unique id), Fox's wall tech while smoking from Fire
-     Bird, Fox's Reflector hitting Link below the stage, PK Thunder's trail
-     generator order, Ice Climbers explorer faults (Blizzard puffs, Ice
-     Shot particles, a Nana behaviour-18 choice, a staleness difference);
-   - Ice Climbers: Nana position and seed stops after KO credit;
-   - six HNC Fountain of Dreams games created both side platforms level
-     (code text not found; a scratch experiment matches two fully);
+1. [~] **Slippi corpus.** Fixed 2026-10-10: the Ice Climbers explorer
+   faults (one player's ice blocks pass each other, the block's efAsync at
+   link 9, a shared stale table within one proc, behaviour 18's x221A_b3,
+   the Ice spark on a Shy Guy, the grounded Blizzard row airborne, the ice
+   block's shield bounce, Nana leaving the revival platform, her Belay
+   hang's ECB lock, a sleeping Nana's single revival slot), PK Thunder's
+   and PK Fire's generator order, `ftCo_8008EC90` (unarmoured captor), the
+   wall-tech flash order and Link's hookshot removal. Remaining stops in
+   `public-v3.7-b` (58 diverge; the checkpoint's batch is the list):
+   - the hit-log victim keyed by GObj address (retail reuses a freed
+     address; the port keys by unique id): a serial task, it can move every
+     scenario;
+   - Ice Climbers, about ten games: follower stops during Popo's Ice Shot
+     (341/342), Nana sliding from a laser on Fountain of Dreams' moving
+     platform, seed drift with Nana alone on a platform, `ftCo_800AC5A0`
+     (steering with no knockback, unported); two one-ulp Nana position
+     stops are not shown to be port faults (retail in Dolphin equals the
+     port, `docs/SLIPPI.md`);
+   - five games stop at EntryStart/Entry on Fountain of Dreams (the level
+     side platforms code, text not found; a scratch experiment matches two);
+   - known causes not yet fixed: Yoshi's plain GuardOn keeps stale
+     powershield scratch (`slp_ps_fox_yoshi_t1300`, `docs/SLIPPI.md`);
+     Game & Watch's seed drift at tick 5464 (`docs/PORT_NOTES/GAMEWATCH.md`);
+   - explorer faults with recorded witnesses and no owner: "cliff camera
+     scratch missing" (`procs.rs:252`), `ftCo_800DC920` (a thrown fighter's
+     constraint release on death, `life.rs:705`), `ftCo_800B732C` (a target
+     on a ledge above the CPU), "holding an item" in DamageIce / Catch /
+     FlyReflectWall (not audited);
    - the 2019 Dream Land NeutralSpawn row has no Gecko text, so those games
      cannot be bridged; Stadium consoles that set per-player spawn points
      cannot be bridged until `--retail-inputs` carries the spawn point;
-   - unported: a light hit on a grabbed fighter whose captor is launched
-     (`ftCo_8008EC90`, Ness's PK Thunder), the sliding Samus bomb, Dr.
-     Mario's neutral special while holding an item, a frozen fighter
-     leaving the top, Mr. Saturn's idle and slide states.
+   - unported: `ftCo_8008EC90` with an armoured captor (x1828 = 3), the
+     sliding Samus bomb, a special while holding an item (Dr. Mario's
+     neutral special), a frozen fighter leaving the top, Mr. Saturn's idle
+     and slide states;
+   - the ECB lock is counted only inside collision callbacks: other states
+     with an empty callback may have the gap fixed for Nana's Belay hang.
    Then a newer corpus: Slippi Online (per-frame RNG sync, netplay codes)
    and Gecko-list (3.3+) code detection instead of inference.
 2. [ ] **Kirby**, last: copy abilities need every copied character's
@@ -167,18 +191,24 @@ stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
   bans std float math); `tools/wasm-check.sh` diffs match hashes.
 ## Backlog
 
-- [ ] Benchmark faults (`sim_bench throughput`, random inputs): Ice
-      Climbers vs Peach on Stadium hits `grounded.rs:50` (Air == Ground
-      assertion, possibly a real bug), `itClimbersIce` shield bounce
-      (unimplemented) and `ftCoD5A30` revival platform reaching the floor
-      (unimplemented); 5 faults per 60k ticks, deterministic.
+- [ ] Debug gate: debug test binaries overflow the default 2 MB
+      test-thread stack (pass at 3 MB); find the large frame or set the
+      stack size for tests. Predates the 2026-10-10 wave.
+- [ ] Untracked local scenarios (`harness/scenarios`, about 140 after this
+      wave): most gate exact and are unregistered (explorer cases for DK,
+      Link, Mewtwo, Yoshi, Falcon; 8 `samus_*`; camera and widescreen; 25
+      replay start boundaries; 10 `slp_*` bridges). Run `particle-sites`
+      and register them. Five `slp_*` bridges need `frames` cut to where
+      retail's match ended. `x.toml` and `bridged.toml` are fixtures a
+      pytest run leaked from `test_replay_bridge.py`.
 - [ ] Perf gate: stripped `melee-sim` is 6,939,624 bytes, over the
       6,766,519 ceiling (user decides whether to raise `REVIEWED_SIZE`).
 - [ ] `Match` is 96 MB and clone/new/reset cost 8-10 ms; a smaller state
       would make rollouts and tree search cheap.
 
 - [ ] CI: `cargo gate`, clippy, harness pytest, `gen_schema.py --check`.
-- [ ] 109 `unimplemented!` boundaries remain (26 in `melee-ft`): each is a
+- [ ] 268 `unimplemented!` call sites (101 in `melee-ft`, 43 in `melee-cpu`;
+      counted 2026-10-10 before this wave, comments excluded): each is a
       branch no gated scenario reaches; port them as explorer faults or new
       content reach them.
 - [ ] `melee-cpu`: CPU AI (`ftCo_0A01.c`, `ftcpuattack.c`, `ftcmdscript.c`).
