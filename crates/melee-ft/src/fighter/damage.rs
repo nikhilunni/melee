@@ -126,6 +126,11 @@ pub struct CombatState {
     /// hitlag_cb / post_hitlag_cb, cleared by every motion change
     /// (fighter.c:1381-1383). They carry SDI during and ASDI after hitlag.
     pub hitlag_callbacks: HitlagCallbacks,
+    /// x221A_b3: in the hitlag of a hit taken with knockback
+    /// (Fighter_ProcessHit's bool2, fighter.c:2980), whatever the reaction:
+    /// a launch, or a captor's hit that keeps the grab. Cleared when that
+    /// hitlag ends (fighter.c:1417). The CPU's tumble behaviour reads it.
+    pub struck_hitlag: bool,
     /// Fighter +1964: special shield minimum hitlag, consumed by ProcessHit.
     pub minimum_hitlag: f32,
     pub shield_pushback: Option<(f32, f32)>,
@@ -1185,6 +1190,10 @@ impl Fighter {
             self.core.combat.hitlag_remaining = hitlag;
             if self.core.combat.hitlag_remaining > 0.0 {
                 self.core.status.interaction = Interaction::Hitlag;
+                if received_knockback {
+                    // fighter.c:2979-2981: bool2 -> x221A_b3.
+                    self.core.combat.struck_hitlag = true;
+                }
                 if phantom_hitlag {
                     // fighter.c:2982: bool4 -> x189C = the phantom's hitlag.
                     self.core.combat.phantom_lockout = self.core.combat.hitlag_remaining;
@@ -1961,6 +1970,8 @@ impl FighterCore {
         if melee_coll::damage::tick_hitlag(&mut self.combat.hitlag_remaining)
             && self.combat.cape_turn.freeze <= 0.0
         {
+            // fighter.c:1417-1420: x221A_b3 ends with its hitlag.
+            self.combat.struck_hitlag = false;
             if matches!(self.state_data, MotionData::Guard(_)) {
                 self.shield.allow_sdi = false;
             }

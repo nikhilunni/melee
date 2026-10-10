@@ -1346,6 +1346,8 @@ impl FighterCore {
         self.effect_state.article_hitlag = None;
         // fighter.c:1381-1383: hitlag_cb / post_hitlag_cb reset with the row.
         self.combat.hitlag_callbacks = super::damage::HitlagCallbacks::None;
+        // fighter.c:344.
+        self.combat.struck_hitlag = false;
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
