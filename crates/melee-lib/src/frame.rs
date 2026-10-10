@@ -2182,6 +2182,10 @@ impl Runtime {
                         | melee_it::ItemEvent::Effect { .. }
                         | melee_it::ItemEvent::JointParticle { .. }
                         | melee_it::ItemEvent::DestroyEffects
+                        // efAsync_Spawn from a fighter's link 9 proc
+                        // (efasync.c:1458, retail 800679B0's s_link test)
+                        // dispatches before the next fighter's link 9 flush.
+                        | melee_it::ItemEvent::ChildEffect { .. }
                 )
             })
         }) {

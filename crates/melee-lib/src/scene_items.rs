@@ -1356,6 +1356,10 @@ pub fn request(
         let item = pool.get_mut(id).unwrap();
         item.initialize_collision(spawn, assets, map);
         item.past_hitbox_refresh = owner.after_hitbox_refresh;
+        // A spawner at s_link 9 or later (an owner's accessory4): the new
+        // item's efAsync_Spawn dispatches at once, ahead of the next
+        // fighter's link 9 flush (efasync.c:1458, retail 800679B0).
+        item.efasync_immediate = owner.efasync_immediate;
         if let Some((angle, speed, motion)) = ray {
             it_foxlaser::initialize_laser(pool.get_mut(id).unwrap(), assets, angle, speed, motion);
         }
@@ -1455,7 +1459,9 @@ pub fn request(
                 },
             );
         }
-        pool.get_mut(id).unwrap().past_hitbox_refresh = false;
+        let item = pool.get_mut(id).unwrap();
+        item.past_hitbox_refresh = false;
+        item.efasync_immediate = false;
         let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
         for phase in melee_it::ITEM_PROCESS_LINKS {
             world.add_tagged_proc(object, phase, tag(id, phase));
