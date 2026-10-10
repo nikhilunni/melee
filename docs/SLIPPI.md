@@ -1395,3 +1395,26 @@ at tick 3948.
 `DK/21_45_04 Donkey Kong + Ganondorf`, `YLINK/12_28_49 Young Link +
 Ganondorf`): no code text for that NeutralSpawn row is in `MELEE_GECKO_DIR`,
 so retail cannot be made to follow these games and they were measured only.
+
+## Ice Climbers: Nana after a KO (2026-10-10)
+
+Three port faults around the climbers' deaths and revival, each the port
+keeping a state's scratch where retail reads the motion id or runs a step
+once (`docs/PORT_NOTES/ICECLIMBERS.md`, "Deaths"):
+
+| Fault | Retail | Replays of `public-v3.7-b` (matched before to after) | Witness |
+|---|---|---|---|
+| Nana stayed on the revival platform when Popo left it with a special | ftCo_RebirthWait_IASA asks ftLib_800873CC (0x800873CC: motion 12 or 13) whether her leader still revives; the port asked the revival scratch, which a special entered from the platform keeps | `ICE_CLIMBERS/20200129 - HNC 7 ... Final Destination` 2765 to 2773 / 8067 (then `input_seed`: Popo's aerial Ice Shot) | `corpus_v3_ys_iceclimbers_fox4_e929b49af_p0` and two more explorer cases |
+| Nana let go of the Belay landed inside the floor | Fighter_procMap (0x8006C2B8) counts the ECB lock on every tick, with or without a collision callback; Nana's hang (361) has none and the port counted the lock inside the callbacks | none | `corpus_v3_fd_iceclimbers_fox4_e5935012b_p1` |
+| A sleeping Nana took a revival slot on every tick | ftCo_800BFD9C ends a death once: gm_80167320(slot, 1) takes one shared slot (fn_80167638, held 0x90 frames). The port repeated it while she slept, so Popo's next revival on Yoshi's Story, Dream Land or Fountain of Dreams stood at the wrong slot (x -5 for 11) | `ICE_CLIMBERS/Falco vs ICs [YS] Game_001AE99D2A67_20180307T175129` 7179 to 9325 / 9325; `ICE_CLIMBERS/20200108 - HNC 15 ... Fountain of Dreams` 4487 to 6911 / 7695 (then Nana's slide from a laser on the moving platform, `follower.cur_pos.x` 58.439 for 58.422) | none on a shared-marker stage (three dry-run sweeps on Yoshi's Story never had Nana die alone); `iceclimbers_ko_nana_alone_then_popo_soon_fd_fox4` shows the same order on Final Destination, where each player has its own marker |
+
+The two `follower.cur_pos.x` stops one ulp apart (`ICE_CLIMBERS/Game_20191209T171524.slp`
+at 200, `Game_20190903T151039.slp` at 423) are not shown to be port faults.
+The first, played back on retail (`slp_ys_jigglypuff_iceclimbers_t400`,
+local data, from the unregistered boundary `start_ys_jigglypuff_iceclimbers4`
+made with `--gecko ucf-0.74 neutral-spawn --ports 1 2`), gates exact to
+tick 400: retail in Dolphin has Nana at 0x41EC558E on that tick, as the
+port does, where the console's recording has 0x41EC558D. Her CPU stick
+(-76, -75) and her recorded joystick agree on all three. Not diagnosed: a
+velocity difference below a position ulp can hide for many ticks, and a
+replay records no velocity.

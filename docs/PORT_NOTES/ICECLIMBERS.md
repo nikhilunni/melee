@@ -116,6 +116,12 @@ plays the article's 0x421 (its cleanup clears the owner first,
 item.c:1993). The Belay script's efAsync 0x44B is generator 0x237 at scale
 1 (efasync.c:842-864).
 
+Nana's hang has no collision callback, but Fighter_procMap (0x8006C2B8)
+still counts the ECB lock her entry set (ftCommon_8007D60C, 5 frames): a
+Popo hit out of his start lets her go into Fall with the lock long over,
+so below the floor line she does not land
+(`corpus_v3_fd_iceclimbers_fox4_e5935012b_p1`).
+
 Witnesses: iceclimbers_belay_fd_fox4 (grounded then aerial, joined),
 iceclimbers_belay_solo_fd_fox4 (grounded, Nana still shielding),
 iceclimbers_belay_offstage_fd_fox4, iceclimbers_belay_ledge_fd_fox4 (the
@@ -161,6 +167,22 @@ sets with each OBSERVE_PARTNER hand-over.
   reviving her at once while Popo is in Rebirth/RebirthWait fails closed:
   Nana cannot be in a death countdown then (Popo's revival vanishes a
   dying Nana, and she revives with him, intangible, and waits for him).
+- "Reviving" is the motion id (ftLib_800873CC, 0x800873CC: 12 or 13), not
+  the platform's scratch: Popo leaving RebirthWait by a special (Blizzard,
+  Ice Shot) keeps the scratch, and Nana's RebirthWait_IASA drops her into
+  Fall on the same tick. Witnesses: `corpus_v3_ys_iceclimbers_fox4_e929b49af_p0`
+  and two more explorer cases.
+- A second fighter's death completes once: asleep, she keeps her death
+  scratch until Popo's revival, and takes one revival slot (fn_80167638,
+  held 0x90 frames) on the stages that share marker 4 (Yoshi's Story,
+  Dream Land, Fountain of Dreams). Popo reviving within 144 frames of her
+  sleep stands one slot over (x 16 - 5 = 11). Seen in two `public-v3.7-b`
+  games (`Falco vs ICs [YS] Game_001AE99D2A67_20180307T175129.slp`, now
+  complete, and HNC 15 Falco vs Ice Climbers on Fountain of Dreams); there
+  is no directed retail witness: Final Destination and Battlefield give
+  each player its own marker, and three dry-run sweeps of the edge recipe
+  on Yoshi's Story (jump tick, jump delay, dash start; 62 + 300 + 192
+  candidates in the port) never had Nana die alone.
 - gm_8016C75C (the CPU's KO total) is known only while no other player's
   fighter has fallen (Player falls, StaticPlayer +68): the port does not
   track who last hit a fighter (dmg.x18c4_source_ply).

@@ -3660,7 +3660,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 564] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 580] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4328,6 +4328,29 @@ const CORPUS_V3_MATCHES: [(&str, usize); 564] = [
     // Popo's later revival brings her back.
     ("iceclimbers_ko_nana_alone_fd_fox4", 700),
     ("iceclimbers_ko_nana_alone_then_popo_fd_fox4", 1000),
+    ("iceclimbers_ko_nana_alone_then_popo_soon_fd_fox4", 700),
+    // ICECLIMBERS: the rest of the edge family. Both recover and fall again
+    // later (jump134..153); Popo dies alone and the awake Nana vanishes with
+    // his revival (jump154..157); the jump comes too late (jump162..170);
+    // nobody dies (nana, nana_first, nana_first2).
+    ("iceclimbers_ko_nana_jump134_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump140_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump146_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump153_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump154_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump155_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump156_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump157_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump162_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump166_fd_fox4", 600),
+    ("iceclimbers_ko_nana_jump170_fd_fox4", 600),
+    ("iceclimbers_ko_nana_fd_fox4", 700),
+    ("iceclimbers_ko_nana_first_fd_fox4", 700),
+    ("iceclimbers_ko_nana_first2_fd_fox4", 700),
+    // ICECLIMBERS: Popo is hit out of the Belay's start with Nana on his
+    // hand; her ECB lock ran out during the hang (Fighter_procMap), so the
+    // let-go Fall below the floor line does not land.
+    ("corpus_v3_fd_iceclimbers_fox4_e5935012b_p1", 764),
     // ICECLIMBERS: Nana's CPU thinks on after the other player has fallen
     // (gm_8016C75C, the player's KO total).
     ("corpus_v3_fd_iceclimbers_fox4_ed97ea327_p2", 279),
