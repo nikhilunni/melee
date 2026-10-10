@@ -185,6 +185,7 @@ impl ItemLogic for NessPkThunder {
             spawned: 0,
             reflected: false,
             creator,
+            ended_by_callback: false,
         };
         item.grabbable = false;
         item.held = false;
@@ -196,6 +197,18 @@ impl ItemLogic for NessPkThunder {
         item.blast_zone_checked = false;
     }
     const NOTICE_AT_ONCE: bool = true;
+    /// it_802AB90C is both what the event callbacks call and the logic
+    /// row's `destroyed` entry (it_3F2F.c). A head that ends by its
+    /// lifetime, a wall, or its creator leaving the control row
+    /// (itNesspkthunderball_UnkMotion0_Anim returns true without it) tells
+    /// Ness from Item_8026A8EC (item.c:1997), after its own
+    /// efLib_DestroyAll and the vanish effect.
+    fn notice_precedes_teardown(item: &ItemCore) -> bool {
+        match &item.scratch {
+            ItemScratch::PkThunder(state) => state.ended_by_callback,
+            _ => true,
+        }
+    }
     /// itNessPKThunderball_Logic26_DmgDealt (802AC050).
     fn damage_dealt(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
         end(item);
@@ -314,6 +327,7 @@ fn end_segments(item: &mut ItemCore) {
 /// (ftNs_SpecialHi_ItemPKThunderRemove) is the scene's, through
 /// `notifies_owner`, when the item is removed.
 fn end(item: &mut ItemCore) {
+    head(item).ended_by_callback = true;
     item.hitboxes.fill(None);
     end_segments(item);
     item.held = false;

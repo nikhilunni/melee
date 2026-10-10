@@ -2170,6 +2170,14 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_ness_fox4_ec3145eb3_p2", 3739),
     // Explorer (yo-yo wave, batch 1): a whole match with yo-yo up smashes.
     ("corpus_v3_fd_ness_fox4_ebb526384_p0", 3508),
+    // Explorer, whole matches: PK Thunder's head hits Fox on the tick the
+    // start row creates it, so the row's last flash (1012, flushed by the
+    // motion change) precedes Ness's efLib_DestroyAll in the generator
+    // list; and a head ending by its lifetime tells Ness from its
+    // `destroyed` callback, after its own teardown and vanish effect.
+    ("corpus_v3_fd_ness_fox4_e05ae623b_p0", 6001),
+    ("corpus_v3_fd_ness_fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_ness_fox4_e8827478e_p2", 6001),
 ];
 
 #[test]

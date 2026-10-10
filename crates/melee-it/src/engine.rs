@@ -397,6 +397,10 @@ pub struct PkThunderState {
     pub reflected: bool,
     /// xF04: the creator, who steers it while it owns it.
     pub creator: Option<u8>,
+    /// it_802AB90C ran from one of the head's own callbacks, which told
+    /// the creator there (retail clears xF04); otherwise it runs as the
+    /// `destroyed` callback inside Item_8026A8EC.
+    pub ended_by_callback: bool,
 }
 /// Item.xDD4_itemVar.nesspkthundertrail (itnesspkthundertrail.c): one tail
 /// segment. Its head (x0) is the item's partner.

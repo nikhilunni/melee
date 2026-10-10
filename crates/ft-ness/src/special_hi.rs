@@ -270,6 +270,11 @@ fn start_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitChoic
         return Ok(None);
     }
     let state = if airborne_row(f) { AIR_HOLD } else { HOLD };
+    // Fighter_ChangeMotionState's efAsync_QueueFlush (fighter.c:951) spawns
+    // the start row's last graphics command (the flash, 1012) here, ahead
+    // of the efLib_DestroyAll below: its generator is the one that walk
+    // leaves the insertion cursor on.
+    f.seal_issued_graphics(p.assets, p.rng);
     f.change_motion_state(state, p.assets)?;
     if !scratch(f).thunder_out {
         let c = &mut f.core;

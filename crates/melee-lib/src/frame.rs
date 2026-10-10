@@ -725,19 +725,25 @@ impl Runtime {
         Ok(ended_spawner)
     }
 
-    /// An item whose own callback tells its owner of its end
-    /// (`ItemLogic::NOTICE_AT_ONCE`): the owner hears inside the proc that
-    /// ended it, and what the notice does to the owner's effects
-    /// (ftNs_SpecialHiStopGFX's efLib_DestroyAll) happens before the item's
-    /// own Item_8026A8EC events.
-    fn notify_owner_at_once(&mut self, id: u32) -> Result<()> {
+    /// An item that tells its owner of its end inside the proc that ended
+    /// it (`ItemLogic::NOTICE_AT_ONCE`). From the ending callback itself,
+    /// what the notice does to the owner's effects (ftNs_SpecialHiStopGFX's
+    /// efLib_DestroyAll) happens before the item's own Item_8026A8EC
+    /// events (`after_teardown` false); from that function's `destroyed`
+    /// callback (item.c:1997) it follows them.
+    fn notify_owner_at_once(&mut self, id: u32, after_teardown: bool) -> Result<()> {
         use crate::scene_items::SceneItems;
         use melee_it::ItemDispatch;
         let state = &mut self.state;
         let Some(item) = state.items.get_mut(id) else {
             return Ok(());
         };
-        if !item.destroyed || item.owner_notified || !SceneItems::logic(item.kind).notice_at_once {
+        let logic = SceneItems::logic(item.kind);
+        if !item.destroyed
+            || item.owner_notified
+            || !logic.notice_at_once
+            || (!after_teardown && !(logic.notice_precedes_teardown)(item))
+        {
             return Ok(());
         }
         crate::scene_items::article_destroyed(&mut state.fighters, item);
@@ -1121,7 +1127,7 @@ impl Runtime {
         match row.callback {
             Callback::Item { id, phase } => {
                 self.dispatch_item(id, phase)?;
-                self.notify_owner_at_once(id)?;
+                self.notify_owner_at_once(id, false)?;
                 if let Some(item) = self.state.items.get_mut(id) {
                     let spawns = item
                         .link_requests
@@ -1138,6 +1144,7 @@ impl Runtime {
                     }
                 }
                 self.drain_item_events(phase == 9)?;
+                self.notify_owner_at_once(id, true)?;
             }
             Callback::Banner => {
                 // if_802F73C4: the element's start callback runs on its first
