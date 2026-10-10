@@ -1334,6 +1334,11 @@ impl Runtime {
                         if player == other {
                             continue;
                         }
+                        partner_fighters::take_partner_stale_table(
+                            &mut state.fighters,
+                            &assets.fighters,
+                            other,
+                        );
                         // grabber_unk1: the player of the fighter throwing `other`.
                         let thrower_player =
                             state.fighters[other].commands.thrown_by.map(|spawn| {
@@ -1388,6 +1393,11 @@ impl Runtime {
                                 if let (Some(owner), Some(attack)) =
                                     (owner.filter(|&o| o != player), item.stale_source)
                                 {
+                                    partner_fighters::take_partner_stale_table(
+                                        &mut state.fighters,
+                                        &assets.fighters,
+                                        owner,
+                                    );
                                     state.fighters[owner]
                                         .core
                                         .credit_item_hit(attack, &assets.fighters[owner]);
@@ -2977,11 +2987,18 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
     let victim = with_fighter!(&state.fighters[player], |f| f.spawn_number);
     match source {
         HitSource::Fighter(source) => {
-            for (slot, fighter) in state.fighters.iter_mut().enumerate() {
+            let credited = state
+                .fighters
+                .iter()
+                .position(|f| f.spawn_number == source);
+            if let Some(slot) = credited {
+                partner_fighters::take_partner_stale_table(
+                    &mut state.fighters,
+                    &state.assets.fighters,
+                    slot,
+                );
                 let assets = &state.assets.fighters[slot];
-                with_fighter!(fighter, |f| if f.spawn_number == source {
-                    f.core.credit_hit(victim, assets);
-                });
+                with_fighter!(&mut state.fighters[slot], |f| f.core.credit_hit(victim, assets));
             }
         }
         // ftColl_8007BE3C's item arm: plStale_UpdateStaleMovesFromItem and
@@ -2992,6 +3009,11 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
                     .filter(|&owner| owner != player);
             if let Some(owner) = owner {
                 if let Some(attack) = item.attack {
+                    partner_fighters::take_partner_stale_table(
+                        &mut state.fighters,
+                        &state.assets.fighters,
+                        owner,
+                    );
                     let assets = &state.assets.fighters[owner];
                     state.fighters[owner].core.credit_item_hit(attack, assets);
                 }

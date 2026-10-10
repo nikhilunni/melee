@@ -89,19 +89,49 @@ pub(super) fn share_stale_tables(state: &mut InitialState) {
         let Some(first) = partner_of(state, second) else {
             continue;
         };
-        let (a, b) = pair(&mut state.fighters, first, second);
-        let (a, b) = (&mut a.0, &mut b.0);
-        let (taker, index) = if a.combat.stale.share_table(&b.combat.stale) {
-            (a, first)
-        } else if b.combat.stale.share_table(&a.combat.stale) {
-            (b, second)
-        } else {
-            continue;
-        };
-        let stale = &taker.combat.stale;
-        taker.commands.stale_multiplier = stale
-            .current_move()
-            .map(|_| stale.multiplier(&state.assets.fighters[index].stale_weights));
+        let assets = &state.assets.fighters;
+        if !take_stale_table(&mut state.fighters, assets, first, second) {
+            take_stale_table(&mut state.fighters, assets, second, first);
+        }
+    }
+}
+
+/// `taker`'s copy of the player's table becomes `giver`'s if that is newer;
+/// its hitboxes to come read the new table. Returns whether it was newer.
+fn take_stale_table(
+    fighters: &mut [SceneFighter],
+    assets: &melee_ft::fighter::assets::FighterAssetSet,
+    taker: usize,
+    giver: usize,
+) -> bool {
+    let (a, b) = pair(fighters, taker, giver);
+    let (a, b) = (&mut a.0, &b.0);
+    if !a.combat.stale.share_table(&b.combat.stale) {
+        return false;
+    }
+    let stale = &a.combat.stale;
+    a.commands.stale_multiplier = stale
+        .current_move()
+        .map(|_| stale.multiplier(&assets[taker].stale_weights));
+    true
+}
+
+/// Before `index` is credited with a hit inside another fighter's proc
+/// (plStale_UpdateStaleMovesFromFighter 8003722C, ...FromItem 800373CC):
+/// its copy of the player's table takes what its partner was credited with
+/// earlier in that proc, so two hits in one proc (Popo's and Nana's ice
+/// blocks landing together) both stay in the table, and the later one's
+/// next hitboxes are staled by the earlier.
+pub(super) fn take_partner_stale_table(
+    fighters: &mut [SceneFighter],
+    assets: &melee_ft::fighter::assets::FighterAssetSet,
+    index: usize,
+) {
+    let player = fighters[index].0.player.id;
+    let partner =
+        (0..fighters.len()).find(|&other| other != index && fighters[other].0.player.id == player);
+    if let Some(partner) = partner {
+        take_stale_table(fighters, assets, index, partner);
     }
 }
 
