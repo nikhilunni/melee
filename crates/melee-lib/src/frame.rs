@@ -1122,8 +1122,10 @@ impl Runtime {
         let state_pads = &self.pads;
         // An event callback that spawns an article and ends its own item
         // (the PK Fire bolt's it_2725_Logic23_DmgDealt): Item_8026A8EC's
-        // destroy effect follows the new article's creation.
-        let mut spawner_destroy_effect = None;
+        // efLib_DestroyAll (item.c:1991) and then its destroy effect follow
+        // the new article's creation, so the article's generators are
+        // inserted before that walk moves the insertion cursor.
+        let mut spawner_teardown: Option<(u32, [Option<melee_it::ItemEvent>; 2])> = None;
         match row.callback {
             Callback::Item { id, phase } => {
                 self.dispatch_item(id, phase)?;
@@ -1134,13 +1136,25 @@ impl Runtime {
                         .iter()
                         .any(|r| matches!(r.target, melee_it::LinkTarget::Spawn(_)));
                     if spawns && item.destroyed {
-                        let index = item
+                        let mut held = [None, None];
+                        let walk = item
+                            .events
+                            .iter()
+                            .enumerate()
+                            .filter(|(_, e)| matches!(e, melee_it::ItemEvent::DestroyEffects))
+                            .map(|(index, _)| index)
+                            .last();
+                        if let Some(index) = walk {
+                            held[0] = Some(item.events.remove(index));
+                        }
+                        let effect = item
                             .events
                             .iter()
                             .position(|e| matches!(e, melee_it::ItemEvent::DestroyEffect { .. }));
-                        if let Some(index) = index {
-                            spawner_destroy_effect = Some((id, item.events.remove(index)));
+                        if let Some(index) = effect {
+                            held[1] = Some(item.events.remove(index));
                         }
+                        spawner_teardown = Some((id, held));
                     }
                 }
                 self.drain_item_events(phase == 9)?;
@@ -2217,9 +2231,11 @@ impl Runtime {
         }) {
             self.drain_item_events(false)?;
         }
-        if let Some((id, event)) = spawner_destroy_effect {
+        if let Some((id, held)) = spawner_teardown {
             if let Some(item) = self.state.items.get_mut(id) {
-                item.events.push(event);
+                for event in held.into_iter().flatten() {
+                    item.events.push(event);
+                }
             }
             self.drain_item_events(false)?;
         }
