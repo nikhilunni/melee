@@ -223,9 +223,12 @@ impl ItemLogic for ClimbersIce {
     fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
         true
     }
-    /// itClimbersIce_Logic90_ShieldBounced -> itColl_BounceOffShield.
-    fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        unimplemented!("itClimbersIce_Logic90_ShieldBounced: itColl_BounceOffShield")
+    /// itClimbersIce_Logic90_ShieldBounced (802C20EC) ->
+    /// itColl_BounceOffShield (80273078): an airborne block that meets a
+    /// shield at a glancing angle keeps going, mirrored off the shield.
+    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+        item.bounce_off_shield(ctx.shield_normal);
+        false
     }
 }
 
