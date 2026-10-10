@@ -171,6 +171,12 @@ pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<(
     }
     let partner = partner_of(state, index);
     if state.fighters[index].player.secondary {
+        // The death's countdown ends once (ftCo_800BFD9C); a second
+        // fighter then sleeps with its death scratch until its leader
+        // revives it, and must not take a revival slot again.
+        if state.fighters[index].status.disabled {
+            return Ok(());
+        }
         let leader = partner.expect("a second fighter's leader");
         return complete_partner_death(state, index, leader);
     }
