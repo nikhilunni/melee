@@ -291,8 +291,17 @@ fn hang_from_leader(f: &mut Fighter) -> bool {
     true
 }
 
-/// ftPp_SpecialHi_0_Coll: nothing (the hand carries her).
-fn no_collision(_: &mut Fighter, _: CollisionPhase<'_>) -> Result<()> {
+/// ftPp_SpecialHi_0_Coll: nothing (the hand carries her). Fighter_procMap
+/// (0x8006C27C) still counts the ECB lock her entry set (ftCommon_8007D60C:
+/// 5 frames) before the callback, so it has run out when Popo lets go.
+fn no_collision(f: &mut Fighter, _: CollisionPhase<'_>) -> Result<()> {
+    let c = &mut f.core;
+    melee_ft::collision::air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
     Ok(())
 }
 
