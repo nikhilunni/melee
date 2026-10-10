@@ -191,6 +191,14 @@ pub fn remove<C: LinkFamily>(f: &mut Fighter) {
         control: ItemControl::Remove,
     });
     f.core.tether_article = false;
+    // Item_8026A8EC (it_802A2B10, 0x802A2B88) runs here, inside the
+    // thrower's proc: its efLib_DestroyAll (0x8026A988) walks the article's
+    // JObj tree with hsd_8039D688, which leaves the generator insertion
+    // cursor at the list's tail for whatever the thrower spawns next in
+    // the proc (a hit's Damage script: the electric sparks, efAsync 0x412).
+    f.core
+        .effects
+        .push(melee_ef::request::EffectRequest::ArticleDestroyed);
 }
 
 /// The frames of fn_800D8EC8 / fn_800D9228 / ftCo_AirCatch_Anim, after

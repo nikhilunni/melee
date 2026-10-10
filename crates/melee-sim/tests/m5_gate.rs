@@ -2373,7 +2373,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 27] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 28] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2475,6 +2475,10 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 27] = [
     // tech's flash (efAsync_Spawn, 0x800C1F88), so the flash's generator
     // is created first.
     ("slp_fod_fox_falco_t2400_cold", 2400),
+    // Fox's Reflector hits Link out of his aerial hookshot (7126): the
+    // article's removal (Item_8026A8EC, 0x802A2B88) walks the generator
+    // list, so the electric sparks (0x412) go in behind the list's head.
+    ("slp_fd_fox_link_t7200_cold", 7200),
 ];
 
 #[test]
