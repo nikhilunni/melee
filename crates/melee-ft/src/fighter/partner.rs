@@ -5,8 +5,7 @@
 //! through [`PartnerView`], which the scene refreshes before each proc.
 use super::{
     assets::{FighterAssets, Result},
-    life::LifeState,
-    Fighter, FighterCore, MotionData,
+    Fighter, FighterCore,
 };
 use hsd_types::Vec3;
 use melee_ef::request::EffectRequest;
@@ -38,12 +37,14 @@ impl PartnerView {
 }
 
 impl FighterCore {
-    /// ftLib_800873CC (800873CC): Rebirth or RebirthWait.
+    /// ftLib_800873CC (800873CC): the motion is Rebirth or RebirthWait.
+    /// The revival scratch is not the test: a special entered from the
+    /// platform keeps its own scratch elsewhere, so the stale revival one
+    /// outlives the state, and the second fighter waiting on its leader
+    /// (ftCo_RebirthWait_IASA) would never drop.
     pub fn reviving(&self) -> bool {
-        matches!(
-            self.state_data,
-            MotionData::Life(LifeState::Revival { .. } | LifeState::PlatformWait { .. })
-        )
+        use melee_types::CommonMotionState as S;
+        self.motion_state.id == S::Rebirth || self.motion_state.id == S::RebirthWait
     }
 
     /// fn_800D54A4 / fn_800D55B4 (800D54A4 / 800D55B4), the revival
