@@ -1207,33 +1207,13 @@ impl Effects {
                     continue;
                 }
                 if element == melee_types::HitElement::Ice {
-                    // efasync.c:136-152 (0x3ED): generator 0x50 at the point,
-                    // then 0x54 with the point as its AppSRT's translation,
-                    // turned to face the victim (rot.y 0 when it faces left,
-                    // else -M_PI as a double stored to a float).
-                    self.spawn_dust_generator::<T>(
-                        0x50,
+                    self.spawn_ice_hit_spark::<T>(
                         position,
                         fighter.effect_facing(),
                         bank,
                         particles,
                         rng,
                     )?;
-                    let turn = if fighter.effect_facing() < 0.0 {
-                        0.0
-                    } else {
-                        -std::f64::consts::PI as f32
-                    };
-                    let mut spawn = SpawnRequest::new(0, 0x54, 0);
-                    spawn.application_transform =
-                        Some(hsd_particle::generator::ApplicationTransform {
-                            translation: position,
-                            rotation: Vec3::new(0.0, turn, 0.0),
-                            status: 1,
-                            ..Default::default()
-                        });
-                    self.events.spawn(&spawn, false, false);
-                    spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                     continue;
                 }
             }

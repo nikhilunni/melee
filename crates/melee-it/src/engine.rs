@@ -82,6 +82,10 @@ pub enum ItemEvent {
     /// efSync_Spawn(0x3EC, item, &pos, item): a slashing hit's spark on a
     /// stage enemy or Pokemon (it_80270E30).
     SlashSpark { position: Vec3 },
+    /// efSync_Spawn(0x3ED, item, &pos, &item->facing_dir): an Ice hit's
+    /// spark on a stage enemy or Pokemon (it_80270E30), turned by the
+    /// facing the item had when the hit resolved.
+    IceSpark { position: Vec3, facing: f32 },
     /// Script opcode 10 (it_80278F2C): an effect at a joint whose offset gets
     /// a random spread (it_80278800) when the scene resolves it.
     ScriptEffect(melee_types::combat::GraphicsCommand),

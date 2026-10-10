@@ -482,6 +482,15 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::IceSpark { position, facing } => {
+                        state.effects.spawn_ice_hit_spark::<RetailTrig>(
+                            position,
+                            facing,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::Effect { id, position } => {
                         state.effects.spawn_positional::<RetailTrig>(
                             id,

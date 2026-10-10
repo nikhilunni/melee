@@ -165,7 +165,7 @@ impl ItemCore {
             // xDCF b1 is never set here; stage enemies and Pokemon (hold
             // kinds 4 and 6) show the element's effect instead.
             let spark = if matches!(self.hold_kind, 4 | 6) {
-                element_spark(hit)
+                element_spark(hit, self.facing)
             } else {
                 Some(ItemEvent::HitSpark {
                     position: hit.contact,
@@ -240,7 +240,7 @@ impl ItemCore {
 /// it_80270E30's hold kind 4 / 6 branch: hit_effect_ids[element] through
 /// efSync_Spawn. The plain spark keeps its damage-scaled size; the others
 /// receive the item (or its facing), which their generators ignore.
-fn element_spark(hit: &ItemHit) -> Option<ItemEvent> {
+fn element_spark(hit: &ItemHit, facing: f32) -> Option<ItemEvent> {
     use melee_types::HitElement::*;
     let position = hit.contact;
     match hit.element {
@@ -260,9 +260,11 @@ fn element_spark(hit: &ItemHit) -> Option<ItemEvent> {
         }),
         // Ef_Id_Unk1004.
         Slash => Some(ItemEvent::SlashSpark { position }),
+        // Ef_Id_Unk1005, the one row passed the item's facing.
+        Ice => Some(ItemEvent::IceSpark { position, facing }),
         // -1: no effect.
         Nap | Sleep | Catch | Inert | Disable | ScrewAttack | Lipstick => None,
-        Coin | Ice | Dark | ReDead => {
+        Coin | Dark | ReDead => {
             unimplemented!("it_80270E30: {:?} hit effect on a stage enemy", hit.element)
         }
     }

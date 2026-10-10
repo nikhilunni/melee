@@ -46,6 +46,37 @@ impl Effects {
         Ok(())
     }
 
+    /// efAsync_Dispatch's 0x3ED (efasync.c:136-152), an Ice hit's spark on
+    /// a fighter or a stage enemy (it_80270E30): generator 0x50 at the
+    /// point, then 0x54 with the point as its AppSRT's translation, turned
+    /// to face the victim (rot.y 0 when it faces left, else -M_PI as a
+    /// double stored to a float).
+    pub fn spawn_ice_hit_spark<T: InverseTrig>(
+        &mut self,
+        position: Vec3,
+        victim_facing: f32,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        self.spawn_dust_generator::<T>(0x50, position, victim_facing, bank, particles, rng)?;
+        let turn = if victim_facing < 0.0 {
+            0.0
+        } else {
+            -std::f64::consts::PI as f32
+        };
+        let mut spawn = SpawnRequest::new(0, 0x54, 0);
+        spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+            translation: position,
+            rotation: Vec3::new(0.0, turn, 0.0),
+            status: 1,
+            ..Default::default()
+        });
+        self.events.spawn(&spawn, false, false);
+        spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+        Ok(())
+    }
+
     /// efSync_Spawn(0x3EC, item, &pos, item) -> efAsync_Dispatch: a slashing
     /// hit's spark on a stage enemy (it_80270E30), model 8 turned about Z
     /// by a random angle (efasync.c:34-36: M_TAU is double, multiply then
