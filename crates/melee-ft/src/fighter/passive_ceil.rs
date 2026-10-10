@@ -39,9 +39,11 @@ impl Fighter {
         self.change_motion_state(S::PassiveCeil.into(), assets)?;
         let p = self.core.physics.position;
         let contact_y = p.y + top;
+        // As ftCo_800C1E64: efAsync_Spawn (0x800C24A8) after
+        // Fighter_ChangeMotionState (0x800C2464), behind whatever its color
+        // step queued.
         self.core
-            .effects
-            .push(melee_ef::request::EffectRequest::WallJump {
+            .push_effect_after_issued_graphics(melee_ef::request::EffectRequest::WallJump {
                 position: Vec3::new(p.x, contact_y, p.z),
             });
         let trans_y = self

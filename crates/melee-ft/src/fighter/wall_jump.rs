@@ -182,9 +182,14 @@ impl Fighter {
             self.core.physics.position.y + offset.y,
             self.core.physics.position.z,
         );
+        // retail 0x800C1F88: efAsync_Spawn follows Fighter_ChangeMotionState
+        // (0x800C1F1C), whose color step (ftCo_800C0408) may already have
+        // queued an effect (the smoke of a fire hit): the flash is the
+        // newer request and leaves the queue first.
         self.core
-            .effects
-            .push(melee_ef::request::EffectRequest::WallJump { position });
+            .push_effect_after_issued_graphics(melee_ef::request::EffectRequest::WallJump {
+                position,
+            });
         let trans_z = self
             .core
             .animation
