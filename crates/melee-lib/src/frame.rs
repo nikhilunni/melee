@@ -3169,7 +3169,11 @@ fn resolve_issued_sounds(
     below_link_9: bool,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
-    if f.resolve_sound_draws_before_seal(assets, rng) && below_link_9 {
+    let sound_waits = f.resolve_sound_draws_before_seal(assets, rng);
+    // The old script's graphics commands queued before that change: its
+    // flush created their effects too (efAsync_QueueFlush, newest first).
+    let sealed_graphics = below_link_9 && f.resolve_graphics_commands_before_seal(assets, rng);
+    if (sound_waits || sealed_graphics) && below_link_9 {
         effects.flush::<melee_ft::fighter::RetailTrig>(
             melee_ef::EffectTiming::Sealed,
             player,

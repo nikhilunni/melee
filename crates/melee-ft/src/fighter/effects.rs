@@ -40,6 +40,9 @@ impl super::FighterCore {
         if sealed != 0 {
             self.commands.mark_effect_seal();
         }
+        // The graphics commands issued so far queued their effects in
+        // retail, so this flush takes them too.
+        self.commands.graphics_before_seal = self.commands.graphics.len();
     }
 }
 
@@ -84,11 +87,49 @@ impl super::FighterCore {
         assets: &super::assets::FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> usize {
+        self.commands.graphics_before_seal = 0;
+        let draws = self.resolve_graphics_while(assets, rng, false);
+        self.commands.graphics_resolved = 0;
+        draws
+    }
+    /// The graphics commands issued before this proc's last motion change
+    /// (below link 9): Fighter_ChangeMotionState's efAsync_QueueFlush
+    /// (fighter.c:951, retail 0x800693AC..) created their effects with the
+    /// requests pending then, newest first. Each draws its offsets now and
+    /// joins the sealed requests where that flush had it. Returns whether
+    /// any was resolved: the caller dispatches the sealed requests next,
+    /// before the new script's commands draw.
+    pub fn resolve_graphics_commands_before_seal(
+        &mut self,
+        assets: &super::assets::FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> bool {
+        if self.commands.graphics_before_seal == 0 {
+            return false;
+        }
+        self.resolve_graphics_while(assets, rng, true);
+        true
+    }
+    /// One pass of ftCo_8009F834 over the queued commands: all of them, or
+    /// (`sealed`) those a motion change's flush took.
+    fn resolve_graphics_while(
+        &mut self,
+        assets: &super::assets::FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+        sealed: bool,
+    ) -> usize {
         let mut draws = 0;
-        let mut index = 0;
+        let mut index = self.commands.graphics_resolved;
         // Consumed in place: nothing below queues graphics, and moving the
         // fixed-capacity queue out and back would copy all of its slots.
         while !self.commands.graphics.is_empty() {
+            if sealed {
+                if self.commands.graphics_before_seal == 0 {
+                    break;
+                }
+                self.commands.graphics_before_seal -= 1;
+                self.commands.graphics_resolved += 1;
+            }
             draws += self.resolve_landing_effects(rng, index);
             index += 1;
             self.resolve_sound_draws(assets, rng);
@@ -128,7 +169,7 @@ impl super::FighterCore {
                 } else {
                     0.0
                 };
-                self.effects.push_graphics(EffectRequest::Graphics {
+                self.push_graphics_request_with(sealed, EffectRequest::Graphics {
                     id,
                     bone,
                     offset: hsd_types::Vec3::ZERO,
@@ -142,7 +183,7 @@ impl super::FighterCore {
                 // effect scale (ftData x0 +168): the dizzy stars (0x429,
                 // generator 0xCE), the heal's sparkle (0x428, 0xCA) and
                 // 0x42A (0xCF).
-                self.effects.push_graphics(EffectRequest::DizzyStars {
+                self.push_graphics_request_with(sealed, EffectRequest::DizzyStars {
                     generator: match id {
                         0x428 => 0xCA,
                         0x429 => 0xCE,
@@ -156,8 +197,7 @@ impl super::FighterCore {
             if matches!(id, 0x446 | 0x4E1) {
                 // ftCo_09F7.c:136-142: efAsync kind 7 with the command's
                 // offset as given, before the randomized branches.
-                self.effects
-                    .push_graphics(EffectRequest::FollowingGenerator {
+                self.push_graphics_request_with(sealed, EffectRequest::FollowingGenerator {
                         id,
                         bone,
                         offset: command.offset,
@@ -190,8 +230,7 @@ impl super::FighterCore {
                 } else {
                     bone
                 };
-                self.effects
-                    .push_graphics(EffectRequest::Attached { id, bone });
+                self.push_graphics_request_with(sealed, EffectRequest::Attached { id, bone });
                 continue;
             }
             if !(id < 0x250
@@ -269,7 +308,7 @@ impl super::FighterCore {
                 // after the three draws.
                 continue;
             }
-            self.effects.push_graphics(EffectRequest::Graphics {
+            self.push_graphics_request_with(sealed, EffectRequest::Graphics {
                 id,
                 bone,
                 offset,
@@ -277,11 +316,28 @@ impl super::FighterCore {
                 floor_angle,
             });
         }
+        if sealed {
+            // The new script's commands and sounds follow the flush.
+            return draws;
+        }
         draws += self.resolve_landing_effects(rng, usize::MAX);
         // Sound draws behind the last graphics command (or behind this
         // command, when the caller hands graphics over one at a time).
         self.resolve_sound_draws(assets, rng);
         self.effects.finish_graphics();
         draws
+    }
+    /// One resolved command's request: pending, or sealed with the joint's
+    /// matrix when a motion change's flush took it.
+    fn push_graphics_request_with(&mut self, sealed: bool, request: EffectRequest) {
+        if sealed {
+            // Rare (two motion changes in one proc): the queue is moved
+            // out for the joint lookup, as the flush itself does.
+            let mut queue = std::mem::take(&mut self.effects);
+            queue.push_sealed_graphics(request, |bone| self.effect_matrix(bone));
+            self.effects = queue;
+        } else {
+            self.effects.push_graphics(request);
+        }
     }
 }

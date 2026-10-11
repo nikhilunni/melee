@@ -89,6 +89,14 @@ pub struct CommandState {
     /// change flushed pending efAsync requests (fighter.c:951); the rest
     /// belong to the new script and draw after that flush.
     pub sound_draws_before_seal: Option<usize>,
+    /// How many of `graphics` (from its front) were issued before this
+    /// proc's last motion change: Fighter_ChangeMotionState's
+    /// efAsync_QueueFlush (fighter.c:951) created their effects then, with
+    /// the other pending requests, newest first.
+    pub graphics_before_seal: usize,
+    /// Graphics commands already resolved this proc (the sealed ones):
+    /// `landing_effects` positions count from the first command issued.
+    pub graphics_resolved: usize,
     /// ftData_80085CD8: thrown states execute their captor's command stream.
     pub borrowed_script: Option<std::sync::Arc<[Command]>>,
     pub grab_release: bool,

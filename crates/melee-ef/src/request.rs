@@ -274,6 +274,41 @@ impl EffectQueue {
         self.push(request);
         self.skip_graphics();
     }
+    /// One resolved graphics command that a motion change's efAsync flush
+    /// took (Fighter_ChangeMotionState, fighter.c:951): it was queued when
+    /// its command ran, so that flush created it after the requests queued
+    /// later (the sealed ones still counting it ahead) and before
+    /// everything queued earlier.
+    pub fn push_sealed_graphics(
+        &mut self,
+        request: EffectRequest,
+        matrix: impl FnOnce(Option<usize>) -> Mtx,
+    ) {
+        assert!(
+            self.entries.len() < REQUEST_CAPACITY,
+            "effect storage capacity {REQUEST_CAPACITY} exhausted"
+        );
+        let sealed = |e: &QueuedEffect| e.matrix.is_some();
+        let index = self
+            .entries
+            .iter()
+            .enumerate()
+            .filter(|(_, e)| sealed(e) && e.graphics_ahead > 0)
+            .map(|(later, _)| later + 1)
+            .last()
+            .or_else(|| self.entries.iter().position(sealed))
+            .unwrap_or(self.entries.len());
+        let matrix = Some(matrix(request.bone()));
+        self.entries.insert(
+            index,
+            QueuedEffect {
+                request,
+                matrix,
+                graphics_ahead: 0,
+            },
+        );
+        self.skip_graphics();
+    }
     /// A graphics command that resolved to no request (an invisible fighter's).
     pub fn skip_graphics(&mut self) {
         for entry in self.entries.iter_mut() {
