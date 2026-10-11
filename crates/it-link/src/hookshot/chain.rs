@@ -144,6 +144,16 @@ pub struct Throw {
     pub before_launch: bool,
 }
 
+/// What the pay-out walk does with the first link still in the hand when
+/// the hand is within a link's length of the last one out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum Short {
+    /// it_802A4BFC, it_802A5320: it comes out at the hand.
+    AtHand,
+    /// it_802A6A78 (hitlag): it stays in.
+    Kept,
+}
+
 /// The article's chain of links.
 #[derive(Clone, Debug, PartialEq)]
 pub struct Chain {
@@ -388,9 +398,16 @@ impl Chain {
     /// it_802A6A78: from the claw down, a paid-out link keeps within a
     /// link of the one above (`step` runs on it first), and the first link
     /// still in the hand comes out a link from the one above toward the
-    /// hand, or at the hand itself, where the walk stops (false). True:
-    /// every link is out, for the caller to settle from the hand up.
-    fn pay_out(&mut self, anchor: Vec3, mut step: impl FnMut(&mut Self, usize, usize)) -> bool {
+    /// hand. When the hand is nearer than that the walk stops (false):
+    /// `Short::AtHand` brings the link out at the hand itself first,
+    /// `Short::Kept` leaves it in. True: every link is out, for the caller
+    /// to settle from the hand up.
+    fn pay_out(
+        &mut self,
+        anchor: Vec3,
+        short: Short,
+        mut step: impl FnMut(&mut Self, usize, usize),
+    ) -> bool {
         let length = self.attributes.link_length;
         let mut above = self.head();
         let mut walked = 0;
@@ -408,6 +425,9 @@ impl Chain {
                 let (dir, gap) = direction(anchor, base);
                 let link = &mut self.links[index];
                 let out = gap > length;
+                if !out && short == Short::Kept {
+                    return false;
+                }
                 link.position = if out {
                     place(dir, length, base)
                 } else {
@@ -446,7 +466,7 @@ impl Chain {
         } else if flags & collide::RIGHT_WALL_MASK != 0 {
             claw.wall_line = claw.collision.right_facing_wall.index;
         }
-        if self.pay_out(anchor, |_, _, _| {}) {
+        if self.pay_out(anchor, Short::AtHand, |_, _, _| {}) {
             self.hang_above(0, anchor, length, map);
             Extension::Extended
         } else if flags & collide::WALL_MASK != 0 {
@@ -480,7 +500,7 @@ impl Chain {
         let length = self.attributes.link_length;
         let wall = self.collide(head, length, map) & collide::WALL_MASK;
         let middle = (self.attributes.links / 2) as usize;
-        let paid_out = self.pay_out(anchor, |chain, index, walked| {
+        let paid_out = self.pay_out(anchor, Short::AtHand, |chain, index, walked| {
             chain.fall_step(index);
             if walked == middle {
                 chain.collide_middle(index, length, map);
@@ -719,13 +739,16 @@ impl Chain {
 
     /// it_802A6A78 (802A6A78), the hitlag step: before the launch nothing
     /// moves (true: the claw stays at the hand); otherwise the chain pays
-    /// out behind the claw as it_802A4BFC's walk does and the rest settles
-    /// (it_802A49B0). False either way once launched.
+    /// out behind the claw as it_802A4BFC's walk does, except that a link
+    /// the hand is within a link's length of stays in the hand (retail
+    /// 0x802A6D20: `ble` to `return 0`, where it_802A4BFC brings it out at
+    /// the hand), and once all are out the rest settles (it_802A49B0).
+    /// False either way once launched.
     pub fn hold_in_hitlag(&mut self, anchor: Vec3, throw: Throw, map: &mut CollMap) -> bool {
         if throw.before_launch {
             return true;
         }
-        if self.pay_out(anchor, |_, _, _| {}) {
+        if self.pay_out(anchor, Short::Kept, |_, _, _| {}) {
             let length = self.attributes.link_length;
             self.settle_above(0, anchor, length, map);
         }
