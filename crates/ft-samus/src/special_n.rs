@@ -247,11 +247,21 @@ fn fire_shot(f: &mut Fighter, assets: &FighterAssets) {
         f.physics.self_velocity.x = f.physics.facing * (recoil * level as f32);
     }
     set_charge_level(f, 0);
-    let_go(f);
-    f.core.effects.push(EffectRequest::PositionalModel {
-        id: MUZZLE_FLASH,
-        position,
-    });
+    // The shot's own efLib_DestroyAll (it_802B5CBC, retail 0x802B5CEC, from
+    // it_802B56E4 at 0x8012946C) removes the hand glow's generators before
+    // ftSs_SpecialN_801291F0 (inlined, efLib_DestroyAll at 0x80129504) and
+    // the flash (efSync_Spawn at 0x80129524): the flash's generators go in
+    // behind the head the glow left, so both wait for the launch request.
+    f.character.get_mut::<Samus>().charge_article = false;
+    if std::mem::take(&mut f.character.get_mut::<Samus>().charge_effects) {
+        f.core.effects_after_items.push(EffectRequest::DestroyOwned);
+    }
+    f.core
+        .effects_after_items
+        .push(EffectRequest::PositionalModel {
+            id: MUZZLE_FLASH,
+            position,
+        });
 }
 
 /// ftSs_SpecialN_801291F0 (801291F0): the shot is no longer Samus's
