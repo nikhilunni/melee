@@ -82,6 +82,10 @@ pub struct PartnerWork {
     pub join: Option<crate::special_s::Join>,
     /// Fighter_UnkSetFlag_8006CFBC(partner) and partner->x1A5C = NULL.
     pub unlink: bool,
+    /// ftNn_Init_80123954's refusal: nana_fp->x1A5C = NULL alone, over
+    /// whatever it named (0x801239A8 for a busy Nana, 0x80123AE8 for a far
+    /// one), a victim she holds included.
+    pub clear_link: bool,
     /// Nana's SpecialS_0/_1 collision follows Popo's (ftPp_SpecialS_0_Coll's
     /// first branch), which copies his collision data.
     pub follow: bool,
@@ -141,6 +145,14 @@ pub fn act(
     }
     if work.unlink {
         unlink(partner);
+    }
+    if work.clear_link {
+        let link = &mut partner.core.combat.hitlag_link;
+        link.partner = None;
+        link.grab_link_cleared = matches!(
+            partner.core.combat.grab,
+            Some(melee_ft::fighter::grab::GrabLink::Holding { .. })
+        );
     }
     if work.follow {
         changes.fighter |= crate::special_s::partner::follow(f, partner, assets)?.fighter;

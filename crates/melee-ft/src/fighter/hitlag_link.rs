@@ -24,6 +24,13 @@ pub struct HitlagLink {
     /// Hammer links Popo and Nana, ftNn_Init_80123954). Cleared with
     /// Fighter_UnkSetFlag_8006CFBC, which `release_separated_hold` reads.
     pub partner: Option<u32>,
+    /// x1A5C = NULL written while this fighter still grips its victim
+    /// (victim_gobj stays): ftNn_Init_80123954 clears Nana's when she does
+    /// not join Popo's Squall Hammer (0x801239A8, 0x80123AE8), whatever it
+    /// held. Her hitlag then neither holds nor releases the victim, whose
+    /// own x1A5C still names her. The next grab writes the link again
+    /// (ftcoll.c:1558).
+    pub grab_link_cleared: bool,
 }
 
 impl FighterCore {

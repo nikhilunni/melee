@@ -340,6 +340,8 @@ pub fn capture_pair(
         victim: victim.core.spawn_number,
         vertical_offset: 0.0,
     });
+    // ftcoll.c:1558: this_fp->x1A5C = grabbed_fighter.
+    attacker.core.combat.hitlag_link.grab_link_cleared = false;
     // fn_800DA8E4 (800DA8E4): ftCommon_8007DB58 before the capture entry.
     victim.interrupt_actions(victim_assets);
     victim.core.physics.facing = -attacker.core.physics.facing;
@@ -490,6 +492,7 @@ fn align_link(victim: &mut FighterCore, attacker: &mut FighterCore, assets: &Fig
         victim: victim.spawn_number,
         vertical_offset,
     });
+    attacker.combat.hitlag_link.grab_link_cleared = false;
 }
 
 fn capture_departure(

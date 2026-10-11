@@ -177,6 +177,7 @@ fn invite_partner(f: &mut Fighter) -> bool {
         unimplemented!("ftNn_Init_80123954: Nana's motion {:?} class", nana.action)
     });
     if (1..=13).contains(&class) {
+        link::work(f).clear_link = true;
         return false;
     }
     let reach = climber::attributes(f).squall_join_distance;
@@ -187,6 +188,7 @@ fn invite_partner(f: &mut Fighter) -> bool {
     // 801239E8..801239FC: fmuls, fmuls, fadds; fcmpo, bge (unordered too).
     let near = (dx * dx + dy * dy).partial_cmp(&limit) == Some(std::cmp::Ordering::Less);
     if !near {
+        link::work(f).clear_link = true;
         return false;
     }
     link::work(f).join = Some(Join {

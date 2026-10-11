@@ -547,11 +547,15 @@ pub(super) fn in_hitlag(state: &InitialState, player: usize) -> bool {
 /// The fighter `player`'s x1A5C names, by fighter index: the other member
 /// of its grab pair, or the partner a special linked it to.
 fn grab_partner(state: &InitialState, player: usize) -> Option<usize> {
-    let (grab, special) = with_fighter!(&state.fighters[player], |f| (
+    let (grab, link) = with_fighter!(&state.fighters[player], |f| (
         f.combat.grab,
-        f.combat.hitlag_link.partner
+        f.combat.hitlag_link
     ));
+    let special = link.partner;
     let partner = match grab {
+        // The grip outlives a link a special wrote over (Nana's, when
+        // Popo's Squall Hammer starts without her).
+        Some(GrabLink::Holding { .. }) if link.grab_link_cleared => special?,
         Some(GrabLink::Holding { victim, .. }) => victim,
         Some(GrabLink::Captured { captor }) => captor,
         None => special?,
