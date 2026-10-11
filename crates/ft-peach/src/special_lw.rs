@@ -103,9 +103,12 @@ pub fn pull(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
         // it_802BD4AC: it_80274594 for all but the Beam Sword.
         scale_by_owner: kind != ItemKind::Sword,
     });
-    // setupVeg: the pull's effect, then death2_cb and take_dmg_cb.
+    // setupVeg: the pull's effect, then death2_cb and take_dmg_cb. The
+    // item exists by then (it_802BD4AC above): its GObj is created before
+    // the effect model's.
     let position = f.physics.position;
-    f.effects
+    f.core
+        .effects_after_items
         .push(melee_ef::request::EffectRequest::PositionalModel {
             id: PULL_EFFECT,
             position,
