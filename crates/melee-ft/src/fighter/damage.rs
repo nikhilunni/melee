@@ -937,13 +937,21 @@ impl Fighter {
         // +1920 facing is retained; only +1918/+191C reset at the retail tail.
         let reflection = self.core.combat.reflection.take();
         let absorbed = self.core.take_absorbed();
-        let received_knockback = self.core.combat.pending_from_captor
-            || self
-                .core
-                .combat
-                .pending
-                .as_ref()
-                .is_some_and(|hit| hit.knockback != 0.0);
+        // fighter.c:2852: forceAppliedOnHit is dmg.kb_applied, whoever struck.
+        // A captor's knockback-free hit (Falcon Dive's catch hitbox on
+        // CaptureCaptain) is not that branch: the victim takes the percent
+        // at fighter.c:2958 with no hitlag of its own (bool1 stays 0, so
+        // neither allow_sdi nor x221A_b3 is set); the captor's hitlag
+        // holds it through the link (Fighter_UnkRecursiveFunc_8006D044).
+        let received_knockback = self
+            .core
+            .combat
+            .pending
+            .as_ref()
+            .is_some_and(|hit| hit.knockback != 0.0);
+        if !received_knockback {
+            self.core.combat.pending_from_captor = false;
+        }
         // Fighter_ProcessHit, fighter.c:2844-2858: the phantom lockout counts
         // down first; an ordinary hit with knockback cancels it.
         self.core.expire_phantom_lockout(received_knockback, assets);
