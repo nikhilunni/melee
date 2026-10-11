@@ -441,8 +441,21 @@ pub(super) fn map_capture(state: &mut InitialState, player: usize) -> Result<()>
 /// Returns the victim's index when the captor's separation released the pair.
 pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
     let victim = with_fighter!(&state.fighters[player], |f| {
+        // fn_800DA190 (800DA190), the pull's accessory1 (fn_800D9CE8,
+        // 0x800D9E44): Link, Samus and Young Link (0x800DA1A4..C0) skip
+        // fn_800DA054 while their article reels the catch in. They are
+        // the kinds fn_800D9CE8 gives the article's tip as hold joint
+        // (`holds_by_graft`); CatchWait and CatchAttack call it for every
+        // kind.
+        let reeling = f.core.holds_by_graft
+            && matches!(
+                f.motion_state.id,
+                melee_types::CommonMotionState::CatchPull
+                    | melee_types::CommonMotionState::CatchDashPull
+            );
         if f.status.disabled
             || f.in_hitlag()
+            || reeling
             || !matches!(f.state_data, melee_ft::fighter::MotionData::Catch { .. })
         {
             None
