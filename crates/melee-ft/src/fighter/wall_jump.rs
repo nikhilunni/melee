@@ -250,6 +250,14 @@ impl Fighter {
         let core = &mut self.core;
         core.skeleton
             .set_translate(core.animation.root, &core.physics.position);
+        self.wall_contact_pass(assets, map)
+    }
+
+    /// ft_80081F2C's pass with the root joint left where it stands: the
+    /// function itself never moves it, so mpColl_LoadECB_JObj measures the
+    /// ECB joints from wherever the last HSD_JObjSetTranslate put the model.
+    pub(super) fn wall_contact_pass(&mut self, assets: &FighterAssets, map: &mut CollMap) -> bool {
+        let core = &mut self.core;
         let cd = &mut core.collision.data;
         cd.last_pos = cd.cur_pos;
         cd.cur_pos = core.physics.position;
@@ -281,6 +289,17 @@ impl Fighter {
         let core = &mut self.core;
         core.skeleton
             .set_translate(core.animation.root, &core.physics.position);
+        self.ceiling_contact_pass(assets, map)
+    }
+
+    /// ft_80082084's pass with the root joint left where it stands (see
+    /// [`Self::wall_contact_pass`]).
+    pub(super) fn ceiling_contact_pass(
+        &mut self,
+        assets: &FighterAssets,
+        map: &mut CollMap,
+    ) -> bool {
+        let core = &mut self.core;
         let cd = &mut core.collision.data;
         cd.last_pos = cd.cur_pos;
         cd.cur_pos = core.physics.position;

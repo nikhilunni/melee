@@ -157,15 +157,25 @@ impl Fighter {
             .expect("FlyReflect TransN")
             .primary_history
             .position;
+        // Fighter_ChangeMotionState put the root joint at the contact
+        // position (its HSD_JObjSetTranslate, before 0x80069494), and neither
+        // the placement below nor the pass moves it: the new pose's ECB joints
+        // are measured from there against the placed cur_pos, so the ECB is
+        // offset by the placement. A fighter whose bounce pose then reaches
+        // back into the ceiling is pushed down out of it.
+        let core = &mut self.core;
+        core.skeleton.set_translate(core.animation.root, &p);
         if state == S::FlyReflectWall {
             // retail 800C1A1C / 800C1A20: fadds, then fnmsubs with the negated facing.
             self.core.physics.position.x =
                 gekko_math::fma::fnmsubs(trans.z, -self.core.physics.facing, p.x + offset.x);
-            self.wall_contact_map(assets, map);
+            // retail 800C1A28: ft_80081F2C.
+            self.wall_contact_pass(assets, map);
         } else {
             // x68C_transNPos.y + (cur_pos.y + offset.y): two fadds.
             self.core.physics.position.y = trans.y + (p.y + offset.y);
-            self.ceiling_contact_map(assets, map);
+            // retail 800C1A4C: ft_80082084.
+            self.ceiling_contact_pass(assets, map);
         }
         self.damage_scratch().bounce_lock = fctiwz(bounce.lock_frames) as u8;
         self.core
