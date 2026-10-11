@@ -1541,3 +1541,69 @@ and every scenario recorded before gates as it did: 2335 pass, 25 fail):
 | `public-v3.7-b` (502) | 409 to 410 | 4,506,818 to 4,522,040 |
 
 (Measured on f577dcce, before the Link wave's changes were merged in.)
+
+## Ice Climbers: the thirteen stops of the fifth wave (2026-10-11)
+
+Thirteen `public-v3.7-b` games with the Ice Climbers stopped after the wave
+above. Seven port faults account for nine of them; each was found by playing
+the window back on retail, except the stale table (below).
+
+| Fault | Retail | Replays (matched before to after) | Witness |
+|---|---|---|---|
+| An ice block's slide effect waited for the block's link 9 flush | Item_80268E5C flushes the item's efAsync queue at every motion change (0x80268F44): a block that lands (itClimbersice_UnkMotion3_Coll) makes generator 14006 in its collision proc, ahead of the fighters' dust | `ICs vs Marth [YS] Game_20200625T131113` 131 to 8177 / 8177; also the first stop of `19_56_13 ... Falco (FD)` (1421), `Game_20190504T214222` (684) and `ICs vs Fox [PS] Game_20200222T132857` (155) | `slp_ys_iceclimbers_marth_t200` |
+| A Yoshi Bomb star's first hitbox sat two units low | it_802B2FC8 calls it_802B322C after Item_80268B18 (0x802B3064), once the creation's map pass has lifted the star; the port's state change ran before it, so link 11 placed the hitbox at the unresolved position and a clank came a tick late | `20200212 - HNC 19 ... Yoshi ... Dream Land` 923 to 13516 / 13516 | `slp_dl_iceclimbers_yoshi_t1000` (retail with the replay's pads; the clank at 900) |
+| A captor's knockback-free hit gave the victim hitlag and x221A_b3 | Fighter_ProcessHit's reaction branch is dmg.kb_applied alone (fighter.c:2852): Falcon Dive's catch hit adds percent (fighter.c:2958) and nothing else; the captor's hitlag holds the victim through x1A5C | `20_25_09 [BAAA] Ice Climbers + Captain Falcon (YS)` 2385 to 9551 / 9551 | `slp_ys_iceclimbers_captainfalcon_r202509_t2450` |
+| A thrower stayed ungrabbable to the end of its throw | ftCo_800DD724 clears x1A6A at the release (0x800DD7B8) | `19_56_13 [BEN2] Ice Climbers + Falco (FD)` 5810 to 11012 / 11012 | `slp_fd_iceclimbers_falco_r195613_t5900` |
+| The climbers' friction followed the floor's material | ft_GetGroundFrictionMultiplier returns 1.0 for Popo and Nana (0x80084A50..5C) | `Game_20190504T214222` 6058 to 13072 / 13072; `20200108 - HNC 15 ... Fountain of Dreams` 6911 to 7695 / 7695; `ICs vs Fox [PS] Game_20200222T132857` 4475 to 6719 | `slp_fod_iceclimbers_marth_r214222_t6150` |
+| A revival emptied the player's stale table again | plStale_ResetStaleMoveTableForPlayer is called from the stock loss (0x800D3528) and the player's creation (0x80038940) only | `20200129 - HNC 7 ... Jigglypuff ... Final Destination` 4979 to 8067 / 8067 | none (below) |
+| Nana's hitlag held a victim whose link Popo's Squall Hammer had cleared | ftNn_Init_80123954 writes nana_fp->x1A5C = NULL when she does not join (0x801239A8, 0x80123AE8); her throw goes on (victim_gobj), but her hitlag no longer reaches the victim, which the forward throw's knockback-free hit does not freeze either | `Falcon vs ICs [FD] Game_20181118T001727` 17175 to 19192 / 19192; `ICs vs Fox [PS] Game_20200222T132857` 6719 to 9326 / 9326 | `iceclimbers_nana_throw_popo_squall_fd_falco`, `..._late_fd_falco` |
+
+The unported boundary `ftCo_800AC5A0: steering with no knockback` was
+reached only through the third fault. Retail does not enter behaviour 18 on
+that hit (Nana's +0x221A is 0x00 and CpuFighter x18 stays 1 through the four
+frozen ticks), so the branch stays `unimplemented!`. What it would read: r30
+is the caller's fighter pointer (ftCo_800B2790 keeps fp there, 0x800B27A4),
+so the stick's y is the low byte of the Fighter's address; r5 is whatever
+ftCo_800B2AFC's last call left.
+
+**A bridge with the Ice Climbers needs the replay's own boundary on every
+stage.** Nana's CPU state is made at creation, before the boundary seed:
+from another boundary retail's Nana leaves the replay at her first hit
+(`slp_ys_iceclimbers_captainfalcon_t2450`, local data: at 348 the console's
+Nana steers out of a hit, stick (-89, 89), and SDIs; retail's stick is
+neutral on that tick). Made with
+`--game-start-seed`, the boundary follows (`..._r202509_t2450`).
+`slp_dl_iceclimbers_yoshi_t1000` is from a boundary of another seed: retail,
+but not that replay's game.
+
+**Not every replay can be played back.** `slp_fd_captainfalcon_iceclimbers_r001727_t17300`
+(local data) is exact against retail for the 7510 ticks retail ran, but
+retail's match ended there: the port driven by the bridge's pads leaves the
+port driven by the replay near tick 350 (Falcon jumps in the replay and is
+grabbed in the bridge), so the pads rebuilt from Pre Frame do not act as
+the console's did there. Not diagnosed. The seventh fault was
+therefore witnessed with a directed scene instead. `slp_fd_iceclimbers_jigglypuff_r1030_t5050`
+(local data, HNC 7) is exact too and also leaves its replay before the
+stale hit at 4979, so the stale table has no retail witness: the evidence
+is the two call sites in the retail asm and the recording (Nana's jab at
+3734, after Popo's death at 3715 and before the revival at 3775, is the
+fifth entry when her next jab does 2 x 0.95).
+
+Left as they were:
+
+- `19_16_18 Ice Climbers + Samus (PS)` (6698, `input_seed`): the port is
+  five draws behind after tick 6697, both climbers in the grounded Ice Shot
+  (341, frames 12 and 36). Not played back: on Stadium the players stand
+  at (-39.999996, 31.999992) and (40.0, 32.0) on ports 1 and 4, which a
+  boundary made from the menus on those ports does not give ("State-timing
+  and position stops", the Stadium spawn points).
+- `20_31_01 Captain Falcon + Ice Climbers (FoD)` (7022): the pad queue
+  ("The pad queue is not in a replay"). Falcon's raw X runs 1, 45, 100 over
+  ticks 7020..7022: 99 over two ticks, 55 over one, and the console kept the
+  slow turn. The same with UCF 0.74 and 0.8 named.
+- The two one-ulp `follower.cur_pos.x` stops. `Game_20191209T171524` was
+  played back again from its own Game Start seed
+  (`slp_ys_jigglypuff_iceclimbers_r171524_t400`, local data): retail in
+  Dolphin still has 0x41EC558E where the console recorded 0x41EC558D, and
+  the port gates exact. `Game_20190903T151039` (Stadium) was not played
+  back.

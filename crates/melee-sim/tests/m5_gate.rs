@@ -2414,7 +2414,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 38] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 45] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2544,6 +2544,32 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 38] = [
     // scaled, because ftCo_Damage_CheckAirMotion (0x8008E498) reads
     // fp->motion_id and 341 is not one of its common states.
     ("slp_fd_drmario_jigglypuff_t5800_cold", 5800),
+    // An ice block that fell off a platform lands (126): the state change
+    // to sliding flushes the block's queue (Item_80268E5C, 0x80268F44), so
+    // its slide effect's generator precedes a dashing Popo's dust.
+    ("slp_ys_iceclimbers_marth_t200_cold", 200),
+    // A Yoshi Bomb star is set up after its creation's map pass
+    // (it_802B2FC8, 0x802B3064): its first hitbox is at the lifted
+    // position and clanks with Popo's down air on that tick (900). Retail
+    // with the replay's pads, not its game.
+    ("slp_dl_iceclimbers_yoshi_t1000_cold", 1000),
+    // Falcon Dive catches Nana (2384): the catch hitbox has no knockback,
+    // so she starts no hitlag of her own and x221A_b3 stays clear; her CPU
+    // never enters behaviour 18 there.
+    ("slp_ys_iceclimbers_captainfalcon_r202509_t2450_cold", 2450),
+    // Falco, shooting after his up throw, is dash grabbed (5810): the
+    // release cleared his grab exclusions (ftCo_800DD724, 0x800DD7B8).
+    ("slp_fd_iceclimbers_falco_r195613_t5900_cold", 5900),
+    // Popo's knockback slide crosses onto Fountain of Dreams' rim (6059):
+    // the climbers' friction ignores the floor's material
+    // (ft_GetGroundFrictionMultiplier, 0x80084A50).
+    ("slp_fod_iceclimbers_marth_r214222_t6150_cold", 6150),
+    // Popo starts the Squall Hammer while Nana, alone, throws Falco
+    // forward: ftNn_Init_80123954 clears her x1A5C (0x801239A8), so the
+    // throw's knockback-free hammer hit freezes her and not Falco (3835;
+    // 3833 with the later start). Made from the bridge above.
+    ("iceclimbers_nana_throw_popo_squall_fd_falco_cold", 3900),
+    ("iceclimbers_nana_throw_popo_squall_late_fd_falco_cold", 3900),
 ];
 
 #[test]

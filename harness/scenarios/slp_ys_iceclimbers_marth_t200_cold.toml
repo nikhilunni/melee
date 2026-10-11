@@ -1,0 +1,29 @@
+# The port's side of slp_ys_iceclimbers_marth_t200: boundary start_ys_slippi74_ns_p13_iceclimbers1_marth2_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ys_iceclimbers_marth_t200_cold"
+expected = "slp_ys_iceclimbers_marth_t200"
+frames = 200
+seed = 1220637365
+boundary_seed = 365009131
+stage = "YoshisStory"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "Marth"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

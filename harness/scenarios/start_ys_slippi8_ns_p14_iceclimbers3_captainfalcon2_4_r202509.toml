@@ -1,0 +1,28 @@
+# IceClimbers vs CaptainFalcon on YoshisStory, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_ys_slippi8_ns_p14_iceclimbers3_captainfalcon2_4_r202509"
+gate = "start_ys_slippi8_ns_p14_iceclimbers3_captainfalcon2_4_r202509_cold"
+savestate = "harness/roms/start_ys_slippi8_ns_p14_iceclimbers3_captainfalcon2_4_r202509.sav"
+frames = 600
+seed = 1
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 1018706574
+stage = "YoshisStory"
+gecko = ["ucf-0.8", "neutral-spawn"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "CaptainFalcon"
+controller = "idle"
+controller_fix = "ucf-0.8"

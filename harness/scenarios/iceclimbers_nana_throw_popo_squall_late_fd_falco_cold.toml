@@ -1,0 +1,30 @@
+# The port's side of iceclimbers_nana_throw_popo_squall_late_fd_falco: boundary start_fd_slippi73_ns_p12_iceclimbers0_falco2_4_r195613 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "iceclimbers_nana_throw_popo_squall_late_fd_falco_cold"
+expected = "iceclimbers_nana_throw_popo_squall_late_fd_falco"
+frames = 3900
+seed = 1928049439
+game_start_seed = 2068829653
+boundary_seed = 1928049439
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 1
+kind = "Falco"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

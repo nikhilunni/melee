@@ -186,3 +186,21 @@ sets with each OBSERVE_PARTNER hand-over.
 - gm_8016C75C (the CPU's KO total) is known only while no other player's
   fighter has fallen (Player falls, StaticPlayer +68): the port does not
   track who last hit a fighter (dmg.x18c4_source_ply).
+
+## Kind branches and links found in the Slippi corpus (2026-10-11)
+- ft_GetGroundFrictionMultiplier (0x80084A40) returns 1.0 for Popo and Nana
+  before the floor lookup: `Capabilities::fixed_traction`, set by OnLoad,
+  read by `physics::grounded::ground_friction_multiplier`. Every shared
+  ground-friction site in melee-ft goes through it; a kind's own code that
+  calls `floor_friction` or `CollMap::floor_speed_scale` is right only
+  because that kind is not a climber.
+- ftNn_Init_80123954 clears Nana's x1A5C whenever she does not join the
+  Squall Hammer, a grab link included (`HitlagLink::grab_link_cleared`):
+  her hitlag then leaves her victim alone, while the victim's still holds
+  her. The forward throw's hammer hit has no knockback, so the victim's
+  freeze in an ordinary throw is the thrower's link and nothing else.
+- The player's stale table survives a revival; only the stock loss and the
+  player's creation empty it.
+- `ftCo_800AC5A0` with no knockback stays unimplemented: the one corpus
+  game that reached it did so through a port fault (a knockback-free
+  captor hit taken for the knockback branch).
