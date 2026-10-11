@@ -181,7 +181,9 @@ fn spawn(f: &mut Fighter, position: Vec3, map: &melee_mp::CollMap) -> bool {
     g.state = state::HELD;
     g.callbacks = true;
     f.core.tether_article = true;
-    let spawn = SpawnItem::attached(ItemKind::SamusGBeam, player, position, facing);
+    let mut spawn = SpawnItem::attached(ItemKind::SamusGBeam, player, position, facing);
+    // it_802B75FC: one ItemLink GObj per link.
+    spawn.link_gobjs = count as u8;
     f.core.item_requests.push(ItemRequest::SpawnInHand {
         spawn,
         part: crate::common::part(FtPart::ThrowN) as u8,

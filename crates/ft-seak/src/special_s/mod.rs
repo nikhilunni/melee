@@ -265,7 +265,9 @@ fn spawn_chain(f: &mut Fighter, map: &mut CollMap) {
     let part = HAND_PART;
     let hand = common::joint_position(f, usize::from(part));
     let facing = f.physics.facing;
-    let spawn = SpawnItem::attached(ItemKind::SeakChain, f.player.id, hand, facing);
+    let mut spawn = SpawnItem::attached(ItemKind::SeakChain, f.player.id, hand, facing);
+    // it_802BAF2C: one ItemLink GObj per link.
+    spawn.link_gobjs = side(f).chain.links.len() as u8;
     f.core.item_requests.push(ItemRequest::SpawnInHand {
         spawn,
         part,

@@ -407,8 +407,11 @@ fn rope_request(f: &mut Fighter, control: ItemControl) {
 fn spawn_rope(f: &mut Fighter) {
     let hand = hand_position(f);
     let facing = f.physics.facing;
+    let attributes = rope(f).attributes;
     let spawn = SpawnItem {
         initial_collision: false,
+        // it_802C248C: one ItemLink GObj per link.
+        link_gobjs: attributes.links as u8,
         ..SpawnItem::attached(ItemKind::IceClimberGumStrings, f.player.id, hand, facing)
     };
     f.core.item_requests.push(ItemRequest::SpawnInHand {
@@ -418,7 +421,6 @@ fn spawn_rope(f: &mut Fighter) {
         catch_item: false,
         scale_by_owner: false,
     });
-    let attributes = rope(f).attributes;
     rope(f).lay_out(attributes, hand);
     let b = belay(f);
     b.rope_out = true;

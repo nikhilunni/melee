@@ -150,8 +150,14 @@ fn create<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets, map: &CollMap)
         Vec3::ZERO,
     );
     let kind = kind::<C>(f);
+    let scale = f.core.player.scale;
+    let aerial = f.motion_state.action == FamilyState::AirCatch.action();
+    let words = f.character.get::<C>().attributes().hookshot_article;
+    let attributes = ChainAttributes::for_throw(&words, aerial, scale);
     let c = &mut f.core;
-    let spawn = SpawnItem::attached(kind, c.player.id, position, c.physics.facing);
+    let mut spawn = SpawnItem::attached(kind, c.player.id, position, c.physics.facing);
+    // it_802A2568: one ItemLink GObj per link.
+    spawn.link_gobjs = attributes.links as u8;
     c.item_requests.push(ItemRequest::SpawnInHand {
         spawn,
         part: hand,
@@ -159,15 +165,8 @@ fn create<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets, map: &CollMap)
         catch_item: false,
         scale_by_owner: false,
     });
-    let scale = f.core.player.scale;
-    let aerial = f.motion_state.action == FamilyState::AirCatch.action();
-    let words = f.character.get::<C>().attributes().hookshot_article;
     let specials = f.character.get_mut::<C>().specials();
-    specials.chain.lay_out(
-        ChainAttributes::for_throw(&words, aerial, scale),
-        scale,
-        map,
-    );
+    specials.chain.lay_out(attributes, scale, map);
     specials.hookshot = Some(Hookshot::default());
     f.core.tether_article = true;
 }

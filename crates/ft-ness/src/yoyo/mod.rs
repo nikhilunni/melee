@@ -377,10 +377,10 @@ fn spawn_yoyo(f: &mut Fighter, map: &CollMap) {
         f.physics.facing
     };
     let scale = f.player.scale;
-    yoyo(f)
-        .string
-        .lay_out(hand, motion, facing, scale, map);
-    let spawn = SpawnItem::attached(ItemKind::NessYoyo, f.player.id, hand, facing);
+    yoyo(f).string.lay_out(hand, motion, facing, scale, map);
+    let mut spawn = SpawnItem::attached(ItemKind::NessYoyo, f.player.id, hand, facing);
+    // it_802BE65C: one ItemLink GObj per link.
+    spawn.link_gobjs = yoyo(f).string.links().len() as u8;
     f.core.item_requests.push(ItemRequest::SpawnInHand {
         spawn,
         part: common::part(HAND) as u8,
