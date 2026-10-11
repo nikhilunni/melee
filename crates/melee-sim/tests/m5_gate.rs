@@ -2414,7 +2414,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 37] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 38] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2539,6 +2539,11 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 37] = [
     ("drmario_held_turnip_lw_ps_peach_cold", 5377),
     ("drmario_held_turnip_airlw_ps_peach_cold", 5377),
     ("drmario_held_turnip_appeal_ps_peach_cold", 5377),
+    // Jigglypuff, a tick into her second jump (341) with the shield button
+    // just pressed, is hit by Dr. Mario's up air (5633): the launch is not
+    // scaled, because ftCo_Damage_CheckAirMotion (0x8008E498) reads
+    // fp->motion_id and 341 is not one of its common states.
+    ("slp_fd_drmario_jigglypuff_t5800_cold", 5800),
 ];
 
 #[test]

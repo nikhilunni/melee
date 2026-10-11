@@ -1,0 +1,31 @@
+# DOC/16_29_39 Dr. Mario + Jigglypuff (FD) (ports 1, 2; UCF 0.74) to tick 5800: Jigglypuff, one tick into an aerial jump out of DamageFlyTop, is hit by Dr. Mario's up air (tick 5633)
+# The port's side of slp_fd_drmario_jigglypuff_t5800: boundary start_fd_slippi74ns_p12_drmario2_jigglypuff3_4_r162939 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fd_drmario_jigglypuff_t5800_cold"
+expected = "slp_fd_drmario_jigglypuff_t5800"
+frames = 5800
+seed = 321067065
+game_start_seed = 3723275729
+boundary_seed = 321067065
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

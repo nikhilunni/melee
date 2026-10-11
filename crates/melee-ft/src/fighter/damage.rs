@@ -2339,8 +2339,13 @@ impl FighterCore {
             state = S::DamageFlyTop;
         }
         let mut speed = hit.knockback * assets.damage.velocity_scale;
-        // ftCo_Damage_CheckAirMotion (8008E498), then 8008DEFC fmuls.
+        // ftCo_Damage_CheckAirMotion (8008E498), then 8008DEFC fmuls. It
+        // switches on fp->motion_id (retail 0x8008E498: lwz 0x10, then
+        // 0x19..0x26 and 0xEC), so a character row that borrows one of
+        // these states' callbacks (Jigglypuff's JumpAerialF1..5, 341..345)
+        // never takes the scale.
         if airborne
+            && usize::from(self.motion_state.action.0) < super::COMMON_COUNT
             && matches!(
                 self.motion_state.id,
                 S::JumpF
