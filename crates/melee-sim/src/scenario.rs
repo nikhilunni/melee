@@ -47,6 +47,12 @@ pub struct Scenario {
     /// (a captured fighter riding a moving floor) shows only there.
     #[serde(default)]
     pub after_map: bool,
+    /// The recorder renders after every tick, as a console does
+    /// (`harness/dolphin/tick_trace.py`, `one_entry_queue`); without it the
+    /// tick input clock runs two ticks per render. The port needs nothing
+    /// from it: it follows the recording's display clock either way.
+    #[serde(default)]
+    pub render_every_tick: bool,
     /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
     #[serde(default)]
     pub sudden_death: bool,

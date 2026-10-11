@@ -29,6 +29,12 @@ pub struct Setup {
     /// Whether the console ran the Widescreen code, instead of what the
     /// recording's frames show (`replay_screen_codes`).
     pub widescreen: Option<bool>,
+    /// The tick (as the report numbers frames) the console did not render
+    /// before: a lag frame. A replay does not record display passes and the
+    /// runner renders every tick, so this is a diagnostic for a stop that
+    /// one skipped pass explains (the magnifier, a screen KO, the particle
+    /// sort); the report says it was used.
+    pub skipped_display_pass: Option<u64>,
 }
 
 /// The UCF version a recording's ports run and what decided it.
@@ -114,6 +120,8 @@ pub struct Report {
     pub context: String,
     /// Every field that differs on the diverging frame, in key order.
     pub differing: Vec<String>,
+    /// `Setup::skipped_display_pass`.
+    pub skipped_display_pass: Option<u64>,
     pub stop: Stop,
 }
 
@@ -127,6 +135,9 @@ impl std::fmt::Display for Report {
             writeln!(f, "stage code {choice}")?;
         }
         writeln!(f, "screen {}", self.screen)?;
+        if let Some(tick) = self.skipped_display_pass {
+            writeln!(f, "no display pass before tick {tick} (--skip-display-pass)")?;
+        }
         writeln!(
             f,
             "{} / {} replay frames matched{}",
@@ -871,6 +882,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         screen,
         context: String::new(),
         differing: Vec::new(),
+        skipped_display_pass: setup.skipped_display_pass,
         stop: Stop::Complete,
     };
     let reasons = unsupported_setup(replay, setup);
@@ -904,6 +916,9 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         }
         let frame = &replay.frames[&(expected.frame as i32 + slp::SLIPPI_FIRST_FRAME)];
         report.context = leader_actions(replay, frame);
+        if setup.skipped_display_pass == Some(expected.frame) {
+            simulation.skip_display_pass();
+        }
         let result = catch_unwind(AssertUnwindSafe(|| simulation.tick()));
         let actual = match result {
             Ok(record) => {

@@ -28,6 +28,16 @@ entries before the injected one with the two previous ticks' pads, so the
 queue holds one poll per tick whatever Dolphin's own polls did, and the
 first record checks every injection holds its branch.
 
+Display cadence (`render_every_tick = true`): gm_801A4D34 runs one tick per
+queued poll and then renders once. The injected entry and the retrace's own
+poll make two entries, so a tick-clock recording runs two ticks per render
+(psFrameNum moves every other tick), where a console renders after each. With
+this key the queue is one entry long and drops a poll while full
+(`one_entry_queue`), so every tick is followed by a display pass. A Slippi
+replay's bridge sets it: what the display pass feeds back into the game (a
+tether's rope reads rendered joint matrices, the magnifier, a screen KO) is
+otherwise not the console's.
+
 After-map sample (`after_map = true`): each record also carries `after_map`,
 every fighter's struct as it stood when its map proc returned (Fighter_procMap,
 0x8006C27C, s_link 6), where Slippi before 3.4.0 reads Post Frame (hook
@@ -195,6 +205,11 @@ class TickTracer(Tracer):
             self.injected_ticks = 0
             # The held steps of the last two injected ticks, newest first.
             self.tick_history: list[dict[int, dict]] = []
+        # `render_every_tick = true`: see one_entry_queue.
+        self.render_every_tick = bool(self.scenario.get("render_every_tick", False))
+        if self.render_every_tick and not self.tick_clock:
+            raise ValueError("render_every_tick needs the tick input clock")
+        self.one_entry_installed = False
         self.gecko_hooks = gecko.hooks_from_env()
         # `after_map = true`: the current tick's samples (Fighter* -> struct hex).
         self.after_map = bool(self.scenario.get("after_map", False))
@@ -253,6 +268,8 @@ class TickTracer(Tracer):
         qwrite = self.mem.read_u8(PAD_LIB_ADDR + 2)
         queue = self.mem.read_u32(PAD_LIB_ADDR + 8)
         slot = (qwrite + qnum - 1) % qnum  # the latest poll; ports 2-3 and err stay as polled
+        if self.render_every_tick:
+            slot, qnum = self.one_entry_queue(queue, slot, qnum)
         entries = [(slot, self.tick_held)]
         if self.gecko_hooks:
             if qnum != UCF_QUEUE_WRAP:
@@ -271,6 +288,27 @@ class TickTracer(Tracer):
         self.mem.write_u8(PAD_LIB_ADDR + 1, slot)  # qread
         self.mem.write_u8(PAD_LIB_ADDR + 3, 1)     # qcount
         self.injected_ticks += 1
+
+    def one_entry_queue(self, queue: int, latest: int, qnum: int) -> tuple[int, int]:
+        """Render after every tick, as a console does. gm_801A4D34 runs one
+        tick per queued poll and then renders; an injected entry plus the
+        retrace's own poll make two ticks per render. A queue of one entry
+        that drops new samples while full (qtype 2, HSD_PadRenewRawStatus's
+        `goto skip`) leaves the injected entry alone and exactly one tick to
+        run. The entry is the last of the five allocated: after the dequeue
+        qread is 0, and UCF's qread-1 and qread-3 (wrapped by 5) are entries
+        4 and 2, as with the full queue."""
+        if not self.one_entry_installed:
+            if qnum != UCF_QUEUE_WRAP:
+                raise ValueError(f"pad queue holds {qnum} entries, expected {UCF_QUEUE_WRAP}")
+            polled = bytes(self.mem.read_u8(queue + latest * PAD_ENTRY_BYTES + i) for i in range(PAD_ENTRY_BYTES))
+            for entry in range(UCF_QUEUE_WRAP):
+                for i, byte in enumerate(polled):
+                    self.mem.write_u8(queue + entry * PAD_ENTRY_BYTES + i, byte)
+            self.mem.write_u8(PAD_LIB_ADDR, 1)      # qnum
+            self.mem.write_u8(PAD_LIB_ADDR + 4, 2)  # qtype: skip a poll while full
+            self.one_entry_installed = True
+        return UCF_QUEUE_WRAP - 1, UCF_QUEUE_WRAP
 
     def read_pad_queue_x(self, mem=None) -> list[list[int]]:
         """Per port, the signed stickX of queue entries qread-1 and qread-3,

@@ -131,9 +131,17 @@ def test_a_stage_that_keeps_its_creation_draws_needs_the_replays_boundary(scenar
     assert retail["game_start_seed"] == twin["game_start_seed"] == 41
     assert (retail["boundary_seed"], twin["boundary_seed"], twin["seed"]) == (99, 99, 99)
     # A foreign boundary on request: retail plays the pads, not the replay's draws.
-    s2s.main([*args, "start_own", "--foreign-creation"])
+    # The name is taken now: only --overwrite replaces a scenario.
+    with pytest.raises(SystemExit, match="already exist"):
+        s2s.main([*args, "start_own", "--foreign-creation"])
+    assert tomllib.loads((scenarios / "slp_cold.toml").read_text())["seed"] == 99
+    s2s.main([*args, "start_own", "--foreign-creation", "--overwrite"])
     twin = tomllib.loads((scenarios / "slp_cold.toml").read_text())
     assert "game_start_seed" not in twin and (twin["seed"], twin["boundary_seed"]) == (7, 99)
+    # A console renders after every tick; --dolphin-cadence leaves the key out.
+    assert tomllib.loads((scenarios / "slp.toml").read_text())["render_every_tick"] is True
+    s2s.main([*args, "start_own", "--foreign-creation", "--overwrite", "--dolphin-cadence"])
+    assert "render_every_tick" not in tomllib.loads((scenarios / "slp.toml").read_text())
 
 
 def test_other_stages_take_any_boundary_of_the_setup(scenarios):

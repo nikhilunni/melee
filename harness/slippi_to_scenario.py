@@ -35,6 +35,12 @@ Two scenarios are written:
   (its own `seed`), then `boundary_seed`, driven by the pads the recording
   consumed.
 
+The retail scenario carries `render_every_tick = true` (tick_trace.py): the
+recorder then renders after every tick, as the console that made the replay
+did. What follows the display pass (a tether's rope and so its wall catch,
+the magnifier's damage, a screen KO's position) is otherwise another game's.
+`--dolphin-cadence` leaves it out.
+
 The controller fix is the boundary's (its codes live in the savestate), which
 may be a later UCF than the replay's build ran. The Stadium codes are the
 boundary's too (`stadium_preload`, `stadium_frozen`, from its Gecko list) and
@@ -171,7 +177,19 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--foreign-creation", action="store_true",
                     help="accept a boundary not created from the replay's Game Start seed on a stage "
                          "that keeps its creation draws")
+    ap.add_argument("--dolphin-cadence", action="store_true",
+                    help="leave out render_every_tick: the recorder then runs two ticks per render, "
+                         "which a console does not (a tether's rope, the magnifier and a screen KO "
+                         "follow the display pass)")
+    ap.add_argument("--overwrite", action="store_true",
+                    help="replace existing scenario files of this name (their recordings no longer "
+                         "belong to them)")
     a = ap.parse_args(argv)
+    existing = [p for p in (data_root.SCENARIOS / f"{a.name}.toml", data_root.SCENARIOS / f"{a.name}_cold.toml")
+                if p.exists()]
+    if existing and not a.overwrite:
+        sys.exit(f"{', '.join(p.name for p in existing)} already exist: choose another --name "
+                 "(or --overwrite, if the scenario is yours to replace)")
 
     lines = a.inputs.read_text().splitlines()
     header, records = json.loads(lines[0]), [json.loads(line) for line in lines[1:]]
@@ -188,6 +206,7 @@ def main(argv: list[str] | None = None) -> None:
     codes = start.get("gecko", [])
     gecko_list = "gecko = [" + ", ".join(f'"{c}"' for c in codes) + "]\n" if codes else ""
     comment = "".join(f"# {line}\n" for line in a.comment.splitlines())
+    cadence = "" if a.dolphin_cadence else "render_every_tick = true\n"
 
     def fix(fighter: dict) -> str:
         return f'controller_fix = "{fighter["controller_fix"]}"\n' if "controller_fix" in fighter else ""
@@ -203,7 +222,7 @@ def main(argv: list[str] | None = None) -> None:
 name = "{a.name}"
 gate = "{a.name}_cold"
 input_clock = "tick"
-savestate = "{start["savestate"]}"
+{cadence}savestate = "{start["savestate"]}"
 frames = {ticks}
 seed = 1
 {creation}boundary_seed = {seed}

@@ -47,6 +47,10 @@ enum Command {
         /// them to retail from a boundary.
         #[arg(long)]
         retail_inputs: Option<PathBuf>,
+        /// Run this tick with no display pass before it (a console's lag
+        /// frame), to test whether one skipped render explains a stop.
+        #[arg(long, value_name = "TICK")]
+        skip_display_pass: Option<u64>,
     },
     /// Replay every `.slp` under the given paths in parallel and group the
     /// first stops by cause, largest group first.
@@ -237,6 +241,7 @@ fn main() -> anyhow::Result<()> {
             stage_codes,
             screen,
             retail_inputs,
+            skip_display_pass,
         } => {
             // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
             // reads the main checkout's), as harness/data_root.py.
@@ -251,6 +256,7 @@ fn main() -> anyhow::Result<()> {
                 controller_fix,
                 frozen_stages: stage_codes,
                 widescreen: screen,
+                skipped_display_pass: skip_display_pass,
             };
             if let Some(out) = retail_inputs {
                 let replay = slp::Replay::parse(&std::fs::read(&file)?)?;
@@ -305,6 +311,7 @@ fn main() -> anyhow::Result<()> {
                     controller_fix,
                     frozen_stages: stage_codes,
                     widescreen: screen,
+                    skipped_display_pass: None,
                 },
                 jobs,
             );

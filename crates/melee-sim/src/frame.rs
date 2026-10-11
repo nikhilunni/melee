@@ -5,6 +5,8 @@ pub use melee_lib::diagnostics::RenderedPose;
 pub struct Simulation {
     engine: melee_lib::diagnostics::Simulation,
     pads: PadScript,
+    /// [`Self::skip_display_pass`], taken by the next tick.
+    display_override: Option<bool>,
 }
 impl Simulation {
     pub fn new(state: InitialState) -> Self {
@@ -14,6 +16,7 @@ impl Simulation {
         Self {
             engine: melee_lib::diagnostics::Simulation::new(state),
             pads,
+            display_override: None,
         }
     }
     /// Replace the pad script; ticks already run keep the pads they used.
@@ -27,7 +30,16 @@ impl Simulation {
         self.engine.set_raw_sticks(self.pads.raw_sticks(tick));
         self.engine
             .set_recorded_pad_queue_x(self.pads.recorded_pad_queue_x(tick));
-        self.engine.set_display_pass(self.pads.display_pass(tick));
+        self.engine.set_display_pass(
+            self.display_override
+                .take()
+                .unwrap_or_else(|| self.pads.display_pass(tick)),
+        );
+    }
+    /// The next tick runs with no display pass before it (a console's lag
+    /// frame), whatever the script's display clock says.
+    pub fn skip_display_pass(&mut self) {
+        self.display_override = Some(false);
     }
     pub fn tick_without_snapshot(&mut self) -> anyhow::Result<()> {
         self.engine
