@@ -67,6 +67,15 @@ impl CharacterCallbacks for DrMario {
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> AssetResult<()> =
         crate::megavitamin::enter_taunt;
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    /// No row of ftDr_Init_MotionStateTable reads fp->item_gobj
+    /// (ftmariospecial*.c, ftdrmarioappeals.c): a held light item stays in
+    /// hand through the Megavitamin throw, the sheet, the punch, the tornado
+    /// and the side taunt, whose pill is not held (itDrMarioPill_Appeal_Spawn
+    /// follows the hand through its own accessory callback). Retail
+    /// witnesses, Peach's turnip in hand: `slp_ps_drmario_peach_fzw_t5600`
+    /// (343, 344) and `drmario_held_turnip_*_ps_peach` (341, 345..350; 342
+    /// is never entered: ftCo_800DEAE8 picks 341 facing either way).
+    const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_mario_family::SPECIAL_MOVES;
     /// ftData_SpecialN/S/Hi/Lw[DrMario]: Mario's entries.

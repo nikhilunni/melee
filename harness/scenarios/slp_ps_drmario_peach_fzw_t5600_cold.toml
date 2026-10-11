@@ -1,0 +1,33 @@
+# HNC 7 PM 0608, Dr. Mario vs Peach (PS, ports 1, 2): Dr. Mario throws a Megavitamin in the air (344) while holding Peach's turnip (tick 5162)
+# The port's side of slp_ps_drmario_peach_fzw_t5600: boundary start_ps_slippi74_ns_frozen_wide_p12_drmario2_peach1_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_drmario_peach_fzw_t5600_cold"
+expected = "slp_ps_drmario_peach_fzw_t5600"
+frames = 5600
+seed = 2164055074
+boundary_seed = 3652110516
+stage = "PokemonStadium"
+stadium_preload = true
+frozen_stages = true
+widescreen = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Peach"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

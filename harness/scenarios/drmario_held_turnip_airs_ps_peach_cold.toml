@@ -1,0 +1,33 @@
+# Directed: HNC 7 PM 0608 (Dr. Mario vs Peach, PS) to tick 5206, where Dr. Mario stands holding Peach's turnip; then his pad is replaced: Super Sheet in the air (346) with the turnip in hand. Peach keeps the replay's pads.
+# The port's side of drmario_held_turnip_airs_ps_peach: boundary start_ps_slippi74_ns_frozen_wide_p12_drmario2_peach1_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "drmario_held_turnip_airs_ps_peach_cold"
+expected = "drmario_held_turnip_airs_ps_peach"
+frames = 5377
+seed = 2164055074
+boundary_seed = 3652110516
+stage = "PokemonStadium"
+stadium_preload = true
+frozen_stages = true
+widescreen = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Peach"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

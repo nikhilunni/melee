@@ -2414,7 +2414,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 29] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 37] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2526,6 +2526,19 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 29] = [
     // where the port brought one out a tick: the chain was all out a tick
     // early and Link hung (state 8) at 9898, retail at 9899.
     ("slp_fd_link_marth_t10000_cold", 10000),
+    // Dr. Mario throws Megavitamins (344, 343) with Peach's turnip in hand
+    // (5162..5321): no row of his table reads fp->item_gobj.
+    ("slp_ps_drmario_peach_fzw_t5600_cold", 5600),
+    // The same game to tick 5206, then one special each with the turnip
+    // still held: the sheet (345, 346), the punch (347, 348), the tornado
+    // (349, 350) and the side taunt with its own pill (341).
+    ("drmario_held_turnip_s_ps_peach_cold", 5377),
+    ("drmario_held_turnip_airs_ps_peach_cold", 5377),
+    ("drmario_held_turnip_hi_ps_peach_cold", 5377),
+    ("drmario_held_turnip_airhi_ps_peach_cold", 5377),
+    ("drmario_held_turnip_lw_ps_peach_cold", 5377),
+    ("drmario_held_turnip_airlw_ps_peach_cold", 5377),
+    ("drmario_held_turnip_appeal_ps_peach_cold", 5377),
 ];
 
 #[test]
