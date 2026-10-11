@@ -212,8 +212,18 @@ pub fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
             p.assets.expect("Shield Breaker collision assets"),
             preservation(state),
         )?;
+        keep_hitlag_callbacks(f, state);
     }
     Ok(())
+}
+/// ftMs_SpecialN_801371FC / 801372A8: the end states' ground and air
+/// counterparts install the effect hitlag callbacks again once the trail
+/// is out (x2219_b0); the motion change removed them.
+fn keep_hitlag_callbacks(f: &mut Fighter, state: u16) {
+    let end = (state - 341) % 4 >= 2;
+    if end && f.effect_state.destroy_on_state_change {
+        f.effect_state.hitlag_callbacks = true;
+    }
 }
 pub fn accessory<C: MarsFamily>(f: &mut Fighter, _: &FighterAssets) {
     let pending = std::mem::take(&mut f.character.get_mut::<C>().specials().special_n.pending_effect);
@@ -227,6 +237,9 @@ pub fn accessory<C: MarsFamily>(f: &mut Fighter, _: &FighterAssets) {
         f.effects
             .push(melee_ef::request::EffectRequest::SyncAttached { id, bone: 0 });
         f.effect_state.destroy_on_state_change = true;
+        // ftMs_SpecialN_801365A8 / 8013666C: Fighter_SetEffectHitlagCallbacks,
+        // so the trail's model waits out the swing's hitlag.
+        f.effect_state.hitlag_callbacks = true;
     }
 }
 
@@ -283,6 +296,7 @@ pub fn air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
             p.assets.expect("Shield Breaker landing assets"),
             preservation(state),
         )?;
+        keep_hitlag_callbacks(f, state);
     }
     Ok(())
 }
