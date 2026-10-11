@@ -480,7 +480,8 @@ impl InitialState {
         );
         // The boundary's CObj is taken as its camera's latest render.
         let rendered_camera = camera.render_camera(&assets.stage_camera);
-        let effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
+        let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
+        effects.quake_models = quakes.has_models();
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
             article_poses: Box::new(crate::article_pose::ArticlePoses::new(

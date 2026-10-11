@@ -14,6 +14,12 @@ pub struct SpawnItem {
     /// staled and credited as the move that made the first article even
     /// after its owner has left that move.
     pub attack_from_spawner: bool,
+    /// The ItemLink GObjs (GObj_Create(7, 10, 0), one per link) the kind's
+    /// spawn creates right after the item's own: a chain's or tether's
+    /// links (it_802A2568, it_802BE65C, it_802BAF2C, it_802B75FC,
+    /// it_802C248C). Only their addresses are kept (`ItemCore::link_gobjs`);
+    /// the links themselves are the owning fighter's.
+    pub link_gobjs: u8,
     pub secondary_owner: Option<u8>,
     pub kind: ItemKind,
     pub hold_kind: u8,
@@ -56,6 +62,7 @@ impl SpawnItem {
             owner: Some(owner),
             stale_source: None,
             attack_from_spawner: false,
+            link_gobjs: 0,
             secondary_owner: Some(owner),
             kind,
             hold_kind: 8,

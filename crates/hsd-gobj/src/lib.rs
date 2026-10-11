@@ -124,10 +124,12 @@
 
 #![forbid(unsafe_code)]
 
+mod address;
 pub mod consts;
 mod slab;
 mod world;
 
+pub use address::{GObjAddress, GObjAddresses, GObjClass, GObjEvent};
 pub use consts::{GXLINK_NONE, OBJ_NONE, USER_DATA_NONE};
 pub use world::{
     BuiltinObjKinds, GObj, GObjId, InsertWhere, ObjRemoveFn, Proc, ProcFn, ProcId, RenderFn,

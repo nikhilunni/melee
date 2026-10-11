@@ -237,9 +237,11 @@ pub(crate) fn run_proc(
                 }
             }
             // grlast.c:642,645: Camera_RequestQuake(QuakeKind_Loop) from the stage proc.
-            StageAction::Quake => state
-                .quakes
-                .request(&mut state.camera, melee_cm::QuakeKind::Loop),
+            StageAction::Quake => state.quakes.request(
+                &mut state.camera,
+                melee_cm::QuakeKind::Loop,
+                &mut state.effects.gobjs,
+            ),
         }
     }
     Ok(())

@@ -570,13 +570,21 @@ impl Fighter {
         let p = self.core.physics.position;
         let contact = Vec3::new(p.x + offset.x, p.y + offset.y, p.z + offset.z);
         let angle = melee_lb::trigf::atan2f(-normal.x, normal.y);
+        // Camera_RequestQuake(QuakeKind_Small) follows the efAsync_Spawn in
+        // the C, but that request waits in the fighter's queue while the
+        // quake's model is created at once: its GObj comes first.
+        self.core
+            .effects
+            .push(melee_ef::request::EffectRequest::CameraQuake {
+                kind: melee_cm::QuakeKind::Small as u16,
+                position: contact,
+            });
         self.core
             .effects
             .push(melee_ef::request::EffectRequest::SurfaceRebound {
                 position: contact,
                 angle,
             });
-        self.core.quake_request = Some(melee_cm::QuakeKind::Small);
         // retail 800C7E90..800C7EC8: fmuls by xF0, then x and y by PlCo +1BC.
         let speed = self.core.physics.ground_knockback_velocity;
         let damping = assets.fly_reflect.damping;

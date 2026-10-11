@@ -99,7 +99,8 @@ impl InitialState {
                 .all_characters_unlocked
                 .expect("validated cold music rule"),
         ));
-        let effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
+        let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
+        effects.quake_models = quakes.has_models();
         let rendered_camera = camera.render_camera(&assets.stage_camera);
         Ok(Self {
             items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),

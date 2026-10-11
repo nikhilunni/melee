@@ -157,6 +157,17 @@ enum Command {
         #[arg(long)]
         to: u64,
     },
+    /// Compare the port's GObj addresses with retail's: each item's GObj
+    /// against the tick trace, and with `--ledger` every creation and
+    /// destruction against a `harness/gobj_ledger_record.py` capture.
+    GobjDiff {
+        scenario: PathBuf,
+        /// A GObj ledger of this scenario (gobj_ledger_record.py --out).
+        #[arg(long)]
+        ledger: Option<PathBuf>,
+        #[arg(long, default_value_t = 12)]
+        limit: usize,
+    },
     /// Compare the port's particle RNG call sites with the retail ledger per tick.
     ParticleSites {
         scenario: PathBuf,
@@ -392,6 +403,23 @@ fn main() -> anyhow::Result<()> {
                 println!("{line}");
             }
             println!("{} differing ticks", report.len());
+            Ok(())
+        }
+        Command::GobjDiff {
+            scenario,
+            ledger,
+            limit,
+        } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            let report = match ledger {
+                Some(ledger) => melee_sim::gobj::ledger_diff(&scenario, &ledger)?,
+                None => melee_sim::gobj::item_diff(&scenario)?,
+            };
+            for line in report.differences.iter().take(limit) {
+                println!("{line}");
+            }
+            println!("{}", report.summary);
+            anyhow::ensure!(report.differences.is_empty(), "GObj addresses differ");
             Ok(())
         }
         Command::ParticleSites {

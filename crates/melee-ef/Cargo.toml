@@ -8,6 +8,7 @@ edition.workspace = true
 hsd-particle = { path = "../hsd-particle" }
 hsd-anim = { path = "../hsd-anim" }
 hsd-archive = { path = "../hsd-archive" }
+hsd-gobj = { path = "../hsd-gobj" }
 hsd-types = { path = "../hsd-types" }
 melee-types = { path = "../melee-types" }
 gekko-math = { path = "../gekko-math" }

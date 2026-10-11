@@ -89,10 +89,12 @@ impl Effects {
         Self {
             events: Default::default(),
             camera_quakes: Default::default(),
+            quake_models: false,
             draws: DrawLog(Vec::with_capacity(DRAW_CAPACITY)),
             direct_draws: Default::default(),
             instances: Default::default(),
             models,
+            gobjs: Default::default(),
             character_banks: Default::default(),
             loaded_banks: 0,
             next_joint: 0,
@@ -106,7 +108,8 @@ impl Effects {
         let mut index = 0;
         while index < self.instances.len() {
             if remove(self.instances.iter().nth(index).unwrap()) {
-                self.models.release(self.instances.remove(index));
+                let effect = self.instances.remove(index);
+                self.release(effect);
             } else {
                 index += 1;
             }
@@ -114,7 +117,16 @@ impl Effects {
     }
     pub(super) fn acquire(&mut self, descriptor: u32, particles: &mut ParticleSystem) -> Effect {
         self.make_room(descriptor, 1, particles);
-        self.models.take(descriptor)
+        let mut effect = self.models.take(descriptor);
+        // efLib_Create's GObj_Create (eflib.c:481).
+        effect.gobj = self.gobjs.create(hsd_gobj::GObjClass::Effect);
+        effect
+    }
+    /// efLib_remove_user_data's model goes back to its pool; its GObj is
+    /// freed (HSD_GObjPLink_80390228).
+    fn release(&mut self, effect: Effect) {
+        self.gobjs.destroy(hsd_gobj::GObjClass::Effect, effect.gobj);
+        self.models.release(effect);
     }
     pub(super) fn make_room(
         &mut self,
@@ -156,15 +168,24 @@ impl Effects {
                 self.events.expire_joint(effect.joint_base + joint.0);
                 particles.expire_joint(effect.joint_base + joint.0);
             }
-            self.models.release(effect);
+            self.release(effect);
         }
     }
-    /// Pending efAsync kind-8 camera requests (CmQuakeKind, epicenter), in
-    /// dispatch order; the scene forwards them to Camera_RequestQuake.
-    pub fn drain_camera_quakes(&mut self, mut quake: impl FnMut(u16, Vec3)) {
+    /// Camera_RequestQuake for a one-shot kind from a flush: the scene
+    /// starts the animation (`drain_camera_quakes`); the model's GObj is
+    /// created here, where grLib_801C9CEC's GObj_Create falls among the
+    /// flush's effect models.
+    pub(super) fn request_camera_quake(&mut self, kind: u16, position: Vec3) {
+        let gobj = self
+            .quake_models
+            .then(|| self.gobjs.create(hsd_gobj::GObjClass::Quake));
+        self.camera_quakes.push((kind, position, gobj));
+    }
+    /// Pending camera requests in dispatch order; the scene forwards them
+    /// to Camera_RequestQuake.
+    pub fn drain_camera_quakes(&mut self, mut quake: impl FnMut(CameraQuake)) {
         while !self.camera_quakes.is_empty() {
-            let (kind, position) = self.camera_quakes.remove(0);
-            quake(kind, position);
+            quake(self.camera_quakes.remove(0));
         }
     }
 }

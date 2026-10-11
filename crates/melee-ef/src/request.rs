@@ -84,6 +84,14 @@ pub enum EffectRequest {
         trajectory: f32,
     },
     /// efSync_Spawn 0x42B: the explosion at the blast-zone exit, rotated by the exit angle.
+    /// Camera_RequestQuake(kind, &pos) called by the fighter itself, ahead
+    /// of an effect it then spawns (a KO: ft_0D31.c:220): the screen-shake
+    /// model's GObj is created before that effect's.
+    CameraQuake {
+        /// CmQuakeKind.
+        kind: u16,
+        position: Vec3,
+    },
     Death {
         position: Vec3,
         angle: f32,
@@ -479,6 +487,7 @@ impl EffectRequest {
                 | Self::PositionalGraphics { .. }
                 | Self::PositionalGenerator { .. }
                 | Self::PositionalModel { .. }
+                | Self::CameraQuake { .. }
                 | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }

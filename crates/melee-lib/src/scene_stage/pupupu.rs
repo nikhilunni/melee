@@ -60,9 +60,11 @@ pub(crate) fn run_proc(
             // grOldPupupu_802113E0: while the wind blows, Camera_RequestQuake
             // (Loop), then every tenth tick a dynamics gust (lb_80011A50).
             if stage.wind != 0 {
-                state
-                    .quakes
-                    .request(&mut state.camera, melee_cm::QuakeKind::Loop);
+                state.quakes.request(
+                    &mut state.camera,
+                    melee_cm::QuakeKind::Loop,
+                    &mut state.effects.gobjs,
+                );
             }
             if let Some(gust) = stage.dynamics_gust() {
                 forces.insert_directional(gust);

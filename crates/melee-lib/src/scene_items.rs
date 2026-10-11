@@ -1097,6 +1097,7 @@ pub struct RequestOwner<'a> {
 #[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
 pub fn request(
     pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
     resources: &Resources,
     map: &mut melee_mp::CollMap,
     world: &mut World,
@@ -1120,8 +1121,9 @@ pub fn request(
         // it_802B1DF8: one Item_8026AE60 id makes the chain one hit group.
         let hit_group = pool.allocate_hit_group();
         for index in 0..count {
-            let member =
-                request_one_of_chain(pool, resources, map, world, objects, spawn, &owner, rng);
+            let member = request_one_of_chain(
+                pool, gobjs, resources, map, world, objects, spawn, &owner, rng,
+            );
             if let (Some(previous), Some(member)) = (previous, member) {
                 pool.get_mut(previous).unwrap().partner = Some(member);
             }
@@ -1251,7 +1253,7 @@ pub fn request(
         }
         ItemRequest::Destroy { item } => {
             destroy_object(world, objects, item);
-            pool.destroy::<SceneItems>(item);
+            pool.destroy::<SceneItems>(item, gobjs);
             return None;
         }
         ItemRequest::SpawnInHand { spawn, .. } => (spawn, None, None),
@@ -1345,7 +1347,9 @@ pub fn request(
         }
     };
     let assets = resources.get(spawn.kind);
-    if let Some(id) = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier) {
+    if let Some(id) =
+        pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier, gobjs)
+    {
         let item = pool.get_mut(id).unwrap();
         item.owner_secondary = owner.secondary && spawn.owner == owner.slot;
         if SceneItems::logic(spawn.kind).new_hit_group {
@@ -1477,6 +1481,7 @@ pub fn request(
 #[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
 fn request_one_of_chain(
     pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
     resources: &Resources,
     map: &mut melee_mp::CollMap,
     world: &mut World,
@@ -1487,6 +1492,7 @@ fn request_one_of_chain(
 ) -> Option<u32> {
     request(
         pool,
+        gobjs,
         resources,
         map,
         world,
@@ -1543,6 +1549,7 @@ pub fn facing_toward_fighters(
 #[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
 pub fn spawn_rain_bomb(
     pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
     resources: &Resources,
     map: &mut melee_mp::CollMap,
     world: &mut World,
@@ -1554,6 +1561,7 @@ pub fn spawn_rain_bomb(
     let before = pool.len();
     request(
         pool,
+        gobjs,
         resources,
         map,
         world,
@@ -1655,6 +1663,7 @@ pub fn article_destroyed(
 #[allow(clippy::too_many_arguments)] // Item pool, scene objects and the shared RNG stay separate.
 pub fn spawn_shy_guy(
     pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
     resources: &Resources,
     map: &mut melee_mp::CollMap,
     world: &mut World,
@@ -1666,6 +1675,7 @@ pub fn spawn_shy_guy(
     let before = pool.len();
     request(
         pool,
+        gobjs,
         resources,
         map,
         world,
@@ -1694,11 +1704,16 @@ pub fn spawn_shy_guy(
     }
 }
 
-pub fn cleanup(pool: &mut ItemPool, world: &mut World, objects: &mut Objects) {
+pub fn cleanup(
+    pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
+    world: &mut World,
+    objects: &mut Objects,
+) {
     for item in pool.iter().filter(|item| item.destroyed) {
         destroy_object(world, objects, item.id);
     }
-    pool.remove_destroyed::<SceneItems>();
+    pool.remove_destroyed::<SceneItems>(gobjs);
 }
 
 /// HSD_GObjPLink_80390228 for an item: its scene object goes too.

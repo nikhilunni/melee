@@ -188,9 +188,11 @@ impl StadiumEngine for Engine<'_> {
     }
     fn quake(&mut self) {
         let state = &mut *self.state;
-        state
-            .quakes
-            .request(&mut state.camera, melee_cm::QuakeKind::Loop);
+        state.quakes.request(
+            &mut state.camera,
+            melee_cm::QuakeKind::Loop,
+            &mut state.effects.gobjs,
+        );
     }
     fn map_scale(&self) -> f32 {
         self.state.assets.stage_desc.parameters.map_scale

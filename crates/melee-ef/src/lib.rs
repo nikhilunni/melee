@@ -59,12 +59,19 @@ const STAGE_BANK: u16 = 30;
 #[derive(Clone)]
 pub struct Effects {
     pub events: crate::fixture_spawns::EventSink,
-    camera_quakes: FixedVec<(u16, Vec3), { request::REQUEST_CAPACITY }>,
+    camera_quakes: FixedVec<CameraQuake, { request::REQUEST_CAPACITY }>,
+    /// The stage has screen-shake models (stage_info.quake_model_set), so a
+    /// one-shot Camera_RequestQuake creates one (grLib_801C9CEC).
+    pub quake_models: bool,
     pub draws: DrawLog,
     /// Ordered direct efAsync/ftColl draws; diagnostics use fixed storage.
     pub direct_draws: FixedVec<u32, 64>,
     instances: FixedVec<Effect, INSTANCE_CAPACITY>,
     models: ModelPool,
+    /// Where every GObj of the match is created and destroyed, in retail's
+    /// order: each model here is one (efLib_Create, eflib.c:481), and the
+    /// scene's items, screen-shake models and HUD banners share the list.
+    pub gobjs: hsd_gobj::GObjAddresses,
     character_banks: resources::CharacterBanks,
     /// efAsync_DatEntries rows the match's fighters loaded (one bit each).
     loaded_banks: u64,
@@ -76,6 +83,23 @@ pub struct Effects {
     item_bones: FixedVec<(u32, u8), 64>,
     /// Root translations of the items models follow (`update_item_roots`).
     item_roots: FixedVec<(u32, Vec3), 16>,
+}
+/// A Camera_RequestQuake an effect flush reached: the CmQuakeKind, the
+/// epicentre, and the screen-shake model's GObj, created then, in order
+/// with the flush's effect models.
+pub type CameraQuake = (u16, Vec3, Option<hsd_gobj::GObjAddress>);
+/// The common models whose efAsync_Dispatch rows set EF_STATE_ASYNC on the
+/// new effect (efasync.c:105-527: rows 0x3E8, 0x3EB, 0x3EC, 0x3F5..0x3FD,
+/// 0x3FF, 0x404, 0x406, 0x415, 0x41D). efLib_PauseAll keeps that bit, so
+/// efLib_Update never sees the pause states and the model runs through its
+/// owner's hitlag; every other model waits it out.
+fn runs_through_hitlag(model: u32) -> bool {
+    matches!(model, 3..=5 | 7..=0xA | 0xF..=0x18 | 0x25)
+}
+/// efLib_Create puts gfx 25 and 26 on p_link 12 and every other model on
+/// p_link 11 (eflib.c:472-476).
+fn on_ko_link(descriptor: u32) -> bool {
+    matches!(descriptor, 0x19 | 0x1A)
 }
 /// efAsync_Dispatch 0x415: the ice block's common model.
 const ICE_BLOCK_MODEL: u32 = 0x25;
@@ -125,6 +149,8 @@ struct Effect {
     follow_item: Option<(u32, Vec3)>,
     hitlag_pause: HitlagPause,
     joint_base: usize,
+    /// The model's GObj (effect->gobj).
+    gobj: hsd_gobj::GObjAddress,
     paths: Arc<BTreeMap<usize, (JObjId, spline::Spline)>>,
 }
 /// efLib state_flags: bit0x80 bypasses the pause states in efLib_Update.
@@ -354,6 +380,10 @@ impl Effects {
         for queued in requests.iter() {
             let request = queued.request;
             let resolved_matrix = queued.matrix;
+            if let EffectRequest::CameraQuake { kind, position } = request {
+                self.request_camera_quake(kind, position);
+                continue;
+            }
             if let EffectRequest::DamageTrail { trajectory } = request {
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(None));
                 let mut spawn = SpawnRequest::new(0, 0x3E, 0);
@@ -1282,7 +1312,7 @@ impl Effects {
                     );
                     if matches!(id, 0x513..=0x515) {
                         // efAsync kind 8 -> Camera_RequestQuake(2/3/4), no particle spawn.
-                        self.camera_quakes.push((id - 0x511, position));
+                        self.request_camera_quake(id - 0x511, position);
                     } else if matches!(id, 0x40D | 0x44B) {
                         // efasync.c:356-370: efLib_CreateGenerator_AddAppSRT(0x19),
                         // the point as the AppSRT's translation and the
@@ -1370,6 +1400,9 @@ impl Effects {
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
             effect.attachment = attachment;
+            if !runs_through_hitlag(id) {
+                effect.hitlag_pause = HitlagPause::Active;
+            }
             if matches!(
                 request,
                 EffectRequest::BoneModel { .. } | EffectRequest::PositionalModel { id: 0x447, .. }
@@ -1450,6 +1483,7 @@ impl Effects {
                 | EffectRequest::PartnerVanish { .. }
                 | EffectRequest::OwnedRotationZ { .. }
                 | EffectRequest::EggShell { .. }
+                | EffectRequest::CameraQuake { .. }
                 | EffectRequest::DamageTrail { .. }
                 | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned
@@ -1704,7 +1738,11 @@ impl Effects {
     ) -> Result<()> {
         // The scene drains camera requests after each fighter proc
         // (`drain_camera_quakes`); bound any other owner's to its frame.
-        while self.camera_quakes.pop().is_some() {}
+        while let Some((_, _, gobj)) = self.camera_quakes.pop() {
+            if let Some(gobj) = gobj {
+                self.gobjs.destroy(hsd_gobj::GObjClass::Quake, gobj);
+            }
+        }
         for (index, active) in self.fighter_joints.iter_mut().enumerate() {
             if !*active {
                 continue;
@@ -1856,7 +1894,12 @@ impl Effects {
                 );
             }
         }
-        self.recycle_where(|effect| !effect.indefinite && effect.lifetime == 0);
+        // efLib_Update destroys a spent model in its own proc, and the
+        // procs run p_link 11 before p_link 12 (the KO models, gfx 25 and
+        // 26: eflib.c:472-476), each list oldest first.
+        let spent = |effect: &Effect| !effect.indefinite && effect.lifetime == 0;
+        self.recycle_where(|effect| spent(effect) && !on_ko_link(effect.descriptor));
+        self.recycle_where(|effect| spent(effect) && on_ko_link(effect.descriptor));
         Ok(())
     }
 }
@@ -1942,6 +1985,7 @@ impl Effect {
             attachment: None,
             owner: None,
             joint_base: 0,
+            gobj: Default::default(),
             joints: ids.into(),
             paths: Arc::new(paths),
         })

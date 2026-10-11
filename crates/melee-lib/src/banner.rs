@@ -26,6 +26,9 @@ pub(crate) struct Banner {
     pub(crate) kind: BannerKind,
     /// x12.x2: the start callback has run.
     announced: bool,
+    /// The element's GObj (ifStatus_802F6EA4's GObj_Create(0xE, 0xE, 0));
+    /// none for a banner created before the match's first tick.
+    pub(crate) gobj: Option<hsd_gobj::GObjAddress>,
     tree: JObjTree,
     root: JObjId,
 }
@@ -91,6 +94,7 @@ impl Banner {
         Ok(Self {
             kind,
             announced: false,
+            gobj: None,
             tree,
             root,
         })

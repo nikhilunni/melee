@@ -251,6 +251,7 @@ pub fn rain_spawn(position: Vec3, facing: f32) -> SpawnItem {
         owner: None,
         stale_source: None,
         attack_from_spawner: false,
+        link_gobjs: 0,
         secondary_owner: None,
         kind: ItemKind::BombHei,
         // Item_802674AC: common items below It_Kind_L_Gun_Ray.

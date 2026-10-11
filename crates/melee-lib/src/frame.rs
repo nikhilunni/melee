@@ -580,7 +580,9 @@ impl Runtime {
                             4 => melee_cm::QuakeKind::Large,
                             _ => unreachable!(),
                         };
-                        state.quakes.request(&mut state.camera, kind);
+                        state
+                            .quakes
+                            .request(&mut state.camera, kind, &mut state.effects.gobjs);
                     }
                     melee_it::ItemEvent::Gust {
                         center,
@@ -683,6 +685,7 @@ impl Runtime {
                     };
                     let id = crate::scene_items::request(
                         &mut state.items,
+                        &mut state.effects.gobjs,
                         &state.assets.items,
                         &mut state.map,
                         world,
@@ -1213,18 +1216,32 @@ impl Runtime {
                                 state,
                                 melee_gr::stadium::ScreenMode::CountdownEnd,
                             );
+                            let gobjs = &mut state.effects.gobjs;
+                            // Ground_801C0FB8: the stage's on_start, then
+                            // Ground_801C0C2C's own GObj (ground.c:708).
+                            for &class in state.stage.start_gobjs() {
+                                gobjs.create(class);
+                            }
                             // ifStatus_802F6EA4(4, ..., fn_8016B784): GO.
                             // Its GObj joins this s_link 0 pass after the
                             // countdown's, so it takes its first step now.
                             let mut go = state.go_banner.take().expect("preloaded GO banner");
+                            go.gobj = Some(gobjs.create(hsd_gobj::GObjClass::Hud));
                             go.start();
                             assert!(!go.tick(), "GO banner ended on its first step");
-                            state.banner = Some(go);
+                            // if_802F73C4 destroys the countdown's GObj,
+                            // which is freed once this proc returns.
+                            let countdown = state.banner.replace(go).expect("the countdown");
+                            let address = countdown.gobj.unwrap_or_else(|| gobjs.outside());
+                            gobjs.destroy(hsd_gobj::GObjClass::Hud, address);
                         }
                         BannerKind::Go => {
                             // fn_8016B784: the HUD, and with it the match clock.
                             state.clock.hud_enabled = true;
-                            state.banner = None;
+                            let go = state.banner.take().expect("the GO banner");
+                            let gobjs = &mut state.effects.gobjs;
+                            let address = go.gobj.unwrap_or_else(|| gobjs.outside());
+                            gobjs.destroy(hsd_gobj::GObjClass::Hud, address);
                             // grStadium_801D4150.
                             crate::scene_stage::stadium::show(
                                 state,
@@ -1247,17 +1264,20 @@ impl Runtime {
                 let fighters = state.fighters.iter_mut().rev().map(|f| &mut f.0.camera);
                 let camera = &mut state.camera;
                 let stage_camera = &state.assets.stage_camera;
-                with_subjects(
-                    items.chain(stage_subject).chain(fighters),
-                    |subjects| camera.update_standard(subjects, stage_camera),
-                );
-                state.quakes.retire_loop(&state.camera);
+                with_subjects(items.chain(stage_subject).chain(fighters), |subjects| {
+                    camera.update_standard(subjects, stage_camera)
+                });
+                state
+                    .quakes
+                    .retire_loop(&state.camera, &mut state.effects.gobjs);
                 let unzoomed = state.camera.zoom() == 1.0;
                 for fighter in &mut state.fighters {
                     fighter.0.offscreen.camera_unzoomed = unzoomed;
                 }
             }
-            Callback::Quakes => state.quakes.animate(&mut state.camera),
+            Callback::Quakes => state
+                .quakes
+                .animate(&mut state.camera, &mut state.effects.gobjs),
             Callback::Fighter { player, proc } => {
                 if proc == FighterProc::Animation {
                     use crate::scene_fighter::with_fighter;
@@ -1560,8 +1580,15 @@ impl Runtime {
                     state.dween_previous_x[port] = hardware.dween_previous_x;
                     partner_turn(state, player);
                 }
-                if let Some(kind) = state.fighters[player].0.quake_request.take() {
-                    state.quakes.request(&mut state.camera, kind);
+                // Camera_RequestQuake runs inside the proc that calls it,
+                // whichever fighter asked: a thrown fighter's release hit
+                // lands in its thrower's animation proc, ahead of this
+                // tick's quake procs (s_link 1, p_link 18), which then
+                // step the new model at once.
+                for fighter in &mut state.fighters {
+                    if let Some(kind) = fighter.0.quake_request.take() {
+                        state.quakes.request_from_fighter(&mut state.camera, kind);
+                    }
                 }
                 crate::quake::request_effect_quakes(state);
                 if let Some(link) = state.fighters[player].0.released_link.take() {
@@ -1886,6 +1913,7 @@ impl Runtime {
                         );
                         crate::scene_items::spawn_rain_bomb(
                             &mut state.items,
+                            &mut state.effects.gobjs,
                             &state.assets.items,
                             &mut state.map,
                             world,
@@ -1921,6 +1949,7 @@ impl Runtime {
                             );
                             crate::scene_items::spawn_shy_guy(
                                 &mut state.items,
+                                &mut state.effects.gobjs,
                                 &state.assets.items,
                                 &mut state.map,
                                 world,
@@ -2197,6 +2226,7 @@ impl Runtime {
                     };
                     let spawned = crate::scene_items::request(
                         &mut state.items,
+                        &mut state.effects.gobjs,
                         &state.assets.items,
                         &mut state.map,
                         world,
@@ -2284,26 +2314,6 @@ impl Runtime {
                 .destroy_item_models(spawner, &mut state.particles);
             state.effects.expire_item_joint(spawner, &mut state.particles);
         }
-        // Effects a proc spawned after the items it created (their creation
-        // particles came first).
-        for (slot, fighter) in state.fighters.iter_mut().enumerate() {
-            crate::scene_fighter::with_fighter!(fighter, |f| {
-                if !f.core.effects_after_items.is_empty() {
-                    for request in f.core.effects_after_items.take_all() {
-                        f.core.effects.push(request);
-                    }
-                    state.effects.flush::<RetailTrig>(
-                        melee_ef::EffectTiming::Immediate,
-                        slot,
-                        &mut f.core,
-                        &state.assets.common_particle_bank,
-                        &state.assets.particle_bank,
-                        &mut state.particles,
-                        &mut state.rng,
-                    )?;
-                }
-            });
-        }
         // Item SFX use the same headless request sink as ft_PlaySFX.
         for item in state.items.iter_mut() {
             while !item.sound_requests.is_empty() {
@@ -2374,7 +2384,36 @@ impl Runtime {
             }
             state.effects.forget_item(item.id);
         }
-        crate::scene_items::cleanup(&mut state.items, world, &mut self.item_objects);
+        crate::scene_items::cleanup(
+            &mut state.items,
+            &mut state.effects.gobjs,
+            world,
+            &mut self.item_objects,
+        );
+        // Effects a proc spawned after the items it created (their creation
+        // particles came first) and after the articles it removed
+        // (Item_8026A8EC frees an article's models and GObjs when the proc
+        // calls it: a KO's quake and blast follow ftCo_800D331C).
+        for (slot, fighter) in state.fighters.iter_mut().enumerate() {
+            crate::scene_fighter::with_fighter!(fighter, |f| {
+                if !f.core.effects_after_items.is_empty() {
+                    for request in f.core.effects_after_items.take_all() {
+                        f.core.effects.push(request);
+                    }
+                    state.effects.flush::<RetailTrig>(
+                        melee_ef::EffectTiming::Immediate,
+                        slot,
+                        &mut f.core,
+                        &state.assets.common_particle_bank,
+                        &state.assets.particle_bank,
+                        &mut state.particles,
+                        &mut state.rng,
+                    )?;
+                }
+            });
+        }
+        crate::quake::request_effect_quakes(state);
+        state.quakes.create_fighter_gobjs(&mut state.effects.gobjs);
         let items = &state.items;
         state
             .article_poses
@@ -2487,6 +2526,33 @@ impl Simulation {
     }
     pub fn item_snapshot(&self, frame: u64) -> Record {
         crate::diagnostics::item_snapshot(&self.runtime.state.items, frame)
+    }
+    /// Each item's GObj address identity and kind, in item-list order, for
+    /// `melee-sim gobj-diff`.
+    pub fn item_gobjs(&self) -> Vec<(u32, i32)> {
+        self.runtime
+            .state
+            .items
+            .iter()
+            .map(|item| (item.gobj.index(), i32::from(item.kind)))
+            .collect()
+    }
+    /// The GObj creations and destructions since the last call, in order:
+    /// whether created, the classifier, the address identity.
+    pub fn take_gobj_events(&mut self) -> Vec<(bool, u16, u32)> {
+        self.runtime
+            .state
+            .effects
+            .gobjs
+            .take_events()
+            .map(|event| {
+                (
+                    event.created,
+                    event.class.classifier(),
+                    event.address.index(),
+                )
+            })
+            .collect()
     }
     /// The stage's camera description (stage_info.cam_info).
     pub fn stage_camera(&self) -> melee_cm::StageCamera {

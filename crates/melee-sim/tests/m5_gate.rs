@@ -2427,7 +2427,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 48] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 49] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2600,7 +2600,73 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 48] = [
     // 3833 with the later start). Made from the bridge above.
     ("iceclimbers_nana_throw_popo_squall_fd_falco_cold", 3900),
     ("iceclimbers_nana_throw_popo_squall_late_fd_falco_cold", 3900),
+    // Falco's held Reflector strikes Sheik's needles three ticks apart
+    // (3033, 3036); the third needle's GObj is created where the first
+    // one's was (HSD_ObjAlloc's free list), so the hitbox's victim list
+    // (lbColl_80008688) already names it and it passes through (3039).
+    ("slp_bf_falco_sheik_t3100_cold", 3100),
 ];
+
+/// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
+/// `<name>.gobj.raw.jsonl`): every GObj creation and destruction in
+/// retail's order. Each was recorded for an order the port had wrong.
+const GOBJ_LEDGER_WITNESSES: [&str; 12] = [
+    // The Slippi bridge above: the countdown's and GO's HUD models, the
+    // stage's start GObjs, hit quakes, needles.
+    "slp_bf_falco_sheik_t3100_cold",
+    // A struck fighter's article goes (take_dmg_cb) before the hit's quake.
+    "corpus_v3_fd_drmario_fox4_ee32d950f_p1",
+    "corpus_v3_fd_drmario_fox4_ef89b3e70_p0",
+    // Shield Breaker's trail waits out hitlag (Fighter_SetEffectHitlagCallbacks).
+    "corpus_v3_s1_e19a3b12e_p2",
+    // A model without EF_STATE_ASYNC pauses with its owner's hitlag.
+    "corpus_v3_fd_bowser_fox4_e3e98e6dc_p0",
+    "corpus_v3_fd_link_fox4_e50814092_p1",
+    // The hookshot's and the yo-yo's ItemLink GObjs; a KO with an article
+    // in hand frees it before the quake and the blast.
+    "corpus_v3_fd_link_fox4_edafcfddf_p2",
+    "corpus_v3_fd_ness_fox4_ec3145eb3_p2",
+    "corpus_v3_fd_ness_fox4_e8827478e_p2",
+    // Spent models go p_link 11 first, then the KO blast's p_link 12.
+    "corpus_v3_fd_captainfalcon_fox4_e45a17231_p0",
+    "corpus_v3_fd_mario_fox4_e75fb4a9a_p1",
+    // A wall bounce's quake precedes its queued flash.
+    "corpus_v3_fd_pichu_fox4_e4213e6a5_p0",
+];
+
+/// HSD_ObjAlloc (0x8037ABC8) gives a new GObj the address freed last, and a
+/// hitbox's victim list keeps addresses, so which objects share one is game
+/// state: the port creates and destroys its GObjs in retail's order.
+#[test]
+fn gobj_addresses_match_retail_ledgers() {
+    for name in GOBJ_LEDGER_WITNESSES {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        let ledger = scenario.trace_path("gobj.raw.jsonl");
+        let raw = scenario.trace_path("tick.raw.jsonl");
+        if !melee_test_support::require_files(
+            scenario
+                .required_files()
+                .into_iter()
+                .chain([ledger.clone(), raw]),
+        ) {
+            continue;
+        }
+        let events = melee_sim::gobj::ledger_diff(&scenario, &ledger).unwrap();
+        assert!(
+            events.differences.is_empty(),
+            "{name}: {}",
+            events.differences[0]
+        );
+        let items = melee_sim::gobj::item_diff(&scenario).unwrap();
+        assert!(
+            items.differences.is_empty(),
+            "{name}: {}",
+            items.differences[0]
+        );
+    }
+}
 
 #[test]
 fn slippi_replay_inputs_match_retail() {

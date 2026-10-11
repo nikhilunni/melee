@@ -672,6 +672,12 @@ pub struct BombState {
 pub struct ItemCore {
     pub ground_or_air: melee_types::GroundOrAir,
     pub id: u32,
+    /// The item's GObj (Item_80268B18's GObj_Create, item.c:957): what a
+    /// hitbox's victim list holds of it.
+    pub gobj: hsd_gobj::GObjAddress,
+    /// The GObjs of a chain's or tether's links, in creation order
+    /// (`SpawnItem::link_gobjs`).
+    pub link_gobjs: melee_types::fixed::FixedVec<hsd_gobj::GObjAddress, MAX_LINK_GOBJS>,
     pub kind: ItemKind,
     pub owner: Option<u8>,
     /// The owner is its player's second fighter (x221F_b4: the Ice
@@ -897,7 +903,10 @@ pub(crate) fn rest_rotation(assets: &ItemAssets) -> Vec3 {
     let r = assets.visual.model.rotation;
     Vec3::new(r.x, r.y, r.z)
 }
-/// The tag that keeps item victim ids apart from fighter spawn numbers.
+/// The most ItemLink GObjs one article has: the Grapple Beam's doubled
+/// rope (it_802B75FC) has sixty links.
+pub const MAX_LINK_GOBJS: usize = 64;
+/// The tag that keeps item GObj addresses apart from fighter spawn numbers.
 const ITEM_VICTIM: u32 = 1 << 31;
 
 impl ItemCore {
@@ -950,11 +959,22 @@ impl ItemCore {
             self.velocity.y -= acceleration;
         }
     }
-    /// How fighter hitboxes list this item among their victims. Retail
-    /// stores gobj pointers; fighters are keyed by spawn number, items by
-    /// their id with the top bit set.
+    /// Item_8026A8EC: the kind's destroyed callback frees its links from
+    /// the newest (the list walk of it_802BB20C and its like), then the
+    /// item's own GObj goes.
+    fn destroy_gobjs(&mut self, gobjs: &mut hsd_gobj::GObjAddresses) {
+        while let Some(link) = self.link_gobjs.pop() {
+            gobjs.destroy(hsd_gobj::GObjClass::ItemLink, link);
+        }
+        gobjs.destroy(hsd_gobj::GObjClass::Item, self.gobj);
+    }
+    /// How hitboxes list this item among their victims. Retail stores GObj
+    /// pointers (lbColl_80008688) and never clears a destroyed victim's, so
+    /// an item created where a struck one was is taken for it: the key is
+    /// the item's GObj address, top bit set; fighters, whose GObjs last
+    /// the match, are keyed by spawn number.
     pub fn hitbox_victim(&self) -> u32 {
-        ITEM_VICTIM | self.id
+        ITEM_VICTIM | self.gobj.index()
     }
     /// ftColl_80077C60 keeps the largest dealt damage until item link 14.
     pub fn record_damage_dealt(&mut self, damage: f32) {
@@ -1487,14 +1507,20 @@ impl ItemPool {
         Some(subject)
     }
     /// Item_80268B18 -> Item_8026862C. Equal p-link priority appends in spawn order.
-    pub fn spawn<D: ItemDispatch>(&mut self, spawn: SpawnItem, assets: &ItemAssets) -> Option<u32> {
-        self.spawn_with_stale::<D>(spawn, assets, 1.0)
+    pub fn spawn<D: ItemDispatch>(
+        &mut self,
+        spawn: SpawnItem,
+        assets: &ItemAssets,
+        gobjs: &mut hsd_gobj::GObjAddresses,
+    ) -> Option<u32> {
+        self.spawn_with_stale::<D>(spawn, assets, 1.0, gobjs)
     }
     pub fn spawn_with_stale<D: ItemDispatch>(
         &mut self,
         spawn: SpawnItem,
         assets: &ItemAssets,
         stale_multiplier: f32,
+        gobjs: &mut hsd_gobj::GObjAddresses,
     ) -> Option<u32> {
         if let Some(limit) = self.common.hold_limits[usize::from(spawn.hold_kind)] {
             if self
@@ -1516,6 +1542,10 @@ impl ItemPool {
         let mut item = ItemCore {
             ground_or_air: spawn.ground_or_air,
             id,
+            gobj: gobjs.create(hsd_gobj::GObjClass::Item),
+            link_gobjs: (0..spawn.link_gobjs)
+                .map(|_| gobjs.create(hsd_gobj::GObjClass::ItemLink))
+                .collect(),
             kind: spawn.kind,
             owner: spawn.owner,
             owner_secondary: false,
@@ -1957,7 +1987,7 @@ impl ItemPool {
     }
     /// Item_8026A8EC (8026A8EC) outside the item procs: remove `id` now and
     /// run its kind's destroyed callback.
-    pub fn destroy<D: ItemDispatch>(&mut self, id: u32) {
+    pub fn destroy<D: ItemDispatch>(&mut self, id: u32, gobjs: &mut hsd_gobj::GObjAddresses) {
         let index = self
             .items
             .iter()
@@ -1965,13 +1995,15 @@ impl ItemPool {
             .expect("Item_8026A8EC: Not Found Item_Struct");
         let mut item = self.items.remove(index);
         (D::logic(item.kind).destroyed)(&mut item);
+        item.destroy_gobjs(gobjs);
     }
-    pub fn remove_destroyed<D: ItemDispatch>(&mut self) {
+    pub fn remove_destroyed<D: ItemDispatch>(&mut self, gobjs: &mut hsd_gobj::GObjAddresses) {
         let mut index = 0;
         while index < self.items.len() {
             if self.items[index].destroyed {
                 let mut item = self.items.remove(index);
                 (D::logic(item.kind).destroyed)(&mut item);
+                item.destroy_gobjs(gobjs);
                 if D::logic(item.kind).unlinks_partner_on_destroy {
                     if let Some(partner) = item.partner.and_then(|id| self.get_mut(id)) {
                         partner.partner = None;
@@ -2095,6 +2127,7 @@ mod tests {
         let _kind = TestKinds::Inert;
         let mut hold_limits = [None; 13];
         hold_limits[8] = Some(2);
+        let mut gobjs = hsd_gobj::GObjAddresses::default();
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits,
             lifetime: 1.0,
@@ -2117,12 +2150,20 @@ mod tests {
             push_speed: 0.0,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
-        let first = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
-        let survivor = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
-        assert!(pool.spawn::<TestKinds>(spawn, &assets()).is_none());
+        let first = pool
+            .spawn::<TestKinds>(spawn, &assets(), &mut gobjs)
+            .unwrap();
+        let survivor = pool
+            .spawn::<TestKinds>(spawn, &assets(), &mut gobjs)
+            .unwrap();
+        assert!(pool
+            .spawn::<TestKinds>(spawn, &assets(), &mut gobjs)
+            .is_none());
         pool.retire(first);
-        pool.remove_destroyed::<TestKinds>();
-        let last = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
+        pool.remove_destroyed::<TestKinds>(&mut gobjs);
+        let last = pool
+            .spawn::<TestKinds>(spawn, &assets(), &mut gobjs)
+            .unwrap();
         assert_eq!(
             pool.iter().map(|item| item.id).collect::<Vec<_>>(),
             [survivor, last]
@@ -2130,6 +2171,7 @@ mod tests {
     }
     #[test]
     fn physics_keeps_retail_rounding_boundary_between_nudge_and_position() {
+        let mut gobjs = hsd_gobj::GObjAddresses::default();
         let mut pool = ItemPool::new(ItemCommonData {
             hold_limits: [None; 13],
             lifetime: 1.0,
@@ -2157,7 +2199,9 @@ mod tests {
             Vec3::new(16777216.0, 0.0, 0.0),
             1.0,
         );
-        let id = pool.spawn::<TestKinds>(spawn, &assets()).unwrap();
+        let id = pool
+            .spawn::<TestKinds>(spawn, &assets(), &mut gobjs)
+            .unwrap();
         let item = pool.get_mut(id).unwrap();
         item.velocity.x = -16777216.0;
         item.nudge.x = -1.0;

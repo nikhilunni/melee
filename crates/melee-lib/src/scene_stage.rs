@@ -130,6 +130,16 @@ impl SceneStage {
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
+    /// The GObjs Ground_801C0FB8 (ground.c:694-709) creates when the
+    /// countdown ends, in order: the stage's on_start (each tournament
+    /// stage's is grZakoGenerator_801CAE04 alone), then the GObj of
+    /// Ground_801C0C2C's proc.
+    pub fn start_gobjs(&self) -> &'static [hsd_gobj::GObjClass] {
+        &[
+            hsd_gobj::GObjClass::EnemyGenerator,
+            hsd_gobj::GObjClass::Stage,
+        ]
+    }
     pub fn start_proc_table(&self) -> Vec<ProcRegistration> {
         match self {
             Self::FinalDestination(s) => s.start_proc_table(),

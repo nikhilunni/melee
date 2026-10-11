@@ -396,12 +396,20 @@ impl Fighter {
         // x2219_b1 / x221E_b1 / x221E_b2 / x221F_b1 are the dead flags MotionData::Life
         // stands for; pl_8003DF44 stamps the killer's stale-move table (no compared key).
         self.core.effect_state.invisible = true;
-        // Camera_RequestQuake(QuakeKind_Large, &cur_pos); the scene forwards it
-        // to the camera. The ftCo_800D35FC rumble has no simulated observer.
-        self.core.quake_request = Some(melee_cm::QuakeKind::Large);
+        // Camera_RequestQuake(QuakeKind_Large, &cur_pos), then the KO effect
+        // (ft_0D31.c:220): the screen-shake model's GObj is created first,
+        // and both after ftCo_800D331C has destroyed an article the fighter
+        // held (`release_for_death`), so they follow this proc's item
+        // requests. The ftCo_800D35FC rumble has no simulated observer.
+        self.core
+            .effects_after_items
+            .push(EffectRequest::CameraQuake {
+                kind: melee_cm::QuakeKind::Large as u16,
+                position: self.core.physics.position,
+            });
         self.core.lose_stock();
         self.core.play_death_sounds(assets, exit_sound);
-        self.core.effects.push(EffectRequest::Death {
+        self.core.effects_after_items.push(EffectRequest::Death {
             position: effect_position,
             angle: effect_angle,
             scale: assets.life.death_effect_scale,
