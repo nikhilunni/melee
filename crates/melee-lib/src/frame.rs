@@ -1699,6 +1699,35 @@ impl Runtime {
                             &mut state.rng
                         ))
                     .map_err(|e| anyhow::anyhow!("{e}"))?;
+                    {
+                        // The article's step may change the fighter's
+                        // motion (a tether's catch, hop or let-go:
+                        // ftCo_8009B390's ftAnim_8006EBA4 at 0x8009B3F0).
+                        // The new script's frame-0 graphics commands reach
+                        // efAsync_Spawn inside this s_link 8 proc
+                        // (Fighter_CallAcessoryCallbacks_8006C624), so they
+                        // queue (efAsync_Spawn, 0x80067948: s_link < 9) and the link 9
+                        // flush creates them newest first.
+                        let f = &mut state.fighters[player].0;
+                        resolve_issued_sounds(
+                            f,
+                            player,
+                            &state.assets,
+                            &mut state.effects,
+                            &mut state.particles,
+                            &mut state.rng,
+                            true,
+                        )?;
+                        f.resolve_terrain_footsteps(&mut state.rng);
+                        resolve_issued_graphics(
+                            f,
+                            player,
+                            &state.assets,
+                            &mut state.effects,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         f.core.ledge_holders.withdraw();
                         // efSync_Spawn from the article's step (a tether
