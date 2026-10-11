@@ -131,7 +131,9 @@ fn leave_pillar(item: &mut ItemCore, assets: &ItemAssets) {
     };
     let mut position = item.position;
     position.y += Bolt(&assets.special_attributes).pillar_rise();
-    let spawn = SpawnItem::ray(ItemKind::NessPKFireFlame, owner, position, item.facing);
+    let mut spawn = SpawnItem::ray(ItemKind::NessPKFireFlame, owner, position, item.facing);
+    // The bolt is the spawn's second parent (0x802AA50C).
+    spawn.attack_from_spawner = true;
     item.link_requests.push(LinkRequest {
         target: LinkTarget::Spawn(spawn),
         message: LinkMessage::Spawned,

@@ -349,6 +349,8 @@ fn head_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
             spawn.owner = None;
             spawn.secondary_owner = None;
         }
+        // it_802AC43C: the head is the spawn's second parent (0x802AC4E0).
+        spawn.attack_from_spawner = true;
         item.link_requests.push(LinkRequest {
             target: LinkTarget::Spawn(spawn),
             message: segment_message(&state, state.spawned as usize),

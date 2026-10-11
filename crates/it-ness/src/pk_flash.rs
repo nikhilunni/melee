@@ -311,6 +311,9 @@ fn burst_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
                 item.facing,
             );
             spawn.spawn_argument = state(item).charge.to_bits() as i32;
+            // it_802AF940: the flash is the spawn's second parent
+            // (0x802AF9C4).
+            spawn.attack_from_spawner = true;
             item.link_requests.push(LinkRequest {
                 target: LinkTarget::Spawn(spawn),
                 message: LinkMessage::Spawned,
