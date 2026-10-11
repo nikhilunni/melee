@@ -70,7 +70,8 @@ def test_boundary_selection_requires_the_boundary_seed():
 
 
 def test_scenario_uses_tick_clock_and_only_emits_changes(monkeypatch, tmp_path):
-    monkeypatch.setattr(bridge, "HERE", tmp_path)
+    # write_scenario writes under the data root, not this checkout.
+    monkeypatch.setattr(bridge.data_root, "SCENARIOS", tmp_path / "scenarios")
     (tmp_path / "scenarios").mkdir()
     calibration = tmp_path / "pad_calibration.json"
     calibration.write_text(json.dumps(TABLE))
@@ -87,7 +88,8 @@ def test_scenario_uses_tick_clock_and_only_emits_changes(monkeypatch, tmp_path):
 
 def test_first_sample_drives_the_tick_after_the_boundary(monkeypatch, tmp_path):
     # Match::new completes the oracle's tick 0, so no sample is lost to it.
-    monkeypatch.setattr(bridge, "HERE", tmp_path)
+    # write_scenario writes under the data root, not this checkout.
+    monkeypatch.setattr(bridge.data_root, "SCENARIOS", tmp_path / "scenarios")
     (tmp_path / "scenarios").mkdir()
     calibration = tmp_path / "pad_calibration.json"
     calibration.write_text(json.dumps(TABLE))
