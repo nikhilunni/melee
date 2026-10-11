@@ -1420,3 +1420,43 @@ port does, where the console's recording has 0x41EC558D. Her CPU stick
 (-76, -75) and her recorded joystick agree on all three. Not diagnosed: a
 velocity difference below a position ulp can hide for many ticks, and a
 replay records no velocity.
+
+## Link and Young Link stops (2026-10-11)
+
+Seven `public-v3.7-b` games stopped with Link or Young Link in play. Three
+port faults, each fixed; two display passes already described above; two
+left open.
+
+| Fault | Retail | Replays (matched before to after) | Witness |
+|---|---|---|---|
+| The hookshot's chain paid a link out at the hand on every tick of hitlag | it_802A6A78 (accessory 3, hitlag) walks the chain as it_802A4BFC does, but a link the hand is within a link's length of stays in the hand (0x802A6D20: `ble` to `return 0`); it_802A4BFC and it_802A5320 bring it out at the hand. The port shared one walk, so a claw that struck a fighter left the chain with one link too many per hitlag tick: all out a tick early on the wall (state 8 for 6), and a hang of another length | `LINK/Game_20190911T210634` 9904 to 13970 / 13970; `YLINK/Game_20190727T200303` 2632 to 8673 / 8673 | `slp_fd_link_marth_t10000` (boundary `start_fd_slippi73ns_p14_link1_marth2_4_r210634`): the claw strikes Marth at 9891 and Final Destination's underside at 9897; retail keeps 18 links out through the hitlag, the port had 20 |
+| A boomerang destroyed in the thrower's hand left the generator insertion cursor where it was | The take-damage hook ftLk_SpecialS_RemoveBoomerang1 calls it_802A07B4 (0x800EC094), which ends in Item_8026A8EC (0x802A07F8): efLib_DestroyAll (0x8026A988) walks the boomerang's joints before the Damage script creates the electric sparks, as for the hookshot (above) | `YLINK/12_28_49 Young Link + Ganondorf (DL)` 4880 to 6789 (then the ceiling bounce below) | `links_boomerang_hand_hit_fd_fox4`, `links_yl_boomerang_hand_hit_fd_fox4`: Fox's Reflector strikes Link on frame 12 of SpecialS1 (tick 212); the port's random stream left retail's on that tick |
+| A fighter bouncing off a ceiling in a pose taller than its tumble stayed where the bounce placed it | ftCo_800C18A8 moves cur_pos after Fighter_ChangeMotionState (0x800C1A48) and calls ft_80082084 (0x800C1A4C), which never moves the root joint: mpColl_LoadECB_JObj measures the new pose's joints, still standing at the contact position, from the placed cur_pos. The ECB is offset by the placement, and a pose whose top is above the tumble's reaches the ceiling again and is pushed down out of it. The port moved the root first. The wall arm (ft_80081F2C, 0x800C1A28) has the same shape and the same fix | `YLINK/12_28_49 Young Link + Ganondorf (DL)` 6789 to 6907 / 6907 (y -55.253 recorded, -50.863 in the port: the difference is the two ECB tops', 12.905 - 8.515); `DOC/Doc vs Fox [BF] Game_20180701T000930` 8598 to 8627 / 8627 (12.680 - 9.479) | none on retail: neither game can be played back (Dream Land's 2019 spawn row; no raw stick in the other recording), and 75 stick variations of `corpus_v3_s0_ef4efb740_p1` all bounce in Marth's stretched pose (top 13.335 against 12.443), where nothing is pushed. That witness and its ceiling tech stay exact |
+
+Not port faults, as described above: `PEACH/15_52_33 Peach + Young Link
+(DL)` (8501, a star KO's display pass) and `PEACH/Game_20191013T105824`
+(6022, the magnifier's damage tick).
+
+Open, measured only:
+
+- `LINK/Game_20190406T175018` (10399, Pokemon Stadium). The port follows
+  the console's Pre Frame seeds for 10398 ticks; on tick 10398 the console
+  draws 67 values and the port 3 (the stage's flash roll and two idle
+  generators). 64 is eight particles of the eight-draw kind the audience
+  fireworks emit (0x8039B088..0x8039B448), and the burst lasts about thirty
+  ticks. Link is in frame 34 of an air dodge holding a bomb, Luigi in jump
+  squat, the stage 98 ticks into the Water form's announcement. The window
+  cannot be played back: retail in Dolphin
+  (`slp_ps_link_luigi_t10500`, local data, boundary
+  `start_ps_slippi73pre_p13_link4_luigi2_4`) leaves the console near tick
+  3137, where Luigi's launch takes DamageFlyRoll for the console's
+  DamageFlyLw, and its match ends at 7902. The port's cold twin follows
+  that retail run exactly for all 7902 ticks, particle call sites included,
+  so both streams are the port's: the Stadium's screen draws depend on
+  display passes (above).
+- `LINK/11_58_33 Marth + Link (DL)` (3267, the 2019 spawn row). A bomb
+  that glanced Marth (1%, tick 3184) lands and goes off at 3258; the port's
+  draws equal the console's for six ticks of the blast and differ from tick
+  3264 (160 for 172, then 138 for 132, 179 for 171). The same blast with
+  nobody struck is exact on retail (`links_bomb_up_lands_dl_marth4`), as is
+  a bomb burning out in the hand (`links_bomb_held_fuse_fd_fox4`).
