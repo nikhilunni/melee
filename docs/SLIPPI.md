@@ -768,6 +768,19 @@ What makes retail follow the replay:
   any boundary of the setup has served (the witnesses below follow their
   replays from one); `slippi_to_scenario.py` insists on the replay's own
   boundary only for these two, unless `--foreign-creation` is given.
+- *Display passes.* gm_801A4D34 runs one tick per queued pad poll and then
+  renders once. The tick input clock's injected entry and the retrace's own
+  poll made two, so a recording ran two ticks per render, where a console
+  renders after every tick. What the display pass feeds back into the game
+  then differs: a tether's rope reads rendered joint matrices (so the wall
+  catch and everything after it), the magnifier's damage, a screen KO's
+  position. `slippi_to_scenario.py` therefore writes
+  `render_every_tick = true` (`--dolphin-cadence` leaves it out): the
+  recorder shortens the pad queue to one entry that drops a poll while full
+  (HSD_PadRenewRawStatus's qtype 2; `one_entry_queue` in
+  `harness/dolphin/tick_trace.py`), so psFrameNum moves on every tick.
+  Bridges recorded before 2026-10-11 lack it; one that touches a tether or
+  an off-screen fighter may be another game than the console's from there.
 - *Pads.* Pre Frame's joystick is the fighter's dead-zoned stick, with the
   raw X beside it (1.2+). `--retail-inputs` finds the raw Y whose clamped,
   dead-zoned pair is the recorded one, with the recorded raw X (what UCF
@@ -1222,25 +1235,46 @@ The other leader had respawned 20 ticks earlier. Forced to 0.74 the stop is
 the same; with the fix off the game stops at tick 172, so the console did
 run UCF. The stop stays, as an external event like the display pass.
 
-## Samus's wall tether: three draws the console did not make (2026-10-03, not a port fault found)
+## Samus's wall tether and the display cadence (2026-10-11: port faults)
 
-Three Samus games stop on `input_seed` with the port exactly three draws
-ahead while she is on the aerial grapple's wall tether (AirCatchHit, 358):
-`SAMUS/Samus vs Puff [YS] Game_20180824T234533` (drift tick 2806, the hop
-off the top of the climb, ftCo_8009B390), `SAMUS/17_27_54 Samus + Falco
-(YS)` (6766, the tick after the catch) and `SAMUS/Game_20161113T214526`
-(Fountain of Dreams, 7249, the catch).
+Three Samus games stopped on `input_seed` with the port exactly three draws
+ahead while she is on the aerial grapple's wall tether (AirCatchHit, 358),
+and an earlier reading here called them console events: the bridge of
+`SAMUS/Samus vs Puff [YS] Game_20180824T234533` (`slp_ys_samus_jigglypuff_t2900`)
+equals the port for 2900 ticks. That recording ran two ticks per render
+("Display passes" above). The rope reads rendered joints, so from the wall
+catch on it is not the console's game, and the port (which follows a
+recording's display clock) followed it there.
 
-The first was played back on retail (`slp_ys_samus_jigglypuff_t2900`, from
-`start_ys_slippi8_p13_samus0_jigglypuff4_ucf073`: ports 1 and 3, UCF 0.73,
-NeutralSpawn, the replay's boundary seed). The port equals that retail trace
-for all 2900 ticks, seed included, with 0 differing particle ticks: on tick
-2806 retail in Dolphin draws the hop's three graphics offsets (0x6B, 0x6C,
-0x3FF, nine values) and 24 particle values, as the port does, and the
-replay's recorded fighter fields match both. The console's Pre Frame seed at
-2807 is the port's seed three draws before the end of tick 2806. So the
-console drew three values fewer than retail does with these codes; what it
-ran differently is not in the replay. The stop is left as it is.
+Recorded with `render_every_tick` (`slp_ys_samus_jigglypuff_r1_t2900`, the
+same boundary and pads), retail in Dolphin gives the console's seed on every
+tick, and the port left it at 2807 with the replay's own values (retail
+0x32DC8D48, port 0x263BD4BD). The faults, all the port's:
+
+| Fault | Retail | Replays (matched before to after) | Witness |
+|---|---|---|---|
+| Graphics commands issued from the rope's proc were created in script order | The rope runs in accessory2 (it_802BAC80 from Fighter_CallAcessoryCallbacks_8006C624, s_link 8). A catch, hop or let-go there changes motion and steps the new script (ftCo_8009B390: 0x8009B3E8, 0x8009B3F0), whose frame-0 graphics reach efAsync_Spawn below link 9 and queue (0x80067948); the link 9 flush creates them newest first (0x3FF, 0x6C, 0x6B). The scene called accessory2 after it had resolved the proc's graphics, so these waited for the link 9 proc and were dispatched there at once, oldest first | `SAMUS/Samus vs Puff [YS]` 2807 to 15686 / 15686; `SAMUS/17_27_54 Samus + Falco (YS)` 6767 to 13142 / 13142; `SAMUS/Game_20161113T214526` 7250 to 10866 / 10866; `SAMUS/18_51_20 Samus + Samus (FD)` 13358 to 20934 / 20934; `CPTFALCON/Game_20190629T183728` 10309 to 13908 / 13908 | `slp_ys_samus_jigglypuff_r1_t2900` (2799, 2807) |
+| The Charge Shot's muzzle flash was created before the hand glow went | ftSs_SpecialN_801293BC: it_802B56E4 (0x8012946C) runs the shot's own efLib_DestroyAll (it_802B5CBC, 0x802B5CEC) before ftSs_SpecialN_801291F0 (0x80129504) and efSync_Spawn (0x80129524), so the flash's three generators go in behind the head the glow left. The port flushed the flash ahead of the launch request; a dust generator alive at the time then drew other values and emitted (three draws) on its last tick | `PIKACHU/13_03_44 Samus + Pikachu (FD)` 4155 to 7413 / 7413 | `slp_fd_samus_pikachu_r1_t4250` (4146..4151) |
+| A second motion change in one proc left the first's graphics behind | Fighter_ChangeMotionState's efAsync_QueueFlush (fighter.c:951) takes every request queued so far, the frame-0 graphics of the state being left included. Samus's Screw Attack catches a ledge twice (ftCliffCommon_80081298, then ftCliffCommon_80081370 again): retail creates flash, 0x6C, 0x6B, then the same three again; the port created both flashes first. The draw count is the same; the generators draw each other's values | none by count | `slp_fd_samus_pikachu_r1_t4250` (2503: 0 differing particle ticks) |
+| used_tether was cleared by a death | Only creation (fighter.c:777) and a grounded motion change (fighter.c:1138) clear +0x2228 bit 6; Fighter_UnkInitReset_80067C98 writes bit 1 of that byte (0x80068318). Samus, dead after an aerial grapple without landing, has no grapple off the revival platform: Z is an aerial | `SAMUS/20200205 - HNC 12 ... Pokemon Stadium` 2748 to 12611 / 12611 | `slp_ps_samus_captainfalcon_wide_r1_t2850` (2749; boundary `start_ps_slippi74_ns_frozen_wide_p23_samus3_captainfalcon0_4`) |
+| A tether's captor walked toward a victim behind the hold joint | fn_800DA190 (the pull's accessory1, installed at 0x800D9E44) skips fn_800DA054 for Link, Samus and Young Link (0x800DA1A4..C0) while the article reels the catch in. With the button code's beam Samus can catch a fighter behind her | `SAMUS/20200305 - HNC 15 ... Pokemon Stadium` 2596 to 8260 | `samus_grab_code_behind_fd_fox4` (289), directed |
+| No revival invincibility after a grapple or an item catch off the platform | ftCo_RebirthWait_IASA: ftCo_800D7100 (0x800D57F4) and ftCo_800C3B10 (0x800D5804) are priority inputs like the others, so ftColl_8007B7A4 (0x800D58C4) follows them. The port returned before it | the same game, 8260 to 9976 / 9976 | `samus_rebirth_tether_laser_fd_fox4` (411, 478), directed |
+
+The HNC 15 game cannot be bridged (its console spawned by the 2019 entry
+rule, for which there is no Gecko text; `slp_ps_samus_falco_wide_r1_t2700`
+is another game from tick 1 and is not registered), hence the two directed
+witnesses.
+
+**A lag frame on Fountain of Dreams.** `SAMUS/Game_20190629T124717` stops at
+7813 on `input_seed`. Played back with a render after every tick
+(`slp_fod_samus_marth_r1_t7900`, local data), retail in Dolphin follows the
+replay's fighters and seeds to tick 7809 and equals the port for all 7900
+ticks; on tick 7810 the console drew 220 values where retail and the port
+draw 189, all in the particle interpreter. `melee-sim replay <game>
+--skip-display-pass 7809` (the tick runs with no display pass before it, so
+no particleSort) matches all 9587 frames: the console dropped one render
+there, as that stage does on a console. Nothing in the replay says so and
+the runner does not guess; the stop stays.
 
 ## State-timing and position stops in the second corpus (2026-10-03)
 
@@ -1384,15 +1418,13 @@ then go in behind the head and do not emit on that tick; the port had them
 emit (child generator 332, eight extra draws). Retail draws the percent
 shake on 7126 as the port does.
 
-**Retail in Dolphin equals the port; the console drew otherwise.** As with
-the wall tether above: `PIKACHU/13_03_44 Samus + Pikachu (FD)` played back
-from its own boundary (`slp_fd_samus_pikachu_t4250`, local data) is exact
-for 4250 ticks, items and particle call sites included. The console's seed
-is three draws ahead of both from tick 4150, the fifth frame of Samus's
-Charge Shot (346), and one more on each of the next five ticks. Nothing recorded says what that console ran. The two other Samus stops off
-the tether (`SAMUS/Game_20190629T124717`, `CPTFALCON/Game_20190629T183728`)
-were not played back: one recording failed, the other's retail run ended
-at tick 3948.
+**The Samus stops off the tether** were port faults or a lag frame, not
+console events: see "Samus's wall tether and the display cadence".
+`slp_fd_samus_pikachu_t4250` (two ticks per render) gated exact because
+its counts agreed while its particle call sites did not (ticks 3933, 3934,
+4147, 4148, 2503); `slp_fd_captainfalcon_samus_t10400` and
+`slp_fod_samus_marth_t7900` are incomplete recordings of games that had
+already left their replays at a tether.
 
 **Dream Land with the 2019 spawn row** (`LINK/11_58_33 Marth + Link`,
 `DK/21_45_04 Donkey Kong + Ganondorf`, `YLINK/12_28_49 Young Link +

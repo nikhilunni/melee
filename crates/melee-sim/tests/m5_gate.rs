@@ -980,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 522] = [
+const MATRIX_WITNESSES: [(&str, usize); 524] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1507,6 +1507,15 @@ const MATRIX_WITNESSES: [(&str, usize); 522] = [
     ("samus_grab_code_l_fd_fox4", 420),
     ("samus_grab_code_strike_fd_fox4", 420),
     ("samus_tether_code_hang_fd_fox4", 620),
+    // The code's beam catches Fox behind Samus. While it reels him in
+    // (CatchPull) fn_800DA190 skips fn_800DA054 for Link, Samus and Young
+    // Link (0x800DA1A4..C0): she is not walked toward him (289).
+    ("samus_grab_code_behind_fd_fox4", 409),
+    // The aerial grapple off the revival platform is one of
+    // ftCo_RebirthWait_IASA's priority inputs (ftCo_800C3B10, 0x800D5804):
+    // the revival invincibility follows it (0x800D58C4) and Fox's lasers do
+    // nothing until it runs out (411, 478).
+    ("samus_rebirth_tether_laser_fd_fox4", 520),
     // Fox shines Samus while her beam is out. ftCommon_8007DB58's death1_cb
     // (it_802BAC3C -> it_802B7B84 -> Item_8026A8EC) frees the beam before
     // the Damage entry, and its efLib_DestroyAll walk (hsd_8039D688) parks
@@ -2414,7 +2423,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 45] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 48] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2436,11 +2445,28 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 45] = [
     // Fox's entry warp is queued after EntryStart's motion change and waits
     // for his link-9 flush, behind Randall's puff of the same tick (15).
     ("slp_ys_jigglypuff_fox_t300_cold", 300),
-    // Samus's aerial grapple catches Yoshi's Story's wall (2798), she climbs
-    // it and hops off the top (ftCo_8009B390, 2806). Retail draws what the
-    // port draws on 2806; the console's replay shows three draws fewer there
-    // (docs/SLIPPI.md).
+    // The same pads recorded with two ticks per render: the rope reads
+    // rendered joints, so this retail game leaves the console's at the wall
+    // (docs/SLIPPI.md). Kept as a tether witness at that cadence.
     ("slp_ys_samus_jigglypuff_t2900_cold", 2900),
+    // The console's game (`render_every_tick`): Samus's aerial grapple
+    // catches Yoshi's Story's wall (2799), she climbs it and hops off the
+    // top (ftCo_8009B390, 2807). The rope runs in accessory2, an s_link 8
+    // proc, so the catch's and the hop's frame-0 graphics queue
+    // (efAsync_Spawn, 0x80067948) and the link 9 flush creates them newest
+    // first: 0x3FF, 0x6C, 0x6B.
+    ("slp_ys_samus_jigglypuff_r1_t2900_cold", 2900),
+    // Samus fires a Charge Shot (4146): the shot's own efLib_DestroyAll
+    // (it_802B5CBC, 0x802B5CEC) removes the hand glow before the muzzle
+    // flash is spawned (0x80129524), so the flash's generators go in behind
+    // the list's new head. Her Screw Attack catches a ledge twice (2503):
+    // the second Fighter_ChangeMotionState flushes the first catch's
+    // frame-0 graphics with its ledge flash (fighter.c:951).
+    ("slp_fd_samus_pikachu_r1_t4250_cold", 4250),
+    // Samus dies after an aerial grapple without landing; used_tether
+    // (+0x2228 bit 6) survives Fighter_UnkInitReset_80067C98, so Z off the
+    // revival platform is a back air, not a grapple (2749).
+    ("slp_ps_samus_captainfalcon_wide_r1_t2850_cold", 2850),
     // Peach's down smash, entered in the input proc, flushes her queued
     // shine spark before the new script's smash voice draws (1048).
     ("slp_dl_peach_fox_t1300_cold", 1300),

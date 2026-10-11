@@ -133,6 +133,11 @@ real play; a stop is a first divergence against the replay's recorded fields.
   date, and 0.73 or 0.74 by the first dashback they disagree on; spawn rule
   by frame zero; Stadium preload/frozen); `--controller-fix` overrides the
   UCF version. The report prints the version chosen and why.
+- A bridge renders after every tick, as a console does (`render_every_tick`,
+  written by `slippi_to_scenario.py`). A recording with two ticks per render
+  is another game once a tether's rope, the magnifier or a screen KO is in
+  play. `replay --skip-display-pass <tick>` tests whether one lag frame
+  explains a stop.
 - Some stops are not port faults: a console's stage codes (no Shy Guys, no
   Final Destination transitions) and display-pass timing (the magnifier's
   damage tick) are not in a replay (`docs/SLIPPI.md`). A bridge cannot follow

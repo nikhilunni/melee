@@ -44,7 +44,10 @@ tick. A replay has no retail memory, so play the window on retail with the
 bridge in `docs/SLIPPI.md` ("A replay played back on retail") and triage the
 port against that trace; or build a smaller directed witness. Check the whole
 corpus before and after with `replay-batch --jsonl`: no replay may match
-fewer frames. On Final Destination and Fountain of Dreams the stage's
+fewer frames. `slippi_to_scenario.py` refuses an existing scenario name and
+writes `render_every_tick = true` (a console's display cadence; a "retail
+in Dolphin equals the port, the console differs" result from an older
+bridge is not evidence). On Final Destination and Fountain of Dreams the stage's
 creation draws precede the boundary seed, so the bridge needs a boundary
 made for that replay: `make_boundary.py --game-start-seed <the header's
 game_start_seed> --name <new name> --no-register`.

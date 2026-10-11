@@ -1,0 +1,41 @@
+# SAMUS directed witness: Samus has turned her back on Fox; the button code's grounded
+# beam flies at him behind her while L is held and A gives its tip the catch capsule.
+# While the beam reels him in (CatchPull 213) he is behind the hold joint, where
+# fn_800DA054 would walk another captor toward its victim; fn_800DA190 (0x800DA1A4..C0)
+# skips it for Link, Samus and Young Link, and retail's Samus stands still.
+# melee-sim search: reached [p0.motion_id == 213; p0.self_vel.x != 0] at ticks [287, 289].
+name = "samus_grab_code_behind_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_samus_fox4.sav"
+frames = 409
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 110, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 112, port = 0, buttons = {  }, raw = { button = 4 } },
+  { frame = 114, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 116, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 118, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 141, port = 1, buttons = {  }, raw = {  } },
+  { frame = 196, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 199, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 232, port = 0, buttons = {  }, raw = { button = 64 } },
+  { frame = 286, port = 0, buttons = {  }, raw = { button = 320 } },
+  { frame = 288, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,32 @@
+# The port's side of slp_ps_samus_captainfalcon_wide_r1_t2850: boundary start_ps_slippi74_ns_frozen_wide_p23_samus3_captainfalcon0_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_samus_captainfalcon_wide_r1_t2850_cold"
+expected = "slp_ps_samus_captainfalcon_wide_r1_t2850"
+frames = 2850
+seed = 114362299
+boundary_seed = 2806477728
+stage = "PokemonStadium"
+stadium_preload = true
+frozen_stages = true
+widescreen = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Samus"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "CaptainFalcon"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

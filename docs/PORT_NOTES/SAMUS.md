@@ -57,11 +57,21 @@ rope's callers (`it_802B99A0`, `it_802B9CE8`) have no witness.
 
 ## Not ported (fail closed)
 
-- A tip that meets a wall in the air: `fn_802B805C`'s AirCatch arm
-  (`ftCo_800C3CC0`, `it_802BAB40`), beam states 6..8 (`fn_802B895C`,
-  `fn_802B8B54`, `fn_802B8D38`), `ftSs_MS_AirCatchHit` (358). The wall and
-  ledge tether needs the rope's hang and climb and `ftCliffCommon_80081370`.
-- `itSamusbomb_UnkMotion2` (a sliding bomb).
+- `itSamusbomb_UnkMotion2` (a sliding bomb) and the shared item slide
+  `it_80277040`: no retail witness yet (no corpus stop reaches them).
+
+The wall tether (beam states 6..8, `ftSs_MS_AirCatchHit`) is ported
+(`grapple/air.rs`, `melee-ft` `air_catch.rs`).
+
+## Slippi corpus faults (2026-10-11)
+
+Six faults behind the corpus's Samus stops, with their retail addresses and
+witnesses, are in `docs/SLIPPI.md` ("Samus's wall tether and the display
+cadence"): graphics issued from accessory2 queue below link 9; the Charge
+Shot's flash follows the shot's own effect teardown; a second motion change
+flushes the first's frame-0 graphics; `used_tether` survives a death; a
+tether's captor is not walked during the pull; the revival invincibility
+follows a grapple off the platform.
 
 ## Known divergence, not registered
 
