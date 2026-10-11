@@ -961,9 +961,15 @@ impl FighterCore {
             contact_age: 254,
             ..self.status.wall_jump
         };
+        // used_tether (+0x2228 bit 6) is not among the bits UnkInitReset
+        // writes (0x80068318 is bit 1): only creation (fighter.c:777) and a
+        // grounded motion change (fighter.c:1138) clear it, so a fighter
+        // that died after an aerial tether has none until it lands.
+        let used_tether = self.status.used_tether;
         self.status = super::Status::reset(assets.shield_health);
         self.status.ledge_timed_out = ledge_timed_out;
         self.status.wall_jump = wall_jump;
+        self.status.used_tether = used_tether;
         // Fighter_UnkInitReset (80067C98) does not write cmd_vars (+2200..220C).
         // Later motion commands own initialization; retain them across stocks.
         let command_variables = self.commands.variables;
