@@ -325,6 +325,10 @@ pub fn release_throw(
     map: &mut melee_mp::CollMap,
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
+    // ftCo_800DD724 (retail 0x800DD7B8): ftCommon_8007E2F4(fp, 0) once the
+    // script asks for the release. The thrower can be grabbed for the rest
+    // of its throw (Falco shooting after his up throw).
+    attacker.core.status.grab_exclusions = super::ledge::GrabExclusions::NONE;
     // ftCo_800DE7C0's integer argument is a motion override (90), not an angle.
     let forced_motion = (attacker.motion_state.id == S::ThrowLw).then_some(S::DamageFlyTop);
     let hit = release_captured(&mut victim.core, &mut attacker.core, va, aa, map, true);
