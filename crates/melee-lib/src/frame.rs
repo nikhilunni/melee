@@ -2413,6 +2413,14 @@ impl Runtime {
             });
         }
         crate::quake::request_effect_quakes(state);
+        // A request made after the proc's own were taken: a throw's release
+        // hit lands on its victim in the thrower's animation proc
+        // (`grab_pairs::release`), ahead of this tick's quake procs.
+        for fighter in &mut state.fighters {
+            if let Some(kind) = fighter.0.quake_request.take() {
+                state.quakes.request_from_fighter(&mut state.camera, kind);
+            }
+        }
         state.quakes.create_fighter_gobjs(&mut state.effects.gobjs);
         let items = &state.items;
         state

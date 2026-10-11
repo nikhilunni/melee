@@ -2610,7 +2610,7 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 49] = [
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
 /// `<name>.gobj.raw.jsonl`): every GObj creation and destruction in
 /// retail's order. Each was recorded for an order the port had wrong.
-const GOBJ_LEDGER_WITNESSES: [&str; 12] = [
+const GOBJ_LEDGER_WITNESSES: [&str; 15] = [
     // The Slippi bridge above: the countdown's and GO's HUD models, the
     // stage's start GObjs, hit quakes, needles.
     "slp_bf_falco_sheik_t3100_cold",
@@ -2627,6 +2627,11 @@ const GOBJ_LEDGER_WITNESSES: [&str; 12] = [
     "corpus_v3_fd_link_fox4_edafcfddf_p2",
     "corpus_v3_fd_ness_fox4_ec3145eb3_p2",
     "corpus_v3_fd_ness_fox4_e8827478e_p2",
+    // A throw's release quake is created in the thrower's animation proc
+    // and stepped by that tick's quake procs.
+    "corpus_v3_fd_bowser_fox4_e9f348009_p2",
+    "corpus_v3_fd_fox_jigglypuff4_eb17a6598_p0",
+    "corpus_v3_fd_ganondorf_fox4_e0d368f02_p1",
     // Spent models go p_link 11 first, then the KO blast's p_link 12.
     "corpus_v3_fd_captainfalcon_fox4_e45a17231_p0",
     "corpus_v3_fd_mario_fox4_e75fb4a9a_p1",
