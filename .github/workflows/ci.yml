@@ -1,0 +1,110 @@
+# The data-free part of the gate: `cargo gate` (debug and release), clippy,
+# the harness tests and schema check, the tool tests and the wasm32 checks.
+#
+# CI has no disc image, savestates, recorded traces or replay corpus and never
+# obtains them (CLAUDE.md "Hard boundaries", docs/ISO.md). Oracle tests run
+# with MELEE_ALLOW_MISSING_DATA=1, so they return early and report as passed:
+# a green run here is NOT oracle evidence. `tools/merge-check.sh` (which
+# rejects the variable) and the local gates remain the merge criterion.
+#
+# The decomp submodule is checked out: tests and gen_schema.py read its C
+# sources and symbol map. It carries no game data.
+#
+# Every step passed on a checkout with no game data on aarch64 macOS
+# (rustc 1.96.0, Apple clang as `cc`, wasmtime 49.0.2). `cargo gate` and
+# clippy run on macOS only, where the port is developed; x86_64 Linux is not
+# a verified host for the float oracles. Not here: `cargo fmt --check`, the
+# perf gate and the macOS app build.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  gate:
+    name: cargo gate
+    runs-on: macos-latest
+    timeout-minutes: 90
+    env:
+      # Exactly "1": any other value keeps missing data a failure.
+      MELEE_ALLOW_MISSING_DATA: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+      - name: cargo gate (debug)
+        run: cargo gate --locked
+      - name: cargo gate (release)
+        run: cargo gate --release --locked
+
+  clippy:
+    runs-on: macos-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: clippy
+      - uses: Swatinem/rust-cache@v2
+      - name: Clippy
+        run: cargo clippy --workspace --all-targets --locked -- -D warnings
+
+  harness:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: astral-sh/setup-uv@v6
+        with:
+          enable-cache: true
+          cache-dependency-glob: harness/uv.lock
+      - name: Harness tests
+        working-directory: harness
+        run: uv run --locked python -m pytest -q
+      - name: Schema check
+        working-directory: harness
+        run: uv run --locked python gen_schema.py --check
+      - name: Generated schema is committed
+        run: git diff --exit-code -- harness/schema
+      - name: Tool tests
+        run: python3 -m unittest discover -s tools/tests
+
+  wasm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      MELEE_ALLOW_MISSING_DATA: "1"
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: true
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: wasm32-wasip1, wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+      - uses: bytecodealliance/actions/wasmtime/setup@v1
+      # Without the extracted disc only the crate tests can run; the
+      # native-versus-wasm match hash is a local check.
+      - name: Pure crates under wasmtime
+        run: tools/wasm-check.sh --tests-only
+      - name: Web host compiles
+        run: cargo check --target wasm32-unknown-unknown -p melee-web --locked
