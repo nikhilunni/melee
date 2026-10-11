@@ -806,15 +806,17 @@ impl Fighter {
             Some(partner) => !partner.asleep && !partner.reviving,
             None => false,
         };
-        // ftCo_800D7100 after the special check: LR + A catches an item.
+        // ftCo_800D7100 after the special check: LR + A catches an item;
+        // then ftCo_800C3B10, the aerial tether. Both are priority inputs
+        // (0x800D57F4, 0x800D5804): the revival invincibility below follows
+        // them as it does the others.
         let special = self.air_special_pressed(assets);
-        if !special && self.try_aerial_item_catch(assets) {
-            return Ok(());
-        }
-        if !pressed.intersects(Buttons::B) && self.try_air_tether(assets) {
-            return Ok(());
-        }
-        let priority = if special {
+        let caught = !special
+            && (self.try_aerial_item_catch(assets)
+                || (!pressed.intersects(Buttons::B) && self.try_air_tether(assets)));
+        let priority = if caught {
+            true
+        } else if special {
             // ftCo_SpecialAir_CheckInput
             self.enter_buffered_special(assets, true);
             true
