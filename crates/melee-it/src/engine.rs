@@ -931,6 +931,15 @@ impl ItemCore {
             self.queued_events.insert(0, event);
         }
     }
+    /// efAsync_QueueFlush on the item's own queue, as a motion change does
+    /// (Item_80268E5C, retail 0x80268F44): what the proc queued so far is
+    /// dispatched once it returns, ahead of every later link 9 flush.
+    fn flush_queued_effects(&mut self) {
+        while !self.queued_events.is_empty() {
+            let event = self.queued_events.remove(0);
+            self.events.push(event);
+        }
+    }
     /// it_80272860 (80272860): accelerate while below `limit` or while the
     /// velocity still points against gravity. There is no clamp at the limit.
     pub fn fall(&mut self, acceleration: f32, limit: f32) {
@@ -992,6 +1001,7 @@ impl ItemCore {
     }
     pub fn change_motion(&mut self, motion: u16, assets: &ItemAssets) {
         self.motion = motion;
+        self.flush_queued_effects();
         self.article_state = usize::from(motion);
         self.animation_frame = 0.0;
         self.script = ScriptState::default();
@@ -1077,6 +1087,8 @@ impl ItemCore {
         self.motion = motion;
         // Item_80268E5C: HSD_JObjSetTranslate(jobj, &pos) first.
         self.root_translation = self.position;
+        // retail 0x80268F44: efAsync_QueueFlush(gobj, &ip->xBC0).
+        self.flush_queued_effects();
         self.animation_frame = 0.0;
         self.speed_damage = false;
         if flags & state_change::MODEL_UPDATE != 0 {
