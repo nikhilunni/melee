@@ -531,3 +531,12 @@ stage = "PokemonStadium"
 players = ["IceClimbers", "Peach"]
 stocks = 4
 seed = 3306616091
+
+[[boundary]]
+name = "start_dl_link_marth4"
+cold = "start_dl_link_marth4_cold"
+savestate = "harness/roms/start_dl_link_marth4.sav"
+stage = "DreamLand"
+players = ["Link", "Marth"]
+stocks = 4
+seed = 1942826078

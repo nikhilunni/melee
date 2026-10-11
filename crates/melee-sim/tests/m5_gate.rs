@@ -980,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 519] = [
+const MATRIX_WITNESSES: [(&str, usize); 522] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1598,6 +1598,12 @@ const MATRIX_WITNESSES: [(&str, usize); 519] = [
     // Link's and Young Link's bombs, the arrow held by a shield and Young Link's taunt milk.
     ("links_bomb_fd_fox4", 900),
     ("links_yl_bomb_fd_fox4", 900),
+    // A bomb held until it goes off in the hand (it_8029DB5C: the fuse lit at
+    // xC frames left, then it_8029F69C), and one thrown straight up on Dream
+    // Land that lands on a platform and goes off with nobody near.
+    ("links_bomb_held_fuse_fd_fox4", 700),
+    ("links_yl_bomb_held_fuse_fd_fox4", 700),
+    ("links_bomb_up_lands_dl_marth4", 600),
     // Fox's Reflector strikes Link with the boomerang still in his hand
     // (212): the take-damage hook destroys it (0x800EC094 -> it_802A07B4 ->
     // Item_8026A8EC, 0x802A07F8) and efLib_DestroyAll (0x8026A988) walks the

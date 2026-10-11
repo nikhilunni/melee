@@ -1,0 +1,33 @@
+# LINKS directed witness: Link runs to Dream Land's right side, pulls a bomb
+# (200), throws it straight up out of a jump (256) and walks off the side
+# platform; the bomb falls back onto that platform and goes off at 335 with
+# nobody near (itLinkbomb_UnkMotion2_Coll -> it_8029F69C).
+name = "links_bomb_up_lands_dl_marth4"
+input_clock = "tick"
+savestate = "harness/roms/start_dl_link_marth4.sav"
+frames = 600
+seed = 1
+stage = "DreamLand"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 125, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 170, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = { stickY = 127 } },
+  { frame = 256, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 258, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 340, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"
