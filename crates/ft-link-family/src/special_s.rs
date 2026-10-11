@@ -238,6 +238,14 @@ pub fn remove_boomerang<C: LinkFamily>(f: &mut Fighter) {
         control: ItemControl::Remove,
     });
     forget_boomerang::<C>(f);
+    // it_802A07B4 ends in Item_8026A8EC (0x802A07F8), inside the thrower's
+    // proc: its efLib_DestroyAll (0x8026A988) walks the boomerang's JObj
+    // tree with hsd_8039D688, which moves the generator insertion cursor for
+    // whatever the thrower spawns next in the proc (a hit's Damage script:
+    // the electric sparks).
+    f.core
+        .effects
+        .push(melee_ef::request::EffectRequest::ArticleDestroyed);
 }
 
 /// ft_8008A2BC on the ground, ftCo_Fall_Enter in the air, at the end.

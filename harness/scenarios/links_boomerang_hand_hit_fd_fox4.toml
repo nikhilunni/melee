@@ -1,0 +1,32 @@
+# LINKS directed witness: Fox runs past Link and his Reflector (electric)
+# strikes at 212, frame 12 of SpecialS1, the boomerang still in the hand.
+# The take-damage hook destroys it (ftLk_SpecialS_RemoveBoomerang1 ->
+# it_802A07B4 -> Item_8026A8EC, whose efLib_DestroyAll walks the generator
+# list) before the Damage script spawns the electric sparks. Retail: 5%,
+# a standing reaction (motion 80).
+name = "links_boomerang_hand_hit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 420
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 178, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 212, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 214, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
