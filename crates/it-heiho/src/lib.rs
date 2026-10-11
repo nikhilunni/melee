@@ -169,6 +169,7 @@ pub fn spawn(position: Vec3, facing: f32) -> SpawnItem {
     SpawnItem {
         owner: None,
         stale_source: None,
+        attack_from_spawner: false,
         secondary_owner: None,
         kind: ItemKind::Heiho,
         // Item_802674AC: stage enemies.

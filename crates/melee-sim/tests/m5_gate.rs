@@ -980,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 524] = [
+const MATRIX_WITNESSES: [(&str, usize); 525] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1568,6 +1568,10 @@ const MATRIX_WITNESSES: [(&str, usize); 524] = [
     ("sheikzelda_zd_din_air_fd_zelda", 360),
     ("sheikzelda_zd_din_floor_fd_zelda", 300),
     ("sheikzelda_zd_din_high_fd_zelda", 360),
+    // Zelda is jabbed in the end state, before the fire leaves its explosion:
+    // the explosion is still her side special (it_8027B0C4 copies the fire's
+    // attack id and instance, 0x8027B158), so the next one is staled (6.37).
+    ("sheikzelda_zd_din_end_hurt_fd_zelda", 400),
     // LINKS: Spin Attack on the ground (hitting Fox) and in the air, with the
     // swirl models (efSync 0x4BB/0x4BC) and special fall and landing.
     ("links_spin_ground_fd_fox4", 420),

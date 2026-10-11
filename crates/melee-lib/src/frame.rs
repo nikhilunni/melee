@@ -651,11 +651,13 @@ impl Runtime {
             let target = match request.target {
                 LinkTarget::Item(target) => target,
                 LinkTarget::Spawn(mut spawn) => {
-                    // it_8027B0C4: the parent fighter's current attack. An
-                    // article spawned with no parent (a PK Thunder segment
-                    // of a head that left its creator, it_802AC43C(NULL))
-                    // has none.
+                    // it_8027B0C4: the parent fighter's current attack, or
+                    // the spawning article's own when the spawn names it as
+                    // the second parent (0x8027B158). An article spawned
+                    // with no parent (a PK Thunder segment of a head that
+                    // left its creator, it_802AC43C(NULL)) has none.
                     let secondary = state.items.get_mut(sender).unwrap().owner_secondary;
+                    let sender_attack = state.items.get_mut(sender).unwrap().stale_source;
                     let sender_group = state.items.get_mut(sender).unwrap().hit_group;
                     let index = spawn.owner.map(|owner| {
                         crate::scene_items::owner_index(&state.fighters, Some(owner), secondary)
@@ -664,12 +666,16 @@ impl Runtime {
                     let (stale_multiplier, owner_secondary) = match index {
                         Some(index) => {
                             let fighter = &state.fighters[index];
-                            spawn.stale_source = fighter.combat.stale.attack();
+                            spawn.stale_source = if spawn.attack_from_spawner {
+                                sender_attack
+                            } else {
+                                fighter.combat.stale.attack()
+                            };
                             (
-                                fighter
-                                    .combat
-                                    .stale
-                                    .multiplier(&state.assets.fighters[index].stale_weights),
+                                fighter.combat.stale.multiplier_for(
+                                    spawn.stale_source.map(|attack| attack.move_id),
+                                    &state.assets.fighters[index].stale_weights,
+                                ),
                                 fighter.player.secondary,
                             )
                         }

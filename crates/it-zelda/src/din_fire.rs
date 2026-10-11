@@ -297,6 +297,10 @@ fn burst_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
         let mut spawn =
             SpawnItem::attached(ItemKind::ZeldaDinFireExplode, owner, position, item.facing);
         spawn.spawn_argument = crate::explode::charge_argument(state(item).charge);
+        // it_802C4580(ip->owner, gobj, ..): the fire is the second parent
+        // (0x802C4608), so the explosion is still her side special once
+        // she has left it.
+        spawn.attack_from_spawner = true;
         item.link_requests.push(LinkRequest {
             target: LinkTarget::Spawn(spawn),
             message: LinkMessage::Spawned,

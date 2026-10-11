@@ -7,6 +7,13 @@ use melee_types::{GroundOrAir, ItemKind};
 pub struct SpawnItem {
     pub owner: Option<u8>,
     pub stale_source: Option<melee_types::combat::AttackInstance>,
+    /// SpawnItem.x4_parent_gobj2 is the article that leaves this one, not
+    /// the owning fighter: it_8027B0C4 then copies that article's attack id
+    /// and instance (retail 0x8027B164..0x8027B170: xD88, xD8C) rather than
+    /// the fighter's current ones (0x8027B10C..0x8027B118), so the hit is
+    /// staled and credited as the move that made the first article even
+    /// after its owner has left that move.
+    pub attack_from_spawner: bool,
     pub secondary_owner: Option<u8>,
     pub kind: ItemKind,
     pub hold_kind: u8,
@@ -48,6 +55,7 @@ impl SpawnItem {
         Self {
             owner: Some(owner),
             stale_source: None,
+            attack_from_spawner: false,
             secondary_owner: Some(owner),
             kind,
             hold_kind: 8,

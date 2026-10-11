@@ -1,0 +1,38 @@
+# SHEIKZELDA directed witness: Zelda's Din's Fire (side-B at tick 120), B
+# released; Fox runs in and jabs her at tick 158, one frame into the end
+# state (345), before the fire has left its explosion. Fox then jumps into
+# the explosion (179). A second Din's Fire (240) catches him standing (299).
+name = "sheikzelda_zd_din_end_hurt_fd_zelda"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_zelda_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 120, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 124, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 146, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 0, buttons = {  }, raw = { button = 512, stickX = 80 } },
+  { frame = 244, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 250, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 136, port = 1, buttons = {  }, raw = {  } },
+  { frame = 156, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 159, port = 1, buttons = {  }, raw = {  } },
+  { frame = 174, port = 1, buttons = {  }, raw = { button = 2048 } },
+  { frame = 177, port = 1, buttons = {  }, raw = {  } },
+  { frame = 236, port = 1, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 256, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Zelda"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
