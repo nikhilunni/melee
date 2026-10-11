@@ -1302,12 +1302,13 @@ Stops that are not port faults, or are left open:
   victim is in these looping specials. Needs the windows on retail.
 - *`DOC/Doc vs Fox [BF] Game_20180701T000930` (8598)*: Fox's FlyReflectCeil
   under Battlefield starts at y = -25.461 recorded, -22.261 in the port (x
-  and the state match). ftCo_800C18A8's ceiling arm (TransN y plus the ECB
-  top, then ft_80082084) has no retail witness; FlyReflectWall's has.
+  and the state match). Fixed 2026-10-11 (ab0fa45b, "Link and Young Link
+  stops" below).
 - *`DOC/16_29_39 Dr. Mario + Jigglypuff (FD)` (5638)*: Jigglypuff, hit one
   tick into JumpAerialF1 (341) out of DamageFlyTop, leaves hitlag with
-  (-2.438, +7.257) recorded and (-2.315, +7.036) in the port: 3.4% short and
-  0.36 degrees off, percent and state equal. Not understood.
+  (-2.438, +7.257) recorded and (-2.315, +7.036) in the port. Fixed
+  2026-10-11 ("The Dr. Mario stops" below): the port scaled the launch by
+  PlCo +190 for a row that only borrows JumpAerialF.
 - *Aerial hookshot (2 games).* `YLINK/Game_20190727T200303` (2632, Young
   Link's AirCatch (361) beside Dream Land's wall: x = -98.765 recorded,
   -99.184 in the port, the tick the chain pulls him off the wall) and
@@ -1460,3 +1461,83 @@ Open, measured only:
   3264 (160 for 172, then 138 for 132, 179 for 171). The same blast with
   nobody struck is exact on retail (`links_bomb_up_lands_dl_marth4`), as is
   a bomb burning out in the hand (`links_bomb_held_fuse_fd_fox4`).
+
+## The Dr. Mario stops (2026-10-11)
+
+The five `public-v3.7-b` games that stopped with Dr. Mario in play:
+
+| Replay (`DOC/`) | Stop | Cause | Now |
+|---|---|---|---|
+| `20200101 - HNC 7 - PM 0608 - Dr. Mario vs Peach - Pokemon Stadium` | 5162, unported: a special while holding an item | Dr. Mario throws Megavitamins with Peach's turnip in hand. No row of ftDr_Init_MotionStateTable reads fp->item_gobj; the item stays in hand | 9027 / 18884, then `input_seed` (below) |
+| `16_29_39 Dr. Mario + Jigglypuff (FD)` | 5638, `cur_pos` | ftCo_Damage_CheckAirMotion (0x8008E498) reads fp->motion_id (0x19..0x26, 0xEC); the port matched the row's common state, so Jigglypuff's JumpAerialF1 (341) took the PlCo +190 launch scale (0.95) when the shield button had just been pressed | 16995 / 16995 |
+| `Game_20191106T211939` | 4813, `cur_pos` | not a port fault: the star KO's display pass ("State-timing and position stops"); checked again, dropping the pass before tick 4814 matches 7932 / 7932 | unchanged |
+| `20200219 - HNC 1 - PM 0655 - Fox vs Dr. Mario - Pokemon Stadium` | 7008, `percent` | open: the widescreen magnifier, one tick early on the console (below) | unchanged |
+| `Doc vs Fox [BF] Game_20180701T000930` | 8598, `cur_pos` | FlyReflectCeil with a bounce pose taller than the tumble: fixed on main by ab0fa45b (below) | 8627 / 8627 |
+
+**Witnesses.** `slp_ps_drmario_peach_fzw_t5600` is the HNC 7 game played
+back on retail (boundary
+`start_ps_slippi74_ns_frozen_wide_p12_drmario2_peach1_4`): rows 344 and 343
+with the turnip held, from tick 5162. Seven directed branches of it replace
+Dr. Mario's pad from tick 5207, where he stands holding the turnip
+(`drmario_held_turnip_{s,airs,hi,airhi,lw,airlw,appeal}_ps_peach`): the
+sheet (345, 346), the punch (347, 348), the tornado (349, 350) and the side
+taunt with its own pill (341). Row 342 is never entered: ftCo_800DEAE8
+picks 341 facing either way. All exact with items and particle call sites.
+Mario shares the rows and has no witness; his audit stays closed.
+`slp_fd_drmario_jigglypuff_t5800` (boundary
+`start_fd_slippi74ns_p12_drmario2_jigglypuff3_4_r162939`) is the Jigglypuff
+game: retail launches her at (-2.893, 4.132) on tick 5633, the port had
+(-2.749, 3.926).
+
+**The bridge follows fighters longer than seeds on a widescreen Stadium.**
+Retail in Dolphin played the HNC 7 game's pads with the fighters where the
+console had them until tick 8700, but its seed left the console's at tick
+1004: the jumbotron's close-up test reads the CObj of the last display
+pass, and Dolphin's passes are not the console's. The port follows both
+(the gate with the trace's display clock, the replay with a pass after
+every tick). So the game's next stop (`input_seed` at 9027: the port draws
+76 values on tick 9026 where the console drew 64) could not be played back:
+`slp_ps_drmario_peach_fzw_t9200` (local data) is exact for 9200 ticks and
+is not the console's game after 8700. No single dropped display pass in
+9019..9028 moves the stop.
+
+**HNC 1, Fox vs Dr. Mario (7008).** Dr. Mario, launched off the left side,
+crosses the widescreen bound slowly: his window x in the port is 101.32,
+100.05, 98.45 on the passes after ticks 6947, 6948, 6949, against the
+code's left bound of 100 (`x >= 100` on the truncated value, 0x80030C80).
+The port has him off screen from the third and gives the magnifier's point
+at 7009; the console gave it at 7008, as if the second were already
+outside. Measured, none of which explains it: a left bound of 101 passes
+this stop, but bounds of 101 and 539 over the 45 games read as widescreen
+make 35 match fewer frames and only this one more, so the fleet ran 100 and
+540; no single dropped pass in 6884..6952 moves the stop (a skipped pass
+can only delay the flag). The console's projection differs from the port's
+by at least 0.05 of a pixel here, from something a replay does not record.
+
+**Doc vs Fox on Battlefield (8598).** Fixed on main the same day by the
+bounce's ECB pass ("Link and Young Link stops" above, ab0fa45b): Fox's
+bounce pose is taller than his tumble (ECB tops 12.680 and 9.479), so
+ft_80082084 pushes him down by the difference; the game now matches 8627 /
+8627. What this wave adds: a second retail recording of the arm where
+nothing is pushed, `bf_marth_fox4_flyreflectceil_eb7292cdf_p2` (Marth off
+the same Battlefield line at tick 3453, found by the explorer, 1 case in
+480), exact before and after that change; and the reason the pushed case
+has no recording. The game's bridge (`slp_bf_drmario_fox_t8628`, local
+data, boundary `start_bf_slippi73ns_p13_drmario4_fox2_4`) is exact for the
+8121 ticks retail played, but retail's seed leaves the console's at tick
+3633 and the fighters at 4935, and Fox is dead by 8120.
+
+That recording's Pre Frame raw X is zero for both ports on tick 2 (75 and
+71 beside it), which `--retail-inputs` refuses; the bridge was made with a
+scratch fallback to the nearest raw pair for that one tick (in Entry). The
+tool itself is unchanged.
+
+Corpora before and after (`replay-batch`; no replay matches fewer frames,
+and every scenario recorded before gates as it did: 2335 pass, 25 fail):
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
+| `public-v3.7-b` (502) | 409 to 410 | 4,506,818 to 4,522,040 |
+
+(Measured on f577dcce, before the Link wave's changes were merged in.)
