@@ -3174,8 +3174,16 @@ fn resolve_issued_sounds(
     // flush created their effects too (efAsync_QueueFlush, newest first).
     let sealed_graphics = below_link_9 && f.resolve_graphics_commands_before_seal(assets, rng);
     if (sound_waits || sealed_graphics) && below_link_9 {
+        // A teardown queued ahead of those graphics ran before the change
+        // (Luigi's Green Missile landing: efLib_DestroyAll, then the motion
+        // change whose flush creates the landing dust).
+        let timing = if sealed_graphics {
+            melee_ef::EffectTiming::SealedAfterTeardown
+        } else {
+            melee_ef::EffectTiming::Sealed
+        };
         effects.flush::<melee_ft::fighter::RetailTrig>(
-            melee_ef::EffectTiming::Sealed,
+            timing,
             player,
             &mut f.core,
             &scene_assets.common_particle_bank,

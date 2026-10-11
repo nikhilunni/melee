@@ -150,6 +150,10 @@ pub enum EffectTiming {
     /// Requests a motion change sealed (efAsync_QueueFlush in
     /// Fighter_ChangeMotionState), ahead of that proc's later graphics.
     Sealed,
+    /// [`Self::Sealed`], with the teardowns (efLib_DestroyAll) queued ahead
+    /// of a sealed request: they ran before the motion change whose flush
+    /// created it.
+    SealedAfterTeardown,
     Immediate,
     Deferred,
 }

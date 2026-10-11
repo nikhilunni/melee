@@ -230,6 +230,12 @@ impl QueuedEffect {
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct EffectQueue {
     entries: FixedVec<QueuedEffect, REQUEST_CAPACITY>,
+    /// Where the last motion change's flush put what it sealed
+    /// (`resolve_pending`): `entries[seal_start..seal_end]`, empty when
+    /// nothing was pending. Graphics commands that flush took join it
+    /// (`push_sealed_graphics`).
+    seal_start: u8,
+    seal_end: u8,
 }
 impl EffectQueue {
     pub fn push(&mut self, request: EffectRequest) {
@@ -250,6 +256,12 @@ impl EffectQueue {
                 graphics_ahead: 0,
             },
         );
+        if index <= usize::from(self.seal_start) {
+            self.seal_start += 1;
+            self.seal_end += 1;
+        } else if index < usize::from(self.seal_end) {
+            self.seal_end += 1;
+        }
     }
     /// A request an entry callback pushes after its motion change ran the new
     /// script's frame-0 commands and a color program step. efAsync_Spawn
@@ -276,9 +288,9 @@ impl EffectQueue {
     }
     /// One resolved graphics command that a motion change's efAsync flush
     /// took (Fighter_ChangeMotionState, fighter.c:951): it was queued when
-    /// its command ran, so that flush created it after the requests queued
-    /// later (the sealed ones still counting it ahead) and before
-    /// everything queued earlier.
+    /// its command ran, so that flush created it after the requests of its
+    /// batch queued later (those still counting it ahead) and before the
+    /// batch's earlier ones.
     pub fn push_sealed_graphics(
         &mut self,
         request: EffectRequest,
@@ -288,16 +300,22 @@ impl EffectQueue {
             self.entries.len() < REQUEST_CAPACITY,
             "effect storage capacity {REQUEST_CAPACITY} exhausted"
         );
-        let sealed = |e: &QueuedEffect| e.matrix.is_some();
+        let (start, end) = (
+            usize::from(self.seal_start).min(self.entries.len()),
+            usize::from(self.seal_end).min(self.entries.len()),
+        );
         let index = self
             .entries
             .iter()
             .enumerate()
-            .filter(|(_, e)| sealed(e) && e.graphics_ahead > 0)
+            .take(end)
+            .skip(start)
+            .filter(|(_, e)| e.matrix.is_some() && e.graphics_ahead > 0)
             .map(|(later, _)| later + 1)
             .last()
-            .or_else(|| self.entries.iter().position(sealed))
-            .unwrap_or(self.entries.len());
+            .unwrap_or(start);
+        self.seal_start = start as u8;
+        self.seal_end = end as u8 + 1;
         let matrix = Some(matrix(request.bone()));
         self.entries.insert(
             index,
@@ -350,10 +368,12 @@ impl EffectQueue {
             }
         }
         let sealed = pending.len();
+        self.seal_start = self.entries.len() as u8;
         while let Some(mut entry) = pending.pop() {
             entry.matrix = Some(matrix(entry.request.bone()));
             self.entries.push(entry);
         }
+        self.seal_end = self.entries.len() as u8;
         sealed
     }
     pub(crate) fn drain(
@@ -380,6 +400,30 @@ impl EffectQueue {
                     let entry = self.entries.remove(0);
                     assert!(entry.immediate(), "motion entry must seal outgoing effects");
                     drained.push(entry);
+                }
+            }
+            crate::EffectTiming::SealedAfterTeardown => {
+                let last_sealed = self
+                    .entries
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, e)| e.matrix.is_some())
+                    .map(|(i, _)| i)
+                    .last();
+                let mut remaining = last_sealed.map_or(0, |last| last + 1);
+                let mut index = 0;
+                while remaining > 0 {
+                    let entry = self.entries.iter().nth(index).unwrap();
+                    let teardown = matches!(
+                        entry.request,
+                        EffectRequest::DestroyOwned | EffectRequest::ArticleDestroyed
+                    );
+                    if entry.matrix.is_some() || teardown {
+                        drained.push(self.entries.remove(index));
+                    } else {
+                        index += 1;
+                    }
+                    remaining -= 1;
                 }
             }
             crate::EffectTiming::Sealed => {
