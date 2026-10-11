@@ -125,11 +125,11 @@ macro_rules! scene_characters {
             ) -> Self {
                 $(
                     if archive.descriptor.kind == <$ty as CharacterCallbacks>::descriptor().kind {
-                        return Self::new(construct(<$ty as CharacterCallbacks>::from_archive(&archive.data), archive, resources, map, raw, saved));
+                        return construct(<$ty as CharacterCallbacks>::from_archive(&archive.data), archive, resources, map, raw, saved);
                     }
                     $(
                         if archive.descriptor.kind == <$partner as CharacterForm>::form_descriptor().kind {
-                            return Self::new(construct(<$partner as CharacterForm>::read_form(&archive.data), archive, resources, map, raw, saved));
+                            return construct(<$partner as CharacterForm>::read_form(&archive.data), archive, resources, map, raw, saved);
                         }
                     )?
                 )*
@@ -178,6 +178,10 @@ pub(crate) fn transforms(kind: melee_types::FighterKind) -> bool {
 }
 
 /// `character`: the form's `from_archive`, read where the form is concrete.
+///
+/// Returns the boxed slot, not the `Fighter`: at opt-level 0 every roster arm
+/// of `from_saved` would otherwise hold its own `Fighter` on the stack, which
+/// together overflow a 2 MB test thread.
 fn construct<C: CharacterCallbacks>(
     character: Result<C, melee_ft::desc::FighterDescError>,
     archive: &CharacterArchive,
@@ -185,7 +189,7 @@ fn construct<C: CharacterCallbacks>(
     map: &CollMap,
     raw: &[u8],
     saved: &SavedPose,
-) -> Fighter {
+) -> SceneFighter {
     let mut character =
         character.unwrap_or_else(|e| panic!("{:?} character data: {e}", archive.descriptor.kind));
     character
@@ -195,7 +199,7 @@ fn construct<C: CharacterCallbacks>(
     let mut fighter =
         crate::initial_state::import_fighter(archive, resources, character.into_state(), map, raw);
     saved.restore(&mut fighter, raw);
-    fighter
+    SceneFighter::new(fighter)
 }
 
 /// The fighter-list index of player `player`'s own fighter (x221F_b4
