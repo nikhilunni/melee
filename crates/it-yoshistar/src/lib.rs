@@ -37,9 +37,19 @@ impl ItemLogic for YoshiStar {
     fn pickup_possible(_item: &ItemCore) -> bool {
         false
     }
-    /// it_802B322C (802B322C): launch along the facing, not grabbable,
-    /// motion 0 with ITEM_ANIM_UPDATE.
-    fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
+    /// it_802B322C (802B322C), which it_802B2FC8 calls once Item_80268B18
+    /// returns (0x802B3064): launch along the facing, not grabbable, motion
+    /// 0 with ITEM_ANIM_UPDATE. The creation's map pass (SpawnItem x44 b0,
+    /// it_80276100) has lifted the star off the floor by then, so the state
+    /// change places the model, and the hitbox link 11 puts on it this
+    /// tick, at the resolved position.
+    fn launched(
+        item: &mut ItemCore,
+        assets: &ItemAssets,
+        _common: &desc::ItemCommonData,
+        _spawn: &SpawnItem,
+        _rng: &mut gekko_math::HsdRng,
+    ) {
         // Retail 802B3258 fmuls.
         item.velocity.x = Attributes(&assets.special_attributes).speed() * item.facing;
         item.velocity.y = assets.launch_vertical_velocity;
