@@ -796,6 +796,9 @@ pub struct Capabilities {
     pub leads_partner: bool,
     /// x2222_b4: healing items are never picked up (Nana; ftpickupitem.c:47).
     pub refuses_healing_items: bool,
+    /// ft_GetGroundFrictionMultiplier's FTKIND_POPO / FTKIND_NANA arm
+    /// (0x80084A50..5C): 1.0 on every floor, slippery or sticky.
+    pub fixed_traction: bool,
     /// ftCo_800A101C's FTKIND_NANA arm: the CPU follows the player's own
     /// fighter (CpuFighter.xC 6).
     pub cpu_partner: bool,

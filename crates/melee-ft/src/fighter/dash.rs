@@ -58,7 +58,10 @@ impl Fighter {
         } else {
             initial - self.core.physics.ground_velocity
         };
-        let terrain = crate::physics::grounded::floor_friction(&self.core.collision.data);
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.core.physics,
+            &self.core.collision.data,
+        );
         self.core.physics.secondary_ground_acceleration = if terrain < 1.0 {
             acceleration * terrain
         } else {
@@ -200,7 +203,10 @@ impl Fighter {
 impl FighterCore {
     /// ftCo_Dash_IASA's shared successful-special/redash tail, 800CA51C: fmadds.
     fn apply_dash_interrupt_friction(&mut self, assets: &FighterAssets) {
-        let terrain = crate::physics::grounded::floor_friction(&self.collision.data);
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         let reduction = -(self.physics.ground_velocity * assets.running.interrupt_friction);
         self.physics.ground_velocity =
             gekko_math::fma::fmadds(reduction, terrain, self.physics.ground_velocity);

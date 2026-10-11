@@ -459,10 +459,14 @@ impl FighterCore {
         );
         self.physics.ground_acceleration =
             friction_acceleration(self.physics.ground_velocity, friction);
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
             grounded::finish_ground_update(

@@ -58,6 +58,11 @@ pub struct FighterPhysics {
     pub velocity_blend: integrate::VelocityBlend,
     /// `shield_hit.skip_update_pos`, +0x19C4 bit 7 (C first bitfield).
     pub shield_position_cached: bool,
+    /// ft_GetGroundFrictionMultiplier's kind test (0x80084A50..5C): the
+    /// floor's material never scales this fighter's friction. Not retail
+    /// state: `Capabilities::fixed_traction`, kept here because the ground
+    /// physics takes only these fields.
+    pub fixed_traction: bool,
 }
 
 impl FighterPhysics {
@@ -86,6 +91,7 @@ impl FighterPhysics {
             entry_facing: facing,
             velocity_blend: Default::default(),
             shield_position_cached: false,
+            fixed_traction: false,
         }
     }
 

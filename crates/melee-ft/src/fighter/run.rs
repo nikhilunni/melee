@@ -152,7 +152,11 @@ impl FighterCore {
         let MotionData::Run(run) = &mut self.state_data else {
             panic!("run data missing")
         };
-        let velocity = if grounded::floor_friction(&self.collision.data) < 1.0 {
+        let velocity = if crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        ) < 1.0
+        {
             run.slippery_animation_velocity
         } else {
             self.physics.ground_velocity

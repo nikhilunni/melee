@@ -270,6 +270,8 @@ impl CharacterCallbacks for IceClimber {
     /// ftPp_Init_OnLoadForNana), x40 = attributes +C4. ftData_SpecialS and
     /// ftData_SpecialHi (and their aerial tables) are NULL for Nana.
     fn on_load(&mut self, capabilities: &mut Capabilities) {
+        // ft_GetGroundFrictionMultiplier (0x80084A50..5C): both climbers.
+        capabilities.fixed_traction = true;
         match self.climber {
             Climber::Popo => {
                 capabilities.leads_partner = true;

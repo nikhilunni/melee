@@ -103,7 +103,7 @@ pub fn step_wait(
     map: &CollMap,
     wind: Wind,
 ) {
-    let terrain = map.floor_speed_scale(collision);
+    let terrain = ground_friction_multiplier(state, collision);
     let normal = collision.floor.normal;
     wait_physics(state, params, normal, terrain);
     finish_ground_update(state, collision, params, map, wind);
@@ -117,7 +117,8 @@ pub fn finish_ground_update(
     map: &CollMap,
     wind: Wind,
 ) {
-    let terrain = map.floor_speed_scale(collision);
+    // fighter.c:2225 and 2279: ft_GetGroundFrictionMultiplier.
+    let terrain = ground_friction_multiplier(state, collision);
     let normal = collision.floor.normal;
     // retail 0x8006BA28/BA30 and 0x8006BB94/BB9C: two fmuls, no fusion.
     let friction = params.friction * terrain;
@@ -212,7 +213,19 @@ pub fn walk_physics(
     target * common.slippery_animation_multiplier
 }
 
-/// ft_GetGroundFrictionMultiplier (0x80084A40), ordinary Fox terrain lookup.
+/// ft_GetGroundFrictionMultiplier (0x80084A40): the floor's terrain speed
+/// scale, except for the kinds whose traction no floor changes (retail
+/// 0x80084A50..5C returns 1.0 for Popo and Nana before the lookup).
+pub fn ground_friction_multiplier(state: &FighterPhysics, collision: &CollData) -> f32 {
+    if state.fixed_traction {
+        1.0
+    } else {
+        floor_friction(collision)
+    }
+}
+
+/// mpColl_8004CA6C (0x8004CA6C) on the fighter's own CollData:
+/// ft_GetGroundFrictionMultiplier past its kind test.
 pub fn floor_friction(collision: &CollData) -> f32 {
     if collision.floor.index == -1 {
         1.0

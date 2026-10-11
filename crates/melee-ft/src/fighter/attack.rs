@@ -716,10 +716,14 @@ impl FighterCore {
             assets.attacks.dash_friction_multiplier * self.attributes.ground.ground_friction;
         self.physics.ground_acceleration =
             friction_acceleration(self.physics.ground_velocity, friction);
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         grounded::finish_ground_update(&mut self.physics, &self.collision.data, &params, map, wind);
     }
@@ -748,17 +752,25 @@ impl FighterCore {
             // retail ft_80085030, 8008505C: fmsubs.
             self.physics.ground_acceleration =
                 gekko_math::fma::fmsubs(offset, self.physics.facing, self.physics.ground_velocity);
+            let terrain = crate::physics::grounded::ground_friction_multiplier(
+                &self.physics,
+                &self.collision.data,
+            );
             grounded::apply_ground_movement(
                 &mut self.physics,
                 self.collision.data.floor.normal,
-                map.floor_speed_scale(&self.collision.data),
+                terrain,
             );
         } else {
+            let terrain = crate::physics::grounded::ground_friction_multiplier(
+                &self.physics,
+                &self.collision.data,
+            );
             grounded::friction_physics(
                 &mut self.physics,
                 &params,
                 self.collision.data.floor.normal,
-                map.floor_speed_scale(&self.collision.data),
+                terrain,
             );
         }
         grounded::finish_ground_update(&mut self.physics, &self.collision.data, &params, map, wind);
@@ -801,10 +813,14 @@ impl FighterCore {
                 self.attributes.ground.ground_friction,
             );
         }
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         grounded::finish_ground_update(&mut self.physics, &self.collision.data, &params, map, wind);
     }

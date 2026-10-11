@@ -212,7 +212,11 @@ impl FighterCore {
             panic!("walk data missing")
         };
         // ft_GetGroundFrictionMultiplier reads the current floor material.
-        let speed = if crate::physics::grounded::floor_friction(&self.collision.data) < 1.0 {
+        let speed = if crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        ) < 1.0
+        {
             walk.slippery_animation_velocity
         } else {
             self.physics.ground_velocity

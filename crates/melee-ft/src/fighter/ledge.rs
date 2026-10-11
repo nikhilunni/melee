@@ -433,7 +433,7 @@ impl Fighter {
                 self.land();
             }
         } else {
-            self.core.cliff_ground_physics(assets, map);
+            self.core.cliff_ground_physics(assets);
         }
         Ok(())
     }
@@ -542,7 +542,7 @@ impl FighterCore {
 
 impl FighterCore {
     /// ft_80084FA8 / ft_80085030 (80085030): grounded ledge root motion.
-    fn cliff_ground_physics(&mut self, assets: &FighterAssets, map: &CollMap) {
+    fn cliff_ground_physics(&mut self, assets: &FighterAssets) {
         // ft_80084FA8 (80084FA8) -> ft_80085030 (80085030).
         if self
             .animation
@@ -572,10 +572,14 @@ impl FighterCore {
                 friction,
             );
         }
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         crate::physics::grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
     }
 }

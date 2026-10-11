@@ -526,7 +526,11 @@ pub fn walk_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitCh
     let MotionData::Walk(walk) = &c.state_data else {
         panic!("cargo walk data missing")
     };
-    let speed = if crate::physics::grounded::floor_friction(&c.collision.data) < 1.0 {
+    let speed = if crate::physics::grounded::ground_friction_multiplier(
+        &c.physics,
+        &c.collision.data,
+    ) < 1.0
+    {
         walk.slippery_animation_velocity
     } else {
         c.physics.ground_velocity

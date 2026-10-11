@@ -454,11 +454,9 @@ pub fn cut_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
         phase.assets.grab_escape.escape_friction * f.attributes.ground.ground_friction,
     );
     let core = &mut f.core;
-    grounded::apply_ground_movement(
-        &mut core.physics,
-        core.collision.data.floor.normal,
-        phase.map.floor_speed_scale(&core.collision.data),
-    );
+    let terrain =
+        crate::physics::grounded::ground_friction_multiplier(&core.physics, &core.collision.data);
+    grounded::apply_ground_movement(&mut core.physics, core.collision.data.floor.normal, terrain);
     grounded::finish_ground_update(
         &mut core.physics,
         &core.collision.data,
@@ -554,10 +552,12 @@ pub fn catch_cut_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
             c.physics.ground_velocity,
             phase.assets.grab_friction_multiplier * c.attributes.ground.ground_friction,
         );
+        let terrain =
+            crate::physics::grounded::ground_friction_multiplier(&c.physics, &c.collision.data);
         crate::physics::grounded::apply_ground_movement(
             &mut c.physics,
             c.collision.data.floor.normal,
-            phase.map.floor_speed_scale(&c.collision.data),
+            terrain,
         );
         crate::physics::grounded::finish_ground_update(
             &mut c.physics,

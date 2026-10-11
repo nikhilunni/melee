@@ -107,7 +107,7 @@ impl FighterCore {
         })
     }
     /// ftCo_Escape_Phys -> ft_80085004 -> ft_80085030 (0x80085030).
-    pub(super) fn escape_physics(&mut self, map: &melee_mp::CollMap) {
+    pub(super) fn escape_physics(&mut self) {
         use crate::physics::{friction::friction_acceleration, grounded};
         let MotionData::Escape(escape) = &self.state_data else {
             panic!("escape data missing")
@@ -134,10 +134,14 @@ impl FighterCore {
                 self.attributes.ground.ground_friction,
             );
         }
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
     }
 }

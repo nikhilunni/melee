@@ -701,11 +701,15 @@ impl Fighter {
         if self.core.physics.ground_or_air == GroundOrAir::Ground {
             use crate::physics::grounded::{self, GroundedParameters};
             let params = GroundedParameters::from_attributes(&self.core.attributes, &assets.common);
+            let terrain = crate::physics::grounded::ground_friction_multiplier(
+                &self.core.physics,
+                &self.core.collision.data,
+            );
             grounded::friction_physics(
                 &mut self.core.physics,
                 &params,
                 self.core.collision.data.floor.normal,
-                map.floor_speed_scale(&self.core.collision.data),
+                terrain,
             );
             grounded::finish_ground_update(
                 &mut self.core.physics,

@@ -242,7 +242,10 @@ impl Fighter {
             recoil,
             animation_rate,
         });
-        let friction = crate::physics::grounded::floor_friction(&self.core.collision.data);
+        let friction = crate::physics::grounded::ground_friction_multiplier(
+            &self.core.physics,
+            &self.core.collision.data,
+        );
         // ftCommon_800804A0 writes +E8; the common update consumes it later.
         self.core.physics.secondary_ground_acceleration = if friction < 1.0 {
             recoil * friction
@@ -292,11 +295,15 @@ pub fn physics(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     if state.recoil != 0.0 {
         state.recoil = 0.0;
     } else {
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &core.physics,
+            &core.collision.data,
+        );
         crate::physics::grounded::friction_physics(
             &mut core.physics,
             &params,
             core.collision.data.floor.normal,
-            phase.map.floor_speed_scale(&core.collision.data),
+            terrain,
         );
     }
     crate::physics::grounded::finish_ground_update(

@@ -114,7 +114,10 @@ impl Fighter {
                 .specials_ground_speed_retention;
             let speed = self.core.physics.ground_velocity;
             let reduction = -(speed * (1.0 - retention));
-            let terrain = crate::physics::grounded::floor_friction(&self.core.collision.data);
+            let terrain = crate::physics::grounded::ground_friction_multiplier(
+                &self.core.physics,
+                &self.core.collision.data,
+            );
             self.core.physics.ground_velocity = gekko_math::fma::fmadds(reduction, terrain, speed);
         }
         (self.character.table().enter_special)(self, slot, airborne, assets);

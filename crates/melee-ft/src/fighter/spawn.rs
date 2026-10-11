@@ -1136,6 +1136,7 @@ impl FighterCore {
             player.position.z,
         );
         let mut physics = FighterPhysics::standing(position, player.facing);
+        physics.fixed_traction = capabilities.fixed_traction;
         physics.percent = player.damage;
         let mut animation = FighterAnimation::new(&skeleton, root);
         // ftParts_8007506C: each conditional part's mask bit. A part OnLoad

@@ -918,6 +918,7 @@ impl FighterCore {
         self.animation.reset_for_spawn(&mut self.skeleton);
         self.skeleton.set_translate(self.animation.root, &position);
         self.physics = crate::physics::FighterPhysics::standing(position, player.facing);
+        self.physics.fixed_traction = self.capabilities.fixed_traction;
         self.physics.percent = player.damage;
         self.input = crate::input::FighterInput::default();
         let mut collision = std::mem::take(&mut self.collision.data);

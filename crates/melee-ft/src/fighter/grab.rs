@@ -154,10 +154,14 @@ impl FighterCore {
             );
         }
         use crate::physics::grounded::{self, GroundedParameters};
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         grounded::finish_ground_update(
             &mut self.physics,
@@ -182,10 +186,14 @@ impl FighterCore {
             self.physics.ground_velocity,
             assets.grab_friction_multiplier * self.attributes.ground.ground_friction,
         );
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         grounded::finish_ground_update(
             &mut self.physics,

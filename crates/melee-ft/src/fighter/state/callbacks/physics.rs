@@ -302,11 +302,15 @@ impl FighterCore {
     fn physics_guard_on(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase { assets, map, wind } = phase;
         let params = GroundedParameters::from_attributes(&self.attributes, &assets.common);
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         crate::physics::grounded::friction_physics(
             &mut self.physics,
             &params,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         // Fighter_procUpdate's tail follows the footing, not the row
         // (0x8006BA00: fp->ground_or_air): the partner's Blizzard row can
@@ -325,7 +329,7 @@ impl FighterCore {
     }
     fn physics_escape(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase { assets, map, wind } = phase;
-        self.escape_physics(map);
+        self.escape_physics();
         crate::physics::grounded::finish_ground_update(
             &mut self.physics,
             &self.collision.data,
@@ -337,10 +341,14 @@ impl FighterCore {
     fn physics_turn_run(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase { assets, map, wind } = phase;
         self.turn_run_physics(assets);
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         crate::physics::grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         crate::physics::grounded::finish_ground_update(
             &mut self.physics,
@@ -353,10 +361,14 @@ impl FighterCore {
     fn physics_running(&mut self, phase: PhysicsPhase<'_>) {
         let PhysicsPhase { assets, map, wind } = phase;
         self.running_physics(assets);
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         crate::physics::grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         crate::physics::grounded::finish_ground_update(
             &mut self.physics,
@@ -378,10 +390,14 @@ impl FighterCore {
             self.input.current.stick.x,
             walk.acceleration_multiplier,
         );
+        let terrain = crate::physics::grounded::ground_friction_multiplier(
+            &self.physics,
+            &self.collision.data,
+        );
         crate::physics::grounded::apply_ground_movement(
             &mut self.physics,
             self.collision.data.floor.normal,
-            map.floor_speed_scale(&self.collision.data),
+            terrain,
         );
         crate::physics::grounded::finish_ground_update(
             &mut self.physics,
