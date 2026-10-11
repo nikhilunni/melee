@@ -75,13 +75,14 @@ impl StaleHistory {
             ..Self::default()
         }
     }
-    /// A fresh history after a stock loss (plStale_ResetStaleMoveTableForPlayer
-    /// from ftCo_800D34E0). The clearing counts as a change the player's
-    /// other fighter takes (`share_table`).
-    pub fn reset(&mut self, secondary: bool) {
-        let revision = self.revision + 1;
-        *self = Self::for_fighter(secondary);
-        self.revision = revision;
+    /// Fighter_UnkInitReset (80067C98) at a revival: the fighter's own attack
+    /// (x2068_attackID) is forgotten. The table is the player's and only
+    /// plStale_ResetStaleMoveTableForPlayer empties it, at the stock loss
+    /// (ftCo_800D34E0, retail 0x800D3528) and when the player is created
+    /// (pl_8003891C, 0x80038940): what the player's second fighter landed
+    /// between its leader's death and the revival still stales.
+    pub fn reset(&mut self) {
+        self.current = None;
     }
     /// plStale_ResetStaleMoveTableForPlayer (ftCo_800D34E0): the player's
     /// table empties when either of its fighters loses a stock or falls; the

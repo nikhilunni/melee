@@ -935,7 +935,7 @@ impl FighterCore {
         // Fighter_UnkInitReset retains the costume geometry computed once by
         // Fighter_UnkUpdateVecFromBones_8006876C, including across stock losses.
         let mut stale = std::mem::take(&mut self.combat.stale);
-        stale.reset(self.player.secondary);
+        stale.reset();
         self.combat = super::damage::CombatState {
             capture_geometry: self.combat.capture_geometry,
             stale,
