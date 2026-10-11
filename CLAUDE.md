@@ -139,8 +139,11 @@ real play; a stop is a first divergence against the replay's recorded fields.
   play. `replay --skip-display-pass <tick>` tests whether one lag frame
   explains a stop.
 - Some stops are not port faults: a console's stage codes (no Shy Guys, no
-  Final Destination transitions) and display-pass timing (the magnifier's
-  damage tick) are not in a replay (`docs/SLIPPI.md`). A bridge cannot follow
+  Final Destination transitions) and a console's lag frames are not in a
+  replay (`docs/SLIPPI.md`). Call a display-pass stop (the magnifier's damage
+  tick, a star KO's position) "not a port fault" only when a
+  `render_every_tick` recording equals the port there; older bridges ran two
+  ticks per render and prove nothing about it. A bridge cannot follow
   a replay on Final Destination or Fountain of Dreams: those stages draw at
   creation, before the boundary seed.
 
