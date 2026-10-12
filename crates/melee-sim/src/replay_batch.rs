@@ -253,6 +253,20 @@ pub fn write_jsonl(outcomes: &[Outcome], out: &mut dyn Write) -> std::io::Result
                     .collect::<Vec<_>>(),
             )
         });
+        // A Slippi Online game's seed and rollback facts (`replay_online`);
+        // null for every other game.
+        let online = outcome.report.as_ref().ok().and_then(|report| {
+            let online = report.online.as_ref()?;
+            Some(serde_json::json!({
+                "offset": online.online.offset,
+                "seeds_off_the_tick_count": online.online.seeds_off_the_tick_count(),
+                "frames_resent": online.online.frames_resent,
+                "ticks_in_a_rollback_loop": online.online.ticks_resimulated(),
+                "longest_rollback": online.online.longest_rollback,
+                "pre_frame_seeds": online.pre_frame_seeds,
+                "pre_frame_seeds_after_draws": online.pre_frame_seeds_after_draws,
+            }))
+        });
         let line = serde_json::json!({
             "path": outcome.path,
             "matched": matched,
@@ -261,6 +275,7 @@ pub fn write_jsonl(outcomes: &[Outcome], out: &mut dyn Write) -> std::io::Result
             "context": context,
             "detail": detail,
             "lag_frames": lag_frames,
+            "online": online,
         });
         writeln!(out, "{line}")?;
     }

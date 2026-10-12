@@ -62,8 +62,16 @@ pub(crate) struct Expected {
 
 impl Expected {
     /// Every recorded frame's values, keyed by where a run's observation
-    /// holds them. `paths` are a fighter's snapshot paths.
-    pub(crate) fn compile(replay: &Replay, frames: &[&slp::Frame], paths: Vec<String>) -> Self {
+    /// holds them. `paths` are a fighter's snapshot paths. `seeds_follow`
+    /// is whether the next frame's Frame Start seed is this tick's last
+    /// seed: not in a Slippi Online game, whose netplay code writes a new
+    /// seed before every tick, so that no end-of-tick seed is recorded.
+    pub(crate) fn compile(
+        replay: &Replay,
+        frames: &[&slp::Frame],
+        paths: Vec<String>,
+        seeds_follow: bool,
+    ) -> Self {
         let _t = cost::time(Part::Expected);
         let index_of = |name: &str| paths.iter().position(|path| path == name);
         let mut expected = Self {
@@ -80,7 +88,7 @@ impl Expected {
             slp::frame_values(
                 replay,
                 frame,
-                frames.get(index + 1).copied(),
+                frames.get(index + 1).copied().filter(|_| seeds_follow),
                 |key, value| {
                     entries.push((expected.target(key), snap_value(value)));
                 },
@@ -115,6 +123,24 @@ impl Expected {
     pub(crate) fn entries(&self, index: usize) -> &[(Target, SnapValue)] {
         let range = &self.ticks[index];
         &self.entries[range.start as usize..range.end as usize]
+    }
+
+    /// Whether fighter value `index` is one whose zero sign an online
+    /// game's comparison leaves free (`replay_online::ZERO_SIGN_FREE`).
+    pub(crate) fn zero_sign_free(&self, index: u8) -> bool {
+        crate::replay_online::ZERO_SIGN_FREE.contains(&self.paths[usize::from(index)].as_str())
+    }
+
+    /// The record key of a member's value (`pN.<path>`).
+    pub(crate) fn key(&self, target: Target) -> Option<String> {
+        match target {
+            Target::Field { member, index } => Some(format!(
+                "{}{}",
+                member_prefix(usize::from(member)),
+                self.paths[usize::from(index)]
+            )),
+            Target::Seed | Target::Absent => None,
+        }
     }
 
     /// Where a leader's `facing_dir` is.

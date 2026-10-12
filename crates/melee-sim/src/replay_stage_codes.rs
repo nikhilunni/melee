@@ -25,6 +25,8 @@ pub struct StageCodeChoice {
 pub enum StageCodeReason {
     /// `Setup::frozen_stages`.
     Named,
+    /// An online game's Gecko list (`replay_online::Listed`).
+    Listed,
     /// The runs with and without the code never differ over the recording,
     /// or the recording follows neither once they do: retail's stage.
     Undecided,
@@ -38,6 +40,7 @@ impl std::fmt::Display for StageCodeChoice {
         write!(f, "{}", name(self.frozen))?;
         match self.reason {
             StageCodeReason::Named => write!(f, " (named)"),
+            StageCodeReason::Listed => write!(f, " (the replay's Gecko list)"),
             StageCodeReason::Undecided => {
                 write!(f, " (nothing recorded separates it from {})", name(true))
             }

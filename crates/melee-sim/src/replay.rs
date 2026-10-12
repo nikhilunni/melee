@@ -4,6 +4,7 @@ use crate::replay_stage_codes::{resolve_stage_codes, StageCodeChoice, StageCodeR
 use crate::replay_cost::{self as cost, Part};
 use crate::replay_game::{Game, RunId, StartError, Stopped};
 use crate::replay_lag_frames::{Inference, LagFrame, LagFrames};
+use crate::replay_online::{Listed, Online};
 use crate::scenario::Scenario;
 use anyhow::{ensure, Result};
 use melee_diff::{first_divergence, Divergence, Record};
@@ -42,6 +43,10 @@ pub struct Setup {
     /// (`replay_lag_frames`: taken again with one display pass skipped, and
     /// accepted only when the recording then matches).
     pub lag_frames: LagFrames,
+    /// Compare an online game's knockback zeros by sign too, which its
+    /// recording emulator computes otherwise than a console
+    /// (`replay_online::ZERO_SIGN_FREE`): a diagnostic, to see those stops.
+    pub strict_zeros: bool,
 }
 
 /// The UCF version a recording's ports run and what decided it.
@@ -126,6 +131,9 @@ pub struct Report {
     /// Set when the console created Fountain of Dreams' side platforms
     /// level (`SlippiCodes::fountain_level`): what the first frame showed.
     pub fountain: Option<&'static str>,
+    /// Set for a Slippi Online game (`replay_online`): how its ticks were
+    /// seeded and which of them a rollback ran.
+    pub online: Option<OnlineReport>,
     /// Each leader's recorded character and action at the stop.
     pub context: String,
     /// Every field that differs on the diverging frame, in key order.
@@ -140,9 +148,46 @@ pub struct Report {
     pub stop: Stop,
 }
 
+/// What the comparison of an online game rests on.
+#[derive(Debug, Clone)]
+pub struct OnlineReport {
+    pub online: Online,
+    /// The Pre Frame seeds the recording holds for the game's fighters, and
+    /// how many of them differ from their frame's Frame Start seed: the
+    /// seed checks that say something about the port's draws, since each
+    /// tick's first seed is supplied.
+    pub pre_frame_seeds: usize,
+    pub pre_frame_seeds_after_draws: usize,
+    /// The recorded knockback zeros the matched frames hold with the other
+    /// sign than the port's (`replay_online::ZERO_SIGN_FREE`); `None` when
+    /// the comparison was strict about them.
+    pub zeros_of_the_other_sign: Option<usize>,
+}
+
+impl std::fmt::Display for OnlineReport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(
+            f,
+            "{}; no end-of-tick seed is recorded; {} of {} Pre Frame seeds follow draws",
+            self.online, self.pre_frame_seeds_after_draws, self.pre_frame_seeds
+        )?;
+        match self.zeros_of_the_other_sign {
+            Some(zeros) => write!(
+                f,
+                "; {zeros} knockback zeros of the other sign than a console's (the recording \
+                 emulator's fnmsubs) taken as equal"
+            ),
+            None => write!(f, "; knockback zeros compared by sign (--strict-zeros)"),
+        }
+    }
+}
+
 impl std::fmt::Display for Report {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         writeln!(f, "{}; {}", self.stage, self.players.join(", "))?;
+        if let Some(online) = &self.online {
+            writeln!(f, "{online}")?;
+        }
         if let Some(choice) = &self.controller_fix {
             writeln!(f, "controller fix {choice}")?;
         }
@@ -253,8 +298,10 @@ pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
     if start.game_speed.to_bits() != 1.0_f32.to_bits() {
         reasons.push("nonstandard game speed".into());
     }
-    if start.is_online() {
-        reasons.push("Slippi Online initialization/seed resets".into());
+    // An online game runs the codes its Gecko list names; one the port
+    // does not run is a setup it cannot simulate.
+    if Online::of(replay).is_some() {
+        reasons.extend(Listed::of(replay).err().into_iter().flatten());
     }
     if start.is_teams
         || start.game_mode() != 1
@@ -592,6 +639,15 @@ fn cold_boundary(
     let boundary =
         melee_lib::diagnostics::boundary_seed_from_creation(&lib_setup, replay.start.random_seed)
             .map_err(|e| format!("{e:#}"))?;
+    if Online::of(replay).is_some() {
+        // InitOnlinePlay.asm stores the RNG offset as the seed at
+        // 0x8016E748, one instruction before Game Start reads it, so the
+        // creation draws start from it as offline. The first Frame Start
+        // is the sync's seed and says nothing of them; the music draw
+        // (an all-unlocked save: the netplay list's unlock codes) is
+        // overwritten before any proc reads the stream.
+        return Ok((boundary, true));
+    }
     let Some(first) = first_frame_start else {
         return setup
             .all_characters_unlocked
@@ -715,6 +771,8 @@ pub(crate) fn cold_scenario_base(replay: &Replay, root: &Path, setup: Setup) -> 
     scenario.stadium_preload = replay.version() >= STADIUM_PRELOAD;
     scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
     scenario.fountain_level = fountain_level(replay).is_some();
+    scenario.online_offscreen_damage = Online::of(replay).is_some()
+        && Listed::of(replay).is_ok_and(|listed| listed.offscreen_damage_by_camera_limits);
     set_candidate(replay, &mut scenario, setup);
     scenario.validate()?;
     let (seed, unlocked) =
@@ -829,6 +887,9 @@ pub fn resolve_setup(replay: &Replay, root: &Path, setup: Setup) -> Resolved {
 /// [`resolve_setup`] over the replay's shared runs, which the comparison
 /// then reads too.
 fn resolve_setup_of(game: &mut Game, setup: Setup) -> Resolved {
+    if let Some(listed) = game.online().and_then(|_| Listed::of(game.replay).ok()) {
+        return resolve_listed(game.replay, setup, listed);
+    }
     let (coded, stage_code, screen) = resolve_codes(game, setup);
     let (fixed, controller_fix) = resolve_controller_fix(game, coded);
     let redated = matches!(
@@ -854,6 +915,59 @@ fn resolve_setup_of(game: &mut Game, setup: Setup) -> Resolved {
     let (setup, stage_code, screen) = resolve_codes(game, uncoded);
     Resolved {
         setup,
+        controller_fix,
+        stage_code,
+        screen,
+    }
+}
+
+/// An online game's setup: its Gecko list names the stage code and the
+/// screen, and the netplay builds carried one UCF version at a time, so
+/// nothing is read from the frames and no dry pass runs. A setup the caller
+/// names still wins. Lag frames are not inferred: a rollback's ticks are
+/// known from the recording (`Online::resimulated`), and with the seed
+/// supplied every tick, a seed stop no longer carries the evidence the
+/// inference's margin asks for.
+fn resolve_listed(replay: &Replay, setup: Setup, listed: Listed) -> Resolved {
+    let stage_code = crate::replay_stage_codes::changes_stage(replay.start.stage).then(|| {
+        StageCodeChoice {
+            frozen: setup.frozen_stages.unwrap_or(listed.frozen_stages),
+            reason: match setup.frozen_stages {
+                Some(_) => StageCodeReason::Named,
+                None => StageCodeReason::Listed,
+            },
+        }
+    });
+    let screen = ScreenChoice {
+        screen: setup.screen.unwrap_or(listed.screen),
+        reason: match setup.screen {
+            Some(_) => ScreenReason::Named,
+            None => ScreenReason::Listed,
+        },
+    };
+    let any_ucf = replay
+        .leader_ports()
+        .any(|port| is_ucf(&replay.start.players[port]));
+    let controller_fix = (any_ucf && !setup.ignore_controller_fixes)
+        .then(|| match setup.controller_fix {
+            Some(fix) => Some(FixChoice {
+                fix,
+                reason: FixReason::Named,
+            }),
+            None => ucf_candidates(replay.version(), start_day(replay))
+                .map(|(fix, _, reason)| FixChoice { fix, reason }),
+        })
+        .flatten();
+    Resolved {
+        setup: Setup {
+            frozen_stages: Some(stage_code.is_some_and(|choice| choice.frozen)),
+            screen: Some(screen.screen),
+            controller_fix: controller_fix
+                .map(|choice| choice.fix)
+                .or(setup.controller_fix),
+            lag_frames: LagFrames::Off,
+            ..setup
+        },
         controller_fix,
         stage_code,
         screen,
@@ -902,6 +1016,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         "incomplete or empty replay"
     );
     let mut game = Game::new(replay, root);
+    game.set_strict_zeros(setup.strict_zeros);
     let Resolved {
         setup,
         controller_fix,
@@ -937,6 +1052,9 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         stage_code,
         screen,
         fountain: fountain_level(replay),
+        online: game
+            .online()
+            .map(|online| online_report(replay, online, setup.strict_zeros)),
         context: String::new(),
         differing: Vec::new(),
         skipped_display_pass: setup.skipped_display_pass,
@@ -971,6 +1089,13 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
     if let Some(frame) = reached {
         report.context = leader_actions(replay, frame);
     }
+    if let Some(zeros) = report
+        .online
+        .as_mut()
+        .and_then(|online| online.zeros_of_the_other_sign.as_mut())
+    {
+        *zeros = game.zeros_of_the_other_sign(run, report.matched);
+    }
     match stop? {
         Compared::Complete => {}
         Compared::Stopped(stop) => report.stop = stop,
@@ -988,6 +1113,29 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         }
     }
     Ok(report)
+}
+
+/// An online game's seed facts, from the recording alone.
+fn online_report(replay: &Replay, online: &Online, strict_zeros: bool) -> OnlineReport {
+    let mut report = OnlineReport {
+        online: online.clone(),
+        pre_frame_seeds: 0,
+        pre_frame_seeds_after_draws: 0,
+        zeros_of_the_other_sign: (!strict_zeros).then_some(0),
+    };
+    let leaders: Vec<usize> = replay.leader_ports().collect();
+    for frame in replay.frames.values() {
+        let Some(start) = frame.scheduler_start_seed() else {
+            continue;
+        };
+        for (_, player) in crate::replay_observed::member_frames(&leaders, frame) {
+            if let Some(pre) = &player.pre {
+                report.pre_frame_seeds += 1;
+                report.pre_frame_seeds_after_draws += usize::from(pre.random_seed != start);
+            }
+        }
+    }
+    report
 }
 
 /// How the comparison of a run with the recording ended.
@@ -1166,6 +1314,25 @@ pub fn write_retail_inputs(
     // its earlier aspect).
     header["widescreen"] = scenario.widescreen.into();
     header["widescreen_92_63"] = scenario.widescreen_92_63.into();
+    // A Slippi Online game: the recorder writes each tick's seed from this
+    // offset and the scene frame counter, as the netplay code did
+    // (`online_rng_offset`), and runs its off-screen damage code (`--gecko
+    // online-offscreen-damage`). Retail cannot run a rollback's loop, so the
+    // header lists the ticks one ran: a bridge over them is not that game.
+    if let Some(online) = Online::of(replay) {
+        ensure!(
+            online.seeds_off_the_tick_count() == 0,
+            "{} Frame Start seeds are not the sync's for their tick count (a pause?): the \
+             recorder derives each seed from the scene frame counter",
+            online.seeds_off_the_tick_count()
+        );
+        header["online_rng_offset"] = online.offset.into();
+        header["online_offscreen_damage"] = scenario.online_offscreen_damage.into();
+        header["rollback_loop_ticks"] = (0..scenario.frames as usize)
+            .filter(|&index| online.resimulated(index))
+            .collect::<Vec<_>>()
+            .into();
+    }
     use crate::replay_retail_pads::{reconstruct, Reading, PAD_ERR_TRANSFER};
     let mut previous: [Option<&slp::cold::ControllerFrame>; 4] = [None; 4];
     let mut records = Vec::with_capacity(scenario.replay_inputs.len());

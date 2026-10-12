@@ -58,6 +58,11 @@ enum Command {
         /// frame is listed in the report (`replay_lag_frames`).
         #[arg(long)]
         no_lag_frames: bool,
+        /// Compare a Slippi Online game's knockback zeros by sign too: its
+        /// emulator computes them otherwise than a console, and the
+        /// comparison takes them as equal (`replay_online::ZERO_SIGN_FREE`).
+        #[arg(long)]
+        strict_zeros: bool,
     },
     /// Replay every `.slp` under the given paths in parallel and group the
     /// first stops by cause, largest group first.
@@ -90,6 +95,10 @@ enum Command {
         /// each line's `lag_frames` is then null instead of a list.
         #[arg(long)]
         no_lag_frames: bool,
+        /// Compare a Slippi Online game's knockback zeros by sign too (see
+        /// `replay`).
+        #[arg(long)]
+        strict_zeros: bool,
         /// Write one JSON object per replay here.
         #[arg(long)]
         jsonl: Option<PathBuf>,
@@ -289,6 +298,7 @@ fn main() -> anyhow::Result<()> {
             retail_inputs,
             skip_display_pass,
             no_lag_frames,
+            strict_zeros,
         } => {
             // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
             // reads the main checkout's), as harness/data_root.py.
@@ -305,6 +315,7 @@ fn main() -> anyhow::Result<()> {
                 screen,
                 skipped_display_pass: skip_display_pass,
                 lag_frames: lag_frames(no_lag_frames),
+                strict_zeros,
             };
             if let Some(out) = retail_inputs {
                 let replay = slp::Replay::parse(&std::fs::read(&file)?)?;
@@ -337,6 +348,7 @@ fn main() -> anyhow::Result<()> {
             stage_codes,
             screen,
             no_lag_frames,
+            strict_zeros,
             jsonl,
         } => {
             use melee_sim::replay_batch;
@@ -362,6 +374,7 @@ fn main() -> anyhow::Result<()> {
                     screen,
                     skipped_display_pass: None,
                     lag_frames: lag_frames(no_lag_frames),
+                    strict_zeros,
                 },
                 jobs,
             );

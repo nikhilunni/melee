@@ -24,26 +24,43 @@ fn fixture(name: &str) -> Replay {
 
 #[test]
 fn fixture_matched_frame_counts_never_decrease() {
-    // Zero remains the corpus floor: v3.16 reaches the Online setup boundary.
     // Pin the composition and the reason as well, so an unconditional skip or
     // a setup/parser regression cannot masquerade as a successful zero floor.
+    // The three online games (`replay_online`): the 2020 one runs to its
+    // last frame; the 2022 and 2024 ones list netplay codes the port does
+    // not run and are refused by name.
     let cases = [
         ("ics.slp", "FinalDestination", "Cpu control", 0),
         ("joystick_udlr.slp", "FinalDestination", "Cpu control", 0),
-        ("netplay.slp", "FountainOfDreams", "Online", 0),
+        ("netplay.slp", "FountainOfDreams", "complete", 128),
         // Pre-2.2: no Frame Start shows the unlock flag, which Setup::default omits.
         ("v0.1.slp", "DreamLand", "unlock flag", 0),
-        ("v3.12.slp", "PokemonStadium", "Online", 0),
+        (
+            "v3.12.slp",
+            "PokemonStadium",
+            "netplay code PSCameraIndependentMonitor at 801D24FC is not ported",
+            0,
+        ),
         (
             "v3.13.slp",
             "FinalDestination",
             "requires singles stock mode",
             0,
         ),
-        ("v3.16.slp", "YoshisStory", "Online", 0),
+        (
+            "v3.16.slp",
+            "YoshisStory",
+            "netplay code FreezeDeadUpFallPhysics (InitHitVelocity) at 800D4C1C is not ported",
+            0,
+        ),
         ("v3.18.slp", "FountainOfDreams", "Cpu control", 0),
     ];
     for (name, stage, reason, floor) in cases {
+        // Only a game that runs reads the disc's files.
+        let runs = reason == "complete";
+        if runs && !melee_test_support::require_files([&root().join("harness/roms/files/PlCo.dat")]) {
+            continue;
+        }
         let report = replay::run(&fixture(name), &root(), every_tick()).unwrap();
         assert_eq!(report.stage, stage);
         assert!(report.matched >= floor, "{name}: {report}");
@@ -59,7 +76,11 @@ fn fixture_matched_frame_counts_never_decrease() {
                 assert_eq!(report.matched, 0);
                 assert!(why.contains(reason), "{name}: {report}");
             }
-            Stop::Complete | Stop::Unported { .. } => {
+            Stop::Complete => {
+                assert_eq!(reason, "complete", "{name}: {report}");
+                assert_eq!(report.matched, report.frames, "{name}: {report}");
+            }
+            Stop::Unported { .. } => {
                 assert!(report.matched > 0, "{name}: {report}")
             }
             other => panic!("{name}: unexpected {other:?}"),
@@ -190,6 +211,7 @@ fn cold_replay_bridge_matches_599_independent_oracle_frames() {
             screen: None,
             skipped_display_pass: None,
             lag_frames: LagFrames::Off,
+            strict_zeros: false,
         },
     )
     .unwrap();
@@ -223,6 +245,7 @@ fn a_ported_state_one_bit_mismatch_is_a_failure() {
                 screen: None,
                 skipped_display_pass: None,
                 lag_frames,
+                strict_zeros: false,
             },
         )
         .unwrap();
@@ -273,6 +296,7 @@ fn a_console_lag_frame_is_inferred_only_where_the_recording_confirms_it() {
         screen: Some(Screen::Standard),
         skipped_display_pass: None,
         lag_frames,
+        strict_zeros: false,
     };
 
     let every_tick = replay::run(&replay, &root, setup(LagFrames::Off)).unwrap();
@@ -329,6 +353,7 @@ fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
             screen: None,
             skipped_display_pass: None,
             lag_frames: LagFrames::Off,
+            strict_zeros: false,
         },
     )
     .unwrap();
@@ -360,6 +385,7 @@ fn missing_late_input_preserves_the_matched_prefix() {
             screen: None,
             skipped_display_pass: None,
             lag_frames: LagFrames::Off,
+            strict_zeros: false,
         },
     )
     .unwrap();
@@ -394,6 +420,7 @@ fn gapped_ports_keep_spawn_markers_and_delay_entry_by_slot() {
         screen: None,
         skipped_display_pass: None,
         lag_frames: LagFrames::Off,
+        strict_zeros: false,
     };
     // The marker, facing and pads route by port, so the prefix matches until
     // entry. fn_8016D8AC's delay grows by five per slot before this one
@@ -408,10 +435,13 @@ fn gapped_ports_keep_spawn_markers_and_delay_entry_by_slot() {
     assert_eq!(diff.actual, Some(Value::f32(-1.0)), "{diff}");
 }
 
-/// InitOnlinePlay.asm's FN_SyncRNG resets before player animation on every
-/// scheduler pass. A match-rules change cannot reproduce this fixture.
+/// InitOnlinePlay.asm's FN_SyncRNG writes the seed before player animation
+/// on every scheduler pass: the runner supplies it (`replay_online`). This
+/// 2024 game is still refused, for the netplay codes its Gecko list names
+/// and the port does not run, each by name; Online itself is no reason.
 #[test]
-fn online_story_fixture_requires_per_frame_netplay_rng_reconstruction() {
+fn online_story_fixture_is_refused_for_its_unported_netplay_codes_only() {
+    use melee_sim::replay_online::{sync_seed, Listed, Online, OnlineReason};
     let replay = fixture("v3.16.slp");
     assert_eq!(replay.frames.len(), 308);
     for frame in replay.frames.values() {
@@ -419,14 +449,63 @@ fn online_story_fixture_requires_per_frame_netplay_rng_reconstruction() {
         let counter = start.scene_frame_counter.expect("v3.16 scene counter");
         assert_eq!(
             start.random_seed,
-            counter
-                .rotate_left(16)
-                .wrapping_add(replay.start.random_seed)
+            sync_seed(counter, replay.start.random_seed)
         );
     }
+    let online = Online::of(&replay).expect("an online game");
+    assert_eq!(online.reason, OnlineReason::Scene);
+    assert_eq!(online.offset, 0x3AAE);
+    assert_eq!(online.seeds_off_the_tick_count(), 0);
+    // Six frames were sent again in five rollbacks; each rollback's loop
+    // also ran the frame after the newest, so at least as many ticks had
+    // no display pass before them.
+    assert_eq!((online.frames_resent, online.longest_rollback), (6, 2));
+    assert!(online.ticks_resimulated() >= online.frames_resent);
     let reasons = replay::unsupported_setup(&replay, every_tick());
-    // Its ports ran UCF, which the runner dates to 0.84; Online remains.
-    assert_eq!(reasons, ["Slippi Online initialization/seed resets"]);
+    assert_eq!(Listed::of(&replay).unwrap_err(), reasons);
+    assert_eq!(
+        reasons,
+        [
+            "netplay code FreezeDeadUpFallPhysics (InitHitVelocity) at 800D4C1C is not ported",
+            "netplay code FreezeDeadUpFallPhysics (UpdateFallVelocity) at 800D4D68 is not ported",
+            "netplay code FreezeDeadUpFallPhysics (UpdateModelPos) at 80080E80 is not ported",
+            "netplay code WhispyBlowDirFix at 8008653C is not ported",
+            "netplay code NanaDeterminism at 800AC5B8 is not ported",
+            "netplay code PSCameraIndependentMonitor at 801D24FC is not ported",
+            "netplay code PreventWobbling at 800DB880 is not ported",
+            "netplay code PreventWobbling (Wobble Check) at 8008F090 is not ported",
+        ]
+    );
+}
+
+/// The 2020 online fixture runs: every tick from its Frame Start seed, the
+/// codes read from its Gecko list, every recorded frame matched.
+#[test]
+fn online_fixture_of_2020_matches_every_frame_from_its_frame_start_seeds() {
+    use melee_sim::replay_online::{Listed, Online, OnlineReason};
+    if !melee_test_support::require_files([&root().join("harness/roms/files/PlCo.dat")]) {
+        return;
+    }
+    let replay = fixture("netplay.slp");
+    let online = Online::of(&replay).expect("an online game");
+    assert_eq!(online.reason, OnlineReason::Scene);
+    assert_eq!(online.seeds_off_the_tick_count(), 0);
+    let listed = Listed::of(&replay).expect("codes the port runs");
+    assert!(listed.offscreen_damage_by_camera_limits);
+    assert_eq!(listed.screen, melee_lib::slippi::Screen::Standard);
+    // Fountain of Dreams has no stage code.
+    assert!(!listed.frozen_stages);
+    let report = replay::run(&replay, &root(), Setup::default()).unwrap();
+    assert!(matches!(report.stop, Stop::Complete), "{report}");
+    assert_eq!((report.matched, report.frames), (128, 128), "{report}");
+    let seeds = report.online.expect("the online report");
+    assert_eq!(
+        (seeds.pre_frame_seeds, seeds.pre_frame_seeds_after_draws),
+        (256, 2)
+    );
+    assert_eq!(seeds.zeros_of_the_other_sign, Some(0));
+    // Lag frames are not inferred for an online game.
+    assert_eq!(report.lag_frames, None);
 }
 
 #[test]
@@ -447,6 +526,7 @@ fn story_primary_music_seed_and_first_full_tick_match_the_oracle() {
             screen: None,
             skipped_display_pass: None,
             lag_frames: LagFrames::Off,
+            strict_zeros: false,
         },
     )
     .unwrap();

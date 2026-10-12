@@ -34,6 +34,8 @@ pub struct ScreenChoice {
 pub enum ScreenReason {
     /// `Setup::screen`.
     Named,
+    /// An online game's Gecko list (`replay_online::Listed`).
+    Listed,
     /// The runs on every screen never differ over the recording, or the
     /// recording follows none once they do: retail's screen.
     Undecided,
@@ -56,6 +58,7 @@ impl std::fmt::Display for ScreenChoice {
         write!(f, "{}", name(self.screen))?;
         match self.reason {
             ScreenReason::Named => write!(f, " (named)"),
+            ScreenReason::Listed => write!(f, " (the replay's Gecko list)"),
             ScreenReason::Undecided => write!(
                 f,
                 " (nothing recorded separates it from {})",

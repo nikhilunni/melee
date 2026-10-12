@@ -16,6 +16,7 @@
 use crate::replay::{cold_scenario_base, set_candidate, unsupported_setup, Setup};
 use crate::replay_cost::{self as cost, Part};
 use crate::replay_observed::{member_frames, Expected, Observation, Target, MEMBERS};
+use crate::replay_online::Online;
 use crate::{
     frame::Simulation, initial_state::InitialState, inputs::PadScript, scenario::Scenario,
 };
@@ -148,6 +149,13 @@ pub(crate) struct Game<'a> {
     shared: Option<Shared>,
     expected: Option<Expected>,
     runs: Vec<Run>,
+    /// Set for a Slippi Online game: each tick's seed and which ticks a
+    /// rollback ran (`replay_online`).
+    online: Option<Online>,
+    /// Whether the comparison takes zeros of either sign as equal in
+    /// `replay_online::ZERO_SIGN_FREE`: an online game's, unless the caller
+    /// asked for strict zeros.
+    zero_sign_free: bool,
 }
 
 impl<'a> Game<'a> {
@@ -166,7 +174,20 @@ impl<'a> Game<'a> {
             shared: None,
             expected: None,
             runs: Vec::new(),
+            online: Online::of(replay),
+            zero_sign_free: false,
         }
+    }
+
+    /// Compare an online game's knockback zeros by sign too
+    /// (`Setup::strict_zeros`), or leave their sign free.
+    pub(crate) fn set_strict_zeros(&mut self, strict: bool) {
+        self.zero_sign_free = self.online.is_some() && !strict;
+    }
+
+    /// The game's online facts, for a Slippi Online game.
+    pub(crate) fn online(&self) -> Option<&Online> {
+        self.online.as_ref()
     }
 
     /// How many ticks the recording holds.
@@ -298,13 +319,18 @@ impl<'a> Game<'a> {
         let mut simulation = Simulation::with_shared_inputs(state, Arc::clone(&shared.pads));
         simulation.tick_without_snapshot()?;
         let seed = simulation.seed();
-        if let Some(first) = self
-            .replay
-            .frames
-            .values()
-            .next()
-            .and_then(slp::Frame::scheduler_start_seed)
-        {
+        // An online game's first Frame Start is the sync's write, not the
+        // seed the setup reached (`advance` supplies it).
+        let first_frame_start = match self.online {
+            Some(_) => None,
+            None => self
+                .replay
+                .frames
+                .values()
+                .next()
+                .and_then(slp::Frame::scheduler_start_seed),
+        };
+        if let Some(first) = first_frame_start {
             ensure!(
                 seed == first,
                 "boundary seed does not reach first Frame Start"
@@ -394,6 +420,16 @@ impl<'a> Game<'a> {
                 }));
             }
         }
+        if let Some(online) = &self.online {
+            // The netplay code's seed write (FN_SyncRNG, before the fighter
+            // procs), as Frame Start recorded it; and for a tick a rollback
+            // ran, the rollback loop in place of the display pass.
+            run.previous_seed = online.seed(index);
+            run.simulation.set_rng_seed(run.previous_seed);
+            if online.resimulated(index) {
+                run.simulation.rollback_loop_pass();
+            }
+        }
         if run.codes.skipped_display_pass == Some(tick) || run.lag_frames.contains(&tick) {
             run.simulation.skip_display_pass();
         }
@@ -406,6 +442,7 @@ impl<'a> Game<'a> {
                         self.replay,
                         &self.frames,
                         run.simulation.fighter_paths(),
+                        self.online.is_none(),
                     ));
                 }
                 let observation = self.expected.as_ref().expect("compiled").observe(
@@ -464,13 +501,52 @@ impl<'a> Game<'a> {
         self.expected()
             .entries(index)
             .iter()
-            .all(|(target, value)| self.value(run, index, *target).as_ref() == Some(value))
+            .all(|(target, value)| {
+                let seen = self.value(run, index, *target);
+                seen.as_ref() == Some(value) || self.zero_of_the_other_sign(*target, value, &seen)
+            })
             && member_frames(&self.leaders, self.frames[index]).all(|(member, frame)| {
                 match (observation.input_seeds[member], frame.pre.as_ref()) {
                     (Some(seen), Some(pre)) => seen == pre.random_seed,
                     _ => true,
                 }
             })
+    }
+
+    /// Whether a recorded value and the port's are zeros of opposite sign
+    /// in a field whose zero sign this comparison leaves free: an online
+    /// game's knockback velocity (`replay_online::ZERO_SIGN_FREE`).
+    fn zero_of_the_other_sign(
+        &self,
+        target: Target,
+        recorded: &SnapValue,
+        seen: &Option<SnapValue>,
+    ) -> bool {
+        let (Target::Field { index, .. }, true) = (target, self.zero_sign_free) else {
+            return false;
+        };
+        let (SnapValue::F32(recorded), Some(SnapValue::F32(seen))) = (recorded, seen) else {
+            return false;
+        };
+        self.expected().zero_sign_free(index)
+            && crate::replay_online::zeros_of_opposite_sign(*recorded, *seen)
+    }
+
+    /// How many values of the run's first `ticks` ticks match the recording
+    /// only by [`Self::zero_of_the_other_sign`].
+    pub(crate) fn zeros_of_the_other_sign(&self, run: RunId, ticks: usize) -> usize {
+        let observed = self.runs[run.0].observed.len();
+        (0..ticks.min(observed))
+            .flat_map(|index| {
+                self.expected()
+                    .entries(index)
+                    .iter()
+                    .map(move |(target, value)| (index, *target, value))
+            })
+            .filter(|&(index, target, value)| {
+                self.zero_of_the_other_sign(target, value, &self.value(run, index, target))
+            })
+            .count()
     }
 
     /// Whether two runs' ticks are the same to the recording's eyes: the
@@ -511,11 +587,32 @@ impl<'a> Game<'a> {
     /// The recorded and the simulated record of an observed tick, as a
     /// report prints them (`Expected::records`).
     pub(crate) fn records(&self, run: RunId, index: usize) -> (Record, Record) {
+        let (recorded, mut simulated) = self.records_as_observed(run, index);
+        // A zero the comparison took as equal is not what stopped it: show
+        // the recorded one, so the first divergence named is a real one.
+        for (target, value) in self.expected().entries(index) {
+            if !self.zero_of_the_other_sign(*target, value, &self.value(run, index, *target)) {
+                continue;
+            }
+            let Some(key) = self.expected().key(*target) else {
+                continue;
+            };
+            if let Some(recorded) = recorded.state.get(&key) {
+                simulated.state.insert(key, recorded.clone());
+            }
+        }
+        (recorded, simulated)
+    }
+
+    fn records_as_observed(&self, run: RunId, index: usize) -> (Record, Record) {
         self.expected().records(
             self.replay,
             &self.leaders,
             self.frames[index],
-            self.frames.get(index + 1).copied(),
+            self.frames
+                .get(index + 1)
+                .copied()
+                .filter(|_| self.online.is_none()),
             self.observation(run, index).1,
             |member| self.member(run, index, member),
         )
