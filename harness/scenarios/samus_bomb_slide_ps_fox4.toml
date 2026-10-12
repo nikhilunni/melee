@@ -1,0 +1,37 @@
+# SAMUS BOMB SLIDE directed witness (boundary start_ps_samus_fox4, Pokemon
+# Stadium; `melee-sim search`, see docs/INTERACTION_MATRIX.md: on a floor at
+# rest no bomb settles on a slope inside its fuse, 1555 candidates). Both
+# idle until the first base form ends; Samus walks left (4100..4125) to
+# x = -52.7, where the rock form's peak comes up under her, and lays a bomb
+# (4250) while it rises. The rising floor catches the bomb, which rests
+# (state 0, it_8026E248 -> it_8026DD5C on a face still under ItCo +C0). The
+# face steepens as the form grows; when it passes 15 degrees it_8026D62C's
+# it_80277544 (xD5C still 2 from creation) starts the slide: Item_8026ADC0
+# runs itSamusBomb_Logic50_EnteredAir (state 2), it_8027737C carries the
+# bomb down two faces (lines 39 and 40) under itSamusbomb_UnkMotion2_Phys'
+# clamp, and at the foot it_8026E8C4 finds no floor (it_802B4CF4, state 1).
+# The fuse ends in the air.
+name = "samus_bomb_slide_ps_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_samus_fox4.sav"
+frames = 4420
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4100, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 4125, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4250, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 4252, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

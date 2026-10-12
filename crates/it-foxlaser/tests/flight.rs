@@ -99,6 +99,7 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
             camera_offset: hsd_types::Vec2::ZERO,
         },
         &laser,
+        &map,
         &std::cell::Cell::new(gekko_math::HsdRng::default()),
     );
     let item = pool.get_mut(ray).unwrap();

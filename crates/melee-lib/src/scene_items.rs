@@ -1407,7 +1407,7 @@ pub fn request(
             // blast-zone test (xDCC b3 cleared, then set again).
             pool.get_mut(id).unwrap().blast_zone_checked = false;
             let cell = std::cell::Cell::new(*rng);
-            pool.physics::<SceneItems>(id, None, &Default::default(), bounds, assets, &cell);
+            pool.physics::<SceneItems>(id, None, &Default::default(), bounds, assets, map, &cell);
             *rng = cell.get();
             let contact = pool.stage_contact(id, map);
             pool.collide::<SceneItems>(id, None, contact, map, bounds, assets, Some(&cell));

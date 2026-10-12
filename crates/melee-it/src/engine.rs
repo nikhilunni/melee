@@ -1964,6 +1964,7 @@ impl ItemPool {
         targets: &crate::LockOnTargets,
         bounds: &ItemBounds,
         assets: &ItemAssets,
+        map: &melee_mp::CollMap,
         rng: &core::cell::Cell<gekko_math::HsdRng>,
     ) {
         let Some(item) = self.get_mut(id) else {
@@ -1981,7 +1982,7 @@ impl ItemPool {
                 },
             );
         }
-        integrate(item, bounds, assets);
+        integrate(item, bounds, assets, map);
     }
     /// it_8026E9A4 -> mpCheckAllRemap, used by ray state collision callbacks.
     pub fn stage_contact(&self, id: u32, map: &mut melee_mp::CollMap) -> bool {
@@ -2075,7 +2076,12 @@ impl ItemPool {
 }
 /// Item_802697D4: audited retail uses four PSVECAdd calls; never reassociate
 /// velocity+nudge, position+delta, environmental movement, platform movement.
-fn integrate(item: &mut ItemCore, bounds: &ItemBounds, assets: &ItemAssets) {
+fn integrate(
+    item: &mut ItemCore,
+    bounds: &ItemBounds,
+    assets: &ItemAssets,
+    map: &melee_mp::CollMap,
+) {
     if !item.held && !item.frozen && !item.in_hitlag {
         let mut delta = add(item.velocity, item.nudge);
         // retail 0x8026985C: a grounded item's slide (xDCD b3 is never set
@@ -2106,6 +2112,16 @@ fn integrate(item: &mut ItemCore, bounds: &ItemBounds, assets: &ItemAssets) {
     // one, which a bounce off a moving line set (it_8027781C).
     item.position = add(item.position, item.environmental_velocity);
     item.environmental_velocity = Vec3::ZERO;
+    // retail 0x8026993C: a grounded item rides its floor line (mpGetSpeed
+    // of x378's floor at the item; xDCE b3, which would take xC30's, is
+    // never set). An inactive line leaves x64 as it was.
+    if item.ground_or_air == GroundOrAir::Ground {
+        if let Some(collision) = &item.collision {
+            if let Some(speed) = map.line_speed(collision.floor.index, &item.position) {
+                item.platform_velocity = speed;
+            }
+        }
+    }
     item.position = add(item.position, item.platform_velocity);
     item.platform_velocity = Vec3::ZERO;
 }
@@ -2283,7 +2299,17 @@ mod tests {
                 camera_offset: hsd_types::Vec2::ZERO,
             },
             &assets(),
+            &one_floor(),
         );
         assert_eq!(item.position.x.to_bits(), 0.0f32.to_bits());
+    }
+
+    /// A map for callers that need one; an airborne item does not read it.
+    fn one_floor() -> melee_mp::CollMap {
+        let mut b = melee_mp::CollMapBuilder::new();
+        let left = b.vertex(0, -10.0, 0.0);
+        let right = b.vertex(0, 10.0, 0.0);
+        b.floor(0, left, right, 0);
+        melee_mp::CollMap::load(b.build(), 1.0, melee_types::GrKind::Last)
     }
 }

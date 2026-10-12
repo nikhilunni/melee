@@ -1,0 +1,32 @@
+# SAMUS BOMB SLIDE directed witness (boundary start_ps_samus_fox4, Pokemon
+# Stadium; `melee-sim search`, 40 of the first 40 candidates on the rising
+# rock reached). As samus_bomb_slide_ps_fox4, but Samus stops at x = -43
+# (4114), at the foot of the peak's lower face, and lays the bomb at 4215.
+# It rests on the rising floor, slides when the face passes ItCo +C0
+# (it_80277544 -> itSamusBomb_Logic50_EnteredAir, state 2), leaves the face
+# two ticks later (it_802B4CF4, state 1), bounces on the shelf below and
+# rests there again (it_802B4C10, state 0) until the fuse ends.
+name = "samus_bomb_slide_rest_ps_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_samus_fox4.sav"
+frames = 4420
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4100, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 4114, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4215, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 4217, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

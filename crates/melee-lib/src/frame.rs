@@ -940,6 +940,7 @@ impl Runtime {
                     &targets,
                     &item_bounds(&state.assets),
                     state.assets.items.get(kind),
+                    &state.map,
                     &rng,
                 );
                 state.rng = rng.get();
