@@ -1705,6 +1705,10 @@ impl FighterCore {
             self.commands.timer = -start;
             self.commands.advance_control(&self.animation, assets);
         } else if start != 0.0 {
+            // fighter.c:1287: the script timer starts at -anim_start for
+            // every mid-animation entry, so ftAction_80073354 runs the
+            // commands up to the start frame at once.
+            self.commands.timer = -start;
             let hand = self.held_item_hand(assets);
             self.commands.seek(
                 &mut self.animation,
