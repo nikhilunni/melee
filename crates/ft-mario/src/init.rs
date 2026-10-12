@@ -82,7 +82,9 @@ impl CharacterCallbacks for Mario {
     /// ftMario units only the item hooks of ftmario.c load +1974
     /// (ftMr_Init_OnItemPickup 0x800E0A44 / 0x800E0A54, OnItemInvisible
     /// 0x800E0B18, OnItemVisible 0x800E0B60). These are Dr. Mario's rows,
-    /// witnessed there one by one (`drmario_held_turnip_*_ps_peach`).
+    /// witnessed there one by one (`drmario_held_turnip_*_ps_peach`); with
+    /// Mario himself, 343 and 347 (`corpus_v3_fd_mario_peach4_ee32d950f_p2`,
+    /// `..._e912a1eae_p2`).
     const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_mario_family::SPECIAL_MOVES;

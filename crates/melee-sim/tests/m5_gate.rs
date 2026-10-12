@@ -4297,7 +4297,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 602] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 603] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5257,6 +5257,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 602] = [
     // Mario throws a Fireball (343 at 1314) with Peach's turnip in his hand:
     // no row of his reads fp->item_gobj, as Dr. Mario's.
     ("corpus_v3_fd_mario_peach4_ee32d950f_p2", 1555),
+    // The Super Jump Punch from the ground (347 at 4829) with a turnip
+    // just picked up (LightGet, 4821), FallSpecial and the fall to a KO.
+    ("corpus_v3_fd_mario_peach4_e912a1eae_p2", 5070),
 ];
 
 #[test]
