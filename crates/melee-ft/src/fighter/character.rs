@@ -86,6 +86,7 @@ pub struct CharacterTable {
     pub dash_attack_row: Option<ActionId>,
     pub third_jab_state: fn(&CharacterState) -> melee_types::CommonMotionState,
     pub restore_saved: fn(&mut CharacterState, &[u8]),
+    pub restore_stale_heap: fn(&mut CharacterState, &[u8]),
     pub on_load: fn(&mut CharacterState, &mut Capabilities),
     pub on_reset: fn(&mut CharacterState),
     pub reset_draw: Option<fn(&mut CharacterState, &mut gekko_math::HsdRng)>,
@@ -160,6 +161,14 @@ pub struct CharacterTable {
     pub cape_turn_end: fn(&mut Fighter),
     pub transformation_arrival: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
 }
+/// `CharacterCallbacks::restore_stale_heap` for the table (a fn item, not a
+/// closure of `CharacterTable::new`).
+fn restore_stale_heap_of<C: CharacterCallbacks + 'static>(
+    state: &mut CharacterState,
+    raw_fighter: &[u8],
+) {
+    state.get_mut::<C>().restore_stale_heap(raw_fighter)
+}
 impl CharacterTable {
     pub const fn new<C: CharacterCallbacks>() -> Self {
         Self {
@@ -218,6 +227,7 @@ impl CharacterTable {
             dash_attack_row: C::DASH_ATTACK_ROW,
             third_jab_state: |state| state.get::<C>().third_jab_state(),
             restore_saved: |state, raw_fighter| state.get_mut::<C>().restore_saved(raw_fighter),
+            restore_stale_heap: restore_stale_heap_of::<C>,
             on_load: |state, capabilities| state.get_mut::<C>().on_load(capabilities),
             on_reset: |state| state.get_mut::<C>().on_reset(),
             reset_draw: C::RESET_DRAW,
@@ -419,6 +429,9 @@ impl CharacterState {
     }
     pub fn restore_saved(&mut self, raw_fighter: &[u8]) {
         (self.table.restore_saved)(self, raw_fighter)
+    }
+    pub fn restore_stale_heap(&mut self, raw_fighter: &[u8]) {
+        (self.table.restore_stale_heap)(self, raw_fighter)
     }
     pub fn on_load(&mut self, capabilities: &mut Capabilities) {
         (self.table.on_load)(self, capabilities)

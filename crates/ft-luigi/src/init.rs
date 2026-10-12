@@ -136,9 +136,16 @@ impl CharacterCallbacks for Luigi {
     /// ftLuigi_FighterVars +222C..+2237.
     fn restore_saved(&mut self, raw: &[u8]) {
         let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
+        self.restore_stale_heap(raw);
+        self.unknown_2234 = word(0x2234);
+    }
+    /// +222C and +2230: ftLg_Init_OnDeath (801422E8) stores only +2234
+    /// (0x8014230C), and ftLg_SpecialAirLw_Enter reads +222C (0x8014475C:
+    /// lwz) before the Cyclone's landing or animation end has written it.
+    fn restore_stale_heap(&mut self, raw: &[u8]) {
+        let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
         self.cyclone_charged = word(0x222C) != 0;
         self.unknown_2230 = word(0x2230);
-        self.unknown_2234 = word(0x2234);
     }
     /// ftLg_Init_OnLoad (80142324): PUSH_ATTRS and the fireball's item
     /// registration (it_8026B3F8, the item scene's); ftdata.c supplies all

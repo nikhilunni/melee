@@ -54,7 +54,50 @@ impl InitialState {
             source.is_cold(),
             "cold construction requires savestate omitted"
         );
-        Self::from_assets(&source.setup()?, assets)
+        let setup = source.setup()?;
+        let mut state = Self::from_assets(&setup, assets)?;
+        if source.has_boundary_recording() {
+            state.carry_stale_heap(&setup, source)?;
+        }
+        Ok(state)
+    }
+    /// HSD_ObjAlloc (0x8037ABC8) returns a Fighter block uncleared and
+    /// Fighter_Create (0x80068E98) writes only part of it, so some character
+    /// variables start as whatever the heap held. No scene parameter decides
+    /// them: take them from the boundary's retail recording, whose first
+    /// record is each Fighter as created (fighter-list order).
+    fn carry_stale_heap(
+        &mut self,
+        setup: &Setup,
+        source: &dyn crate::diagnostics::ScenarioSource,
+    ) -> Result<()> {
+        let boundary = super::first_json(source, &source.trace_path("tick.raw.jsonl"))?;
+        let rows = boundary["fighters"]
+            .as_array()
+            .context("missing fighters")?;
+        let roster = setup.roster();
+        ensure!(
+            rows.len() == roster.len() && rows.len() == self.fighters.len(),
+            "the boundary recording holds {} fighters, the scene {}",
+            rows.len(),
+            roster.len()
+        );
+        for ((row, entry), fighter) in rows.iter().zip(&roster).zip(&mut self.fighters) {
+            let hex = row["bytes"].as_str().context("missing fighter bytes")?;
+            ensure!(hex.len() == 0x23EC * 2, "invalid Fighter dump length");
+            let raw = hex
+                .as_bytes()
+                .chunks_exact(2)
+                .map(|b| Ok(u8::from_str_radix(std::str::from_utf8(b)?, 16)?))
+                .collect::<Result<Vec<u8>>>()?;
+            ensure!(
+                super::word(&raw, 4) == i32::from(entry.descriptor.kind) as u32
+                    && raw[12] == setup.fighters[entry.player].slot,
+                "the boundary recording's fighters are not this scene's"
+            );
+            fighter.0.character.restore_stale_heap(&raw);
+        }
+        Ok(())
     }
     pub(crate) fn from_assets(scenario: &Setup, assets: std::sync::Arc<Assets>) -> Result<Self> {
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)

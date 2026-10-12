@@ -96,6 +96,14 @@ pub trait ScenarioSource {
     /// tool owns trace storage (plain or zstd-compressed), so melee-lib never
     /// links a decompressor.
     fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>>;
+    /// Whether a scene built from parameters has a retail recording of its
+    /// boundary (`trace_path("tick.raw.jsonl")`), whose first record holds
+    /// each Fighter block as retail created it. The scene then carries the
+    /// words Fighter_Create leaves as stale heap
+    /// (`CharacterCallbacks::restore_stale_heap`).
+    fn has_boundary_recording(&self) -> bool {
+        false
+    }
 }
 
 pub use crate::initial_state::{decode_camera, decode_subject, magnified};

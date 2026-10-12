@@ -484,6 +484,13 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// Restore character-owned fields from a retail Fighter dump when a scene
     /// starts from a savestate (the shared fields are restored by the scene).
     fn restore_saved(&mut self, _raw_fighter: &[u8]) {}
+    /// Take, from a retail Fighter dump of a match's first frame, the
+    /// character variables Fighter_Create (0x80068E98) never writes and this
+    /// character reads before writing: HSD_ObjAlloc hands the block back
+    /// uncleared, so they hold whatever the heap held (docs/PORT_NOTES/
+    /// STALE_HEAP.md). A scene built from parameters carries them from its
+    /// boundary's recording; without one they keep their defaults.
+    fn restore_stale_heap(&mut self, _raw_fighter: &[u8]) {}
     /// ftCo_800DEA28 (0x800DEA28): taunt entry. Retail switches on kind:
     /// Young Link (ftCl_Init_80149318), Dr. Mario (ftDr_Init_80149910) and
     /// Ganondorf (lb_800119DC effect, then ftCo_800DEBD0 twice) have their

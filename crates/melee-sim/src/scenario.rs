@@ -558,6 +558,12 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
     fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>> {
         Ok(Box::new(melee_trace_io::open(path)?))
     }
+    /// A cold twin whose `expected` recording kept its raw tick trace.
+    fn has_boundary_recording(&self) -> bool {
+        self.is_cold()
+            && self.expected.is_some()
+            && melee_trace_io::exists(&self.trace_path("tick.raw.jsonl"))
+    }
 }
 
 #[cfg(test)]

@@ -237,6 +237,14 @@ impl CharacterCallbacks for Samus {
             unimplemented!("ftSamus_FighterVars: a saved charge shot or grapple GObj");
         }
     }
+    /// +2234, the charge effects' flag: ftSs_Init_OnDeath (8012832C) leaves
+    /// it, and ftSamus_destroyAllEF (in ftSs_SpecialN_801291F0 and
+    /// ftSs_SpecialN_80129258) tests it before a charge has ever set it; a
+    /// nonzero word there costs one efLib_DestroyAll.
+    fn restore_stale_heap(&mut self, raw: &[u8]) {
+        let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
+        self.charge_effects = word(0x2234) != 0;
+    }
     /// ftSs_Init_OnLoad (8012837C): can_walljump and PUSH_ATTRS. The four
     /// item registrations (it_8026B3F8: bomb, charge shot, missile, grapple
     /// beam) belong to the item scene.

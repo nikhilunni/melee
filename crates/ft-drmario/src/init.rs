@@ -124,6 +124,15 @@ impl CharacterCallbacks for DrMario {
             unimplemented!("ftMario_FighterVars: a saved taunt Megavitamin (+2240)");
         }
     }
+    /// +222C and +2230, the Megavitamin colours: ftDr_Init_OnDeath (8014949C)
+    /// stores +2234..+2240 only (0x801494C0..CC; ftMr_Init_OnDeath sets both
+    /// colours to 9), and ftMr_SpecialN_VitaminRandom (800E0D1C) reads both
+    /// before the first pill writes them.
+    fn restore_stale_heap(&mut self, raw: &[u8]) {
+        let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
+        self.specials.vitamin_current = word(0x222C) as i32;
+        self.specials.vitamin_previous = word(0x2230) as i32;
+    }
     /// ftDr_Init_OnLoad (801494E4): ftMr_Init_OnLoadForDrMario's PUSH_ATTRS.
     /// Retail leaves can_walljump clear. The pill and sheet registrations
     /// (it_8026B3F8) belong to the item scene.
