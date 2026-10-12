@@ -190,6 +190,24 @@ pub fn summarize(outcomes: &[Outcome], out: &mut dyn Write) -> std::io::Result<(
         outcomes.len(),
         100.0 * matched as f64 / frames.max(1) as f64
     )?;
+    // Games whose match rests on inferred lag frames, counted apart.
+    let inferred = |outcome: &&Outcome| {
+        let lag_frames = outcome.report.as_ref().ok()?.lag_frames.as_ref()?;
+        (!lag_frames.is_empty()).then_some(lag_frames.len())
+    };
+    let with_lag_frames: Vec<usize> = outcomes.iter().filter_map(|o| inferred(&o)).collect();
+    if !with_lag_frames.is_empty() {
+        let complete_with = outcomes
+            .iter()
+            .filter(|o| inferred(o).is_some() && o.category() == "complete")
+            .count();
+        writeln!(
+            out,
+            "{} lag frames inferred in {} replays ({complete_with} of the complete ones)",
+            with_lag_frames.iter().sum::<usize>(),
+            with_lag_frames.len(),
+        )?;
+    }
     writeln!(out, "\nBy first stop, largest group first:")?;
     for (category, members) in &groups {
         let example = members
@@ -215,6 +233,26 @@ pub fn write_jsonl(outcomes: &[Outcome], out: &mut dyn Write) -> std::io::Result
             Ok(report) => (report.to_string(), report.context.clone()),
             Err(error) => (error.clone(), String::new()),
         };
+        // The lag frames the comparison inferred (`replay_lag_frames`): a
+        // list, empty for a game that needed none, or null when it was not
+        // allowed to infer any. Frames matched past a listed stop rest on
+        // that lag frame.
+        let lag_frames = outcome.report.as_ref().ok().and_then(|report| {
+            let inferred = report.lag_frames.as_ref()?;
+            Some(
+                inferred
+                    .iter()
+                    .map(|lag| {
+                        serde_json::json!({
+                            "tick": lag.tick,
+                            "kind": lag.kind.name(),
+                            "stop": lag.stop,
+                            "confirmed": lag.confirmed,
+                        })
+                    })
+                    .collect::<Vec<_>>(),
+            )
+        });
         let line = serde_json::json!({
             "path": outcome.path,
             "matched": matched,
@@ -222,6 +260,7 @@ pub fn write_jsonl(outcomes: &[Outcome], out: &mut dyn Write) -> std::io::Result
             "category": outcome.category(),
             "context": context,
             "detail": detail,
+            "lag_frames": lag_frames,
         });
         writeln!(out, "{line}")?;
     }

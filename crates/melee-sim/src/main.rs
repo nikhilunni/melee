@@ -51,6 +51,13 @@ enum Command {
         /// frame), to test whether one skipped render explains a stop.
         #[arg(long, value_name = "TICK")]
         skip_display_pass: Option<u64>,
+        /// Do not explain a stop by a console's lag frame: a display pass
+        /// before every tick, whatever the recording shows. Without this a
+        /// stop is taken again with one pass skipped and, if the recording
+        /// then matches through the stop and a margin after it, the lag
+        /// frame is listed in the report (`replay_lag_frames`).
+        #[arg(long)]
+        no_lag_frames: bool,
     },
     /// Replay every `.slp` under the given paths in parallel and group the
     /// first stops by cause, largest group first.
@@ -79,6 +86,10 @@ enum Command {
         /// `standard`), instead of what the recording's frames show.
         #[arg(long, value_parser = parse_screen)]
         screen: Option<melee_lib::slippi::Screen>,
+        /// Do not explain stops by a console's lag frames (see `replay`);
+        /// each line's `lag_frames` is then null instead of a list.
+        #[arg(long)]
+        no_lag_frames: bool,
         /// Write one JSON object per replay here.
         #[arg(long)]
         jsonl: Option<PathBuf>,
@@ -240,6 +251,16 @@ fn parse_screen(name: &str) -> Result<melee_lib::slippi::Screen, String> {
         })
 }
 
+/// `--no-lag-frames` as the comparison's mode.
+fn lag_frames(off: bool) -> melee_sim::replay_lag_frames::LagFrames {
+    use melee_sim::replay_lag_frames::LagFrames;
+    if off {
+        LagFrames::Off
+    } else {
+        LagFrames::Infer
+    }
+}
+
 fn main() -> anyhow::Result<()> {
     let args = Args::parse();
     match args.command {
@@ -253,6 +274,7 @@ fn main() -> anyhow::Result<()> {
             screen,
             retail_inputs,
             skip_display_pass,
+            no_lag_frames,
         } => {
             // MELEE_DATA_ROOT: a checkout whose harness data to read (a worktree
             // reads the main checkout's), as harness/data_root.py.
@@ -268,6 +290,7 @@ fn main() -> anyhow::Result<()> {
                 frozen_stages: stage_codes,
                 screen,
                 skipped_display_pass: skip_display_pass,
+                lag_frames: lag_frames(no_lag_frames),
             };
             if let Some(out) = retail_inputs {
                 let replay = slp::Replay::parse(&std::fs::read(&file)?)?;
@@ -299,6 +322,7 @@ fn main() -> anyhow::Result<()> {
             controller_fix,
             stage_codes,
             screen,
+            no_lag_frames,
             jsonl,
         } => {
             use melee_sim::replay_batch;
@@ -323,6 +347,7 @@ fn main() -> anyhow::Result<()> {
                     frozen_stages: stage_codes,
                     screen,
                     skipped_display_pass: None,
+                    lag_frames: lag_frames(no_lag_frames),
                 },
                 jobs,
             );

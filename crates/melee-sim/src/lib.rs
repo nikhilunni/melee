@@ -17,6 +17,7 @@ pub mod replay;
 pub mod replay_batch;
 pub mod replay_cost;
 mod replay_game;
+pub mod replay_lag_frames;
 mod replay_observed;
 pub mod replay_screen_codes;
 pub mod replay_stage_codes;

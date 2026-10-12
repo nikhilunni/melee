@@ -25,9 +25,11 @@ pub enum Part {
     FixProbe,
     /// The comparison run.
     Compare,
+    /// Lag-frame inference at a stop of the comparison (`replay_lag_frames`).
+    LagFrames,
 }
 
-const PARTS: [Part; 8] = [
+const PARTS: [Part; 9] = [
     Part::Parse,
     Part::Expected,
     Part::Scenario,
@@ -36,6 +38,7 @@ const PARTS: [Part; 8] = [
     Part::ScreenProbe,
     Part::FixProbe,
     Part::Compare,
+    Part::LagFrames,
 ];
 
 #[derive(Default)]

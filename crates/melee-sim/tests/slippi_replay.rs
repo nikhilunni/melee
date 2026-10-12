@@ -1,10 +1,22 @@
 use melee_diff::{Record, Value};
 use melee_sim::replay::{self, Setup, Stop};
+use melee_sim::replay_lag_frames::{LagFrames, LagKind};
 use slp::{Replay, SLIPPI_FIRST_FRAME};
 use std::{collections::BTreeMap, path::PathBuf};
 
 fn root() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..")
+}
+
+/// The default setup with a display pass before every tick: no stop is
+/// explained by a lag frame. Every test here names its mode; only
+/// `a_console_lag_frame_is_inferred_only_where_the_recording_confirms_it`
+/// and the mismatch test run with inference.
+fn every_tick() -> Setup {
+    Setup {
+        lag_frames: LagFrames::Off,
+        ..Setup::default()
+    }
 }
 fn fixture(name: &str) -> Replay {
     Replay::parse(&std::fs::read(root().join("crates/slp/tests/data").join(name)).unwrap()).unwrap()
@@ -32,7 +44,7 @@ fn fixture_matched_frame_counts_never_decrease() {
         ("v3.18.slp", "FountainOfDreams", "Cpu control", 0),
     ];
     for (name, stage, reason, floor) in cases {
-        let report = replay::run(&fixture(name), &root(), Setup::default()).unwrap();
+        let report = replay::run(&fixture(name), &root(), every_tick()).unwrap();
         assert_eq!(report.stage, stage);
         assert!(report.matched >= floor, "{name}: {report}");
         match &report.stop {
@@ -177,6 +189,7 @@ fn cold_replay_bridge_matches_599_independent_oracle_frames() {
             frozen_stages: None,
             screen: None,
             skipped_display_pass: None,
+            lag_frames: LagFrames::Off,
         },
     )
     .unwrap();
@@ -195,27 +208,107 @@ fn a_ported_state_one_bit_mismatch_is_a_failure() {
         .as_mut()
         .unwrap();
     post.position_x = f32::from_bits(post.position_x.to_bits() ^ 1);
-    let report = replay::run(
-        &replay,
-        &root(),
-        Setup {
-            all_characters_unlocked: Some(false),
-            boundary_seed: None,
-            ignore_controller_fixes: false,
-            controller_fix: None,
-            frozen_stages: None,
-            screen: None,
-            skipped_display_pass: None,
-        },
-    )
-    .unwrap();
-    assert_eq!(report.matched, 0);
-    let Stop::Diverged(diff) = report.stop else {
-        panic!("{report}")
+    // With lag-frame inference too: a position outside the screen KO is no
+    // lag frame's, and the stop is reported as it is without inference.
+    for lag_frames in [LagFrames::Off, LagFrames::Infer] {
+        let report = replay::run(
+            &replay,
+            &root(),
+            Setup {
+                all_characters_unlocked: Some(false),
+                boundary_seed: None,
+                ignore_controller_fixes: false,
+                controller_fix: None,
+                frozen_stages: None,
+                screen: None,
+                skipped_display_pass: None,
+                lag_frames,
+            },
+        )
+        .unwrap();
+        assert_eq!(report.matched, 0);
+        assert_eq!(
+            report.lag_frames,
+            (lag_frames == LagFrames::Infer).then(Vec::new)
+        );
+        let Stop::Diverged(diff) = report.stop else {
+            panic!("{report}")
+        };
+        assert_eq!(diff.frame, 0);
+        assert_eq!(diff.path, "p0.cur_pos.x");
+        assert_ne!(diff.expected, diff.actual);
+    }
+}
+
+/// The corpus replays whose stops are a console's lag frame, each proven on
+/// retail with a recording pair (`docs/SLIPPI.md`, "Lag frames read from a
+/// replay"): with a display pass before every tick the port stops where
+/// retail in Dolphin leaves the console, and the inference names the tick
+/// retail's lag-frame recording skipped.
+#[test]
+fn a_console_lag_frame_is_inferred_only_where_the_recording_confirms_it() {
+    use melee_lib::slippi::Screen;
+    use melee_lib::ControllerFix::Ucf074;
+    // Read the main checkout's data from a worktree, as `melee-sim replay`.
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(root, PathBuf::from);
+    let corpus = PathBuf::from(std::env::var_os("HOME").expect("HOME"))
+        .join("melee-data/replays/public-v3.7-b");
+    let game = corpus.join("FOX/Fox vs Marth [YS] Game_20200115T192755.slp");
+    if !melee_test_support::require_files([&game, &root.join("harness/roms/files/PlCo.dat")]) {
+        return;
+    }
+    let mut replay = Replay::parse(&std::fs::read(&game).unwrap()).unwrap();
+    // The KO (Marth hits the screen at tick 5873) and what follows it; the
+    // rest of the game adds nothing but time.
+    let kept = SLIPPI_FIRST_FRAME + 6100;
+    replay.frames.retain(|&number, _| number < kept);
+    // The codes this console ran, as the runner reads them from the whole
+    // game (the dry passes are not what is tested here).
+    let setup = |lag_frames| Setup {
+        all_characters_unlocked: Some(true),
+        boundary_seed: None,
+        ignore_controller_fixes: false,
+        controller_fix: Some(Ucf074),
+        frozen_stages: Some(false),
+        screen: Some(Screen::Standard),
+        skipped_display_pass: None,
+        lag_frames,
     };
-    assert_eq!(diff.frame, 0);
-    assert_eq!(diff.path, "p0.cur_pos.x");
-    assert_ne!(diff.expected, diff.actual);
+
+    let every_tick = replay::run(&replay, &root, setup(LagFrames::Off)).unwrap();
+    assert_eq!(every_tick.matched, 5873, "{every_tick}");
+    assert_eq!(every_tick.lag_frames, None);
+    let Stop::Diverged(diff) = &every_tick.stop else {
+        panic!("{every_tick}")
+    };
+    assert_eq!(diff.path, "p1.cur_pos.x", "{diff}");
+
+    let inferred = replay::run(&replay, &root, setup(LagFrames::Infer)).unwrap();
+    assert!(matches!(inferred.stop, Stop::Complete), "{inferred}");
+    assert_eq!(inferred.matched, replay.frames.len(), "{inferred}");
+    let found: Vec<_> = inferred
+        .lag_frames
+        .iter()
+        .flatten()
+        .map(|lag| (lag.tick, lag.kind, lag.stop, lag.field.as_str()))
+        .collect();
+    assert_eq!(found, [(5873, LagKind::ScreenKo, 5873, "p1.cur_pos.x")]);
+
+    // The same pass named by hand is not inferred again, and one skipped
+    // pass elsewhere in the KO does not make its frame the recording's.
+    for (skipped, matched, lag_frames) in [(5873, replay.frames.len(), 0), (5872, 5872, 0)] {
+        let named = Setup {
+            skipped_display_pass: Some(skipped),
+            ..setup(LagFrames::Infer)
+        };
+        let report = replay::run(&replay, &root, named).unwrap();
+        assert_eq!(report.matched, matched, "{skipped}: {report}");
+        assert_eq!(
+            report.lag_frames.as_ref().map(Vec::len),
+            Some(lag_frames),
+            "{skipped}: {report}"
+        );
+    }
 }
 
 #[test]
@@ -235,6 +328,7 @@ fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
             frozen_stages: None,
             screen: None,
             skipped_display_pass: None,
+            lag_frames: LagFrames::Off,
         },
     )
     .unwrap();
@@ -265,6 +359,7 @@ fn missing_late_input_preserves_the_matched_prefix() {
             frozen_stages: None,
             screen: None,
             skipped_display_pass: None,
+            lag_frames: LagFrames::Off,
         },
     )
     .unwrap();
@@ -298,6 +393,7 @@ fn gapped_ports_keep_spawn_markers_and_delay_entry_by_slot() {
         frozen_stages: None,
         screen: None,
         skipped_display_pass: None,
+        lag_frames: LagFrames::Off,
     };
     // The marker, facing and pads route by port, so the prefix matches until
     // entry. fn_8016D8AC's delay grows by five per slot before this one
@@ -328,7 +424,7 @@ fn online_story_fixture_requires_per_frame_netplay_rng_reconstruction() {
                 .wrapping_add(replay.start.random_seed)
         );
     }
-    let reasons = replay::unsupported_setup(&replay, Setup::default());
+    let reasons = replay::unsupported_setup(&replay, every_tick());
     // Its ports ran UCF, which the runner dates to 0.84; Online remains.
     assert_eq!(reasons, ["Slippi Online initialization/seed resets"]);
 }
@@ -350,6 +446,7 @@ fn story_primary_music_seed_and_first_full_tick_match_the_oracle() {
             frozen_stages: None,
             screen: None,
             skipped_display_pass: None,
+            lag_frames: LagFrames::Off,
         },
     )
     .unwrap();

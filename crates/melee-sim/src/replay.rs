@@ -2,7 +2,8 @@
 use crate::replay_screen_codes::{resolve_screen, ScreenChoice, ScreenReason};
 use crate::replay_stage_codes::{resolve_stage_codes, StageCodeChoice, StageCodeReason};
 use crate::replay_cost::{self as cost, Part};
-use crate::replay_game::{Game, StartError, Stopped};
+use crate::replay_game::{Game, RunId, StartError, Stopped};
+use crate::replay_lag_frames::{Inference, LagFrame, LagFrames};
 use crate::scenario::Scenario;
 use anyhow::{ensure, Result};
 use melee_diff::{first_divergence, Divergence, Record};
@@ -37,6 +38,10 @@ pub struct Setup {
     /// one skipped pass explains (the magnifier, a screen KO, the particle
     /// sort); the report says it was used.
     pub skipped_display_pass: Option<u64>,
+    /// Whether a stop may be explained by a console's lag frame
+    /// (`replay_lag_frames`: taken again with one display pass skipped, and
+    /// accepted only when the recording then matches).
+    pub lag_frames: LagFrames,
 }
 
 /// The UCF version a recording's ports run and what decided it.
@@ -127,6 +132,11 @@ pub struct Report {
     pub differing: Vec<String>,
     /// `Setup::skipped_display_pass`.
     pub skipped_display_pass: Option<u64>,
+    /// The console's lag frames this comparison inferred, in the order
+    /// their stops came; `None` when it was not allowed to infer any
+    /// (`LagFrames::Off`). The frames matched past the first one's stop
+    /// rest on them.
+    pub lag_frames: Option<Vec<LagFrame>>,
     pub stop: Stop,
 }
 
@@ -145,6 +155,9 @@ impl std::fmt::Display for Report {
         }
         if let Some(tick) = self.skipped_display_pass {
             writeln!(f, "no display pass before tick {tick} (--skip-display-pass)")?;
+        }
+        for lag_frame in self.lag_frames.iter().flatten() {
+            writeln!(f, "{lag_frame}")?;
         }
         writeln!(
             f,
@@ -924,6 +937,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         context: String::new(),
         differing: Vec::new(),
         skipped_display_pass: setup.skipped_display_pass,
+        lag_frames: (setup.lag_frames == LagFrames::Infer).then(Vec::new),
         stop: Stop::Complete,
     };
     let reasons = unsupported_setup(replay, setup);
@@ -932,7 +946,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         return Ok(report);
     }
     let _t = cost::time(Part::Compare);
-    let run = match game.comparison_run(setup) {
+    let mut run = match game.comparison_run(setup) {
         Ok(run) => run,
         Err(StartError::Scenario(error)) => {
             report.stop = Stop::NeedsSetup(format!("{error:#}"));
@@ -943,7 +957,14 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
     // The frame of the last tick the comparison reached: its leaders'
     // recorded actions are the report's context.
     let mut reached = None;
-    let stop = compare(&mut game, run, &mut report.matched, &mut reached);
+    let mut inference = report.lag_frames.as_mut().map(|found| (Inference::new(setup), found));
+    let stop = compare(
+        &mut game,
+        &mut run,
+        &mut report.matched,
+        &mut reached,
+        &mut inference,
+    );
     if let Some(frame) = reached {
         report.context = leader_actions(replay, frame);
     }
@@ -975,14 +996,21 @@ enum Compared {
 }
 
 /// Compare the run with every recorded frame in turn, counting the frames
-/// that match up to the first that does not.
+/// that match up to the first that does not. With `inference`, a frame
+/// that does not match may be a console's lag frame (`replay_lag_frames`):
+/// the comparison then goes on with the run that skipped that display
+/// pass, from the last frame the inference required to match, and the lag
+/// frame joins the list.
 fn compare<'a>(
     game: &mut Game<'a>,
-    run: crate::replay_game::RunId,
+    run: &mut RunId,
     matched: &mut usize,
     reached: &mut Option<&'a slp::Frame>,
+    inference: &mut Option<(Inference, &mut Vec<LagFrame>)>,
 ) -> Result<Compared> {
-    for index in 0..game.ticks() {
+    let mut index = 0;
+    while index < game.ticks() {
+        let run_now = *run;
         let tick = game.tick_number(index);
         if let Some((unavailable, reason)) = game.unavailable() {
             if *unavailable == tick {
@@ -994,8 +1022,8 @@ fn compare<'a>(
         }
         let frame = game.frame(index);
         *reached = Some(frame);
-        if !game.observe(run, index) {
-            let message = match game.stop(run, index).expect("a run that stopped") {
+        if !game.observe(run_now, index) {
+            let message = match game.stop(run_now, index).expect("a run that stopped") {
                 Stopped::Error(error) => {
                     return Err(error.take().unwrap_or_else(|| {
                         anyhow::anyhow!("simulation is poisoned by a prior tick error")
@@ -1018,10 +1046,24 @@ fn compare<'a>(
                 reason: message,
             }));
         }
-        if !game.matches(run, index) {
-            return Ok(Compared::Diverged { index });
+        if !game.matches(run_now, index) {
+            let explained = inference.as_mut().and_then(|(inference, found)| {
+                let _t = cost::time(Part::LagFrames);
+                let (rewound, lag_frames, through) = inference.explain(game, run_now, index)?;
+                found.extend(lag_frames);
+                Some((rewound, through))
+            });
+            let Some((rewound, through)) = explained else {
+                return Ok(Compared::Diverged { index });
+            };
+            *run = rewound;
+            *reached = Some(game.frame(through));
+            *matched = through + 1;
+            index = through + 1;
+            continue;
         }
         *matched += 1;
+        index += 1;
     }
     Ok(Compared::Complete)
 }
