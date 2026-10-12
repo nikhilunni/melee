@@ -152,6 +152,10 @@ pub struct CaptureState {
     stick_directions: [i8; 2],
 }
 impl CaptureState {
+    /// mv.co.capturewait.x4: frames the mashed animation rate still lasts.
+    pub fn fast_remaining(&self) -> f32 {
+        self.fast_remaining
+    }
     /// fn_800DA8E4 (800DA8E4): handicap/rank-adjusted initial grab timer.
     pub fn new(percent: f32, handicap: u8, rank: u8, p: &Parameters) -> Self {
         let rank_term = p.rank_scale * (p.rank_origin - (f32::from(rank) + 1.0));

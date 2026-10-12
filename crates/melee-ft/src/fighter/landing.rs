@@ -186,6 +186,10 @@ impl FighterCore {
             MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
             MotionData::MultiJump(jump) => jump.retained_drop_timer,
             MotionData::CaptureJump(jump) => jump.retained_drop_timer,
+            // mv.co.capturewait.x4 (+2344): the mash's fast-animation
+            // countdown. The capture's entry zeroes it (fn_800DA8E4,
+            // 0x800DA9FC) and CaptureCut leaves it for Wait or Fall.
+            MotionData::Capture(capture) => capture.fast_remaining(),
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
             // mv.co.aircatchhit.x4: the tether's hang countdown.
             MotionData::AirCatchHit(hit) => hit.hang_frames,
