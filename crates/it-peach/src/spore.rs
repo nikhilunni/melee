@@ -105,8 +105,14 @@ impl ItemLogic for PeachToadSpore {
     fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
         true
     }
-    fn reflected(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        unimplemented!("itPeachToadSpore_Logic68_Reflected: it_80273030 keeping the lifetime")
+    /// itPeachToadSpore_Logic68_Reflected (0x802BE538): it_80273030 turns
+    /// the spore back, and the lifetime it restarted is put back as it was
+    /// (itpeachtoadspore.c:144-146).
+    fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+        let life_timer = item.life_timer;
+        item.reverse_on_reflect(ctx.reflected_speed);
+        item.life_timer = life_timer;
+        false
     }
     fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
         unimplemented!("itPeachToadSpore_Logic68_ShieldBounced: itColl_BounceOffShield")

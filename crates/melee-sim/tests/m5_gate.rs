@@ -4330,7 +4330,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 607] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 608] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5309,6 +5309,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 607] = [
     // (361 at 547, 369 at 606): mv+4 is still CaptureWait's mash countdown,
     // zero.
     ("corpus_v3_fd_iceclimbers_peach4_e15946934_p0", 727),
+    // Mario's cape turns Toad's spores back (330): it_80273030 with the
+    // lifetime put back (itPeachToadSpore_Logic68_Reflected, 0x802BE538).
+    ("corpus_v3_fd_mario_peach4_efb86521f_p1", 452),
 ];
 
 #[test]
