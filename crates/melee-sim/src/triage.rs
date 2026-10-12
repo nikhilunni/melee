@@ -6,7 +6,11 @@
 //! call sites part, which generators exist, and any bone mismatch. Each
 //! section reuses the tool that already answers it; sections whose capture is
 //! missing (no ledger, no bone dump) say so and are skipped.
-use crate::{scenario::Scenario, trace};
+use crate::{
+    particle_gate::{DumpUse, ParticleCheck},
+    scenario::Scenario,
+    trace,
+};
 use anyhow::Result;
 use melee_diff::{first_divergence, read_trace, Record, Value};
 use std::collections::VecDeque;
@@ -34,11 +38,16 @@ struct Divergence {
 
 /// The full triage report, or a one-line pass.
 pub fn triage(scenario: &Scenario) -> Result<String> {
-    let Some(d) = find_divergence(scenario)? else {
-        return Ok(format!(
-            "{}: {} ticks, no divergence\n",
-            scenario.name, scenario.frames
-        ));
+    let d = match find_divergence(scenario)? {
+        Ok(d) => d,
+        Err(particles) => {
+            return Ok(format!(
+                "{}: {} ticks, no divergence\n{}\n",
+                scenario.name,
+                scenario.frames,
+                particles.summary()
+            ))
+        }
     };
     let mut out = String::new();
     writeln!(out, "== {} diverges at tick {}", scenario.name, d.tick)?;
@@ -107,8 +116,9 @@ fn section(out: &mut String, title: &str) {
 }
 
 /// The gate loop, keeping a short motion history and stopping at the first
-/// divergence (fighter keys, then items) or port error.
-fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
+/// divergence (fighter keys, then items, then the particle dump) or port
+/// error. A scenario that passes returns what was done with its dump.
+fn find_divergence(scenario: &Scenario) -> Result<Result<Divergence, DumpUse>> {
     let expected = read_trace(melee_trace_io::open(&scenario.expected_path())?)?;
     let expected_items: Vec<Option<Record>> = {
         use std::io::BufRead as _;
@@ -123,7 +133,9 @@ fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
             })
             .collect::<Result<_>>()?
     };
-    let mut simulation = trace::simulation(scenario)?;
+    let pads = trace::pad_script(scenario)?;
+    let mut particles = ParticleCheck::open(scenario, &pads, &trace::recorded_seeds(&expected)?)?;
+    let mut simulation = trace::simulation_with(scenario, pads)?;
     if !scenario.replay_inputs.is_empty() {
         simulation.tick()?;
     }
@@ -135,7 +147,7 @@ fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
         let mut act = match simulation.tick() {
             Ok(record) => record,
             Err(e) => {
-                return Ok(Some(Divergence {
+                return Ok(Ok(Divergence {
                     tick,
                     summary: format!("port error: {e:#}"),
                     expected: Some(exp),
@@ -159,7 +171,7 @@ fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
             _ => None,
         };
         if let Some(diff) = fighter_diff.or(item_diff) {
-            return Ok(Some(Divergence {
+            return Ok(Ok(Divergence {
                 tick,
                 summary: diff.to_string(),
                 rng_writers: format!("{:?}", simulation.rng_writers()),
@@ -175,7 +187,7 @@ fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
         if let Some(exp_after_map) = exp_after_map {
             if let Some(diff) = trace::after_map_divergence(&simulation, &exp_after_map, &act)? {
                 let port = simulation.after_map_record(&act).expect("captured");
-                return Ok(Some(Divergence {
+                return Ok(Ok(Divergence {
                     tick,
                     summary: diff,
                     rng_writers: format!("{:?}", simulation.rng_writers()),
@@ -187,12 +199,27 @@ fn find_divergence(scenario: &Scenario) -> Result<Option<Divergence>> {
                 }));
             }
         }
+        // Fighters and items agree; the particle system may not.
+        if let DumpUse::Compared(check) = &mut particles {
+            if let Some(diff) = check.divergence(scenario, tick, &simulation)? {
+                return Ok(Ok(Divergence {
+                    tick,
+                    summary: format!("{diff}\n{}", diff.lists()),
+                    rng_writers: format!("{:?}", simulation.rng_writers()),
+                    expected: Some(diff.expected),
+                    actual: Some(diff.actual),
+                    expected_items: None,
+                    actual_items: None,
+                    history,
+                }));
+            }
+        }
         if history.len() == HISTORY {
             history.pop_front();
         }
         history.push_back((tick, exp, act));
     }
-    Ok(None)
+    Ok(Err(particles))
 }
 
 fn show(value: Option<&Value>) -> String {

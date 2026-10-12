@@ -285,6 +285,13 @@ impl PadScript {
         Ok(self)
     }
 
+    /// Take display passes from a capture's display clock already read
+    /// (psFrameNum at each tick's end; `None` where the tracer recorded none).
+    pub fn with_display_clock(mut self, clock: Vec<Option<u64>>) -> Self {
+        self.display_clock = clock;
+        self
+    }
+
     /// Share another script's display clock (read once with
     /// [`Self::with_display_from`]) instead of re-reading its trace.
     pub fn with_display_of(mut self, other: &Self) -> Self {

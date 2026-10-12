@@ -119,8 +119,15 @@ enum Command {
         #[arg(long)]
         out: PathBuf,
     },
-    /// Run and compare every key against the scenario's canonical tick trace.
-    Gate { scenario: PathBuf },
+    /// Run and compare every key against the scenario's canonical tick trace,
+    /// and the particle system against its particle dump where that dump is
+    /// the tick trace's game.
+    Gate {
+        scenario: PathBuf,
+        /// Compare fighters, items and the seed only.
+        #[arg(long)]
+        no_particles: bool,
+    },
     /// Gate a scenario and, at its first divergence, report every differing
     /// key, the motion history, items, RNG writers, particle call sites and
     /// generators, and bones where those captures exist.
@@ -570,14 +577,25 @@ fn main() -> anyhow::Result<()> {
             print!("{}", melee_sim::triage::triage(&scenario)?);
             Ok(())
         }
-        Command::Gate { scenario } => {
+        Command::Gate {
+            scenario,
+            no_particles,
+        } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
-            melee_sim::trace::gate_items(&scenario)?;
+            let particles = if no_particles {
+                melee_sim::trace::gate_items(&scenario)?;
+                None
+            } else {
+                Some(melee_sim::trace::gate_items_and_particles(&scenario)?)
+            };
             println!(
                 "{} ticks, {} keys, 0 divergences",
                 scenario.frames,
                 melee_sim::trace::compared_keys(&scenario)?
             );
+            if let Some(particles) = particles {
+                println!("{}", particles.summary());
+            }
             Ok(())
         }
         Command::FixtureSpawns {

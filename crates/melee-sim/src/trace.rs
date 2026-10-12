@@ -3,6 +3,7 @@ use crate::{
     frame::Simulation,
     initial_state::InitialState,
     inputs::PadScript,
+    particle_gate::{DumpUse, ParticleCheck},
     scenario::Scenario,
     schema::{Schema, SchemaCoverage},
 };
@@ -84,7 +85,7 @@ pub fn simulation_displayed_as(scenario: &Scenario, capture: &Path) -> Result<Si
     let pads = pad_script(scenario)?.with_display_from(capture)?;
     simulation_with(scenario, pads)
 }
-fn simulation_with(scenario: &Scenario, pads: PadScript) -> Result<Simulation> {
+pub(crate) fn simulation_with(scenario: &Scenario, pads: PadScript) -> Result<Simulation> {
     let mut simulation = Simulation::with_inputs(
         if scenario.is_cold() {
             InitialState::from_parameters(scenario)?
@@ -174,14 +175,38 @@ pub fn write_dry_run(scenario: &Scenario, reference: &Scenario, mut out: impl Wr
 }
 /// Unlike first_divergence alone, this also rejects extra keys/records.
 pub fn gate(scenario: &Scenario) -> Result<()> {
-    gate_with_recording(scenario, false, false)?;
+    gate_with_recording(scenario, false, false, false)?;
     Ok(())
 }
 
 /// Extend the existing fighter gate with every recorded item key in list order.
 pub fn gate_items(scenario: &Scenario) -> Result<()> {
-    gate_with_recording(scenario, false, true)?;
+    gate_with_recording(scenario, false, true, false)?;
     Ok(())
+}
+
+/// [`gate_items`], and the particle system against the scenario's particle
+/// dump on every tick the dump is the tick trace's game
+/// (`particle_gate`). Returns what was done with the dump.
+pub fn gate_items_and_particles(scenario: &Scenario) -> Result<DumpUse> {
+    Ok(gate_with_recording(scenario, false, true, true)?.particles)
+}
+
+/// What a gate run leaves besides its verdict.
+struct GateOutcome {
+    spawns: std::collections::BTreeMap<u64, Vec<serde_json::Value>>,
+    particles: DumpUse,
+}
+
+/// The tick trace's end-of-tick seeds.
+pub(crate) fn recorded_seeds(expected: &[Record]) -> Result<Vec<u32>> {
+    expected
+        .iter()
+        .map(|record| match record.state.get("rng.seed") {
+            Some(melee_diff::Value::UInt(seed)) => Ok(*seed as u32),
+            other => anyhow::bail!("tick {}: rng.seed is {other:?}", record.frame),
+        })
+        .collect()
 }
 
 pub fn compared_keys(scenario: &Scenario) -> Result<usize> {
@@ -214,7 +239,7 @@ pub fn fixture_spawns(
         ticks > 0 && ticks <= scenario.frames,
         "fixture ticks must be within the scenario"
     );
-    let mut events = gate_with_recording(scenario, true, true)?;
+    let mut events = gate_with_recording(scenario, true, true, false)?.spawns;
     events.retain(|frame, _| *frame < ticks);
     let mut out = std::io::BufWriter::new(File::create(out)?);
     serde_json::to_writer_pretty(&mut out, &events)?;
@@ -227,7 +252,8 @@ fn gate_with_recording(
     scenario: &Scenario,
     record_spawns: bool,
     compare_items: bool,
-) -> Result<std::collections::BTreeMap<u64, Vec<serde_json::Value>>> {
+    compare_particles: bool,
+) -> Result<GateOutcome> {
     let expected = read_trace(melee_trace_io::open(&scenario.expected_path())?)?;
     let item_rows = if compare_items {
         melee_trace_io::open(&scenario.expected_path())?
@@ -250,7 +276,13 @@ fn gate_with_recording(
         scenario.frames
     );
     let after_map = after_map_rows(scenario, expected.len())?;
-    let mut simulation = simulation(scenario)?;
+    let pads = pad_script(scenario)?;
+    let mut particles = if compare_particles {
+        ParticleCheck::open(scenario, &pads, &recorded_seeds(&expected)?)?
+    } else {
+        DumpUse::Absent
+    };
+    let mut simulation = simulation_with(scenario, pads)?;
     if !scenario.replay_inputs.is_empty() {
         simulation.tick()?;
     }
@@ -283,8 +315,13 @@ fn gate_with_recording(
                 anyhow::bail!("{diff}\n{} ticks matched", actual.frame);
             }
         }
+        if let DumpUse::Compared(check) = &mut particles {
+            if let Some(diff) = check.divergence(scenario, actual.frame, &simulation)? {
+                anyhow::bail!("{diff}\n{} ticks matched (particle dump)", actual.frame);
+            }
+        }
     }
-    Ok(if record_spawns {
+    let spawns = if record_spawns {
         let offset = u64::from(!scenario.replay_inputs.is_empty());
         simulation
             .finish_spawn_recording()
@@ -293,7 +330,8 @@ fn gate_with_recording(
             .collect()
     } else {
         std::collections::BTreeMap::new()
-    })
+    };
+    Ok(GateOutcome { spawns, particles })
 }
 
 /// Particle RNG call sites per tick, port versus the retail ledger

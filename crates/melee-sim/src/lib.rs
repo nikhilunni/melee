@@ -13,6 +13,7 @@ pub mod frame;
 pub mod gobj;
 pub mod initial_state;
 pub mod inputs;
+pub mod particle_gate;
 pub mod replay;
 pub mod replay_batch;
 pub mod replay_cost;
