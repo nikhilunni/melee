@@ -449,8 +449,9 @@ fn resting_selection(
             _ => shown(&[0, 1, 2]),
         },
         // ftPp_Init_OnDeath, ftNn_Init_OnDeath, ftPk_Init_OnDeath
-        // (80124620), ftMs_Init_OnDeath, ftZd_Init_OnDeath (801392E8).
-        K::Popo | K::Nana | K::Pikachu | K::Mars | K::Zelda => shown(&[0, 1]),
+        // (80124620), ftMs_Init_OnDeath, ftZd_Init_OnDeath (801392E8),
+        // ftKb_Init_OnDeath (800EE5A0).
+        K::Popo | K::Nana | K::Pikachu | K::Mars | K::Zelda | K::Kirby => shown(&[0, 1]),
         // ftFe_Init_OnDeath (8014EEF8): (0, 0), (1, 0), (2, -1).
         K::Emblem => shown(&[0, 1]),
         // ftSk_Init_OnDeath (80110044), ftGn_Init_OnDeath: (0, 0), (1, -1).
