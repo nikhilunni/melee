@@ -35,6 +35,32 @@ pub(crate) fn publish_joint_matrices(
 /// star and second platform (melee_gr::izumi::procs).
 pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 16];
 
+/// The addresses of the map GObjs a stage created during the match
+/// (Ground_GetStageGObj, 0x801C14D0: GObj_Create(HSD_GOBJ_CLASS_STAGE, 5,
+/// 3)), oldest first. One the match began with has an address no object
+/// of the match has had.
+#[derive(Clone, Default)]
+pub(crate) struct StageGObjs {
+    created: melee_types::fixed::FixedVec<(u8, hsd_gobj::GObjAddress), 16>,
+}
+
+impl StageGObjs {
+    /// Ground_GetStageGObj for `map`.
+    pub(crate) fn create(&mut self, gobjs: &mut hsd_gobj::GObjAddresses, map: u8) {
+        self.created
+            .push((map, gobjs.create(hsd_gobj::GObjClass::Stage)));
+    }
+    /// Ground_801C4A08 (0x801C4A08) on `map`'s oldest GObj.
+    pub(crate) fn destroy(&mut self, gobjs: &mut hsd_gobj::GObjAddresses, map: u8) {
+        let index = self.created.iter().position(|&(created, _)| created == map);
+        let address = match index {
+            Some(index) => self.created.remove(index).1,
+            None => gobjs.outside(),
+        };
+        gobjs.destroy(hsd_gobj::GObjClass::Stage, address);
+    }
+}
+
 pub struct StageDescriptor {
     pub name: &'static str,
     pub file: &'static str,

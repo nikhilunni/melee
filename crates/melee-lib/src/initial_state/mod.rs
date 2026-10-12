@@ -77,6 +77,7 @@ pub struct InitialState {
     pub(crate) banner: Option<crate::banner::Banner>,
     /// GO, loaded up front and started when the countdown ends.
     pub(crate) go_banner: Option<crate::banner::Banner>,
+    pub(crate) stage_gobjs: crate::scene_stage::StageGObjs,
     pub(crate) clock: crate::match_clock::MatchClock,
     pub(crate) bomb_rain: melee_gr::bomb_rain::BombRain,
     /// FighterMatchInfo[].x8, fn_80167638 / fn_8016758C.
@@ -504,6 +505,7 @@ impl InitialState {
             } else {
                 scene_flow::restore_banner(&saved, &assets.interface)?
             },
+            stage_gobjs: Default::default(),
             go_banner: Some(crate::banner::Banner::preload(
                 &assets.interface,
                 crate::banner::BannerKind::Go,

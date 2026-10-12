@@ -182,6 +182,7 @@ impl InitialState {
                     crate::banner::BannerKind::Countdown
                 },
             )?),
+            stage_gobjs: Default::default(),
             go_banner: Some(crate::banner::Banner::preload(
                 &assets.interface,
                 crate::banner::BannerKind::Go,

@@ -104,6 +104,9 @@ pub(crate) fn run_proc(
             // emitting from that JObj's last matrix, which nothing refreshes.
             if let Some(object) = objects[usize::from(previous)].take() {
                 world.destroy(object);
+                state
+                    .stage_gobjs
+                    .destroy(&mut state.effects.gobjs, previous);
             }
             state
                 .stage_animations
@@ -148,6 +151,7 @@ fn create_background(
     objects: &mut crate::scene_stage::StageObjects,
 ) -> Result<()> {
     let object = world.create(3, 5, 0);
+    state.stage_gobjs.create(&mut state.effects.gobjs, map);
     for (index, link) in [1, 4, 4].into_iter().enumerate() {
         world.add_tagged_proc(object, link, super::last::TAG_BASE + usize::from(map) * 3 + index);
     }

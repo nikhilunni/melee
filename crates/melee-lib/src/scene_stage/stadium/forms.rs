@@ -219,6 +219,8 @@ fn create(engine: &mut Engine, map: u8) -> Result<()> {
         );
     }
     let object = engine.world.create(3, 5, 0);
+    let state = &mut *engine.state;
+    state.stage_gobjs.create(&mut state.effects.gobjs, map);
     let tag = super::super::last::TAG_BASE + usize::from(map) * 3;
     engine.world.add_tagged_proc(object, 1, tag);
     engine.world.add_tagged_proc(object, 4, tag + 1);
@@ -397,6 +399,8 @@ fn destroy(engine: &mut Engine, map: u8) -> Result<()> {
     }
     if let Some(object) = engine.objects[usize::from(map)].take() {
         engine.world.destroy(object);
+        let state = &mut *engine.state;
+        state.stage_gobjs.destroy(&mut state.effects.gobjs, map);
     }
     engine.state.stage_animations.remove(&map);
     Ok(())
