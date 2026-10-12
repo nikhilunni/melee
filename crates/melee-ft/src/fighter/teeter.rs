@@ -3,7 +3,7 @@ use super::{
     assets::{FighterAssets, Result},
     Fighter,
 };
-use crate::input::{WaitContext, WaitTransition};
+use crate::input::WaitTransition;
 use hsd_types::Vec3;
 use melee_types::CommonMotionState as S;
 
@@ -52,13 +52,9 @@ impl Fighter {
     /// ftCo_Ottotto_IASA (also OttottoWait_IASA): Wait's list without the
     /// spot dodge and Fox taunt checks, and Walk gated by the teeter threshold.
     pub(super) fn teeter_input(&mut self, assets: &FighterAssets) -> Result<()> {
-        let context = WaitContext {
-            facing: self.core.physics.facing,
-            specials_available: self.core.capabilities.specials,
-            shield_health: self.core.status.shield_health,
-            tether_active: self.core.tether_article,
-            ..WaitContext::default()
-        };
+        // Wait's context: ftCo_Catch_CheckInput (800D8990) throws a held item
+        // first (ftCo_800951D0) here as it does in Wait.
+        let context = self.core.wait_context();
         let transition = crate::input::iasa_with_predicates(
             crate::input::OTTOTTO_PREDICATES,
             &self.core.input,
