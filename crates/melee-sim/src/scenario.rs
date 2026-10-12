@@ -454,6 +454,11 @@ impl Scenario {
         if self.is_cold() {
             paths.push(self.assets_path().join("IfAll.usd"));
             paths.push(self.expected_path());
+            if self.expected.is_some() {
+                // The boundary's Fighter blocks, for the stale words a
+                // cold scene carries (InitialState::carry_stale_heap).
+                paths.push(self.trace_path("tick.raw.jsonl"));
+            }
             return paths;
         }
         paths.push(self.savestate_path());
@@ -558,11 +563,10 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
     fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>> {
         Ok(Box::new(melee_trace_io::open(path)?))
     }
-    /// A cold twin whose `expected` recording kept its raw tick trace.
+    /// A cold twin names its boundary's recording as `expected`; the raw
+    /// tick trace is then required (`required_files`).
     fn has_boundary_recording(&self) -> bool {
-        self.is_cold()
-            && self.expected.is_some()
-            && melee_trace_io::exists(&self.trace_path("tick.raw.jsonl"))
+        self.is_cold() && self.expected.is_some()
     }
 }
 
