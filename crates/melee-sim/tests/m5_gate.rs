@@ -2570,7 +2570,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 113] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 114] = [
     // A Slippi Online (netplay) game played back whole: every tick starts
     // from the netplay code's seed (InitOnlinePlay.asm's FN_SyncRNG: the
     // scene frame counter turned sixteen bits plus the RNG offset, which the
@@ -3002,6 +3002,13 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 113] = [
     // The Fountain boundary runs NeutralSpawn with entry by spawn order.
     ("slp_dl_peach_younglink_r155233_r1_t8700_cold", 8700),
     ("slp_dl_peach_younglink_r155233_lag8502_t8700_cold", 8700),
+    // The same game on to its next stop (11591). At record 11587 Young
+    // Link's bomb strikes Peach under her open parasol: her take-damage
+    // hook destroys the parasol inside her proc (it_802BDB94), and
+    // Item_8026A8EC's efLib_DestroyAll leaves the generator insertion
+    // cursor on the hit spark just created, so the burn smoke's generator
+    // links in ahead of it (39 particle draws; the port drew 32).
+    ("slp_dl_peach_younglink_r155233_lag8502_t11700_cold", 11700),
     ("slp_fod_fox_drmario_r211939_r1_t5000_cold", 5000),
     ("slp_fod_fox_drmario_r211939_lag4814_t5000_cold", 5000),
     // UCF 0.73's dashback with one poll per tick: Captain Falcon's raw X

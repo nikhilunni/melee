@@ -100,12 +100,22 @@ pub fn destroyed(f: &mut Fighter, kind: ItemKind) {
     }
 }
 
+/// Item_8026A8EC on one of Peach's own articles, from inside her proc
+/// (it_802BDB94 at 0x802BDBDC for the parasol, it_802BDF40 at 0x802BDF88
+/// for Toad): its efLib_DestroyAll (0x8026A988) walks the article's joints
+/// with hsd_8039D688 there and then, which leaves the generator insertion
+/// cursor on the list's tail. What she spawns later in the same proc (a
+/// hit's burn smoke, after the hit's own spark) then links in behind the
+/// list's head, ahead of the spark.
 fn remove(f: &mut Fighter, kind: ItemKind) {
     f.core.item_requests.push(ItemRequest::Control {
         owner: f.player.id,
         kind,
         control: ItemControl::Remove,
     });
+    f.core
+        .effects
+        .push(melee_ef::request::EffectRequest::ArticleDestroyed);
 }
 
 /// ftPe_8011D598 (8011D598): it_802BDB94 destroys the parasol.

@@ -2826,6 +2826,52 @@ particle draws for retail's 39. The parasol is an article removed on
 damage, as the boomerang in hand and Mr. Game & Watch's articles are
 ("The generator cursor" above); which call creates 57 and 59 was not
 followed. Every fighter key still agrees on that tick.
+
+**Fixed (2026-10-12): the parasol's destruction moves the cursor between
+the hit's two effects.** The item is Young Link's bomb (kind 59, a fire
+hit). Nothing creates 57 and 59 by a call of its own: the tick makes two
+generators, and each one's first particle spawns the rest from its script.
+
+| Created by | Generator | Its particle's children |
+|---|---|---|
+| the hit spark (ftColl's fire spark, efAsync 0x3EA) | 20 | 22, 21, 23, 24 |
+| the burn smoke on bone 72 (efAsync 0x413, requested as the damage state is entered) | 55 | 56, 57, 58, 59, 354 |
+
+Generator 20 is made first and 55 second, in the port as on every other
+fire hit the gate holds. Between them Peach's take-damage hook runs: the
+hit procedure calls ftCommon_8007DB58 and then enters the damage state
+(fighter.c:2871-2882, ftCo_8008E908 and its siblings), and take_dmg_cb is
+the parasol's ftPe_Init_OnDeath2. ftPe_8011D598 calls it_802BDB94, which ends
+in Item_8026A8EC (0x802BDBDC), and that function's efLib_DestroyAll
+(0x8026A988) walks the parasol's joints with hsd_8039D688. The walk leaves
+the generator insertion cursor on the list's tail, which is now generator
+20. hsd_8039D9C8 links a new generator behind the head when the cursor is
+null or the tail, so 55 goes in ahead of 20: the list is 10, 55, 20. The
+port did not model the walk; its cursor was still the head (10, the only
+generator of the tick before), so 55 went behind the cursor's successor:
+10, 20, 55.
+
+The order of that list is the order the particle pass runs it in. Retail
+runs 55 first: its particle spawns 56, 57, 58, 59 and 354 (four draws at
+creation, 0x8039F250), and of those 59 and 57 draw a count that emits, so
+they keep a particle and outlive the tick beside 58. The port ran 20 first,
+then 55 on a later part of the stream: there 59 and 57 emitted nothing and
+expired, which is why only 58 was left, at the tail, and the tick drew 32
+values for retail's 39.
+
+The fix is one `EffectRequest::ArticleDestroyed` where Peach's articles are
+destroyed inside her proc: the parasol (it_802BDB94), Toad (it_802BDF40,
+Item_8026A8EC at 0x802BDF88) and the turnip in hand (it_802BD45C,
+0x802BD468), all three from ftPe_Init_OnDeath2. Only the parasol has a
+retail witness. `slp_dl_peach_younglink_r155233_lag8502_t11700` gates exact
+over 11700 ticks with 0 differing particle call sites and is in
+`SLIPPI_REPLAY_WITNESSES`; the replay goes from 11591 to 14695 / 14695.
+`particles-diff` still shows 39 ticks of that recording (3804..3816,
+3971..3983, 8529..8541) where one Dream Land generator's x differs by a
+multiple of 14 with equal seeds; the registered `..._lag8502_t8700` shows
+the same ticks before this change (the open Dream Land item of
+`TRACKER.md`).
+
 ## Slippi Online (2026-10-12)
 
 A Slippi Online (netplay) game is not a console's game with other inputs:

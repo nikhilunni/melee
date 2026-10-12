@@ -175,6 +175,12 @@ pub fn put_away(f: &mut Fighter) {
     // hit in the same frame has nothing to drop.
     f.core.release_held_item_now(held.item);
     f.character.get_mut::<Peach>().items.vegetable = false;
+    // it_802BD45C calls Item_8026A8EC (0x802BD468) inside her proc: the
+    // generator cursor walk of efLib_DestroyAll (0x8026A988), as for the
+    // parasol and Toad (`articles::remove`).
+    f.core
+        .effects
+        .push(melee_ef::request::EffectRequest::ArticleDestroyed);
 }
 
 /// ftPe_SpecialLw_Anim (8011D2EC) / ftPe_SpecialAirLw_Anim (8011D340):
