@@ -93,6 +93,15 @@ macro_rules! scene_characters {
                 )*
                 None
             }
+            /// The kind's `CharacterCallbacks::RESET_DRAW_COUNT`.
+            pub(crate) fn reset_draws_for(kind: melee_types::FighterKind) -> usize {
+                $(
+                    if kind == <$ty as CharacterCallbacks>::descriptor().kind {
+                        return <$ty as CharacterCallbacks>::RESET_DRAW_COUNT;
+                    }
+                )*
+                0
+            }
             pub(crate) fn descriptor_for(name: &str) -> Option<&'static CharacterDescriptor> {
                 match name {
                     $( $name => Some(<$ty as CharacterCallbacks>::descriptor()), )*
@@ -165,6 +174,7 @@ scene_characters! {
     "Bowser" => Bowser(ft_koopa::init::Koopa),
     "Ness" => Ness(ft_ness::init::Ness),
     "Mewtwo" => Mewtwo(ft_mewtwo::init::Mewtwo),
+    "Kirby" => Kirby(ft_kirby::init::Kirby),
 }
 
 /// ftMapping_list's `has_transformation` (pl/player.c:62-63): a partner of

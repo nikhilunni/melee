@@ -339,7 +339,13 @@ impl Fighter {
         // AttackHi4, AttackLw4 and AttackHi3 write no mv field (AttackLw3
         // and AttackDash only +2340), so mv+4 stays the predecessor's.
         let retained_word = self.inherited_scratch_word();
-        self.change_motion_state(state.into(), assets)?;
+        // ftCo_AttackDash.c decideFighter (:49-58): the kind's own row runs
+        // doEnter's body (ftKb_SpecialN_800F1F68, 800F1F68).
+        let action = match (state, self.character.table().dash_attack_row) {
+            (S::AttackDash, Some(row)) => row,
+            _ => state.into(),
+        };
+        self.change_motion_state(action, assets)?;
         self.step_animation(assets);
         self.core.status.interaction = super::Interaction::Attack;
         self.core.state_data = match state {

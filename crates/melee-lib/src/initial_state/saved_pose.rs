@@ -214,6 +214,11 @@ impl SavedPose {
         for (i, part) in fighter.animation.parts.iter_mut().enumerate() {
             let data = self.bytes(parts + i as u32 * 16, 16);
             part.flags.0 = data[8];
+            if word(data, 0) == 0 {
+                // An empty conditional part (ftParts_SetupParts leaves its
+                // joint NULL): the stand-in joint keeps its identity pose.
+                continue;
+            }
             self.joint(fighter.skeleton.get_mut(part.joint), word(data, 0));
             self.joint(
                 fighter.animation.blend_tree.get_mut(part.joint),

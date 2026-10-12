@@ -19,7 +19,11 @@ pub fn character_descriptor(
 /// Ground and Player creation (Slippi's Game Start seed, injected at
 /// 0x8016E74C): that seed advanced by the setup's fixed draws.
 pub fn boundary_seed_from_creation(setup: &Setup, seed: u32) -> anyhow::Result<u32> {
-    crate::initial_state::boundary_seed_after(seed, setup.stage.kind, setup.roster().len())
+    crate::initial_state::boundary_seed_after(
+        seed,
+        setup.stage.kind,
+        setup.roster().iter().map(|entry| entry.descriptor.kind),
+    )
 }
 pub const CHARACTERS: &[&str] = crate::scene_fighter::SceneFighter::NAMES;
 /// Content fingerprint of the source bytes actually loaded, including articles.

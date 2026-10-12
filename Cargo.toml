@@ -78,6 +78,7 @@ members = [
     "crates/it-koopaflame",
     "crates/it-ness",
     "crates/ft-ness",
+    "crates/ft-kirby",
     "crates/ft-mewtwo",
     "crates/it-mewtwo",
     # Layer 4: binaries and tooling.

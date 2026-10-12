@@ -12,7 +12,8 @@ mod read;
 pub use animation::*;
 pub use attributes::{read_fighter_attributes, FighterAttributes};
 pub use bones::{
-    graft_conditional_joint, read_conditional_parts, read_fighter_bones, read_part_table,
-    ConditionalPart, EcbBones, FighterBones, PartTable,
+    empty_part_offset, fill_empty_conditional_parts, graft_conditional_joint,
+    read_conditional_parts, read_fighter_bones, read_part_table, ConditionalPart, EcbBones,
+    FighterBones, PartTable,
 };
 pub use read::{special_attributes_offset, FighterDescError};

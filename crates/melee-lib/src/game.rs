@@ -143,7 +143,11 @@ impl Match {
             crate::initial_state::boundary_seed_after(
                 engine.state().rng.seed,
                 engine.state().assets.stage_desc.kind,
-                engine.state().fighters.len(),
+                engine
+                    .state()
+                    .fighters
+                    .iter()
+                    .map(|fighter| fighter.0.core.kind),
             )
         }))
         .map_err(|p| StartError::Initialization(panic_message(p)))?

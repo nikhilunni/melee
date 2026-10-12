@@ -540,3 +540,12 @@ stage = "DreamLand"
 players = ["Link", "Marth"]
 stocks = 4
 seed = 1942826078
+
+[[boundary]]
+name = "start_fd_kirby_fox4"
+cold = "start_fd_kirby_fox4_cold"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Fox"]
+stocks = 4
+seed = 4288124430

@@ -215,6 +215,67 @@ pub fn graft_conditional_joint(
     parent.child = Some(Box::new(graft));
 }
 
+/// The data offset an empty conditional part's stand-in joint carries: no
+/// archive joint has it, and each part's differs.
+pub const fn empty_part_offset(part: u8) -> u32 {
+    u32::MAX - part as u32
+}
+
+/// ftParts_SetupParts (ftparts.c:392-452) numbers the costume's joints in
+/// pre-order and skips every conditional part nothing was grafted into
+/// (`fp->parts[part].joint = NULL`), so the joints after it keep the part
+/// numbers the animations, bone tables and part table use. The port's
+/// skeleton numbers joints by pre-order alone: each empty part gets a
+/// stand-in leaf joint (no display object, the identity pose) where the
+/// walk skips, which no other joint's matrix depends on. Kirby's costume
+/// leaves thirteen for his copy abilities' hats.
+pub fn fill_empty_conditional_parts(
+    model: &mut hsd_archive::desc::JObjDesc,
+    empty: &[ConditionalPart],
+) {
+    let mut parts: Vec<_> = empty.to_vec();
+    parts.sort_by_key(|placement| placement.part);
+    for placement in parts {
+        let part = usize::from(placement.part);
+        let mut stand_in = hsd_archive::desc::JObjDesc::default();
+        stand_in.offset = empty_part_offset(placement.part);
+        stand_in.scale = hsd_archive::desc::Vec3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        };
+        let mut index = 0;
+        if usize::from(placement.parent) + 1 == part {
+            // Directly after its parent: the parent's first child.
+            let parent = nth_joint(model, part - 1, &mut index)
+                .expect("empty conditional part's parent outside the costume model");
+            assert!(
+                !parent.is_instance(),
+                "an instanced parent has no children to number"
+            );
+            let mut stand_in = stand_in;
+            stand_in.next = parent.child.take();
+            parent.child = Some(Box::new(stand_in));
+        } else {
+            // After the parent's whole subtree: its last child.
+            let parent = nth_joint(model, usize::from(placement.parent), &mut index)
+                .expect("empty conditional part's parent outside the costume model");
+            let mut slot = &mut parent.child;
+            while let Some(child) = slot {
+                slot = &mut child.next;
+            }
+            *slot = Some(Box::new(stand_in));
+        }
+        let mut index = 0;
+        let placed = nth_joint(model, part, &mut index).map(|joint| joint.offset);
+        assert_eq!(
+            placed,
+            Some(empty_part_offset(placement.part)),
+            "empty conditional part {part} does not fall at its pre-order index"
+        );
+    }
+}
+
 /// The joint at pre-order `target` (ftParts_80074060's walk: an instanced
 /// joint's children are not visited).
 fn nth_joint<'a>(

@@ -8,6 +8,7 @@ mod dust;
 mod egg_shell;
 pub mod fixture_spawns;
 mod item_generators;
+mod kirby;
 mod koopa;
 mod mario;
 mod pool;
@@ -475,6 +476,18 @@ impl Effects {
                 }) {
                     effect.callback_rotation = Some(rotation);
                 }
+                continue;
+            }
+            if let EffectRequest::AttachedParameter {
+                id: 0x495,
+                bone,
+                parameter,
+            } = request
+            {
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                self.spawn_kirby_dash_attack::<T>(
+                    player, bone, matrix, parameter, fighter, bank, particles, rng,
+                )?;
                 continue;
             }
             if let EffectRequest::AttachedParameter {

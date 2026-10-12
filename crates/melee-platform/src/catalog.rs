@@ -29,8 +29,8 @@ pub fn stage(id: u32) -> Option<Stage> {
 }
 /// Characters per row of the retail character select grid, in catalog
 /// order. Retail rows hold 9, 9 and 7 icons; here Sheik has her own cell
-/// (retail shares Zelda's) and fills the middle row's Kirby gap.
-pub const ROWS: [usize; 3] = [9, 9, 7];
+/// (retail shares Zelda's), so the middle row holds ten.
+pub const ROWS: [usize; 3] = [9, 10, 7];
 /// Grid row and column of a character id.
 pub fn grid_cell(id: u32) -> Option<(u32, u32)> {
     let mut start = 0;

@@ -294,6 +294,10 @@ impl Fighter {
             .initialize_spawn_geometry(map, counter, initial_scale);
         self.core.reset_camera_subject(assets, stage_camera);
         self.character.on_reset();
+        // The kind's OnDeath draws (ftKb_Init_OnDeath, 800EE5A0).
+        if let Some(draw) = self.character.table().reset_draw {
+            draw(&mut self.character, rng);
+        }
         if let Some(color) = (self.character.table().color_fallback_after_reset)(&self.character) {
             self.core.combat.secondary_color_fallback = Some(color);
         }

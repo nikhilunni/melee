@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 19] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 20] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -47,6 +47,14 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 19] = [
         file: "EfCaData.dat",
         table: "effCaptainDataTable",
         models: 6,
+    },
+    // Kirby (efAsync_DatEntries[5]): models 0x1388..0x1390 (efAlt 0x494 and
+    // on: the Final Cutter, Stone, hammer and swallow effects).
+    CharacterEffectFile {
+        bank: 5,
+        file: "EfKbData.dat",
+        table: "effKirbyDataTable",
+        models: 9,
     },
     // Link and Young Link (efAsync_DatEntries[6]): models 0x1770..0x1773,
     // the spin attack's ground and air swirls (efSync 0x4BB/0x4BC).

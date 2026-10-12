@@ -1,0 +1,38 @@
+# KIRBY: the dash attack on the floor; then one that runs off the left edge into AttackDashAir and falls, and the midair jumps back.
+name = "kirby_dash_attack_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 108, port = 0, buttons = {  }, raw = { stickX = 127, button = 256 } },
+  { frame = 110, port = 0, buttons = {  }, raw = {  } },
+  { frame = 220, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 251, port = 0, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 253, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 333, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 354, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 357, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 378, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 381, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 402, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 405, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 426, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 429, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 490, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

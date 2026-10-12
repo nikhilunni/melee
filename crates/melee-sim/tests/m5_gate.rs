@@ -2231,6 +2231,39 @@ fn ness_witnesses_match_retail() {
     gate_in_parallel(NESS_WITNESSES);
 }
 
+/// Kirby against Fox on Final Destination, all from the retail start
+/// boundary `start_fd_kirby_fox4` (gated warm and cold in `m4_gate`).
+const KIRBY_WITNESSES: &[(&str, usize)] = &[
+    // Movement on the common rows with PlKb.dat's attributes and scripts;
+    // the bump star (ftKb_SpecialN_800F1D24) at every landing.
+    ("kirby_walk_fd_fox4", 420),
+    ("kirby_dash_fd_fox4", 420),
+    ("kirby_jump_fd_fox4", 420),
+    ("kirby_squat_guard_fd_fox4", 520),
+    ("kirby_jab_tilt_fd_fox4", 620),
+    // The smashes, then the dash attack on its own row (ftKb_MS_AttackDash)
+    // with its flame (efAlt 0x495).
+    ("kirby_smash_fd_fox4", 620),
+    ("kirby_aerial_fd_fox4", 700),
+    ("kirby_aerial_land_fd_fox4", 520),
+    ("kirby_taunt_ledge_fd_fox4", 620),
+    ("kirby_grab_whiff_fd_fox4", 360),
+    // The shared multijump rows (ftCo_JumpAerialF1.c): presses before a
+    // jump's window opens are refused; a jump away from the facing turns;
+    // jump held takes each later jump as its window opens; all five.
+    ("kirby_multijump_fd_fox4", 760),
+    // The same from the stick: a tap, then up held; a fast fall after one.
+    ("kirby_multijump_stick_fd_fox4", 520),
+    // The dash attack off the left edge: AttackDashAir at the same frame
+    // (fn_800F20C4), Fall at its end, a multijump, the ledge.
+    ("kirby_dash_attack_fd_fox4", 620),
+];
+
+#[test]
+fn kirby_witnesses_match_retail() {
+    gate_in_parallel(KIRBY_WITNESSES);
+}
+
 /// Mewtwo vs Fox on Final Destination (boundary `start_fd_mewtwo_fox4`):
 /// directed scenes and bridged explorer cases, items compared.
 const MEWTWO_WITNESSES: &[(&str, usize)] = &[

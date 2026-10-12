@@ -194,6 +194,17 @@ impl super::FighterCore {
                 });
                 continue;
             }
+            if id == 0x495 {
+                // ftCo_09F7.c block_64: efAsync kind 3 with the facing
+                // (Kirby's dash attack flame, efAlt 0x495).
+                self.effects
+                    .push_graphics(EffectRequest::AttachedParameter {
+                        id,
+                        bone,
+                        parameter: self.physics.facing,
+                    });
+                continue;
+            }
             if matches!(id, 0x446 | 0x4E1) {
                 // ftCo_09F7.c:136-142: efAsync kind 7 with the command's
                 // offset as given, before the randomized branches.

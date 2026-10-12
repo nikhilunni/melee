@@ -65,7 +65,10 @@ impl InitialState {
         let boundary_seed = scenario.seed.expect("validated cold seed");
         let mut rng = HsdRng::new(before_setup(
             boundary_seed,
-            setup_draws(assets.stage_desc.kind, scenario.roster().len())?,
+            setup_draws(
+                assets.stage_desc.kind,
+                scenario.roster().iter().map(|entry| entry.descriptor.kind),
+            )?,
         ));
         let mut particles = ParticleSystem::default();
         let (mut stage, mut stage_animations) =
@@ -175,8 +178,12 @@ impl InitialState {
 
 /// Inverse of the odd HSD LCG multiplier, modulo 2^32.
 /// The setup's fixed RNG interval: grLast's four draws (Battle/Story/
-/// Pokemon Stadium: one; Dream Land: two), then two CPU draws per slot.
-fn setup_draws(stage: GrKind, fighters: usize) -> Result<usize> {
+/// Pokemon Stadium: one; Dream Land: two), then per fighter two CPU draws
+/// and what its kind's OnDeath draws (Kirby's Stone form).
+fn setup_draws(
+    stage: GrKind,
+    fighters: impl Iterator<Item = melee_types::FighterKind>,
+) -> Result<usize> {
     let stage_draws = match stage {
         GrKind::Last => 4,
         GrKind::Battle | GrKind::Story | GrKind::PStadium => 1,
@@ -188,13 +195,22 @@ fn setup_draws(stage: GrKind, fighters: usize) -> Result<usize> {
              and Pokemon Stadium"
         ),
     };
-    Ok(stage_draws + CPU_SETUP_DRAWS_PER_FIGHTER * fighters)
+    let fighter_draws: usize = fighters
+        .map(|kind| {
+            CPU_SETUP_DRAWS_PER_FIGHTER + crate::scene_fighter::SceneFighter::reset_draws_for(kind)
+        })
+        .sum();
+    Ok(stage_draws + fighter_draws)
 }
 
 /// A scene built after another one ends: the RNG carries over unchanged
 /// through the scenes between (the Sudden Death tie screen draws nothing),
 /// so the new scene's boundary seed is the old seed after its setup draws.
-pub(crate) fn boundary_seed_after(seed: u32, stage: GrKind, fighters: usize) -> Result<u32> {
+pub(crate) fn boundary_seed_after(
+    seed: u32,
+    stage: GrKind,
+    fighters: impl Iterator<Item = melee_types::FighterKind>,
+) -> Result<u32> {
     let mut rng = HsdRng::new(seed);
     for _ in 0..setup_draws(stage, fighters)? {
         rng.rand();

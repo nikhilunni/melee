@@ -90,6 +90,9 @@ impl Fighter {
         self.core.status.require_supported();
         (self.motion_row.collision)(self, state::CollisionPhase { assets: None, map })
             .expect("grounded map callback");
+        if let Some(after) = self.character.table().after_collision {
+            after(self);
+        }
         self.core
             .skeleton
             .set_translate(self.core.animation.root, &self.core.physics.position);
@@ -113,6 +116,9 @@ impl Fighter {
                 map,
             },
         )?;
+        if let Some(after) = self.character.table().after_collision {
+            after(self);
+        }
         // Fighter_procMap publishes the final position after the collision callback.
         self.core
             .skeleton

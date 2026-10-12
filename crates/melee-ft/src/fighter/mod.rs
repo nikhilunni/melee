@@ -453,6 +453,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_AttackLw3.c decideFighter's kind arm (:67-76): the kind's own
     /// down tilt (ftGw_AttackLw3_Enter) in place of doEnter.
     const ENTER_DOWN_TILT: Option<GroundAttackEntry> = None;
+    /// ftCo_AttackDash.c decideFighter: the kind's own dash attack row,
+    /// entered as the common one is (Kirby's ftKb_MS_AttackDash).
+    const DASH_ATTACK_ROW: Option<ActionId> = None;
     /// ftCo_Attack1 doAttack13 (8008B194): Marth restarts Attack11.
     fn third_jab_state(&self) -> melee_types::CommonMotionState {
         melee_types::CommonMotionState::Attack13
@@ -487,6 +490,17 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         character::unsupported_taunt;
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
+    /// The random draws of the kind's OnDeath, after `on_reset` (Kirby's
+    /// Stone form, ftKb_Init_OnDeath).
+    const RESET_DRAW: Option<fn(&mut CharacterState, &mut gekko_math::HsdRng)> = None;
+    /// Fighter_procMap (fighter.c:2492-2495): after the state's collision
+    /// callback, ftKb_SpecialN_800F1D24 (Kirby's bump star). Retail runs it
+    /// only for a state with a collision callback; the port's rows all have
+    /// one.
+    const AFTER_COLLISION: Option<fn(&mut Fighter)> = None;
+    /// How many values `RESET_DRAW` takes: creation's are part of the fixed
+    /// interval between a Game Start seed and the pre-music boundary seed.
+    const RESET_DRAW_COUNT: usize = 0;
     /// Costume-dependent OnLoad work (e.g. material animation end frames).
     fn on_costume_loaded(
         &mut self,

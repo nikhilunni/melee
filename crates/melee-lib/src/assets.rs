@@ -178,11 +178,23 @@ impl Assets {
             let graft = crate::scene_fighter::SceneFighter::onload_item_joint_for(descriptor.kind)
                 .map(|item| onload_graft(&data, &common, descriptor, item))
                 .transpose()?;
+            // The conditional parts nothing fills at load: all but the
+            // one OnLoad grafts.
+            let empty_parts = melee_ft::desc::read_conditional_parts(&common, descriptor.kind)
+                .map_err(|e| anyhow::anyhow!("{e}"))?
+                .into_iter()
+                .filter(|placement| {
+                    graft
+                        .as_ref()
+                        .is_none_or(|(_, grafted)| grafted.part != placement.part)
+                })
+                .collect();
             characters.push(CharacterArchive {
                 descriptor,
                 data,
                 costumes,
                 graft,
+                empty_parts,
             });
         }
         let stage = archive(stage_descriptor.file)?;
@@ -318,6 +330,9 @@ pub struct CharacterArchive {
     /// ftParts_800753D4 in the kind's OnLoad: the ftData item joint and
     /// the conditional part it fills.
     graft: Option<(hsd_archive::desc::JObjDesc, melee_ft::desc::ConditionalPart)>,
+    /// The conditional parts the costume leaves empty and OnLoad does not
+    /// fill (Kirby's hat joints): each takes a stand-in joint.
+    empty_parts: Vec<melee_ft::desc::ConditionalPart>,
 }
 
 /// The joint `ftData.x48_items[item]` and `Fighter_804D6540[kind]`'s first
@@ -354,7 +369,9 @@ impl CharacterArchive {
     pub(crate) fn costume_desc(&self, costume: u8) -> hsd_archive::desc::JObjDesc {
         let archive = &self.costumes[usize::from(costume)];
         let symbol = self.descriptor.costumes[usize::from(costume)].joint_symbol;
-        read_public_jobj(archive, symbol).unwrap()
+        let mut desc = read_public_jobj(archive, symbol).unwrap();
+        melee_ft::desc::fill_empty_conditional_parts(&mut desc, &self.empty_parts);
+        desc
     }
     /// `costume_list[costume].x4`, the costume's `MatAnimJoint`
     /// (ftAnim_80070308): the joint symbol's `_matanim_joint` sibling.

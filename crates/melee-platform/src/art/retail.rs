@@ -137,7 +137,7 @@ fn hud_index(character: Character) -> Option<u8> {
         DonkeyKong => 0x01,
         Fox => 0x02,
         GameAndWatch => 0x03,
-        // Kirby is 0x04.
+        Kirby => 0x04,
         Bowser => 0x05,
         Link => 0x06,
         Luigi => 0x07,
@@ -183,7 +183,7 @@ fn face_joint(character: Character) -> Option<usize> {
         Fox => 0x17,
         Ness => 0x18,
         IceClimbers => 0x19,
-        // Kirby is 0x1A.
+        Kirby => 0x1A,
         Samus => 0x1B,
         Zelda => 0x1C,
         Link => 0x1D,

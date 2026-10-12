@@ -1568,6 +1568,24 @@ fn start_fd_ness_fox4_cold_600() {
     movement_gate_ticks("start_fd_ness_fox4_cold", 600);
 }
 
+/// Kirby vs Fox from the FD start boundary: PlKb.dat's entry and wait, the
+/// thirteen stand-in joints of his empty hat parts, the Stone form drawn at
+/// creation (ftKb_Init_OnDeath) and the bump star of his first landing.
+#[test]
+fn start_fd_kirby_fox4_600() {
+    movement_gate_ticks("start_fd_kirby_fox4", 600);
+}
+
+#[test]
+fn start_fd_kirby_fox4_cold_600() {
+    movement_gate_ticks("start_fd_kirby_fox4_cold", 600);
+}
+
+#[test]
+fn start_kirby_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_kirby_fox4", 600, "ledger600");
+}
+
 #[test]
 fn start_iceclimbers_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_iceclimbers_fox4", 600, "ledger600");

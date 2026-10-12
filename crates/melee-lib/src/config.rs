@@ -57,11 +57,12 @@ pub enum Character {
     GameAndWatch,
     Ness,
     Mewtwo,
+    Kirby,
 }
 impl Character {
     /// Every registered character, in the retail character select screen's
     /// reading order (top row left to right, then the bottom row).
-    pub const ALL: [Self; 25] = [
+    pub const ALL: [Self; 26] = [
         Self::DrMario,
         Self::Mario,
         Self::Luigi,
@@ -75,6 +76,7 @@ impl Character {
         Self::Fox,
         Self::Ness,
         Self::IceClimbers,
+        Self::Kirby,
         Self::Samus,
         Self::Zelda,
         Self::Sheik,
@@ -131,6 +133,7 @@ impl Character {
             Self::GameAndWatch => "GameAndWatch",
             Self::Ness => "Ness",
             Self::Mewtwo => "Mewtwo",
+            Self::Kirby => "Kirby",
         }
     }
     pub(crate) fn descriptor(self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
@@ -164,6 +167,7 @@ impl Character {
             melee_types::FighterKind::GameWatch => Self::GameAndWatch,
             melee_types::FighterKind::Ness => Self::Ness,
             melee_types::FighterKind::Mewtwo => Self::Mewtwo,
+            melee_types::FighterKind::Kirby => Self::Kirby,
             _ => unreachable!("unregistered match character"),
         }
     }
