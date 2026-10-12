@@ -1745,8 +1745,10 @@ melee-sim gobj-diff harness/scenarios/<name>.toml                         # item
 `dolphin/gobj_ledger.py` watches `gobj_alloc_data.freehead` and records
 each store with the GObj whose proc is running. A ledger kept as
 `harness/traces/<name>.gobj.raw.jsonl.zst` is gated by
-`gobj_addresses_match_retail_ledgers` (`GOBJ_LEDGER_WITNESSES`, fifteen
-scenarios, each event for event). What the ledgers corrected:
+`gobj_addresses_match_retail_ledgers` (`GOBJ_LEDGER_WITNESSES`, each
+scenario event for event; `gobj-diff --ledger <file> --show-from A
+--show-to B` lists both sides with the proc each retail event ran in).
+What the first fifteen ledgers corrected:
 
 | Retail | Port before |
 |---|---|
@@ -1764,16 +1766,77 @@ A HUD model rebuilt in place (a player's icons at a KO or return: four
 consecutive events on one address) leaves the list as it was and is not
 modelled; `gobj-diff` skips it.
 
-**Not finished.** Item identities agree with the tick trace on 2184 of the
-2239 recorded scenarios that have a raw trace; 55 differ somewhere (mostly
-long explorer matches: Roy 9, Peach and Yoshi on Yoshi's Story 7, Stadium
-7, Dream Land 5, Link 4). Each is an order or a model lifetime the port
-still has otherwise; a ledger of the scenario names it. Likely causes, not
-triaged: the other states that call Fighter_SetEffectHitlagCallbacks (about
-a hundred sites in the C, about fifty in the port), Stadium's
-transformation GObjs, Whispy's wind. The Sheik chain's, the Grapple Beam's
-and the Belay rope's link GObjs follow the same C as the hookshot's and the
-yo-yo's but have no ledger.
+**The whole recorded set (2026-10-12).** Item identities differed from the
+tick trace somewhere in 100 of the 2713 scenario files with a raw trace (the 55
+of the day before, the scenarios recorded since, and each bridge's `_cold`
+twin). A ledger of every one (`gobj_ledger_record.py`; a bridge needs
+`MELEE_GECKO_DIR`) put them in the groups below, each one order:
+
+| Retail | Port before | Scenarios | Ledger (tick) |
+|---|---|---|---|
+| A death frees the articles and the held item (the callbacks and Item_8026A8EC of ftCo_800D331C, ft_0D31.c:99-125), then the fighter's own models (ftCommon_8007DB24, :132), then the quake and the blast | the fighter's models first | Fox with the Blaster out | `corpus_v2_s0_e49_p0` (2544) |
+| A hit's take-damage callback (ftCommon_8007DB58) frees the article before the damage entry's floor-bounce model (efAsync 0x406), Fighter_ChangeMotionState's efLib_DestroyAll and the quake | the article last | Link, Young Link, Luigi, Marth vs Peach, Mewtwo | `corpus_v3_fd_luigi_fox4_ef9e858d4_p0` (1338), `corpus_v3_fd_mewtwo_fox4_ece1e43b7_p0` (1599) |
+| Items go in the order Item_8026A8EC is called: the arrow, then the bow (ftLk_800EAF58), each one's models just before it | pool (creation) order, every model before every item | Link | `corpus_v3_fd_link_fox4_ef17f3433_p1` (355) |
+| DownBound's bounce model (0x406, ftCo_800978D4) is queued behind the new script's frame-0 commands; the flush takes the newest first, so the model precedes the quake of Roy's script | the quake first | Roy (9) | `corpus_v3_fd_roy_fox4_e4f8edfa8_p2` (1777) |
+| A bursting egg (it_802B2C38) in a hit's callback: the script's quake at once, then twelve shell models whose parent is the egg (efSync 0x4CF, efLib_Create_Attach_Pos), freed with it | the quake a tick late; the fragments lived their own fifty ticks | Yoshi | `corpus_v3_bf_yoshi_pikachu4_ecad2716f_p1` (352, 380) |
+| The hit's quake (ftCo_8008DCE0), then Bury's mound | the mound first | Donkey Kong's Headbutt | `corpus_v3_fd_donkeykong_fox4_ee98155f3_p0` (1583) |
+| The ice block (efAsync 0x415) is created in the hit's proc, after its quake | at the next tick's link 9 flush | Ice Climbers | `iceclimbers_nana_throw_popo_squall_fd_falco` (1957, 1960) |
+| Battlefield's incoming background is a new GObj (grBattle_80219D84); the outgoing one is freed when its fade ends | not modelled | every Battlefield game past the first swap | `slp_bf_marth_peach_t6500` (3268, 3468) |
+| Each map of a Stadium form is a GObj (grStadium_801D10F8, Ground_801C4A08) | not modelled | every transforming Stadium game | `corpus_v3_ps_fox_marth4_e75fb4a9a_p1` (4287, 4408) |
+| Dream Land's flyby is one or three GObjs (grOldPupupu_80210D10), each freed when its 3999-frame animation ends (grOldPupupu_80210C34) | only its random draws | every Dream Land game past the first flyby | `slp_dl_peach_younglink_r1_t8700` (3196, 7196) |
+| The end banner is a HUD GObj created before the next tick's procs; in a timed match a HUD GObj of the timer's is freed first and the banner takes its address | not modelled | a match played to its end | `corpus_v2_s0_e49_p0` (3677), `slp_bf_drmario_fox_t8628` (8007) |
+
+**Where an article is freed.** The port flushes a fighter's effect requests
+when its proc returns and frees the articles the proc removed after that;
+retail frees them inside the proc. Moving the frees would move every
+particle teardown with them, so only the addresses move:
+`EffectRequest::ArticlesFreed` marks the point of the fighter's queue where
+retail had called Item_8026A8EC, the flush marks the allocator there
+(`GObjAddresses::mark`), and after the proc the scene rewinds to the mark,
+frees the articles and replays what the flush did since (`rewind`,
+`replay`); an object replayed at another address is renamed in its holder
+(`Effects::rename_gobjs`, `ItemPool::rename_gobjs`, `Quakes::rename_gobjs`).
+A death and every take-damage callback set the mark; a callback that tears
+the fighter's own effects down after its article (Mewtwo's) sets it itself.
+
+After these changes 2 of the 2790 files now recorded differ: `slp_ps_fox_drmario_wide9263_r1_t7200`
+and its twin, a recording that stops matching at tick 1671 on any build (it
+does not gate; the port keeps an item retail's trace no longer has).
+Thirteen of the ledgers are in `GOBJ_LEDGER_WITNESSES` (28 now). Not found
+in any ledger, so still unverified: the states that call
+Fighter_SetEffectHitlagCallbacks and the port does not (about fifty), Whispy's
+wind (the loop quake already matched), and the link GObjs of Sheik's
+chain, the Grapple Beam and the Belay rope.
+
+**Article removers and the generator cursor (audit, from the C; not
+verified on retail).** Item_8026A8EC inside a fighter's proc also leaves the
+generator insertion cursor on the list's tail (`EffectRequest::
+ArticleDestroyed`). The port queues that for Mr. Game & Watch's
+ftGw_Init_OnDamage, his aerials' landings and ftGw_Init_8014A538, Link's
+boomerang and hookshot and Samus's Grapple Beam. It does not on these
+paths, where the fighter's code goes on in the same proc:
+- Mr. Game & Watch: ftGw_SpecialAirHi_Coll (0x8014E3D4) removes the
+  trampoline (it_802C8158) before ftCo_LandingFallSpecial_Enter; his only
+  uncovered path.
+- take-damage callbacks, followed by the damage entry (the hit's overlay,
+  the Damage script's commands): Fox's and Falco's Blaster (it_802AEAB4),
+  Peach's parasol, Toad and turnip, Sheik's chain (it_802BB20C), Ness's
+  yo-yo and bat, Link's arrow and bow when nothing else is out, the cape,
+  Yoshi's egg (it_802B2890), the Ice Climbers' ice block and rope, the
+  Megavitamin, the milk, Mewtwo's Disable and a full Shadow Ball;
+- the Ice Climbers' ftPp_SpecialAirN_Coll (the ice block, then
+  ftCo_LandingFallSpecial_Enter), Ness's ftNs_AttackS4_IASA (the bat, then
+  ftCo_Wait_IASA), Mewtwo's four Loop IASA callbacks, Peach's ft_8008A348.
+A death is covered: its teardown walks the fighter's joints after the
+articles. No recording shows any of these as a difference in particle
+order (it shows only when the cursor is not already the tail), so none was
+changed.
+
+Checked on main at 6064692d, before and after: of 2790 scenario files 2689
+gate exact on both builds and no result changes; `gobj-diff` differs on 103
+before and 2 after, none newly; `replay-batch` matches the same frames in
+every replay (`public-v3.7` 108 complete, 964,782 frames; `public-v3.7-b`
+475 complete, 5,005,881 frames).
 
 ### The throw-release quake and three consoles
 
@@ -2422,11 +2485,11 @@ reserves such a burst's draws where retail made them
 
 `slp_fod_yoshi_yoshi_r1_t10100` gates all 10100 ticks on every key and item
 but differs in particle call-site order on four ticks (4954, 5555, 7417,
-8799): each is 22 to 25 ticks into an aerial Egg Throw (365), the open fault
-of `slp_bf_yoshi_samus_t1000` above (two generators created on one tick in
-the other order; the same draws). It is therefore a named `m5_gate` test
-(`egg_roll_shell_burst_draws_before_the_reaction_roll`), not an entry of
-`SLIPPI_REPLAY_WITNESSES`, which also asserts that order.
+8799): each is 22 to 25 ticks into an aerial Egg Throw (365), the fault of
+`slp_bf_yoshi_samus_t1000` above (two generators created on one tick in
+the other order; the same draws). Fixed since (below): the named `m5_gate`
+test `egg_roll_shell_burst_draws_before_the_reaction_roll` now asserts the
+call sites too.
 
 **Mr. Game & Watch's screen KO** now has two retail recordings, both with a
 display pass after every tick and both exact in the port
@@ -2443,11 +2506,18 @@ generator insertion cursor on the list's tail before the hit's burn overlay
 is created (hsd_8039D9C8 links behind the head when the cursor is null or
 the tail, behind the cursor's successor otherwise). It shows only when the
 cursor is not the tail, here a list of one generator that then got
-successors. The aerial Egg Throw's four ticks in
-`slp_fod_yoshi_yoshi_r1_t10100` may be the same kind of thing, a creation
-the port makes at another point of the tick: its launch, it_802B28C8,
-changes the egg's state inside Yoshi's accessory callback, where the port
-applies the launch after the proc. Not followed further.
+successors.
+
+**The aerial Egg Throw's ticks** were another queue, the egg's own. Thrown
+under the stage, the egg hits it in its collision proc
+(itYoshieggthrow_UnkMotion1_Coll, 0x802B2BD8): the pass queues the bounce
+spark (it_80277C40 -> it_80278800, efAsync on the item), then it_802B2C38
+changes the motion, and Item_80268E5C's efAsync_QueueFlush (0x80268F44)
+creates the spark's generator there; the burst's sparkle (0x4CE) is queued
+after and waits for link 9. The port resolved the spark's request after the
+proc and queued it behind the sparkle. `slp_bf_yoshi_samus_t1000` and
+`slp_fod_yoshi_yoshi_r1_t10100` have no differing call site now. (The
+launch, it_802B28C8, was not the cause.)
 
 Corpora before and after these changes, on main at d1f39d6f
 (`replay-batch`; no replay matches fewer frames, and only the three Yoshi
@@ -2585,11 +2655,13 @@ recorded before gates as it did (2529 files: 2488 pass, 41 do not, the same
 ones), and of the 72 recorded during the work only the four bridges above
 change, from their stop to exact.
 
-Seen on the way, not followed: the particle dump of
-`slp_dl_donkeykong_ganondorf_gs_r1_t4900` differs from the port at tick 4852
-in a stage generator's x (-9.6 in retail, -23.6 in the port), with the same
-draw sites and seeds. Not diagnosed; a guess is a fly-by's generator, which
-is placed from the rendered camera (Camera_800307D0).
+Seen on the way: the particle dump of
+`slp_dl_donkeykong_ganondorf_gs_r1_t4900` differed from the port at tick 4852
+in one generator's x (-9.6 in retail, -23.6 in the port), with the same
+draw sites and seeds. It is the burst of a lost stock icon (generator 0xF7,
+ifStock_802F8298), Ganondorf's in port 3: the HUD keeps a place per port
+(descendants 2..5 of ScInfDmg_scene_data) and the port indexed them by
+player order. Fixed; the dump agrees on every tick.
 
 ## The bridge follows the console (2026-10-12)
 
