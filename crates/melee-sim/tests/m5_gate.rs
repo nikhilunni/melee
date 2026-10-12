@@ -2492,7 +2492,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 70] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 71] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2756,6 +2756,13 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 70] = [
     // 3265 it draws the console's 172, 132, 171. The port equals both.
     ("slp_dl_marth_link_r115833_t3400_cold", 3400),
     ("slp_dl_marth_link_r115833_lag3265_t3400_cold", 3400),
+    // An ice block slides off Pokemon Stadium's left edge (6680):
+    // fn_802C1D44 calls efLib_DestroyAll itself (0x802C1D68), so the
+    // block's generator is gone before the effects the fighters queued
+    // this tick are created, and they go in behind the list's new head.
+    // The port queued the destruction for the block's link 9 flush. The
+    // console started ports 1 and 4 at markers 0 and 1 (--spawn-points).
+    ("slp_ps_iceclimbers_samus_r191618_t6750_cold", 6750),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

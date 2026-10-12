@@ -1,0 +1,41 @@
+# ICE_CLIMBERS/19_16_18 Ice Climbers + Samus (PS).slp (public-v3.7-b) played
+# back on retail with a display pass after every tick, from a boundary
+# created from the replay's Game Start seed with its spawn points (the
+# console started ports 1 and 4 at Stadium's markers 0 and 1:
+# make_boundary.py --spawn-points 0 1). Retail keeps the console's Pre Frame
+# seed on every frame. An ice block slides off the left edge at 6680 and
+# falls (fn_802C1D44): efLib_DestroyAll (0x802C1D68) removes its generator in
+# that collision proc, ahead of the four generators the tick's queued effects
+# make, which go in behind the list's new head.
+# The port's side of slp_ps_iceclimbers_samus_r191618_t6750: boundary start_ps_slippi73pre_p14_iceclimbers1_samus4_4_r191618 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_iceclimbers_samus_r191618_t6750_cold"
+expected = "slp_ps_iceclimbers_samus_r191618_t6750"
+frames = 6750
+seed = 4109368098
+game_start_seed = 2719686773
+boundary_seed = 4109368098
+stage = "PokemonStadium"
+stadium_preload = true
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+costume = 1
+stocks = 4
+spawn_point = 0
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Samus"
+costume = 4
+stocks = 4
+spawn_point = 1
+controller = "scripted"
+controller_fix = "ucf-0.73"

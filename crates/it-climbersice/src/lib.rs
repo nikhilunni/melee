@@ -361,7 +361,8 @@ fn slope_stops(item: &mut ItemCore, assets: &ItemAssets) -> bool {
         return false;
     }
     stop(item, assets);
-    item.spawn_async(ItemEvent::DestroyEffects);
+    // retail 0x802C1934: efLib_DestroyAll, called here and not queued.
+    item.events.push(ItemEvent::DestroyEffects);
     true
 }
 
@@ -398,9 +399,12 @@ fn dropping_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -
 /// fn_802C1D44, falling), the lean, then the wall check.
 fn sliding_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if !item.stay_grounded(ctx.map) {
-        // fn_802C1D44: motion 3, then efLib_DestroyAll.
+        // fn_802C1D44: motion 3 (Item_80268E5C, 0x802C1D60), then
+        // efLib_DestroyAll (0x802C1D68), called in this collision proc: the
+        // block's generators are gone before any effect a fighter queued
+        // this tick is created, so those go in behind the list's new head.
         item.change_motion_with(FALLING, ARTICLE_STATES[3], ANIM_UPDATE, ctx.assets);
-        item.spawn_async(ItemEvent::DestroyEffects);
+        item.events.push(ItemEvent::DestroyEffects);
     }
     item.lean_with_floor();
     wall_breaks(item, ctx.assets)
