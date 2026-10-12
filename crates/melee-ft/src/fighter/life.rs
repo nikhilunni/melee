@@ -522,10 +522,18 @@ impl Fighter {
         Ok(())
     }
     /// ftCo_800D4580 / ftCo_800D481C: HSD_JObjSetRotation(lbl_803B7500) when
-    /// x34_scale.z is 1 (every supported fighter).
+    /// x34_scale.z is 1 (0x800D4650 / 0x800D489C: `fcmpu` with 1.0, `bne`
+    /// past the call). A flat fighter keeps its root's rotation.
     fn face_the_screen(&mut self) {
+        if self.is_flat() {
+            return;
+        }
         let root = self.core.animation.root;
         self.core.skeleton.set_rotation(root, &FACING_THE_SCREEN);
+    }
+    /// x34_scale.z != 1.0: OnLoad flattened the model (Mr. Game & Watch).
+    fn is_flat(&self) -> bool {
+        self.capabilities.model_width.is_some_and(|width| width != 1.0)
     }
     /// ftCo_DeadUpFall_Anim (800D4A08): hold, approach the screen, stick to it,
     /// fall down it, vanish.
@@ -606,8 +614,14 @@ impl Fighter {
             MotionData::Life(LifeState::ScreenKo(ko)) => ko.clone(),
             _ => panic!("screen KO scratch"),
         };
-        // x34_scale.z != 1 would select DeadUpFallHitCameraFlat.
-        self.change_motion_state(S::DeadUpFallHitCamera.into(), assets)?;
+        // ftCo_DeadUpFall_Anim (0x800D4BC8: `fcmpu`, then 0x800D4BD8): x34_scale.z != 1
+        // selects DeadUpFallHitCameraFlat (Mr. Game & Watch).
+        let state = if self.is_flat() {
+            S::DeadUpFallHitCameraFlat
+        } else {
+            S::DeadUpFallHitCamera
+        };
+        self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::ScreenKo(ko));
         self.face_the_screen();
         // ftCommon_8007EBAC: rumble on this fighter (5) and every other awake
