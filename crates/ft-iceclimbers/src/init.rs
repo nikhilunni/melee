@@ -188,6 +188,10 @@ impl CharacterCallbacks for IceClimber {
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [MotionRow] = &crate::SPECIAL_ROWS;
+    /// No special reads fp->item_gobj: in the ftPopo and ftNana units only
+    /// the four item hooks of ftpopo.c load +1974 (0x8011ED5C, 0x8011ED6C,
+    /// 0x8011EE30, 0x8011EE78), so a held light item stays in hand.
+    const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     const SPECIAL_PARTNER_SYNC: &'static [bool] = &crate::SPECIAL_PARTNER_SYNC;
     /// ftPp_Init_OnKnockbackEnter: Fighter_OnKnockbackEnter(gobj, 1).
