@@ -1602,6 +1602,22 @@ fn start_ys_kirby_particle_draw_order() {
     particle_rng_sites_with_ledger("start_ys_kirby_fox4", 600, "ledger600");
 }
 
+/// Kirby vs Captain Falcon on Final Destination, for a helmet's midair jumps.
+#[test]
+fn start_fd_kirby_captainfalcon4_600() {
+    movement_gate_ticks("start_fd_kirby_captainfalcon4", 600);
+}
+
+#[test]
+fn start_fd_kirby_captainfalcon4_cold_600() {
+    movement_gate_ticks("start_fd_kirby_captainfalcon4_cold", 600);
+}
+
+#[test]
+fn start_kirby_falcon_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_kirby_captainfalcon4", 600, "ledger600");
+}
+
 #[test]
 fn start_iceclimbers_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_iceclimbers_fox4", 600, "ledger600");

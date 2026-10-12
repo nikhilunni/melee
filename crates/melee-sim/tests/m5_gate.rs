@@ -2319,7 +2319,8 @@ fn ness_witnesses_match_retail() {
 
 /// Kirby against Fox on Final Destination, all from the retail start
 /// boundary `start_fd_kirby_fox4` (gated warm and cold in `m4_gate`); the
-/// three `_ys_` scenes are on Yoshi's Story (`start_ys_kirby_fox4`).
+/// `_ys_` scenes are on Yoshi's Story (`start_ys_kirby_fox4`), and a scene
+/// against another fighter names its own boundary.
 const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // Movement on the common rows with PlKb.dat's attributes and scripts;
     // the bump star (ftKb_SpecialN_800F1D24) at every landing.
@@ -2603,6 +2604,13 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_ability_lasers_fd_fox4", 868),
     ("kirby_ability_smash_fd_fox4", 702),
     ("kirby_ability_taunt_platform_ys_fox4", 660),
+    // Captain Falcon swallowed (boundary `start_fd_kirby_captainfalcon4`):
+    // under his helmet the midair jumps are rows 346..350 (ftCo_800D7268 ->
+    // fn_800F1CA0), all five, a sixth press with none left, and one turned
+    // away from the facing; a taunt throws the helmet away and the next
+    // midair jumps are the bare rows 341, 342 again.
+    ("kirby_helmet_jumps_fd_falcon4", 1080),
+    ("kirby_helmet_taunt_fd_falcon4", 1000),
 ];
 
 #[test]

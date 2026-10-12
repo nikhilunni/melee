@@ -1,0 +1,47 @@
+# KIRBY directed witness from start_fd_kirby_captainfalcon4 (Kirby runs to x=51 beside Captain Falcon at +60, inhales and swallows him: the helmet): a full hop and the five midair jumps on the helmeted rows, a sixth press with none left; then a second flight with a midair jump away from the facing.
+name = "kirby_helmet_jumps_fd_falcon4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_captainfalcon4.sav"
+frames = 1080
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 440, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 450, port = 0, buttons = {  }, raw = {  } },
+  { frame = 470, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 473, port = 0, buttons = {  }, raw = {  } },
+  { frame = 514, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 517, port = 0, buttons = {  }, raw = {  } },
+  { frame = 558, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 561, port = 0, buttons = {  }, raw = {  } },
+  { frame = 602, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 605, port = 0, buttons = {  }, raw = {  } },
+  { frame = 646, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 649, port = 0, buttons = {  }, raw = {  } },
+  { frame = 690, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 693, port = 0, buttons = {  }, raw = {  } },
+  { frame = 860, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 864, port = 0, buttons = {  }, raw = {  } },
+  { frame = 885, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 890, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 930, port = 0, buttons = {  }, raw = { button = 1024, stickX = 127 } },
+  { frame = 1000, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "CaptainFalcon"
+controller = "scripted"

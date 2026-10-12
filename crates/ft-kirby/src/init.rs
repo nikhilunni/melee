@@ -305,26 +305,18 @@ impl CharacterCallbacks for Kirby {
     fn multi_jump_attributes(&self) -> Option<&melee_ft::fighter::multi_jump::MultiJumpAttributes> {
         Some(&self.attributes.multi_jump)
     }
-    /// ftCo_800D7268 -> ftKb_SpecialN_800F1CD8 -> fn_800F1CA0: the helmeted
-    /// rows under the five hats that cover Kirby's face.
+    /// ftCo_800D7268 -> ftKb_SpecialN_800F1CD8 -> fn_800F1CA0 (800F1CA0):
+    /// the helmeted rows 346..350 (+30) under the five hats that cover
+    /// Kirby's face, the bare rows 341..345 (+2C) otherwise.
     fn multi_jump_family(&self) -> usize {
-        if matches!(
-            self.copied,
-            FighterKind::Captain
-                | FighterKind::Seak
-                | FighterKind::Popo
-                | FighterKind::Nana
-                | FighterKind::Samus
-        ) {
-            unimplemented!("ftKb_SpecialN_800F1CD8 (ftkirby.c:4086): the helmeted multijump rows");
-        }
-        0
+        usize::from(crate::hat::is_helmet(self.copied))
     }
     /// ftKb_Init_MotionStateTable: JumpAerialF1..F5 play submotions
     /// 295..299, the helmeted rows 300..304.
     fn multi_jump_animation(&self, jump: usize) -> i32 {
         const FIRST_MULTI_JUMP_ANIMATION: i32 = 295; // ftKb_SM_JumpAerialF1
-        FIRST_MULTI_JUMP_ANIMATION + jump as i32
+        const JUMPS: usize = 5;
+        FIRST_MULTI_JUMP_ANIMATION + (self.multi_jump_family() * JUMPS + jump) as i32
     }
 }
 

@@ -65,6 +65,28 @@ fn load_enables_every_special_and_the_shared_multijump() {
 }
 
 #[test]
+fn the_five_face_covering_hats_take_the_helmeted_midair_jumps() {
+    use FighterKind as K;
+    for (copied, family, last_animation) in [
+        (K::Kirby, 0, 299),
+        (K::Fox, 0, 299),
+        (K::Mario, 0, 299),
+        (K::Captain, 1, 304),
+        (K::Seak, 1, 304),
+        (K::Popo, 1, 304),
+        (K::Nana, 1, 304),
+        (K::Samus, 1, 304),
+        (K::Zelda, 0, 299),
+        (K::Ganon, 0, 299),
+    ] {
+        let mut kirby = kirby();
+        kirby.copied = copied;
+        assert_eq!(kirby.multi_jump_family(), family, "{copied:?}");
+        assert_eq!(kirby.multi_jump_animation(4), last_animation, "{copied:?}");
+    }
+}
+
+#[test]
 fn a_reset_drops_the_ability_and_draws_a_stone_form_between_one_and_five() {
     let mut state = kirby().into_state();
     let draw = <Kirby as CharacterCallbacks>::RESET_DRAW.unwrap();

@@ -1,0 +1,41 @@
+# KIRBY directed witness from start_fd_kirby_captainfalcon4 (Kirby runs to x=51 beside Captain Falcon at +60, inhales and swallows him: the helmet): two midair jumps under the helmet; a taunt throws it away as the star, and the next two midair jumps are the bare rows.
+name = "kirby_helmet_taunt_fd_falcon4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_captainfalcon4.sav"
+frames = 1000
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 440, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 450, port = 0, buttons = {  }, raw = {  } },
+  { frame = 470, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 473, port = 0, buttons = {  }, raw = {  } },
+  { frame = 514, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 517, port = 0, buttons = {  }, raw = {  } },
+  { frame = 670, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 672, port = 0, buttons = {  }, raw = {  } },
+  { frame = 750, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 760, port = 0, buttons = {  }, raw = {  } },
+  { frame = 780, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 783, port = 0, buttons = {  }, raw = {  } },
+  { frame = 824, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 827, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "CaptainFalcon"
+controller = "scripted"

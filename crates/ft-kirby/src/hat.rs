@@ -26,6 +26,19 @@ fn replaces_parts(kind: FighterKind) -> bool {
     )
 }
 
+/// fn_800F1CA0 (800F1CA0): the hats that cover Kirby's face, under which
+/// his midair jumps play the helmeted animations.
+pub fn is_helmet(kind: FighterKind) -> bool {
+    matches!(
+        kind,
+        FighterKind::Captain
+            | FighterKind::Seak
+            | FighterKind::Popo
+            | FighterKind::Nana
+            | FighterKind::Samus
+    )
+}
+
 /// ftKb_Init_803C9CC8[kind * 2]: refuse a hat the port cannot wear.
 pub fn require_supported(kind: FighterKind) {
     if replaces_parts(kind) {
