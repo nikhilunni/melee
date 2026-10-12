@@ -2298,6 +2298,8 @@ impl Runtime {
                         },
                         &mut state.rng,
                     );
+                    // The requests remove articles in retail's order.
+                    state.items.note_destroyed();
                     // Item_8026A8EC's DestroyItemInline: a destroyed held
                     // item lets go of the hand (ftCommon_8007E6DC).
                     if let Some(held) = f.held_item {
@@ -2402,8 +2404,14 @@ impl Runtime {
             }
         }
         // The kinds' Destroyed callbacks (e.g. itPeachParasol_Logic60_Destroyed)
-        // release their owner's references.
-        for item in state.items.iter().filter(|item| item.destroyed) {
+        // release their owner's references. Each item goes in the order
+        // Item_8026A8EC was called: its models, then its own GObjs.
+        while let Some(destroyed) = state.items.next_destroyed() {
+            let item = state
+                .items
+                .iter()
+                .find(|item| item.id == destroyed)
+                .expect("a destroyed item");
             crate::scene_items::article_destroyed(&mut state.fighters, item);
             // Generators kept on a torn-down article's bones.
             let mut index = 0;
@@ -2435,13 +2443,14 @@ impl Runtime {
                     .expire_item_joint(item.id, &mut state.particles);
             }
             state.effects.forget_item(item.id);
+            crate::scene_items::cleanup(
+                &mut state.items,
+                &mut state.effects.gobjs,
+                world,
+                &mut self.item_objects,
+                destroyed,
+            );
         }
-        crate::scene_items::cleanup(
-            &mut state.items,
-            &mut state.effects.gobjs,
-            world,
-            &mut self.item_objects,
-        );
         // Effects a proc spawned after the items it created (their creation
         // particles came first) and after the articles it removed
         // (Item_8026A8EC frees an article's models and GObjs when the proc

@@ -1710,16 +1710,17 @@ pub fn spawn_shy_guy(
     }
 }
 
+/// Item_8026A8EC's end for `item`, marked destroyed: its GObjs and its
+/// scene object go.
 pub fn cleanup(
     pool: &mut ItemPool,
     gobjs: &mut hsd_gobj::GObjAddresses,
     world: &mut World,
     objects: &mut Objects,
+    item: u32,
 ) {
-    for item in pool.iter().filter(|item| item.destroyed) {
-        destroy_object(world, objects, item.id);
-    }
-    pool.remove_destroyed::<SceneItems>(gobjs);
+    destroy_object(world, objects, item);
+    pool.remove_destroyed::<SceneItems>(item, gobjs);
 }
 
 /// HSD_GObjPLink_80390228 for an item: its scene object goes too.

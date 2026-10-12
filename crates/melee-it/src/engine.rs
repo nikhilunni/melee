@@ -1481,6 +1481,10 @@ pub struct ItemPool {
     /// head (objalloc.c), and Item_80268B18 does not clear the struct.
     /// Never longer than the pool's peak, so it does not grow.
     freed_rest_lines: Vec<i32>,
+    /// The items marked destroyed and not yet removed, in the order they
+    /// were marked (`note_destroyed`): Item_8026A8EC frees each one's GObj
+    /// where it is called, so that order is the allocator's.
+    destroy_order: melee_types::fixed::FixedVec<u32, ITEM_CAPACITY>,
 }
 
 /// xC2C of an Item struct no item has used: whatever the heap held (retail
@@ -1497,6 +1501,7 @@ impl ItemPool {
             owner_hit_groups: [0; crate::hit_group::OWNER_GROUPS],
             fighter_push: Default::default(),
             freed_rest_lines: Vec::with_capacity(ITEM_CAPACITY),
+            destroy_order: Default::default(),
         }
     }
     /// it_804D6D28: ItCo's common item data.
@@ -2063,21 +2068,43 @@ impl ItemPool {
         item.destroy_gobjs(gobjs);
         self.freed_rest_lines.push(item.rest_line);
     }
-    pub fn remove_destroyed<D: ItemDispatch>(&mut self, gobjs: &mut hsd_gobj::GObjAddresses) {
-        let mut index = 0;
-        while index < self.items.len() {
-            if self.items[index].destroyed {
-                let mut item = self.items.remove(index);
-                (D::logic(item.kind).destroyed)(&mut item);
-                item.destroy_gobjs(gobjs);
-                self.freed_rest_lines.push(item.rest_line);
-                if D::logic(item.kind).unlinks_partner_on_destroy {
-                    if let Some(partner) = item.partner.and_then(|id| self.get_mut(id)) {
-                        partner.partner = None;
-                    }
-                }
-            } else {
-                index += 1;
+    /// Notes the items marked destroyed since the last call, in pool
+    /// order. Called after each request or proc that can mark one, so the
+    /// notes follow retail's Item_8026A8EC calls: Link's take-damage
+    /// callback removes the arrow, then the bow (ftLk_800EAF58), whichever
+    /// was created first.
+    pub fn note_destroyed(&mut self) {
+        for item in self.items.iter().filter(|item| item.destroyed) {
+            if !self.destroy_order.iter().any(|&id| id == item.id) {
+                self.destroy_order.push(item.id);
+            }
+        }
+    }
+    /// The next item to remove, in the order the items were marked.
+    pub fn next_destroyed(&mut self) -> Option<u32> {
+        self.note_destroyed();
+        (!self.destroy_order.is_empty()).then(|| self.destroy_order.remove(0))
+    }
+    /// Item_8026A8EC's end for an item marked destroyed: its kind's
+    /// destroyed callback, then its GObjs are freed.
+    pub fn remove_destroyed<D: ItemDispatch>(
+        &mut self,
+        id: u32,
+        gobjs: &mut hsd_gobj::GObjAddresses,
+    ) {
+        let index = self
+            .items
+            .iter()
+            .position(|item| item.id == id)
+            .expect("Item_8026A8EC: Not Found Item_Struct");
+        assert!(self.items[index].destroyed, "removing a live item");
+        let mut item = self.items.remove(index);
+        (D::logic(item.kind).destroyed)(&mut item);
+        item.destroy_gobjs(gobjs);
+        self.freed_rest_lines.push(item.rest_line);
+        if D::logic(item.kind).unlinks_partner_on_destroy {
+            if let Some(partner) = item.partner.and_then(|id| self.get_mut(id)) {
+                partner.partner = None;
             }
         }
     }
@@ -2151,6 +2178,7 @@ impl Clone for ItemPool {
             owner_hit_groups: self.owner_hit_groups,
             fighter_push: self.fighter_push,
             freed_rest_lines: hsd_types::storage::clone_vec(&self.freed_rest_lines),
+            destroy_order: self.destroy_order.clone(),
         }
     }
 }
@@ -2251,7 +2279,9 @@ mod tests {
             .spawn::<TestKinds>(spawn, &assets(), &mut gobjs)
             .is_none());
         pool.retire(first);
-        pool.remove_destroyed::<TestKinds>(&mut gobjs);
+        assert_eq!(pool.next_destroyed(), Some(first));
+        pool.remove_destroyed::<TestKinds>(first, &mut gobjs);
+        assert_eq!(pool.next_destroyed(), None);
         let last = pool
             .spawn::<TestKinds>(spawn, &assets(), &mut gobjs)
             .unwrap();
