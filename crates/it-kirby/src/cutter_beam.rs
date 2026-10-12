@@ -7,9 +7,9 @@
 //! Its lifetime, a wall in its way, a clank, a shield or an absorber end
 //! it; a hit does not. A reflector or a reflecting shield turns it round.
 //!
-//! Recorded on Final Destination only, so what a level floor and one
-//! opponent cannot reach fails closed: a slope, a wall, a landing from the
-//! air, a clank, an absorber and a glancing shield.
+//! Recorded on Final Destination and, for the wall, from Yoshi's Story's
+//! cloud. What those scenes do not reach fails closed: a slope, a landing
+//! from the air, a clank, an absorber and a glancing shield.
 use hsd_types::Vec3;
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
@@ -246,8 +246,10 @@ fn physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 /// itKirbycutterbeam_UnkMotion0_Coll (8029BDD4): on the floor it_8026D564,
 /// taking the floor's angle or, past the floor's end, leaving it a hair
 /// higher; in the air it_8026DA08, landing on a floor it meets. The model
-/// root turns to the angle. A wall in its way ends it (either wall when it
-/// has no horizontal speed).
+/// root turns to the angle. A wall in its way ends it: the one it flies
+/// into (itkirbycutterbeam.c:144-151; recorded flying right into the side
+/// of Yoshi's Story, and the same test mirrored flying left), or either
+/// wall when it has no horizontal speed (:138-143), which no beam has had.
 fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if item.ground_or_air == GroundOrAir::Ground {
         if item.ground_pass(ctx.map) {
@@ -276,18 +278,17 @@ fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
         .expect("Cutter beam map collision")
         .env_flags as u32;
     let speed = item.velocity.x;
-    let wall = if speed == 0.0 {
-        env & collide::WALL_MASK != 0
+    if speed == 0.0 {
+        if env & collide::WALL_MASK != 0 {
+            unimplemented!(
+                "itKirbycutterbeam_UnkMotion0_Coll (itkirbycutterbeam.c:138-143): a wall beside \
+                 a beam with no horizontal speed"
+            );
+        }
+        false
     } else if speed > 0.0 {
         env & collide::LEFT_WALL_MASK != 0
     } else {
         env & collide::RIGHT_WALL_MASK != 0
-    };
-    if wall {
-        unimplemented!(
-            "itKirbycutterbeam_UnkMotion0_Coll (itkirbycutterbeam.c:137-151): a wall in the \
-             beam's way ends it"
-        );
     }
-    false
 }

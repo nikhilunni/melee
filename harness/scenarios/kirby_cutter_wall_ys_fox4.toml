@@ -1,0 +1,32 @@
+# KIRBY directed witness from start_ys_kirby_fox4 (Yoshi's Story): Kirby drops to the floor, waits for the cloud, jumps out past the left edge and uses Final Cutter turned back toward the stage; he lands it on the cloud as it starts down the left side, and the beam flies level off the cloud's end into the stage's side wall, which ends it.
+name = "kirby_cutter_wall_ys_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_kirby_fox4.sav"
+frames = 1275
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1015, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1024, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 1027, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1050, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 1053, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1065, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1075, port = 0, buttons = {  }, raw = { button = 512, stickY = 127, stickX = 50 } },
+  { frame = 1078, port = 0, buttons = {  }, raw = { stickX = 0 } },
+  { frame = 1079, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

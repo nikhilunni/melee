@@ -2611,6 +2611,13 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // midair jumps are the bare rows 341, 342 again.
     ("kirby_helmet_jumps_fd_falcon4", 1080),
     ("kirby_helmet_taunt_fd_falcon4", 1000),
+    // Yoshi's Story: Final Cutter from past the left edge, turned back to
+    // the stage and landed on the cloud as it starts down the left side.
+    // The beam leaves the cloud's end at once, flies level and is ended by
+    // the stage's side wall with 15 frames of its life left
+    // (itkirbycutterbeam.c:144-147), as in the Slippi game
+    // `Falco vs Kirby [YS]` at tick 2362.
+    ("kirby_cutter_wall_ys_fox4", 1275),
 ];
 
 #[test]
