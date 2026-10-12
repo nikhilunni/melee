@@ -1,0 +1,32 @@
+# ZELDA_SHEIK/19_56_47 [TREW] Sheik + Captain Falcon (DL).slp (public-v3.7-b) played back on retail with a display pass after every tick but one:
+# records 3013 and 3014 run in one frame (a console's lag frame at the tick Captain Falcon leaves the screen).
+# The every-tick twin is slp_dl_sheik_captainfalcon_r1_t3300.
+# The port's side of slp_dl_sheik_captainfalcon_lag3014_t3300: boundary start_dl_slippi73_ns2019_p14_sheik1_captainfalcon4_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_dl_sheik_captainfalcon_lag3014_t3300_cold"
+expected = "slp_dl_sheik_captainfalcon_lag3014_t3300"
+frames = 3300
+seed = 1749127015
+boundary_seed = 634089718
+stage = "DreamLand"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2019"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "CaptainFalcon"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

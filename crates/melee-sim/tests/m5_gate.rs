@@ -2427,7 +2427,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 61] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 65] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2646,10 +2646,27 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 61] = [
     // off-screen bit at tick T (ftLib_80086A8C), the count from T + 1
     // (Fighter_8006A360) and the point of damage at T + 60. Falco off
     // Stadium's right side (2983, 3043) and Captain Falcon off Dream
-    // Land's (3014, 3074). Each console's replay has the point a tick
-    // later, which no retail run reproduces.
+    // Land's (3014, 3074). Neither console's replay has the point on that
+    // tick; the lag-frame twins below do what the consoles did.
     ("slp_ps_falco_marth_frz_r1_t3200_cold", 3200),
     ("slp_dl_sheik_captainfalcon_r1_t3300_cold", 3300),
+    // The same two with the console's lag frame (`no_display_pass_before`
+    // at the crossing): the bit is set a pass late (2984, 3015). Falco's
+    // point comes at 3044, the replay's tick; Captain Falcon is back on
+    // screen with the count at 59 (3074) and takes no point, as in the
+    // replay. These are the lag frames the replay runner infers
+    // (`replay_lag_frames`, magnifier).
+    ("slp_ps_falco_marth_frz_lag2983_t3200_cold", 3200),
+    ("slp_dl_sheik_captainfalcon_lag3014_t3300_cold", 3300),
+    // Fountain of Dreams with and without one display pass (record 7810):
+    // the pass sorts the particle lists (particleSort, 0x8039FC70), so the
+    // tick after a lag frame draws its particles' values in another order
+    // and number (the console's 220 draws against 189). Every Pre Frame
+    // seed of the replay is on the lag recording's draw path; with a pass
+    // after every tick they leave it at 7814 (`replay_lag_frames`,
+    // particles).
+    ("slp_fod_samus_marth_r1_t7900_cold", 7900),
+    ("slp_fod_samus_marth_lag7810_t7900_cold", 7900),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

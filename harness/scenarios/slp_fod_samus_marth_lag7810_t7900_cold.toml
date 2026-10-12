@@ -1,0 +1,33 @@
+# SAMUS/Game_20190629T124717.slp (public-v3.7-b) played back on retail with a display pass after every tick but one:
+# records 7809 and 7810 run in one frame (a console's lag frame: no particle sort before record 7810).
+# The every-tick twin is slp_fod_samus_marth_r1_t7900.
+# The port's side of slp_fod_samus_marth_lag7810_t7900: boundary start_fod_slippi73ns_p12_samus3_marth1_4_g16 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fod_samus_marth_lag7810_t7900_cold"
+expected = "slp_fod_samus_marth_lag7810_t7900"
+frames = 7900
+seed = 589759721
+game_start_seed = 1273239299
+boundary_seed = 589759721
+stage = "FountainOfDreams"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Samus"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
