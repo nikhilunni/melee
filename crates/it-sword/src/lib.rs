@@ -31,6 +31,8 @@ mod motion {
     pub const HELD: u16 = 2;
     /// Thrown or dropped (itSword_UnkMotion3's callbacks, article state 1).
     pub const THROWN: u16 = 3;
+    /// Sliding down a floor (itSword_UnkMotion4).
+    pub const SLIDING: u16 = 4;
 }
 
 /// itSword_UnkArticle1 xC: the spawn's upward speed.
@@ -95,12 +97,10 @@ impl ItemLogic for Sword {
     fn dropped(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
         leave_hand(item, context.assets);
     }
-    /// itSword_Logic12_EnteredAir (80285DF0): state 4 (the rest is visual).
-    const ENTERED_AIR: Option<EnteredAir> = Some(|_item, _assets| {
-        unimplemented!(
-            "itSword_Logic12_EnteredAir: Item_80268E5C(gobj, 4, ITEM_ANIM_UPDATE), a Beam Sword sliding down a floor"
-        )
-    });
+    /// itSword_Logic12_EnteredAir (80285DF0): a floor's slope carries the
+    /// sword off (state 4); the rest is its glow.
+    const ENTERED_AIR: Option<EnteredAir> =
+        Some(|item, assets| change(item, motion::SLIDING, ANIM_UPDATE, assets));
     /// itSword_Logic12_DmgDealt (8028602C): a thrown sword pops back.
     fn damage_dealt(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
         if item.motion == motion::THROWN {

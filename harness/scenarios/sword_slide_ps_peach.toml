@@ -1,0 +1,35 @@
+# BEAM SWORD SLIDE directed witness (boundary start_ps_peach_fox4, Pokemon
+# Stadium; `melee-sim search`: the pull over ticks 110..4300, 4191
+# candidates, 9 Beam Swords; the drop, 30 candidates, 20 reached). Peach
+# pulls a Beam Sword at 170, which makes the first transformation the form
+# that leaves her standing on a 45 degree bank at x = -40. She jumps (4450)
+# and drops the sword (Z, 4459). It falls onto the 18 degree face left of
+# the bank and settles: it_8026DD5C runs itSword_Logic12_EnteredAir (state
+# 4) instead of it_80285424. It slides down the face and onto the bank,
+# where it_8026E8C4 finds the slide over and it rests (it_80285424, state 0).
+name = "sword_slide_ps_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_peach_fox4.sav"
+frames = 4700
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 170, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 172, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4450, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 4452, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4459, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 4461, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
