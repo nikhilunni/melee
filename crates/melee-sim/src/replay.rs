@@ -116,6 +116,9 @@ pub struct Report {
     pub stage_code: Option<StageCodeChoice>,
     /// Whether the Widescreen code ran in this comparison.
     pub screen: ScreenChoice,
+    /// Set when the console created Fountain of Dreams' side platforms
+    /// level (`SlippiCodes::fountain_level`): what the first frame showed.
+    pub fountain: Option<&'static str>,
     /// Each leader's recorded character and action at the stop.
     pub context: String,
     /// Every field that differs on the diverging frame, in key order.
@@ -135,6 +138,9 @@ impl std::fmt::Display for Report {
             writeln!(f, "stage code {choice}")?;
         }
         writeln!(f, "screen {}", self.screen)?;
+        if let Some(reason) = self.fountain {
+            writeln!(f, "fountain fod-level ({reason})")?;
+        }
         if let Some(tick) = self.skipped_display_pass {
             writeln!(f, "no display pass before tick {tick} (--skip-display-pass)")?;
         }
@@ -717,10 +723,24 @@ fn spawn_rule(replay: &Replay) -> melee_lib::slippi::SpawnRule {
         NeutralTable::V2020,
         NeutralTable::V2019,
         NeutralTable::V2019EntryByOrder,
+        NeutralTable::LevelFountainEntryByOrder,
     ]
     .into_iter()
     .find(|&table| fits(table))
     .map_or(SpawnRule::Retail, SpawnRule::NeutralTable)
+}
+
+/// Whether the console created Fountain of Dreams' side platforms level
+/// (`SlippiCodes::fountain_level`), and why. A replay does not name the
+/// code; the consoles that ran it spawned both leaders at the level
+/// platforms' rows, which is how the first frame chose the spawn rule.
+fn fountain_level(replay: &Replay) -> Option<&'static str> {
+    use melee_lib::slippi::{NeutralTable, SpawnRule};
+    let level = SpawnRule::NeutralTable(NeutralTable::LevelFountainEntryByOrder);
+    (spawn_rule(replay) == level).then_some(
+        "the first frame has both leaders on rows at y = 24, the first already in \
+         EntryStart, which no other spawn rule gives",
+    )
 }
 
 /// A cold scenario for the replay, from Game Start's rules and the recorded
@@ -742,6 +762,7 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
         scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
         scenario.frozen_stages = setup.frozen_stages.unwrap_or(false);
         scenario.set_screen(setup.screen.unwrap_or_default());
+        scenario.fountain_level = fountain_level(replay).is_some();
         if !setup.ignore_controller_fixes {
             for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
                 let fix = ucf_version(replay, &replay.start.players[port], setup)
@@ -881,6 +902,7 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         controller_fix,
         stage_code,
         screen,
+        fountain: fountain_level(replay),
         context: String::new(),
         differing: Vec::new(),
         skipped_display_pass: setup.skipped_display_pass,
@@ -1194,6 +1216,10 @@ pub fn write_retail_inputs(
     // Frozen Stages, on the stages it changes (`--gecko frozen-stages`).
     if crate::replay_stage_codes::changes_stage(replay.start.stage) {
         header["frozen_stages"] = scenario.frozen_stages.into();
+    }
+    // Level Fountain of Dreams platforms (`--gecko fod-level`).
+    if scenario.stage == "FountainOfDreams" {
+        header["fountain_level"] = scenario.fountain_level.into();
     }
     // The Widescreen code (`--gecko widescreen`, or `widescreen-92-63` for
     // its earlier aspect).
