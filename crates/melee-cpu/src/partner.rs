@@ -48,14 +48,13 @@ fn record(partner: &mut Fighter, own: &Fighter) {
     };
 }
 
-/// ftCo_800B0CA8 (0x800B0CA8): whether the partner counts as in step with
-/// the player's fighter: neither is in a state that forbids it, and the
-/// partner's motion carries x2225_b3 or is a squat or landing.
-fn in_step(partner: &Fighter, own: &Fighter) -> bool {
+/// ftCo_800B0CA8's first tests: the player's fighter in a state that
+/// forbids stepping together (800B0CA8..800B0DA8).
+fn own_forbids_step(own: &Fighter) -> bool {
     let own_motion = own.core.motion_state.action.0;
     let is = |state: S| own_motion == state as u16;
     let between = |a: S, b: S| (a as u16..=b as u16).contains(&own_motion);
-    if is(S::CliffCatch)
+    is(S::CliffCatch)
         || is(S::CliffWait)
         || is(S::CaptureWaitHi)
         || is(S::CaptureWaitLw)
@@ -66,7 +65,37 @@ fn in_step(partner: &Fighter, own: &Fighter) -> bool {
         || between(S::Rebirth, S::RebirthWait)
         || between(S::WarpStarJump, S::WarpStarFall)
         || between(S::ItemParasolFall, S::ItemParasolDamageFall)
-    {
+}
+
+/// What ftCo_800B0CA8 leaves in r5, a register it uses as scratch and the
+/// think then passes on unset (`tumble.rs`).
+pub(crate) enum StepScratch {
+    /// A known word: the player's fighter's motion id when it forbids
+    /// stepping (800B0CA8: lwz r5, 0x10(r4)), else the partner's item_gobj
+    /// when that is null (800B0DAC: lwz r5, 0x1974(r3)).
+    Word(u32),
+    /// The partner's held item's Item pointer (800B0DB8: lwz r5,
+    /// 0x2c(r5)), which the port does not model.
+    HeldItemAddress,
+}
+
+/// r5 after the partner's seek (ftCo_800B101C at 800B11E4): ftCo_800B0E98
+/// calls ftCo_800B0CA8 first on every path and writes r5 nowhere else.
+pub(crate) fn step_scratch(partner: &Fighter, own: &Fighter) -> StepScratch {
+    if own_forbids_step(own) {
+        StepScratch::Word(u32::from(own.core.motion_state.action.0))
+    } else if partner.core.held_item.is_some() {
+        StepScratch::HeldItemAddress
+    } else {
+        StepScratch::Word(0)
+    }
+}
+
+/// ftCo_800B0CA8 (0x800B0CA8): whether the partner counts as in step with
+/// the player's fighter: neither is in a state that forbids it, and the
+/// partner's motion carries x2225_b3 or is a squat or landing.
+fn in_step(partner: &Fighter, own: &Fighter) -> bool {
+    if own_forbids_step(own) {
         return false;
     }
     if let Some(item) = &partner.core.held_item {

@@ -324,6 +324,8 @@ impl Fighter {
             )
             .map(|hit| hit.pos);
         let attributes = &self.core.attributes;
+        // The Fighter block is the same one at every respawn.
+        let fighter_address = self.core.cpu.fighter_address;
         self.core.cpu = CpuState::initialize(
             &super::cpu::CpuSetup {
                 mode: self.core.player.cpu_mode,
@@ -337,6 +339,7 @@ impl Fighter {
             },
             rng,
         );
+        self.core.cpu.fighter_address = fighter_address;
         supported
     }
 

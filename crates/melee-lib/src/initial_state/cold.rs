@@ -96,6 +96,10 @@ impl InitialState {
                 "the boundary recording's fighters are not this scene's"
             );
             fighter.0.character.restore_stale_heap(&raw);
+            // The block's own address, which no parameter decides either.
+            let base = row["base"].as_str().context("missing fighter base")?;
+            fighter.0.cpu.fighter_address =
+                Some(u32::from_str_radix(base.trim_start_matches("0x"), 16)?);
         }
         Ok(())
     }
@@ -137,6 +141,10 @@ impl InitialState {
             }
         }
         let (mut fighters, spawn_counter) = create_players(scenario, &assets, &mut map, &mut rng)?;
+        for (index, fighter) in fighters.iter_mut().enumerate() {
+            fighter.0.cpu.fighter_address =
+                super::heap::fighter_address_after_boot(scenario, index);
+        }
         // gm_16AE: Camera_80030730 (the stage's field of view, see
         // StageCamera::fov), then Camera_8002F3AC snaps to the players.
         let mut camera = melee_cm::GameCamera::new();

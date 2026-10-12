@@ -186,6 +186,12 @@ pub struct CpuState {
     /// holds the assets, runs the entry as soon as the think returns.
     pub joins_blizzard: bool,
     pub xfb_b0: bool,
+    /// The address retail's heap gave this Fighter (HSD_ObjAlloc,
+    /// 0x8037ABC8), where the scene knows it: a savestate's or a boundary
+    /// recording's, or the address a console booted straight into this
+    /// match gives (docs/PORT_NOTES/STALE_HEAP.md). Not CpuFighter state;
+    /// ftCo_800AC5A0 passes its low byte as a stick value.
+    pub fighter_address: Option<u32>,
     /// xFC..x448: the partner's input ring.
     pub follow: FollowRing,
     pub script: CommandScript,
@@ -369,6 +375,7 @@ impl CpuState {
             following: false,
             joins_blizzard: false,
             xfb_b0: false,
+            fighter_address: None,
             follow: FollowRing {
                 entries: [FollowSample {
                     facing: 1.0,

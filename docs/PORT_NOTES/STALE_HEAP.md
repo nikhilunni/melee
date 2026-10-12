@@ -156,3 +156,56 @@ a word like Luigi's is zero again once a Cyclone has landed in an earlier
 game in that slot. So `Match::new` keeps zero: it is what the recorded
 consoles show, and a scene that must be retail from a particular boundary
 names that boundary's recording.
+
+## The block's own address (2026-10-12)
+
+One branch reads a Fighter's address as data. `ftCo_800AC5A0` (the CPU's
+steer in hitlag, behaviour 18) with no knockback, which is a pummel, skips
+the stores of both stick values (0x800AC6D0 to 0x800AC744) and passes two
+registers it never set:
+
+- y is r30, which `ftCo_800B2790` holds the Fighter pointer in (0x800B27A4):
+  the low byte of the fighter's address;
+- x is r5 as the mode's think left it. For the Ice Climbers' partner that is
+  `ftCo_800B0CA8`'s scratch use, the last call of `ftCo_800B101C`'s seek
+  (through `ftCo_800B0E98`): the player's fighter's motion id when it is on
+  a ledge, captured, teetering, on the revival platform, on a Warp Star or
+  under a parasol (0x800B0CA8), else the partner's `item_gobj` when null
+  (0x800B0DAC), else the held Item's address (0x800B0DB8).
+
+`corpus_v3_fd_iceclimbers_peach4_ecad2716f_p0`, ticks 950 and 951: Nana, at
+0x80C9D2A0, steers y = -96 (0xA0) and x = 0. The other 20 no-knockback
+ticks of behaviour 18 in the recordings fall where the steer is off
+(`reaction_timer % 120 <= 120 - 12 * level`) and show a neutral stick, so
+the x rule rests on the asm and that one zero.
+
+The port keeps the address in `CpuState::fighter_address`: a savestate's
+and a boundary recording's own (`carry_stale_heap`), else, for a partner,
+the address after boot where a recording shows it
+(`melee-lib` `initial_state/heap.rs`). Nana's Fighter in the first record
+of every recording that holds one:
+
+| Stage | Created before her (costume) | Nana |
+|---|---|---|
+| Battlefield | Popo (0) | 80C8E1C0 |
+| Dream Land | Popo (2) | 80C93FE0 |
+| Pokemon Stadium | Popo (0, 1) | 80C966E0 |
+| Final Destination | Popo (0) | 80C9D2A0 |
+| Yoshi's Story | Popo (0, 1) | 80C9E340 |
+| Yoshi's Story | Popo (3) | 80C9E380 |
+| Fountain of Dreams | Popo (1) | 80CAF520 |
+| Yoshi's Story | Jigglypuff (0, 4), Popo (0, 1) | 80CCD940 |
+| Battlefield | Luigi (2), Popo (0) | 80CC9E40 |
+| Battlefield | Falco (3), Popo (1) | 80CCED60 |
+| Yoshi's Story | Falco (0), Popo (0) | 80CDF300 |
+| Final Destination | Captain Falcon (3), Popo (0) | 80CE1700 |
+| Fountain of Dreams | Captain Falcon (1), Popo (0) | 80CF3840 |
+
+With Popo first she is 0x31940 past him on five stages whatever the
+opponent (Fox, Falco, Peach, Jigglypuff, Samus, Marth, Yoshi) and 0x314E0
+or 0x31520 on Yoshi's Story; behind another fighter the distance follows
+what that fighter loaded. It is not derivable without the heap's history,
+so a setup outside the table has no address and the branch stays
+`unimplemented!` there, as it does for a held item's address. A console
+that did not boot straight into the match (every Slippi replay) need not
+have these addresses: only multiples of 0x20 are certain.

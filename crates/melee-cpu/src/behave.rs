@@ -33,7 +33,7 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         B::ARRIVED => crate::arrived::arrived(fp, scene),
         B::CAPTURED => crate::captured::mash(fp, rng),
         B::DAMAGE_FALL => crate::damage_fall::steer(fp, scene, rng),
-        B::TUMBLE => crate::tumble::steer(fp),
+        B::TUMBLE => crate::tumble::steer(fp, scene),
         B::RECOVER => crate::recover::recover(fp, scene),
         behavior @ (2..=19) => {
             unimplemented!("ftCo_800B2790: behaviour {behavior}")

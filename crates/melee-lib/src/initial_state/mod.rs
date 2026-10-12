@@ -8,6 +8,7 @@ mod cold_tests;
 mod collision;
 mod cpu;
 mod fighter;
+mod heap;
 mod particle_resume;
 pub(crate) use fighter::import as import_fighter;
 pub(crate) use melee_mp::CollMap;
@@ -282,6 +283,7 @@ impl InitialState {
             if !unfinished && cpu_driven {
                 fighter.0.cpu = cpu::restore(&bytes[index], bases[index], &bases);
             }
+            fighter.0.cpu.fighter_address = Some(bases[index]);
         }
         for fighter in &mut fighters {
             crate::scene_fighter::with_fighter!(fighter, |f| {
