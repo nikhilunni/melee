@@ -4330,7 +4330,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 609] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 647] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5317,6 +5317,52 @@ const CORPUS_V3_MATCHES: [(&str, usize); 609] = [
     // across), jumps at him (2823, stick 19/125), drifts toward his x while
     // rising and goes back to behaviour 1 once level (2855).
     ("corpus_v3_ys_iceclimbers_fox4_ecad2716f_p2", 2943),
+    // Explorer campaign of 2026-10 (docs/PORT_NOTES/EXPLORER_CAMPAIGN_2026_10.md),
+    // seeds after 30000: one clean match per boundary, the first on a
+    // platform stage or against another opponent for most characters.
+    ("corpus_sd_s1_ebe7703ed_p0", 996),
+    ("corpus_v3_bf_bowser_marth4_ebe7703ed_p0", 6001),
+    ("corpus_v3_bf_bowser_marth4_ef4e3c329_p1", 6001),
+    ("corpus_v3_bf_iceclimbers_fox4_ebe7703ed_p0", 3823),
+    ("corpus_v3_bf_marth_falco4_ebe7703ed_p0", 3649),
+    ("corpus_v3_bf_yoshi_pikachu4_ebe7703ed_p0", 3054),
+    ("corpus_v3_dl_captainfalcon_jigglypuff4_ebe7703ed_p0", 5014),
+    ("corpus_v3_dl_fox_marth4_ebe7703ed_p0", 4342),
+    ("corpus_v3_dl_link_marth4_ebe7703ed_p0", 6001),
+    ("corpus_v3_dl_mario_falco4_ebe7703ed_p0", 2659),
+    ("corpus_v3_fd_bowser_fox4_ebe7703ed_p0", 3658),
+    ("corpus_v3_fd_donkeykong_fox4_ebe7703ed_p0", 5024),
+    ("corpus_v3_fd_drmario_fox4_ebe7703ed_p0", 3658),
+    ("corpus_v3_fd_falco_fox4_ebe7703ed_p0", 3529),
+    ("corpus_v3_fd_ganondorf_fox4_ebe7703ed_p0", 5050),
+    ("corpus_v3_fd_luigi_fox4_ebe7703ed_p0", 2077),
+    ("corpus_v3_fd_mewtwo_fox4_ebe7703ed_p0", 4697),
+    ("corpus_v3_fd_ness_fox4_ebe7703ed_p0", 6001),
+    ("corpus_v3_fd_pichu_fox4_ebe7703ed_p0", 2825),
+    ("corpus_v3_fd_pikachu_fox4_ebe7703ed_p0", 3089),
+    ("corpus_v3_fd_roy_fox4_ebe7703ed_p0", 6001),
+    ("corpus_v3_fd_samus_fox4_ebe7703ed_p0", 2856),
+    ("corpus_v3_fd_sheik_fox4_ebe7703ed_p0", 2672),
+    ("corpus_v3_fd_younglink_fox4_ebe7703ed_p0", 2188),
+    ("corpus_v3_fd_zelda_fox4_ebe7703ed_p0", 3636),
+    ("corpus_v3_fod_fox_marth4_ebe7703ed_p0", 3837),
+    ("corpus_v3_fod_pikachu_mario4_ebe7703ed_p0", 3708),
+    ("corpus_v3_ys_fox_marth4_ebe7703ed_p0", 5952),
+    ("corpus_v3_ys_iceclimbers_fox4_ebe7703ed_p0", 3066),
+    ("corpus_v3_ys_peach_yoshi4_ebe7703ed_p0", 2690),
+    // Nana tumbling with no knockback (ftCo_800AC5A0), bridged by the campaign
+    // before the steer was ported: Fox, Peach, and a Stadium form.
+    ("corpus_v3_fd_iceclimbers_fox4_e280c5c65_p1", 2615),
+    ("corpus_v3_fd_iceclimbers_peach4_e276b41d4_p1", 1915),
+    ("corpus_v3_ps_iceclimbers_peach4_ed9a5198f_p0", 1187),
+    // Mario's cape turns Toad's spores (itPeachToadSpore_Logic68_Reflected).
+    ("corpus_v3_fd_mario_peach4_eef619e3c_p0", 4230),
+    ("corpus_v3_fd_mario_peach4_ef4e3c329_p1", 3000),
+    // Stadium, Link and Samus against Fox through transformations; retail
+    // follows its own disc reads, so these end before the explorer's faults.
+    ("corpus_v3_ps_link_fox4_e276b41d4_p2", 4644),
+    ("corpus_v3_ps_link_fox4_e5aef4dc4_p0", 4917),
+    ("corpus_v3_ps_samus_fox4_ebe7703ed_p2", 5524),
 ];
 
 #[test]
