@@ -2721,6 +2721,16 @@ impl Simulation {
     pub fn stage_camera(&self) -> melee_cm::StageCamera {
         self.runtime.state.assets.stage_camera
     }
+    /// Pokemon Stadium's jumbotron between two ticks: its mode, when that
+    /// began and when its timer ends it. `None` on every other stage. For
+    /// the replay runner's lag-frame inference; the tick keeps nothing
+    /// for it.
+    pub fn stadium_screen(&self) -> Option<melee_gr::stadium::Showing> {
+        match &self.runtime.state.stage {
+            SceneStage::Stadium(stage) => Some(stage.screen.showing(&stage.parameters)),
+            _ => None,
+        }
+    }
     /// The particle system in the retail particle-dump format, for
     /// `melee-sim particles-diff`.
     pub fn particle_snapshot(&self, frame: u64) -> Record {

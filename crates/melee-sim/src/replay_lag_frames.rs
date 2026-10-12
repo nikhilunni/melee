@@ -20,6 +20,13 @@
 //! 2. so does every frame of a margin after the stop that depends on what
 //!    the pass wrote ([`LagKind`]).
 //!
+//! One kind of stop names a tick far before it: on Pokemon Stadium a pass
+//! skipped where the jumbotron loses a close-up shows in the seeds only
+//! when the standings that follow end ([`LagKind::Jumbotron`],
+//! `Inference::jumbotron`). The tick is the one the simulation lost the
+//! close-up on, and the frames from there through the stop and the margin
+//! are all compared.
+//!
 //! A skipped pass that only moves the stop later is not a lag frame: the
 //! run goes back to what it was and the stop is reported as it would have
 //! been. Each accepted lag frame is listed in the report with its tick and
@@ -60,6 +67,14 @@ pub enum LagKind {
     /// before it draws its particles' random values in another order and
     /// number.
     Particles,
+    /// Pokemon Stadium's jumbotron leaves a player's close-up when the box
+    /// no longer fits the viewport of the last display pass
+    /// (grStadium_801D32D0 from grStadium_801D2344), so a pass skipped
+    /// there moves the loss by a tick. When the next mode is the standings
+    /// (grStadium_801D2A60 draws nothing for them and grStadium_801D2528
+    /// gives them a fixed length), the random stream first shows it when
+    /// they end, some three hundred ticks later.
+    Jumbotron,
 }
 
 impl LagKind {
@@ -69,6 +84,7 @@ impl LagKind {
             Self::ScreenKo => "screen-ko",
             Self::Magnifier => "magnifier",
             Self::Particles => "particles",
+            Self::Jumbotron => "jumbotron",
         }
     }
 }
@@ -114,6 +130,12 @@ impl std::fmt::Display for LagFrame {
             LagKind::Particles => write!(
                 f,
                 "particle order: {field} at tick {stop} is the recording's only without it"
+            )?,
+            LagKind::Jumbotron => write!(
+                f,
+                "jumbotron: the close-up was lost beside this tick into the standings, which \
+                 draw nothing, and {field} at tick {stop}, where they end, is the recording's \
+                 only without it"
             )?,
         }
         let margin = match (self.kind, self.to_end) {
@@ -254,6 +276,28 @@ fn recorded_action(game: &Game, index: usize, member: usize) -> Option<u16> {
         .map(|post| post.action_state)
 }
 
+/// The tick on which Pokemon Stadium's jumbotron entered, in place of a
+/// close-up, a mode that drew nothing and whose timer runs out on the stop's
+/// tick or the one before; `None` on another stage, or when no such mode
+/// ends there. Read from the run's copy of itself a few ticks before the
+/// stop: the screen's mode, the mode before it, and the timer.
+fn silent_mode(game: &Game, run: RunId, stop: usize) -> Option<usize> {
+    use melee_gr::stadium::ScreenMode;
+    let checkpoint = game.checkpoint(run, stop.checked_sub(2)?)?;
+    let showing = checkpoint.simulation().stadium_screen()?;
+    if !showing.entered_without_draw || showing.previous != Some(ScreenMode::PlayerCamera) {
+        return None;
+    }
+    // The checkpoint is the run before tick `index`: a mode that ends in
+    // one run of the screen's proc ends on that tick, and one entered by
+    // the last run was entered on the tick before.
+    let ends = checkpoint.index + showing.ends_in? as usize - 1;
+    if ends != stop && ends + 1 != stop {
+        return None;
+    }
+    checkpoint.index.checked_sub(1 + showing.entered? as usize)
+}
+
 /// The lag frames that explain a stop, in tick order of their stops, and
 /// the last frame the run was then required to match.
 type Explained = (Vec<LagFrame>, usize);
@@ -281,12 +325,13 @@ impl Inference {
         stop: usize,
     ) -> Option<(RunId, Vec<LagFrame>, usize)> {
         let plan = Plan::of(game, current, stop)?;
+        let seed_stop = (plan.kind == LagKind::Particles).then(|| plan.field.clone());
         let run = match self.run {
             Some(run) => run,
             None => {
                 // The stop's deepest candidate is within the copies kept.
                 let from = stop.saturating_sub(2 * REWIND_REACH);
-                let run = game.rewindable(self.setup, from).ok()?;
+                let run = game.rewindable(self.setup, from, Vec::new()).ok()?;
                 self.run = Some(run);
                 // The same setup takes the same ticks: it stops here too.
                 let same = (0..stop)
@@ -299,8 +344,71 @@ impl Inference {
                 run
             }
         };
-        let (found, through) = self.take_again(game, run, stop, plan, 1)?;
-        Some((run, found, through))
+        if let Some((found, through)) = self.take_again(game, run, stop, plan, 1) {
+            return Some((run, found, through));
+        }
+        self.jumbotron(game, run, stop, seed_stop?)
+    }
+
+    /// Explain a seed stop on Pokemon Stadium by a display pass skipped
+    /// where the jumbotron lost a close-up, far before the stop
+    /// ([`LagKind::Jumbotron`]). The ticks tried are named by the
+    /// simulation itself, not searched for:
+    ///
+    /// 1. the stop's tick or the one before is where the timer of a mode
+    ///    entered without a draw runs out ([`silent_mode`]);
+    /// 2. that mode replaced a close-up whose own timer had not run out:
+    ///    the close-up was lost, on a tick the mode's fixed length gives,
+    ///    and a second run of the comparison's setup is taken to that tick
+    ///    and shows it;
+    /// 3. the pass before that tick, the one before it and the one after
+    ///    are tried, and one is accepted only under the seed stop's own
+    ///    margin: every frame from it through the stop and
+    ///    [`PARTICLE_MARGIN`] more matches the recording, seeds included.
+    ///
+    /// On success the comparison goes on with the second run. Otherwise
+    /// `run` is as it was.
+    fn jumbotron(
+        &mut self,
+        game: &mut Game,
+        run: RunId,
+        stop: usize,
+        field: String,
+    ) -> Option<(RunId, Vec<LagFrame>, usize)> {
+        use melee_gr::stadium::ScreenMode;
+        let lost = silent_mode(game, run, stop)?;
+        let first = lost.checked_sub(1)?;
+        // The run in hand keeps copies of itself only near the stop; this
+        // one keeps them from the close-up's last ticks.
+        let skipped = game.lag_frames(run).to_vec();
+        let from = first.saturating_sub(REWIND_REACH);
+        let deep = game.rewindable(self.setup, from, skipped).ok()?;
+        // The same setup takes the same ticks. Before the tick the mode's
+        // length names, the screen is a close-up with time left; after it,
+        // the mode entered without a draw, on that tick.
+        let same = (0..lost).all(|index| game.observe(deep, index) && game.matches(deep, index));
+        if !same {
+            return None;
+        }
+        let before = game.simulation(deep).stadium_screen()?;
+        let close_up_with_time_left =
+            before.mode == ScreenMode::PlayerCamera && before.ends_in.is_some_and(|runs| runs > 1);
+        if !close_up_with_time_left || !game.observe(deep, lost) || !game.matches(deep, lost) {
+            return None;
+        }
+        let after = game.simulation(deep).stadium_screen()?;
+        if !after.entered_without_draw || after.entered != Some(0) {
+            return None;
+        }
+        let plan = Plan {
+            kind: LagKind::Jumbotron,
+            candidates: vec![lost, first, lost + 1],
+            until: stop + PARTICLE_MARGIN,
+            field,
+        };
+        let (found, through) = self.take_again(game, deep, stop, plan, 1)?;
+        self.run = Some(deep);
+        Some((deep, found, through))
     }
 
     /// Try each of the plan's ticks without its display pass; the first

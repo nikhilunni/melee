@@ -119,6 +119,13 @@ pub(crate) struct Checkpoint {
     values: usize,
 }
 
+impl Checkpoint {
+    /// The run's simulation before tick `index`.
+    pub(crate) fn simulation(&self) -> &Simulation {
+        &self.simulation
+    }
+}
+
 /// A rewindable run's recent checkpoints, oldest first.
 struct Checkpoints {
     /// No tick before this one is kept.
@@ -243,8 +250,17 @@ impl<'a> Game<'a> {
     /// ticks back. The shared runs keep no copies, so only a replay whose
     /// comparison stopped pays for one, by simulating its matched ticks
     /// once more.
-    pub(crate) fn rewindable(&mut self, setup: Setup, from: usize) -> Result<RunId, StartError> {
+    /// `lag_frames` are ticks it takes with no display pass before them
+    /// from its start, as a run rewound to try them would
+    /// ([`Self::rewind`]).
+    pub(crate) fn rewindable(
+        &mut self,
+        setup: Setup,
+        from: usize,
+        lag_frames: Vec<u64>,
+    ) -> Result<RunId, StartError> {
         let mut run = self.start(setup, Codes::of(setup, setup.skipped_display_pass))?;
+        run.lag_frames = lag_frames;
         run.checkpoints = Some(Checkpoints {
             from,
             recent: VecDeque::new(),
@@ -278,6 +294,11 @@ impl<'a> Game<'a> {
         let recent = &mut run.checkpoints.as_mut().expect("a rewindable run").recent;
         recent.retain(|checkpoint| checkpoint.index < to.index);
         recent.push_back(Rc::clone(to));
+    }
+
+    /// The run's simulation as its last observed tick left it.
+    pub(crate) fn simulation(&self, run: RunId) -> &Simulation {
+        &self.runs[run.0].simulation
     }
 
     /// The ticks the run was rewound to take with no display pass before.

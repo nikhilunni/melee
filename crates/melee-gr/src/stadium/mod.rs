@@ -5,7 +5,7 @@ pub mod procs;
 pub mod screen;
 pub mod transform;
 
-pub use screen::{Screen, ScreenMode, ScreenPlayers};
+pub use screen::{Screen, ScreenMode, ScreenPlayers, Showing};
 pub use transform::{Form, StadiumEngine, Transformation};
 
 use gekko_math::HsdRng;

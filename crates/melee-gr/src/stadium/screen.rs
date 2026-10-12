@@ -101,6 +101,27 @@ pub struct Screen {
     pub subject: Option<melee_cm::Subject>,
 }
 
+/// What the screen shows and when its mode began and ends, worked out from
+/// the mode and its timer for readers outside the tick ([`Screen::showing`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Showing {
+    pub mode: ScreenMode,
+    /// The mode it replaced.
+    pub previous: Option<ScreenMode>,
+    /// How many runs of the screen's proc from now the mode's timer chooses
+    /// the next one (1: the next run); `None` for a mode without a timer.
+    pub ends_in: Option<u32>,
+    /// How many runs of the proc ago the mode was entered (0: the last
+    /// run), for a mode whose length is fixed; `None` where the length was
+    /// drawn or the mode has no timer.
+    pub entered: Option<u32>,
+    /// `grStadium_801D2A60` chose the mode without a draw and
+    /// `grStadium_801D2528` drew no length for it: the standings, after
+    /// `standings_interval` choices. Nothing in the random stream shows
+    /// when such a mode began.
+    pub entered_without_draw: bool,
+}
+
 /// fn_801D11E4 (0x801D11E4): the subject sits at the screen's height with
 /// its reach, both under map scale.
 const SUBJECT_HEIGHT: f32 = 30.0;
@@ -203,6 +224,29 @@ impl Screen {
         self.subject = Some(subject);
     }
 
+    /// The screen between two runs of its proc. It reads only what the proc
+    /// keeps (xE0, xE4, xEA); the standings' length is the parameter
+    /// `grStadium_801D2528` loads their timer with.
+    pub fn showing(&self, parameters: &Parameters) -> Showing {
+        use ScreenMode::*;
+        let timed = !matches!(
+            self.mode,
+            Blank | CountdownStart | CountdownEnd | MatchEnd | SuddenDeathStart | ClearText
+        );
+        // `expire` lets a timer of zero show once more: timer + 2 runs.
+        let ends_in = timed.then(|| (self.timer.max(-1) + 2) as u32);
+        let standings = self.mode == Standings;
+        let entered = (standings && (-1..=parameters.standings_frames).contains(&self.timer))
+            .then(|| (parameters.standings_frames - self.timer) as u32);
+        Showing {
+            mode: self.mode,
+            previous: self.previous,
+            ends_in,
+            entered,
+            entered_without_draw: standings,
+        }
+    }
+
     /// Post-decrement test shared by the timed modes: a timer of zero still
     /// shows one more tick.
     fn expire(&mut self) -> bool {
@@ -300,5 +344,87 @@ impl ScreenPlayers for NoPlayers {
     }
     fn framed(&mut self, _: i16) -> bool {
         false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::stadium::ModeWeights;
+
+    fn parameters() -> Parameters {
+        Parameters {
+            base_frames: [0; 2],
+            form_frames: [0; 2],
+            announce_delay: 0,
+            sink_frames: 0,
+            sunk_frames: 0,
+            info_frames: 200,
+            defeat_frames: 200,
+            announce_frames: 200,
+            standings_frames: 300,
+            player_camera_frames: [600, 1200],
+            stage_camera_frames: [600, 1200],
+            mode_weights: ModeWeights {
+                player_camera: 1,
+                match_info: 1,
+                stage_camera: 1,
+                picture: 1,
+            },
+            standings_interval: 2,
+        }
+    }
+
+    /// One player, never inside the close-up's box.
+    struct Unframed;
+    impl ScreenPlayers for Unframed {
+        fn exists(&self, slot: i16) -> bool {
+            slot == 0
+        }
+        fn suppressed(&self, _: i16) -> bool {
+            false
+        }
+        fn framed(&mut self, _: i16) -> bool {
+            false
+        }
+    }
+
+    /// The standings' timer says when they began and when they end: 302
+    /// runs of the proc after the one that entered them, none of them
+    /// drawing.
+    #[test]
+    fn the_standings_show_when_they_began_and_when_they_end() {
+        let parameters = parameters();
+        let mut rng = HsdRng::new(1);
+        let mut screen = Screen::new(&parameters, &mut rng);
+        assert_eq!(screen.showing(&parameters).ends_in, None);
+        screen.set_mode(ScreenMode::PlayerCamera, 0, &parameters, &mut rng, &mut Unframed);
+        let close_up = screen.showing(&parameters);
+        assert_eq!(close_up.mode, ScreenMode::PlayerCamera);
+        assert!(close_up.ends_in.is_some_and(|runs| runs > 1), "{close_up:?}");
+        assert_eq!((close_up.entered, close_up.entered_without_draw), (None, false));
+
+        // The next run loses the close-up; with the interval reached the
+        // standings follow without a draw.
+        screen.cycles = parameters.standings_interval;
+        let seed = rng.seed;
+        for run in 0..302 {
+            screen.tick(&parameters, &mut rng, &mut Unframed);
+            let showing = screen.showing(&parameters);
+            assert_eq!(
+                (showing.mode, showing.previous, showing.entered_without_draw),
+                (ScreenMode::Standings, Some(ScreenMode::PlayerCamera), true),
+                "run {run}"
+            );
+            assert_eq!(
+                (showing.entered, showing.ends_in),
+                (Some(run), Some(302 - run)),
+                "run {run}"
+            );
+            assert_eq!(rng.seed, seed, "run {run}");
+        }
+        screen.tick(&parameters, &mut rng, &mut Unframed);
+        assert_ne!(screen.showing(&parameters).mode, ScreenMode::Standings);
+        assert_ne!(rng.seed, seed, "the mode after the standings is drawn");
     }
 }

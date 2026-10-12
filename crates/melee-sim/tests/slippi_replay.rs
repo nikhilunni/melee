@@ -335,6 +335,76 @@ fn a_console_lag_frame_is_inferred_only_where_the_recording_confirms_it() {
     }
 }
 
+/// A lag frame whose stop comes 302 ticks after it (`docs/SLIPPI.md`, "A lag
+/// frame that shows 302 ticks later"): with no display pass before tick 9381
+/// Pokemon Stadium's jumbotron keeps a close-up one tick more, the standings
+/// that follow (no draw, a fixed length) end one tick later, and the seeds
+/// are the console's. Proven on retail by
+/// `slp_ps_fox_drmario_wide9263_lag9382b_t9800`. The inference names that
+/// tick from the simulation's own jumbotron and no other.
+#[test]
+fn a_jumbotron_lag_frame_is_the_pass_where_the_close_up_was_lost() {
+    use melee_lib::slippi::Screen;
+    use melee_lib::ControllerFix::Ucf074;
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(root, PathBuf::from);
+    let corpus = PathBuf::from(std::env::var_os("HOME").expect("HOME"))
+        .join("melee-data/replays/public-v3.7-b");
+    let game = corpus.join(
+        "DOC/20200219 - HNC 1 - PM 0655 - Fox (Default) vs ME Dr. Mario (Red) - Pokemon Stadium.slp",
+    );
+    if !melee_test_support::require_files([&game, &root.join("harness/roms/files/PlCo.dat")]) {
+        return;
+    }
+    let mut replay = Replay::parse(&std::fs::read(&game).unwrap()).unwrap();
+    // The stop (9684) and the 600 frames that must match after it.
+    let kept = SLIPPI_FIRST_FRAME + 10400;
+    replay.frames.retain(|&number, _| number < kept);
+    let setup = |lag_frames, skipped_display_pass| Setup {
+        all_characters_unlocked: Some(true),
+        boundary_seed: None,
+        ignore_controller_fixes: false,
+        controller_fix: Some(Ucf074),
+        frozen_stages: Some(true),
+        screen: Some(Screen::Widescreen92By63),
+        skipped_display_pass,
+        lag_frames,
+        strict_zeros: false,
+    };
+
+    let every_tick = replay::run(&replay, &root, setup(LagFrames::Off, None)).unwrap();
+    assert_eq!(every_tick.matched, 9684, "{every_tick}");
+    assert_eq!(every_tick.lag_frames, None);
+    let Stop::Diverged(diff) = &every_tick.stop else {
+        panic!("{every_tick}")
+    };
+    assert_eq!(diff.path, "p0.input_seed", "{diff}");
+
+    let inferred = replay::run(&replay, &root, setup(LagFrames::Infer, None)).unwrap();
+    assert!(matches!(inferred.stop, Stop::Complete), "{inferred}");
+    assert_eq!(inferred.matched, replay.frames.len(), "{inferred}");
+    let found: Vec<_> = inferred
+        .lag_frames
+        .iter()
+        .flatten()
+        .map(|lag| (lag.tick, lag.kind, lag.stop, lag.field.as_str(), lag.confirmed))
+        .collect();
+    assert_eq!(
+        found,
+        [(9381, LagKind::Jumbotron, 9684, "p0.input_seed", 600)]
+    );
+
+    // The same pass named by hand is not inferred again. A pass skipped on
+    // either side of it is not the console's: by itself it leaves the stop
+    // where it was.
+    let named = replay::run(&replay, &root, setup(LagFrames::Infer, Some(9381))).unwrap();
+    assert_eq!(named.matched, replay.frames.len(), "{named}");
+    assert_eq!(named.lag_frames.as_ref().map(Vec::len), Some(0), "{named}");
+    for skipped in [9380, 9382] {
+        let report = replay::run(&replay, &root, setup(LagFrames::Off, Some(skipped))).unwrap();
+        assert_eq!(report.matched, 9684, "{skipped}: {report}");
+    }
+}
+
 #[test]
 fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
     let Some((mut replay, _)) = oracle_replay("start_bf_fox", 5, true) else {
