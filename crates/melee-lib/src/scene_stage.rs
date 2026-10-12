@@ -52,7 +52,22 @@ impl StageGObjs {
     }
     /// Ground_801C4A08 (0x801C4A08) on `map`'s oldest GObj.
     pub(crate) fn destroy(&mut self, gobjs: &mut hsd_gobj::GObjAddresses, map: u8) {
-        let index = self.created.iter().position(|&(created, _)| created == map);
+        self.destroy_nth(gobjs, map, 0);
+    }
+    /// Ground_801C4A08 on the `nth` oldest of `map`'s GObjs.
+    pub(crate) fn destroy_nth(
+        &mut self,
+        gobjs: &mut hsd_gobj::GObjAddresses,
+        map: u8,
+        nth: usize,
+    ) {
+        let index = self
+            .created
+            .iter()
+            .enumerate()
+            .filter(|(_, &(created, _))| created == map)
+            .map(|(index, _)| index)
+            .nth(nth);
         let address = match index {
             Some(index) => self.created.remove(index).1,
             None => gobjs.outside(),

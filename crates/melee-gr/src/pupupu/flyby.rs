@@ -6,7 +6,9 @@
 //! camera's view and draws the next delay. The map-2 models it creates carry
 //! no particle keys and their procs (grOldPupupu_80210C34) only delete them
 //! when the animation ends, so the simulation keeps the placement as data
-//! (`Flyby`) for presentation; the gameplay-visible effect is the RNG draws.
+//! (`Flyby`) for presentation; the gameplay-visible effects are the RNG
+//! draws and the models' GObjs, which take and give back addresses of the
+//! allocator every other object uses.
 use super::{range, Pupupu};
 use gekko_math::{fma, HsdRng};
 
@@ -57,6 +59,9 @@ const BASE_HEIGHT: f32 = 20.0;
 const DEPTH: f32 = -150.0;
 /// Group members start their animation this many frames apart.
 const FRAME_STAGGER: f32 = 40.0;
+/// The most models out at once: a flight outlasts the shortest delay
+/// between two flybys, so two groups of three can overlap.
+pub const MODELS_OUT: usize = 8;
 
 /// One flyby: what grOldPupupu_80210D10 decided before placing the models.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -103,6 +108,36 @@ impl Flyby {
 }
 
 impl Pupupu {
+    /// grOldPupupu_802108B4(2) for each model of `flyby`: its animation
+    /// starts `FRAME_STAGGER * index` frames in (grAnime_801C7FF8,
+    /// 0x8021105C) and runs to its end.
+    pub fn launch(&mut self, flyby: &Flyby) {
+        for index in 0..flyby.count {
+            assert!(self.flybys_out < MODELS_OUT, "Dream Land flyby models");
+            self.flybys[self.flybys_out] = self.flyby_frames - FRAME_STAGGER as i32 * index as i32;
+            self.flybys_out += 1;
+        }
+    }
+    /// grOldPupupu_80210C34 (0x80210C34) for the models out before this
+    /// tick, oldest first: grAnime_801C83D0 finds the animation ended
+    /// (the step past its last frame sets AOBJ_NO_ANIM: a model created on
+    /// tick T, `left` frames from the end, goes on tick T + left + 1) and
+    /// Ground_801C4A08 deletes the model. Returns the position, among the
+    /// models out, of one that ended; call until `None`.
+    pub fn retire_ended(&mut self) -> Option<usize> {
+        let position = self.flybys[..self.flybys_out]
+            .iter()
+            .position(|&left| left < 0)?;
+        self.flybys.copy_within(position + 1..self.flybys_out, position);
+        self.flybys_out -= 1;
+        Some(position)
+    }
+    /// One tick of every model out.
+    pub fn advance_flybys(&mut self) {
+        for left in &mut self.flybys[..self.flybys_out] {
+            *left -= 1;
+        }
+    }
     /// grOldPupupu_80210D10 (0x80210D10): signed post-decrement; when the
     /// old value was negative, draw a flyby and the next delay.
     pub fn tick_background(&mut self, scale: f32, rng: &mut HsdRng) -> Option<Flyby> {

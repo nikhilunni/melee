@@ -510,6 +510,16 @@ fn restore_pupupu(
     );
     stage.lights = melee_gr::battle::lights::load_model(&assets.stage, &assets.stage_desc, 5)
         .map_err(|e| anyhow::anyhow!("{e}"))?;
+    // The flyby model is created during the match
+    // (grOldPupupu_80210D10); only its animation's length is
+    // needed up front.
+    stage.flyby_frames = BackgroundAnimation::load_model(
+        &assets.stage,
+        &assets.stage_desc.models[2],
+    )
+    .map_err(|e| anyhow::anyhow!("{e}"))?
+    .first_animation_end_frame()
+    .ok_or_else(|| anyhow::anyhow!("Dream Land flyby animation"))? as i32;
     let mut animations = BTreeMap::new();
     let mut maps = Vec::new();
     let entities = word(saved.bytes(0x804D782C, 4), 0);

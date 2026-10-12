@@ -150,6 +150,10 @@ impl BackgroundAnimation {
         self.first_aobj(self.root)
             .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0)
     }
+    /// The end frame of the AObj `first_animation_ended` tests.
+    pub fn first_animation_end_frame(&self) -> Option<f32> {
+        self.first_aobj(self.root).map(|a| a.end_frame)
+    }
     fn first_aobj(&self, joint: JObjId) -> Option<&hsd_anim::aobj::AObj> {
         let node = self.tree.get(joint);
         if let Some(aobj) = &node.aobj {

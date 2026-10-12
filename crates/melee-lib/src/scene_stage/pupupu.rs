@@ -37,6 +37,9 @@ fn fighter_sides(fighters: &mut [SceneFighter]) -> i32 {
         .sum()
 }
 
+/// The Bronto Burt model's map id (grOldPupupu_802108B4(2)).
+const FLYBY_MAP: u8 = 2;
+
 pub(crate) fn run_proc(
     state: &mut InitialState,
     map: u8,
@@ -75,9 +78,25 @@ pub(crate) fn run_proc(
         6 => stage.cloud_animation(),
         8 => {
             // The Bronto Burt models carry no particle keys and their procs
-            // only delete them, so the flyby's placement is presentation.
+            // only delete them, so the flyby's placement is presentation;
+            // their GObjs are the allocator's. A model's own proc follows
+            // this one in the list: the models out step, the new ones are
+            // created, then the ended ones go.
             let scale = state.assets.stage_desc.parameters.map_scale;
-            let _flyby = stage.tick_background(scale, &mut state.rng);
+            stage.advance_flybys();
+            if let Some(flyby) = stage.tick_background(scale, &mut state.rng) {
+                for _ in 0..flyby.count {
+                    state
+                        .stage_gobjs
+                        .create(&mut state.effects.gobjs, FLYBY_MAP);
+                }
+                stage.launch(&flyby);
+            }
+            while let Some(position) = stage.retire_ended() {
+                state
+                    .stage_gobjs
+                    .destroy_nth(&mut state.effects.gobjs, FLYBY_MAP, position);
+            }
             None
         }
         _ => None,

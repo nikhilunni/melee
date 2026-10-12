@@ -65,6 +65,12 @@ pub struct Pupupu {
     /// table grOp_803E67D8, is 0): the cycle's blowing step is a second
     /// wait, so Whispy turns to the fighters and waits again.
     pub wind_disabled: bool,
+    /// The flyby model's animation length in ticks (map 2, animation 0).
+    pub flyby_frames: i32,
+    /// The flyby models out, oldest first: ticks until each one's
+    /// animation ends (`flyby`).
+    pub flybys: [i32; flyby::MODELS_OUT],
+    pub flybys_out: usize,
 }
 impl Pupupu {
     /// grOldPupupu_8021119C / 80210C7C: Whispy is created before the
@@ -86,6 +92,9 @@ impl Pupupu {
             secondary: Some((Phase::Waiting, true)),
             lights: Vec::new(),
             wind_disabled: false,
+            flyby_frames: 0,
+            flybys: [0; flyby::MODELS_OUT],
+            flybys_out: 0,
         }
     }
     fn sync_secondary(&mut self) {
