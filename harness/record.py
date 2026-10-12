@@ -31,6 +31,7 @@ import contextlib
 import data_root
 import dolphin_config
 import gecko
+import pad_schedule_check
 import pads_to_inputs
 import trace_io
 
@@ -218,6 +219,11 @@ def record(a: argparse.Namespace, scenario: dict) -> None:
     else:
         subprocess.run(tick_cmd, check=True, stdout=None if human_ports else subprocess.DEVNULL)
     expected = traces / f"{name}.tick.expected.jsonl"
+    # A tick-clock schedule is what the game must have dequeued: a bridged
+    # replay is the console's game only if retail consumed the replay's pads.
+    consumed = None if human_ports else pad_schedule_check.check(scenario, expected)
+    if consumed:
+        sys.exit(f"{name}: the recording did not consume its scheduled pads: {consumed}")
     print("   p0 (tick, motion, x, y):", motions(expected)[:40])
     replay_path = scenario_path
     if human_ports:

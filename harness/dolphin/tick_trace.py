@@ -369,7 +369,8 @@ class TickTracer(Tracer):
         `goto skip`) leaves the injected entry alone and exactly one tick to
         run. The entry is the last of the five allocated: after the dequeue
         qread is 0, and UCF's qread-1 and qread-3 (wrapped by 5) are entries
-        4 and 2, as with the full queue."""
+        4 and 2, as with the full queue. Polls accepted in between go to
+        entry 0 (qwrite), which nothing reads."""
         if not self.one_entry_installed:
             if qnum != UCF_QUEUE_WRAP:
                 raise ValueError(f"pad queue holds {qnum} entries, expected {UCF_QUEUE_WRAP}")
@@ -378,6 +379,12 @@ class TickTracer(Tracer):
                 for i, byte in enumerate(polled):
                     self.mem.write_u8(queue + entry * PAD_ENTRY_BYTES + i, byte)
             self.mem.write_u8(PAD_LIB_ADDR, 1)      # qnum
+            # qwrite: a poll that arrives while a tick runs (the queue is
+            # empty after its dequeue) is stored at queue[qwrite], and only
+            # then is qwrite reduced modulo qnum. Left at the five-entry
+            # queue's value it could be 4, 3 or 2: the first such poll then
+            # overwrote the injected entry or its history, which UCF reads.
+            self.mem.write_u8(PAD_LIB_ADDR + 2, 0)
             self.mem.write_u8(PAD_LIB_ADDR + 4, 2)  # qtype: skip a poll while full
             self.one_entry_installed = True
         return UCF_QUEUE_WRAP - 1, UCF_QUEUE_WRAP

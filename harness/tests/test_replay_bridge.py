@@ -152,6 +152,45 @@ def test_tick_clock_rewrites_queue_to_the_next_ticks_pad(tmp_path):
     assert tracer.injected_ticks == 3
 
 
+def poll(mem, status: bytes) -> None:
+    """HSD_PadRenewRawStatus (controller.c:77-105) with qtype 2: a full queue
+    drops the poll; otherwise it is stored at queue[qwrite]."""
+    lib = tick.PAD_LIB_ADDR
+    qnum, qwrite, qcount = mem.read_u8(lib), mem.read_u8(lib + 2), mem.read_u8(lib + 3)
+    if qcount == qnum:
+        return
+    for i, byte in enumerate(status):
+        mem.write_u8(mem.queue + qwrite * tick.PAD_ENTRY_BYTES + i, byte)
+    mem.write_u8(lib + 2, (qwrite + 1) % qnum)
+    mem.write_u8(lib + 3, qcount + 1)
+
+
+@pytest.mark.parametrize("stale_qwrite", [0, 2, 3, 4])
+def test_a_poll_during_a_tick_leaves_the_entries_ucf_reads(tmp_path, stale_qwrite):
+    # The one-entry queue is entry 4, its history entries 3 and 2. A poll
+    # that arrives after the tick's dequeue is stored at queue[qwrite]: with
+    # the five-entry queue's qwrite left in place the first one overwrote
+    # one of them (record 302 of slp_ps_fox_drmario_wide9263_r1_t9800 read
+    # raw X 78, the tick before's, for the scheduled 16).
+    scenario = {"frames": 4, "input_clock": "tick", "render_every_tick": True, "inputs": [
+        {"frame": 0, "port": 0, "buttons": {}, "raw": {"stickX": 95}},
+        {"frame": 1, "port": 0, "buttons": {}, "raw": {"stickX": 78}},
+        {"frame": 2, "port": 0, "buttons": {}, "raw": {"stickX": 16}}]}
+    mem = QueueMemory(qnum=5, qwrite=stale_qwrite, qcount=0)
+    tracer = tick.TickTracer(scenario, None, tmp_path / "unused.sav", mem=mem)
+    tracer.gecko_hooks = True
+    lib = tick.PAD_LIB_ADDR
+    for record in range(3):
+        tracer.inject_tick_pads(record)
+        poll(mem, bytes(tick.PAD_STATUS_BYTES))          # full: dropped
+        assert mem.read_u8(lib + 1) == 4                 # the tick dequeues entry 4
+        mem.write_u8(lib + 1, 0)
+        mem.write_u8(lib + 3, 0)
+        poll(mem, bytes([0, 0, 82] + [0] * 9))           # Dolphin's own poll, mid-tick
+    assert [mem.status(entry, 0)[2] for entry in (4, 3, 2)] == [16, 78, 95]
+    assert mem.status(0, 0)[2] == 82
+
+
 def test_a_failed_poll_writes_err_and_every_other_entry_clears_it(tmp_path):
     scenario = {"frames": 4, "input_clock": "tick", "render_every_tick": True, "inputs": [
         {"frame": 0, "port": 0, "buttons": {}, "raw": {"button": 0x100, "stickX": 61}},

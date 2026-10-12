@@ -42,8 +42,10 @@ Two scenarios are written:
 The pads are the header's records, which `--retail-inputs` has already
 checked to read as the replay's Pre Frame (melee-sim replay_retail_pads.rs).
 A console's failed poll (`err`: PAD_ERR_TRANSFER, where HSD keeps the last
-status) is scheduled as one. replay_vs_trace.py compares a recording with
-the replay itself: inputs, seeds and fighter fields.
+status) is scheduled as one. After recording, record.py checks that every
+tick consumed its scheduled pad (pad_schedule_check.py), and
+replay_vs_trace.py compares the recording with the replay itself: inputs,
+seeds and fighter fields.
 
 The retail scenario carries `render_every_tick = true` (tick_trace.py): the
 recorder then renders after every tick, as the console that made the replay
