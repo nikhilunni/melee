@@ -3024,7 +3024,7 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 113] = [
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
 /// `<name>.gobj.raw.jsonl`): every GObj creation and destruction in
 /// retail's order. Each was recorded for an order the port had wrong.
-const GOBJ_LEDGER_WITNESSES: [&str; 15] = [
+const GOBJ_LEDGER_WITNESSES: [&str; 28] = [
     // The Slippi bridge above: the countdown's and GO's HUD models, the
     // stage's start GObjs, hit quakes, needles.
     "slp_bf_falco_sheik_t3100_cold",
@@ -3051,6 +3051,35 @@ const GOBJ_LEDGER_WITNESSES: [&str; 15] = [
     "corpus_v3_fd_mario_fox4_e75fb4a9a_p1",
     // A wall bounce's quake precedes its queued flash.
     "corpus_v3_fd_pichu_fox4_e4213e6a5_p0",
+    // A death frees the Blaster and its muzzle before Fox's own models
+    // (ftCo_800D331C); the end banner takes the address freed last.
+    "corpus_v2_s0_e49_p0",
+    // The same death with a request the motion change sealed, created
+    // after the teardown; Shy Guys.
+    "corpus_v3_ys_peach_yoshi4_eeda0d0fc_p0",
+    // A hit takes the arrow, then the bow (ftLk_800EAF58), not creation order.
+    "corpus_v3_fd_link_fox4_ef17f3433_p1",
+    // A hit's take-damage callback frees the article before the floor
+    // bounce's model and the quake.
+    "corpus_v3_fd_luigi_fox4_ef9e858d4_p0",
+    // The Shadow Ball goes before the charge's models.
+    "corpus_v3_fd_mewtwo_fox4_ece1e43b7_p0",
+    // DownBound's bounce model precedes the quake of Roy's script.
+    "corpus_v3_fd_roy_fox4_e4f8edfa8_p2",
+    // A bursting egg: the quake in the hit's tick, the shell fragments
+    // freed with the egg.
+    "corpus_v3_bf_yoshi_pikachu4_ecad2716f_p1",
+    // Bury: the hit's quake, then the mound.
+    "corpus_v3_fd_donkeykong_fox4_ee98155f3_p0",
+    // The ice block is created in the hit's tick, after the quake.
+    "iceclimbers_nana_throw_popo_squall_fd_falco_cold",
+    // Battlefield's background GObjs; a timed match's end banner.
+    "slp_bf_marth_peach_t6500_cold",
+    "slp_bf_drmario_fox_t8628_cold",
+    // Pokemon Stadium's form GObjs.
+    "corpus_v3_ps_fox_marth4_e75fb4a9a_p1",
+    // Dream Land's flyby model, created at 3196 and freed 4000 ticks on.
+    "slp_dl_peach_younglink_r1_t8700_cold",
 ];
 
 /// HSD_ObjAlloc (0x8037ABC8) gives a new GObj the address freed last, and a
@@ -3095,21 +3124,25 @@ fn gobj_addresses_match_retail_ledgers() {
 /// 9961, stays in DamageFlyN (the port's roll took the value before the
 /// fragments' and entered DamageFlyRoll).
 ///
-/// Gated here on every key and item, the random seed included, rather than
-/// in `SLIPPI_REPLAY_WITNESSES`: on four ticks (4954, 5555, 7417, 8799) the
-/// particle call sites come in another order, each about 24 ticks into an
-/// aerial Egg Throw (the fault `docs/SLIPPI.md` records for
-/// `slp_bf_yoshi_samus_t1000`), which that list would also assert.
+/// The particle call sites agree on every tick as well. On four of them
+/// (4954, 5555, 7417, 8799) an aerial Egg Throw's egg bursts against the
+/// stage: the collision's bounce spark (it_80277C40) is on the egg's
+/// efAsync queue when it_802B2C38's motion change flushes it (0x80268F44),
+/// so its generator precedes the burst's sparkle, which waits for link 9.
 #[test]
 fn egg_roll_shell_burst_draws_before_the_reaction_roll() {
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../harness/scenarios/slp_fod_yoshi_yoshi_r1_t10100_cold.toml");
     let scenario = Scenario::load(&path).unwrap();
-    if !melee_test_support::require_files(scenario.required_files()) {
+    let ledger = scenario.trace_path("ledger.raw.jsonl");
+    if !melee_test_support::require_files(scenario.required_files().into_iter().chain([ledger])) {
         return;
     }
     assert_eq!(scenario.frames, 10100);
     trace::gate_items(&scenario).unwrap();
+    let differing =
+        trace::particle_site_diff(&scenario, 0, scenario.frames - 1, "ledger").unwrap();
+    assert!(differing.is_empty(), "{}", differing[0]);
 }
 
 #[test]
