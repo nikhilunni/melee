@@ -103,6 +103,7 @@ fn bind_collision(fountain: &mut BackgroundAnimation, map: &mut melee_mp::CollMa
 /// on_init (grIzumi_801CBE64): the cold setup.
 pub(crate) fn initialize(
     assets: &Assets,
+    codes: &crate::slippi::SlippiCodes,
     rng: &mut HsdRng,
     particles: &mut ParticleSystem,
     map: &mut melee_mp::CollMap,
@@ -135,8 +136,12 @@ pub(crate) fn initialize(
         reflection.set_joint_hidden(bone, true);
     }
     animations.insert(REFLECTION_MAP, reflection);
-    let platforms =
-        [0, 1].map(|side| create_platform(side, &parameters, assets, &mut animations, map, rng));
+    // retail 0x801CC02C, 0x801CC084: yakumono_param +0x0 and +0x8.
+    let heights = codes.fountain_creation_heights(parameters.initial_heights);
+    let platforms = [0, 1].map(|side| {
+        let height = heights[side];
+        create_platform(side, height, &parameters, assets, &mut animations, map, rng)
+    });
     let [left, right] = platforms;
     Ok((
         SceneStage::Izumi(Izumi {
@@ -180,6 +185,7 @@ fn spawn_fountain_particles(
 /// anchor, then run its controller once.
 fn create_platform(
     side: usize,
+    height: f32,
     parameters: &melee_gr::izumi::Parameters,
     assets: &Assets,
     animations: &mut Animations,
@@ -190,7 +196,6 @@ fn create_platform(
         animations.get_mut(&COLLISION_MAP).unwrap(),
         PLATFORM_ANCHORS[side],
     );
-    let height = parameters.initial_heights[side];
     let mut model = load(assets, 4)?;
     model.set_gobj_translate(anchor);
     // grAnime_801C7FF8(gobj, 0, 7, 0, 0.0, 1.0) only for a surfaced start;

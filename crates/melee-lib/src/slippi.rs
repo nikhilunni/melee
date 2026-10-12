@@ -59,9 +59,35 @@ pub struct SlippiCodes {
     /// nametag scale (0x802FCFC4, 0x804DDB84) and 0x80086B24, which draws a
     /// fighter's model whether or not ftLib_80086A8C finds it near the screen.
     pub screen: Screen,
+    /// A console code a replay does not record and whose text is not known:
+    /// grIzumi_801CBE64 creates both Fountain of Dreams side platforms at
+    /// height 24.0 where it would pass `yakumono_param` +0x0 and +0x8 (20.0
+    /// and 28.0: the `lfs f1` at 0x801CC02C and 0x801CC084 before the two
+    /// calls of grIzumi_801CCBDC). Nothing else of the stage changes: the
+    /// platforms then step, sink and resurface by the retail parameters.
+    /// Read from the frames of six tournament games of 2020-03-04, whose
+    /// consoles also spawned from [`NeutralTable::LevelFountainEntryByOrder`]
+    /// (docs/SLIPPI.md, "Consoles with level Fountain of Dreams platforms").
+    pub fountain_level: bool,
 }
 
 pub use melee_cm::Screen;
+
+/// The creation height of both side platforms under
+/// [`SlippiCodes::fountain_level`]: the mean of retail's 20.0 and 28.0.
+const FOUNTAIN_LEVEL_HEIGHT: f32 = 24.0;
+
+impl SlippiCodes {
+    /// The heights grIzumi_801CBE64 passes to grIzumi_801CCBDC for the left
+    /// and right platform (0x801CC02C, 0x801CC084), given the stage data's.
+    pub fn fountain_creation_heights(&self, data: [f32; 2]) -> [f32; 2] {
+        if self.fountain_level {
+            [FOUNTAIN_LEVEL_HEIGHT; 2]
+        } else {
+            data
+        }
+    }
+}
 
 /// Where each player starts.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -89,6 +115,12 @@ pub enum NeutralTable {
     V2019EntryByOrder,
     /// The Slippi asm code from 2020-01-14 on.
     V2020,
+    /// The consoles of [`SlippiCodes::fountain_level`] (2020-03-04): the
+    /// 2020 table with Fountain of Dreams' first two singles rows at
+    /// y = 24.0 (the table's 21.0 and 27.0 are each 4.875 above the platform
+    /// top retail creates, as 24.0 is above the level ones), and the entries
+    /// restaggered as in `V2019EntryByOrder`.
+    LevelFountainEntryByOrder,
 }
 
 /// SetSpawn_AdjustEntryFrames: `mulli r4, REG_SpawnID, 5`.
@@ -100,7 +132,9 @@ impl NeutralTable {
     /// `None` when this version leaves retail's delay alone.
     pub fn entry_delay(self, order: usize) -> Option<i32> {
         match self {
-            Self::V2019EntryByOrder => Some(ENTRY_FRAMES_PER_ORDER * order as i32),
+            Self::V2019EntryByOrder | Self::LevelFountainEntryByOrder => {
+                Some(ENTRY_FRAMES_PER_ORDER * order as i32)
+            }
             Self::V2019 | Self::V2020 => None,
         }
     }
@@ -128,9 +162,15 @@ const SINGLES_SPAWNS: [(i32, [[f32; 2]; 4]); 6] = [
 /// 0xC23A6666/0x42140000 and 0x423D8E70/0x42140000).
 const DREAM_LAND_2019: [[f32; 2]; 2] = [[-46.6, 37.0], [f32::from_bits(0x423D_8E70), 37.0]];
 
+/// `LevelFountainEntryByOrder`'s Fountain of Dreams singles spawns for
+/// orders 0 and 1, read from those consoles' first frames.
+const FOUNTAIN_LEVEL: [[f32; 2]; 2] = [[-41.25, 24.0], [41.25, 24.0]];
+/// Fountain of Dreams' external stage id.
+const FOUNTAIN_OF_DREAMS: i32 = 0x02;
+
 /// NeutralSpawn.asm, singles: the spawn of the `order`th present player
 /// (ascending slots) and the facing SetSpawn stores. `None` for a stage
-/// without a row, or a V2019 order the replays have not shown.
+/// without a row, or an order of a measured row the replays have not shown.
 pub fn neutral_spawn(
     table: NeutralTable,
     stage_id: i32,
@@ -138,6 +178,8 @@ pub fn neutral_spawn(
 ) -> Option<(hsd_types::Vec3, f32)> {
     let [x, y] = if table == NeutralTable::V2019 && stage_id == 0x1C {
         *DREAM_LAND_2019.get(order)?
+    } else if table == NeutralTable::LevelFountainEntryByOrder && stage_id == FOUNTAIN_OF_DREAMS {
+        *FOUNTAIN_LEVEL.get(order)?
     } else {
         let (_, spawns) = SINGLES_SPAWNS.iter().find(|(id, _)| *id == stage_id)?;
         spawns[order]
@@ -145,4 +187,56 @@ pub fn neutral_spawn(
     // SetSpawn_UpdateFacingDirection: fcmpo x, 0.0; ble faces right.
     let facing = if x > 0.0 { -1.0 } else { 1.0 };
     Some((hsd_types::Vec3::new(x, y, 0.0), facing))
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn row(table: NeutralTable, stage_id: i32, order: usize) -> Option<[f32; 2]> {
+        neutral_spawn(table, stage_id, order).map(|(spawn, _)| [spawn.x, spawn.y])
+    }
+
+    #[test]
+    fn level_fountain_table_moves_only_the_first_two_fountain_rows() {
+        use NeutralTable::{LevelFountainEntryByOrder as Level, V2020};
+        let cases = [
+            (FOUNTAIN_OF_DREAMS, 0, Some([-41.25, 24.0])),
+            (FOUNTAIN_OF_DREAMS, 1, Some([41.25, 24.0])),
+            // Orders the consoles' games did not show stay unported.
+            (FOUNTAIN_OF_DREAMS, 2, None),
+            (FOUNTAIN_OF_DREAMS, 3, None),
+        ];
+        for (stage_id, order, expected) in cases {
+            assert_eq!(row(Level, stage_id, order), expected, "order {order}");
+        }
+        assert_eq!(row(V2020, FOUNTAIN_OF_DREAMS, 0), Some([-41.25, 21.0]));
+        assert_eq!(row(V2020, FOUNTAIN_OF_DREAMS, 1), Some([41.25, 27.0]));
+        for (stage_id, _) in SINGLES_SPAWNS {
+            if stage_id != FOUNTAIN_OF_DREAMS {
+                for order in 0..4 {
+                    assert_eq!(row(Level, stage_id, order), row(V2020, stage_id, order));
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn level_fountain_table_enters_by_spawn_order() {
+        let delays =
+            [0, 1, 2, 3].map(|order| NeutralTable::LevelFountainEntryByOrder.entry_delay(order));
+        assert_eq!(delays, [Some(0), Some(5), Some(10), Some(15)]);
+    }
+
+    #[test]
+    fn fountain_platforms_are_created_level_only_under_the_code() {
+        let data = [20.0, 28.0];
+        let retail = SlippiCodes::default();
+        let level = SlippiCodes {
+            fountain_level: true,
+            ..retail
+        };
+        assert_eq!(retail.fountain_creation_heights(data), data);
+        assert_eq!(level.fountain_creation_heights(data), [24.0, 24.0]);
+    }
 }

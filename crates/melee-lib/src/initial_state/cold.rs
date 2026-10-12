@@ -53,7 +53,7 @@ impl InitialState {
         ));
         let mut particles = ParticleSystem::default();
         let (mut stage, mut stage_animations) =
-            initialize_stage(&assets, &mut rng, &mut particles, &mut map)?;
+            initialize_stage(&assets, &scenario.slippi, &mut rng, &mut particles, &mut map)?;
         if let SceneStage::Stadium(stadium) = &mut stage {
             if scenario.slippi.stadium_preload {
                 // Init isLoaded Bool.asm (0x801D14C8), in map 2's init.
@@ -221,6 +221,7 @@ fn spawn_position(assets: &Assets, slot: i16) -> Result<Vec3> {
 /// Ground creation precedes every Fighter_Create call.
 fn initialize_stage(
     assets: &Assets,
+    codes: &crate::slippi::SlippiCodes,
     rng: &mut HsdRng,
     particles: &mut ParticleSystem,
     map: &mut melee_mp::CollMap,
@@ -324,7 +325,7 @@ fn initialize_stage(
         }
         GrKind::Izumi => {
             let (stage, animations) =
-                crate::scene_stage::izumi::initialize(assets, rng, particles, map)?;
+                crate::scene_stage::izumi::initialize(assets, codes, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

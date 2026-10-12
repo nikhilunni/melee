@@ -88,6 +88,10 @@ pub struct Scenario {
     /// (`melee_lib::slippi::Screen::Widescreen92By63`); not with `widescreen`.
     #[serde(default)]
     pub widescreen_92_63: bool,
+    /// Both Fountain of Dreams side platforms created at height 24
+    /// (`melee_lib::slippi::SlippiCodes::fountain_level`).
+    #[serde(default)]
+    pub fountain_level: bool,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -108,8 +112,8 @@ pub struct Scenario {
     /// `controller_fix`, and `"ps-preload"` and `"ps-frozen"` go with
     /// `stadium_preload` and `stadium_frozen`, `"frozen-stages"` with
     /// `frozen_stages`, `"widescreen"` with `widescreen`,
-    /// `"widescreen-92-63"` with `widescreen_92_63`; the port reads only
-    /// those.
+    /// `"widescreen-92-63"` with `widescreen_92_63`, `"fod-level"` with
+    /// `fountain_level`; the port reads only those.
     #[serde(default)]
     pub gecko: Vec<String>,
     #[serde(skip)]
@@ -262,6 +266,7 @@ impl Scenario {
             (FROZEN_STAGES_GECKO, self.frozen_stages),
             (WIDESCREEN_GECKO, self.widescreen),
             (WIDESCREEN_92_63_GECKO, self.widescreen_92_63),
+            (FOUNTAIN_LEVEL_GECKO, self.fountain_level),
         ];
         ensure!(
             !(self.widescreen && self.widescreen_92_63),
@@ -490,6 +495,7 @@ impl Scenario {
                 stadium_frozen: self.stadium_frozen,
                 frozen_stages: self.frozen_stages,
                 screen: self.screen(),
+                fountain_level: self.fountain_level,
             },
         }
     }
@@ -651,13 +657,15 @@ const FROZEN_STAGES_GECKO: &str = "frozen-stages";
 const WIDESCREEN_GECKO: &str = "widescreen";
 /// The `gecko` name of the Widescreen 16:9 code with the 92 / 63 aspect.
 const WIDESCREEN_92_63_GECKO: &str = "widescreen-92-63";
+/// The `gecko` name of the level Fountain of Dreams platforms code.
+const FOUNTAIN_LEVEL_GECKO: &str = "fod-level";
 
-/// `spawn = "retail" | "neutral-2019" | "neutral-2019-entry" | "neutral-2020"`
-/// in scenario TOML.
+/// `spawn = "retail" | "neutral-2019" | "neutral-2019-entry" | "neutral-2020"
+/// | "neutral-2020-entry-fod-level"` in scenario TOML.
 mod spawn_rule {
     use melee_lib::slippi::{NeutralTable, SpawnRule};
     use serde::{Deserialize, Deserializer};
-    const NAMES: [(&str, SpawnRule); 4] = [
+    const NAMES: [(&str, SpawnRule); 5] = [
         ("retail", SpawnRule::Retail),
         ("neutral-2019", SpawnRule::NeutralTable(NeutralTable::V2019)),
         (
@@ -665,6 +673,10 @@ mod spawn_rule {
             SpawnRule::NeutralTable(NeutralTable::V2019EntryByOrder),
         ),
         ("neutral-2020", SpawnRule::NeutralTable(NeutralTable::V2020)),
+        (
+            "neutral-2020-entry-fod-level",
+            SpawnRule::NeutralTable(NeutralTable::LevelFountainEntryByOrder),
+        ),
     ];
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<SpawnRule, D::Error> {
         let name = String::deserialize(d)?;
