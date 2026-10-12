@@ -3206,14 +3206,27 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
                 with_fighter!(&mut state.fighters[slot], |f| f.core.credit_hit(victim, assets));
             }
         }
-        // ftColl_8007BE3C's item arm: plStale_UpdateStaleMovesFromItem and
-        // ftColl_8007646C on the item's owner, never the victim itself.
-        HitSource::Item(item) => {
-            let owner =
-                crate::scene_items::owner_index(&state.fighters, item.owner, item.secondary)
-                    .filter(|&owner| owner != player);
+        // ftColl_8007BE3C tests the classifier of the GObj at dmg.x1894 when
+        // the lockout ends (retail 0x8007BF4C: lwz 0x1894; 0x8007BF50: lhz
+        // 0x0; only 4, a fighter, and 6, an item, credit anyone). An item
+        // that has gone by then left a freed GObj, whose first word is the
+        // allocator's free-list link (HSD_ObjFree, 0x8037AD20): nobody is
+        // credited, and the move does not stale. An item created at that
+        // address since is read in its place: its owner (ip->owner) and
+        // attack (xD88 / xD8C), never the victim itself.
+        HitSource::Item(source) => {
+            let Some((item_owner, secondary, attack)) = state
+                .items
+                .iter()
+                .find(|item| !item.destroyed && item.gobj.index() == source.gobj)
+                .map(|item| (item.owner, item.owner_secondary, item.stale_source))
+            else {
+                return;
+            };
+            let owner = crate::scene_items::owner_index(&state.fighters, item_owner, secondary)
+                .filter(|&owner| owner != player);
             if let Some(owner) = owner {
-                if let Some(attack) = item.attack {
+                if let Some(attack) = attack {
                     partner_fighters::take_partner_stale_table(
                         &mut state.fighters,
                         &state.assets.fighters,
@@ -3225,7 +3238,7 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
                 let combo = &state.assets.fighters[owner].combo;
                 state.fighters[owner].combat.combo.record(
                     victim,
-                    item.attack.map(|a| a.move_id),
+                    attack.map(|a| a.move_id),
                     combo,
                 );
             }

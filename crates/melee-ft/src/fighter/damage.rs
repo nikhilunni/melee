@@ -2874,9 +2874,7 @@ impl Fighter {
             );
             self.combat.log_hit(LoggedHit {
                 source: HitSource::Item(melee_coll::damage_log::ItemSource {
-                    owner: item.owner,
-                    secondary: item.owner_secondary,
-                    attack: item.stale_source,
+                    gobj: item.gobj.index(),
                 }),
                 credit: item_credit(item),
                 hit: ReceivedHit {
@@ -2957,9 +2955,7 @@ impl Fighter {
             self.combat.phantom_max_damage = self.combat.phantom_max_damage.max(fctiwz(damage));
             self.combat.phantom_log.push(LoggedHit {
                 source: HitSource::Item(melee_coll::damage_log::ItemSource {
-                    owner: item.owner,
-                    secondary: item.owner_secondary,
-                    attack: item.stale_source,
+                    gobj: item.gobj.index(),
                 }),
                 credit: item_credit(item),
                 hit: ReceivedHit {

@@ -24,14 +24,14 @@ pub enum HitSource {
     Item(ItemSource),
 }
 
-/// What a phantom's credit (ftColl_8007BE3C) reads of the item that dealt
-/// it: its owner (ip->owner, the player's second fighter when `secondary`)
-/// and its attack (xD88 / xD8C).
+/// The item behind a logged hit, as retail keeps it: the item's GObj
+/// pointer (DmgLogEntry.gobj, then dmg.x1894 for a phantom), here the
+/// address's identity (`hsd_gobj::GObjAddress::index`). A phantom's credit
+/// (ftColl_8007BE3C) reads whatever GObj is at that address when the
+/// phantom's lockout ends, which may be after the item has gone.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ItemSource {
-    pub owner: Option<u8>,
-    pub secondary: bool,
-    pub attack: Option<melee_types::combat::AttackInstance>,
+    pub gobj: u32,
 }
 
 /// Whom ftColl_8007861C names as a hit's source, for the victim's KO

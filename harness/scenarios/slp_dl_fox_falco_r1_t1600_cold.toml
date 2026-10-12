@@ -1,0 +1,27 @@
+# FOX/Game_20190824T124750.slp played back on retail: Falco's laser at 1482 deals 2.88.
+# The port's side of slp_dl_fox_falco_r1_t1600: boundary start_dl_slippi_off_p13_fox0_falco3_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_dl_fox_falco_r1_t1600_cold"
+expected = "slp_dl_fox_falco_r1_t1600"
+frames = 1600
+seed = 2705839627
+boundary_seed = 3363975487
+stage = "DreamLand"
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "scripted"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+costume = 3
+stocks = 4
+controller = "scripted"

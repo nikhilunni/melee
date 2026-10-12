@@ -1,0 +1,24 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_dl_slippi_off_p13_fox0_falco3_4_cold"
+expected = "start_dl_slippi_off_p13_fox0_falco3_4"
+frames = 600
+seed = 2705839627
+stage = "DreamLand"
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+costume = 3
+stocks = 4
+controller = "idle"
