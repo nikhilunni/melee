@@ -88,5 +88,16 @@ special row and entry fails closed, as do his three airborne throws.
   attack and Reflector on Kirby through a tumble, the floor, a hit while
   lying down, a fall past the blast zone and the revival (whose Stone-form
   draw the seed checks), and the rapid jab whiffed and on Fox.
-- Slippi: the Kirby games stop at the first special or airborne throw
-  (see the stage report for frames matched).
+- Slippi (`public-v3.7-b/KIRBY`, four games, refused before Kirby was
+  registered): every frame matches up to the first unported boundary, which
+  the runner names.
+
+  | Game | Frames matched | Stops at |
+  | --- | ---: | --- |
+  | `14_16_24 Marth + Kirby (PS)` | 1378 of 7001 | Final Cutter in the air |
+  | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 1671 of 13271 | Kirby's up throw |
+  | `Falco vs Kirby [YS]` | 336 of 9109 | Inhale in the air (after a down throw) |
+  | `Game_20190824T180214` | 1129 of 13809 | Inhale in the air (after a rapid jab) |
+
+- The explorer was not run from this boundary: its policies press B within
+  the first seconds, so every case would stop at a special's entry.
