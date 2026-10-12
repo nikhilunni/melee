@@ -2543,6 +2543,22 @@ impl Simulation {
     pub fn fighter_values(&self, index: usize) -> crate::diagnostics::FighterValues {
         crate::diagnostics::FighterValues::of(&self.runtime.state.fighters[index])
     }
+    /// Each fighter's image of retail's motion scratch words at mv+0x14 and
+    /// mv+0x18 (`melee_ft::fighter::scratch_tail`), in fighter order, for
+    /// `melee-sim scratch-diff`.
+    pub fn fighter_scratch_tails(&self) -> Vec<[u32; 2]> {
+        self.runtime
+            .state
+            .fighters
+            .iter()
+            .map(|fighter| fighter.0.scratch_tail())
+            .collect()
+    }
+    /// Replace fighter `index`'s image of those words with a recording's,
+    /// so `melee-sim scratch-diff` names each difference where it starts.
+    pub fn set_fighter_scratch_tail(&mut self, index: usize, words: [u32; 2]) {
+        self.runtime.state.fighters[index].0.scratch_tail_image = words;
+    }
     /// The path of each of a fighter's snapshot values, without its `pN.`.
     pub fn fighter_paths(&self) -> Vec<String> {
         crate::diagnostics::fighter_paths(&self.runtime.state)

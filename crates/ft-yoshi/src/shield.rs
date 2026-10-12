@@ -73,32 +73,31 @@ pub fn leave_egg(fighter: &mut Fighter, assets: &FighterAssets) {
         scale: fighter.core.attributes.yoshi_egg.size,
     });
 }
+/// ftYs_Init_8012BECC (8012BECC) and, with `reflect`, ftYs_Shield_8012C914
+/// (8012C914). The plain entry writes neither countdown (guard x14, x18)
+/// and leaves the reflect and powershield bits alone, where ftCo_800924C0
+/// clears all four (0x80092504..10): both countdowns are whatever the
+/// last state to write those scratch words left
+/// (`melee_ft::fighter::scratch_tail`), and a bit a powershield set stays
+/// set until a later shield stun counts its word below zero.
 pub fn enter(fighter: &mut Fighter, assets: &FighterAssets, reflect: bool) -> Result<()> {
-    // Plain GuardOn does not write the old reflect/powershield countdowns.
-    let retained = match &fighter.state_data {
-        MotionData::Guard(guard) => Some(guard),
-        MotionData::Escape(escape) => escape.retained_guard.as_ref(),
-        _ => None,
-    };
-    let windows = retained.map_or([0.0; 2], |guard| {
-        [guard.reflect_frames, guard.powershield_frames]
-    });
     fighter.change_motion_state(
         (if reflect { S::GuardReflect } else { S::GuardOn }).into(),
         assets,
     )?;
     fighter.step_animation(assets);
+    let [stale_reflect, stale_powershield] = fighter.scratch_tail_image.map(f32::from_bits);
     fighter.state_data = MotionData::Guard(GuardState {
         minimum_hold: assets.shield.minimum_hold,
         reflect_frames: if reflect {
             assets.shield.reflect_frames
         } else {
-            windows[0]
+            stale_reflect
         },
         powershield_frames: if reflect {
             assets.shield.powershield_frames
         } else {
-            windows[1]
+            stale_powershield
         },
         ..Default::default()
     });
@@ -125,6 +124,9 @@ pub fn enter(fighter: &mut Fighter, assets: &FighterAssets, reflect: bool) -> Re
 pub fn hold(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     if let MotionData::Escape(escape) = &fighter.state_data {
         let mut guard = escape.retained_guard.clone().unwrap_or_default();
+        // The roll writes neither countdown word (guard x14, x18).
+        [guard.reflect_frames, guard.powershield_frames] =
+            fighter.scratch_tail().map(f32::from_bits);
         // Escape's integer timer and Guard's elapsed float share mv +0 in
         // retail. Direct roll-to-hold entry preserves those bits, not the value.
         guard.elapsed = f32::from_bits(escape.interrupt_frames as u32);

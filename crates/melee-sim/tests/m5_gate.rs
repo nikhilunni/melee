@@ -2492,7 +2492,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 71] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 72] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2763,6 +2763,13 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 71] = [
     // The port queued the destruction for the block's link 9 flush. The
     // console started ports 1 and 4 at markers 0 and 1 (--spawn-points).
     ("slp_ps_iceclimbers_samus_r191618_t6750_cold", 6750),
+    // Yoshi's plain GuardOn (ftYs_Init_8012BECC) keeps the powershield
+    // bits and counts down whatever the last state left in the scratch
+    // words at mv+0x14 and mv+0x18: a delayed powershield at 809, then a
+    // jump buffer of 23 and a launch's byte stores (1049, 1060) keep the
+    // bit through the stun at 1091, where Fox's hit on the egg takes the
+    // powershield branch of ftColl_80076CBC.
+    ("slp_ps_fox_yoshi_t1300_cold", 1300),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

@@ -59,6 +59,7 @@ pub mod passive_ceil;
 mod procs;
 pub mod reflection;
 pub mod run;
+pub mod scratch_tail;
 pub mod shield;
 mod shield_break;
 mod sleep;
@@ -548,6 +549,13 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// method, so characters without such rows share one concrete default.
     const RETAINED_SCRATCH_WORD: fn(&CharacterState, ActionId) -> Option<f32> =
         character::no_retained_scratch_word;
+
+    /// The motion scratch words at mv+0x14 and mv+0x18 (fp+0x2354,
+    /// fp+0x2358) that `action`, one of this character's special rows, has
+    /// written: `None` for a word the row leaves as it found it
+    /// (`scratch_tail`). A table constant, as `RETAINED_SCRATCH_WORD` is.
+    const SCRATCH_TAIL: fn(&CharacterState, ActionId) -> [Option<u32>; 2] =
+        character::no_scratch_tail;
 
     /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:51-83.
     /// Character crates reset their airborne special resources here.
@@ -1118,6 +1126,9 @@ pub struct FighterCore {
     pub partner: Option<partner::PartnerView>,
     pub motion_state: MotionState,
     pub state_data: MotionData,
+    /// Retail's motion scratch words at mv+0x14 and mv+0x18 as the states
+    /// before this one left them (`scratch_tail`).
+    pub scratch_tail_image: [u32; 2],
     pub combat: damage::CombatState,
     pub shield: shield::ShieldState,
     pub effect_state: effects::FighterEffects,

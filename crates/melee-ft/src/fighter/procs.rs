@@ -22,6 +22,7 @@ impl Fighter {
         map: &mut CollMap,
         rng: &mut HsdRng,
     ) -> Result<Option<WaitChoice>> {
+        self.keep_scratch_tail();
         // ftData_UnkMotionStates3 (fighter.c:1652) sits ahead of the hitlag
         // gate; it touches only the character's own state, so its place
         // among the timers before that gate is free.
@@ -50,6 +51,7 @@ impl Fighter {
     }
     /// Fighter_Spaghetti_8006AD10 (0x8006AD10), s_link 3, fighter.c:1777-2140.
     pub fn proc_input(&mut self, assets: &FighterAssets, sample: &PadSample) {
+        self.keep_scratch_tail();
         if self.core.sample_input(assets, sample) {
             self.core.update_smash_charge_input(assets);
             (self.motion_row.iasa)(self, state::InputPhase { assets });
@@ -58,6 +60,7 @@ impl Fighter {
 
     /// Fighter_procUpdate (0x8006B82C), s_link 4, fighter.c:2150-2438.
     pub fn proc_update(&mut self, assets: &FighterAssets, map: &CollMap, wind: Wind) {
+        self.keep_scratch_tail();
         if self.core.status.disabled {
             return;
         }
@@ -84,6 +87,7 @@ impl Fighter {
     }
     /// Fighter_procMap (0x8006C27C), s_link 6, fighter.c:2476-2516.
     pub fn proc_map(&mut self, map: &mut CollMap) {
+        self.keep_scratch_tail();
         if self.core.status.disabled {
             return;
         }
@@ -105,6 +109,7 @@ impl Fighter {
         assets: &FighterAssets,
         map: &mut CollMap,
     ) -> Result<()> {
+        self.keep_scratch_tail();
         if self.core.status.disabled {
             return Ok(());
         }
@@ -141,6 +146,7 @@ impl Fighter {
         self.process_hit(assets, rng, Some(map));
     }
     fn process_hit(&mut self, assets: &FighterAssets, rng: &mut HsdRng, map: Option<&mut CollMap>) {
+        self.keep_scratch_tail();
         if self.core.status.disabled {
             return;
         }

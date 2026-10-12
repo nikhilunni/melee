@@ -179,6 +179,20 @@ enum Command {
         #[arg(long, default_value_t = 12)]
         limit: usize,
     },
+    /// Compare the port's image of retail's stale motion scratch words
+    /// (mv+0x14, mv+0x18: Yoshi's egg shield counts them down) with each
+    /// fighter's memory in the tick trace.
+    ScratchDiff {
+        scenario: PathBuf,
+        /// Only fighters of this retail kind id (Yoshi is 14).
+        #[arg(long)]
+        kind: Option<u32>,
+        /// List every differing word, not only those whose countdown differs.
+        #[arg(long)]
+        every_bit: bool,
+        #[arg(long, default_value_t = 12)]
+        limit: usize,
+    },
     /// Compare the port's particle RNG call sites with the retail ledger per tick.
     ParticleSites {
         scenario: PathBuf,
@@ -445,6 +459,21 @@ fn main() -> anyhow::Result<()> {
             }
             println!("{}", report.summary);
             anyhow::ensure!(report.differences.is_empty(), "GObj addresses differ");
+            Ok(())
+        }
+        Command::ScratchDiff {
+            scenario,
+            kind,
+            every_bit,
+            limit,
+        } => {
+            let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            let report = melee_sim::scratch::diff(&scenario, kind, every_bit)?;
+            for line in report.differences.iter().take(limit) {
+                println!("{line}");
+            }
+            println!("{}", report.summary);
+            anyhow::ensure!(report.differences.is_empty(), "stale scratch words differ");
             Ok(())
         }
         Command::ParticleSites {

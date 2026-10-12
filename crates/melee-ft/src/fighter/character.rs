@@ -101,6 +101,7 @@ pub struct CharacterTable {
     pub wait_entered: fn(&mut Fighter),
     pub on_landing: fn(&mut CharacterState, bool),
     pub retained_scratch_word: fn(&CharacterState, ActionId) -> Option<f32>,
+    pub scratch_tail: fn(&CharacterState, ActionId) -> [Option<u32>; 2],
     pub guard_variant: fn(&CharacterState, &mut commands::CommandState),
     pub prepare_roll: Option<fn(&mut Fighter)>,
     pub catch_entered: Option<fn(&mut Fighter)>,
@@ -238,6 +239,7 @@ impl CharacterTable {
             wait_entered: C::WAIT_ENTERED,
             on_landing: |state, allow_interrupt| state.get_mut::<C>().on_landing(allow_interrupt),
             retained_scratch_word: C::RETAINED_SCRATCH_WORD,
+            scratch_tail: C::SCRATCH_TAIL,
             guard_variant: |state, commands| state.get::<C>().guard_variant(commands),
             prepare_roll: C::PREPARE_ROLL,
             catch_entered: C::CATCH_ENTERED,
@@ -449,6 +451,9 @@ impl CharacterState {
     pub fn retained_scratch_word(&self, action: ActionId) -> Option<f32> {
         (self.table.retained_scratch_word)(self, action)
     }
+    pub fn scratch_tail(&self, action: ActionId) -> [Option<u32>; 2] {
+        (self.table.scratch_tail)(self, action)
+    }
     pub fn guard_variant(&self, commands: &mut commands::CommandState) {
         (self.table.guard_variant)(self, commands)
     }
@@ -601,6 +606,11 @@ pub(super) fn common_shield_stun(
 #[inline(never)]
 pub(super) fn no_retained_scratch_word(_state: &CharacterState, _action: ActionId) -> Option<f32> {
     None
+}
+
+#[inline(never)]
+pub(super) fn no_scratch_tail(_state: &CharacterState, _action: ActionId) -> [Option<u32>; 2] {
+    [None; 2]
 }
 
 pub(super) fn unsupported_float(

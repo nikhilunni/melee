@@ -22,6 +22,7 @@ mod replay_observed;
 pub mod replay_screen_codes;
 pub mod replay_stage_codes;
 pub mod scenario;
+pub mod scratch;
 pub mod search;
 pub mod trace;
 pub mod trace_after_map;

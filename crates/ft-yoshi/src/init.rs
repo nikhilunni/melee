@@ -92,6 +92,18 @@ impl CharacterCallbacks for Yoshi {
     const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) = knockback_enter;
     const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) = knockback_exit;
     const SPECIAL_ROWS: &'static [melee_ft::fighter::MotionRow] = &CHARACTER_ROWS;
+    /// The Egg Roll rows (356..363) keep the roll angle and the turn's tilt
+    /// at mv+0x14 and mv+0x18 (ftYoshi_SpecialSVars x14, x18).
+    const SCRATCH_TAIL: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_ft::fighter::ActionId,
+    ) -> [Option<u32>; 2] = |state, action| {
+        if !(356..=363).contains(&action.0) {
+            return [None; 2];
+        }
+        let roll = &state.get::<Yoshi>().egg_roll;
+        [Some(roll.roll_angle.to_bits()), Some(roll.tilt.to_bits())]
+    };
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::rows::moves();
     /// Fighter.take_dmg_cb: ftYs_Init_8012BA8C while the Egg Throw's egg is
     /// in hand, fn_8012EDE8 in the Egg Roll; at most one is installed.

@@ -975,6 +975,7 @@ impl Fighter {
         change: MotionChange<'_>,
     ) -> Result<()> {
         let source = change.source;
+        self.keep_scratch_tail();
         let row = self.row(state);
         // fighter.c:1142-1144: only Wait and the walks keep the jab window.
         use CommonMotionState as C;
@@ -1251,6 +1252,7 @@ impl FighterCore {
             skeleton,
             motion_state,
             state_data: MotionData::None,
+            scratch_tail_image: [0; 2],
             combat: super::damage::CombatState {
                 capture_geometry,
                 stale: super::attack::stale::StaleHistory::for_fighter(player.secondary),

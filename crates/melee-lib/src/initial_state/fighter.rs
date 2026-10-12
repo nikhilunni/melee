@@ -172,6 +172,8 @@ pub(crate) fn import(
         (std::f64::consts::FRAC_PI_2 * f64::from(f.core.physics.facing)) as f32,
     );
     super::collision::restore(&mut f.collision, raw);
+    // The motion scratch words earlier states left (fp+0x2354, fp+0x2358).
+    f.core.scratch_tail_image = [word(raw, 0x2354), word(raw, 0x2358)];
     if word(raw, 0x10) == 322 {
         use hsd_types::Vec2;
         use melee_ft::fighter::{entry::EntryState, MotionData};
