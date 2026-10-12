@@ -66,13 +66,25 @@ pub fn throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
     let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
+    throw_callback(fighter, assets)?;
+    Ok(None)
+}
+
+/// ftCo_ThrowF_Anim (800DD8C4) and its siblings proper, which an airborne
+/// throw's landing also calls (fn_800DD568, fn_800DD5EC).
+pub(crate) fn throw_callback(
+    fighter: &mut Fighter,
+    assets: &crate::fighter::assets::FighterAssets,
+) -> Result<()> {
     (fighter.character.table().throw_animation)(fighter, assets);
     // ftCo_800DD724, 800DD744..77C: consume reversal before release.
     if std::mem::take(&mut fighter.commands.throw_reverse) {
         fighter.physics.facing = -fighter.physics.facing;
     }
-    // The linked release runs immediately after this callback in scene order.
-    // ftCo_ThrowF_Anim (800DD7DC): a kind with x2222_b0 keeps its victim
+    // The linked release runs immediately after this callback in scene
+    // order, and what the freeze asks of the held fighter after it.
+    fighter.freeze_throw_on_flag();
+    // ftCo_ThrowF_Anim (800DD8C4): a kind with x2222_b0 keeps its victim
     // on its shoulder at the forward throw's end (ftCo_8009B56C).
     if fighter.motion_state.id == melee_types::CommonMotionState::ThrowF
         && fighter.carries_cargo()
@@ -84,10 +96,20 @@ pub fn throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<
         {
             fighter.enter_cargo_wait(assets, true)?;
         }
-        return Ok(None);
+        return Ok(());
     }
-    fighter.jab_animation(assets)?;
-    Ok(None)
+    // ftCommon_8007D92C: Wait on the floor, Fall off it.
+    if fighter.physics.ground_or_air == melee_types::GroundOrAir::Air {
+        if !fighter
+            .core
+            .animation
+            .frames_remaining(&fighter.core.skeleton)
+        {
+            fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
+        }
+        return Ok(());
+    }
+    fighter.jab_animation(assets)
 }
 
 /// ftData_MotionStateList: ftCo_MS_DamageFall (38), ftCo_MS_CatchWait (216),
@@ -351,7 +373,7 @@ impl FighterCore {
         let AnimationPhase { assets, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
-        self.thrown_animation(assets);
+        self.thrown_hold_animation(assets);
         Ok(None)
     }
     fn animation_capture(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {

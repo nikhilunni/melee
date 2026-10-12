@@ -21,6 +21,9 @@ pub struct Parameters {
     pub percent_scale: f32,
     pub decrement: f32,
     pub mash_decrement: f32,
+    /// PlCo +3C8: the mash decrement of a fighter thrown with its grab
+    /// timer kept (ftCo_800DE5A4).
+    pub thrown_mash_decrement: f32,
     pub fast_frames: f32,
     pub fast_rate: f32,
     pub escape_speed: f32,
@@ -90,6 +93,7 @@ impl Parameters {
             throw_invincible_frames: r.s32(base + 0x348)?,
             decrement: r.f32(base + 0x3A4)?,
             mash_decrement: r.f32(base + 0x3A8)?,
+            thrown_mash_decrement: r.f32(base + 0x3C8)?,
             fast_frames: r.f32(base + 0x3B0)?,
             fast_rate: r.f32(base + 0x3B4)?,
             song_base_timer: r.f32(base + 0x624)?,
@@ -130,6 +134,17 @@ fn read_release_hit(archive: &Archive, at: u32) -> Result<melee_types::combat::T
         sound_severity: word(0x1C)? as u8,
         sound_kind: word(0x20)? as u8,
     })
+}
+
+/// [`CaptureState::carried_into_throw`].
+#[derive(Clone, Copy, Debug)]
+pub(super) struct CarriedIntoThrow {
+    pub timer: f32,
+    pub stick_directions: [i8; 2],
+    /// mv.co.capturewait.xC, which is mv.co.thrown.xC.
+    pub jump_requested: bool,
+    /// mv.co.capturewait.x4, which is mv.co.thrown.anim_timer.
+    pub fast_remaining: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -174,6 +189,18 @@ impl CaptureState {
             mouth_scale: None,
             fast_remaining: 0.0,
             stick_directions: [0; 2],
+        }
+    }
+
+    /// What ftCo_800DE3FC leaves a thrown fighter of this state: the grab
+    /// timer and its stick latches (fp+1A4C..1A51) and the scratch words
+    /// the thrown rows read at the same offsets.
+    pub(super) fn carried_into_throw(&self) -> CarriedIntoThrow {
+        CarriedIntoThrow {
+            timer: self.timer,
+            stick_directions: self.stick_directions,
+            jump_requested: self.jump_requested,
+            fast_remaining: self.fast_remaining,
         }
     }
 
@@ -668,6 +695,7 @@ mod tests {
             percent_scale: 1.6,
             decrement: 1.0,
             mash_decrement: 6.0,
+            thrown_mash_decrement: 6.0,
             fast_frames: 10.0,
             fast_rate: 2.0,
             escape_speed: 1.0,

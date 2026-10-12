@@ -1194,7 +1194,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         anim: callbacks::animation::throw,
         iasa: callbacks::input::catch,
         physics: callbacks::physics::throw,
-        collision: callbacks::collision::grab_hold,
+        collision: callbacks::collision::throw,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
@@ -1873,6 +1873,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         action: ActionId(S::ThrowHi as u16),
         id: S::ThrowHi,
         animation: 249,
+        camera: callbacks::camera::throw_up,
         ..rows[S::ThrowB as usize]
     };
     rows[S::ThrowLw as usize] = MotionRow {
@@ -1904,6 +1905,7 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         action: ActionId(S::ThrownHi as u16),
         id: S::ThrownHi,
         animation: 264,
+        camera: callbacks::camera::thrown_up,
         ..rows[S::ThrownB as usize]
     };
     rows[S::ThrownLw as usize] = MotionRow {

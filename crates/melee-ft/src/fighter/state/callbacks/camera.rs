@@ -10,6 +10,27 @@ pub fn follow_fighter(fighter: &mut Fighter, phase: CameraPhase<'_>) {
     update(&mut fighter.core, phase, false);
 }
 
+/// ftCo_ThrowHi_Cam (800DDC70): a throw that leaves the screen
+/// (ftCamera_800762F4) moves the camera bone alone; the box stays where the
+/// throw began.
+pub fn throw_up(fighter: &mut Fighter, phase: CameraPhase<'_>) {
+    let throw = melee_types::CommonMotionState::ThrowHi;
+    if (fighter.character.table().throw_traits)(throw).leaves_the_screen {
+        fighter.core.camera.bone_position = camera_bone(&mut fighter.core);
+    } else {
+        update(&mut fighter.core, phase, false);
+    }
+}
+
+/// ftCo_ThrownHi_Cam (800DE720): the same for the fighter such a throw holds.
+pub fn thrown_up(fighter: &mut Fighter, phase: CameraPhase<'_>) {
+    if fighter.core.combat.thrown_hold.leaves_the_screen {
+        fighter.core.camera.bone_position = camera_bone(&mut fighter.core);
+    } else {
+        update(&mut fighter.core, phase, false);
+    }
+}
+
 /// ftCo_Cliff_Cam (80081644), ftcliffcommon.c:143-151: the camera box, then,
 /// while the fighter hangs in the air, the supporting stage joint is told
 /// (mpLib_8005811C with mv.co.cliff.ledge_id) and the subject's on_ledge bit

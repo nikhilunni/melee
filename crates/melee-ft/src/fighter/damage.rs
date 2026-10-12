@@ -46,6 +46,13 @@ pub struct CombatState {
     pub carrier_airborne: bool,
     pub capture_geometry: super::grab_throw::CaptureGeometry,
     pub thrown_pose: Option<super::grab_throw::ThrownPose>,
+    /// mv.co.throw: a thrower's flight off the floor (ftCo_800DD398 clears it).
+    pub throw_flight: super::throw_flight::ThrowFlight,
+    /// What a thrower's callback asked of the fighter it holds this proc;
+    /// the scene runs it on the pair.
+    pub thrown_request: super::throw_flight::ThrownRequest,
+    /// mv.co.thrown and the grab timer of a thrown fighter (ftCo_800DE3FC).
+    pub thrown_hold: super::throw_flight::ThrownHold,
     pub grab: Option<super::grab::GrabLink>,
     pub hitlag_remaining: f32,
     /// x2219_b7 and a freeze held past the countdown (hitlag_link).

@@ -1359,6 +1359,7 @@ impl FighterCore {
         // fighter.c:344.
         self.combat.struck_hitlag = false;
         self.status.unconditional_top_exit = false; // fighter.c:1075
+        self.status.blast_zone_exempt = false; // fighter.c:1040
         self.combat.armor = 0.0;
         self.status.ignore_fighter_nudge = false;
         // fighter.c:1069, 1085: x2220_b3 and x2224_b4.

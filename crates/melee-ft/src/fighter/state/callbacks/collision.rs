@@ -150,6 +150,16 @@ pub fn catch(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }
 
+/// ftData_MotionStateList: ftCo_MS_ThrowF..ThrowLw (219..222).
+/// ftCo_ThrowF_Coll (800DD990) and its siblings: the grab's hold on the
+/// ground, a flight's landing tests in the air.
+pub fn throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    if fighter.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
+        return fighter.throw_air_collision(phase);
+    }
+    grab_hold(fighter, phase)
+}
+
 /// ftData_MotionStateList: ftCo_MS_CatchPull (213), ftCo_MS_CatchWait (216),
 /// ftCo_MS_ThrowF..ThrowLw (219..222) while grounded: ft_800841B8 -> ft_800827A0
 /// (mpColl_8004B2DC), which stops at the floor's edge. Losing the floor would
@@ -159,7 +169,7 @@ pub fn grab_hold(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
     assert_eq!(
         fighter.core.physics.ground_or_air,
         melee_types::GroundOrAir::Ground,
-        "ftCo_Throw*_Coll: airborne throw collision (ft_80083C00 / ft_80083CE4)"
+        "ftCo_CatchWait_Coll and its siblings: a grab's hold off the floor"
     );
     if map_escape(
         &mut fighter.core.physics,
@@ -170,7 +180,10 @@ pub fn grab_hold(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
         fighter.core.input.current.stick.x,
     ) == WaitGroundResult::EnterFall
     {
-        unimplemented!("ftCo_800DC920: a grab pair losing its floor");
+        unimplemented!(
+            "fn_800DA004 / fn_800DA440 / fn_800DD684 (ftCo_Throw.c:225-234): a grab pair \
+             losing its floor (ftCo_800DC920, both to Fall)"
+        );
     }
     Ok(())
 }

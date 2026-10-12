@@ -168,7 +168,7 @@ fn shoulder(f: &mut Fighter, state: S) {
 }
 
 impl Fighter {
-    /// ftCo_ThrowF_Anim (800DD7DC), at the forward throw's end: a kind with
+    /// ftCo_ThrowF_Anim (800DD8C4), at the forward throw's end: a kind with
     /// x2222_b0 keeps the victim on its shoulder (ftCo_8009B56C).
     pub(super) fn carries_cargo(&self) -> bool {
         self.core.capabilities.cargo.is_some()
@@ -820,7 +820,8 @@ pub fn apply(
         CargoRequest::Throw { direction } => {
             let states = [S::ThrownFF, S::ThrownFB, S::ThrownFHi, S::ThrownFLw];
             let state = states[usize::from(direction)];
-            grab_throw::enter_thrown(victim, carrier, va, aa, state, victim_motion(state), 1.0)
+            let (motion, traits) = (victim_motion(state), Default::default());
+            grab_throw::enter_thrown(victim, carrier, va, aa, state, motion, 1.0, traits)
         }
     }
 }

@@ -73,6 +73,7 @@ pub mod state;
 pub mod stop_ceil;
 pub mod stop_wall;
 pub mod teeter;
+pub mod throw_flight;
 pub mod transform;
 pub mod tether;
 pub mod turn;
@@ -434,10 +435,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         }
     }
 
-    /// ftCo_800DD398's kind switch (ftCo_Throw.c:145-157) and
+    /// ftCo_800DD398's kind switch (ftCo_Throw.c:145-157), ftCo_800DD724's
+    /// and ftCo_ThrowHi_Cam's kind tests (ftCo_Throw.c:287, 441) and
     /// ftCo_800DE3FC's thrower test (ftCo_Thrown.c:36), by the throw's
-    /// state, before either fighter changes motion.
-    const THROW_ENTRY: Option<fn(&mut Fighter, melee_types::CommonMotionState)> = None;
+    /// state.
+    const THROW_TRAITS: fn(melee_types::CommonMotionState) -> throw_flight::ThrowTraits =
+        throw_flight::ordinary_throw;
 
     /// ftCommon_8007F824 / 8007F86C, after damage entry and on hitstun expiry.
     const KNOCKBACK_ENTER: fn(&mut Fighter, &assets::FighterAssets) = character::no_animation;
@@ -952,6 +955,9 @@ pub struct Status {
     pub ledge_timed_out: bool,
     /// x2222_b3: count a top exit without upward knockback.
     pub unconditional_top_exit: bool,
+    /// x2219_b2: ftCo_800D3158 does not test this fighter against the blast
+    /// zone. Every motion change clears it (fighter.c:1040).
+    pub blast_zone_exempt: bool,
     /// x2228_b2: suppress grabs while another state owns ledge detection.
     pub ledge_grab_disabled: bool,
     /// x221D_b7: hanging/ledge-option state, cleared on motion entry.
@@ -993,6 +999,7 @@ impl Status {
             ledge_cooldown: 0,
             ledge_timed_out: false,
             unconditional_top_exit: false,
+            blast_zone_exempt: false,
             ledge_grab_disabled: false,
             on_ledge: false,
             grab_exclusions: ledge::GrabExclusions::NONE,

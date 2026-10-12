@@ -73,15 +73,15 @@ pub fn jab(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     fighter.core.physics_jab(phase)
 }
 
-/// ftCo_ThrowF_Phys (800DD838) and its siblings on the ground: ft_80085004.
-/// The airborne arms (ft_80085134, mv.co.throw) are not ported.
+/// ftCo_ThrowF_Phys (800DD930) and its siblings: ft_80085004 on the ground;
+/// in the air TransN's velocity (ft_80085134) or a frozen flight's.
 pub fn throw(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
-    assert_eq!(
-        fighter.core.physics.ground_or_air,
-        melee_types::GroundOrAir::Ground,
-        "ftCo_Throw*_Phys: an airborne throw (ft_80085134)"
-    );
     let PhysicsPhase { assets, map, wind } = phase;
+    if fighter.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
+        fighter.core.throw_air_velocity();
+        fighter.core.finish_air_update(assets, wind);
+        return;
+    }
     fighter.core.throw_physics(assets, map, wind)
 }
 

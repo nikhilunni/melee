@@ -2,6 +2,7 @@
 use crate::attributes::{read_kirby_attributes, KirbyAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
+    throw_flight::ThrowTraits,
     ActionId, AerialJumpStyle, Capabilities, CharacterCallbacks, Fighter, MotionRow,
 };
 use melee_types::FighterKind;
@@ -144,20 +145,19 @@ fn cape_turn_blocked(f: &mut Fighter) -> bool {
 
 /// The down throw is the common grounded one. The other three leave the
 /// ground from their scripts and are not ported.
-fn throw_entry(_fighter: &mut Fighter, throw: melee_types::CommonMotionState) {
+fn throw_traits(throw: melee_types::CommonMotionState) -> ThrowTraits {
     use melee_types::CommonMotionState as S;
     match throw {
         S::ThrowF | S::ThrowB => unimplemented!(
-            "ftCo_ThrowF_Phys / ftCo_ThrowF_Coll (ftCo_Throw.c:311-340): Kirby's airborne forward \
-             and back throws (ft_80085134, ft_80083C00, ft_80083CE4), whose victim keeps its grab \
-             timer (ftCo_800DE3FC, ftCo_Thrown.c:36)"
+            "ftCo_800DE3FC (ftCo_Thrown.c:36): Kirby's forward and back throws, whose victim \
+             keeps its grab timer"
         ),
         S::ThrowHi => unimplemented!(
             "ftCo_800DD398 (ftCo_Throw.c:146-150): Kirby's up throw, x2219_b2 on both fighters \
              until the script's flag (ftCo_800DD724, ftCo_Throw.c:287), and ftCo_ThrowHi_Cam's \
              ftCamera_800762F4"
         ),
-        _ => {}
+        _ => ThrowTraits::default(),
     }
 }
 
@@ -177,7 +177,7 @@ impl CharacterCallbacks for Kirby {
     const RESET_DRAW: Option<fn(&mut melee_ft::fighter::CharacterState, &mut gekko_math::HsdRng)> =
         Some(draw_stone_form);
     const RESET_DRAW_COUNT: usize = 1;
-    const THROW_ENTRY: Option<fn(&mut Fighter, melee_types::CommonMotionState)> = Some(throw_entry);
+    const THROW_TRAITS: fn(melee_types::CommonMotionState) -> ThrowTraits = throw_traits;
     /// ftCo_800C3538's x2222_b2.
     const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = cape_turn_blocked;
     /// fn_800F6210 / fn_800F6318 and ftCo_800BD1DC: the Inhale's catch.
@@ -254,7 +254,7 @@ impl CharacterCallbacks for Kirby {
     /// Fighter_procMap (fighter.c:2494): ftKb_SpecialN_800F1D24.
     const AFTER_COLLISION: Option<fn(&mut Fighter)> = Some(crate::bump_star::after_collision);
 
-    /// ftCo_Throw.c:145-157: the FTKIND_KIRBY arm is `THROW_ENTRY`.
+    /// ftCo_Throw.c:145-157: the FTKIND_KIRBY arm is `THROW_TRAITS`.
     fn throw_variant(&self) {}
     fn kind(&self) -> FighterKind {
         FighterKind::Kirby

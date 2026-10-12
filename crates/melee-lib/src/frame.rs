@@ -1604,6 +1604,9 @@ impl Runtime {
                     partner_fighters::act(state, player)?;
                 }
                 if proc == FighterProc::Map {
+                    // fn_800DD568 / fn_800DD5EC: a thrower's landing resumes
+                    // the fighter it holds within its collision callback.
+                    grab_pairs::thrown_request(state, player);
                     if let Some(snapshots) = self.after_map.as_mut() {
                         snapshots.push((
                             player,
@@ -1929,6 +1932,25 @@ impl Runtime {
                     grab_pairs::sync_wait(state, player)?;
                     grab_pairs::release(state, player)?;
                     grab_pairs::special_throw_release(state, player)?;
+                    // ftCo_800DD724's freeze follows its release
+                    // (ftCo_Throw.c:269-293).
+                    grab_pairs::thrown_request(state, player);
+                    if grab_pairs::thrown_escape(state, player)? {
+                        // fn_800DC070 / ftCo_CaptureCut_Enter: the thrown
+                        // fighter's Fighter_ChangeMotionState flushes its
+                        // efAsync queue (fighter.c:951).
+                        crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                            state.effects.flush::<RetailTrig>(
+                                melee_ef::EffectTiming::Immediate,
+                                player,
+                                &mut f.core,
+                                &state.assets.common_particle_bank,
+                                &state.assets.particle_bank,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )
+                        })?;
+                    }
                     let assets = &state.assets;
                     use crate::scene_fighter::with_fighter;
                     let mut bodies = [melee_coll::overlap::OverlapBody::default(); MAX_FIGHTERS];

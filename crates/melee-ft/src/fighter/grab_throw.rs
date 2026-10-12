@@ -144,9 +144,7 @@ pub fn enter_throw(
     aa: &FighterAssets,
 ) -> Result<()> {
     attacker.character.throw_variant();
-    if let Some(entry) = attacker.character.table().throw_entry {
-        entry(attacker, throw.state);
-    }
+    let traits = (attacker.character.table().throw_traits)(throw.state);
     let rate = prepare_throw(throw, &victim.core, &mut attacker.core, aa);
     attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
@@ -158,7 +156,14 @@ pub fn enter_throw(
         throw.victim_state,
         throw.victim_motion,
         rate,
+        traits,
     )?;
+    // ftCo_800DD398's kind switch (ftCo_Throw.c:146-150), after both motion
+    // changes cleared the bit.
+    if traits.leaves_the_screen {
+        attacker.core.status.blast_zone_exempt = true;
+        victim.core.status.blast_zone_exempt = true;
+    }
     // ftCo_800DD398's tail, ftColl_8007B7A4(gobj, PlCo +348): x1994 =
     // max(x1994, frames) and colour animation 9 (x198C's flash type is
     // renderer state), as the revival platform's exit does.
@@ -213,7 +218,8 @@ pub(super) fn throw_source<'a>(
 /// ftCo_800DE3FC (800DE3FC): the victim's half of a throw's entry. Its
 /// XRotN is pinned to the thrower (ftCo_800DB368), it takes the thrower's
 /// facing and plays the thrower's row `victim_motion` in `victim_state` at
-/// `rate`.
+/// `rate`. Its grab timer goes unless the thrower's kind keeps it.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn enter_thrown(
     victim: &mut Fighter,
     attacker: &mut Fighter,
@@ -222,8 +228,11 @@ pub(super) fn enter_thrown(
     victim_state: S,
     victim_motion: i32,
     rate: f32,
+    traits: super::throw_flight::ThrowTraits,
 ) -> Result<()> {
     let saved_translation = prepare_thrown_pose(&mut victim.core, &mut attacker.core, va);
+    victim.core.combat.thrown_hold =
+        super::throw_flight::ThrownHold::entering(&victim.core.state_data, traits);
     let held_in_mouth = attacker.character.mouth_capture_scale().is_some();
     let source = throw_source(aa, va, victim_motion);
     victim.change_motion_state_with_source(victim_state.into(), va, 0.0, rate, Some(source))?;
@@ -558,6 +567,7 @@ fn prepare_throw(
         1.0 / (victim.attributes.size.weight * aa.throw_weight_scale)
     };
     attacker.commands.variables[0] = 0;
+    attacker.combat.throw_flight = super::throw_flight::ThrowFlight::default();
     attacker.commands.grab_release = false;
     attacker.commands.throw_reverse = false;
     attacker.commands.throw_accessory = false;

@@ -237,7 +237,15 @@ pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
     }
     let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
     let Some(GrabLink::Holding { victim, .. }) = link else {
-        panic!("throw without victim");
+        // ftCo_800DD724 (ftCo_Throw.c:269-278): the flag is spent and the
+        // thrower can be grabbed again, with nobody left to release (the
+        // thrown fighter mashed out, ftCo_800DE5A4).
+        with_fighter!(&mut state.fighters[player], |f| {
+            assert!(!f.in_cargo_throw(), "a cargo throw without a victim");
+            f.core.commands.grab_release = false;
+            f.core.status.grab_exclusions = melee_ft::fighter::ledge::GrabExclusions::NONE;
+        });
+        return Ok(());
     };
     let other = state
         .fighters
@@ -256,6 +264,65 @@ pub(super) fn release(state: &mut InitialState, player: usize) -> Result<()> {
         )
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
+}
+
+/// What a thrower's callback asked of the fighter it holds: ftCo_800DE920
+/// on the script's flag (ftCo_800DD724, the thrower's animation callback or
+/// its landing), ftCo_800DE974 when the thrower lands (fn_800DD568,
+/// fn_800DD5EC, its collision callback). Nothing for a thrower that holds
+/// nobody any more.
+pub(super) fn thrown_request(state: &mut InitialState, player: usize) {
+    use melee_ft::fighter::throw_flight;
+    let request = with_fighter!(&mut state.fighters[player], |f| std::mem::take(
+        &mut f.combat.thrown_request
+    ));
+    if request == throw_flight::ThrownRequest::default() {
+        return;
+    }
+    let Some(other) = held_victim(state, player) else {
+        return;
+    };
+    // lb_8000C1C0: the held fighter's animation step reads the thrower's
+    // TransN2 as it now stands.
+    constrain(state, other);
+    with_fighter!(&mut state.fighters[other], |v| {
+        if let Some(frame) = request.freeze_at {
+            v.core.freeze_thrown(frame);
+        }
+        if request.clear_blast_exemption {
+            v.core.status.blast_zone_exempt = false;
+        }
+        if request.resume {
+            throw_flight::resume_thrown(v, &state.assets.fighters[other]);
+        }
+    });
+}
+
+/// ftCo_800DE5A4: a thrown fighter that kept its grab timer spent it. It
+/// leaves the throw by fn_800DC070 or ftCo_CaptureCut_Enter, whose
+/// ftCo_800DC920 reads the thrower. Returns whether it did.
+pub(super) fn thrown_escape(state: &mut InitialState, player: usize) -> Result<bool> {
+    let Some(escape) = with_fighter!(&mut state.fighters[player], |f| f
+        .combat
+        .thrown_hold
+        .escape
+        .take())
+    else {
+        return Ok(false);
+    };
+    let other = captor_of(state, player).expect("a thrown fighter's thrower");
+    let (victim, thrower) = pair(&mut state.fighters, player, other);
+    with_fighter!(thrower, |t| with_fighter!(victim, |v| {
+        melee_ft::fighter::throw_flight::escape_thrown(
+            v,
+            t,
+            &state.assets.fighters[player],
+            &mut state.map,
+            escape,
+        )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(true)
 }
 
 /// The cargo carrier's state changes move the fighter it holds

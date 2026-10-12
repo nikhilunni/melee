@@ -309,6 +309,7 @@ impl Fighter {
         if matches!(self.core.state_data, MotionData::Life(_))
             || self.core.status.disabled
             || self.core.status.ledge_grab_disabled
+            || self.core.status.blast_zone_exempt
         {
             return Ok(());
         }
