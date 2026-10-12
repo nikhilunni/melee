@@ -35,6 +35,14 @@ def test_steps_hold_a_pad_until_it_changes_and_stop_at_the_tick_limit():
     assert steps[4].endswith("buttons = {  }, raw = {  } },")
 
 
+def test_a_recorded_start_press_is_not_fed_to_retail():
+    # Start held on a recorded frame: the console ran with Pause off.
+    records = [record(1, 1, button=0x1000), record(2, 1, button=0x1100), record(3, 1, button=0x100)]
+    steps = s2s.steps(records, 4, TABLE)
+    assert [line.split("raw = ")[1] for line in steps] == ["{  } },", "{ button = 256 } },"]
+    assert not any("Start" in line for line in steps)
+
+
 def test_the_boundary_must_be_the_replays_match():
     header = {"stage": "Battlefield", "time_limit": 480,
               "players": [{"slot": 1, "kind": "Marth", "costume": 1, "stocks": 4},

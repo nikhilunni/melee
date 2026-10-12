@@ -62,6 +62,11 @@ import replay_to_scenario as pads
 
 #: Scenario.validate's limit (melee-sim scenario.rs).
 MAX_TICKS = 30_000
+#: The Start button's pad bit. A recorded frame with Start held is a console
+#: with Pause off (a paused game records no frames, and the press that ends
+#: a pause is never recorded): the boundary's match pauses, so Start is not
+#: fed to it. The port has no pause either.
+START = 1 << 12
 
 
 def load_boundary(name: str) -> tuple[dict, dict]:
@@ -141,7 +146,7 @@ def steps(records: list[dict], ticks: int, table: dict) -> list[str]:
             continue
         slot = record["slot"]
         buttons, raw = {}, {}
-        held = record["button"] & sum(pads.BUTTONS)
+        held = record["button"] & sum(pads.BUTTONS) & ~START
         for bit, key in pads.BUTTONS.items():
             if held & bit:
                 buttons[key] = True

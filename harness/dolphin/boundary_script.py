@@ -128,6 +128,14 @@ def fighter_count(players: list[int]) -> int:
     """Fighter GObjs a match creates for these CSS kinds (Nana is her own)."""
     return sum(2 if kind == CKIND_ICE_CLIMBERS else 1 for kind in players)
 MS_SLEEP = 11    # ftCo_MS_Sleep: a transforming character's inactive form
+# CKIND_ZELDA (and CKIND_SEAK once A is held): the port's other form is a
+# third fighter, created after the awake ones and asleep from the start.
+CKIND_ZELDA = 0x12
+
+
+def sleeper_count(players: list[int]) -> int:
+    """Sleeping fighter GObjs a match creates for these CSS kinds."""
+    return sum(kind == CKIND_ZELDA for kind in players)
 
 PULSE_PERIOD = 40   # menus ignore input for ~40 frames after a transition
 PRESS_FRAMES = 3
@@ -249,10 +257,15 @@ class BoundaryDriver:
             # Every fighter created and in Entry: a fighter still inside
             # Fighter_Create reads as motion 0 at the origin, before its CPU
             # setup draws, and would leave the seed short of post-creation.
-            # A transforming character's other form sleeps and makes no entry.
-            fighters = [f for f in self.read_fighters() if f["motion_id"] != MS_SLEEP]
+            # A transforming character's other form sleeps and makes no entry;
+            # it is created last, and the frame callback can fall before it
+            # (a Sheik start on Final Destination saved two draws early).
+            created = self.read_fighters()
+            fighters = [f for f in created if f["motion_id"] != MS_SLEEP]
+            asleep = len(created) - len(fighters)
             if len(fighters) == fighter_count(self.config["players"]) and all(
-                    f["motion_id"] == MS_ENTRY for f in fighters):
+                    f["motion_id"] == MS_ENTRY for f in fighters) and (
+                    asleep == sleeper_count(self.config["players"])):
                 if self.game_start_seed is not None and self.seed_replaced is None:
                     raise BoundaryError("the match was created without passing fn_8016E730's "
                                         "gm_801A4B08 call: the Game Start seed was not written")
