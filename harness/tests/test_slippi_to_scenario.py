@@ -59,18 +59,21 @@ def test_the_boundary_must_be_the_replays_match():
         s2s.check_setup(header, {**cold, "fighters": other_ports}, "b")
 
 
-def write_boundary(scenarios, name, stage, codes, seed=7, game_start_seed=None):
+def write_boundary(scenarios, name, stage, codes, seed=7, game_start_seed=None, spawn_points=None):
     """A make_boundary.py start scene and cold twin, as that command writes them."""
     players, slots = ["Falco", "Marth"], [0, 3]
     (scenarios / f"{name}.toml").write_text(
         mb.start_scenario(name, stage, players, 4, codes, slots, game_start_seed))
     (scenarios / f"{name}_cold.toml").write_text(
-        mb.cold_scenario(name, stage, players, 4, seed, [3, 4], "retail", codes, slots, 8, game_start_seed))
+        mb.cold_scenario(name, stage, players, 4, seed, [3, 4], "retail", codes, slots, 8, game_start_seed,
+                         spawn_points))
 
 
-def write_inputs(path, stage, **header):
+def write_inputs(path, stage, spawn_points=None, **header):
     players = [{"slot": 0, "kind": "Falco", "costume": 3, "stocks": 4, "controller_fix": "ucf-0.8"},
                {"slot": 3, "kind": "Marth", "costume": 4, "stocks": 4, "controller_fix": "ucf-0.8"}]
+    for player, point in zip(players, spawn_points or []):
+        player["spawn_point"] = point
     lines = [{"boundary_seed": 99, "all_characters_unlocked": True, "time_limit": 480, "stage": stage,
               "ticks": 3, "players": players, **header},
              record(1, 0, button=0x100), record(1, 3), record(2, 0), record(2, 3)]
@@ -163,6 +166,24 @@ def test_a_stadium_that_never_transforms_takes_any_boundary_of_the_setup(scenari
     write_inputs(scenarios / "inputs.jsonl", "PokemonStadium", game_start_seed=41, **{flag: True})
     s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp", "--boundary", "start_ps"])
     assert "game_start_seed" not in tomllib.loads((scenarios / "slp.toml").read_text())
+
+
+def test_a_replay_that_names_spawn_points_needs_a_boundary_made_with_them(scenarios):
+    inputs = scenarios / "inputs.jsonl"
+    write_inputs(inputs, "Battlefield", spawn_points=[0, 1])
+    args = [str(inputs), "--name", "slp", "--boundary"]
+    # The menus' boundary starts port 4 at marker 3.
+    write_boundary(scenarios, "start_menus", "Battlefield", ["ucf-0.8"])
+    with pytest.raises(SystemExit, match="--spawn-points 0 1"):
+        s2s.main([*args, "start_menus"])
+    write_boundary(scenarios, "start_points", "Battlefield", ["ucf-0.8"], spawn_points=[0, 1])
+    s2s.main([*args, "start_points"])
+    twin = tomllib.loads((scenarios / "slp_cold.toml").read_text())
+    assert [f["spawn_point"] for f in twin["fighters"]] == [0, 1]
+    # And a replay that names none is not a spawn-point boundary's match.
+    write_inputs(inputs, "Battlefield")
+    with pytest.raises(SystemExit, match="spawn at points"):
+        s2s.main([str(inputs), "--name", "slp2", "--boundary", "start_points"])
 
 
 def test_other_stages_take_any_boundary_of_the_setup(scenarios):

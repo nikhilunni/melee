@@ -45,6 +45,10 @@ accelerations and Fountain of Dreams' first platform waits outlive the
 boundary, and a replay bridged from any other boundary leaves the console's
 random stream there. Such a boundary serves that one replay; the cold twin
 names the seed, and its gate checks the port's setup draws reach the saved one.
+`--spawn-points 0 1` gives each player that spawn point (the stage's marker),
+written into the match's start data as it is created: a console whose replay
+names spawn points (`spawn_point` per player in `--retail-inputs`) started
+its players there whatever their ports, and the cold twin's fighters name them.
 A code the port names with a scenario flag (`ps-preload`: `stadium_preload`,
 `ps-frozen`: `stadium_frozen`, `frozen-stages`: `frozen_stages`, `widescreen`:
 `widescreen`, `widescreen-92-63` (the same code with its earlier aspect):
@@ -165,13 +169,15 @@ inputs = []
 def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: int,
                   costumes: list[int], spawn: str | None = None,
                   codes: list[str] | None = None, slots: list[int] | None = None,
-                  time_limit: int = 0, game_start_seed: int | None = None) -> str:
+                  time_limit: int = 0, game_start_seed: int | None = None,
+                  spawn_points: list[int] | None = None) -> str:
     slots = slots or list(range(len(players)))
     timer_line = f"time_limit = {time_limit * 60}\n" if time_limit else ""
     spawn_line = f'spawn = "{spawn}"\n' if spawn else ""
+    points = [f"spawn_point = {p}\n" for p in spawn_points] if spawn_points else [""] * len(players)
     fighters = "\n".join(
         f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\ncostume = {costumes[i]}\nstocks = {stocks}\n'
-        f'controller = "idle"\n{fix_line(codes)}' for i, kind in enumerate(players))
+        f'{points[i]}controller = "idle"\n{fix_line(codes)}' for i, kind in enumerate(players))
     return f'''# Parameters only; seed is after stage/fighter creation, before music.
 # Stock {stocks}, items off, normal Versus Entry, human ports, neutral pads.
 name = "{name}_cold"
@@ -198,7 +204,8 @@ def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed:
 def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
                    transform: list[int] | None = None, costumes: list[int] | None = None,
                    codes: list[str] | None = None, slots: list[int] | None = None,
-                   time_limit: int = 0, game_start_seed: int | None = None) -> dict:
+                   time_limit: int = 0, game_start_seed: int | None = None,
+                   spawn_points: list[int] | None = None) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
     for p in (done, err):
@@ -213,6 +220,7 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                                       **({"ports": slots} if slots else {}),
                                       **({"game_start_seed": game_start_seed}
                                          if game_start_seed is not None else {}),
+                                      **({"spawn_points": spawn_points} if spawn_points else {}),
                                       **({"costumes": costumes} if costumes else {})}))
         dolphin = dolphin_config.binary()
         flags = dolphin_flags(dolphin, ports=len(players))
@@ -272,10 +280,13 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--game-start-seed", type=int, metavar="SEED",
                     help="create the match from this seed (a replay's Game Start seed: "
                          "`game_start_seed` in melee-sim replay --retail-inputs)")
+    ap.add_argument("--spawn-points", type=int, nargs="+", metavar="MARKER",
+                    help="each player's spawn point (a replay's `spawn_point` per player in "
+                         "melee-sim replay --retail-inputs)")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
-    if (a.gecko or a.spawn or a.ports or a.time_limit or a.game_start_seed is not None) \
-            and not a.no_register:
+    if (a.gecko or a.spawn or a.ports or a.time_limit or a.game_start_seed is not None
+            or a.spawn_points) and not a.no_register:
         # boundaries.toml describes explorer matches: retail spawns, first
         # ports, no timer, no codes, the seed the menus left.
         sys.exit("a boundary with codes, ports, a timer or a Game Start seed is not an explorer "
@@ -293,6 +304,8 @@ def main(argv: list[str] | None = None) -> None:
         os.environ[dolphin_config.SI_PORTS_ENV] = ",".join(str(s) for s in slots)
     if a.costumes is not None and len(a.costumes) != len(a.players):
         sys.exit("--costumes needs one costume per player")
+    if a.spawn_points is not None and len(a.spawn_points) != len(a.players):
+        sys.exit("--spawn-points needs one spawn point per player")
     transform = sorted(set(a.transform) | {i for i, p in enumerate(a.players) if p in TRANSFORMED})
     if not 2 <= len(a.players) <= 4:
         sys.exit("a boundary has 2 to 4 players")
@@ -309,7 +322,7 @@ def main(argv: list[str] | None = None) -> None:
     t0 = time.monotonic()
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
                              a.stocks, a.timeout, transform, a.costumes, a.gecko, slots, a.time_limit,
-                             a.game_start_seed)
+                             a.game_start_seed, a.spawn_points)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]
@@ -318,11 +331,14 @@ def main(argv: list[str] | None = None) -> None:
     if a.game_start_seed is not None:
         print(f"   created from Game Start seed {a.game_start_seed} (it replaced {summary['seed_replaced']})",
               flush=True)
+    if a.spawn_points is not None:
+        print(f"   spawn points {a.spawn_points} (they replaced {summary['spawn_points_replaced']})",
+              flush=True)
 
     scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks, a.gecko, slots,
                                        a.game_start_seed))
     cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes, a.spawn, a.gecko,
-                                  slots, a.time_limit, a.game_start_seed))
+                                  slots, a.time_limit, a.game_start_seed, a.spawn_points))
     print(f"== recording {scenario.name}", flush=True)
     # record_many gives the run a private Dolphin user folder, so parallel
     # make_boundary runs (one per agent) never share config or card writes.

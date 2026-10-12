@@ -1118,13 +1118,20 @@ pub fn write_retail_inputs(
         .fighters
         .iter()
         .map(|f| {
-            serde_json::json!({
+            let mut player = serde_json::json!({
                 "slot": f.slot,
                 "kind": f.kind,
                 "costume": f.costume,
                 "stocks": f.stocks,
                 "controller_fix": f.controller_fix,
-            })
+            });
+            // Game Start's spawn point (PlayerInitData +5), when the console
+            // named one: fn_8016D8AC copies it (0x8016D9E4..0x8016D9F0) and the
+            // menus leave -1 (`make_boundary.py --spawn-points`).
+            if f.spawn_point != -1 {
+                player["spawn_point"] = f.spawn_point.into();
+            }
+            player
         })
         .collect();
     let mut header = serde_json::json!({

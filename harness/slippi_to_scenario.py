@@ -142,6 +142,14 @@ def check_setup(header: dict, cold: dict, boundary: str) -> None:
     """The boundary must be the replay's match."""
     want = [(p["slot"], p["kind"], p["costume"], p["stocks"]) for p in header["players"]]
     have = [(f["slot"], f["kind"], f.get("costume", 0), f.get("stocks", 4)) for f in cold["fighters"]]
+    # A console that named spawn points (Game Start, per player) placed its
+    # players at those markers whatever their ports.
+    points = [p.get("spawn_point", -1) for p in header["players"]]
+    made_points = [f.get("spawn_point", -1) for f in cold["fighters"]]
+    if points != made_points:
+        sys.exit(f"{boundary} is not the replay's match: the replay's players spawn at points "
+                 f"{points}, the boundary's at {made_points}; make the boundary with "
+                 f"--spawn-points {' '.join(str(p) for p in points)}")
     replay = (header["stage"], header.get("time_limit"), want)
     made = (cold["stage"], cold.get("time_limit"), have)
     if replay != made:
@@ -262,9 +270,13 @@ stage = "{cold["stage"]}"
 {fighters}''')
     timer = f'time_limit = {cold["time_limit"]}\n' if "time_limit" in cold else ""
     spawn = f'spawn = "{cold["spawn"]}"\n' if "spawn" in cold else ""
+    def point(fighter: dict) -> str:
+        return f'spawn_point = {fighter["spawn_point"]}\n' if "spawn_point" in fighter else ""
+
     cold_fighters = "\n".join(
         f'[[fighters]]\nslot = {f["slot"]}\nkind = "{f["kind"]}"\ncostume = {f.get("costume", 0)}\n'
-        f'stocks = {f.get("stocks", 4)}\ncontroller = "scripted"\n{fix(f)}' for f in cold["fighters"])
+        f'stocks = {f.get("stocks", 4)}\n{point(f)}controller = "scripted"\n{fix(f)}'
+        for f in cold["fighters"])
     twin = data_root.SCENARIOS / f"{a.name}_cold.toml"
     twin.write_text(f'''{comment}# The port's side of {a.name}: boundary {a.boundary} built from
 # parameters, the replay's seed in place of its own, and the pads that

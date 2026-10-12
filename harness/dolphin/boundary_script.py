@@ -25,6 +25,12 @@ API has memory breakpoints only, so the hook is the first store after that
 address: gm_801A4B08 (called at 0x8016E75C) stores
 gm_AnyControllerPressedStart at gm_80479D58 +0x14, and nothing between the
 two addresses draws.
+`spawn_points` (optional) gives each player's spawn point, written at the
+same hook into the match's start data (gmVsMelee_StartData's PlayerInitData
++5, which the menus leave at -1: the port's own marker). fn_8016D8AC copies
+it into the match info afterwards (0x8016D9E4, gm_16AE.c:1586) and fn_8016DEEC places the
+player at that marker. A console whose replay names spawn points (Game
+Start's per-player block) ran a code that set them.
 
 Every frame `BoundaryDriver.step` reads the game's own scene state and decides
 the inputs, so no step depends on timing or screenshots:
@@ -117,6 +123,11 @@ SEED_ADDR = symbols.addr("seed")
 # 0x8016E74C, where Slippi reads the Game Start seed.
 MATCH_START_TEST = symbols.addr("gm_80479D58") + 0x14
 MATCH_START_TEST_FN = symbols.addr("gm_AnyControllerPressedStart")
+# gmVsMelee_StartData (StartMeleeData): rules (0x60), then one PlayerInitData
+# (0x24) per port; +0 is the character kind, +5 the spawn point.
+VS_START_PLAYERS = symbols.addr("gmVsMelee_StartData") + 0x60
+START_PLAYER_SIZE = 0x24
+START_PLAYER_SPAWN = 5
 ENTITIES_ADDR = symbols.addr("HSD_GObj_Entities")
 MS_ENTRY = 322   # ftCo_MS_Entry, every fighter's first match state
 # pl/player.c:58 ftMapping_list: CKIND_POPONANA creates a second fighter
@@ -179,6 +190,10 @@ class BoundaryDriver:
         # the creation hook has written it.
         self.game_start_seed: int | None = config.get("game_start_seed")
         self.seed_replaced: int | None = None
+        # Each player's spawn point, and what the hook found there.
+        self.spawn_points: list[int] | None = config.get("spawn_points")
+        self.spawn_points_replaced: list[int] | None = None
+        self.creation_hooked = False
         self.watching_creation = False
 
     # --- memory ----------------------------------------------------------
@@ -218,7 +233,7 @@ class BoundaryDriver:
         self.frame += 1
         if self.frame > TIMEOUT_FRAMES:
             raise BoundaryError(f"no boundary after {TIMEOUT_FRAMES} frames (phase {self.phase})")
-        if self.watching_creation and self.seed_replaced is not None:
+        if self.watching_creation and self.creation_hooked:
             # Not from inside the breakpoint's own callback.
             self.mem.remove_memcheck(MATCH_START_TEST)
             self.watching_creation = False
@@ -247,7 +262,7 @@ class BoundaryDriver:
         if self.phase == "start":
             if mode == GM_VS and state == VS_STATE_SSS and self.ptr(SSS_DATA_PTR):
                 self.mem.write_u8(self.ptr(SSS_DATA_PTR) + SSS_FORCE_STAGE, self.config["stkind"])
-                if self.game_start_seed is not None:
+                if self.hooks_creation():
                     self.mem.add_memcheck(MATCH_START_TEST)
                     self.watching_creation = True
                 self.enter("match")
@@ -266,9 +281,13 @@ class BoundaryDriver:
             if len(fighters) == fighter_count(self.config["players"]) and all(
                     f["motion_id"] == MS_ENTRY for f in fighters) and (
                     asleep == sleeper_count(self.config["players"])):
-                if self.game_start_seed is not None and self.seed_replaced is None:
+                if self.hooks_creation() and not self.creation_hooked:
+                    missed = " and ".join(
+                        what for what, named in (("the Game Start seed was", self.game_start_seed),
+                                                 ("the spawn points were", self.spawn_points))
+                        if named is not None)
                     raise BoundaryError("the match was created without passing fn_8016E730's "
-                                        "gm_801A4B08 call: the Game Start seed was not written")
+                                        f"gm_801A4B08 call: {missed} not written")
                 self.save(self.config["savestate"])
                 self.done = True
                 self.enter("saved")
@@ -277,13 +296,28 @@ class BoundaryDriver:
 
     def on_memory(self, is_write: bool, addr: int, value: int) -> None:
         """The creation hook (a memory breakpoint; the CPU is stopped inside
-        gm_801A4B08): replace the seed fn_8016E730 creates the match from."""
-        if not self.watching_creation or self.seed_replaced is not None:
+        gm_801A4B08): replace the seed fn_8016E730 creates the match from,
+        and the spawn points fn_8016D8AC is about to copy."""
+        if not self.watching_creation or self.creation_hooked:
             return
         if not is_write or addr != MATCH_START_TEST or value != MATCH_START_TEST_FN:
             return
-        self.seed_replaced = self.mem.read_u32(SEED_ADDR)
-        self.mem.write_u32(SEED_ADDR, self.game_start_seed)
+        self.creation_hooked = True
+        if self.game_start_seed is not None:
+            self.seed_replaced = self.mem.read_u32(SEED_ADDR)
+            self.mem.write_u32(SEED_ADDR, self.game_start_seed)
+        if self.spawn_points is not None:
+            self.spawn_points_replaced = []
+            for player, point in enumerate(self.spawn_points):
+                base = VS_START_PLAYERS + self.ports[player] * START_PLAYER_SIZE
+                if self.mem.read_s8(base) != self.config["players"][player]:
+                    raise BoundaryError(f"the start data's player {self.ports[player]} is character "
+                                        f"{self.mem.read_s8(base)}, not {self.config['players'][player]}")
+                self.spawn_points_replaced.append(self.mem.read_s8(base + START_PLAYER_SPAWN))
+                self.mem.write_u8(base + START_PLAYER_SPAWN, point & 0xFF)
+
+    def hooks_creation(self) -> bool:
+        return self.game_start_seed is not None or self.spawn_points is not None
 
     def poke_save_data(self) -> None:
         mem = self.mem
@@ -405,10 +439,15 @@ class BoundaryDriver:
                 **self.creation_seed()}
 
     def creation_seed(self) -> dict:
-        """The seed the match was created from, when the config named one."""
-        if self.game_start_seed is None:
-            return {}
-        return {"game_start_seed": self.game_start_seed, "seed_replaced": self.seed_replaced}
+        """The seed the match was created from and the spawn points it was
+        given, when the config named them."""
+        out = {}
+        if self.game_start_seed is not None:
+            out |= {"game_start_seed": self.game_start_seed, "seed_replaced": self.seed_replaced}
+        if self.spawn_points is not None:
+            out |= {"spawn_points": self.spawn_points,
+                    "spawn_points_replaced": self.spawn_points_replaced}
+        return out
 
 
 def main() -> None:
@@ -432,7 +471,7 @@ def main() -> None:
         except Exception:  # noqa: BLE001
             err.write_text(f"frame {driver.frame} creation hook\n{traceback.format_exc()}")
 
-    if driver.game_start_seed is not None:
+    if driver.hooks_creation():
         event.on_memorybreakpoint(on_memory)
 
     def on_frame():

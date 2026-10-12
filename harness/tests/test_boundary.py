@@ -204,14 +204,14 @@ def test_widescreen_sets_its_aspects_flag_in_the_start_scene_and_its_cold_twin(c
     assert start["gecko"] == [code] and "gecko" not in cold
 
 
-def creation_driver(seed=0x1234_5678):
+def creation_driver(seed=0x1234_5678, **named):
     """A driver on the stage screen whose config names a Game Start seed."""
     mem = Memory()
     mem.add_memcheck = lambda addr: watched.append(addr)
     mem.remove_memcheck = lambda addr: watched.remove(addr)
     watched: list[int] = []
     config = {"savestate": "/x.sav", "stkind": 0x20, "players": [9, 9], "stocks": 4,
-              "game_start_seed": seed}
+              **({"game_start_seed": seed} if seed is not None else {}), **named}
     d = bs.BoundaryDriver(config, mem, save=lambda path: None)
     d.phase = "start"
     mem.write_u8(bs.SCENE_MACHINE, bs.GM_VS)
@@ -250,6 +250,59 @@ def test_a_match_created_without_the_seed_written_is_not_saved(monkeypatch):
     with pytest.raises(bs.BoundaryError, match="Game Start seed was not written"):
         d.step()
     assert not d.done
+
+
+def start_player(port: int) -> int:
+    return bs.VS_START_PLAYERS + port * bs.START_PLAYER_SIZE
+
+
+def test_spawn_points_are_written_into_the_start_data_when_the_match_is_created():
+    # Ice Climbers and Samus on ports 1 and 4, at the stage's markers 0 and 1.
+    d, mem, watched = creation_driver(seed=None, players=[14, 16], ports=[0, 3], spawn_points=[0, 1])
+    for port, kind in ((0, 14), (3, 16)):
+        mem.write_u8(start_player(port), kind)
+        mem.write_u8(start_player(port) + bs.START_PLAYER_SPAWN, 0xFF)   # the menus' -1
+    d.step()
+    assert watched == [bs.MATCH_START_TEST]
+    d.on_memory(True, bs.MATCH_START_TEST, bs.MATCH_START_TEST_FN)
+    assert [mem.read_s8(start_player(port) + bs.START_PLAYER_SPAWN) for port in (0, 3)] == [0, 1]
+    # The seed is the menus' own: no Game Start seed was named.
+    assert mem.read_u32(bs.SEED_ADDR) == 99
+    assert d.creation_seed() == {"spawn_points": [0, 1], "spawn_points_replaced": [-1, -1]}
+    d.step()
+    assert watched == []
+
+
+def test_spawn_points_are_refused_when_the_start_data_holds_another_character():
+    d, mem, watched = creation_driver(players=[14, 16], ports=[0, 3], spawn_points=[0, 1])
+    mem.write_u8(start_player(0), 14)
+    mem.write_u8(start_player(3), 9)
+    d.step()
+    with pytest.raises(bs.BoundaryError, match="player 3 is character 9, not 16"):
+        d.on_memory(True, bs.MATCH_START_TEST, bs.MATCH_START_TEST_FN)
+
+
+def test_a_match_created_without_the_spawn_points_written_is_not_saved(monkeypatch):
+    d, mem, watched = creation_driver(seed=None, spawn_points=[0, 1])
+    d.step()
+    fighters = [{"motion_id": bs.MS_ENTRY}, {"motion_id": bs.MS_ENTRY}]
+    monkeypatch.setattr(d, "read_fighters", lambda: fighters)
+    with pytest.raises(bs.BoundaryError, match="the spawn points were not written"):
+        d.step()
+    assert not d.done
+
+
+def test_a_spawn_point_boundary_names_them_in_its_cold_twin_and_is_never_registered():
+    cold = tomllib.loads(mb.cold_scenario("b", "PokemonStadium", ["IceClimbers", "Samus"], 4, 7, [1, 4],
+                                          "retail", ["ucf-0.73"], [0, 3], 8, None, [0, 1]))
+    assert [(f["slot"], f["spawn_point"]) for f in cold["fighters"]] == [(0, 0), (3, 1)]
+    plain = tomllib.loads(mb.cold_scenario("b", "PokemonStadium", ["IceClimbers", "Samus"], 4, 7, [1, 4]))
+    assert all("spawn_point" not in f for f in plain["fighters"])
+    with pytest.raises(SystemExit, match="--no-register"):
+        mb.main(["--stage", "PokemonStadium", "--players", "IceClimbers", "Samus", "--spawn-points", "0", "1"])
+    with pytest.raises(SystemExit, match="one spawn point per player"):
+        mb.main(["--stage", "PokemonStadium", "--players", "IceClimbers", "Samus", "--spawn-points", "0",
+                 "--no-register"])
 
 
 def test_a_boundary_without_a_game_start_seed_sets_no_breakpoint():
