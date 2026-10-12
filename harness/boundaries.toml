@@ -585,3 +585,156 @@ stage = "FinalDestination"
 players = ["IceClimbers", "Peach"]
 stocks = 4
 seed = 176491922
+
+[[boundary]]
+name = "start_bf_bowser_marth4"
+cold = "start_bf_bowser_marth4_cold"
+savestate = "harness/roms/start_bf_bowser_marth4.sav"
+stage = "Battlefield"
+players = ["Bowser", "Marth"]
+stocks = 4
+seed = 396423658
+
+[[boundary]]
+name = "start_dl_donkeykong_peach4"
+cold = "start_dl_donkeykong_peach4_cold"
+savestate = "harness/roms/start_dl_donkeykong_peach4.sav"
+stage = "DreamLand"
+players = ["DonkeyKong", "Peach"]
+stocks = 4
+seed = 1088776646
+
+[[boundary]]
+name = "start_ys_drmario_samus4"
+cold = "start_ys_drmario_samus4_cold"
+savestate = "harness/roms/start_ys_drmario_samus4.sav"
+stage = "YoshisStory"
+players = ["DrMario", "Samus"]
+stocks = 4
+seed = 3780528771
+
+[[boundary]]
+name = "start_fod_ganondorf_link4"
+cold = "start_fod_ganondorf_link4_cold"
+savestate = "harness/roms/start_fod_ganondorf_link4.sav"
+stage = "FountainOfDreams"
+players = ["Ganondorf", "Link"]
+stocks = 4
+seed = 2619413890
+
+[[boundary]]
+name = "start_dl_luigi_iceclimbers4"
+cold = "start_dl_luigi_iceclimbers4_cold"
+savestate = "harness/roms/start_dl_luigi_iceclimbers4.sav"
+stage = "DreamLand"
+players = ["Luigi", "IceClimbers"]
+stocks = 4
+seed = 1519822064
+
+[[boundary]]
+name = "start_bf_mewtwo_peach4"
+cold = "start_bf_mewtwo_peach4_cold"
+savestate = "harness/roms/start_bf_mewtwo_peach4.sav"
+stage = "Battlefield"
+players = ["Mewtwo", "Peach"]
+stocks = 4
+seed = 3763671827
+
+[[boundary]]
+name = "start_ys_ness_marth4"
+cold = "start_ys_ness_marth4_cold"
+savestate = "harness/roms/start_ys_ness_marth4.sav"
+stage = "YoshisStory"
+players = ["Ness", "Marth"]
+stocks = 4
+seed = 1434975614
+
+[[boundary]]
+name = "start_fod_pichu_samus4"
+cold = "start_fod_pichu_samus4_cold"
+savestate = "harness/roms/start_fod_pichu_samus4.sav"
+stage = "FountainOfDreams"
+players = ["Pichu", "Samus"]
+stocks = 4
+seed = 45688817
+
+[[boundary]]
+name = "start_dl_roy_link4"
+cold = "start_dl_roy_link4_cold"
+savestate = "harness/roms/start_dl_roy_link4.sav"
+stage = "DreamLand"
+players = ["Roy", "Link"]
+stocks = 4
+seed = 2973719761
+
+[[boundary]]
+name = "start_bf_sheik_iceclimbers4"
+cold = "start_bf_sheik_iceclimbers4_cold"
+savestate = "harness/roms/start_bf_sheik_iceclimbers4.sav"
+stage = "Battlefield"
+players = ["Sheik", "IceClimbers"]
+stocks = 4
+seed = 2245583548
+
+[[boundary]]
+name = "start_ys_younglink_peach4"
+cold = "start_ys_younglink_peach4_cold"
+savestate = "harness/roms/start_ys_younglink_peach4.sav"
+stage = "YoshisStory"
+players = ["YoungLink", "Peach"]
+stocks = 4
+seed = 2606367415
+
+[[boundary]]
+name = "start_fod_zelda_marth4"
+cold = "start_fod_zelda_marth4_cold"
+savestate = "harness/roms/start_fod_zelda_marth4.sav"
+stage = "FountainOfDreams"
+players = ["Zelda", "Marth"]
+stocks = 4
+seed = 3327954167
+
+[[boundary]]
+name = "start_bf_gameandwatch_link4"
+cold = "start_bf_gameandwatch_link4_cold"
+savestate = "harness/roms/start_bf_gameandwatch_link4.sav"
+stage = "Battlefield"
+players = ["GameAndWatch", "Link"]
+stocks = 4
+seed = 681742994
+
+[[boundary]]
+name = "start_ys_samus_falco4"
+cold = "start_ys_samus_falco4_cold"
+savestate = "harness/roms/start_ys_samus_falco4.sav"
+stage = "YoshisStory"
+players = ["Samus", "Falco"]
+stocks = 4
+seed = 1009000238
+
+[[boundary]]
+name = "start_dl_yoshi_sheik4"
+cold = "start_dl_yoshi_sheik4_cold"
+savestate = "harness/roms/start_dl_yoshi_sheik4.sav"
+stage = "DreamLand"
+players = ["Yoshi", "Sheik"]
+stocks = 4
+seed = 1620380779
+
+[[boundary]]
+name = "start_fod_captainfalcon_zelda4"
+cold = "start_fod_captainfalcon_zelda4_cold"
+savestate = "harness/roms/start_fod_captainfalcon_zelda4.sav"
+stage = "FountainOfDreams"
+players = ["CaptainFalcon", "Zelda"]
+stocks = 4
+seed = 3429719979
+
+[[boundary]]
+name = "start_bf_pikachu_ganondorf4"
+cold = "start_bf_pikachu_ganondorf4_cold"
+savestate = "harness/roms/start_bf_pikachu_ganondorf4.sav"
+stage = "Battlefield"
+players = ["Pikachu", "Ganondorf"]
+stocks = 4
+seed = 3458432933
