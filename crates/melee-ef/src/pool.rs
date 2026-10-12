@@ -202,6 +202,7 @@ impl Effect {
         self.facing_rotation = None;
         self.follow_bone = None;
         self.follow_item = None;
+        self.item_bone = None;
         self.child_drift_z = None;
         self.blade_transition = false;
         self.expiring = false;

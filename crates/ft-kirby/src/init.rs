@@ -46,6 +46,8 @@ pub struct Kirby {
     pub damage_callbacks: bool,
     /// What accessory4_cb does while it is installed.
     pub accessory: Accessory,
+    /// Fighter +222C (u.kb.hat.x0): the hammer article is out.
+    pub hammer_out: bool,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -55,6 +57,8 @@ pub enum Accessory {
     None,
     /// fn_800F21E8: Final Cutter's beam on the script's flag.
     CutterBeam,
+    /// fn_800F53AC: the hammer article on the script's flags.
+    Hammer,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -74,6 +78,7 @@ impl Kirby {
             final_cutter: Default::default(),
             damage_callbacks: false,
             accessory: Accessory::None,
+            hammer_out: false,
         }
     }
 }
@@ -209,9 +214,9 @@ impl CharacterCallbacks for Kirby {
                 }
                 crate::special_n::enter(f, airborne, assets)
             }
-            SpecialSlot::Side => unimplemented!(
-                "ftKb_SpecialS_Enter / ftKb_SpecialAirS_Enter (ftkirbyspecials.c): Hammer"
-            ),
+            // ftKb_SpecialS_Enter (800F5550) / ftKb_SpecialAirS_Enter
+            // (800F55C0).
+            SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
             // ftKb_SpecialHi_Enter (800F2300) / ftKb_SpecialAirHi_Enter
             // (800F23B8).
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
@@ -236,6 +241,7 @@ impl CharacterCallbacks for Kirby {
         }
         match f.character.get::<Kirby>().accessory {
             Accessory::CutterBeam => crate::special_hi::beam_accessory(f),
+            Accessory::Hammer => crate::special_s::hammer_accessory(f),
             Accessory::None => {}
         }
     }
@@ -250,6 +256,9 @@ impl CharacterCallbacks for Kirby {
         Some(crate::bump_star::spawn);
     /// Fighter_procMap (fighter.c:2494): ftKb_SpecialN_800F1D24.
     const AFTER_COLLISION: Option<fn(&mut Fighter)> = Some(crate::bump_star::after_collision);
+    /// itKirbyHammer_Logic8_Destroyed: ftKb_SpecialAirLw_800F539C.
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) =
+        crate::special_s::article_destroyed;
 
     /// ftCo_Throw.c:145-157: the FTKIND_KIRBY arm is `THROW_TRAITS`.
     fn throw_variant(&self) {}
@@ -262,9 +271,11 @@ impl CharacterCallbacks for Kirby {
     fn from_archive(data: &hsd_archive::Archive) -> Result<Self, melee_ft::desc::FighterDescError> {
         Ok(Self::new(read_kirby_attributes(data)?))
     }
-    /// Fighter +2230, the Stone form a savestate holds.
+    /// Fighter +2230, the Stone form a savestate holds; +222C is the hammer
+    /// article, which no start boundary has out.
     fn restore_saved(&mut self, raw: &[u8]) {
         self.stone_form = i32::from_be_bytes(raw[0x2230..0x2234].try_into().unwrap());
+        assert_eq!(raw[0x222C..0x2230], [0; 4], "a saved hammer article");
     }
     /// ftKb_Init_OnLoad (800EE680): PUSH_ATTRS, can_multijump, x2D0 =
     /// dat_attrs. The four item registrations (it_8026B3F8: the Cutter
@@ -278,6 +289,7 @@ impl CharacterCallbacks for Kirby {
     fn on_reset(&mut self) {
         self.model_groups = [0; 2];
         self.copied = FighterKind::Kirby;
+        self.hammer_out = false;
         // u.kb.x60 and x64.
         self.bump_star_cooldown = 0;
         self.hammer_lift_used = false;

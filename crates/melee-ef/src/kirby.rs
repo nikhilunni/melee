@@ -12,6 +12,10 @@ const RAPID_JAB_CHILD_START: f32 = 6.0;
 const RAPID_JAB_CHILD_STEP: f32 = 2.0;
 /// efAlt_Spawn 0x49A's generator, in Kirby's bank: the Inhale's wind.
 const INHALE_WIND_GENERATOR: u32 = 0x138B;
+/// efAlt_Spawn 0x498 / 0x499's models: the hammer article's own effect,
+/// swung on the ground and in the air.
+const HAMMER_MODELS: [u32; 2] = [0x138E, 0x138F];
+const HAMMER_GROUND_REQUEST: u16 = 0x498;
 const KIRBY_BANK: u8 = 5;
 /// efAlt_Spawn 0x494's models: Final Cutter's blade, two on the sword
 /// joint and one on the second joint the caller names.
@@ -211,6 +215,71 @@ impl Effects {
             self.instances.push(effect);
         }
         Ok(())
+    }
+
+    /// efAlt_Spawn 0x498 / 0x499 (efalt.c:281-288), from the hammer
+    /// article's creation (itkirbyhammer.c setupHammerParticles: efAsync
+    /// kind 0 on the model's attach joint): efLib_Create_AttachChild(0x138E
+    /// / 0x138F) with the item as the parent, on that joint.
+    /// TODO(orientation): AttachChild's lb_8000C290 orientation constraint
+    /// is not applied (drawn pose only).
+    #[allow(clippy::too_many_arguments)]
+    pub fn spawn_kirby_hammer_model<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        item: u32,
+        bone: usize,
+        matrix: Mtx,
+        common_bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let model = HAMMER_MODELS[usize::from(id != HAMMER_GROUND_REQUEST)];
+        let mut effect = self.acquire(model, particles);
+        effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+        self.next_joint += effect.tree.len();
+        // efLib_Create's parent_gobj: Item_8026A8EC's efLib_DestroyAll
+        // takes the model with the hammer.
+        effect.owner = Some(ModelOwner::Item(item));
+        effect.attachment = None;
+        effect.item_bone = Some((item, bone as u8));
+        effect.tree.set_translate(
+            effect.root,
+            &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+        );
+        effect.animate_banks::<T>(
+            resources::Banks {
+                common: common_bank,
+                characters: &self.character_banks,
+            },
+            particles,
+            rng,
+            &mut self.draws,
+            &mut self.events,
+        )?;
+        self.instances.push(effect);
+        Ok(())
+    }
+
+    /// The item bones models are attached to, as (item, bone).
+    pub fn item_bone_models(&self) -> impl Iterator<Item = (u32, usize)> + '_ {
+        self.instances
+            .iter()
+            .filter_map(|effect| effect.item_bone)
+            .map(|(item, bone)| (item, usize::from(bone)))
+    }
+
+    /// lb_8000C1C0's position constraint for a model on an item's bone: the
+    /// bone's world translation, read before this update's animation.
+    pub fn place_item_bone_models(&mut self, item: u32, bone: usize, matrix: &Mtx) {
+        let position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
+        for effect in self
+            .instances
+            .iter_mut()
+            .filter(|effect| effect.item_bone == Some((item, bone as u8)))
+        {
+            effect.tree.set_translate(effect.root, &position);
+        }
     }
 
     /// efAlt_Spawn 0x49A (efalt.c:289-291), from the Inhale's start rows

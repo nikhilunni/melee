@@ -23,8 +23,19 @@ pub struct KirbyAttributes {
     pub inhale_minimum_frames: i16,
     /// +38..+C8: the Inhale's catch, the mouthful, the swallow and the spit.
     pub inhale: InhaleAttributes,
+    /// +CC, +D0: Hammer.
+    pub hammer: HammerAttributes,
     /// +D4..+E4: Final Cutter.
     pub final_cutter: FinalCutterAttributes,
+}
+
+/// ftKb_DatAttrs +CC, +D0 (`specials_*`).
+#[derive(Clone, Debug, PartialEq)]
+pub struct HammerAttributes {
+    /// +CC: the upward speed of the first aerial Hammer of a flight.
+    pub aerial_lift: f32,
+    /// +D0: the landing lag of an aerial Hammer that reaches the floor.
+    pub landing_lag: f32,
 }
 
 /// ftKb_DatAttrs +38..+C8 (`specialn_*`), named for what the code does with
@@ -164,6 +175,10 @@ impl KirbyAttributes {
                     left: Vec2::new(r.f32(0xBC)?, r.f32(0xC0)?),
                     right: Vec2::new(r.f32(0xC4)?, r.f32(0xC8)?),
                 },
+            },
+            hammer: HammerAttributes {
+                aerial_lift: r.f32(0xCC)?,
+                landing_lag: r.f32(0xD0)?,
             },
             final_cutter: FinalCutterAttributes {
                 vertical_momentum: r.f32(0xD4)?,

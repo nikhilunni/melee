@@ -148,6 +148,9 @@ struct Effect {
     /// The same callback on an item's root JObj (the fire arrow's flame,
     /// efSync 0x448): the item and the world-axis offset.
     follow_item: Option<(u32, Vec3)>,
+    /// eflib_create_effect_and_attach on an item's model bone: the model
+    /// sits at (item, bone)'s world position (`place_item_bone_models`).
+    item_bone: Option<(u32, u8)>,
     /// efLib_Cb_SetJObjOffsetZ (eflib.c:1126): after each update's
     /// animation, the root's first child moves this far along its own Z.
     child_drift_z: Option<f32>,
@@ -786,6 +789,7 @@ impl Effects {
                 id:
                     id @ (0x488..=0x48C
                     | 0x491..=0x493
+                    | 0x496..=0x497
                     | 0x4C6..=0x4CA
                     | 0x4D6
                     | 0x4EE..=0x4EF
@@ -801,6 +805,10 @@ impl Effects {
                     0x491 => 0xFA4,
                     0x492 => 0xFA3,
                     0x493 => 0xFA5,
+                    // efalt.c:272-280: efLib_Create_Attach(0x138C / 0x138D),
+                    // the trails of Kirby's Hammer on the ground and in
+                    // the air.
+                    0x496..=0x497 => 0x138C + u32::from(id - 0x496),
                     // efsync.c:164-211: Donkey Kong's models 0x1F40..0x1F44
                     // (Headbutt ground and air, Giant Punch ground and air,
                     // Spinning Kong).
@@ -848,8 +856,9 @@ impl Effects {
                 );
                 // efLib_Create_Attach_Scale_FacingDir (eflib.c:606-628) for
                 // efSync 0x4C6/0x4C7: efLib_Cb_SetRotY_FromFighterDir as the
-                // update callback, no rotation at creation.
-                let follows_facing = matches!(id, 0x4C6..=0x4C7);
+                // update callback, no rotation at creation. efAlt 0x497
+                // installs the same callback on a plain efLib_Create_Attach.
+                let follows_facing = matches!(id, 0x497 | 0x4C6..=0x4C7);
                 // efsync.c:185, 201: efSync 0x4C8/0x4C9 run HSD_JObjAnimAll on
                 // the new model themselves, before efLib_AnimQueue's drain.
                 let animated_at_creation = matches!(id, 0x4C8..=0x4C9);
@@ -2098,6 +2107,7 @@ impl Effect {
             follow_bone_height: None,
             lifetime_end_spawn: None,
             follow_item: None,
+            item_bone: None,
             child_drift_z: None,
             blade_transition: false,
             expiring: false,

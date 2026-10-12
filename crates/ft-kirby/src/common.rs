@@ -134,6 +134,19 @@ pub fn joint_position(f: &mut Fighter, joint: usize) -> hsd_types::Vec3 {
     )
 }
 
+/// it_8026BB68 -> ftLib_80086990: the fighter's position raised to the
+/// middle of its ECB (retail 800869AC..BC: fadds, fmuls, fadds), where an
+/// article's ray spawn starts.
+pub fn ecb_centre(f: &Fighter) -> hsd_types::Vec3 {
+    let c = &f.core;
+    let midpoint = 0.5 * (c.collision.data.ecb.top.y + c.collision.data.ecb.bottom.y);
+    hsd_types::Vec3::new(
+        c.physics.position.x + 0.0,
+        c.physics.position.y + midpoint,
+        c.physics.position.z + 0.0,
+    )
+}
+
 /// ftCommon_GroundAirColl_MF: SkipMatAnim, SkipColAnim, UpdateCmd,
 /// SkipItemVis, Unk19, SkipModelPartVis, SkipModelFlags, Unk27.
 pub const GROUND_AIR_COLL_BASE_FLAGS: MotionEntryFlags =

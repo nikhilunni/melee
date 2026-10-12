@@ -109,6 +109,11 @@ pub enum ItemEvent {
     /// efAsync kind 0 (EF_SPAWN_ATTACH) on one of the model's bones
     /// (xBBC_dynamicBoneTable->bones[bone]): efAlt's attached generator.
     BoneGenerator { id: u16, bone: usize },
+    /// efAsync kind 0 on a joint of the model for an efAlt row that makes
+    /// a model with the item as its parent (efLib_Create_AttachChild: the
+    /// hammer of Kirby's side special, 0x498 / 0x499). `bone` is the
+    /// joint's depth-first index.
+    BoneModel { id: u16, bone: usize },
     /// efLib_Cb_DPtcl from the item's joint animation: generator `id` of
     /// `bank` attached to the model root, whose transform at the AnimAll
     /// step is given.
@@ -187,7 +192,14 @@ pub enum ItemScratch {
     MewtwoDisable(DisableState),
     ShadowBall(ShadowBallState),
     CutterBeam(CutterBeamState),
+    KirbyHammer(KirbyHammerState),
     None,
+}
+/// Item.xDD4_itemVar.kirbyhammer (itkirbyhammer.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct KirbyHammerState {
+    /// x0: it_802ADC54's `vars`, the owner's ground_or_air at the swing.
+    pub airborne: bool,
 }
 /// Item.xDD4_itemVar.koopaflame (itkoopaflame.c): one flame of Bowser's
 /// Fire Breath.

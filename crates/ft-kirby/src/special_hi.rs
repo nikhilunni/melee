@@ -463,17 +463,12 @@ pub fn beam_accessory(f: &mut Fighter) {
     f.effects.push(EffectRequest::ExpireOwned);
     point.y -= BEAM_DROP;
     // it_8029BAB8: Item_InitRaySpawnPosition from Kirby's ECB centre
-    // (it_8026BB68 -> ftLib_80086990, retail 800869AC..BC: fadds, fmuls,
-    // fadds); it_8029BB90 reads his root's X rotation.
+    // (it_8026BB68); it_8029BB90 reads his root's X rotation.
     let angle = f.core.part_rotation_x(0);
+    let origin = common::ecb_centre(f);
     let c = &mut f.core;
     let mut spawn = SpawnItem::ray(ItemKind::KirbyCBeam, c.player.id, point, facing);
-    let midpoint = 0.5 * (c.collision.data.ecb.top.y + c.collision.data.ecb.bottom.y);
-    spawn.position = hsd_types::Vec3::new(
-        c.physics.position.x + 0.0,
-        c.physics.position.y + midpoint,
-        c.physics.position.z + 0.0,
-    );
+    spawn.position = origin;
     spawn.spawn_argument = angle.to_bits() as i32;
     c.item_requests.push(ItemRequest::Spawn(spawn));
 }
@@ -488,6 +483,8 @@ pub fn damage_callback(f: &mut Fighter) {
     if !std::mem::take(&mut f.character.get_mut::<Kirby>().damage_callbacks) {
         return;
     }
+    // ftKb_SpecialAirLw_800F5524: the hammer goes.
+    crate::special_s::remove_hammer(f);
     level_root(f);
     assert!(
         f.held_item.is_none(),

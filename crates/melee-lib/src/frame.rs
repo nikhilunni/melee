@@ -493,6 +493,26 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::BoneModel { id, bone } => {
+                        let matrix = article_bone_matrix(
+                            &mut state.fighters,
+                            &mut state.article_poses,
+                            &state.assets.items.article_skeletons,
+                            &state.assets.items,
+                            item,
+                            bone,
+                            self.frame,
+                        );
+                        state.effects.spawn_kirby_hammer_model::<RetailTrig>(
+                            id,
+                            item.id,
+                            bone,
+                            matrix,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::SlashSpark { position } => {
                         state.effects.spawn_item_slash_spark::<RetailTrig>(
                             item.id,
@@ -2229,6 +2249,27 @@ impl Runtime {
                         .find(|i| i.id == id)
                         .map(|i| i.root_translation)
                 });
+                // A model on a posed article's bone follows it.
+                let mut index = 0;
+                loop {
+                    let Some((id, bone)) = state.effects.item_bone_models().nth(index) else {
+                        break;
+                    };
+                    index += 1;
+                    let Some(item) = state.items.iter().find(|i| i.id == id) else {
+                        continue;
+                    };
+                    let matrix = article_bone_matrix(
+                        &mut state.fighters,
+                        &mut state.article_poses,
+                        &state.assets.items.article_skeletons,
+                        &state.assets.items,
+                        item,
+                        bone,
+                        self.frame,
+                    );
+                    state.effects.place_item_bone_models(id, bone, &matrix);
+                }
                 state
                     .effects
                     .tick_with_pause::<melee_ft::fighter::RetailTrig>(

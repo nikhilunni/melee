@@ -1,6 +1,6 @@
 [package]
 name = "it-kirby"
-description = "Kirby's articles: Final Cutter's beam (itkirbycutterbeam.c)"
+description = "Kirby's articles: Final Cutter's beam (itkirbycutterbeam.c), the hammer (itkirbyhammer.c)"
 version.workspace = true
 edition.workspace = true
 

@@ -88,6 +88,7 @@ melee_it::item_kinds! {
         MewtwoDisable: it_mewtwo::MewtwoDisable,
         MewtwoShadowBall: it_mewtwo::MewtwoShadowBall,
         KirbyCBeam: it_kirby::CutterBeam,
+        KirbyHammer: it_kirby::Hammer,
     }
 }
 
@@ -629,7 +630,23 @@ impl Resources {
                 it_kirby::cutter_beam::SPECIAL_ATTRIBUTES,
             )?;
             kinds.push((ItemKind::KirbyCBeam, beam));
-            visual_archives.push((ItemKind::KirbyCBeam, a));
+            visual_archives.push((ItemKind::KirbyCBeam, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[1]: the hammer, whose effect follows its
+            // attach joint.
+            let hammer = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_kirby::hammer::ARTICLE_INDEX,
+                &it_kirby::hammer::ARTICLE_STATES,
+                0,
+            )?;
+            article_skeletons.push(crate::article_pose::ArticleSkeleton::load(
+                ItemKind::KirbyHammer,
+                &a,
+                &hammer.visual,
+            )?);
+            kinds.push((ItemKind::KirbyHammer, hammer));
+            visual_archives.push((ItemKind::KirbyHammer, a));
         }
         // ftSk_Init_OnLoad: ftData.x48_items[2] is Vanish's smoke. Sheik's
         // articles load with Zelda too: both forms come to every match.
