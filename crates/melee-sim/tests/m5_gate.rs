@@ -2838,6 +2838,31 @@ fn gobj_addresses_match_retail_ledgers() {
     }
 }
 
+/// fn_8012EDE8 (0x8012EDE8), the Egg Roll's take-damage hook, spawns its
+/// shell burst at once (efSync_Spawn 0x4CF): the twelve fragments draw
+/// (0x80060848, 0x800608D4, 0x800608E0) before ftCo_8008DCE0 draws the
+/// DamageFlyRoll roll (0x8008E124). `YOSHI/Game_20190309T173757` on retail,
+/// every tick, from its own boundary: Yoshi, hit out of the aerial roll at
+/// 9961, stays in DamageFlyN (the port's roll took the value before the
+/// fragments' and entered DamageFlyRoll).
+///
+/// Gated here on every key and item, the random seed included, rather than
+/// in `SLIPPI_REPLAY_WITNESSES`: on four ticks (4954, 5555, 7417, 8799) the
+/// particle call sites come in another order, each about 24 ticks into an
+/// aerial Egg Throw (the fault `docs/SLIPPI.md` records for
+/// `slp_bf_yoshi_samus_t1000`), which that list would also assert.
+#[test]
+fn egg_roll_shell_burst_draws_before_the_reaction_roll() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../harness/scenarios/slp_fod_yoshi_yoshi_r1_t10100_cold.toml");
+    let scenario = Scenario::load(&path).unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    assert_eq!(scenario.frames, 10100);
+    trace::gate_items(&scenario).unwrap();
+}
+
 #[test]
 fn slippi_replay_inputs_match_retail() {
     for (name, ticks) in SLIPPI_REPLAY_WITNESSES {

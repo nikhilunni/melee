@@ -401,9 +401,12 @@ impl Effects {
                 spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                 continue;
             }
-            if let EffectRequest::EggShell { bone, scale } = request {
+            if let EffectRequest::EggShell {
+                bone, scale, seed, ..
+            } = request
+            {
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
-                self.spawn_egg_shell::<T>(bank, particles, rng, &matrix, scale)?;
+                self.spawn_egg_shell::<T>(bank, particles, rng, &matrix, scale, seed)?;
                 continue;
             }
             if let EffectRequest::HitSpark {

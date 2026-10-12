@@ -345,6 +345,8 @@ fn break_out(f: &mut Fighter, assets: &FighterAssets, p: EggParameters) -> Resul
         .push(melee_ef::request::EffectRequest::EggShell {
             bone: FtPart::TopN as usize,
             scale: f.core.attributes.yoshi_egg.size,
+            immediate: false,
+            seed: None,
         });
     f.physics.self_velocity = Vec3::new(p.release_velocity.x, p.release_velocity.y, 0.0);
     f.leave_ground();

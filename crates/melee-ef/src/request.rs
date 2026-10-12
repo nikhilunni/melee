@@ -51,6 +51,14 @@ pub enum EffectRequest {
     EggShell {
         bone: usize,
         scale: f32,
+        /// efSync_Spawn from inside a fighter callback (the Egg Roll's
+        /// take-damage hook), where efAsync_Spawn would queue: retail has
+        /// drawn the fragments before the callback returns.
+        immediate: bool,
+        /// The random stream's position where retail created an immediate
+        /// burst, when the requester draws again before the port resolves
+        /// the request (`EffectQueue::reserve_creation_draws`).
+        seed: Option<u32>,
     },
     /// Effect 1030 (0x406): a bounce off a surface at a fixed world point,
     /// rotated to the surface's normal (Fire Fox, tumble bounces).
@@ -354,6 +362,29 @@ impl EffectQueue {
     }
     pub fn len(&self) -> usize {
         self.entries.len()
+    }
+    /// Take the draws a queued efSync_Spawn makes as it creates its models
+    /// out of the stream now. Retail spawns it inside the fighter's
+    /// callback; the port resolves the request after the proc, so a caller
+    /// that draws after such a callback (the damage reaction's roll after
+    /// the take-damage hook) reserves them where retail made them, and the
+    /// spawn replays them from the saved position.
+    pub fn reserve_creation_draws(&mut self, rng: &mut gekko_math::HsdRng) {
+        for entry in self.entries.iter_mut() {
+            if let EffectRequest::EggShell {
+                immediate: true,
+                seed,
+                ..
+            } = &mut entry.request
+            {
+                if seed.is_none() {
+                    *seed = Some(rng.seed);
+                    for _ in 0..crate::egg_shell::CREATION_DRAWS {
+                        rng.rand();
+                    }
+                }
+            }
+        }
     }
     pub fn clear(&mut self) {
         while self.entries.pop().is_some() {}

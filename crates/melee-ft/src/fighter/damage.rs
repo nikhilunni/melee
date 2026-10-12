@@ -1649,6 +1649,11 @@ impl FighterCore {
                 spawn.reserve_launch_draws(rng);
             }
         }
+        // Likewise a model effect the hook spawned at once: the Egg Roll's
+        // shell burst (fn_8012EDE8's efSync_Spawn, 0x8012EE50) draws its
+        // twelve fragments (0x80060848..0x800608E0) before the reaction's
+        // roll (0x8008E124).
+        self.effects.reserve_creation_draws(rng);
     }
     /// ftCo_8008E908 (0x8008E908), before the reaction's motion change clears
     /// the flag: a fighter hit out of a ledge state (x221D_b7: CliffCatch,

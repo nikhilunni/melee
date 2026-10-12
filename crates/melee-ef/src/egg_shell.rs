@@ -4,6 +4,9 @@ use super::*;
 const ANIMATION_QUEUE_CAPACITY: usize = 32;
 // efsync.c:228-292 emits twelve shell fragments per burst.
 const SHELL_COUNT: usize = 12;
+/// efSync_Spawn draws each fragment's model and two angles as it creates
+/// it (0x80060848, 0x800608D4, 0x800608E0).
+pub(crate) const CREATION_DRAWS: usize = 3 * SHELL_COUNT;
 impl Effects {
     #[allow(clippy::too_many_arguments)]
     pub(super) fn spawn_egg_shell<T: InverseTrig>(
@@ -13,19 +16,24 @@ impl Effects {
         rng: &mut HsdRng,
         matrix: &Mtx,
         scale: f32,
+        seed: Option<u32>,
     ) -> Result<()> {
         self.make_room(0x1E, SHELL_COUNT, particles);
+        // The creation draws come from where retail made them when the
+        // requester reserved them; the animations draw from the stream.
+        let mut reserved = seed.map(|seed| HsdRng { seed });
         let mut shells = FixedVec::<_, ANIMATION_QUEUE_CAPACITY>::default();
         for _ in 0..SHELL_COUNT {
-            let id = if rng.randf() < 0.5 { 0x1E } else { 0x1F };
+            let creation = reserved.as_mut().unwrap_or(&mut *rng);
+            let id = if creation.randf() < 0.5 { 0x1E } else { 0x1F };
+            let y = (std::f64::consts::TAU * f64::from(creation.randf())) as f32;
+            let x = (std::f64::consts::TAU * f64::from(creation.randf())) as f32;
             let mut effect = self.acquire(id, particles);
             effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
             self.next_joint += effect.tree.len();
             effect.lifetime = 50;
             effect.indefinite = false;
             // Retail efSync_Spawn: double M_TAU products, then frsp; no FMA.
-            let y = (std::f64::consts::TAU * f64::from(rng.randf())) as f32;
-            let x = (std::f64::consts::TAU * f64::from(rng.randf())) as f32;
             effect
                 .tree
                 .set_scale(effect.root, &Vec3::new(scale, scale, scale));
@@ -102,7 +110,7 @@ impl Effects {
                 matrix.0[0][3] = position.x;
                 matrix.0[1][3] = position.y;
                 matrix.0[2][3] = position.z;
-                self.spawn_egg_shell::<T>(common_bank, particles, rng, &matrix, scale)
+                self.spawn_egg_shell::<T>(common_bank, particles, rng, &matrix, scale, None)
             }
             _ => anyhow::bail!("efAsync item root effect {id:#x} ({parameter:?})"),
         }

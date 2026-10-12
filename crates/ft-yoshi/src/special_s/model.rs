@@ -153,6 +153,8 @@ pub(super) fn burst_shell(f: &mut Fighter) {
     f.effects.push(melee_ef::request::EffectRequest::EggShell {
         bone: part::SHELL,
         scale,
+        immediate: true,
+        seed: None,
     });
 }
 

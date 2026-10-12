@@ -71,6 +71,8 @@ pub fn leave_egg(fighter: &mut Fighter, assets: &FighterAssets) {
     fighter.core.effects.push(EffectRequest::EggShell {
         bone,
         scale: fighter.core.attributes.yoshi_egg.size,
+        immediate: false,
+        seed: None,
     });
 }
 /// ftYs_Init_8012BECC (8012BECC) and, with `reflect`, ftYs_Shield_8012C914
