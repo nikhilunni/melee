@@ -1,0 +1,32 @@
+# The port's side of slp_ps_marth_peach_wide9263_r2_t5400: boundary start_ps_slippi74_ns_frozen_wide9263_p12_marth0_peach0_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_marth_peach_wide9263_r2_t5400_cold"
+expected = "slp_ps_marth_peach_wide9263_r2_t5400"
+frames = 5400
+seed = 325714149
+boundary_seed = 2549275537
+stage = "PokemonStadium"
+stadium_preload = true
+frozen_stages = true
+widescreen_92_63 = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Peach"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

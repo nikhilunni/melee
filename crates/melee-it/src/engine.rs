@@ -1980,6 +1980,10 @@ impl ItemPool {
         if item.grabbable && (item.kind as u32) < ItemKind::LGunRay as u32 {
             item.life_timer -= 1.0;
             if item.life_timer <= 0.0 {
+                // Item_80269528 (item.c:1345, retail 0x80269644..0x8026965C):
+                // destroy_type 0, then Item_8026A8EC, whose ItemSwitch plays
+                // the kind's destroy effect as an ended animation does.
+                item.queue_destroy_effect(assets.destroy_effect, None);
                 item.destroyed = true;
                 return;
             }

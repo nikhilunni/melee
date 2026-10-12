@@ -2575,7 +2575,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 120] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 121] = [
     // A Slippi Online (netplay) game played back whole: every tick starts
     // from the netplay code's seed (InitOnlinePlay.asm's FN_SyncRNG: the
     // scene frame counter turned sixteen bits plus the RNG offset, which the
@@ -3052,6 +3052,12 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 120] = [
     // returning boomerang strikes Marth at 1071.
     ("slp_online_bf_younglink_marth_r224303_t2100_cold", 2100),
     ("slp_online_ys_link_marth_r232021_t1300_cold", 1300),
+    // HNC 6, Marth vs Peach on a frozen Stadium (Widescreen 92:63), every
+    // tick. A Mr. Saturn left on the left platform's edge runs out of
+    // lifetime at record 5250: Item_80269528 destroys it with destroy_type
+    // 0 (0x80269650), and Item_8026A8EC plays the kind's destroy effect
+    // (three spread draws, then effect 64 at the item).
+    ("slp_ps_marth_peach_wide9263_r2_t5400_cold", 5400),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
