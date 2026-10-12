@@ -27,11 +27,13 @@ fn laser_damage_callback_waits_for_item_event_phase() {
     };
     let data = ItemCommonData::read(&common, common.public("itPublicData").unwrap()).unwrap();
     let mut pool = ItemPool::new(data);
+    let mut gobjs = hsd_gobj::GObjAddresses::default();
     let assets = ItemAssets::from_fighter(&fox, fox.public("ftDataFox").unwrap(), 0, 2).unwrap();
     let id = pool
         .spawn::<Items>(
             SpawnItem::ray(ItemKind::FoxLaser, 0, Vec3::ZERO, 1.0),
             &assets,
+            &mut gobjs,
         )
         .unwrap();
     pool.record_damage_dealt(id, 3.0);
@@ -41,7 +43,7 @@ fn laser_damage_callback_waits_for_item_event_phase() {
     pool.process_events::<Items>(id, &assets);
     assert!(pool.get_mut(id).unwrap().destroyed);
     assert_eq!(pool.get_mut(id).unwrap().pending_damage_dealt, 0);
-    pool.remove_destroyed::<Items>();
+    pool.remove_destroyed::<Items>(&mut gobjs);
     assert!(pool.is_empty());
 }
 #[test]
@@ -55,6 +57,7 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
         "retail character category is unbounded"
     );
     let mut pool = ItemPool::new(data);
+    let mut gobjs = hsd_gobj::GObjAddresses::default();
     let rng = std::cell::Cell::new(gekko_math::HsdRng::default());
     // A one-floor map far away: the lasers' animation never touches it.
     let mut map = {
@@ -71,12 +74,14 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
         .spawn::<Items>(
             SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0),
             &blaster,
+            &mut gobjs,
         )
         .unwrap();
     let ray = pool
         .spawn::<Items>(
             SpawnItem::ray(ItemKind::FoxLaser, 0, Vec3::ZERO, 1.0),
             &laser,
+            &mut gobjs,
         )
         .unwrap();
     initialize_laser(pool.get_mut(ray).unwrap(), &laser, 0.0, 7.0, 0);
@@ -107,12 +112,12 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
         "script clears tip capsule after one frame"
     );
     pool.retire(gun);
-    pool.remove_destroyed::<Items>();
+    pool.remove_destroyed::<Items>(&mut gobjs);
     assert_eq!(pool.iter().map(|i| i.id).collect::<Vec<_>>(), [ray]);
     for _ in 1..laser.special_attributes[0] as usize {
         pool.animate::<Items>(ray, &laser, None, None, &mut map, None, &rng);
     }
-    pool.remove_destroyed::<Items>();
+    pool.remove_destroyed::<Items>(&mut gobjs);
     assert!(pool.is_empty());
 }
 
@@ -123,11 +128,13 @@ fn blaster_sounds_follow_open_latch_and_visibility_transitions() {
     };
     let data = ItemCommonData::read(&common, common.public("itPublicData").unwrap()).unwrap();
     let mut pool = ItemPool::new(data);
+    let mut gobjs = hsd_gobj::GObjAddresses::default();
     let assets = ItemAssets::from_fighter(&fox, fox.public("ftDataFox").unwrap(), 1, 9).unwrap();
     let id = pool
         .spawn::<Items>(
             SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0),
             &assets,
+            &mut gobjs,
         )
         .unwrap();
     for control in [
