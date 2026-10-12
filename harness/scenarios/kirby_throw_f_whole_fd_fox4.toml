@@ -1,0 +1,27 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby at -60 facing right, Fox at +60). Kirby grabs Fox in mid-stage and throws him forward at once: the whole throw, Fox launched before his grab timer ends.
+name = "kirby_throw_f_whole_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 248, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 251, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

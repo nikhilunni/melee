@@ -1,0 +1,31 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby at -60 facing right, Fox at +60). Kirby with his back to the left edge at x=-79 throws Fox back: the flight ends just inside the edge and lands; Fox is released past it.
+name = "kirby_throw_b_edge_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 560
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 179, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 135, port = 0, buttons = {  }, raw = {  } },
+  { frame = 175, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 177, port = 0, buttons = {  }, raw = {  } },
+  { frame = 205, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 207, port = 0, buttons = {  }, raw = {  } },
+  { frame = 222, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 225, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

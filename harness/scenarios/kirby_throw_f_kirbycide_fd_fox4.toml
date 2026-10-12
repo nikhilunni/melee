@@ -1,0 +1,29 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby at -60 facing right, Fox at +60). Fox walks toward the right edge; Kirby grabs him at x=71 and throws him forward: the flight carries both past the edge, the script's flag freezes them there and they fall to the blast zone together.
+name = "kirby_throw_f_kirbycide_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 560
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 162, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 216, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 252, port = 0, buttons = {  }, raw = {  } },
+  { frame = 262, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 265, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

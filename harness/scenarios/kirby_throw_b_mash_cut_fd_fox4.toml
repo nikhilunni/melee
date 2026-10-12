@@ -1,0 +1,43 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby at -60 facing right, Fox at +60). Kirby throws Fox back; Fox mashes A and B at once and his grab timer ends before Kirby leaves the floor: CaptureCut on the floor.
+name = "kirby_throw_b_mash_cut_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 560
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 276, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 279, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 282, port = 1, buttons = {  }, raw = {  } },
+  { frame = 282, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 284, port = 1, buttons = {  }, raw = {  } },
+  { frame = 284, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 286, port = 1, buttons = {  }, raw = {  } },
+  { frame = 286, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 288, port = 1, buttons = {  }, raw = {  } },
+  { frame = 288, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 290, port = 1, buttons = {  }, raw = {  } },
+  { frame = 290, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 292, port = 1, buttons = {  }, raw = {  } },
+  { frame = 292, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 294, port = 1, buttons = {  }, raw = {  } },
+  { frame = 294, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 296, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

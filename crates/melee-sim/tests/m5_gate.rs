@@ -2344,7 +2344,7 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // (fn_800F20C4), Fall at its end, a multijump, the ledge.
     ("kirby_dash_attack_fd_fox4", 620),
     // Kirby grabs Fox, pummels once and throws him down: the one throw of
-    // his that stays on the floor (CharacterCallbacks::THROW_ENTRY).
+    // his that stays on the floor.
     ("kirby_throw_lw_fd_fox4", 560),
     // Fox's four throws on Kirby: the pinned victim with thirteen empty
     // hat parts beside XRotN.
@@ -2469,6 +2469,56 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_mouthful_slide_swallow_fd_fox4", 800),
     ("kirby_mouthful_slide_turn_fd_fox4", 800),
     ("kirby_mouthful_slide_squat_fd_fox4", 800),
+    // The three throws that leave the floor from their scripts
+    // (ftCo_ThrowF_Phys / ftCo_ThrowF_Coll's airborne arms), in mid-stage:
+    // the flight on TransN's velocity, the freeze on the script's flag
+    // (ftCo_800DD724, ftCo_800DE920), the landing that resumes both
+    // fighters (fn_800DD568, ftCo_800DE974) and the hop into Fall. In the
+    // forward throw Fox's kept grab timer (ftCo_800DE3FC) ends on the floor
+    // before the release: CaptureCut, and a release with nobody.
+    ("kirby_throw_f_fd_fox4", 560),
+    ("kirby_throw_b_fd_fox4", 560),
+    // The up throw carries both above the top blast line untested
+    // (x2219_b2, CharacterCallbacks::THROW_TRAITS).
+    ("kirby_throw_hi_fd_fox4", 560),
+    // The forward throw whole: thrown at once, Fox is released before his
+    // grab timer ends.
+    ("kirby_throw_f_whole_fd_fox4", 520),
+    // At the edges. A flight that ends just inside lands there; one that
+    // ends past it freezes over the pit and both fall to the blast zone
+    // together: forward off the right edge and (facing left) off the left
+    // one, back off the left edge and (facing left) off the right one.
+    ("kirby_throw_f_edge_fd_fox4", 560),
+    ("kirby_throw_f_kirbycide_fd_fox4", 560),
+    ("kirby_throw_f_left_kirbycide_fd_fox4", 560),
+    ("kirby_throw_b_edge_fd_fox4", 560),
+    ("kirby_throw_b_kirbycide_fd_fox4", 560),
+    ("kirby_throw_b_right_kirbycide_fd_fox4", 560),
+    // Fox mashing out of the forward and back throws (ftCo_800DE5A4, PlCo
+    // +3C8 per input): CaptureCut and CaptureJump (the stick held up) in
+    // the flight, CaptureCut on the floor before it, and a jump latched in
+    // CaptureWait whose release sets him on the floor.
+    ("kirby_throw_f_mash_cut_fd_fox4", 560),
+    ("kirby_throw_f_mash_jump_fd_fox4", 560),
+    ("kirby_throw_b_mash_cut_fd_fox4", 560),
+    ("kirby_throw_b_mash_cut_air_fd_fox4", 560),
+    ("kirby_throw_b_mash_jump_fd_fox4", 560),
+    ("kirby_throw_b_latched_jump_fd_fox4", 560),
+    // Out of the frozen fall past the edge: Fox leaves by CaptureCut and
+    // falls on his own, or by CaptureJump and regains the stage, while
+    // Kirby falls on frozen with nobody.
+    ("kirby_throw_f_kirbycide_cut_fd_fox4", 560),
+    ("kirby_throw_f_kirbycide_jump_fd_fox4", 560),
+    // The up throw beside the left edge (its last hop ends past the edge:
+    // Fall and the ledge), twice in a row (the second at 10%), and with Fox
+    // mashing: the up and down throws take the grab timer, so nothing.
+    ("kirby_throw_hi_edge_fd_fox4", 560),
+    ("kirby_throw_hi_twice_fd_fox4", 640),
+    ("kirby_throw_hi_mash_fd_fox4", 560),
+    ("kirby_throw_lw_mash_fd_fox4", 560),
+    // The mid-stage up throw recorded with the gameplay camera dump
+    // (ftCo_ThrowHi_Cam / ftCo_ThrownHi_Cam: ftCamera_800762F4).
+    ("kirby_throw_hi_camera_fd_fox4", 420),
 ];
 
 #[test]

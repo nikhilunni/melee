@@ -1,0 +1,35 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby at -60 facing right, Fox at +60). The forward throw past the right edge; Fox mashes out of the frozen fall by CaptureCut and falls on his own, Kirby falling frozen with nobody.
+name = "kirby_throw_f_kirbycide_cut_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 560
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 162, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 216, port = 0, buttons = {  }, raw = {  } },
+  { frame = 250, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 252, port = 0, buttons = {  }, raw = {  } },
+  { frame = 262, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 265, port = 0, buttons = {  }, raw = {  } },
+  { frame = 296, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 298, port = 1, buttons = {  }, raw = {  } },
+  { frame = 298, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 300, port = 1, buttons = {  }, raw = {  } },
+  { frame = 300, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 302, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

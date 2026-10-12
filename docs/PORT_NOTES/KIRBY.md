@@ -5,12 +5,12 @@ boundary `start_fd_kirby_fox4`. Crate: `ft-kirby`. Data facts are in
 `docs/KIRBY_DATA.md`.
 
 **Status: stage 2 of three, in part.** Kirby is registered and his movement,
-common attacks, down throw, hit reactions, death and revival are exact. Of
+common attacks, four throws, hit reactions, death and revival are exact. Of
 his own specials (stage 2) the Inhale, with a caught fighter held, spat and
 swallowed, and Final Cutter with its beam are exact; Hammer and Stone are not
 ported, nor is inhaling an item. A swallow leaves the copied kind as state;
 the copy abilities themselves (stage 3) are not ported. Every unported row
-and entry fails closed, as do his three airborne throws.
+and entry fails closed.
 
 ## What is different about him
 
@@ -57,13 +57,43 @@ and entry fails closed, as do his three airborne throws.
 - **The rapid jab** is the common Attack100 with a script effect of its
   own: efAlt 0x49D, one fist model per punch (`melee-ef` `kirby.rs`).
 - **Throws.** The down throw is the common grounded throw. The forward,
-  back and up throws leave the ground from their scripts
-  (`ftCo_ThrowF_Phys` / `ftCo_ThrowF_Coll`'s airborne arms, the freeze on
-  the script's flag, the landing that resumes it) and are not ported;
-  `CharacterCallbacks::THROW_ENTRY` names them. In the forward and back
-  throws the victim keeps its grab timer and can mash out
-  (`ftCo_800DE3FC`); the up throw sets `x2219_b2` on both fighters (no
-  blast-zone test) and uses `ftCamera_800762F4`.
+  back and up throws leave the ground from their scripts, on common code
+  no other kind's script reaches (`melee-ft` `throw_flight.rs`; the pair is
+  driven by `melee-lib` `grab_pairs.rs` `thrown_request` /
+  `thrown_escape`). Kirby's own facts are `CharacterCallbacks::THROW_TRAITS`.
+  - The script's SetAirborne (frame 9 forward, 17 back, 6 up) lifts Kirby
+    with every jump spent; in the air his velocity is TransN's
+    (`ftCo_ThrowF_Phys`, ft_80085134) and his collision never lands him by
+    itself (`ftCo_ThrowF_Coll`).
+  - On the script's flag (cmd var 0: frame 33 forward, 23 back, 45 up)
+    `ftCo_800DD724` stops his animation and keeps TransN's offset of that
+    frame as his velocity (`mv.co.throw`), so he falls at a constant speed
+    for as long as it takes; `ftCo_800DE920` stops the held fighter on the
+    same frame (at once if it is already there, which is the case when it
+    comes before Kirby in the fighter list; else when its own animation
+    arrives).
+  - A floor under the frozen Kirby (ft_80083C00, `fn_800DD568`) runs his
+    animation one step and his animation callback inside the collision
+    callback, resumes the held fighter with a step of its own
+    (`ftCo_800DE974`) and stands him. The throw plays out on the floor: the
+    back throw releases there; the forward and up throws lift him again on
+    the release's frame, and that second flight cannot land
+    (`mv.co.throw.x8`, ft_80083B68), so they end in Fall.
+  - Over a pit nothing ends the freeze: both fall to the blast zone (the
+    forward throw travels 17 units, the back throw 7 the other way).
+  - In the forward and back throws the held fighter keeps its grab timer
+    (`ftCo_800DE3FC`; 76 ticks from the grab in these scenes, at 0%), which
+    loses 1 a tick and 18 per mash input in the throw (PlCo +3C8; 6 in the
+    hold before it). When it ends, `ftCo_800DE5A4` takes CaptureJump (the
+    stick up, or a jump latched in CaptureWait) or CaptureCut;
+    ftCo_800DC920 sets the fighter down where it hangs and Kirby goes on
+    with nobody, frozen until he lands if he was frozen. The up and down
+    throws take the timer away.
+  - The up throw rises to y=249 on Final Destination: `x2219_b2` on both
+    fighters (`Status::blast_zone_exempt`) keeps ftCo_800D3158 off them
+    until the flag, and neither camera box follows
+    (`ftCo_ThrowHi_Cam` / `ftCo_ThrownHi_Cam`: ftCamera_800762F4 moves the
+    camera bone alone). After its release the last hop goes 18 units back.
 - **Final Cutter** (`ft-kirby/src/special_hi.rs`, `it-kirby`). Six of the
   table's eight rows are live: the start (385, 389 in the air), the rise
   (390), the fall (391) and the landing (388, 392 off the floor's end).
@@ -193,16 +223,17 @@ and entry fails closed, as do his three airborne throws.
 | Final Cutter's aerial start landing (ftkirbyspecialhi.c:447-453) and its aerial landing row landing (:526-536): neither row descends on its own | `air_start_collision`, `air_landing_collision` |
 | The beam on a slope (itkirbycutterbeam.c:93-97, the one `fmadds`), landing from the air (:128-133), ended by a wall (:137-151), clanked (:162), absorbed (:167), glancing off a shield (:205-243) | `it-kirby` `cutter_beam.rs` |
 | Every copied neutral special (ftkirbyspecial<kind>.c), the hat models, the helmeted multijumps | rows 399..543 (`enter_special` Neutral with an ability); `multi_jump_family` under the five helmets |
-| Forward, back and up throws | `THROW_ENTRY` |
+| An airborne throw landing before its script's flag (fn_800DD5EC, ftCo_Throw.c:207-223: the animation run forward to the flag); the release or the throw's end inside the callback a landing runs (ftCo_Throw.c:196-198, 213-215) | `throw_flight` `land_throw_before_flag`, `run_throw_callback_in_landing` |
+| A throwing pair losing its floor (fn_800DD684, ftCo_Throw.c:225-234); a kept grab timer out of a state that is not a capture wait (ftCo_Thrown.c:36) | `callbacks::collision::grab_hold`, `ThrownHold::entering` |
 | Item pickup hand poses | `item_hand` |
 
 ## Evidence
 
 - `start_fd_kirby_fox4` and `_cold`: 600 ticks, 0 differing particle ticks
   (`m4_gate`).
-- `KIRBY_WITNESSES` (`m5_gate`) holds sixty-seven scenes: the twenty-one
-  below, the Inhale's whiff, Final Cutter's fifteen and the catch's
-  thirty. The twenty-one were all recorded once and
+- `KIRBY_WITNESSES` (`m5_gate`) holds ninety scenes: the twenty-one
+  below, the Inhale's whiff, Final Cutter's fifteen, the catch's thirty and
+  the throws' twenty-three. The twenty-one were all recorded once and
   exact on the first gate: the thirteen movement scenes, Kirby's down
   throw with a pummel, Fox's four throws on Kirby, Fox's up smash, dash
   attack and Reflector on Kirby through a tumble, the floor, a hit while
@@ -271,17 +302,60 @@ and entry fails closed, as do his three airborne throws.
     Klaw, Confusion, cargo or Falcon Dive (201 of other characters, six of
     Kirby's own grab and throws) are all exact with this change, as they
     were in the sweep of the commit before it (db6f8b1f).
+- The forward, back and up throws: twenty-three `kirby_throw_*` scenes in
+  `KIRBY_WITNESSES`, each recorded once and exact on its first gate over
+  its full length with 0 differing particle ticks. The three mid-stage
+  scenes were recorded before the port existed; the rest were timed on the
+  port's dry runs, and no input was changed after a recording. Six headers
+  were rewritten afterwards to say what retail did.
+  - What they cover: each throw in mid-stage; the forward throw whole and
+    with Fox's timer ending on the floor before the release; flights that
+    end just inside an edge (forward at the right, back at the left) and
+    past it, both fighters falling frozen to the blast zone (forward and
+    back, off either edge, facing either way); Fox mashing out of the
+    forward and back throws by CaptureCut and CaptureJump, on the floor
+    before the flight, in the flight, and out of the frozen fall past the
+    edge (Kirby falling on with nobody); a jump latched in CaptureWait; the
+    up throw beside an edge (its last hop ends past it: Fall and the
+    ledge), twice in a row, and with Fox mashing in it and in the down
+    throw (nothing happens: the timer is gone).
+  - The blast-zone exemption is seen through Fox: without his, the port
+    kills him at the top of the up throw (he is on the floor's side of
+    ftCo_800D3158's test); Kirby, airborne without knockback, would pass
+    the top either way, so his own bit cannot be told apart.
+  - The camera boxes are not in the gate's keys: with the two `_Cam`
+    callbacks following their fighters every scene still gates exact.
+    `kirby_throw_hi_camera_fd_fox4` was recorded with `record.py --camera`
+    and both fighters' subjects (position, camera bone, facing, target
+    extents) compared with the port's over its 420 ticks by a scratch
+    extension of `camera-diff` (not committed): 0 differing rows, and 118
+    with the Kirby arms disabled.
+  - Kirby is the first fighter in every scene, so the held fighter is one
+    animation step behind when he freezes. The other order (the held
+    fighter already on the frame, ftCo_800DE920's first arm) is what the
+    four Slippi games in `KIRBY` run: 33 freezes in the frames they match,
+    none of them a stop. No retail trace has that order.
+  - Not reached by any scene or by those games, and refused: a flight that
+    touches a floor before its flag (fn_800DD5EC; no flight over level
+    ground does, and its floor filter refuses platforms), and the release
+    or the throw's end inside a landing's callback (no script has them on
+    the frame after the flag).
+  - Other kinds' throws, gated before and after: the 218 `m5_gate` scenes
+    whose names mention a grab, throw, catch, capture, pummel, Egg Lay,
+    Klaw, Confusion, cargo or Falcon Dive are exact with this change, as
+    they were before it. No other kind's throw script sets cmd var 0 or
+    leaves the floor.
 - Slippi (`public-v3.7-b`: the four games in `KIRBY` and one in
   `GAMEANDWATCH`, all refused before Kirby was registered): every frame
   matches up to the first unported boundary, which the runner names.
 
   | Game | Frames matched | Stops at |
   | --- | ---: | --- |
-  | `14_16_24 Marth + Kirby (PS)` | 2488 of 7001 (1378 before Final Cutter) | Kirby's back throw |
-  | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 1671 of 13271 | Kirby's up throw |
-  | `Falco vs Kirby [YS]` | 1756 of 9109 | Kirby's forward throw |
-  | `Game_20190824T180214` (Kirby against Kirby) | 5426 of 13809 (1175 before the catch) | Kirby's up throw |
-  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 563 of 15399 | Kirby's forward or back throw |
+  | `14_16_24 Marth + Kirby (PS)` | 5884 of 7001 (2488 before the throws) | Hammer |
+  | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 13271 of 13271 (1671 before the throws) | the end: every frame matches |
+  | `Falco vs Kirby [YS]` | 2362 of 9109 (1756 before the throws) | the Final Cutter beam ended by a wall |
+  | `Game_20190824T180214` (Kirby against Kirby) | 8704 of 13809 (5426 before the throws) | Hammer |
+  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 2674 of 15399 (563 before the throws) | Stone |
 
   `replay-batch` before and after on both corpora: 106 of 108 and 396 of
   502 complete either way; those five games are the only changes. (That
