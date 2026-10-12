@@ -1312,18 +1312,9 @@ later frame of two of the games matching.
 
 Stops that are not port faults, or are left open:
 
-- *Star and screen KO (4 games): a display pass the console skipped.* A
-  screen KO places the fighter from its camera-space position in the render
-  callback (ftDrawCommon_80080E18); with no pass, Fighter_procUpdate's own
-  integration stands (zero velocity while it approaches the screen, the fall
-  speed once it slides down). The recorded position holds for one tick and
-  moves two steps on the next. Dropping the one display pass makes each
-  recording match: `PIKACHU/Game_20190629T164554` (pass before tick 4577:
-  4576 to 7668 / 7668), `DOC/Game_20191106T211939` (4814: 7932 / 7932),
-  `FOX/Fox vs Marth [YS] Game_20200115T192755` (5874: 7816 / 7816),
-  `PEACH/15_52_33 Peach + Young Link (DL)` (8502: on to 11591, an
-  `input_seed` stop). As with the magnifier ("Display passes are not in a
-  replay"), the runner does not guess.
+- *Screen KO (5 games): a console's lag frame.* Proven on retail with a
+  display pass after every tick; see "Screen KO positions: a console's lag
+  frames". (An earlier reading here rested on `--skip-display-pass` alone.)
 - *`PICHU/Game_20161120T232910` (2158)*: the pad queue, above.
 - *DamageFlyRoll drawn where the console drew none (2 games).*
   `PEACH/Peach vs Sheik [FoD] Game_20190820T104324` (9065, Sheik in her
@@ -1776,3 +1767,118 @@ scenario recorded before gates as it did (2433 pass before, 2436 after, of
 | `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
 | `public-v3.7-b` (502), without the throw-release commit | 431 to 433 | 4,653,593 to 4,667,893; no replay fewer |
 | `public-v3.7-b` (502), with it | 431 to 434 | 4,653,593 to 4,676,200; one replay fewer (above) |
+
+## Screen KO positions: a console's lag frames (2026-10-11, proven on retail)
+
+Five games of `public-v3.7-b` stop on the `cur_pos` of a fighter in the
+screen KO (DeadUpFall, 6, or DeadUpFallHitCamera, 7), and a sixth on
+`motion_id` there. The five are console lag frames, shown below on retail
+with a display pass after every tick; the sixth was a port fault. No stop is
+in the star KO (DeadUpStar), which reads nothing a display pass writes: its
+flight aims at Stage_GetCamBoundsTopOffset, read in the animation proc when
+the hold ends (ftCo_DeadUpStar_Anim, 0x800D42E4).
+
+**What the screen KO reads, and when.** ftCo_800D4580 sets x2220_b7 and
+keeps the fighter's camera-space position at fp+0x2350; the physics proc
+moves that vector (ftCo_DeadUpFall_Phys: lbVector_Lerp at 0x800D4D60 while
+it approaches the screen, lbVector_Add at 0x800D4DA8 while it slides down).
+`cur_pos` is written from it only in the display pass:
+
+- the camera GObj's render callback fn_800301D0 calls Camera_8002A4AC
+  (0x800301FC), which sets cm_804D6464's eye and interest from
+  `transform_copy` (Camera_8002AF68);
+- the fighter's render callback ftDrawCommon_80080E18, in the pass that has
+  game_camera +0x398's low bits at 1 (Camera_80031060; Camera_800311EC's
+  first draw), tests x2220_b7 (0x80080E6C) and calls Camera_800310B8
+  (0x80080E80: HSD_CObjSetupViewingMtx on cm_804D6464),
+  HSD_CObjGetInvViewingMtxPtr (0x80080E84) and
+  `PSMTXMultVec(inverse view, fp+0x2350, &fp->cur_pos)` (0x80080E90), then
+  copies `cur_pos` into the root joint's translation (0x80080ECC).
+
+So the position a tick ends with is the previous display pass's placement,
+moved by Fighter_procUpdate's ordinary integration of `self_vel`: zero
+through the hold, the approach and the impact, the fall speed
+(PlCo +0x550, gravity +0x554 to +0x558) while it slides. A tick that no
+display pass precedes keeps that integrated value: x holds bit for bit, y
+holds or drops by the fall speed, and the next pass places the fighter two
+steps on. That is retail's code, not an emulation artifact, and the port
+does the same (`render_cameras`, `Fighter::place_screen_ko`).
+
+**The recording pairs.** gm_801A4D34 runs one tick per queued pad poll
+(lb_80019894 reads qcount once per pass of its loop, 0x800198B0) and then
+renders once: a frame that overruns its retrace leaves two polls queued, and
+the next pass runs two ticks before one render. The recorder plays that
+with `no_display_pass_before = [N]` beside `render_every_tick`
+(`slippi_to_scenario.py --no-display-pass-before N`; `lag_frame` in
+`harness/dolphin/tick_trace.py`): records N-1 and N run in one frame and
+psFrameNum does not move at N. Each bridgeable game was recorded twice from
+its own boundary, with the replay's pads and seed:
+
+| Game (first stop, runner frame) | Every tick (`_r1_`) | One lag frame (`_lagN_`) |
+|---|---|---|
+| `PIKACHU/Game_20190629T164554` (4576, Sheik in DeadUpFall's hold); `start_fod_slippi73ns_p24_sheik3_pikachu2_4_r164554` | `slp_fod_sheik_pikachu_r1_t4700`: retail places Sheik at record 4577 (18.393, 128.844) where the console recorded the held (18.888, 130.005); 122 fighter records differ from there to 4699 | `slp_fod_sheik_pikachu_lag4577_t4700`: both fighters' recorded positions and actions equal the console's on every record from 4527 to 4699 |
+| `FOX/Fox vs Marth [YS] Game_20200115T192755` (5873, Marth in DeadUpFallHitCamera); `start_ys_slippi74ns_p14_fox0_marth1_4` | `slp_ys_fox_marth_r1_t6000`: (11.269, 44.157) against the console's held (10.180, 48.796) at 5874; 22 records differ to 5999 | `slp_ys_fox_marth_lag5874_t6000`: 0 differ, 5800 to 5999 |
+| `YOSHI/17_50_44 Falco + Yoshi (FD)` (9868, Yoshi sliding down); `start_fd_slippi73ns_p34_falco1_yoshi1_4_r175044` | `slp_fd_falco_yoshi_r1_t10000`: (-9.612, 11.072) against the console's (-10.915, 11.433), x held and y down by the fall speed, at 9869; 36 records differ to 9999 | `slp_fd_falco_yoshi_lag9869_t10000`: 0 differ, 9800 to 9999 |
+
+A retail record R is runner frame R - 1 (`--skip-display-pass 4576` is
+`no_display_pass_before = [4577]`). The port gates all six recordings exact
+over their full length, with 0 differing particle ticks, so it equals retail
+both with a pass after every tick and across the lag frame; the positions
+after a lag frame stay off the every-tick game's by a few hundredths to the
+end of the KO (which is why the console's later frames need it too), in
+retail and in the port alike. The six `_r1_` and `_lagN_` scenarios are in
+`SLIPPI_REPLAY_WITNESSES`. `slp_fod_sheik_pikachu_lag4576_t4700`
+(the lag frame one record early, which the port also gates exact) holds the
+wrong record and matches the console no better than the every-tick game.
+
+Two games cannot be bridged (their consoles spawned by the 2019 rules, for
+which there is no Gecko text): `DOC/Game_20191106T211939` (4813) and
+`PEACH/15_52_33 Peach + Young Link (DL)` (8501). Their recorded frames carry
+the same signature (x held bit for bit in DeadUpFallHitCamera, y down 0.2
+and 1.7) and `replay --skip-display-pass` at the stop carries the first to
+its last frame (7932 / 7932) and the second to 11591 (an `input_seed` stop
+with Peach hit out of her float, not of this class). By the rule that only
+an every-tick recording settles it, these two rest on the three above, not
+on a recording of their own.
+
+**What the runner could do (proposed, not implemented).** A lag frame is not
+in a replay, but in a screen KO it leaves an exact trace: the recorded
+`cur_pos` equals the previous frame's x bit for bit, with y equal or lower
+by the tick's integrated fall, while the port's display pass has moved it.
+The runner could keep a clone of the match while a recorded leader is in
+actions 6 to 10, and on a `cur_pos` stop of that fighter rerun the tick with
+no display pass before it; if the whole frame then matches (every field and
+the seed check), it goes on from there and the report lists the frame as an
+inferred lag frame, as it lists the UCF version it read from the frames. It
+should not skip a pass on any other evidence: outside a screen KO (and the
+magnifier and a tether) a lag frame leaves nothing in the recorded fields
+to confirm it. With `--skip-display-pass` named by hand, four of the five
+games already complete.
+
+**Mr. Game & Watch hit the screen in the wrong state.** ftCo_DeadUpFall_Anim
+compares x34_scale.z with 1.0 (0x800D4BC8) and enters DeadUpFallHitCameraFlat
+(8) for a flat fighter (0x800D4BD8); ftCo_800D4580 and ftCo_800D481C face the
+root to the screen only when the scale is 1.0 (0x800D4650, 0x800D489C). The
+port entered motion 7 and turned the root for everyone.
+`GAMEANDWATCH/Game_20190629T112449`: 6971 to 8209 / 8209. There is no retail
+recording of a flat fighter's screen KO: none of the 96 recorded Mr. Game &
+Watch scenarios holds one, and this game's bridge
+(`slp_ps_gameandwatch_falco_r1_t7100`, from
+`start_ps_slippi73pre_p12_gameandwatch3_falco2_4`; the port gates it exact
+for 7100 ticks) is no longer the console's game by the KO: on Pokemon
+Stadium's first transformation its positions leave the replay's (record
+4139, a floor four ticks out of step) and its random stream follows by 4339.
+Why a Stadium bridge leaves its replay there is not diagnosed.
+
+Corpora before and after, on main at c82bba7f (`replay-batch`; no replay
+matches fewer frames, and only the Mr. Game & Watch game matches more: the
+five lag-frame stops stay, since the runner renders every tick):
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
+| `public-v3.7-b` (502) | 434 to 435 | 4,676,200 to 4,677,438 |
+
+Of the 2529 scenario files, 2474 gate exact with the change; the other 55
+(missing or shorter traces, other work in flight) give the same result on
+the build before it.
