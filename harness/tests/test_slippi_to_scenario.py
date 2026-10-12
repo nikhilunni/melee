@@ -268,3 +268,14 @@ def test_a_replay_whose_pads_end_early_bridges_only_that_far(scenarios, capsys):
     assert "the scenario ends at tick 3" in capsys.readouterr().err
     s2s.main([*args, "--name", "slp_short", "--ticks", "2"])
     assert tomllib.loads((scenarios / "slp_short.toml").read_text())["frames"] == 2
+
+
+def test_the_map_proc_sample_is_asked_for_by_name(scenarios):
+    write_boundary(scenarios, "start_ys", "YoshisStory", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "YoshisStory")
+    args = [str(scenarios / "inputs.jsonl"), "--boundary", "start_ys"]
+    s2s.main([*args, "--name", "slp_sampled", "--after-map"])
+    assert tomllib.loads((scenarios / "slp_sampled.toml").read_text())["after_map"] is True
+    s2s.main([*args, "--name", "slp_plain"])
+    assert "after_map" not in tomllib.loads((scenarios / "slp_plain.toml").read_text())
+    assert "after_map" not in tomllib.loads((scenarios / "slp_sampled_cold.toml").read_text())

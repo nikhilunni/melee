@@ -246,6 +246,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-display-pass-before", type=int, nargs="+", default=[], metavar="RECORD",
                     help="a console's lag frames: each record runs in one frame with the record before "
                          "it, with no display pass between (tick_trace.py, lag_frame)")
+    ap.add_argument("--after-map", action="store_true",
+                    help="also sample every fighter when its map proc returns (`after_map`, tick_trace.py): "
+                         "where Slippi before 3.4.0 reads Post Frame, so replay_vs_trace.py can compare "
+                         "such a replay's fields on every frame")
     ap.add_argument("--overwrite", action="store_true",
                     help="replace existing scenario files of this name (their recordings no longer "
                          "belong to them)")
@@ -282,6 +286,8 @@ def main(argv: list[str] | None = None) -> None:
         if a.dolphin_cadence:
             sys.exit("--no-display-pass-before drops a display pass of the console's cadence")
         cadence += f"no_display_pass_before = {sorted(a.no_display_pass_before)}\n"
+    if a.after_map:
+        cadence += "after_map = true\n"
 
     def fix(fighter: dict) -> str:
         return f'controller_fix = "{fighter["controller_fix"]}"\n' if "controller_fix" in fighter else ""
