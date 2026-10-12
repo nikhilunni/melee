@@ -2924,12 +2924,15 @@ impl Simulation {
         if finished && !runtime.match_finished {
             // The GAME! (or TIME!) banner's GObj (classifier 0xE, p_link
             // 14), created by the scene's frame callback before this
-            // tick's procs: it takes the address freed last.
-            runtime
-                .state
-                .effects
-                .gobjs
-                .create(hsd_gobj::GObjClass::Hud);
+            // tick's procs: it takes the address freed last. A match with
+            // a time limit first destroys a HUD GObj of the timer's, whose
+            // address the banner then takes.
+            let gobjs = &mut runtime.state.effects.gobjs;
+            if runtime.state.clock.timer.is_some() {
+                let timer = gobjs.outside();
+                gobjs.destroy(hsd_gobj::GObjClass::Hud, timer);
+            }
+            gobjs.create(hsd_gobj::GObjClass::Hud);
         }
         runtime.match_finished |= finished;
         // fn_8016CFE0 -> fn_8016758C, every scene frame. Only the count of
