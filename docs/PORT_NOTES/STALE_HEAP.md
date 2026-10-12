@@ -17,9 +17,9 @@ scene parameter names.
   record of its boundary's retail recording
   (`CharacterCallbacks::restore_stale_heap`, called by
   `InitialState::carry_stale_heap` when
-  `ScenarioSource::has_boundary_recording`: a cold scenario with `expected`
-  whose `tick.raw` trace exists). Only those words: nothing else of the
-  recording enters the scene.
+  `ScenarioSource::has_boundary_recording`: a cold scenario that names its
+  recording as `expected`, whose `tick.raw` trace is then a required file).
+  Only those words: nothing else of the recording enters the scene.
 - `Match::new`, a Slippi replay and any cold scene without a recording keep
   the defaults (zero). See "What a match without a boundary should use".
 
@@ -88,7 +88,7 @@ evidence that nothing reached reads them first):
 |---|---|---|---|
 | Luigi | +222C `x222C_cycloneCharge` | `ftLg_Init_OnDeath` stores only +2234 (0x8014230C); `ftLg_SpecialAirLw_Enter` loads +222C at 0x8014475C; only the Cyclone's landing and animation end write it | the first aerial Cyclone takes the charged branch (no `tap_y_vel_max` subtracted) when the word is not zero: `slp_bf_luigi_iceclimbers_t2300`, tick 540, 0.8 higher |
 | Dr. Mario | +222C, +2230 `x222C_vitaminCurr`, `x2230_vitaminPrev` | `ftDr_Init_OnDeath` stores +2234..+2240 (0x801494C0..CC; `ftMr_Init_OnDeath` sets both colours to 9); `ftMr_SpecialN_VitaminRandom` (0x800E0D1C) loads both | the first two pills exclude a colour only if a word is 0..8. The draw count does not change (`HSD_Randi` once either way), so only the colours differ |
-| Samus | +2234 `x2234` | `ftSs_Init_OnDeath` (0x8012832C) leaves it; `ftSamus_destroyAllEF` (in `ftSs_SpecialN_801291F0` and `ftSs_SpecialN_80129258`) tests it before a charge has set it | a nonzero word costs one `efLib_DestroyAll` the first time a shot is let go or dropped; no recorded scenario shows a difference (69 Samus, Dr. Mario and Luigi cold twins gate the same with the words carried) |
+| Samus | +2234 `x2234` | `ftSs_Init_OnDeath` (0x8012832C) leaves it; `ftSamus_destroyAllEF` (in `ftSs_SpecialN_801291F0` and `ftSs_SpecialN_80129258`) tests it before a charge has set it | a nonzero word costs one `efLib_DestroyAll` the first time a shot is let go or dropped; no recorded scenario shows a difference (of the 69 Samus, Dr. Mario and Luigi cold twins, the 64 that gated exact still do with the words carried; the other five fail as before, for their own reasons) |
 | Jigglypuff | +222C | `ftPr_SpecialAirS_Phys` increments it (ftpurinspecials.c:106); nothing else loads it | none: not carried |
 
 Reviewed and written first: Yoshi +222C..+2237 (the Egg Roll's entry reads
