@@ -457,6 +457,10 @@ impl InitialState {
                     let own = crate::scene_fighter::player_fighter_index(&fighters, slot);
                     crate::scene_fighter::with_fighter!(&fighters[own], |f| f.player.stocks)
                 }),
+                std::array::from_fn(|slot| {
+                    let own = crate::scene_fighter::player_fighter_index(&fighters, slot);
+                    crate::scene_fighter::with_fighter!(&fighters[own], |f| f.player.id)
+                }),
             )?
         } else {
             std::array::from_fn(|slot| {

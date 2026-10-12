@@ -11,7 +11,15 @@ use std::path::Path;
 /// gm_Scene_Vs_OnEnter (8016E934): after music and countdown creation,
 /// ifStatus_802F665C builds the HUD before HSD_GObj_80390CFC's first tick.
 /// Both cold and saved match-start setup complete this same pending work.
-pub(super) fn create(archive: &Archive, stocks: [u8; 2]) -> Result<[Option<StockDisplay>; 2]> {
+///
+/// `ports` are the players' slots: the HUD keeps a place for each of the
+/// four, so a player in port 3 has the third place's icons whoever else
+/// plays.
+pub(super) fn create(
+    archive: &Archive,
+    stocks: [u8; 2],
+    ports: [u8; 2],
+) -> Result<[Option<StockDisplay>; 2]> {
     let layout = model::read_scene_joint(archive, "ScInfDmg_scene_data")?;
     let (mut layout_tree, layout_root) = load_joint_tree(archive, &layout)?;
     let (joint, animation) = model::read_dynamic_model_animation(archive, "Stc_scemdls", 0, 0)?;
@@ -20,7 +28,9 @@ pub(super) fn create(archive: &Archive, stocks: [u8; 2]) -> Result<[Option<Stock
         // gm_SetupRulesDefaults selects four HUD slots even with two fighters;
         // ifAll_802F343C(4) uses descendants 2..5, indexed by player slot.
         // lb_8000B1CC uses the audited HSD world matrix, including ancestors.
-        let anchor = layout_tree.bone(layout_root, 2 + player).unwrap();
+        let anchor = layout_tree
+            .bone(layout_root, 2 + usize::from(ports[player]))
+            .unwrap();
         let matrix = layout_tree.get_mtx(anchor);
         let position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
         let (mut tree, root) = load_joint_tree(archive, &joint)?;
@@ -76,7 +86,7 @@ mod tests {
         let saved = InitialState::from_savestate_traces(&scenario).unwrap();
         let stocks =
             std::array::from_fn(|slot| with_fighter!(&saved.fighters[slot], |f| f.player.stocks));
-        let created = create(&saved.assets.interface, stocks).unwrap();
+        let created = create(&saved.assets.interface, stocks, [0, 1]).unwrap();
         for (slot, (actual, expected)) in created.iter().zip(&saved.stock_displays).enumerate() {
             let actual = actual.as_ref().unwrap();
             let expected = expected.as_ref().unwrap();

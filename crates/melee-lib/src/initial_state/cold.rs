@@ -171,7 +171,8 @@ impl InitialState {
             )),
             stock_displays: super::stock::create(
                 &assets.interface,
-                std::array::from_fn(|slot| scenario.fighters[slot].stocks),
+                std::array::from_fn(|player| scenario.fighters[player].stocks),
+                std::array::from_fn(|player| scenario.fighters[player].slot),
             )?,
             spawn_counter,
             banner: Some(crate::banner::Banner::from_archive(
