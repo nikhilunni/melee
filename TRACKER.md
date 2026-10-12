@@ -5,7 +5,7 @@ Legend: `[ ]` todo, `[~]` in progress (add date), `[x]` done, `[!]` blocked
 and what is next. Finished work lives in git history and `docs/PORT_NOTES/`;
 do not keep a session log here.
 
-## Current state (2026-10-10, fourth Slippi wave: Ice Climbers, Ness, effect order)
+## Current state (2026-10-11, sixth Slippi wave: display timing, console codes, runner speed)
 
 - **25 of 26 characters and all six tournament stages run bit-exact.**
   Registered: Fox, Falco, Marth, Roy, Captain Falcon, Ganondorf, Peach,
@@ -19,11 +19,11 @@ do not keep a session log here.
   game has no random-stream drift):
   - `~/melee-data/replays/public-v3.7` (108 games): **107 complete**, 99.1%
     of frames;
-  - `~/melee-data/replays/public-v3.7-b` (502 games, sampled 2026-10-03;
-    triage in its `_triage/` folder): **409 complete**, 85.8% of frames
-    (247 when sampled); 58 diverge, 2 stop at an unported branch, 33 are
-    refused at setup (unregistered Kirby, online games, doubles, CPU
-    players, other stages, one setup-seed mismatch).
+  - `~/melee-data/replays/public-v3.7-b` (502 games, sampled 2026-10-03):
+    **446 complete**, 90.9% of frames (247 when sampled); 23 diverge, 32
+    are refused at setup (14 Slippi Online, 5 Kirby, doubles, CPU players,
+    other stages), one setup-seed mismatch. The batch takes about two
+    minutes on 10 cores (`docs/PERF.md` "Replay runner").
 - **Console codes a replay does not record are read from its frames** by a
   dry pass that compares the candidate setups and then runs the whole
   comparison under one (never a switch mid-run; the report prints each
@@ -31,17 +31,19 @@ do not keep a session log here.
   Slippi version, then the date, then the first dashback they disagree on),
   Dween (runs no fix: the recording holds its output), Frozen Stages
   (`--stage-codes`), Widescreen (`--screen`), the spawn rule (frame zero).
-- **Not port faults** (documented in `docs/SLIPPI.md`): the off-screen
-  magnifier's damage tick and some star-KO positions follow display passes a
-  console skipped, which a replay does not record; a few Samus tether games
-  where retail in Dolphin equals the port but the console drew otherwise.
-- Gates at the checkpoint (2026-10-10): release workspace 1780/0 (incl.
-  `m4_gate` 318 and `m5_gate` 286), clippy clean, pytest 301, schema check
-  clean. **The debug gate is red**: eight debug test binaries (`melee-lib`
-  lib/allocation/api, `melee-sim` alloc_gate and m2-m5) overflow the 2 MB
-  test-thread stack; they pass with `RUST_MIN_STACK` of 3 MB. The same
-  overflow is on c39611fc, so it predates this wave (Backlog). The perf
-  gate was not run at this checkpoint.
+- **Recordings render after every tick** (`render_every_tick`, the default
+  for bridges since 2026-10-11): older bridges ran two ticks per render,
+  which is another game near a tether, the magnifier or a screen KO. A stop
+  is "not a port fault" only when an every-tick retail recording equals the
+  port there. Shown that way: a console's lag frame moves a screen KO's
+  position (three games, recorded with `no_display_pass_before`); the
+  tournament consoles of early 2020 ran the Widescreen code at 92:63 and,
+  from 2020-03-04, level Fountain of Dreams platforms with entry by spawn
+  order (both read from a replay's frames; code text constructed, not
+  found).
+- Gates at the checkpoint (2026-10-11): release and debug workspace
+  1784/0 (`m4_gate` 318, `m5_gate` 287), clippy clean, pytest 316. The perf
+  gate: see the wave's closing commit.
 - Tooling (`CLAUDE.md` "Slippi replays", `docs/SLIPPI.md`):
   - `make_boundary.py`: any stage, characters, costumes; with
     `--no-register`, ports, Gecko codes, spawn rule, timer, and
@@ -58,45 +60,38 @@ do not keep a session log here.
 
 ## Next (recommended order)
 
-1. [~] **Slippi corpus.** Fixed 2026-10-10: the Ice Climbers explorer
-   faults (one player's ice blocks pass each other, the block's efAsync at
-   link 9, a shared stale table within one proc, behaviour 18's x221A_b3,
-   the Ice spark on a Shy Guy, the grounded Blizzard row airborne, the ice
-   block's shield bounce, Nana leaving the revival platform, her Belay
-   hang's ECB lock, a sleeping Nana's single revival slot), PK Thunder's
-   and PK Fire's generator order, `ftCo_8008EC90` (unarmoured captor), the
-   wall-tech flash order and Link's hookshot removal. Remaining stops in
-   `public-v3.7-b` (58 diverge; the checkpoint's batch is the list):
-   - the hit-log victim keyed by GObj address (retail reuses a freed
-     address; the port keys by unique id): a serial task, it can move every
-     scenario;
-   - Ice Climbers, about ten games: follower stops during Popo's Ice Shot
-     (341/342), Nana sliding from a laser on Fountain of Dreams' moving
-     platform, seed drift with Nana alone on a platform, `ftCo_800AC5A0`
-     (steering with no knockback, unported); two one-ulp Nana position
-     stops are not shown to be port faults (retail in Dolphin equals the
-     port, `docs/SLIPPI.md`);
-   - five games stop at EntryStart/Entry on Fountain of Dreams (the level
-     side platforms code, text not found; a scratch experiment matches two);
+1. [~] **Slippi corpus.** 24 games still diverge (`target/checkpoint`
+   batch of 2026-10-11; `docs/SLIPPI.md` has each wave's findings):
+   - console lag frames, to be inferred by the runner under a strict rule
+     (rerun the tick with no display pass; accept only if the whole frame
+     then matches, seed included; report it as inferred): three screen KOs
+     proven on retail, two more unproven (`DOC/Game_20191106T211939`,
+     `PEACH/15_52_33`, bridgeable now with `neutral-spawn-2019`), two
+     magnifier points one tick late (`FALCO/02_33_48`, `19_56_47 Sheik +
+     Captain Falcon`), Samus on FoD (7813);
+   - set aside with evidence: the pad-queue game (`20_31_01 Captain Falcon
+     + Ice Climbers`), two one-ulp Nana positions;
+   - open, undiagnosed: DK + Ganondorf (4779), Fox vs Dr. Mario PS (9684),
+     Fox percent (1482), Ice Climbers + Samus PS (6698, Ice Shot), Link DL
+     (3267, a bomb blast) and PS (10399), Mario vs Pikachu (6305), Mario vs
+     Yoshi (6489), Marth vs Peach PS (5251), Falcon vs Pichu (2158), Fox vs
+     Yoshi PS (1093), Yoshi dittos (9961), Falco vs Zelda FoD (8969);
    - known causes not yet fixed: Yoshi's plain GuardOn keeps stale
-     powershield scratch (`slp_ps_fox_yoshi_t1300`, `docs/SLIPPI.md`);
-     Game & Watch's seed drift at tick 5464 (`docs/PORT_NOTES/GAMEWATCH.md`);
+     powershield scratch (`slp_ps_fox_yoshi_t1300`); Game & Watch's seed
+     drift (`docs/PORT_NOTES/GAMEWATCH.md`);
+   - Stadium bridges leave the console's game at the first transformation
+     (seen twice); undiagnosed;
+   - item GObj identity differs from retail somewhere in 55 of 2239
+     scenarios (`melee-sim gobj-diff`), untriaged;
    - explorer faults with recorded witnesses and no owner: "cliff camera
-     scratch missing" (`procs.rs:252`), `ftCo_800DC920` (a thrown fighter's
-     constraint release on death, `life.rs:705`), `ftCo_800B732C` (a target
-     on a ledge above the CPU), "holding an item" in DamageIce / Catch /
-     FlyReflectWall (not audited);
-   - the 2019 Dream Land NeutralSpawn row has no Gecko text, so those games
-     cannot be bridged; Stadium consoles that set per-player spawn points
-     cannot be bridged until `--retail-inputs` carries the spawn point;
-   - unported: `ftCo_8008EC90` with an armoured captor (x1828 = 3), the
-     sliding Samus bomb, a special while holding an item (Dr. Mario's
-     neutral special), a frozen fighter leaving the top, Mr. Saturn's idle
-     and slide states;
-   - the ECB lock is counted only inside collision callbacks: other states
-     with an empty callback may have the gap fixed for Nana's Belay hang.
-   Then a newer corpus: Slippi Online (per-frame RNG sync, netplay codes)
-   and Gecko-list (3.3+) code detection instead of inference.
+     scratch missing" (`procs.rs`), `ftCo_800DC920`, `ftCo_800B732C`,
+     "holding an item" in DamageIce / Catch / FlyReflectWall;
+   - unported: Mr. Saturn's idle and slide states (two recordings leave
+     the port there at tick 3710), the sliding Samus bomb, `ftCo_8008EC90`
+     with an armoured captor, Mario's held-item specials, a frozen fighter
+     leaving the top, `ftCo_800AC5A0`.
+   Then Slippi Online (14 games refused: per-frame RNG sync, netplay
+   codes) and Gecko-list (3.3+) code detection instead of inference.
 2. [ ] **Kirby**, last: copy abilities need every copied character's
    specials, all of which now exist.
 3. [ ] **Fail-closed branches left from wave D**: Captain Falcon's sword

@@ -99,7 +99,7 @@ pub fn resolve_linked_hit(
                     fighter.combat.pending_percent_taken = true;
                     take_captor_throw_hit(fighter, partner, fighter_assets, partner_assets);
                     assert!(
-                        fighter.combat.pending.as_ref().is_some_and(|h| h.knockback != 0.0),
+                        matches!(&fighter.combat.pending, Some(h) if h.knockback != 0.0),
                         "ftCo_800DE854: throw record 1 without knockback"
                     );
                     release_pair(partner, fighter, fighter_assets, map);
