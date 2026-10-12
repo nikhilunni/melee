@@ -2289,6 +2289,11 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // ftCo_8009F834 block_65), whiffed and through Fox's hitlag.
     ("kirby_rapid_jab_fd_fox4", 420),
     ("kirby_rapid_jab_hit_fd_fox4", 520),
+    // The Inhale catching nothing (ftkirbyspecialn.c): a tap lasts the
+    // loop's minimum, B held, in the air through a landing in the loop, and
+    // a landing during the start (fn_800F6638, fn_800F6798); its wind is
+    // efAlt 0x49A.
+    ("kirby_inhale_whiff_fd_fox4", 900),
 ];
 
 #[test]

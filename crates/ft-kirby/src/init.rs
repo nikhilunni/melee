@@ -28,6 +28,11 @@ pub struct Kirby {
     pub toad_lift_used: bool,
     /// Fighter +228C (u.kb.x60): ticks before another bump star.
     pub bump_star_cooldown: i32,
+    /// Fighter +2310 (u.kb.xE4): frames the Inhale's loop still has to last.
+    pub inhale_hold: i16,
+    /// x2222_b2, set by the Inhale's rows until a motion change that does
+    /// not keep it: a cape hit does not turn Kirby round.
+    pub cape_turn_blocked: bool,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -40,6 +45,8 @@ impl Kirby {
             ice_shot_lift_used: false,
             toad_lift_used: false,
             bump_star_cooldown: 0,
+            inhale_hold: 0,
+            cape_turn_blocked: false,
         }
     }
 }
@@ -81,6 +88,10 @@ fn draw_stone_form(state: &mut melee_ft::fighter::CharacterState, rng: &mut gekk
     state.get_mut::<Kirby>().stone_form = rng.randi(STONE_FORMS) + 1;
 }
 
+fn cape_turn_blocked(f: &mut Fighter) -> bool {
+    f.character.get::<Kirby>().cape_turn_blocked
+}
+
 /// The down throw is the common grounded one. The other three leave the
 /// ground from their scripts and are not ported.
 fn throw_entry(_fighter: &mut Fighter, throw: melee_types::CommonMotionState) {
@@ -117,6 +128,41 @@ impl CharacterCallbacks for Kirby {
         Some(draw_stone_form);
     const RESET_DRAW_COUNT: usize = 1;
     const THROW_ENTRY: Option<fn(&mut Fighter, melee_types::CommonMotionState)> = Some(throw_entry);
+    /// ftCo_800C3538's x2222_b2.
+    const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = cape_turn_blocked;
+    /// ftData_SpecialN/S/Hi/Lw[Kirby] and the aerial tables.
+    fn enter_special(
+        f: &mut Fighter,
+        slot: melee_ft::fighter::SpecialSlot,
+        airborne: bool,
+        assets: &FighterAssets,
+    ) {
+        use melee_ft::fighter::SpecialSlot;
+        match slot {
+            // ftKb_SpecialN_Enter (800F1638): ftKb_Init_803C9DD0[hat.kind],
+            // or the Inhale without a hat.
+            SpecialSlot::Neutral => {
+                if f.character.get::<Kirby>().copied != FighterKind::Kirby {
+                    unimplemented!("ftKb_Init_803C9DD0 (ftkirby.c:3777): a copied neutral special");
+                }
+                crate::special_n::enter(f, airborne, assets)
+            }
+            SpecialSlot::Side => unimplemented!(
+                "ftKb_SpecialS_Enter / ftKb_SpecialAirS_Enter (ftkirbyspecials.c): Hammer"
+            ),
+            SpecialSlot::Up => unimplemented!(
+                "ftKb_SpecialHi_Enter / ftKb_SpecialAirHi_Enter (ftkirbyspecialhi.c): Final Cutter"
+            ),
+            SpecialSlot::Down => unimplemented!(
+                "ftKb_SpecialLw_Enter / ftKb_SpecialAirLw_Enter (ftkirbyspeciallw.c): Stone"
+            ),
+        }
+    }
+    /// Fighter_ChangeMotionState clears x2222_b2; the rows that keep it set
+    /// it again.
+    fn on_motion_change(&mut self) {
+        self.cape_turn_blocked = false;
+    }
     /// ftCo_800C7CA0: ftKb_SpecialN_800F1F1C.
     const WALL_BOUNCE_EFFECT: Option<fn(&mut Fighter, hsd_types::Vec3)> =
         Some(crate::bump_star::spawn);

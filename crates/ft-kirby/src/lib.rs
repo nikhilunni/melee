@@ -4,6 +4,7 @@ pub mod attributes;
 pub mod bump_star;
 pub mod common;
 pub mod init;
+pub mod special_n;
 
 use melee_ft::fighter::{
     state::{self, callbacks},
@@ -43,6 +44,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         i += 1;
     }
     place_all(&mut rows, attack_dash::rows());
+    place_all(&mut rows, special_n::rows());
     rows
 }
 

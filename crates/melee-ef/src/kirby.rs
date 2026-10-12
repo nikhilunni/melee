@@ -10,6 +10,9 @@ const RAPID_JAB_MODEL: u32 = 0x1390;
 /// on every update (eflib.c:1138).
 const RAPID_JAB_CHILD_START: f32 = 6.0;
 const RAPID_JAB_CHILD_STEP: f32 = 2.0;
+/// efAlt_Spawn 0x49A's generator, in Kirby's bank: the Inhale's wind.
+const INHALE_WIND_GENERATOR: u32 = 0x138B;
+const KIRBY_BANK: u8 = 5;
 
 impl Effects {
     /// efAlt_Spawn 0x495 (efalt.c:253-270), from the dash attack's script
@@ -122,6 +125,45 @@ impl Effects {
             &mut self.events,
         )?;
         self.instances.push(effect);
+        Ok(())
+    }
+
+    /// efAlt_Spawn 0x49A (efalt.c:289-291), from the Inhale's start rows
+    /// (efAsync kind 3 with the facing):
+    /// efLib_CreateGenerator_AppSRT_SetFacingDir(0x138B) on the joint, the
+    /// generator's own AppSRT turned to the facing (eflib.c:822-835).
+    pub(super) fn spawn_kirby_inhale_wind<T: InverseTrig>(
+        &mut self,
+        player: usize,
+        bone: usize,
+        matrix: Mtx,
+        facing: f32,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
+        let mut spawn = SpawnRequest::new(KIRBY_BANK, INHALE_WIND_GENERATOR, 0);
+        spawn.joint = Some((joint_id, matrix));
+        spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+            rotation: Vec3::new(
+                0.0,
+                if facing < 0.0 {
+                    -std::f32::consts::FRAC_PI_2
+                } else {
+                    std::f32::consts::FRAC_PI_2
+                },
+                0.0,
+            ),
+            ..Default::default()
+        });
+        self.events.spawn(&spawn, false, false);
+        let bank = resources::character_bank(&self.character_banks, KIRBY_BANK.into())?;
+        if let Some(id) = spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)? {
+            let generator = particles.generator_mut(id).unwrap();
+            self.events.flags(joint_id, 0x600, 0x800);
+            generator.flags = (generator.flags & !0x600) | 0x800;
+        }
+        self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
         Ok(())
     }
 }

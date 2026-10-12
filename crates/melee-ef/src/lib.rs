@@ -504,6 +504,16 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::AttachedParameter {
+                id: 0x49A,
+                bone,
+                parameter,
+            } = request
+            {
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                self.spawn_kirby_inhale_wind::<T>(player, bone, matrix, parameter, particles, rng)?;
+                continue;
+            }
+            if let EffectRequest::AttachedParameter {
                 id: 0x495,
                 bone,
                 parameter,

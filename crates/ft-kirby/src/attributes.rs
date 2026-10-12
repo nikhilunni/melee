@@ -16,6 +16,9 @@ pub struct KirbyAttributes {
     /// +00..+30: the midair jumps; `first_actions` are the bare (341) and
     /// helmeted (346) families.
     pub multi_jump: MultiJumpAttributes,
+    /// +34 (`jumpaerial_unk`, a halfword: 40 on the disc): the Inhale's
+    /// loop lasts at least this many frames (u.kb.xE4).
+    pub inhale_minimum_frames: i16,
 }
 
 pub fn read_kirby_attributes(archive: &Archive) -> Result<KirbyAttributes> {
@@ -47,6 +50,7 @@ impl KirbyAttributes {
                 state_count: r.s32(0x28)?,
                 first_actions: [r.s32(0x2C)?, r.s32(0x30)?],
             },
+            inhale_minimum_frames: r.s16(0x34)?,
         })
     }
 }
