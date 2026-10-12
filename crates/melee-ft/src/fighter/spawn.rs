@@ -19,6 +19,9 @@ struct MotionChange<'a> {
     skip_model_part_visibility: bool,
     /// Ft_MF_SkipModel (bit4): the model selections survive (fighter.c:979).
     skip_model: bool,
+    /// Ft_MF_SkipModelFlags (bit26), also part of ftCommon_GroundAirColl_MF:
+    /// x2225_b2 survives (fighter.c:1097).
+    skip_model_flags: bool,
     update_commands: bool,
     preserve_name_tag: bool,
     skip_animation: bool,
@@ -66,6 +69,7 @@ impl MotionEntryFlags {
     pub const SKIP_ITEM_VIS: Self = Self(1 << 18);
     pub const FREEZE_STATE: Self = Self(1 << 21);
     pub const SKIP_MODEL_PART_VIS: Self = Self(1 << 22);
+    pub const SKIP_MODEL_FLAGS: Self = Self(1 << 26);
     pub const SKIP_HITSTUN: Self = Self(1 << 28);
     pub const SKIP_ANIM: Self = Self(1 << 29);
     pub const fn contains(self, other: Self) -> bool {
@@ -802,6 +806,7 @@ impl Fighter {
                 source: Some(source),
                 ground_air: true,
                 skip_model_part_visibility: true,
+                skip_model_flags: true,
                 update_commands: true,
                 preserve_material_animation: true,
                 keep_secondary_color: true,
@@ -827,6 +832,7 @@ impl Fighter {
                 rate: 1.0,
                 ground_air: true,
                 skip_model_part_visibility: true,
+                skip_model_flags: true,
                 update_commands: true,
                 preserve_material_animation: true,
                 keep_secondary_color: true,
@@ -871,6 +877,7 @@ impl Fighter {
                 rate,
                 ground_air: item,
                 skip_model_part_visibility: flags.contains(F::SKIP_MODEL_PART_VIS),
+                skip_model_flags: flags.contains(F::SKIP_MODEL_FLAGS),
                 skip_model: flags.contains(F::SKIP_MODEL),
                 update_commands: flags.contains(F::UPDATE_CMD),
                 preserve_name_tag: flags.contains(F::SKIP_NAMETAG_VIS),
@@ -942,6 +949,7 @@ impl Fighter {
                 rate,
                 ground_air: true,
                 skip_model_part_visibility: true,
+                skip_model_flags: true,
                 update_commands: true,
                 preserve_material_animation: true,
                 keep_secondary_color: true,
@@ -1361,6 +1369,8 @@ impl FighterCore {
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.status.blast_zone_exempt = false; // fighter.c:1040
         self.combat.armor = 0.0;
+        // fighter.c:1058: x221C_b4. dmg.x1834 stays.
+        self.combat.shell_active = false;
         self.status.ignore_fighter_nudge = false;
         // fighter.c:1069, 1085: x2220_b3 and x2224_b4.
         self.status.no_hit_reaction = false;
@@ -1398,6 +1408,10 @@ impl FighterCore {
         if !change.skip_model_part_visibility {
             self.commands.articles_visible = true;
             self.commands.fighter_hidden = false;
+        }
+        // fighter.c:1097-1099: x2225_b2.
+        if !change.skip_model_flags {
+            self.commands.accessory_visible = true;
         }
         self.commands.allow_interrupt = false;
         if !change.preserve.hitboxes {

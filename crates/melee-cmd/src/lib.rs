@@ -35,6 +35,9 @@ pub enum Command {
     ArticleVisibility(bool),
     /// ftAction_80071FA0: Fighter +221E bit 5; true hides the fighter model.
     FighterVisibility(bool),
+    /// ftAction_80072CB0 (80072CB0), Fighter +2225 bit 2: the kind's
+    /// accessory model draws (Jigglypuff's hat, a copied ability's on Kirby).
+    AccessoryVisibility(bool),
     /// ftAction_80071F34: the ordinary held-item visibility flag.
     HeldItemVisibility(bool),
     /// ftAction_80072894 -> ftCommon_8007E83C: play the held parasol's

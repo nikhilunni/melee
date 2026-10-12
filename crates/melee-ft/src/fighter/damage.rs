@@ -22,6 +22,13 @@ pub struct CombatState {
     pub cape_turn: super::cape_turn::CapeTurn,
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,
+    /// x221C_b4: while set, a hit's damage comes off `shell_health` and
+    /// the fighter takes none of it, nor a reaction, until the shell is
+    /// spent (Kirby's Stone). Every motion change clears it
+    /// (fighter.c:1058).
+    pub shell_active: bool,
+    /// dmg.x1834: what the shell can still take.
+    pub shell_health: f32,
     /// SmashAttr.x2130_sfxBool: the charge sound already played.
     pub charge_sound_played: bool,
     /// Fighter.x408: the primary color animation (damage tints, burning,
@@ -2167,6 +2174,27 @@ fn detect_eligible_hit(
             damage *= assets.damage.captured_item_damage_scale;
         }
         let damage = damage * victim.received_damage_scale();
+        // ftColl_80076ED8 (ftcoll.c:663-680): the damage count is taken
+        // before the shell, which may leave only what broke it.
+        let count = super::hit_log::damage_count(damage);
+        let Some(damage) = victim.combat.through_shell(damage) else {
+            // The shell held: nothing is logged, so the spark is
+            // efSync_Spawn 1052 (ftcoll.c:717); ftColl_8007891C still
+            // credits the attacker's move, x1914 still gives it hitlag.
+            attacker.credit_hit(victim.spawn_number, assets);
+            attacker.combat.dealt_damage = attacker.combat.dealt_damage.max(count);
+            melee_coll::detection::record_victim(
+                &mut attacker.commands.hitboxes,
+                descriptor.group,
+                victim.spawn_number,
+            );
+            victim
+                .effects
+                .push(melee_ef::request::EffectRequest::ShieldSpark {
+                    position: contact.position,
+                });
+            return;
+        };
         // ftColl_80076ED8's ordinary branch: log the hit for ftColl_8007AB48,
         // whose knockback and effects wait until every contact is logged.
         victim.combat.log_hit(LoggedHit {
@@ -2190,13 +2218,12 @@ fn detect_eligible_hit(
             // DmgLogEntry.x20: the hitbox's own damage.
             effect_damage: descriptor.damage,
         });
+        // inlineB2's x183C_applied takes the count from before the shell.
+        victim.combat.frame_max_damage = victim.combat.frame_max_damage.max(count);
         attacker.combat.has_recorded_hit = true;
         attacker.credit_hit(victim.spawn_number, assets);
         // ftColl_80076ED8: x1914 keeps the largest damage dealt this frame.
-        attacker.combat.dealt_damage = attacker
-            .combat
-            .dealt_damage
-            .max(super::hit_log::damage_count(damage));
+        attacker.combat.dealt_damage = attacker.combat.dealt_damage.max(count);
         melee_coll::detection::record_victim(
             &mut attacker.commands.hitboxes,
             descriptor.group,
@@ -2725,6 +2752,9 @@ pub(super) fn apply_directional_influence(
 #[derive(Clone, Copy, Debug)]
 pub struct ItemHurtContact {
     pub damage: f32,
+    /// The hit reached the victim's damage step, so ftColl_80078998
+    /// credits the item's owner: logged, or taken by the victim's shell
+    /// (x221C_b4).
     pub logged_damage: bool,
 }
 
@@ -2902,6 +2932,22 @@ impl Fighter {
                     logged_damage: false,
                 });
             }
+            // ftColl_80077C60 (ftcoll.c:1273-1307): the count from before
+            // the shell. While the shell holds nothing is logged and the
+            // spark is efSync_Spawn 0x41C (ftcoll.c:1333); ftColl_80078998
+            // still credits the item's owner.
+            let count = super::hit_log::damage_count(descriptor.damage);
+            let Some(damage) = self.combat.through_shell(descriptor.damage) else {
+                item.record_fighter_victim(id, descriptor.group, self.spawn_number);
+                self.effects
+                    .push(melee_ef::request::EffectRequest::ShieldSpark {
+                        position: contact.position,
+                    });
+                return Some(ItemHurtContact {
+                    damage: descriptor.damage,
+                    logged_damage: true,
+                });
+            };
             // ftColl_80077C60's ordinary branch: log for ftColl_8007AB48,
             // whose ftColl_8007A06C takes the item's direction.
             let facing = melee_it::hurt::hit_direction(
@@ -2921,13 +2967,14 @@ impl Fighter {
                     knockback: 0.0,
                     facing,
                     facing_override: None,
-                    percent_damage: descriptor.damage,
+                    percent_damage: damage,
                 },
                 position: contact.position,
                 knockback_damage,
-                damage: descriptor.damage,
+                damage,
                 effect_damage: raw_damage,
             });
+            self.combat.frame_max_damage = self.combat.frame_max_damage.max(count);
             item.record_fighter_victim(id, descriptor.group, self.spawn_number);
             return Some(ItemHurtContact {
                 damage: descriptor.damage,

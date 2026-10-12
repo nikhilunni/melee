@@ -30,6 +30,23 @@ impl CombatState {
         self.phantom_log.clear();
         self.hit_log.push(entry);
     }
+
+    /// The x221C_b4 step before a hit's damage is added (ftColl_80076ED8,
+    /// ftcoll.c:674-680; the item pass, :1286-1292; ftColl_8007BE3C,
+    /// :3666-3672): the damage comes off the shell's health (fsubs). What
+    /// is left over when the shell breaks reaches the fighter; `None`
+    /// while it holds.
+    pub fn through_shell(&mut self, damage: f32) -> Option<f32> {
+        if !self.shell_active {
+            return Some(damage);
+        }
+        self.shell_health -= damage;
+        if self.shell_health < 0.0 {
+            self.shell_active = false;
+            return Some(-self.shell_health);
+        }
+        None
+    }
 }
 
 /// Retail's integer damage count: truncated, but at least 1 when nonzero.
@@ -197,6 +214,12 @@ impl FighterCore {
         let Some(phantom) = self.combat.phantom.clone() else {
             return;
         };
+        if self.combat.shell_active {
+            unimplemented!(
+                "ftColl_8007BE3C (ftcoll.c:3666-3676): a phantom hit's damage against the \
+                 x221C_b4 shell"
+            );
+        }
         self.combat.frame_damage += phantom.damage;
         self.combat.frame_max_damage = self
             .combat

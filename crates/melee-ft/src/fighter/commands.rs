@@ -114,6 +114,10 @@ pub struct CommandState {
     pub throw_damage_counts: [u32; 2],
     /// ftLib_80086A4C: article draw visibility; reset true on motion entry.
     pub articles_visible: bool,
+    /// Fighter +2225 bit 2 (ftAction_80072CB0): the kind's accessory model
+    /// draws; true again on a motion entry without Ft_MF_SkipModelFlags
+    /// (fighter.c:1097). Renderer state: nothing in the simulation reads it.
+    pub accessory_visible: bool,
     /// Fighter +221E bit 5: hide the fighter model (ftdrawcommon.c:233).
     pub fighter_hidden: bool,
     /// Fighter +221E bit 3, inverted (retail sets it to 1 on reset,
@@ -483,6 +487,7 @@ impl CommandState {
                 }
                 Command::FighterVisibility(hidden) => self.fighter_hidden = *hidden,
                 Command::ArticleVisibility(visible) => self.articles_visible = *visible,
+                Command::AccessoryVisibility(visible) => self.accessory_visible = *visible,
                 Command::HeldItemVisibility(visible) => {
                     // ftAction_80071F34 (80071F34) -> ftCommon_8007F5CC.
                     self.set_held_item_visibility(*visible, animation, tree, assets, held_item_hand)

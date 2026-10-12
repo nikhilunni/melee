@@ -130,6 +130,8 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
         30 => Command::RapidJab(word & 0x03ff_ffff != 0),
         36 => Command::ArticleVisibility(word & 1 != 0),
         37 => Command::FighterVisibility(word & 1 != 0),
+        // retail 80072CC0: rlwimi r0, r5, 5, 26, 26 (the word's low bit).
+        53 => Command::AccessoryVisibility(word & 1 != 0),
         38 => Command::RandomSound(crate::RandomSound {
             ids: words[1..7]
                 .try_into()
