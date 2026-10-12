@@ -1,13 +1,6 @@
 //! Swallowing and spitting the inhaled fighter, ftkirbyspecialn.c
-//! (SpecialNDrink0 367 / 378 and SpecialNSpit0 369 / 380), and the copied
-//! ability a swallow leaves (ftKb_SpecialN_800F1BAC, ftkirby.c:4049).
-//!
-//! The copied kind is state alone here. A hat is either a model of its own
-//! drawn at Kirby's head joint (ftKb_LoadHat, ftKb_UnkMtxFunc0), which
-//! touches nothing the simulation reads, or parts grafted into his skeleton
-//! (the LOAD_HAT kinds), which are not ported. Everything that needs the
-//! ability itself fails closed: the copied special, the helmeted
-//! multijumps and losing the hat.
+//! (SpecialNDrink0 367 / 378 and SpecialNSpit0 369 / 380). The ability a
+//! swallow leaves is `crate::ability`; a hit's draw for its loss is here.
 //!
 //! The rows for a swallowed or spat item (SpecialNDrink1 368 / 379,
 //! SpecialNSpit1 370 / 381: it_802F28C8, it_802F295C) are not ported.
@@ -22,7 +15,6 @@ use melee_ft::{
     fighter::{
         assets::{FighterAssets, Result},
         capture_kirby::{CaptorRequest, StarParameters},
-        commands::{FootstepSound, SoundChannel},
         ledge::GrabExclusions,
         state::{AnimationPhase, CollisionPhase, MotionRow},
         ActionId, Fighter,
@@ -41,11 +33,6 @@ const SWALLOW_ENTRY: u32 = 0x2;
 const SPIT_ENTRY: u32 = 0x12;
 /// ftKb_MF_SpecialN_Coll: ftCommon_GroundAirColl_MF with KeepGfx.
 const SWALLOW_COUNTERPART: u32 = 0x0C4C_5082;
-
-/// ft_PlaySFX ids of ftKb_SpecialN_800F1BAC: a new ability, and a swallow
-/// that gives none.
-const COPY_SOUND: u32 = 0x222F3;
-const SWALLOW_SOUND: u32 = 0x222F6;
 
 pub const fn rows() -> [MotionRow; 4] {
     use melee_ft::fighter::state::callbacks::physics;
@@ -196,55 +183,12 @@ fn swallow_anim(f: &mut Fighter, mut p: AnimationPhase<'_>) -> Result<Option<Wai
         f.combat.mouth_request = Some(CaptorRequest::Swallow(copy_star(f)));
         // u.kb.xE0 = ftCo_800BD9E0(gobj, victim), read at the catch.
         let ability = f.character.get::<Kirby>().mouthful_ability;
-        copy_ability(f, ability);
+        crate::ability::take(f, ability);
         f.commands.variables[0] = 0;
     }
     let air = f.motion_state.action == AIR_SWALLOW;
     finish(f, &mut p, air)?;
     Ok(None)
-}
-
-/// The kinds whose hat is grafted into Kirby's own parts
-/// (ftKb_Init_803C9CC8's LOAD_HAT loaders: 800F0FC0, 800F10D4, 800F11F0,
-/// 800F130C, 800F14B4) with a replacement body model.
-fn hat_replaces_parts(kind: FighterKind) -> bool {
-    matches!(
-        kind,
-        FighterKind::Donkey
-            | FighterKind::Purin
-            | FighterKind::Mewtwo
-            | FighterKind::Falco
-            | FighterKind::GameWatch
-    )
-}
-
-/// ftKb_SpecialN_800F1BAC (800F1BAC) with `arg2` true: a new kind replaces
-/// the copied one (ftKb_SpecialN_800F190C resets the copied specials'
-/// scratch), and either way the take-damage and death callbacks go in.
-fn copy_ability(f: &mut Fighter, kind: FighterKind) {
-    let state = f.character.get_mut::<Kirby>();
-    let sound = if state.copied != kind {
-        if hat_replaces_parts(kind) {
-            unimplemented!(
-                "ftKb_Init_803C9CC8[{kind:?}] (ftkirby.c:3578-3592, LOAD_HAT): a hat grafted into \
-                 Kirby's parts with a replacement model"
-            );
-        }
-        state.copied = kind;
-        // ftKb_SpecialN_800F190C: xC4 and xCC among the specials' words.
-        state.ice_shot_lift_used = false;
-        state.toad_lift_used = false;
-        COPY_SOUND
-    } else {
-        SWALLOW_SOUND
-    };
-    state.damage_callbacks = true;
-    f.commands.footstep_sounds.push(FootstepSound {
-        channel: SoundChannel::Ordinary,
-        id: sound,
-        volume: 127,
-        pan: 64,
-    });
 }
 
 /// ftKb_SpecialNDrink_Coll (800F8F08) -> fn_800F6E68.
@@ -313,8 +257,8 @@ fn air_spit_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> 
 
 /// ftKb_SpecialN_800F5BA4 (800F5BA4) / ftKb_SpecialN_800F5C34 (800F5C34),
 /// from Fighter_ProcessHit: a hit on a Kirby with a copied ability and
-/// nothing in his mouth draws for its loss, one in +B0. Taking it away
-/// (ftKb_SpecialN_800F5D04: the hat, the star it_802ADA1C) is not ported.
+/// nothing in his mouth draws for its loss, one in +B0, and a 0 throws the
+/// ability away as a star (ftKb_SpecialN_800F5D04).
 pub fn ability_loss_draw(f: &mut Fighter, cape: bool, rng: &mut gekko_math::HsdRng) {
     let state = f.character.get::<Kirby>();
     // hat.x8_b0 (Player_GetFlagsAEBit1) is set in no supported mode;
@@ -324,8 +268,6 @@ pub fn ability_loss_draw(f: &mut Fighter, cape: bool, rng: &mut gekko_math::HsdR
     }
     let odds = gekko_math::msl::fctiwz(state.attributes.inhale.ability_loss_odds);
     if rng.randi(odds) == 0 {
-        unimplemented!(
-            "ftKb_SpecialN_800F5D04 (ftkirbyspecialn.c:266-291): a hit takes the copied ability"
-        );
+        crate::ability::lose(f, true);
     }
 }

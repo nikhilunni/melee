@@ -98,16 +98,19 @@ impl ItemCore {
     }
 
     /// it_80276214 (80276214): the pass starts from the last resolved
-    /// position and moves to the item's current one. xDCE_flag.b7 (always set
-    /// at creation) also re-aims the fixed ECB at the model's rotation.
+    /// position and moves to the item's current one. xDCE_flag.b7 (set at
+    /// creation) also re-aims the fixed ECB at the model's rotation.
     /// The CollData is taken for the pass and stored back by the caller.
     pub(crate) fn refresh_collision(&mut self) -> CollData {
         let angle = self.ecb_angle();
         let mut collision = self.collision.take().expect("item map collision");
         collision.last_pos = collision.cur_pos;
         collision.cur_pos = self.position;
-        // it_80276278 -> mpColl_800436E4 with it_80274990's joint rotation.
-        melee_mp::set_ecb_angle(&mut collision, angle);
+        if self.ecb_follows_rotation {
+            // it_80276278 -> mpColl_800436E4 with it_80274990's joint
+            // rotation.
+            melee_mp::set_ecb_angle(&mut collision, angle);
+        }
         collision
     }
 

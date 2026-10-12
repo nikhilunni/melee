@@ -113,7 +113,7 @@ c_enum! {
         KirbyCBeam = 0x32,
         /// `It_Kind_Kirby_Hammer` — Kirby's Hammer
         KirbyHammer = 0x33,
-        /// `It_Kind_Unk1` — Maybe Kirby copy star?
+        /// `It_Kind_Unk1` — the star a lost Kirby copy ability leaves as (it_2ADA.c)
         Unk1 = 0x34,
         /// `It_Kind_Unk2`
         Unk2 = 0x35,

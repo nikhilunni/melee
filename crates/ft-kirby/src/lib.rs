@@ -1,8 +1,10 @@
 //! Kirby: ft/kinds/ftKirby. Common states live in melee-ft.
+pub mod ability;
 pub mod attack_dash;
 pub mod attributes;
 pub mod bump_star;
 pub mod common;
+pub mod hat;
 pub mod init;
 pub mod mouthful;
 pub mod special_hi;

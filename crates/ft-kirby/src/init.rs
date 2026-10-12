@@ -104,17 +104,13 @@ fn knockback_exit(fighter: &mut Fighter, _assets: &FighterAssets) {
     fighter.set_knockback_texture_frames(0.0);
 }
 
-/// ftCo_AppealS_CheckInput: ftKb_SpecialN_800F5D04(gobj, true) drops a
-/// copied ability first; without one it is the common AppealS entry.
+/// ftCo_800DEBD0 (ftCo_AppealS.c:100): ftKb_SpecialN_800F5D04(gobj, true)
+/// drops a copied ability as a star, then the common AppealS entry.
 fn enter_taunt(
     fighter: &mut Fighter,
     assets: &FighterAssets,
 ) -> melee_ft::fighter::assets::Result<()> {
-    if fighter.character.get::<Kirby>().copied != FighterKind::Kirby {
-        unimplemented!(
-            "ftKb_SpecialN_800F5D04 (ftkirbyspecialn.c:266): a taunt drops the copied ability"
-        );
-    }
+    crate::ability::lose(fighter, true);
     fighter.enter_common_taunt(assets)
 }
 
@@ -140,9 +136,8 @@ fn swallowed_ability(state: &melee_ft::fighter::CharacterState) -> FighterKind {
 /// cleanup, then ftKb_SpecialN_800F5D04(gobj, false) takes the copied
 /// ability without its star.
 fn death_callback(f: &mut Fighter) {
-    let state = f.character.get_mut::<Kirby>();
-    if state.damage_callbacks {
-        state.copied = FighterKind::Kirby;
+    if f.character.get::<Kirby>().damage_callbacks {
+        crate::ability::lose(f, false);
     }
     crate::special_hi::damage_callback(f);
 }

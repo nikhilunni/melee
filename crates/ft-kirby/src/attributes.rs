@@ -65,8 +65,7 @@ pub struct HammerAttributes {
 }
 
 /// ftKb_DatAttrs +38..+C8 (`specialn_*`), named for what the code does with
-/// them (the header's names are guesses). +A4..+AC place the star of a lost
-/// ability (it_802ADA1C), which is not ported.
+/// them (the header's names are guesses).
 #[derive(Clone, Debug, PartialEq)]
 pub struct InhaleAttributes {
     /// +38, +3C: the mouth from Kirby's position, ahead and up.
@@ -118,10 +117,22 @@ pub struct InhaleAttributes {
     pub copy_star_deceleration: f32,
     /// +9C, +A0: a fighter's velocity out of a spat star.
     pub star_exit_velocity: Vec2,
+    /// +A4..+AC: the star of a lost ability (it_802ADA1C).
+    pub ability_star: AbilityStarAttributes,
     /// +B0: a hit takes the copied ability with odds of one in this.
     pub ability_loss_odds: f32,
     /// +B4..+C8: a star's environment box before the fighter's own scale.
     pub star_box: FtCollisionBox,
+}
+
+/// ftKb_DatAttrs +A4..+AC (`specialn_ability_loss_star_*`; the header's
+/// x, y and z are a height and a velocity).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct AbilityStarAttributes {
+    /// +A4: how far above Kirby's position the star starts.
+    pub height: f32,
+    /// +A8, +AC: its velocity, ahead and up.
+    pub velocity: Vec2,
 }
 
 /// ftKb_DatAttrs +D4..+E8 (`specialhi_*`). +E8 (`specialhi_unk`, 0 on the
@@ -194,6 +205,10 @@ impl KirbyAttributes {
                 copy_star_speed: r.f32(0x94)?,
                 copy_star_deceleration: r.f32(0x98)?,
                 star_exit_velocity: Vec2::new(r.f32(0x9C)?, r.f32(0xA0)?),
+                ability_star: AbilityStarAttributes {
+                    height: r.f32(0xA4)?,
+                    velocity: Vec2::new(r.f32(0xA8)?, r.f32(0xAC)?),
+                },
                 ability_loss_odds: r.f32(0xB0)?,
                 star_box: FtCollisionBox {
                     top: r.f32(0xB4)?,

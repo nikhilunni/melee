@@ -89,6 +89,7 @@ melee_it::item_kinds! {
         MewtwoShadowBall: it_mewtwo::MewtwoShadowBall,
         KirbyCBeam: it_kirby::CutterBeam,
         KirbyHammer: it_kirby::Hammer,
+        Unk1: it_kirby::AbilityStar,
     }
 }
 
@@ -646,7 +647,17 @@ impl Resources {
                 &hammer.visual,
             )?);
             kinds.push((ItemKind::KirbyHammer, hammer));
-            visual_archives.push((ItemKind::KirbyHammer, a));
+            visual_archives.push((ItemKind::KirbyHammer, std::sync::Arc::clone(&a)));
+            // ftData.x48_items[2]: the star of a lost copy ability.
+            let star = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_kirby::ability_star::ARTICLE_INDEX,
+                &it_kirby::ability_star::ARTICLE_STATES,
+                it_kirby::ability_star::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((ItemKind::Unk1, star));
+            visual_archives.push((ItemKind::Unk1, a));
         }
         // ftSk_Init_OnLoad: ftData.x48_items[2] is Vanish's smoke. Sheik's
         // articles load with Zelda too: both forms come to every match.

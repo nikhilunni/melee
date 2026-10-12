@@ -2590,6 +2590,19 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_stone_slope_ys_fox4", 520),
     ("kirby_stone_slope_land_ys_fox4", 520),
     ("kirby_stone_slope_up_ys_fox4", 560),
+    // Losing the copied ability (ftKb_SpecialN_800F5D04) as a star
+    // (it_802ADA1C): to a taunt, facing either way and at the floor's end
+    // (the star's 50 frames end it in the air; a second taunt is the plain
+    // one); to the one-in-32 draw of a hit without knockback (the
+    // nineteenth of Fox's lasers; the ten after it draw nothing) and of
+    // one with (his down smash). On Yoshi's Story the star comes down on
+    // a platform, which ends it.
+    ("kirby_ability_taunt_fd_fox4", 760),
+    ("kirby_ability_taunt_left_fd_fox4", 700),
+    ("kirby_ability_taunt_edge_fd_fox4", 760),
+    ("kirby_ability_lasers_fd_fox4", 868),
+    ("kirby_ability_smash_fd_fox4", 702),
+    ("kirby_ability_taunt_platform_ys_fox4", 660),
 ];
 
 #[test]

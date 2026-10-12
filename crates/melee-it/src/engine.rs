@@ -862,6 +862,10 @@ pub struct ItemCore {
     pub spin_speed: f32,
     /// xDC8 x19: the spin keeps its sign regardless of facing.
     pub spin_ignores_facing: bool,
+    /// xDCE b7, set at creation (item.c:672): each map pass re-aims the
+    /// fixed ECB at the model's rotation (it_80276214 -> it_80276278). A
+    /// kind that clears it keeps the ECB upright while its model spins.
+    pub ecb_follows_rotation: bool,
     /// xDC8 x15 (it_8026B390 / it_8026B3A8): Item_IsGrabbable requires it,
     /// and it gates the common lifetime countdown (Item_80269528).
     pub grabbable: bool,
@@ -1736,6 +1740,7 @@ impl ItemPool {
             spin_rate: assets.spin_rate,
             spin_speed: 0.0,
             spin_ignores_facing: assets.rotate_to_facing,
+            ecb_follows_rotation: true,
             grabbable: false,
             grab_offset: assets.grab_offset,
             grab_range: assets.grab_range,
