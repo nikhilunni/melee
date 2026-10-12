@@ -41,8 +41,8 @@ FD, Battlefield or Yoshi's Story, registered characters, valid costumes,
 normal speed/damage/scale/handicap, singles stock mode, items off, normal
 countdown and music. Stock count is preserved (1..99); time/countdown rules
 are preserved and time-up stops at an explicit unported boundary. CPU/demo
-control, Slippi Online setup/seed resets, PAL, and Japanese countdown assets
-are reported unsupported. UCF/Dween stops at the first nonzero main-stick
+control, PAL, and Japanese countdown assets are reported unsupported (Slippi
+Online games were too until 2026-10-12: "Slippi Online" below). UCF/Dween stops at the first nonzero main-stick
 sample; its fixes are not implemented. Arbitrary Gecko modifications, forced
 music, alternative entry modes and pause/resume are not verified contracts.
 
@@ -2749,3 +2749,235 @@ particle draws for retail's 39. The parasol is an article removed on
 damage, as the boomerang in hand and Mr. Game & Watch's articles are
 ("The generator cursor" above); which call creates 57 and 59 was not
 followed. Every fighter key still agrees on that tick.
+## Slippi Online (2026-10-12)
+
+A Slippi Online (netplay) game is not a console's game with other inputs:
+the seed is rewritten every frame, a rollback runs ticks again without
+rendering, the build carries its own codes, and the machine is an emulator.
+`melee-sim replay` runs them as one more setup
+(`crates/melee-sim/src/replay_online.rs`); the 14 games refused as "Slippi
+Online initialization/seed resets" and the 3.6.0 game refused as "Game Start
+seed ... does not reach the first Frame Start" (all `public-v3.7-b`, July and
+August 2020) now run, 13 of the 15 to their last frame.
+
+### What Online changes
+
+Sources: project-slippi/slippi-ssbm-asm at 0e90140 (2020-07-21, the netplay
+build of these games; `Output/Netplay/GALE01r2.ini` lists its codes) and
+fcf47f1 (2026-05, for the later code set); project-slippi/slippi-wiki
+`SPEC.md`; project-slippi/Ishiiruka, branch `slippi`. Logic described, not
+copied (GPL-3).
+
+| | A console or local game | An online game | Source |
+|---|---|---|---|
+| Seed at match creation | whatever the menus left | the negotiated RNG offset, stored at 0x8016E748, one instruction before Game Start reads the seed (0x8016E74C). The Ground and Players are created from it as in any game, so `boundary_seed_from_creation` holds | `Online/Core/InitOnlinePlay.asm` |
+| Seed during the match | one stream from the boundary on | **written before every tick, not only at a rollback**: a GObj (class 4, p_link 7) whose proc `FN_SyncRNG` runs at s_link 0, before any fighter proc, stores `rotl(scene frame counter, 16) + offset` (the counter is gm_80479D58 +8, 0x80479D60; zero on the first tick). Frame Start records the seed after that write, so the first Frame Start equals Game Start's seed | the same file |
+| Match setup | the menus' StartMeleeData | copied from Dolphin's match block: ports 1 and 2, spawn points 0 and 1 named per player (Game Start's `spawn_point`), four stocks, eight minutes, the stage; A inputs cleared on every port so no Zelda/Sheik swap | the same file |
+| Pause | the engine stops; no frames are recorded | with Pause off in the rules (Game Bitfield 3, 0x08: 12 of the 15 games) a client-side pause that stops nothing; with it on, the retail pause. The scene frame counter runs on through a pause (SPEC, Frame Start), so the seeds then leave the tick count | `Online/Core/InitPause.asm` (0x8016E904) |
+| Rollback | none | the state saved at the first predicted frame S is loaded and ticks S to F run in one pass of gm_801A4D34, F being the frame about to be simulated; between them the code calls Camera_8002A4AC and ftLib_80086A8C for every fighter and branches back to the tick body: **no display pass** | `StartEngineLoop.asm` (0x801A4DE4), `LoopEngineForRollback.asm` (0x801A5014), `TriggerSendInput.asm` (0x80376A28) |
+| In the replay | each frame once | each frame once per simulation of it, in the order simulated. Nothing marks an event as rolled back; Frame Bookend carries `latest finalized frame` (3.7.0). `slp::Replay::frames` keeps each frame's last version (a repeated Frame Start now drops everything the earlier version recorded, a follower included) and `frame_sends` the order | SPEC; `crates/slp/src/lib.rs` |
+| Codes | not recorded before 3.3.0; read from the frames | **named**: the Gecko List event (3.3.0+) is the code table the game ran. `slp::gecko` decodes it and `replay_online::Listed` reads from it what the port models | SPEC; `Recording/SendGameInfo.asm` |
+| Arithmetic | the Gekko | Dolphin's JIT in deterministic mode ("The emulator's zeros" below) | Ishiiruka `Jit_FloatingPoint.cpp` |
+
+**Codes of the 2020 netplay build that change a match** (0e90140; the same
+list in every one of the 14 Slippi 3.7.0 games, the 3.6.0 game's without
+Widescreen):
+
+| Code | Site | Port |
+|---|---|---|
+| NeutralSpawn | 0x8016E510 | the 2020 table, chosen by the first frame as before |
+| UCF 0.74 with the per-port toggle (and Dween) | 0x800C9A44, 0x800998A4, 0x8006B028 | by version and date as before; no dashback probe, a netplay build carries one version |
+| Disable FD Background Transitions | `0421AAE4 60000000` | `frozen_stages` on Final Destination |
+| FreezeStadium (`Online/Core/PreventFileAlarms`) | 0x801D4578, in grStadium_801D4548 after its first call: branches to the function's end (0x801D4FD8) | `frozen_stages` on Pokémon Stadium: the same as the nop of the call at 0x801D1548. Game Start's `frozen_ps` is 0 (the recorder tests 0x801D45FC only) |
+| **BrawlOffscreenDamage** | 0x8006A880, the `bl ifMagnify_802FC998` of Fighter_8006A360 | `SlippiCodes::offscreen_damage_by_camera_limits`: off screen means outside the stage's camera limits (Stage_GetCamBounds*Offset, `fcmpo` left, right, top, bottom), unless vanished (x221F_b1) or in DeadUpStar or DeadUpFall. No camera, screen code or display pass enters the magnifier's damage |
+| Stadium preload | as offline | never reached: the controller does not run |
+| Widescreen (optional, the recording player's own) | 0x8036A4A8, 0x80030C7C, 0x80030C88 | `Screen::Widescreen`, read from the list (320 / 219 by the hook's floats) |
+| Lagless FoD | 0x801CBB90 and seven writes in grIzumi | display only (the reflection, an animation, a matrix copy); the two Fountain games match with the stage as it is |
+| Init Stage Data, Init Player Data | 0x801C154C, 0x80068EEC | zero the new GObj's data; the port's state is already defined |
+| FreezeGlitchFix (from 2020-07-21) | `041239A8 60000000`, in ftNn_Init_80123954 | not ported: an online game with Ice Climbers and this code is refused |
+| PreventCharacterCrowdChants, the sound hooks, mute music | 0x80321D70, 0x8038D224, 0x80088224, ... | no effect on a compared field or a draw in these games |
+
+Later builds add codes that do change the match and are not ported
+(fcf47f1's `affects-gameplay` list): FreezeDeadUpFallPhysics (0x800D4C1C,
+0x800D4D68, 0x80080E80), DesyncProofBGTransformations (a C2 at 0x8021AAE4),
+the Stadium file codes (0x801C65C8, 0x801D4760, 0x801D457C, 0x800165AC),
+WhispyBlowDirFix (0x8008653C), NanaDeterminism (0x800AC5B8),
+PSCameraIndependentMonitor (0x801D24FC), PreventWobbling (0x800DB880,
+0x8008F090), and the optional Disable Screen Shake (0x80030E44). A game whose
+list holds one is refused with each named ("netplay code ... at ... is not
+ported"), so a newer corpus says what to port: `crates/slp/tests/data/v3.12.slp`
+(2022) names five and `v3.16.slp` (2024) eight.
+
+### What the runner does
+
+A game is online by Game Start's major scene (8, Slippi 3.7.0 on) or, without
+that field, when every Frame Start seed is the sync's for its frame (the
+3.6.0 game). The report says which. Then, and only for such a game:
+
+1. **Each tick starts from its Frame Start seed**, set on the simulation
+   before the tick (`Simulation::set_rng_seed`, as a boundary seed is: the
+   simulated match holds no new state). The first-frame check that the setup
+   draws reach the first Frame Start does not apply (that seed is the
+   sync's); the music draw falls before the first write.
+2. **A tick a rollback ran** takes the rollback loop in place of the display
+   pass (`DisplayPass::RollbackLoop`: the rendered camera and each fighter's
+   off-screen bit, no particle sort, no screen KO placement, no joint
+   caches, no magnifier). Which ticks: from `frame_sends`, every frame after
+   the first of a pass that steps back, up to one past the newest frame sent
+   before it; the first frame of the pass starts from the saved state and
+   keeps what preceded it when it last ran (`replay_online::rollbacks`).
+3. **The codes are the list's** (`Listed`): the stage code, the screen and
+   the off-screen rule; the report's `stage code` and `screen` lines say
+   "(the replay's Gecko list)". No dry pass runs. Lag frames are not
+   inferred (`lag_frames` is null in the JSONL).
+4. The report's `online (...)` line and the JSONL's `online` object carry
+   the counts below. Every game that is not online has `"online": null` and
+   is otherwise byte for byte what it was.
+
+**What is checked less than in a console game, exactly:**
+
+- *The end-of-tick seed.* The next Frame Start is the netplay code's write,
+  not what this tick's draws left, so `rng.seed` is not compared; no
+  recording of an online game holds it. What remains of the seed: each Pre
+  Frame seed must lie on the port's stream between the tick's first seed
+  and its last, as before. A tick's draws after the last fighter's input
+  proc are seen only through what they do. The report counts the Pre Frame
+  seeds that follow draws (`pre_frame_seeds_after_draws`: 764 of 27,220 in
+  the witness game; the rest equal the Frame Start seed and say only that
+  nothing drew first).
+- *Frame Start itself* is supplied, not derived. The diagnostic: how many
+  supplied seeds are not `rotl(tick count, 16) + offset`
+  (`seeds_off_the_tick_count`). It is 0 for all 15 games and the three
+  fixtures (170,810 frames), so on these the supplied seed is the one the
+  port would compute from the tick count and Game Start alone. A nonzero
+  count means a pause, and `--retail-inputs` refuses such a game (the
+  recorder derives the seed from the counter).
+- *The sign of a zero knockback velocity* (next section).
+
+Every other recorded field is compared on every frame, bit for bit, as
+before.
+
+### The emulator's zeros
+
+With the above, 13 games stopped 400 to 16,000 frames in on `kb_vel.y`:
++0.0 recorded, -0.0 in the port, a fighter knocked along the floor that has
+just left it. The port is the console's value. Fighter_procUpdate decays
+airborne knockback with `fnmsubs` (0x8006B9C8, 0x8006B9E4:
+`kb -= decay * cos/sin(atan2f(kb.y, kb.x))`); with `kb.y` zero and `kb.x`
+positive the sine is +0 and the Gekko's -(a*c - b) is -0. Slippi's Dolphin
+computes it otherwise: in deterministic mode (netplay) its JIT does not fuse,
+and "We implement nmsub a little differently ((b - a*c) instead of
+-(a*c - b))" (Ishiiruka `Source/Core/Core/PowerPC/Jit64/Jit_FloatingPoint.cpp`,
+`fmaddXX`), which is +0.
+
+| Evidence | -0 | +0 |
+|---|---|---|
+| Console recordings (26 games, Slippi 3.5+), airborne, `kb_vel.x` nonzero | 2675 frames | 468 |
+| The 15 online games, the same frames | 9 | 1463 |
+| The witness game on retail in this project's Dolphin against its replay | 221 fighter-frames where the replay has +0 | (the replay's value) |
+
+The last row is exact: the retail recording of the game below differs from
+the replay in the sign of `kb_vel.y` on 221 fighter-frames and in nothing
+else, and 221 is the count the runner reports for that game.
+
+The port keeps the console's arithmetic. For an online game the comparison
+takes a recorded zero and the port's zero as equal whatever their sign in
+`kb_vel.x` and `kb_vel.y` only (`replay_online::ZERO_SIGN_FREE`), counts them
+(`zeros_of_the_other_sign`) and shows the recorded one in a divergence
+report so the field named is a real difference. `--strict-zeros` compares
+them by sign (the 13 games then stop where they did). Nothing follows from
+the sign in this path: the angle is atan2f(+-0, x > 0) and its sine is +0
+either way. Not modelled: the same JIT's unfused multiply-add (two double
+operations where the Gekko fuses), which can differ in the last bit of a
+result; no compared field of these games shows it. Emulating that machine
+would mean a second arithmetic in `gekko-math`; it is not done.
+
+### Retail evidence
+
+A netplay session cannot be run in the recorder: InitOnlinePlay loads the
+match from Slippi Dolphin's EXI device (`FN_LoadMatchState`), the rollback's
+savestates are that device's too, and this project's Dolphin has neither. So
+the game is played back locally with the transport's effects supplied:
+
+- the one netplay code that changes these matches and stands alone, as
+  Gecko text: `online-offscreen-damage` (the C206A880 block of
+  `Output/Netplay/GALE01r2.ini` at 0e90140, in `MELEE_GECKO_DIR`; a scenario
+  says `online_offscreen_damage = true` beside it), with `ucf-0.74`,
+  `neutral-spawn` and `widescreen`;
+- the seed: a scenario's `online_rng_offset = N` makes the tracer store
+  `rotl(scene frame counter, 16) + N` before every tick
+  (`harness/dolphin/tick_trace.py`, `sync_seed`: at the tick boundary,
+  where nothing draws before the netplay proc would run; it checks that the
+  tick then ran on the counter it seeded for), `validate_ticks.py` reaches
+  each record's seed from that seed, and the port's tick driver makes the
+  same write (`Simulation::sync_seed_each_tick`);
+- ports 1 and 2 with spawn points 0 and 1 (`make_boundary.py --spawn-points
+  0 1`), eight minutes.
+
+Not reproduced: a rollback's loop (retail renders after every tick here; the
+bridge prints how many of the scenario's ticks one ran).
+
+| Scenario | Retail |
+|---|---|
+| `start_bf_online37_wide_p12_drmario4_marth2_4` (boundary) | the layout with the four codes: its cold twin gates exact over 600 ticks |
+| `slp_online_bf_drmario_marth_r1_t13611` (`SLIPPI_REPLAY_WITNESSES`) | `DOC/Game_20200721T200318.slp` (Slippi 3.7.0, Dr. Mario vs Marth, Battlefield) played back whole, 13611 ticks, a display pass after every tick. The port equals retail on every tick, seed included (62 keys, 0 divergences). `replay_vs_trace.py --online-rng-offset 39851`: retail follows the replay on all 13610 frames (Pre Frame seeds, actions, positions, percents), so retail under these codes and seeds plays the online game. Without `online_offscreen_damage` the port leaves retail at record 1782 (`p1.percent`, a magnifier point the code does not give); without `online_rng_offset` at record 1 |
+
+`start_bf_online37_p12_drmario4_marth2_4` (the same boundary without
+Widescreen) is local data, exact too and unused: the replay's player ran
+Widescreen and the bridge insists on the replay's codes.
+
+### The 15 games
+
+`replay-batch` at `--jobs 4`, before and after (the runner as committed):
+
+| Game (`public-v3.7-b`) | Stage | Before | After |
+|---|---|---|---|
+| `DOC/Game_20200721T200318` | BF | refused | 13610 / 13610 |
+| `FOX/Game_20200801T193753` | FD | refused | 2722 / 2722 |
+| `GANONDORF/Game_20200808T002332` | FoD | refused | 10947 / 10947 |
+| `JIGGLYPUFF/Game_20200719T184251` | FD | refused | 7955 / 7955 |
+| `LINK/Game_20200725T232021` | YS | refused | 1070 / 13543, then `p1.cur_anim_frame` |
+| `LUIGI/Game_20200727T190741` | PS | refused | 11225 / 11225 |
+| `MARTH/Game_20200817T043324` | BF | refused | 14423 / 14423 |
+| `PEACH/Game_20200808T225408` | FD | refused | 19879 / 19879 |
+| `PICHU/Game_20200808T202714` | PS | refused | 16687 / 16687 |
+| `PIKACHU/Game_20200729T213607` | FoD | refused | 2918 / 2918 |
+| `ROY/Game_20200711T210029` (3.6.0) | FD | setup seed | 13325 / 13325 |
+| `ROY/Game_20200822T235500` | PS | refused | 6706 / 6706 |
+| `YLINK/Game_20200722T224303` | BF | refused | 1938 / 9969, then `p1.cur_anim_frame` |
+| `YLINK/Game_20200801T003748` | BF | refused | 18382 / 18382 |
+| `YOSHI/Game_20200801T185053` | YS | refused | 7959 / 7959 |
+
+The two stops are one port fault and not Online's: Marth's Counter attack
+(SpecialLwHit, action 370) against a Link or Young Link projectile. In
+`YLINK/0722` the recorded slash stops on its frame 6 from tick 1937
+(hitlag: it struck something, with Young Link forty units away) and the
+port's runs on; in `LINK/0725` Marth, his counter finished, takes 3% at
+tick 1070 with Link shielding sixty units away and the port has no hit.
+Both stop on the same tick with the rollback ticks rendered, skipped or
+looped and on either screen. Not diagnosed.
+
+**What each piece is shown by** (the 15 games run again with one piece
+changed, the knockback zeros left free):
+
+| Piece | Changed to | Games that then stop |
+|---|---|---|
+| Off-screen rule | the magnifier | 10, on `percent` (1319 to 8642 frames in) |
+| Stage code | none | the three Stadium games (4238 to 4378: the transformation) and one Final Destination game (`ROY/0711`, 4000, `input_seed`); the other three Final Destination games match either way |
+| Screen | standard | none: nothing recorded separates the screens here |
+| Rollback ticks | a display pass, or none at all | none: nothing recorded separates the three |
+
+So the rollback loop's model is from the source alone: no game of this corpus
+shows it, and retail cannot run it. A recorded field that depends on it (a
+tether's rope, a screen KO's position, the particle sort) would.
+
+Both corpora, `replay-batch`: `public-v3.7-b` 458 to 471 complete of 502
+(frames matched 4,838,502 to 4,988,248); the other 487 games' JSONL lines
+are identical apart from the new `online` field, null on each; no replay
+matches fewer frames and none changes an inferred setup. `public-v3.7`: all
+108 lines identical apart from that field.
+
+`~/melee-data/replays` holds no replays outside the two sampled corpora, so
+there is no further online game on this machine; the three online fixtures
+in `crates/slp/tests/data` are the only others (`netplay.slp`, 2020, now
+128 / 128; the two later ones refused for their codes).
