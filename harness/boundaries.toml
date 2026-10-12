@@ -747,3 +747,12 @@ stage = "DreamLand"
 players = ["Link", "Roy"]
 stocks = 4
 seed = 2516155741
+
+[[boundary]]
+name = "start_ys_kirby_fox4"
+cold = "start_ys_kirby_fox4_cold"
+savestate = "harness/roms/start_ys_kirby_fox4.sav"
+stage = "YoshisStory"
+players = ["Kirby", "Fox"]
+stocks = 4
+seed = 847245822
