@@ -71,9 +71,9 @@ inline 1024 bytes, so `Kirby` shares it behind an `Arc`.
 | Shared multijump (`Fighter_x2D0_t`) | +00..30 | yes |
 | The Inhale's catch, the mouthful, swallow and spit | +38..A0, +B0..C8 | yes (`InhaleAttributes`) |
 | The star of a lost ability | +A4..AC | no |
-| Hammer | +CC..D0 | no |
+| Hammer | +CC..D0 | yes (`HammerAttributes`) |
 | Final Cutter | +D4..E8 | yes (+E8 has no reader) |
-| Stone | +EC..114 | no |
+| Stone | +EC..114 | yes (`StoneAttributes`; +10C and +110 have no reader) |
 | One group per copied kind | +118..3E8 | no |
 | Peach's `AbsorbDesc`, Zelda's `ReflectDesc` | +3EC, +400 | no |
 
@@ -104,14 +104,26 @@ Final Cutter on the disc: the rise's upward speed times `3F666666` (0.9,
 and 0 above TopN (+DC, +E0; the code then lowers it by 1), a stick past
 `3E4CCCCD` (0.2, +E4) turns Kirby round at the start, and +E8 is 0.
 
+Hammer on the disc: the first aerial swing of a flight rises at `3FC00000`
+(1.5, +CC); an aerial swing that lands takes 16 frames of
+LandingFallSpecial (+D0).
+
+Stone on the disc: the rock lasts 150 frames (+EC) and B ends it after 18
+(+F0); it slides on a floor steeper than `3E32B8C2` (0.1745 radians, ten
+degrees, +F4), a floor past `3F5F66F3` (0.8727, fifty degrees, +F8) counts
+as that steep, the slide gains 0.1 a frame (+FC) up to 2.0 (+100), which is
+also how far the ray down a slope looks; the falling rock moves 4.5 a frame
+(+104); the shell takes 38 damage (+108, an integer); +10C and +110 (16 and
+28) have no reader in ftkirbyspeciallw.c; +114 is 0, so the rock ends in
+Fall and not in the special fall.
+
 `ftData.x48_items[0]` (article at 0xE17C) is the Cutter beam,
 `It_Kind_Kirby_CBeam` (0x32); its special attributes at 0x7B2C
 (`itKirbyCutterBeamAttributes`): speed 4.0, an unread word 0, lifetime 25
-frames, deceleration 0.1 per frame. Items [1]..[3] (the hammer and two
-more) are not read.
-
-Stone words pinned for the later port: at most 150 and at least 18 ticks in
-the rock, 38 HP (+108).
+frames, deceleration 0.1 per frame. `[1]` (article at 0xE1B4) is the hammer,
+`It_Kind_Kirby_Hammer` (0x33): one article state (animation 0), no special
+attributes, a model of two joints with no bone table whose attach joint
+(`ItemModelDesc.x8`) is 1, the root's child. Items [2] and [3] are not read.
 
 ## Motion table
 
@@ -141,7 +153,15 @@ queue will need as `StaleMove` variants.
 | efAlt 0x49D | a rapid jab fist: `efLib_Create_Attach_Pos(0x1390)` at the script's offset, scaled as the fighter root, turned to the facing and tilted by the command's X range in 256ths of a degree; `efLib_Cb_SetJObjOffsetZ` moves its child 2 forward per update (efAsync kind 6) | `melee-ef` `kirby.rs` |
 | efAlt 0x494 | Final Cutter's blade: `efLib_Create_AttachChild(0x1388)` and `efLib_Create_Attach(0x1389)` on `fp->parts[44]`, `efLib_Create_Attach(0x138A)` on `fp->parts[1]`, each with a lifetime of 0x41 and `efLib_Cb_SetRotYAndTransition` (the last two turn to the fighter's facing; all loop frames 60..65 and play out from 65 once `efLib_SetFlags(gobj, 1)` marks them); efSync from both entries, so sync-loaded | `melee-ef` `kirby.rs`; AttachChild's orientation constraint is not applied (drawn pose only) |
 | efAlt 0x49A | the Inhale's wind: `efLib_CreateGenerator_AppSRT_SetFacingDir(0x138B)` | `melee-ef` `kirby.rs` |
-| efAlt 0x496..0x499, 0x49B, 0x49C | Stone, hammer and swallow models and generators | not ported |
+| efAlt 0x496, 0x497 | the Hammer's trail on `fp->parts[FtPart_HipN]`: `efLib_Create_Attach(0x138C)` swung on the ground, `efLib_Create_Attach(0x138D)` with `efLib_Cb_SetRotY_FromFighterDir` in the air; efSync from accessory4 as the hammer comes out | `melee-ef` `lib.rs` (the attached-model rows) |
+| efAlt 0x498, 0x499 | the hammer article's own model: `efLib_Create_AttachChild(0x138E / 0x138F)` with the item as its parent on the model's attach joint (efAsync kind 0 from `it_802ADC54`; ground / air by the owner's state at the swing) | `melee-ef` `kirby.rs` (`ItemEvent::BoneModel`); AttachChild's orientation constraint is not applied (drawn pose only) |
+| efAlt 0x49B, 0x49C | Stone's puffs on `fp->parts[FtPart_YRotN]`: `hsd_8039EFAC(0, 5, 0x138F)` as it starts and `(0, 5, 0x1395)` as it ends; efSync | `melee-ef` `lib.rs` (the joint generator rows) |
+
+Stone's scripts use subaction opcode 53 (`ftAction_80072CB0`: Fighter
++2225 bit 2 from the word's low bit), which no earlier character's script
+reached. The bit draws the kind's accessory model (a copied ability's hat;
+Jigglypuff's costume hat) and nothing simulated reads it: the port keeps it
+as `CommandState::accessory_visible`.
 
 The catch's rows ask for no efAlt or efSync of their own in code: their
 graphics are their scripts' (the caught fighter's star plays Kirby's

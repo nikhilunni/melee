@@ -1,16 +1,17 @@
 # Kirby
 
 Kirby (PlKb.dat, scenario name `Kirby`) vs Fox on Final Destination,
-boundary `start_fd_kirby_fox4`. Crate: `ft-kirby`. Data facts are in
-`docs/KIRBY_DATA.md`.
+boundary `start_fd_kirby_fox4`, and on Yoshi's Story, boundary
+`start_ys_kirby_fox4` (for Stone on a slope). Crate: `ft-kirby`. Data facts
+are in `docs/KIRBY_DATA.md`.
 
-**Status: stage 2 of three, in part.** Kirby is registered and his movement,
-common attacks, four throws, hit reactions, death and revival are exact. Of
-his own specials (stage 2) the Inhale, with a caught fighter held, spat and
-swallowed, and Final Cutter with its beam are exact; Hammer and Stone are not
-ported, nor is inhaling an item. A swallow leaves the copied kind as state;
-the copy abilities themselves (stage 3) are not ported. Every unported row
-and entry fails closed.
+**Status: stage 2 of three.** Kirby is registered and his movement, common
+attacks, four throws, hit reactions, death and revival are exact. His own
+four specials (stage 2) are exact: the Inhale, with a caught fighter held,
+spat and swallowed; Hammer; Final Cutter with its beam; and Stone. Inhaling
+an item is not ported. A swallow leaves the copied kind as state; the copy
+abilities themselves (stage 3) are not ported. Every unported row and entry
+fails closed.
 
 ## What is different about him
 
@@ -200,6 +201,83 @@ and entry fails closed.
     otherwise (`release_from_dead_partner`). ftCo_800DC920 has a Kirby arm
     for a pair parted during the pull (ftCo_CaptureCut.c:115-122), which
     fails closed.
+- **Hammer** (`ft-kirby/src/special_s.rs`, `it-kirby/src/hammer.rs`). One
+  row on the ground (383) and one in the air (384), with no change between
+  them.
+  - A dash into Hammer keeps almost none of its speed (1.4 becomes 0.2 on
+    the entry's frame) and stops within half a unit: the grounded swing
+    does not leave a floor's end on its own.
+  - The first aerial Hammer of a flight sets the upward speed to +CC (1.5)
+    and spends the lift (`u.kb.x64`) until a landing; the second does not
+    rise. An aerial swing that reaches the floor lands in
+    LandingFallSpecial with +D0's lag (16 frames); a grounded swing that
+    loses the floor (Fox pushed it off) ends in Fall.
+  - The hammer is an article. accessory4 (fn_800F53AC) creates it in
+    `fp->parts[44]` on the script's cmd_vars[0] = 1, which is the first
+    frame, and destroys it on 2. It has one state without callbacks: the
+    hitboxes are Kirby's own. With it come the trail on the hip (efAlt
+    0x496, or 0x497 in the air), the article's own model on its attach joint
+    (efAlt 0x498 / 0x499, by the owner's ground state at the swing), and
+    the damage and death callbacks, which remove it
+    (ftKb_SpecialAirLw_800F5524).
+  - A side special with the stick the other way turns Kirby round first
+    (the common entry).
+- **Stone** (`ft-kirby/src/special_lw.rs`). Three rows on the ground (393
+  the change, 394 the rock, 395 the change back) and three in the air
+  (396..398).
+  - The start's script asks for the rock (cmd_vars[0] = 1): the shell takes
+    +108's health, the form becomes `(form + HSD_Randi(4)) % 5 + 1` (so
+    never the form before; the first follows the reset's draw), and the
+    model flickers into the rock over 22 frames by the table
+    ftKb_Init_803CB490 (ftParts_80074B0C: group 0 the form's model, group 1
+    hidden; the held item, the articles and the hat hidden). The end's
+    script asks for the way back (2), the same table backward. The draw
+    follows the script's own graphics of that frame.
+  - The rock row holds its animation (rate 0). Each frame its animation
+    callback sets `x221C_b4`; the start and end rows clear it.
+  - **The shell is shared code** (`melee-ft` `CombatState::through_shell`):
+    while `x221C_b4` is set, a hit's damage comes off `dmg.x1834` before it
+    is logged. While the shell holds nothing is logged: no damage, no
+    hitlag for Kirby, no reaction; the attacker still has its hitlag and
+    its stale-move credit, and the spark is the invincible one (1052 /
+    0x41C). The hit that takes the health below zero is logged with what
+    is left over, and clears the bit.
+  - A shell broken by a hit that does not move Kirby (a Blaster shot) is up
+    again on the next frame, since the rock row sets the bit every frame,
+    with its health below zero: each later hit then does its own damage
+    plus all that the health is below zero. Retail does this
+    (`kirby_stone_laser_break_fd_fox4`: 2.11%, then 4.6% more).
+  - Any motion change clears the bit (fighter.c:1058), so a grab takes the
+    shell and, with no SkipModel flag, the rock's model: Fox grabs and
+    throws the rock as he would Kirby. Stone's own changes put the bit back
+    after each `Fighter_ChangeMotionState`.
+  - The rock ends when its timer (150 frames, counted in the IASA callback)
+    is spent, or on a B press once 18 of them have passed; an earlier press
+    is lost. The grounded end leaves the floor (ftCommon_8007D5D4): both
+    end rows are airborne, move on their TransN (which only rises, 8.2
+    units) and finish in Fall.
+  - In the air the start hovers (its TransN dips 0.77 on the first frame and
+    then rises: started within that of the floor it lands at once into the
+    grounded start), and the rock falls at +104 (4.5 a frame). Its landing asks for the large
+    quake and continues in the grounded row; a grounded rock or start that
+    loses its floor continues in the aerial one with no horizontal speed.
+    The falling rock hits Fox; a rock formed on the floor did not hit him
+    standing against it.
+  - Fox can push the rock. On a floor past +F4's angle (ten degrees) it
+    slides: each frame the collision callback reads the floor's normal and
+    its angle (800F3570), keeps the last four (800F37EC), and the physics
+    callback lays the speed along their normalised sum (800F3B28), gaining
+    +FC times the normal's x a frame. A rock that lands on such a floor
+    starts at +100 times the normal's x. Once a frame newer than a sliding
+    one is inside the angle again, the speed and acceleration take a factor
+    0.9 and the rock brakes by the fighter's ground friction.
+  - The damage and death callbacks are installed by the entry, by the
+    collision callbacks' changes and by the end, but not by the start's
+    change into the rock (ftKb_SpecialLw1_Anim): a grounded rock that never
+    left the floor has none. They would only clear what the motion change
+    after the hit clears anyway.
+  - Stone's scripts use subaction opcode 53 (x2225_b2, the hat's
+    visibility), new in `melee-cmd`.
 - **Landing** clears the three once-per-flight lifts (`x64` Hammer, `xC4`
   copied Ice Shot, `xCC` copied Toad).
 - **Items.** `ftKb_Init_OnItemPickup` maps hold kinds to hand poses
@@ -219,7 +297,10 @@ and entry fails closed.
 | A mouthful walked over a slippery floor or with no forward speed (ftwalkcommon.c:106-112); a take-off past the scaled speed limit (ftCo_Jump.c:133-139) | `mouthful` `walk_anim`, `take_off` |
 | A hat grafted into Kirby's parts (ftkirby.c:3578-3592: Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game & Watch) | `swallow` `copy_ability` |
 | Losing the ability to a hit (ftkirbyspecialn.c:266-291, the star it_802ADA1C) or a taunt; a Kirby with an ability inhaled (ftCo_ThrownKirby.c:63-69, 283-289) | `ability_loss_draw`, `ENTER_TAUNT`, `SWALLOWED_ABILITY` |
-| Hammer (ftkirbyspecials.c), Stone (ftkirbyspeciallw.c) and their articles | `enter_special` Side / Down |
+| Stone's rock where the floor ahead slopes back (ftkirbyspeciallw.c:177-188), a slope that turned against the slide within four frames (:273-285), a floor past fifty degrees (:308-313), the slide at its top speed (:338-352) | `special_lw` `read_floor`, `record_floor`, `slide` |
+| Stone's end rows touching a floor (ftkirbyspeciallw.c:695, 866: the result is ignored); the special fall after Stone with a nonzero +114 (:471, 510) | `special_lw` `end_collision`, `end_anim` |
+| A phantom hit's damage against the shell (ftColl_8007BE3C, ftcoll.c:3666-3676) | `melee-ft` `expire_phantom_lockout` |
+| Hammer or Stone with an item in hand (ftCommon_8007F5CC) | `melee-ft` `require_held_item_state` refuses a special row with a held item; `special_lw` `show_held_item` asserts it |
 | Final Cutter's aerial start landing (ftkirbyspecialhi.c:447-453) and its aerial landing row landing (:526-536): neither row descends on its own | `air_start_collision`, `air_landing_collision` |
 | The beam on a slope (itkirbycutterbeam.c:93-97, the one `fmadds`), landing from the air (:128-133), ended by a wall (:137-151), clanked (:162), absorbed (:167), glancing off a shield (:205-243) | `it-kirby` `cutter_beam.rs` |
 | Every copied neutral special (ftkirbyspecial<kind>.c), the hat models, the helmeted multijumps | rows 399..543 (`enter_special` Neutral with an ability); `multi_jump_family` under the five helmets |
@@ -231,9 +312,12 @@ and entry fails closed.
 
 - `start_fd_kirby_fox4` and `_cold`: 600 ticks, 0 differing particle ticks
   (`m4_gate`).
-- `KIRBY_WITNESSES` (`m5_gate`) holds ninety scenes: the twenty-one
-  below, the Inhale's whiff, Final Cutter's fifteen, the catch's thirty and
-  the throws' twenty-three. The twenty-one were all recorded once and
+- `start_ys_kirby_fox4` and `_cold`: 600 ticks, 0 differing particle ticks
+  (`m4_gate`); made for Stone's slopes with `make_boundary.py`, exact on its
+  first gate.
+- `KIRBY_WITNESSES` (`m5_gate`) holds 116 scenes: the twenty-one below, the
+  Inhale's whiff, Final Cutter's fifteen, the catch's thirty, the throws'
+  twenty-three, Hammer's eight and Stone's eighteen. The twenty-one were all recorded once and
   exact on the first gate: the thirteen movement scenes, Kirby's down
   throw with a pummel, Fox's four throws on Kirby, Fox's up smash, dash
   attack and Reflector on Kirby through a tumble, the floor, a hit while
@@ -345,17 +429,71 @@ and entry fails closed.
     Klaw, Confusion, cargo or Falcon Dive are exact with this change, as
     they were before it. No other kind's throw script sets cmd var 0 or
     leaves the floor.
+- Hammer: eight `kirby_hammer_*` scenes in `KIRBY_WITNESSES`, items
+  compared, each recorded once and exact on its first gate over its full
+  length with 0 differing particle ticks. Two were recorded before the port
+  existed; the rest were timed on the port's dry runs, and no input was
+  changed after a recording. Two headers were rewritten afterwards to say
+  what retail did.
+  - What they cover: on the ground whiffed, facing either way, and on Fox;
+    from a full hop with the lift and the landing in the swing; from a short
+    hop on Fox (two hits); twice in one flight (the first ends in Fall, the
+    second does not rise and lands); pushed off the floor's end by Fox in
+    the grounded swing; struck by Fox's dash attack with the hammer out; and
+    across the blast zone with it out, then off the revival platform.
+  - Every branch of `special_s.rs` is taken by them (read off their motion
+    and item histories; no marker build was run for Hammer).
+- Stone: eighteen `kirby_stone_*` scenes in `KIRBY_WITNESSES`, items
+  compared, each recorded once and exact over its full length with 0
+  differing particle ticks. Two were recorded before the port existed
+  (their inputs obvious); their first gate stopped at subaction opcode 53,
+  unported then, and with it they were exact. The other sixteen were timed
+  on the port's dry runs and exact on their first gate. No input was
+  changed after a recording; one header was rewritten afterwards to say
+  what retail did (the early B press that does nothing).
+  - What they cover, on Final Destination: the whole 150 frames from the
+    ground and from a full hop (the fall, the landing and its quake); a B
+    press before the minimum time (nothing) and after it, on the floor and
+    in the air; the aerial start landing on its first frame; five in a row
+    (the forms follow the random stream); the rock past the blast zone, and
+    Stone off the revival platform and on the floor after it (the form
+    drawn at the revival, then past it); Fox's jabs on the shell, three up
+    smashes breaking it, his Blaster's shots on it and breaking it after
+    two up smashes (the fighter and the item pass of the shared hit code);
+    his down smash before the rock has formed; his grab and throw of the
+    rock; the falling rock on Fox; the rock and the start pushed off the
+    floor's end by Fox.
+  - On Yoshi's Story: the rock sliding down the left slope and off its end;
+    a rock landing on that slope already sliding; and Fox pushing a rock on
+    the right slope up onto the level floor, where it settles and brakes.
+  - How the rest was found: a scratch build with a marker in each branch of
+    `special_lw.rs` and of the shell's three sites, run over the eighteen
+    scenes and the five Slippi games. What none reached is a refusal now
+    (the first three rows of the table above that name Stone) and the
+    eighteen were gated again. Not reached and still live: the brake of a
+    rock moving left on a level floor (the mirror of the witnessed one).
+  - The model's selections (the form's model, the hidden group, the hat's
+    bit) are not in the gate's keys: `melee-lib`'s presentation test runs
+    Stone and draws, and nothing compares the drawn rock with retail's.
+  - Other kinds, gated with the shared changes (the shell in the fighter
+    and item hit passes, opcode 53, x2225_b2 across motion changes): the 242
+    `m5_gate` scenes whose names mention a grab, throw, catch, capture,
+    pummel, Egg Lay, Klaw, Confusion, cargo or Falcon Dive are all exact.
 - Slippi (`public-v3.7-b`: the four games in `KIRBY` and one in
   `GAMEANDWATCH`, all refused before Kirby was registered): every frame
   matches up to the first unported boundary, which the runner names.
 
   | Game | Frames matched | Stops at |
   | --- | ---: | --- |
-  | `14_16_24 Marth + Kirby (PS)` | 5884 of 7001 (2488 before the throws) | Hammer |
-  | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 13271 of 13271 (1671 before the throws) | the end: every frame matches |
-  | `Falco vs Kirby [YS]` | 2362 of 9109 (1756 before the throws) | the Final Cutter beam ended by a wall |
-  | `Game_20190824T180214` (Kirby against Kirby) | 8704 of 13809 (5426 before the throws) | Hammer |
-  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 2674 of 15399 (563 before the throws) | Stone |
+  | `14_16_24 Marth + Kirby (PS)` | 7001 of 7001 (5884 before Hammer) | the end: every frame matches |
+  | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 13271 of 13271 | the end: every frame matches |
+  | `Falco vs Kirby [YS]` | 2362 of 9109 | the Final Cutter beam ended by a wall |
+  | `Game_20190824T180214` (Kirby against Kirby) | 13809 of 13809 (8704 before Hammer, 8847 before Stone) | the end: every frame matches |
+  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 5100 of 15399 (2674 before Stone) | Mr. Game & Watch's hat grafted into Kirby's parts |
+
+  The Kirby against Kirby game runs Stone 27 times (24 of them landing from
+  the air), the Fountain of Dreams game three times before it stops. Neither
+  has a hit on the rock or a slope under it.
 
   `replay-batch` before and after on both corpora: 106 of 108 and 396 of
   502 complete either way; those five games are the only changes. (That
@@ -365,5 +503,6 @@ and entry fails closed.
   3480 is caught in turn and swallowed, mashing out of the copy star on its
   first tick.
 
-- The explorer was not run from this boundary: its policies press B within
-  the first seconds, so every case would stop at a special's entry.
+- The explorer has not been run from either boundary. It was held back
+  while the specials refused (its policies press B within the first
+  seconds); they no longer do, so it is the next check.
