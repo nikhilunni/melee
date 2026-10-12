@@ -187,6 +187,12 @@ enum Command {
         ledger: Option<PathBuf>,
         #[arg(long, default_value_t = 12)]
         limit: usize,
+        /// With `--ledger`: list both sides' events from this tick to
+        /// `--show-to` instead of comparing them.
+        #[arg(long, requires = "ledger")]
+        show_from: Option<usize>,
+        #[arg(long, requires = "show_from")]
+        show_to: Option<usize>,
     },
     /// Compare the port's image of retail's stale motion scratch words
     /// (mv+0x14, mv+0x18: Yoshi's egg shield counts them down) with each
@@ -461,8 +467,17 @@ fn main() -> anyhow::Result<()> {
             scenario,
             ledger,
             limit,
+            show_from,
+            show_to,
         } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
+            if let (Some(ledger), Some(from)) = (&ledger, show_from) {
+                let to = show_to.unwrap_or(from);
+                for line in melee_sim::gobj::ledger_listing(&scenario, ledger, from, to)? {
+                    println!("{line}");
+                }
+                return Ok(());
+            }
             let report = match ledger {
                 Some(ledger) => melee_sim::gobj::ledger_diff(&scenario, &ledger)?,
                 None => melee_sim::gobj::item_diff(&scenario)?,

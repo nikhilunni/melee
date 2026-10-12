@@ -260,3 +260,54 @@ pub fn ledger_diff(scenario: &Scenario, ledger: &Path) -> Result<Report> {
         differences,
     })
 }
+
+/// Both sides' events on the ticks `from..=to` of a ledger, for reading an
+/// order: the port's as `ledger_diff` shows them, retail's each with its
+/// first word (classifier, p_link) and the GObj whose proc was running.
+pub fn ledger_listing(
+    scenario: &Scenario,
+    ledger: &Path,
+    from: usize,
+    to: usize,
+) -> Result<Vec<String>> {
+    let mut simulation =
+        crate::trace::simulation_displayed_as(scenario, &scenario.trace_path("tick.raw.jsonl"))?;
+    let mut lines = Vec::new();
+    for (tick, line) in melee_trace_io::open(ledger)?.lines().enumerate() {
+        if tick > to {
+            break;
+        }
+        let line = line?;
+        simulation.tick_without_snapshot()?;
+        let port = simulation.take_gobj_events();
+        if tick < from {
+            continue;
+        }
+        let port = port
+            .iter()
+            .map(|&(created, classifier, object)| {
+                format!("{}{classifier:X}#{object}", if created { '+' } else { '-' })
+            })
+            .collect::<Vec<_>>()
+            .join(" ");
+        lines.push(format!("tick {tick}: port [{port}]"));
+        for event in array_field(&line, "gobj")? {
+            let pc = event["pc"].as_u64().context("pc")?;
+            let (op, address) = if ALLOC.contains(&pc) {
+                ('+', event["old"].as_u64().context("old")?)
+            } else if FREE.contains(&pc) {
+                ('-', event["head"].as_u64().context("head")?)
+            } else {
+                continue;
+            };
+            lines.push(format!(
+                "    retail {op}@{:05X} word {:08X} in the proc of {:05X} ({:08X})",
+                address & 0xF_FFFF,
+                event["word"].as_u64().unwrap_or(0),
+                event["cur"].as_u64().unwrap_or(0) & 0xF_FFFF,
+                event["cur_word"].as_u64().unwrap_or(0),
+            ));
+        }
+    }
+    Ok(lines)
+}
