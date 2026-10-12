@@ -147,7 +147,7 @@ impl ItemPool {
                 push_from_fighters(item, &snapshot, push_speed, rng);
             }
             if item.pushed_by_items {
-                self.push_from_items(index);
+                self.push_from_items(index, rng);
             }
         }
         // it_80271F78 pushes heavy items (crates, barrels) off each other;
@@ -155,27 +155,63 @@ impl ItemPool {
         self.items[index].push_settled = true;
     }
 
-    /// it_80271D2C (80271D2C): another grounded item under this one pushes
-    /// it. Not ported: no supported scene leaves two such items touching.
-    fn push_from_items(&self, index: usize) {
-        let item = &self.items[index];
+    /// it_80271D2C (80271D2C): every other grounded item this one overlaps
+    /// pushes it away from itself at the common push speed (it_804D6D28
+    /// +7C); the last in the list wins. One straight above or below takes
+    /// the side opposite to the other's own nudge while the other has not
+    /// yet been pushed this frame (xDC8 x1B clear), and draws it otherwise
+    /// (HSD_Randi(2)).
+    fn push_from_items(&mut self, index: usize, rng: &core::cell::Cell<gekko_math::HsdRng>) {
+        let push_speed = self.common().push_speed;
+        let target = self.items[index].root_translation;
+        let push_box = self.items[index].push_box;
+        let open_palm = self.items[index].pushed_by_open_palm;
+        let mut nudge = None;
         for (other_index, other) in self.items.iter().enumerate() {
             let eligible = other_index != index
                 && !other.held
                 && other.ground_or_air == GroundOrAir::Ground
                 && !other.exploding
-                && (other.hold_kind != 3 || item.pushed_by_open_palm);
-            if eligible
-                && overlaps(
+                && (other.hold_kind != 3 || open_palm);
+            if !eligible
+                || !overlaps(
                     other.root_translation.x,
                     other.root_translation.y,
-                    &item.push_box,
+                    &push_box,
                     &other.push_box,
-                    item.root_translation,
+                    target,
                 )
             {
-                unimplemented!("it_80271D2C: an item pushed by another item");
+                continue;
             }
+            let offset = target.x - other.root_translation.x;
+            let direction = if gekko_math::msl::fabsf(offset) < 0.001 {
+                if !other.push_settled {
+                    if other.nudge.x < 0.0 {
+                        1.0
+                    } else {
+                        -1.0
+                    }
+                } else {
+                    let mut r = rng.get();
+                    let side = r.randi(2);
+                    rng.set(r);
+                    if side != 0 {
+                        1.0
+                    } else {
+                        -1.0
+                    }
+                }
+            } else if offset < 0.0 {
+                -1.0
+            } else {
+                1.0
+            };
+            // retail: fmuls.
+            nudge = Some(push_speed * direction);
+        }
+        if let Some(nudge) = nudge {
+            self.items[index].nudge.x = nudge;
         }
     }
 }

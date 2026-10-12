@@ -1,0 +1,40 @@
+# ITEM PUSH directed witness (boundary start_fd_peach_fox4; `melee-sim
+# search`: the second Mr. Saturn pull over ticks 262..1100, 839 candidates, 2
+# reached; the drop, 10 timings, all met). Peach pulls Mr. Saturn at 142 and
+# throws it (195); it lands, walks to the right edge, turns and walks back.
+# She pulls a second at 783 and drops it from a short hop (1100, Z at 1110);
+# it lands beside her and walks right. The two meet head on near x = -57:
+# while each stands in the other's push box, it_80271D2C nudges it away
+# from the other at ItCo +7C (0.2) against its 0.25 walk, so they close at
+# 0.05 a tick each for some fifty ticks, pass, and are then pushed apart,
+# the first on past Peach, who pushes it too (it_80271B60).
+name = "dosei_push_pair_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 1400
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+  { frame = 195, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+  { frame = 783, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 785, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1100, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 1102, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1110, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 1112, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
