@@ -186,6 +186,21 @@ def test_a_replay_that_names_spawn_points_needs_a_boundary_made_with_them(scenar
         s2s.main([str(inputs), "--name", "slp2", "--boundary", "start_points"])
 
 
+def test_dream_land_takes_any_boundary_until_its_first_fly_by_can_draw(scenarios):
+    # grOldPupupu_80210C7C draws the first fly-by's delay at creation: 3000..4000 ticks.
+    write_boundary(scenarios, "start_dl", "DreamLand", ["ucf-0.8"])
+    inputs = scenarios / "inputs.jsonl"
+    write_inputs(inputs, "DreamLand", game_start_seed=41, ticks=9000)
+    args = [str(inputs), "--boundary", "start_dl", "--name"]
+    s2s.main([*args, "slp_short", "--ticks", "3000"])
+    assert "game_start_seed" not in tomllib.loads((scenarios / "slp_short.toml").read_text())
+    with pytest.raises(SystemExit, match="--game-start-seed 41"):
+        s2s.main([*args, "slp_long", "--ticks", "3001"])
+    with pytest.raises(SystemExit, match="--game-start-seed 41"):
+        s2s.main([*args, "slp_whole"])
+    assert not (scenarios / "slp_long.toml").exists() and not (scenarios / "slp_whole.toml").exists()
+
+
 def test_other_stages_take_any_boundary_of_the_setup(scenarios):
     write_boundary(scenarios, "start_bf", "Battlefield", ["ucf-0.8"])
     write_inputs(scenarios / "inputs.jsonl", "Battlefield", game_start_seed=41)

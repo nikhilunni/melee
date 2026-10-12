@@ -23,9 +23,11 @@ the boundary must be made for the replay, with `--game-start-seed <header
 game_start_seed> --name <its own>`: those stages keep what they drew at
 creation (the background's accelerations, the platforms' first waits, the
 base form's first duration), which `boundary_seed` cannot change afterwards.
+Dream Land keeps the first fly-by's delay (3000 to 4000 ticks), so a bridge
+past tick 3000 there needs the replay's boundary too.
 `--foreign-creation` accepts another boundary there; retail then plays the
 replay's pads but leaves its random stream at the stage's first draw (on
-Stadium, at the first transformation).
+Stadium, at the first transformation; on Dream Land, at the first fly-by).
 
 Two scenarios are written:
 
@@ -107,16 +109,24 @@ CREATION_DRAW_STAGES = ("FinalDestination", "FountainOfDreams", "PokemonStadium"
 #: Stadium (0x801D45FC, the wait never ends) and Frozen Stages (0x801D1548,
 #: the controller never runs).
 STADIUM_NEVER_TRANSFORMS = ("stadium_frozen", "frozen_stages")
+#: Dream Land's creation draw is the first fly-by's delay (grOldPupupu_80210C7C,
+#: 3000..4000 ticks). When it runs out grOldPupupu_80210D10 draws the fly-by
+#: (four values) on another tick than the console's; nothing shows before.
+DREAM_LAND_FIRST_FLY_BY = 3000
 
 
-def keeps_creation_draws(header: dict) -> bool:
-    """Whether what the replay's stage drew at creation shapes its match."""
+def keeps_creation_draws(header: dict, ticks: int | None = None) -> bool:
+    """Whether what the replay's stage drew at creation shapes its match
+    within `ticks` (the whole replay when None)."""
     if header["stage"] == "PokemonStadium" and any(header.get(flag) for flag in STADIUM_NEVER_TRANSFORMS):
         return False
+    if header["stage"] == "DreamLand":
+        return ticks is None or ticks > DREAM_LAND_FIRST_FLY_BY
     return header["stage"] in CREATION_DRAW_STAGES
 
 
-def check_creation(header: dict, cold: dict, boundary: str, foreign: bool = False) -> int | None:
+def check_creation(header: dict, cold: dict, boundary: str, foreign: bool = False,
+                   ticks: int | None = None) -> int | None:
     """The Game Start seed the boundary's match was created from, when it is
     the replay's; None for a boundary whose creation is its own."""
     want, made = header.get("game_start_seed"), cold.get("game_start_seed")
@@ -131,7 +141,7 @@ def check_creation(header: dict, cold: dict, boundary: str, foreign: bool = Fals
     if made is not None:
         sys.exit(f"{boundary} was created from Game Start seed {made}, the replay's is {want}: "
                  "it is another replay's boundary (--foreign-creation to use it anyway)")
-    if keeps_creation_draws(header):
+    if keeps_creation_draws(header, ticks):
         sys.exit(f"{header['stage']} keeps its creation draws: make the boundary for this replay "
                  f"with make_boundary.py --game-start-seed {want} --name <name> "
                  "(--foreign-creation to use this one; retail will not follow the replay's draws)")
@@ -230,9 +240,9 @@ def main(argv: list[str] | None = None) -> None:
     flags = stage_flags(start, cold)
     check_stage_codes(header, flags, a.boundary)
     stage_codes = gecko.scenario_flag_lines(flags)
-    created = check_creation(header, cold, a.boundary, a.foreign_creation)
-    creation = f"game_start_seed = {created}\n" if created is not None else ""
     ticks = min(a.ticks or header["ticks"], header["ticks"], MAX_TICKS)
+    created = check_creation(header, cold, a.boundary, a.foreign_creation, ticks)
+    creation = f"game_start_seed = {created}\n" if created is not None else ""
     schedule = steps(records, ticks, json.loads(pads.CALIBRATION.read_text()))
     seed = header["boundary_seed"]
     codes = start.get("gecko", [])
