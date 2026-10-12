@@ -1,9 +1,12 @@
 //! Mr. Saturn (It_Kind_Dosei), itdosei.c (80281164..80283558). Ported: the
 //! spawn's fall, the hold, throwing and dropping (a thrown Mr. Saturn pops
 //! back off what it hits), landing into the walk, turning at edges and
-//! walls, falling off the floor, and being hit (knocked up, then lying
-//! still until it walks again). The idle and look-round states after a
-//! spawn's landing and sliding down a steep floor fail closed.
+//! walls, falling off the floor, being hit (knocked up, then lying still
+//! until it walks again) and sliding down a floor (state 6). The states of
+//! a Mr. Saturn nobody has held fail closed: the spawn's fall (8), the
+//! idle (7), the look-round (9) and their slide (10). Peach's pull is in
+//! her hand before its first proc, and a pickup sets xDC8 x19 for good, so
+//! none of them is entered (docs/INTERACTION_MATRIX.md).
 //!
 //! The model's turn to its facing (HSD_JObjSetRotationY) is drawing only;
 //! the rotation about the spin axis also aims the ECB (it_80274990) and is
@@ -13,8 +16,9 @@ use hsd_types::Vec3;
 use melee_it::{
     desc::ItemAssets,
     state_change::{ANIM_UPDATE, DROP_UPDATE, MODEL_UPDATE},
-    AirLanding, DoseiState, ItemAnimationContext, ItemCollisionContext, ItemCore, ItemEventContext,
-    ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, SpawnItem,
+    AirLanding, DoseiState, EnteredAir, ItemAnimationContext, ItemCollisionContext, ItemCore,
+    ItemEventContext, ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, SlidePass,
+    SpawnItem,
 };
 use melee_types::ItemKind;
 
@@ -37,6 +41,8 @@ mod motion {
     pub const FALL: u16 = 3;
     pub const HELD: u16 = 4;
     pub const THROWN: u16 = 5;
+    /// Carried down a floor by its slope (itDosei_Logic7_EnteredAir).
+    pub const SLIDE: u16 = 6;
     /// The spawn's fall (itDosei_80282BFC).
     pub const SPAWN_FALL: u16 = 8;
     /// Knocked up by a hit (itDosei_Logic7_DmgReceived).
@@ -118,6 +124,13 @@ static STATES: [ItemStateRow; 12] = {
         animation: held_animation,
         physics: no_physics,
         collision: no_collision,
+    };
+    // it_803F55D0[6]: no article state, so no animation plays.
+    rows[motion::SLIDE as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[6],
+        animation: slide_animation,
+        physics: no_physics,
+        collision: slide_collision,
     };
     rows[motion::THROWN as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[5],
@@ -249,10 +262,8 @@ impl ItemLogic for Dosei {
         item.life_timer -= 1.0;
         item.life_timer <= 0.0
     }
-    /// itDosei_Logic7_EnteredAir (80282A48).
-    fn entered_air(_item: &mut ItemCore) {
-        unimplemented!("itDosei_Logic7_EnteredAir: Mr. Saturn sliding off a steep floor")
-    }
+    /// itDosei_Logic7_EnteredAir (80282B14).
+    const ENTERED_AIR: Option<EnteredAir> = Some(start_sliding);
     /// itDosei_Logic7_Reflected -> it_80273030.
     fn reflected(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
         item.reverse_on_reflect(context.reflected_speed);
@@ -316,7 +327,7 @@ fn animation_ended(item: &ItemCore, assets: &ItemAssets) -> bool {
 /// itDosei_802817A0 (802817A0): on the floor (it_802762B0), walking along
 /// its facing at unk8, its owner forgotten.
 fn start_walking(item: &mut ItemCore, assets: &ItemAssets) {
-    item.platform_drop = 0;
+    item.slide_mode = 0;
     item.spin_ignores_facing = true;
     item.rotation_axis = 1;
     item.owner = None;
@@ -407,9 +418,10 @@ fn walk_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 }
 
 /// itDosei_UnkMotion1_Coll (80281B7C): it_8026D8A4 turns at an edge; a
-/// wall turns it; a floor steeper than pi/4 in its normal's X would slide
-/// it (EnteredAir); otherwise it leans with the floor. Off the floor it
-/// falls.
+/// wall turns it; a floor whose normal's X is pi/4 or more (retail
+/// 0x80281BD8..EC: the constant is an angle, the operand is not) slides it
+/// (xD5C 1, xDC8 x1F, EnteredAir called directly); otherwise it may not
+/// slide (xD5C 0) and leans with the floor. Off the floor it falls.
 fn walk_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let (grounded, edge) = item.walk_ground_pass(ctx.map);
     if edge {
@@ -431,11 +443,70 @@ fn walk_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
         .normal;
     let steep = gekko_math::msl::fabsf(normal.x) >= core::f32::consts::FRAC_PI_4;
     if steep {
-        unimplemented!("itDosei_UnkMotion1_Coll: a steep floor (xD5C = 1, EnteredAir)");
+        item.slide_mode = 1;
+        item.sliding = true;
+        start_sliding(item, ctx.assets);
+    } else {
+        item.slide_mode = 0;
+        item.sliding = false;
+        item.lean_with_floor();
     }
-    item.platform_drop = 0;
-    item.lean_with_floor();
     false
+}
+
+/// itDosei_Logic7_EnteredAir (80282B14): a floor's slope carries it off.
+/// One that has been held (xDC8 x19) slides in state 6; one that has not,
+/// in state 10.
+fn start_sliding(item: &mut ItemCore, assets: &ItemAssets) {
+    if !item.spin_ignores_facing {
+        unimplemented!(
+            "itDosei_Logic7_EnteredAir: motion_id = 0xA (xDC8 x19 clear: a Mr. Saturn nobody has held)"
+        );
+    }
+    change(item, motion::SLIDE, UNK_0X1 | ANIM_UPDATE, assets);
+    item.animation_rate = 1.0;
+    item.owner = None;
+}
+
+/// itDosei_UnkMotion6_Anim (80282B84).
+fn slide_animation(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
+    remember_position(item);
+    false
+}
+
+/// itDosei_UnkMotion6_Coll (80282BAC): the floor's normal before the pass
+/// is kept (xDF8), then it_8026E8C4: a slide that has stopped walks or
+/// turns (itDosei_80281734); off the floor it falls (itDosei_80282074).
+fn slide_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    let normal = item
+        .collision
+        .as_ref()
+        .expect("item map collision")
+        .floor
+        .normal;
+    dosei_mut(item).floor_normal = normal;
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        SlidePass::Stopped => walk_or_turn(item, ctx.assets),
+        SlidePass::Airborne => start_falling(item, ctx.assets),
+        SlidePass::Sliding => {}
+    }
+    false
+}
+
+/// itDosei_80281734 (80281734): facing up the floor it slid down (xDF8's
+/// X against its facing) it turns round; otherwise it walks on.
+fn walk_or_turn(item: &mut ItemCore, assets: &ItemAssets) {
+    let slope = dosei(item).floor_normal.x;
+    let uphill = if item.facing == 1.0 {
+        slope < 0.0
+    } else {
+        slope > 0.0
+    };
+    if uphill {
+        start_turning(item, assets);
+    } else {
+        start_walking(item, assets);
+    }
 }
 
 /// itDosei_UnkMotion2_Anim (80281CF8): at the end it walks the other way.
@@ -451,7 +522,7 @@ fn turn_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
 /// itDosei_UnkMotion2_Coll (80281E6C): it_8026D62C falls off the floor;
 /// the look-round's walk-off phase (xDD8 2) cannot occur here.
 fn turn_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         start_falling(item, ctx.assets);
     }
     assert_ne!(
@@ -489,7 +560,7 @@ fn falling_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 fn flight_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let cell = ctx.rng.expect("it_8026DDFC draws");
     let mut rng = cell.get();
-    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, &mut rng);
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, ctx.entered_air, &mut rng);
     cell.set(rng);
     match landing {
         AirLanding::Airborne => false,
@@ -498,6 +569,8 @@ fn flight_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
             false
         }
         AirLanding::Broken => true,
+        // it_8026DD5C ran EnteredAir instead of itDosei_802817A0.
+        AirLanding::Sliding => false,
     }
 }
 
@@ -515,7 +588,7 @@ fn knocked_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) ->
 fn knocked_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let cell = ctx.rng.expect("it_8026DDFC draws");
     let mut rng = cell.get();
-    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, &mut rng);
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, ctx.entered_air, &mut rng);
     cell.set(rng);
     match landing {
         AirLanding::Airborne => false,
@@ -524,6 +597,8 @@ fn knocked_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
             false
         }
         AirLanding::Broken => true,
+        // it_8026DD5C ran EnteredAir instead of itDosei_80281390.
+        AirLanding::Sliding => false,
     }
 }
 
@@ -551,7 +626,7 @@ fn stunned_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) ->
 /// itDosei_UnkMotion0_Coll (802816F4): it_8026D62C falls off the floor
 /// (itDosei_80282074); it leans with the floor (it_80276CB8).
 fn stunned_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         start_falling(item, ctx.assets);
     }
     item.lean_with_floor();

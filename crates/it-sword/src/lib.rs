@@ -10,8 +10,8 @@ use hsd_types::Vec3;
 use melee_it::{
     desc::ItemAssets,
     state_change::{ANIM_UPDATE, DROP_UPDATE},
-    AirLanding, ItemAnimationContext, ItemCollisionContext, ItemCore, ItemEventContext, ItemLogic,
-    ItemPhysicsContext, ItemStateRow,
+    AirLanding, EnteredAir, ItemAnimationContext, ItemCollisionContext, ItemCore, ItemEventContext,
+    ItemLogic, ItemPhysicsContext, ItemStateRow, SlidePass,
 };
 use melee_types::ItemKind;
 
@@ -95,10 +95,12 @@ impl ItemLogic for Sword {
     fn dropped(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
         leave_hand(item, context.assets);
     }
-    /// itSword_Logic12_EnteredAir (80285E80): state 4 (the rest is visual).
-    fn entered_air(_item: &mut ItemCore) {
-        unimplemented!("itSword_Logic12_EnteredAir: a resting Beam Sword carried off the floor");
-    }
+    /// itSword_Logic12_EnteredAir (80285DF0): state 4 (the rest is visual).
+    const ENTERED_AIR: Option<EnteredAir> = Some(|_item, _assets| {
+        unimplemented!(
+            "itSword_Logic12_EnteredAir: Item_80268E5C(gobj, 4, ITEM_ANIM_UPDATE), a Beam Sword sliding down a floor"
+        )
+    });
     /// itSword_Logic12_DmgDealt (8028602C): a thrown sword pops back.
     fn damage_dealt(item: &mut ItemCore, context: &ItemEventContext<'_>) -> bool {
         if item.motion == motion::THROWN {
@@ -169,7 +171,7 @@ fn falling_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 
 /// itSword_UnkMotion0_Coll (802855CC): it_8026D62C, off the floor it falls.
 fn grounded_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         start_falling(item, ctx.assets);
     }
     false
@@ -181,7 +183,7 @@ fn grounded_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -
 fn falling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let cell = ctx.rng.expect("it_8026DDFC draws");
     let mut rng = cell.get();
-    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, &mut rng);
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, ctx.entered_air, &mut rng);
     cell.set(rng);
     match landing {
         AirLanding::Airborne => false,
@@ -190,16 +192,18 @@ fn falling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
             false
         }
         AirLanding::Broken => true,
+        // it_8026DD5C ran EnteredAir instead of it_80285424.
+        AirLanding::Sliding => false,
     }
 }
 
 /// itSword_UnkMotion4_Coll (80285F78) -> it_8026E8C4: on the floor it
 /// rests, off it it falls.
 fn sliding_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if item.ground_collision_with_slide(ctx.map, ctx.assets) {
-        come_to_rest(item, ctx.assets);
-    } else {
-        start_falling(item, ctx.assets);
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        SlidePass::Stopped => come_to_rest(item, ctx.assets),
+        SlidePass::Airborne => start_falling(item, ctx.assets),
+        SlidePass::Sliding => {}
     }
     false
 }

@@ -3,7 +3,7 @@
 //! check (it_8026E15C), and the grounded pass of an item that may slide or
 //! leave the floor (it_8026E8C4). The settling itself (it_8026DC24,
 //! it_8026DD5C, it_80277040) is map.rs's.
-use crate::{desc::ItemAssets, ItemCore};
+use crate::{desc::ItemAssets, EnteredAir, ItemCore};
 use gekko_math::HsdRng;
 
 /// What an airborne pass with landings (it_8026E15C) did.
@@ -16,6 +16,20 @@ pub enum AirLanding {
     Landed,
     /// The first landing after a throw broke it (Item_8026A8EC).
     Broken,
+    /// Settled on a floor it slides down: the kind's EnteredAir has run
+    /// (it_8026DD5C, Item_8026ADC0) and the caller's callback does not.
+    Sliding,
+}
+
+/// What a sliding state's grounded pass (it_8026E8C4) found.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SlidePass {
+    /// Off the floor (it_802762BC): the caller's airborne callback runs.
+    Airborne,
+    /// The slide is over: the caller's resting callback runs.
+    Stopped,
+    /// Still sliding: no callback.
+    Sliding,
 }
 
 impl ItemCore {
@@ -27,6 +41,7 @@ impl ItemCore {
         &mut self,
         map: &mut melee_mp::CollMap,
         assets: &ItemAssets,
+        entered_air: Option<EnteredAir>,
         rng: &mut HsdRng,
     ) -> AirLanding {
         let bits = self.air_contact_bits(map);
@@ -46,19 +61,23 @@ impl ItemCore {
             return AirLanding::Airborne;
         }
         self.clear_hitboxes();
-        self.come_to_rest(assets);
-        AirLanding::Landed
+        if self.come_to_rest(assets, entered_air) {
+            AirLanding::Landed
+        } else {
+            AirLanding::Sliding
+        }
     }
 
-    /// it_8026E8C4 (8026E8C4): a grounded pass (mpColl_8004B108). Off the
-    /// floor the item is airborne (it_802762BC) and false returns for the
-    /// caller's air callback; on it the slope test runs (it_80277040) and a
-    /// wall ends a platform drop, before the caller's ground callback.
+    /// it_8026E8C4 (8026E8C4): a sliding state's grounded pass
+    /// (mpColl_8004B108). Off the floor the item is airborne (it_802762BC).
+    /// On it the slope test runs (it_80277040) and a wall ends the slide for
+    /// good (xD5C 0); once the slide no longer moves the item the surface is
+    /// remembered (it_80276CEC) and it has stopped.
     pub fn ground_collision_with_slide(
         &mut self,
         map: &mut melee_mp::CollMap,
         assets: &ItemAssets,
-    ) -> bool {
+    ) -> SlidePass {
         let mut collision = self.refresh_collision();
         let grounded = map.ground_collide_pass(&mut collision, None);
         self.position = collision.cur_pos;
@@ -66,16 +85,17 @@ impl ItemCore {
         self.collision = Some(collision);
         if !grounded {
             self.enter_air();
-            return false;
+            return SlidePass::Airborne;
         }
         self.slides(assets);
         if self.wall_bits() != 0 {
-            self.platform_drop = 0;
+            self.slide_mode = 0;
         }
-        // xDC8 x1F is set only by Item_8026ADC0; with xD5C zero the ground
-        // callback runs either way.
-        assert_eq!(self.platform_drop, 0, "it_8026E8C4: item platform drop");
-        true
+        if self.sliding && self.slide_mode != 0 {
+            return SlidePass::Sliding;
+        }
+        self.remember_rest_surface();
+        SlidePass::Stopped
     }
 
     /// it_8026DDFC (8026DDFC): the landing counts; the first after a throw

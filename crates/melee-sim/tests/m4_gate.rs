@@ -1646,6 +1646,18 @@ fn start_ps_peach_particle_draw_order() {
     particle_rng_sites_with_ledger("start_ps_peach_fox4", 600, "ledger600");
 }
 
+/// Samus vs Fox and Link vs Fox on Pokemon Stadium: the boundaries of the
+/// sliding-bomb witnesses (the rock form's peak; the dipped form's banks).
+#[test]
+fn start_ps_samus_fox4_cold_600() {
+    movement_gate_ticks("start_ps_samus_fox4_cold", 600);
+}
+
+#[test]
+fn start_ps_link_fox4_cold_600() {
+    movement_gate_ticks("start_ps_link_fox4_cold", 600);
+}
+
 /// Ice Climbers vs Peach on Pokemon Stadium: the benchmark matchup
 /// (`sim_bench throughput`) and the boundary of the witness where Nana runs
 /// the grounded Blizzard row airborne.

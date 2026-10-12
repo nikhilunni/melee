@@ -1,0 +1,37 @@
+# MR-SATURN SLIDE directed witness (boundary start_ps_peach_fox4, Pokemon
+# Stadium; `melee-sim search`, 650 candidates, 4 reached). Peach pulls Mr.
+# Saturn at 753 and idles until the rock form has risen and carried her onto
+# its shelf. At 4420 she jumps left and drops it (Z, 4442) over the rock's
+# peak. It lands on the peak's 18 degree face (line (-56, 75) -> (-46.75, 72))
+# and settles at once: it_8026DD5C finds a floor past ItCo +C0 (15 degrees),
+# so instead of the landing callback Item_8026ADC0 runs
+# itDosei_Logic7_EnteredAir (state 6, it has been held) and sets xDC8 x1F.
+# it_8027737C then carries it down the face with x7C, beside a zero x40, and
+# rolls it; at the foot it leaves the floor (itDosei_80282074, state 3),
+# lands on the shelf and walks, turning at its ends.
+name = "dosei_slide_drop_ps_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_peach_fox4.sav"
+frames = 4800
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 753, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 755, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4420, port = 0, buttons = {  }, raw = { button = 1024, stickX = -80 } },
+  { frame = 4440, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4442, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 4444, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

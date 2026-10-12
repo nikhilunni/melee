@@ -1,0 +1,43 @@
+# MR-SATURN SLIDE directed witness (boundary start_ps_peach_fox4, Pokemon
+# Stadium; `melee-sim search`, 145 candidates, 10 reached). Peach pulls Mr.
+# Saturn at 871, which makes the first transformation the form with the
+# raised block at x = 33..51 (its sides climb 63 degrees). She runs to it
+# (4460..4512), jumps twice (4530, 4559) and drops Mr. Saturn (Z, 4564) on
+# the block's top, and falls away. It lands, walks right along the top
+# (state 1) and steps onto the block's far side: itDosei_UnkMotion1_Coll
+# finds the floor normal's X at or past pi/4, sets xD5C to 1 and xDC8 x1F
+# and calls itDosei_Logic7_EnteredAir itself (state 6). The slide's first
+# pass (it_8026E8C4) finds it over and itDosei_80281734 walks it on (down
+# the floor it faces), the walk's collision slides it again, and two ticks
+# later it leaves the side (itDosei_80282074, state 3), lands on the floor
+# below and walks to the stage's edge, where it turns.
+name = "dosei_slide_steep_ps_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_peach_fox4.sav"
+frames = 5000
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 871, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 873, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4460, port = 0, buttons = {  }, raw = { stickX = 80 } },
+  { frame = 4512, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4530, port = 0, buttons = {  }, raw = { button = 1024, stickX = 30 } },
+  { frame = 4558, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4559, port = 0, buttons = {  }, raw = { button = 1024, stickX = 60 } },
+  { frame = 4561, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4564, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 4566, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

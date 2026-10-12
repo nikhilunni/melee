@@ -1,0 +1,34 @@
+# LINK BOMB SLIDE directed witness (boundary start_ps_link_fox4, Pokemon
+# Stadium; `melee-sim search`, 1306 candidates, 6 reached). As
+# linkbomb_slide_bank_ps_fox4, but Link hops early (4529) and drops the bomb
+# (Z, 4567) onto the 35 degree bank that falls from (-25, 2.5) to (-20, -1).
+# It rolls for a tick (state 4), slides down the bank
+# (itLinkBomb_Logic16_EnteredAir, state 6) and across the 22 degree rise at
+# its foot, and rolls again (it_8029F18C) where the slide ends.
+name = "linkbomb_slide_down_ps_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_link_fox4.sav"
+frames = 4900
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4450, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 4452, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4520, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 4529, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 4531, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4567, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 4569, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

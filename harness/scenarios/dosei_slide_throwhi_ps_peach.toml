@@ -1,0 +1,33 @@
+# MR-SATURN SLIDE directed witness (boundary start_ps_peach_fox4, Pokemon
+# Stadium; `melee-sim search`, 650 candidates, 4 reached). As
+# dosei_slide_drop_ps_peach, but Peach throws Mr. Saturn straight up from her
+# jump (A and up at 4430, an air smash throw): it comes down on the rock
+# peak's 18 degree face fast, bounces there until it settles (it_8026DC24),
+# and only then slides (it_8026DD5C -> Item_8026ADC0 ->
+# itDosei_Logic7_EnteredAir, state 6), falls off the face's foot, lands on
+# the shelf and walks.
+name = "dosei_slide_throwhi_ps_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_peach_fox4.sav"
+frames = 4800
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 753, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 755, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4420, port = 0, buttons = {  }, raw = { button = 1024, stickX = -80 } },
+  { frame = 4430, port = 0, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 4432, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

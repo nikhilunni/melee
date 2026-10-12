@@ -369,7 +369,7 @@ fn slope_stops(item: &mut ItemCore, assets: &ItemAssets) -> bool {
 /// itClimbersice_UnkMotion0_Coll (802C1A1C): it_8026D62C (off the floor:
 /// it_802C1A58, dropping again) and the lean with the floor (it_80276CB8).
 fn melting_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         item.change_motion_with(DROPPING, ARTICLE_STATES[1], ANIM_UPDATE, ctx.assets);
     }
     item.lean_with_floor();
@@ -385,12 +385,13 @@ fn melting_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
 fn dropping_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let cell = ctx.rng.expect("it_8026DDFC's generator");
     let mut rng = cell.get();
-    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, &mut rng);
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, ctx.entered_air, &mut rng);
     cell.set(rng);
     match landing {
         AirLanding::Airborne => {}
         AirLanding::Landed => stop(item, ctx.assets),
         AirLanding::Broken => unreachable!("it_8026DDFC: an ice block is never thrown"),
+        AirLanding::Sliding => unreachable!("it_8026DD5C: the logic row has no EnteredAir"),
     }
     false
 }
@@ -398,7 +399,7 @@ fn dropping_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -
 /// itClimbersice_UnkMotion2_Coll (802C1CD0): it_8026D62C (off the floor:
 /// fn_802C1D44, falling), the lean, then the wall check.
 fn sliding_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         // fn_802C1D44: motion 3 (Item_80268E5C, 0x802C1D60), then
         // efLib_DestroyAll (0x802C1D68), called in this collision proc: the
         // block's generators are gone before any effect a fighter queued

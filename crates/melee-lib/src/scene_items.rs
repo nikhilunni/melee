@@ -969,6 +969,10 @@ impl Resources {
                 .map_err(|e| anyhow::anyhow!("Shy Guy gait: {e}"))?;
             kinds.push((ItemKind::Heiho, heiho));
         }
+        // it_80277040 reads it_804D6D28 for every kind.
+        for (_, assets) in &mut kinds {
+            assets.slide_rule = common.slide_rule;
+        }
         Ok(Self {
             common,
             kinds,

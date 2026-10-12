@@ -152,6 +152,14 @@ static STATES: [ItemStateRow; 13] = {
 impl ItemLogic for BombHei {
     const KIND: ItemKind = ItemKind::BombHei;
     const STATES: &'static [ItemStateRow] = &STATES;
+    /// it_3F14_Logic6_EnteredAir (80280E9C): state 12, keeping bone 11's
+    /// height and tilt. Walking sets xD5C to 0 (fn_80280974, it_8027EE04),
+    /// so only a Bob-omb standing on a slope before it walks gets here.
+    const ENTERED_AIR: Option<EnteredAir> = Some(|_item, _assets| {
+        unimplemented!(
+            "it_3F14_Logic6_EnteredAir: Item_80268E5C(arg0, 0xC, ITEM_ANIM_UPDATE), a Bob-omb sliding down a floor"
+        )
+    });
     /// itBombhei_Logic6_Spawned (8027D758).
     fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
         let a = Attributes(&assets.special_attributes);
@@ -412,7 +420,7 @@ fn lit_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> boo
 
 /// itBombhei_UnkMotion5_Coll (8027FC48): it_8026D62C, falling off -> fn_8027FCA8.
 fn lit_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         // fn_8027FCA8: it_8026B390 keeps the common lifetime running.
         item.velocity.x = 0.0;
         item.grabbable = true;
@@ -511,7 +519,7 @@ fn start_walking(item: &mut ItemCore, assets: &ItemAssets) {
     item.grabbable = false;
     // retail 80280A10: fmuls.
     item.velocity.x = Attributes(&assets.special_attributes).walk_speed() * item.facing;
-    item.platform_drop = 0;
+    item.slide_mode = 0;
     item.hits_owner = true;
     item.strikes_kindred_items = true;
     change(
@@ -609,7 +617,7 @@ fn turn_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
 
 /// itBombhei_UnkMotion4_Coll (8027F8A0): it_8026D62C, then the lean.
 fn turn_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         unimplemented!("it_8027DE18: a turning Bob-omb leaving the ground");
     }
     item.lean_with_floor();

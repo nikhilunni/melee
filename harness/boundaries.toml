@@ -549,3 +549,21 @@ stage = "FinalDestination"
 players = ["Kirby", "Fox"]
 stocks = 4
 seed = 4288124430
+
+[[boundary]]
+name = "start_ps_samus_fox4"
+cold = "start_ps_samus_fox4_cold"
+savestate = "harness/roms/start_ps_samus_fox4.sav"
+stage = "PokemonStadium"
+players = ["Samus", "Fox"]
+stocks = 4
+seed = 731079263
+
+[[boundary]]
+name = "start_ps_link_fox4"
+cold = "start_ps_link_fox4_cold"
+savestate = "harness/roms/start_ps_link_fox4.sav"
+stage = "PokemonStadium"
+players = ["Link", "Fox"]
+stocks = 4
+seed = 2224148256

@@ -12,7 +12,7 @@ pub use link::*;
 mod logic;
 mod landing;
 pub mod push;
-pub use landing::AirLanding;
+pub use landing::{AirLanding, SlidePass};
 mod map;
 pub mod particle_track;
 pub use map::AirContact;

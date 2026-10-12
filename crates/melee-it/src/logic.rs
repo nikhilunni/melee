@@ -32,7 +32,12 @@ pub struct ItemCollisionContext<'a> {
     pub rng: Option<&'a core::cell::Cell<gekko_math::HsdRng>>,
     /// it_804D6D28 +4C: it_80275158's half-life scale.
     pub half_life_scale: f32,
+    /// The kind's EnteredAir, for the passes that may start a slide
+    /// (it_8026D62C, it_8026DD5C).
+    pub entered_air: Option<EnteredAir>,
 }
+/// An ItemLogicTable's entered_air callback.
+pub type EnteredAir = fn(&mut ItemCore, &ItemAssets);
 #[derive(Clone, Copy)]
 pub struct ItemEventContext<'a> {
     pub reflected_facing: f32,
@@ -157,7 +162,9 @@ pub trait ItemLogic {
     fn thrown(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
         unimplemented!("thrown callback for this kind")
     }
-    fn entered_air(_item: &mut ItemCore) {}
+    /// The logic row's EnteredAir, which Item_8026ADC0 runs when a floor's
+    /// slope starts the item sliding; None for a NULL entry.
+    const ENTERED_AIR: Option<EnteredAir> = None;
     fn damage_dealt(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
@@ -266,7 +273,7 @@ pub trait ItemLogic {
         picked_up: Self::picked_up,
         dropped: Self::dropped,
         thrown: Self::thrown,
-        entered_air: Self::entered_air,
+        entered_air: Self::ENTERED_AIR,
         damage_dealt: Self::damage_dealt,
         damage_received: Self::damage_received,
         reflected: Self::reflected,
@@ -328,7 +335,7 @@ pub struct ItemLogicRow {
     pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub dropped: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub thrown: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
-    pub entered_air: fn(&mut ItemCore),
+    pub entered_air: Option<EnteredAir>,
     pub damage_dealt: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub damage_received: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub reflected: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,

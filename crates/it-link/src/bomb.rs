@@ -11,9 +11,9 @@
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
     state_change::{ANIM_UPDATE, CMD_UPDATE, DROP_UPDATE, HIT_PRESERVE},
-    AirLanding, ItemAnimationContext, ItemCollisionContext, ItemCore, ItemEvent,
+    AirLanding, EnteredAir, ItemAnimationContext, ItemCollisionContext, ItemCore, ItemEvent,
     ItemEventContext, ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, LinkBombState,
-    SpawnItem,
+    SlidePass, SpawnItem,
 };
 use gekko_math::{fma::fmadds, msl::fabsf};
 use hsd_types::Vec3;
@@ -201,6 +201,12 @@ fn roll(item: &mut ItemCore, assets: &ItemAssets) {
     change(item, motion::ROLLING, 0, assets);
 }
 
+/// itLinkBomb_Logic16_EnteredAir (8029FB24): a floor's slope carries the
+/// bomb off (state 6).
+fn start_sliding(item: &mut ItemCore, assets: &ItemAssets) {
+    change(item, motion::SLIDING, ANIM_UPDATE, assets);
+}
+
 /// fn_8029E21C (8029E21C): falling (state 1).
 fn fall(item: &mut ItemCore, assets: &ItemAssets) {
     change(item, motion::FALLING, 0, assets);
@@ -259,10 +265,8 @@ impl<const YOUNG: bool> ItemLogic for Bomb<YOUNG> {
     fn dropped(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) {
         leave_hand(item, motion::DROPPED, ctx.assets);
     }
-    /// Logic16_EnteredAir (8029FAA8): state 6.
-    fn entered_air(_item: &mut ItemCore) {
-        unimplemented!("itLinkBomb_Logic16_EnteredAir: a bomb sliding down a slope");
-    }
+    /// itLinkBomb_Logic16_EnteredAir (8029FB24): state 6.
+    const ENTERED_AIR: Option<EnteredAir> = Some(start_sliding);
     /// it_8029F960 (8029F960): unless it goes off from its speed, it turns
     /// back and rebounds at x1C / x20.
     fn damage_dealt(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
@@ -468,7 +472,7 @@ fn rolling_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 fn falling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let cell = ctx.rng.expect("it_8026DDFC draws");
     let mut rng = cell.get();
-    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, &mut rng);
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, ctx.entered_air, &mut rng);
     cell.set(rng);
     match landing {
         AirLanding::Airborne => false,
@@ -477,6 +481,8 @@ fn falling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
             false
         }
         AirLanding::Broken => true,
+        // it_8026DD5C ran EnteredAir instead of it_8029F18C.
+        AirLanding::Sliding => false,
     }
 }
 
@@ -497,7 +503,7 @@ fn flight_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
 
 /// itLinkbomb_UnkMotion4_Coll -> it_8026D62C: off the floor it falls.
 fn rolling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         fall(item, ctx.assets);
     }
     false
@@ -506,10 +512,10 @@ fn rolling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
 /// itLinkbomb_UnkMotion6_Coll -> it_8026E8C4: on the floor it rolls, off
 /// it it falls.
 fn sliding_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if item.ground_collision_with_slide(ctx.map, ctx.assets) {
-        roll(item, ctx.assets);
-    } else {
-        fall(item, ctx.assets);
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        SlidePass::Stopped => roll(item, ctx.assets),
+        SlidePass::Airborne => fall(item, ctx.assets),
+        SlidePass::Sliding => {}
     }
     false
 }

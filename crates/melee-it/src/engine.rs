@@ -789,8 +789,25 @@ pub struct ItemCore {
     pub rotation_axis: u8,
     /// xC30: the floor (or wall/ceiling) line of the last map contact.
     pub floor_line: i32,
-    /// xD5C: it_80277544's fall-through-platform state.
-    pub platform_drop: u32,
+    /// xD5C: whether a floor's slope may start the item sliding
+    /// (it_80277544). 0: never; 1: once it moves; 2: at once (every new
+    /// item, item.c:636, and a slide that met a floor turning by ItCo +C4).
+    pub slide_mode: u32,
+    /// xDC8 x1F: the slide moves the item (it_8027737C).
+    pub sliding: bool,
+    /// x7C: the slide's velocity, beside the item's own.
+    pub slide_velocity: Vec3,
+    /// x88 / x94: the slope's pull this frame and the frame before
+    /// (it_80277040).
+    pub slide_acceleration: Vec3,
+    pub previous_slide_acceleration: Vec3,
+    /// xAC / xC2C: the normal and line of the surface the item last came
+    /// to rest on (it_80276CEC). Creation stands the normal up but leaves
+    /// the line as the struct's last user left it (`ItemPool`'s free list).
+    pub rest_normal: Vec3,
+    pub rest_line: i32,
+    /// xD58: frames the slope's pull has turned against the frame before.
+    pub slide_reversals: u32,
     /// xCF4 (ftColl_80077688): the fighter whose shield took this frame's
     /// strongest hit.
     pub pending_shield_owner: Option<u8>,
@@ -1451,7 +1468,18 @@ pub struct ItemPool {
     pub(crate) owner_hit_groups: [u32; crate::hit_group::OWNER_GROUPS],
     /// Item_804A0CCC: the fighters it_802722B0 last sampled.
     pub(crate) fighter_push: crate::push::FighterPushSnapshot,
+    /// item_alloc_data's free list, newest first at the end, as the one
+    /// word of a freed Item a new one reads before writing: xC2C
+    /// (`ItemCore::rest_line`). HSD_ObjFree pushes and HSD_ObjAlloc pops the
+    /// head (objalloc.c), and Item_80268B18 does not clear the struct.
+    /// Never longer than the pool's peak, so it does not grow.
+    freed_rest_lines: Vec<i32>,
 }
+
+/// xC2C of an Item struct no item has used: whatever the heap held (retail
+/// traces show 0xC0C0C0C0, 0x8A97CE97 and 0x95428D21), which is no line.
+const UNUSED_REST_LINE: i32 = i32::MIN;
+
 impl ItemPool {
     pub fn new(common: ItemCommonData) -> Self {
         Self {
@@ -1461,6 +1489,7 @@ impl ItemPool {
             next_hit_group: 1,
             owner_hit_groups: [0; crate::hit_group::OWNER_GROUPS],
             fighter_push: Default::default(),
+            freed_rest_lines: Vec::with_capacity(ITEM_CAPACITY),
         }
     }
     /// it_804D6D28: ItCo's common item data.
@@ -1631,7 +1660,16 @@ impl ItemPool {
             saved_collision_box: assets.collision_box,
             rotation_axis: assets.rotation_axis,
             floor_line: -1,
-            platform_drop: 0,
+            // Item_80267454 (item.c:635): xD58 = 0, xD5C = 2; it_80273500
+            // -> it_802734B4 zeroes the slide and stands xAC up.
+            slide_mode: 2,
+            sliding: false,
+            slide_velocity: Vec3::ZERO,
+            slide_acceleration: Vec3::ZERO,
+            previous_slide_acceleration: Vec3::ZERO,
+            rest_normal: Vec3::new(0.0, 1.0, 0.0),
+            rest_line: self.freed_rest_lines.pop().unwrap_or(UNUSED_REST_LINE),
+            slide_reversals: 0,
             land_count: 0,
             throw_count: 0,
             pending_shield_owner: None,
@@ -1943,7 +1981,7 @@ impl ItemPool {
                 },
             );
         }
-        integrate(item, bounds);
+        integrate(item, bounds, assets);
     }
     /// it_8026E9A4 -> mpCheckAllRemap, used by ray state collision callbacks.
     pub fn stage_contact(&self, id: u32, map: &mut melee_mp::CollMap) -> bool {
@@ -1979,7 +2017,8 @@ impl ItemPool {
             return;
         };
         let alive = !item.destroyed;
-        item.destroyed |= (D::logic(item.kind).states[item.motion as usize].collision)(
+        let logic = D::logic(item.kind);
+        item.destroyed |= (logic.states[item.motion as usize].collision)(
             item,
             &mut ItemCollisionContext {
                 owner,
@@ -1989,6 +2028,7 @@ impl ItemPool {
                 bounds,
                 rng,
                 half_life_scale,
+                entered_air: logic.entered_air,
             },
         );
         if alive && item.destroyed {
@@ -2012,6 +2052,7 @@ impl ItemPool {
         let mut item = self.items.remove(index);
         (D::logic(item.kind).destroyed)(&mut item);
         item.destroy_gobjs(gobjs);
+        self.freed_rest_lines.push(item.rest_line);
     }
     pub fn remove_destroyed<D: ItemDispatch>(&mut self, gobjs: &mut hsd_gobj::GObjAddresses) {
         let mut index = 0;
@@ -2020,6 +2061,7 @@ impl ItemPool {
                 let mut item = self.items.remove(index);
                 (D::logic(item.kind).destroyed)(&mut item);
                 item.destroy_gobjs(gobjs);
+                self.freed_rest_lines.push(item.rest_line);
                 if D::logic(item.kind).unlinks_partner_on_destroy {
                     if let Some(partner) = item.partner.and_then(|id| self.get_mut(id)) {
                         partner.partner = None;
@@ -2033,9 +2075,14 @@ impl ItemPool {
 }
 /// Item_802697D4: audited retail uses four PSVECAdd calls; never reassociate
 /// velocity+nudge, position+delta, environmental movement, platform movement.
-fn integrate(item: &mut ItemCore, bounds: &ItemBounds) {
+fn integrate(item: &mut ItemCore, bounds: &ItemBounds, assets: &ItemAssets) {
     if !item.held && !item.frozen && !item.in_hitlag {
-        let delta = add(item.velocity, item.nudge);
+        let mut delta = add(item.velocity, item.nudge);
+        // retail 0x8026985C: a grounded item's slide (xDCD b3 is never set
+        // for the ported kinds).
+        if item.ground_or_air == GroundOrAir::Ground {
+            item.slide_step(assets, &mut delta);
+        }
         item.position = add(item.position, delta);
     }
     // Item_802697D4 -> Item_802696CC, before environmental/platform movement.
@@ -2079,6 +2126,7 @@ impl Clone for ItemPool {
             next_hit_group: self.next_hit_group,
             owner_hit_groups: self.owner_hit_groups,
             fighter_push: self.fighter_push,
+            freed_rest_lines: hsd_types::storage::clone_vec(&self.freed_rest_lines),
         }
     }
 }
@@ -2126,6 +2174,8 @@ mod tests {
             bounce_sound: 0,
             rest_speed: 0.0,
             slide_speed: 0.0,
+            slide_friction: 0.0,
+            slide_rule: crate::desc::SlideRule::NEVER,
             landing_spin_degrees: 0.0,
             destroy_effect: None,
             event_destroy_effect: None,
@@ -2164,6 +2214,7 @@ mod tests {
             victim_bounce: Default::default(),
             camera_extents: [0.0; 4],
             push_speed: 0.0,
+            slide_rule: crate::desc::SlideRule::NEVER,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
         let first = pool
@@ -2208,6 +2259,7 @@ mod tests {
             victim_bounce: Default::default(),
             camera_extents: [0.0; 4],
             push_speed: 0.0,
+            slide_rule: crate::desc::SlideRule::NEVER,
         });
         let spawn = SpawnItem::held(
             ItemKind::FoxBlaster,
@@ -2230,6 +2282,7 @@ mod tests {
                 top: f32::INFINITY,
                 camera_offset: hsd_types::Vec2::ZERO,
             },
+            &assets(),
         );
         assert_eq!(item.position.x.to_bits(), 0.0f32.to_bits());
     }

@@ -19,6 +19,7 @@ pub const ARTICLE_INDEX: u32 = 0;
 mod motion {
     pub const RESTING: u16 = 0;
     pub const FALLING: u16 = 1;
+    pub const SLIDING: u16 = 2;
     pub const EXPLODING: u16 = 3;
 }
 
@@ -38,6 +39,10 @@ impl Attributes<'_> {
     /// x0: the fuse.
     fn lifetime(&self) -> f32 {
         self.0[0]
+    }
+    /// xC: the fastest it slides down a floor.
+    fn slide_speed_limit(&self) -> f32 {
+        self.0[3]
     }
 }
 
@@ -79,6 +84,10 @@ fn bomb_mut(item: &mut ItemCore) -> &mut SamusBombState {
 impl ItemLogic for SamusBomb {
     const KIND: ItemKind = ItemKind::SamusBomb;
     const STATES: &'static [ItemStateRow] = &STATES;
+    /// itSamusBomb_Logic50_EnteredAir (802B4F78): a floor's slope carries
+    /// the bomb off (state 2), hitbox kept.
+    const ENTERED_AIR: Option<EnteredAir> =
+        Some(|item, assets| change(item, motion::SLIDING, KEEP_HITBOX, assets));
     /// The logic row has no pickup callback.
     fn pickup_possible(_item: &ItemCore) -> bool {
         false
@@ -231,16 +240,23 @@ fn falling_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
     item.fall(ctx.assets.fall_acceleration, ctx.assets.fall_speed_limit);
 }
 
-/// itSamusbomb_UnkMotion2_Phys: the slide's x7C clamp. it_80277040 never
-/// lets a Samus bomb slide on the ported stages' floors.
-fn sliding(_item: &mut ItemCore, _ctx: &ItemPhysicsContext<'_>) {
-    unimplemented!("itSamusbomb_UnkMotion2_Phys: a sliding bomb")
+/// itSamusbomb_UnkMotion2_Phys (802B51A0): the slide's velocity (x7C) is
+/// held to xC, before it_8027737C adds this frame's pull. The length is
+/// the four-step inline sqrtf of the unfused squares (retail 0x802B51C4..
+/// 0x802B5238); the two scalings are fmuls (0x802B5258, 0x802B5264).
+fn sliding(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
+    let limit = Attributes(&ctx.assets.special_attributes).slide_speed_limit();
+    if melee_lb::vector::length_xy(item.slide_velocity) > limit {
+        item.slide_velocity = melee_lb::vector::normalize_xy(item.slide_velocity);
+        item.slide_velocity.x *= limit;
+        item.slide_velocity.y *= limit;
+    }
 }
 
 /// itSamusbomb_UnkMotion0_Coll: it_8026D62C; off the floor it falls
 /// (it_802B4CF4).
 fn resting_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if !item.stay_grounded(ctx.map) {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         change(item, motion::FALLING, KEEP_HITBOX, ctx.assets);
     }
     false
@@ -249,15 +265,21 @@ fn resting_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
 /// itSamusbomb_UnkMotion1_Coll: it_8026E248; at rest it lies on the floor
 /// (it_802B4C10).
 fn falling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if item.bounce_to_rest(ctx.map, ctx.assets) {
+    if item.bounce_to_rest(ctx.map, ctx.assets, ctx.entered_air) {
         change(item, motion::RESTING, KEEP_HITBOX, ctx.assets);
     }
     false
 }
 
-/// itSamusbomb_UnkMotion2_Coll: it_8026E8C4.
-fn sliding_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
-    unimplemented!("itSamusbomb_UnkMotion2_Coll: a sliding bomb (it_8026E8C4)")
+/// itSamusbomb_UnkMotion2_Coll (802B5284) -> it_8026E8C4: a slide that
+/// has stopped rests (it_802B4C10); off the floor it falls (it_802B4CF4).
+fn sliding_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        SlidePass::Stopped => change(item, motion::RESTING, KEEP_HITBOX, ctx.assets),
+        SlidePass::Airborne => change(item, motion::FALLING, KEEP_HITBOX, ctx.assets),
+        SlidePass::Sliding => {}
+    }
+    false
 }
 
 /// itSamusbomb_UnkMotion3_Anim -> it_802751D8: the blast lasts its lifetime.

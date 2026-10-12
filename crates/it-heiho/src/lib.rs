@@ -119,7 +119,7 @@ impl ItemLogic for Heiho {
     /// flags (xDC8 x1C, x1E) only matter on the ground, where a Shy Guy
     /// never is.
     fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
-        item.platform_drop = 0;
+        item.slide_mode = 0;
         item.blast_zone_checked = false;
         item.scratch = ItemScratch::Heiho(HeihoState::default());
         item.position.z = 2.0;

@@ -42,6 +42,36 @@ pub struct ItemCommonData {
     pub camera_extents: [f32; 4],
     /// +7C: the speed a push moves a grounded item (it_80271B60).
     pub push_speed: f32,
+    pub slide_rule: SlideRule,
+}
+
+/// ItCo common data for an item sliding down a floor (it_80277040,
+/// it_8027737C, it_80277544).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct SlideRule {
+    /// +C0: the least slope, in radians from level, that slides an item.
+    pub minimum_slope: f32,
+    /// +C4: a surface turned this far from the one the item rested on
+    /// starts the slide whatever its speed.
+    pub rearm_turn: f32,
+    /// +C8: the slide's top speed.
+    pub speed_limit: f32,
+    /// +CC: the squared speed under which a slide ends, and at which a
+    /// moving item starts one.
+    pub stop_speed_squared: f32,
+    /// +38 (an unsigned int, retail 0x80277310: lwz, cmplw): frames the
+    /// slope's pull may turn against the frame before.
+    pub reversal_frames: u32,
+}
+impl SlideRule {
+    /// No floor slides anything: for assets built without ItCo.
+    pub const NEVER: Self = Self {
+        minimum_slope: f32::INFINITY,
+        rearm_turn: f32::INFINITY,
+        speed_limit: 0.0,
+        stop_speed_squared: 0.0,
+        reversal_frames: 0,
+    };
 }
 
 /// itColl_BounceOffVictim (80272DB0): an item rebounding off what it hit.
@@ -111,6 +141,13 @@ impl ItemCommonData {
                 r.f32(base + 0x158)?,
             ],
             push_speed: r.f32(base + 0x7C)?,
+            slide_rule: SlideRule {
+                minimum_slope: r.f32(base + 0xC0)?,
+                rearm_turn: r.f32(base + 0xC4)?,
+                speed_limit: r.f32(base + 0xC8)?,
+                stop_speed_squared: r.f32(base + 0xCC)?,
+                reversal_frames: r.u32(base + 0x38)?,
+            },
         })
     }
 }
@@ -181,6 +218,11 @@ pub struct ItemAssets {
     pub rest_speed: f32,
     /// ItemAttr x50 (it_80277040): the slope slide's speed; zero never slides.
     pub slide_speed: f32,
+    /// ItemAttr x54 (it_8027737C): what a slide keeps of its speed a frame.
+    pub slide_friction: f32,
+    /// ItCo common data the slide reads; the scene copies it from
+    /// [`ItemCommonData::slide_rule`] into every kind.
+    pub slide_rule: SlideRule,
     /// ItCo common data +74 (it_8026DC24): the spin degrees a first landing
     /// sets.
     pub landing_spin_degrees: f32,
@@ -441,6 +483,8 @@ impl ItemAssets {
             bounce_sound: r.u32(common + 0x80)?,
             rest_speed: r.f32(common + 0x5C)?,
             slide_speed: r.f32(common + 0x50)?,
+            slide_friction: r.f32(common + 0x54)?,
+            slide_rule: SlideRule::NEVER,
             landing_spin_degrees: 0.0,
             destroy_effect: u16::try_from(r.s32(common + 0x64)?).ok(),
             event_destroy_effect: u16::try_from(r.s32(common + 0x68)?).ok(),

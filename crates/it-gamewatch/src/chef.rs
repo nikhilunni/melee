@@ -120,7 +120,7 @@ impl ItemLogic for Chef {
             half_life_scale: common.half_life_scale,
         });
         set_lifetime(item, a.lifetime(), common.half_life_scale);
-        item.platform_drop = 0;
+        item.slide_mode = 0;
         let (x, y) = a.launch(food);
         item.velocity.x = x * item.facing;
         item.velocity.y = y;

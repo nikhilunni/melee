@@ -1,7 +1,7 @@
 //! Item map collision: itmaplib.c and itgroundcoll.c. An item that falls and
 //! lands keeps its own CollData (Item.x378_itemColl) with a fixed ECB box
 //! from its ItemAttr, resolved by the same mpColl passes fighters use.
-use crate::{desc::ItemAssets, ItemCore, SpawnItem};
+use crate::{desc::ItemAssets, EnteredAir, ItemCore, SpawnItem};
 use gekko_math::fma::fmadds;
 use melee_types::{
     mp::{collide, CollData},
@@ -120,23 +120,30 @@ impl ItemCore {
         }
     }
 
-    /// it_8026D62C (8026D62C) without its callbacks: a grounded pass
-    /// (mpColl_8004B108). Returns false when the item left the ground, having
-    /// switched it to the air (it_802762BC); the caller runs its state's
-    /// callback. The xD5C fall-through-platform check (it_80277544) is not
-    /// ported: xD5C stays 0 for the supported items.
-    pub fn stay_grounded(&mut self, map: &mut melee_mp::CollMap) -> bool {
+    /// it_8026D62C (8026D62C) without its airborne callback: a grounded
+    /// pass (mpColl_8004B108). Returns false when the item left the ground,
+    /// having switched it to the air (it_802762BC); the caller runs its
+    /// state's callback. On the ground a slope may start it sliding
+    /// (it_80277544), which runs the kind's EnteredAir (Item_8026ADC0).
+    pub fn stay_grounded(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+        entered_air: Option<EnteredAir>,
+    ) -> bool {
         let mut collision = self.refresh_collision();
         let grounded = map.ground_collide_pass(&mut collision, None);
         self.position = collision.cur_pos;
         self.floor_line_from(&collision, grounded);
         self.collision = Some(collision);
-        if grounded {
-            assert_eq!(self.platform_drop, 0, "it_80277544: item platform drop");
-        } else {
+        if !grounded {
             self.enter_air();
+            return false;
         }
-        grounded
+        if self.slide_starts(assets) {
+            self.enter_slide(assets, entered_air);
+        }
+        true
     }
 
     /// it_8026D8A4 (8026D8A4) without its callback: it_80276214 twice, so
@@ -339,7 +346,12 @@ impl ItemCore {
     /// bits; any contact bounces (it_80276FC4), and a floor then brings the
     /// item to rest once it has slowed (it_8026DE98, it_8026DC24,
     /// it_8026DD5C). True when retail calls the callback.
-    pub fn bounce_to_rest(&mut self, map: &mut melee_mp::CollMap, assets: &ItemAssets) -> bool {
+    pub fn bounce_to_rest(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+        entered_air: Option<EnteredAir>,
+    ) -> bool {
         let bits = self.air_contact_bits(map);
         if bits & 0xF == 0 {
             return false;
@@ -351,7 +363,7 @@ impl ItemCore {
         // it_8026DE98 -> it_8026DDFC: a first landing of a thrown item may
         // break it (xD54_throwNum); fighter articles are never thrown.
         self.land_count += 1;
-        self.settle(assets) && self.come_to_rest(assets)
+        self.settle(assets) && self.come_to_rest(assets, entered_air)
     }
 
     /// it_8026DC24 (8026DC24): a first landing sets the landing spin and the
@@ -381,36 +393,220 @@ impl ItemCore {
     }
 
     /// it_8026DD5C (8026DD5C): the landing count resets and the item is
-    /// grounded; unless it slides (it_80277040) its spin stops
-    /// (it_80274740). it_80276CEC's stored normal only feeds the slide.
-    pub(crate) fn come_to_rest(&mut self, assets: &ItemAssets) -> bool {
+    /// grounded. On a floor it slides down (it_80277040) a kind with an
+    /// EnteredAir runs it (Item_8026ADC0) and false returns: the caller's
+    /// landing callback does not run. Any other kind's slide is cleared
+    /// (it_802734B4). On a floor it stays on, its spin stops (it_80274740)
+    /// and the surface is remembered (it_80276CEC).
+    pub(crate) fn come_to_rest(
+        &mut self,
+        assets: &ItemAssets,
+        entered_air: Option<EnteredAir>,
+    ) -> bool {
         self.land_count = 0;
         self.land_on_floor();
-        if self.slides(assets) {
-            unimplemented!("it_8026DD5C: a landed item sliding (entered_air)");
+        if !self.slides(assets) {
+            self.spin_speed = 0.0;
+            match self.rotation_axis {
+                0 => self.rotation.z = 0.0,
+                1 => self.rotation.x = 0.0,
+                _ => self.rotation.y = 0.0,
+            }
+            self.remember_rest_surface();
+            return true;
         }
-        self.spin_speed = 0.0;
-        match self.rotation_axis {
-            0 => self.rotation.z = 0.0,
-            1 => self.rotation.x = 0.0,
-            _ => self.rotation.y = 0.0,
+        if entered_air.is_some() {
+            self.enter_slide(assets, entered_air);
+            return false;
+        }
+        self.reset_slide();
+        true
+    }
+
+    /// Item_8026ADC0 (8026ADC0): the kind's EnteredAir, after which the
+    /// slide moves the item (xDC8 x1F). A kind without one is left alone.
+    pub(crate) fn enter_slide(&mut self, assets: &ItemAssets, entered_air: Option<EnteredAir>) {
+        if let Some(entered_air) = entered_air {
+            entered_air(self, assets);
+            self.sliding = true;
+        }
+    }
+
+    /// it_802734B4 (802734B4): no slide, and xAC stands up.
+    pub(crate) fn reset_slide(&mut self) {
+        self.slide_velocity = hsd_types::Vec3::ZERO;
+        self.slide_acceleration = hsd_types::Vec3::ZERO;
+        self.previous_slide_acceleration = hsd_types::Vec3::ZERO;
+        self.rest_normal = hsd_types::Vec3::new(0.0, 1.0, 0.0);
+    }
+
+    /// it_80276408 (80276408): the normal and line of the surface in
+    /// contact; a floor wins over a ceiling, a right wall and a left wall.
+    /// None where retail leaves its out-parameter unwritten.
+    fn contact_surface(&self) -> Option<(hsd_types::Vec3, i32)> {
+        let collision = self.collision.as_ref().expect("item map collision");
+        let env = collision.env_flags as u32;
+        if env & collide::FLOOR_MASK != 0 {
+            Some((collision.floor.normal, collision.floor.index))
+        } else if env & collide::CEILING_MASK != 0 {
+            Some((collision.ceiling.normal, collision.ceiling.index))
+        } else if env & collide::RIGHT_WALL_MASK != 0 {
+            Some((
+                collision.right_facing_wall.normal,
+                collision.right_facing_wall.index,
+            ))
+        } else if env & collide::LEFT_WALL_MASK != 0 {
+            Some((
+                collision.left_facing_wall.normal,
+                collision.left_facing_wall.index,
+            ))
+        } else {
+            None
+        }
+    }
+
+    /// it_80276CEC (80276CEC): the surface in contact becomes xAC and
+    /// xC2C. Every caller has just resolved a floor.
+    pub(crate) fn remember_rest_surface(&mut self) {
+        let (normal, line) = self
+            .contact_surface()
+            .expect("it_80276CEC: no surface in contact (an unset line index)");
+        self.rest_normal = normal;
+        self.rest_line = line;
+    }
+
+    /// it_80277040 (80277040): whether the item slides down the surface it
+    /// touches, and the slope's pull (x88) if so. A kind without a slide
+    /// speed (ItemAttr x50) never does, nor anything on a surface within
+    /// ItCo +C0 of level. A surface turned by ItCo +C4 from the one it
+    /// rested on, on the same line, arms the slide at any speed (xD5C 2);
+    /// otherwise a pull that has turned against last frame's for ItCo +38
+    /// frames ends it. No fused operation (asm.py it_80277040 --fused).
+    #[allow(clippy::neg_cmp_op_on_partial_ord)] // retail's fcmpo / cror: a NaN slope does not slide.
+    pub(crate) fn slides(&mut self, assets: &ItemAssets) -> bool {
+        use hsd_types::Vec3;
+        if gekko_math::msl::fabsf(assets.slide_speed) < 0.00001 {
+            self.slide_acceleration.x = 0.0;
+            self.slide_acceleration.y = 0.0;
+            return false;
+        }
+        let rule = assets.slide_rule;
+        let (normal, _) = self
+            .contact_surface()
+            .expect("it_80277040: no surface in contact (an unset normal)");
+        self.previous_slide_acceleration = self.slide_acceleration;
+        let slope = gekko_math::msl::fabsf(melee_lb::vector::angle_xy(
+            normal,
+            Vec3::new(0.0, 1.0, 0.0),
+        ));
+        if !(slope >= rule.minimum_slope) {
+            self.slide_acceleration.x = 0.0;
+            self.slide_acceleration.y = 0.0;
+            return false;
+        }
+        // Down the surface: (normal x down) x normal.
+        let across = melee_lb::vector::cross(normal, Vec3::new(0.0, -1.0, 0.0));
+        let downhill = melee_lb::vector::cross(across, normal);
+        // retail 802771E4..80277204: fdivs, fmuls, fdivs, fmuls.
+        let previous = self.previous_slide_acceleration;
+        let previous_x = previous.x / assets.slide_speed;
+        let previous_y = previous.y / assets.slide_speed;
+        self.slide_acceleration.x = downhill.x * assets.slide_speed;
+        self.slide_acceleration.y = downhill.y * assets.slide_speed;
+        let turn = gekko_math::msl::fabsf(melee_lb::vector::angle(normal, self.rest_normal));
+        if turn >= rule.rearm_turn && self.floor_line == self.rest_line {
+            self.slide_mode = 2;
+            return true;
+        }
+        if previous.x == 0.0 && previous.y == 0.0 {
+            return true;
+        }
+        let sign = |value: f32| if value < 0.0 { -1 } else { 1 };
+        if sign(previous_x) == sign(downhill.x) && sign(previous_y) == sign(downhill.y) {
+            return true;
+        }
+        self.slide_reversals += 1;
+        if self.slide_reversals >= rule.reversal_frames {
+            self.slide_reversals = 0;
+            self.slide_acceleration.x = 0.0;
+            self.slide_acceleration.y = 0.0;
+            return false;
         }
         true
     }
 
-    /// it_80277040 (80277040): whether the item slides down its floor. A
-    /// kind without a slide speed (x50) never does; neither does anything
-    /// on a floor flatter than ItCo +C0, which covers every ported stage's
-    /// floors.
-    pub(crate) fn slides(&mut self, assets: &ItemAssets) -> bool {
-        if gekko_math::msl::fabsf(assets.slide_speed) < 0.00001 {
+    /// it_80277544 (80277544): a grounded item that may slide (xD5C) on a
+    /// floor that slides it starts to, once its own motion reaches ItCo
+    /// +CC (squared) or at once when armed (xD5C 2).
+    pub(crate) fn slide_starts(&mut self, assets: &ItemAssets) -> bool {
+        if self.slide_mode == 0 || !self.slides(assets) {
             return false;
         }
-        let normal = self.collision.as_ref().expect("item map collision").floor.normal;
-        if normal.x != 0.0 {
-            unimplemented!("it_80277040: an item's slide on a sloped floor");
+        // PSVECAdd, then retail 80277590..802775A0: fmuls, fmuls, fadds.
+        let x = self.velocity.x + self.nudge.x;
+        let y = self.velocity.y + self.nudge.y;
+        if x * x + y * y >= assets.slide_rule.stop_speed_squared || self.slide_mode == 2 {
+            self.sliding = true;
+            self.slide_mode = 1;
+            return true;
         }
         false
+    }
+
+    /// it_8027737C (8027737C), from the physics proc for a grounded item:
+    /// the slide's velocity (x7C) gains the slope's pull, loses to friction
+    /// (ItemAttr x54), is held to ItCo +C8 and joins this frame's movement;
+    /// the item rolls with it (it_802775F0, it_80274A64). Under ItCo +CC
+    /// (squared) the slide ends. No fused operation.
+    pub(crate) fn slide_step(&mut self, assets: &ItemAssets, movement: &mut hsd_types::Vec3) {
+        if !self.sliding || self.slide_mode == 0 {
+            return;
+        }
+        let rule = assets.slide_rule;
+        // PSVECAdd(&x88, &x7C, &x7C).
+        self.slide_velocity.x += self.slide_acceleration.x;
+        self.slide_velocity.y += self.slide_acceleration.y;
+        self.slide_velocity.z += self.slide_acceleration.z;
+        self.slide_velocity.x *= assets.slide_friction;
+        self.slide_velocity.y *= assets.slide_friction;
+        if melee_lb::vector::length_xy(self.slide_velocity) > rule.speed_limit {
+            self.slide_velocity = melee_lb::vector::normalize_xy(self.slide_velocity);
+            self.slide_velocity.x *= rule.speed_limit;
+            self.slide_velocity.y *= rule.speed_limit;
+        }
+        let v = self.slide_velocity;
+        if v.x * v.x + v.y * v.y < rule.stop_speed_squared {
+            self.sliding = false;
+            self.slide_velocity.x = 0.0;
+            self.slide_velocity.y = 0.0;
+            return;
+        }
+        self.roll_with_slide();
+        self.spin();
+        // PSVECAdd(&x7C, pos, &sp1C).
+        movement.x += self.slide_velocity.x;
+        movement.y += self.slide_velocity.y;
+        movement.z += self.slide_velocity.z;
+    }
+
+    /// it_802775F0 (802775F0): a kind that spins (ItemAttr xC) rolls at
+    /// 0.85 of the slide's speed over its box's bottom extent (xC1C),
+    /// turned as it_80274658 turns a spin.
+    fn roll_with_slide(&mut self) {
+        if self.spin_rate == 0.0 {
+            return;
+        }
+        let speed = melee_lb::vector::length_xy(self.slide_velocity);
+        // retail 80277688 / 8027768C: fdivs, fmuls.
+        self.spin_speed = 0.85 * (speed / self.collision_box.bottom);
+        let moving = if self.slide_velocity.x < 0.0 { -1 } else { 1 };
+        let facing = if self.facing < 0.0 { -1 } else { 1 };
+        if moving != facing {
+            self.spin_speed = -self.spin_speed;
+        }
+        if !self.spin_ignores_facing {
+            self.spin_speed *= -self.facing;
+        }
     }
 
     /// it_80276FC4 (80276FC4): a wall or ceiling contact reflects the item's
@@ -876,8 +1072,9 @@ impl ItemCore {
         }
     }
 
-    /// it_802762BC (802762BC).
+    /// it_802762BC (802762BC): airborne, and no slide moves it (xDC8 x1F).
     pub fn enter_air(&mut self) {
         self.ground_or_air = GroundOrAir::Air;
+        self.sliding = false;
     }
 }
