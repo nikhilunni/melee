@@ -144,6 +144,9 @@ pub fn enter_throw(
     aa: &FighterAssets,
 ) -> Result<()> {
     attacker.character.throw_variant();
+    if let Some(entry) = attacker.character.table().throw_entry {
+        entry(attacker, throw.state);
+    }
     let rate = prepare_throw(throw, &victim.core, &mut attacker.core, aa);
     attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);

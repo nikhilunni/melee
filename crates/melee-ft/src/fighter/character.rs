@@ -68,6 +68,7 @@ pub struct CharacterTable {
     pub catch_variant: fn(&mut CharacterState),
     pub mouth_capture_scale: fn(&CharacterState) -> Option<f32>,
     pub throw_variant: fn(&CharacterState),
+    pub throw_entry: Option<fn(&mut Fighter, melee_types::CommonMotionState)>,
     pub knockback_enter: fn(&mut Fighter, &assets::FighterAssets),
     pub knockback_exit: fn(&mut Fighter, &assets::FighterAssets),
     pub throw_animation: fn(&mut Fighter, &assets::FighterAssets),
@@ -89,6 +90,7 @@ pub struct CharacterTable {
     pub on_reset: fn(&mut CharacterState),
     pub reset_draw: Option<fn(&mut CharacterState, &mut gekko_math::HsdRng)>,
     pub after_collision: Option<fn(&mut Fighter)>,
+    pub wall_bounce_effect: Option<fn(&mut Fighter, Vec3)>,
     pub on_costume_loaded: fn(&mut CharacterState, &hsd_archive::Archive, u8) -> assets::Result<()>,
     pub on_resources_loaded: fn(&mut CharacterState, &assets::FighterAssets, &PlayerSlot),
     pub on_grounded_motion: fn(&mut CharacterState),
@@ -197,6 +199,7 @@ impl CharacterTable {
             catch_variant: |state| state.get_mut::<C>().catch_variant(),
             mouth_capture_scale: C::MOUTH_CAPTURE_SCALE,
             throw_variant: |state| state.get::<C>().throw_variant(),
+            throw_entry: C::THROW_ENTRY,
             knockback_enter: C::KNOCKBACK_ENTER,
             knockback_exit: C::KNOCKBACK_EXIT,
             throw_animation: C::THROW_ANIMATION,
@@ -218,6 +221,7 @@ impl CharacterTable {
             on_reset: |state| state.get_mut::<C>().on_reset(),
             reset_draw: C::RESET_DRAW,
             after_collision: C::AFTER_COLLISION,
+            wall_bounce_effect: C::WALL_BOUNCE_EFFECT,
             on_costume_loaded: |state, archive, costume| {
                 state.get_mut::<C>().on_costume_loaded(archive, costume)
             },

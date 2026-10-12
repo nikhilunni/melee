@@ -2257,6 +2257,19 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // The dash attack off the left edge: AttackDashAir at the same frame
     // (fn_800F20C4), Fall at its end, a multijump, the ledge.
     ("kirby_dash_attack_fd_fox4", 620),
+    // Kirby grabs Fox, pummels once and throws him down: the one throw of
+    // his that stays on the floor (CharacterCallbacks::THROW_ENTRY).
+    ("kirby_throw_lw_fd_fox4", 560),
+    // Fox's four throws on Kirby: the pinned victim with thirteen empty
+    // hat parts beside XRotN.
+    ("kirby_thrown_f_fd_fox4", 620),
+    ("kirby_thrown_b_fd_fox4", 620),
+    ("kirby_thrown_hi_fd_fox4", 620),
+    ("kirby_thrown_lw_fd_fox4", 620),
+    // Fox's up smash, dash attack and Reflector on Kirby: the launch, the
+    // floor, a hit while lying down, the fall past the blast zone and the
+    // revival, which draws the next Stone form (ftKb_Init_OnDeath).
+    ("kirby_struck_fd_fox4", 700),
 ];
 
 #[test]

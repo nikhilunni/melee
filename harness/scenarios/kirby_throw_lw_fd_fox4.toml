@@ -1,0 +1,29 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby at -60 facing right, Fox at +60). Kirby grabs Fox, pummels once and throws him down: the common grab and grounded throw rows with PlKb.dat scripts and throw records.
+name = "kirby_throw_lw_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 560
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 273, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 275, port = 0, buttons = {  }, raw = {  } },
+  { frame = 311, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 314, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -411,6 +411,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         }
     }
 
+    /// ftCo_800DD398's kind switch (ftCo_Throw.c:145-157) and
+    /// ftCo_800DE3FC's thrower test (ftCo_Thrown.c:36), by the throw's
+    /// state, before either fighter changes motion.
+    const THROW_ENTRY: Option<fn(&mut Fighter, melee_types::CommonMotionState)> = None;
+
     /// ftCommon_8007F824 / 8007F86C, after damage entry and on hitstun expiry.
     const KNOCKBACK_ENTER: fn(&mut Fighter, &assets::FighterAssets) = character::no_animation;
     const KNOCKBACK_EXIT: fn(&mut Fighter, &assets::FighterAssets) = character::no_animation;
@@ -498,6 +503,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// only for a state with a collision callback; the port's rows all have
     /// one.
     const AFTER_COLLISION: Option<fn(&mut Fighter)> = None;
+    /// ftCo_800C7CA0's ftKb_SpecialN_800F1F1C (ftCo_800C7CA0.c:37, 50): the
+    /// kind's effect at the ECB corner a wall bounce starts from, before
+    /// the bounce's own motion change.
+    const WALL_BOUNCE_EFFECT: Option<fn(&mut Fighter, Vec3)> = None;
     /// How many values `RESET_DRAW` takes: creation's are part of the fixed
     /// interval between a Game Start seed and the pre-music boundary seed.
     const RESET_DRAW_COUNT: usize = 0;

@@ -51,48 +51,80 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
 /// Stone has five forms (ftKb_Init_OnDeath: HSD_Randi(5) + 1).
 const STONE_FORMS: i32 = 5;
 
-/// Fighter_OnKnockbackEnter(gobj, 1) and ftKb_Init_OnKnockbackExit's
-/// ftAnim_800704F0 pair: texture slots 1 then 0.
-fn set_knockback_texture_frames(fighter: &mut Fighter, frame: f32) {
-    fighter.set_knockback_texture_frames(frame);
+/// ftKb_Init_OnKnockbackEnter (800EEB38): Fighter_OnKnockbackEnter(gobj, 1),
+/// texture slots 1 then 0.
+fn knockback_enter(fighter: &mut Fighter, _assets: &FighterAssets) {
+    fighter.set_knockback_texture_frames(3.0);
+}
+
+/// ftKb_Init_OnKnockbackExit (800EEB7C): the same slots back to frame 0.
+fn knockback_exit(fighter: &mut Fighter, _assets: &FighterAssets) {
+    fighter.set_knockback_texture_frames(0.0);
+}
+
+/// ftCo_AppealS_CheckInput: ftKb_SpecialN_800F5D04(gobj, true) drops a
+/// copied ability first; without one it is the common AppealS entry.
+fn enter_taunt(
+    fighter: &mut Fighter,
+    assets: &FighterAssets,
+) -> melee_ft::fighter::assets::Result<()> {
+    if fighter.character.get::<Kirby>().copied != FighterKind::Kirby {
+        unimplemented!(
+            "ftKb_SpecialN_800F5D04 (ftkirbyspecialn.c:266): a taunt drops the copied ability"
+        );
+    }
+    fighter.enter_common_taunt(assets)
+}
+
+/// ftKb_Init_OnDeath (800EE5A0): `hat.x4 = HSD_Randi(5) + 1`.
+fn draw_stone_form(state: &mut melee_ft::fighter::CharacterState, rng: &mut gekko_math::HsdRng) {
+    state.get_mut::<Kirby>().stone_form = rng.randi(STONE_FORMS) + 1;
+}
+
+/// The down throw is the common grounded one. The other three leave the
+/// ground from their scripts and are not ported.
+fn throw_entry(_fighter: &mut Fighter, throw: melee_types::CommonMotionState) {
+    use melee_types::CommonMotionState as S;
+    match throw {
+        S::ThrowF | S::ThrowB => unimplemented!(
+            "ftCo_ThrowF_Phys / ftCo_ThrowF_Coll (ftCo_Throw.c:311-340): Kirby's airborne forward \
+             and back throws (ft_80085134, ft_80083C00, ft_80083CE4), whose victim keeps its grab \
+             timer (ftCo_800DE3FC, ftCo_Thrown.c:36)"
+        ),
+        S::ThrowHi => unimplemented!(
+            "ftCo_800DD398 (ftCo_Throw.c:146-150): Kirby's up throw, x2219_b2 on both fighters \
+             until the script's flag (ftCo_800DD724, ftCo_Throw.c:287), and ftCo_ThrowHi_Cam's \
+             ftCamera_800762F4"
+        ),
+        _ => {}
+    }
 }
 
 impl CharacterCallbacks for Kirby {
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
-    /// ftCo_AppealS_CheckInput: ftKb_SpecialN_800F5D04(gobj, true) drops a
-    /// copied ability first; without one it is the common AppealS entry.
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
-        |fighter, assets| {
-            if fighter.character.get::<Kirby>().copied != FighterKind::Kirby {
-                unimplemented!(
-                    "ftKb_SpecialN_800F5D04 (ftkirbyspecialn.c): a taunt drops the copied ability"
-                );
-            }
-            fighter.enter_common_taunt(assets)
-        };
-    /// ftKb_Init_OnKnockbackEnter (800EEB38).
-    const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) =
-        |fighter, _assets| set_knockback_texture_frames(fighter, 3.0);
-    /// ftKb_Init_OnKnockbackExit (800EEB7C).
-    const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) =
-        |fighter, _assets| set_knockback_texture_frames(fighter, 0.0);
+        enter_taunt;
+    const KNOCKBACK_ENTER: fn(&mut Fighter, &FighterAssets) = knockback_enter;
+    const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) = knockback_exit;
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
     /// ftCo_AttackDash.c decideFighter: ftKb_SpecialN_800F1F68.
     const DASH_ATTACK_ROW: Option<ActionId> = Some(crate::attack_dash::GROUND);
-    /// ftKb_Init_OnDeath (800EE5A0): `hat.x4 = HSD_Randi(5) + 1`.
     const RESET_DRAW: Option<fn(&mut melee_ft::fighter::CharacterState, &mut gekko_math::HsdRng)> =
-        Some(|state, rng| {
-            state.get_mut::<Kirby>().stone_form = rng.randi(STONE_FORMS) + 1;
-        });
-
+        Some(draw_stone_form);
     const RESET_DRAW_COUNT: usize = 1;
+    const THROW_ENTRY: Option<fn(&mut Fighter, melee_types::CommonMotionState)> = Some(throw_entry);
+    /// ftCo_800C7CA0: ftKb_SpecialN_800F1F1C.
+    const WALL_BOUNCE_EFFECT: Option<fn(&mut Fighter, hsd_types::Vec3)> =
+        Some(crate::bump_star::spawn);
     /// Fighter_procMap (fighter.c:2494): ftKb_SpecialN_800F1D24.
     const AFTER_COLLISION: Option<fn(&mut Fighter)> = Some(crate::bump_star::after_collision);
 
+    /// ftCo_Throw.c:145-157: the FTKIND_KIRBY arm is `THROW_ENTRY`.
+    fn throw_variant(&self) {}
     fn kind(&self) -> FighterKind {
         FighterKind::Kirby
     }

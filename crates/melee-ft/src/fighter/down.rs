@@ -541,8 +541,11 @@ impl Fighter {
         } else {
             return Ok(false);
         };
-        // ftKb_SpecialN_800F1F1C is Kirby's.
         let offset = Vec3::new(corner.x, corner.y, 0.0);
+        // ftKb_SpecialN_800F1F1C (800F1F1C): the kind's own effect there.
+        if let Some(effect) = self.character.table().wall_bounce_effect {
+            effect(self, offset);
+        }
         self.enter_down_reflect(normal, offset, surface, assets, map)?;
         Ok(true)
     }
