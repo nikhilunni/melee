@@ -2231,3 +2231,139 @@ typed walk of the six stages and every `Pl*.dat` covers 11,180 joints). No
 display code calls HSD_Rand. Not read: the per-kind item render tables, the
 bodies of lbShadow and lbRefract, the HUD callbacks (stock, timer, name
 tag), sysdolphin's draw internals, and stages outside the six.
+## Pokemon Stadium bridges; the Link, Ice Climbers and HNC Stadium stops (2026-10-12)
+
+### A transforming Stadium needs the replay's own boundary
+
+Three Stadium bridges had left their consoles (the Mr. Game & Watch game
+at its first transformation, a Link game near tick 3137, an HNC game's seed
+at 1004). The cause of the first two is the boundary; the third is two
+things already described (the 92:63 aspect, and a recording made before
+`render_every_tick`).
+
+**Stadium draws at creation.** grStadium_801D13E0 draws the base form's
+first duration (one draw, before the Players exist: `Transformation::new`,
+the one stage draw of `setup_draws` for `GrKind::PStadium`). That is ahead
+of the boundary seed, so `boundary_seed` cannot change it: from a boundary
+of another seed retail begins its first transformation on another tick than
+the console. The port's cold twin inverts the boundary's own seed and
+follows retail there, which is why such a bridge gates exact and still is
+not the replay's game.
+
+`GAMEANDWATCH/Game_20190629T112449` is the measurement. Its Game Start seed
+is 2746006713; the boundary `start_ps_slippi73pre_p12_gameandwatch3_falco2_4`
+was created from 2493903823 (its saved 1272613626 less the five setup
+draws), and the two first draws are 11628 and 12900 of 65536.
+
+| Recording | Boundary | Console's Pre Frame seed kept |
+|---|---|---|
+| `slp_ps_gameandwatch_falco_r1_t7100` | another seed's | to frame 4025 of 7099 |
+| `slp_ps_gameandwatch_falco_r112449_t8200` | `..._r112449`, made with `--game-start-seed 2746006713` | all 8199 frames (the whole game) |
+| `slp_ps_link_luigi_t10500` (before `render_every_tick`) | another seed's | to frame 1169; its match ended at 7902 |
+| `slp_ps_link_luigi_r175018_t10500` | `start_ps_slippi73pre_p13_link4_luigi2_4_r175018` | all 10499 frames |
+| `slp_ps_iceclimbers_samus_r191618_t6900` | `start_ps_slippi73pre_p14_iceclimbers1_samus4_4_r191618` (Game Start seed and spawn points, below) | all 6899 frames |
+
+`slippi_to_scenario.py` now asks for the replay's own boundary on Stadium as
+on Final Destination and Fountain of Dreams, unless the console's codes stop
+the transformation (`stadium_frozen`: the wait never ends, 0x801D45FC;
+`frozen_stages`: the controller never runs, 0x801D1548). The two HNC bridges
+below are from such boundaries and keep their consoles' seeds. Dream Land,
+Battlefield and Yoshi's Story draw at creation too (two, one and one draws);
+whether those outlive the boundary was not measured here, and the Dream Land
+bridge below was made from its replay's seed.
+
+**Spawn points.** Some consoles started their players at spawn points that
+Game Start names per player (PlayerInitData +5, copied by fn_8016D8AC at
+0x8016D9E4): Ice Climbers and Samus on ports 1 and 4 stand at Stadium's
+markers 0 and 1. `--retail-inputs` now writes `spawn_point` per player,
+`make_boundary.py --spawn-points 0 1` writes them into gmVsMelee_StartData
+at the creation hook the Game Start seed uses, and `slippi_to_scenario.py`
+refuses a boundary whose points differ. This is what "Stadium consoles that
+set per-player spawn points cannot be bridged" waited for.
+
+**Is a bridge the console's game?** `harness/replay_vs_trace.py` (with the
+slp example `frames`) answers it: each Pre Frame seed must lie on retail's
+random stream inside its tick, and Post Frame's fields must equal the record
+(for Slippi before 3.4.0 only against an `after_map` sample; otherwise the
+seed decides). It is the port's own membership test, so a seed that falls
+inside a busy tick's draws passes even when the counts already differ: the
+Dream Land game below reads as leaving at frame 3267 where the first
+different count is at 3264.
+
+### The particle, bone and camera passes ran another display cadence
+
+Found while reading the Ice Climbers recording. `record.py` runs each pass
+in its own Dolphin. The particle, bone and camera snippets rebuild a
+scenario from the TOML and carried `inputs`, `fighters`, `input_clock` and
+`boundary_seed` only: not `render_every_tick`, nor `no_display_pass_before`.
+Those passes of a `render_every_tick` recording therefore ran two
+ticks per render, and from the first tick a display pass feeds back into
+they are another game than the tick trace. Measured by each pass's
+end-of-tick seed against the tick pass's:
+
+| Recording | RNG ledger pass | Particle dump pass |
+|---|---|---|
+| `slp_ps_iceclimbers_samus_r191618_t6900` | equal, 6900 records | leaves at record 239; its match ended at 4820 |
+| `slp_ps_link_luigi_r175018_t10500` | equal | leaves at 250; ended at 6699 |
+| `slp_ps_gameandwatch_falco_r112449_t8200` | equal | leaves at 2047; ended at 7841 |
+| `slp_ps_gameandwatch_falco_r1_t7100` | equal | leaves at 2047 |
+| `slp_ps_fox_drmario_wide9263_r1_t9800` | equal | leaves at 2078 |
+| `slp_ps_marth_peach_wide9263_r1_t5400` | equal | leaves at 4457 |
+| `slp_dl_marth_link_r115833_t3400`, `..._lag3265_t3400` | equal | leave at 357 |
+| `slp_fd_falco_yoshi_lag9869_t10000` | equal | leaves at 6038; wrote 9396 of 10000 records |
+
+The gate, `triage`'s first divergence and `particle-sites` read the tick
+trace, the ledger and the particle dump's initial state, so every result
+above and before stands. What does not: `particles-diff`, triage's
+"Particle generators" section and any bone or camera dump of a
+`render_every_tick` scenario, past the record its pass left the game. A
+dump that ended early reads as "0 differing ticks" beyond its last record.
+The existing dumps of such scenarios were left in place; re-record a
+scenario's passes before reading its particles.
+
+The fix is one list, `tick_trace.PLAYBACK_KEYS`, that all three snippets
+copy, and a check in `record.py`: every pass's seeds must equal the tick
+pass's on every record, and the pass must be whole, or the recording fails.
+Recordings without `render_every_tick` pass the check as they are (nine
+checked, tick clock and VI clock, start boundaries included).
+
+### The five stops
+
+Each window was played back on retail with a display pass after every tick
+and compared with its replay (`replay_vs_trace.py`) and with the port.
+
+| Replay | Stop before | Retail, every tick | Cause | Now |
+|---|---|---|---|---|
+| `LINK/Game_20190406T175018` (PS) | 10399, `input_seed` | `slp_ps_link_luigi_r175018_t10500`: keeps the console's seed on all 10499 frames; the port left retail at 10367 | port fault: an air dodge's item window (below) | 15345 / 15345 |
+| `ICE_CLIMBERS/19_16_18 Ice Climbers + Samus (PS)` | 6698, `follower.input_seed` | `slp_ps_iceclimbers_samus_r191618_t6750` (and `_t6900`): keeps the console's seed throughout; the port left retail at 6680 | port fault: an ice block's efLib_DestroyAll was queued (below) | 12040 / 15027, `follower.input_seed` again, not looked at |
+| `LINK/11_58_33 Marth + Link (DL)` | 3267, `input_seed` | `slp_dl_marth_link_r115833_t3400`: equals the port for 3400 ticks; its particle interpreter draws 160, 138, 179 on records 3265..3267, the console 172, 132, 171 | a console's lag frame, shown on retail: `slp_dl_marth_link_r115833_lag3265_t3400` (no display pass before record 3265) draws the console's counts and keeps its seed on all 3399 frames; the port equals it too | unchanged; `--skip-display-pass 3264` matches 10982 / 10982 |
+| `DOC/20200219 - HNC 1 ... Fox vs ME Dr. Mario - Pokemon Stadium` | 9684, `input_seed` | `slp_ps_fox_drmario_wide9263_r1_t9800`: equals the port for 9800 ticks and leaves the console on the same frame, 9684 | not a port fault found: retail in Dolphin under the console's known codes does what the port does. On record 9684 retail's jumbotron changes mode (grStadium_801D2A60, five draws, and grStadium_801D2528's duration; its last change was at 9006) and the tick draws 21 values, the console 12; on the next 9 against 11 | unchanged; no single `--skip-display-pass` in 9676..9685 moves it |
+| `PEACH/20200219 - HNC 6 ... Marth vs WOO Peach - Pokemon Stadium` | 5251, `input_seed` | `slp_ps_marth_peach_wide9263_r1_t5400` (local data): keeps the console's seed on all 5399 frames; the port leaves retail at 3710 | open, in `it-dosei`: a thrown Mr. Saturn (state 5, owner slot 0) lands at record 3709 and bounces (velocity y -1.2182 to +0.8284, y 1.9545, then 2.7089); the port has it at 4.5641 on 3710. Retail flies on to 3729 and walks (state 1) from 3730 | unchanged |
+
+**An air dodge's first three frames.** ftCo_EscapeAir_IASA (0x80099C24)
+counts mv.co.escapeair.timer down from PlCo +334 (3). While it runs each
+tick calls ftCo_80095328 (0x80099C6C), the air throw test the jumps and
+falls use, and when nothing is thrown ftCo_800D705C (0x80099CA4), which
+opens the aerial catch window, as the dodge's entry does (0x80099AC4). A
+throw state takes back the momentum the dodge replaced (the saved self_vel,
+0x80099C84..0x80099C98); a drop in place (ftCo_80095744) leaves the dodge
+running. The port's air dodge counted the timer and did neither. Link holds
+a bomb, air dodges at 10365 and presses A with R held on the dodge's second
+frame: the bomb drops (the port, keeping it, lacked 64 draws at 10398). Directed witnesses `links_airdodge_bomb_{throw,drop,cstick,third_frame,fourth_frame}_fd_fox4`
+(the window's last frame throws, the next does nothing, on retail as in the
+port before and after) and `peach_airdodge_turnip_catch_fd_fox4` (A in the
+dodge opens the window; the falling turnip is caught a tick later).
+
+**An ice block's generators go when it falls.** fn_802C1D44 (a sliding
+block leaves its floor) calls efLib_DestroyAll itself (0x802C1D68), as
+it_802C1854 does when a slope stops the block (0x802C1934). The port queued
+both as efAsync requests. At 6680 a block slides off Stadium's left edge:
+retail's generator list after the tick reads 14005, 8, 7, 107, 108, 14004
+(the tick's four new generators linked behind the head the destruction
+left); the port had 8, 7, 107, 108, 14005, 14004, with the block's
+generator still at the head when they were created, and 26 particle draws
+for retail's 32.
+
+Scenarios in `SLIPPI_REPLAY_WITNESSES`: the Link, Mr. Game & Watch, Ice
+Climbers, HNC 1 and both Dream Land bridges; the six directed ones are in
+`MATRIX_WITNESSES`.
