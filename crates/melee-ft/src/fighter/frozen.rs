@@ -241,10 +241,12 @@ impl Fighter {
             damage_scale: p.damage_scale,
         });
         let bone = usize::from(assets.parts.joint(FtPart::XRotN).expect("XRotN"));
-        core.effects.push(EffectRequest::IceBlock {
-            bone,
-            scale: core.block_model_scale(assets),
-        });
+        // efAsync_Spawn past link 9 creates the block in this proc, after
+        // the hit's quake (ftCo_8008DCE0), whose model the scene creates
+        // when the proc returns.
+        let scale = core.block_model_scale(assets);
+        core.effects_after_items
+            .push(EffectRequest::IceBlock { bone, scale });
         core.effect_state.destroy_on_state_change = true;
         core.set_hurt_capsules(HurtStatus::Intangible);
         let capsule = melee_coll::hurtbox::HurtCapsule {

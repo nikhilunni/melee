@@ -2486,6 +2486,10 @@ impl Runtime {
                 state.items.rename_gobjs(&renamed);
             }
         }
+        // A hit's quake (ftCo_8008DCE0's Camera_RequestQuake) precedes the
+        // models its damage entry creates after it: Bury's mound, the ice
+        // block.
+        state.quakes.create_fighter_gobjs(&mut state.effects.gobjs);
         // Effects a proc spawned after the items it created (their creation
         // particles came first) and after the articles it removed
         // (Item_8026A8EC frees an article's models and GObjs when the proc

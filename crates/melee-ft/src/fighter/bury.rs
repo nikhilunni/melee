@@ -158,10 +158,14 @@ impl Fighter {
             collision_box,
             mound,
         });
-        self.core.effects.push(EffectRequest::PositionalModel {
-            id: MOUND_EFFECT,
-            position: mound,
-        });
+        // After ftCo_8008DCE0's quake, whose model the scene creates when
+        // this proc returns.
+        self.core
+            .effects_after_items
+            .push(EffectRequest::PositionalModel {
+                id: MOUND_EFFECT,
+                position: mound,
+            });
         self.core.effect_state.destroy_on_state_change = true;
         Ok(())
     }

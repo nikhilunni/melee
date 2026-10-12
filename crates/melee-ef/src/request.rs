@@ -536,6 +536,9 @@ impl EffectRequest {
                 | Self::Clank { .. }
                 | Self::DestroyOwned
                 | Self::ArticlesFreed
+                // Requested in a hit's proc, past link 9, where
+                // efAsync_Spawn (0x800679B0) dispatches at once.
+                | Self::IceBlock { .. }
         )
     }
     fn bone(&self) -> Option<usize> {
