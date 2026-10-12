@@ -2210,6 +2210,7 @@ under the rule the user approved, and only under it
 | `screen-ko` | every differing field is the `cur_pos` of a fighter recorded in actions 6 to 10 (ftDrawCommon_80080E18 places it, 0x80080E90) | the stopping tick | the rest of that KO and the frame the fighter leaves it on; a further stop inside it must be a lag frame of the same KO by the same rule (at most four) or the first is rejected |
 | `magnifier` | every differing field is a `percent` | stop - 60 and stop - 59: the pass that sets the off-screen bit (ftLib_80086A8C from 0x80080E44) and the next one, which reads it (ifMagnify_802FBBDC, 0x802FBD3C); either one skipped starts the count (Fighter_8006A360, 0x8006A89C; PlCo +0x7AC = 60) a tick late | 120 frames: the delayed point's tick and, while the fighter stays out, the next one |
 | `particles` | every differing field is a Pre Frame `input_seed` | the stop and the eight ticks before it, nearest first (the seed check is membership in a tick's draws, so a stream off by a few draws passes busy ticks before a quiet one stops it: four ticks in the Samus game) | 600 frames, each with its seed check |
+| `jumbotron` (2026-10-12, "A lag frame that shows 302 ticks later" below) | the same, on Pokemon Stadium, after `particles` has found nothing, and only when the stop's tick or the one before is where the timer of a jumbotron mode entered without a draw runs out | the tick the simulation lost the close-up on, into that mode, then the tick before and the tick after | every frame from the tried tick through the stop, then the same 600 |
 
 Any other stop (a motion, a position outside a screen KO, facing, an
 unported boundary) is never retried. The rewindable run is a second
@@ -2777,6 +2778,59 @@ recording. What put the poll there is not in the replay.
 second corpus" above, where the recorder's lag frame did not reproduce it);
 an unconsumed poll was not recorded for it.
 
+**Pichu's turn, proven the same way (2026-10-12).** From the replay's own
+boundary (`start_dl_slippi73_ns2019_p34_captainfalcon1_pichu0_4_r232910`,
+its Game Start seed and spawn points), every tick, compared with
+`replay_vs_trace.py`:
+
+| Recording | UCF's samples at record 2159 (`pad_queue_x`) | Against the console |
+|---|---|---|
+| `slp_dl_captainfalcon_pichu_r232910_r1_t2400` (one poll per tick) | -100, -2 | Pichu dashes; position leaves at frame 2159, the seed at 2162 |
+| `..._poll2159_t2400` (`unconsumed_poll_before = [2159]`) | -100, -53 | follows the replay on all 2399 frames |
+| `..._poll2158_t2400` (`unconsumed_poll_before = [2158]`) | -100, -53 (the poll itself, which the recorder takes to be record 2158's pad) | follows the replay on all 2399 frames |
+
+All three gate exact in the port with 0 differing particle call sites and
+are in `SLIPPI_REPLAY_WITNESSES`, with the Fountain game's
+`..._r203101_poll7023_t7100`. So both stops are a console's pad queue and
+not port faults.
+
+**The runner does not infer an unconsumed poll.** The rule would be: on a
+motion stop at a UCF port's dashback, take the tick again with the queue's
+older sample one entry later, and accept if the stop and a margin then
+match. It was tried (a scratch build that places the poll by hand; not
+committed) and it cannot be made as strict as the lag-frame rule:
+
+- *It accepts a poll placed on the wrong record.* A poll before record N is
+  read at record N (the older sample is record N-1's pad) and again at
+  N+1 (the older sample is the poll itself). In the port, a poll before
+  record 2159 **or** 2158 completes the Pichu game (16108 / 16108), and
+  before 7023 **or** 7022 the Fountain game (10727 / 10727); the records on
+  either side of those pairs leave the stop where it was. Retail agrees:
+  the last two rows above both follow the console. A lag frame named one
+  tick off does not survive its margin (5872 for 5873, 9380 or 9382 for
+  9381); a poll named one record off survives the whole game.
+- *The poll's own value is a free parameter.* Nothing records it; the
+  recorder assumes the next record's pad. With the pad of the record
+  before instead, a poll before 2158 changes nothing at 2159.
+- *The margin confirms nothing about the poll.* A skipped display pass
+  predicts sixty frames of positions or six hundred seeds that nothing
+  else produces. A poll predicts one bit, the dashback at the stop, which
+  is the stop itself: once the turn is kept, every later frame follows from
+  the recorded pads whatever kept it. Any fault that makes the port leave
+  a slow turn where the console did not (the wrong UCF variant for a
+  port, a fault in the turn's own test) would be accepted as a poll and
+  matched for any margin.
+- *The recorded Pre Frame fields cannot check it.* The poll is not
+  dequeued, so every pad a tick consumed, and so every Pre Frame stick and
+  raw X, is the same with it and without it.
+
+What the rule does not do is rescue a different code version: with UCF
+0.74 named for `FOX/12_39_37 Falco + Fox (BF)` (a 0.73 console, first
+disagreement at 2522) or 0.73 for `ROY/Game_20191113T214619` (0.74, at
+220), a poll on the stop's record or either neighbour leaves the stop where
+it is. That is two cases, not a proof. The two games stay stops, with their
+cause proven on retail.
+
 ### A lag frame that shows 302 ticks later (HNC 1)
 
 Stadium's jumbotron (grStadium_801D2344) leaves the player close-up (mode
@@ -2812,6 +2866,45 @@ itself lost the close-up, and none when the silent mode was entered by a
 timer. The runner is unchanged: its rule still tries only the stop and the
 eight ticks before, so this game still stops at 9684 without
 `--skip-display-pass 9381`.
+
+**The rule as implemented (2026-10-12, `LagKind::Jumbotron`,
+`Inference::jumbotron` in `replay_lag_frames.rs`).** That rule and no
+looser:
+
+1. The stop is a Pre Frame `input_seed` stop and the `particles` kind has
+   tried its nine ticks and accepted none.
+2. The run's own copy from a few ticks before the stop shows the jumbotron
+   in a mode entered without a draw (the standings: grStadium_801D2A60's
+   interval branch draws nothing, grStadium_801D2528 loads a fixed timer)
+   whose timer runs out on the stop's tick or the one before, and whose
+   previous mode is the close-up. On another stage, or with any other mode
+   ending there, nothing is tried.
+3. The timer gives the tick the mode was entered on (the standings last
+   302 runs of the proc from the one that entered them). A second run of
+   the comparison's setup is taken to that tick: before it the screen must
+   be a close-up with time left on its own timer (so the close-up was lost,
+   not timed out), after it the mode just entered. Otherwise nothing is
+   tried.
+4. The display pass before that tick, then the one before and the one
+   after, are skipped in turn. One is accepted only if every frame from it
+   through the stop and the 600 frames after the stop match the recording,
+   seeds included (the `particles` margin). The report line and the JSONL
+   name the kind `jumbotron`.
+
+The stage state is read through `Simulation::stadium_screen`
+(`melee_gr::stadium::Showing`: the mode, the mode before it, how many runs
+of the proc until the timer ends it and, for the standings, how many since
+it began), all worked out from xE0, xE4 and xEA as the tick already keeps
+them. The second run is needed because the first keeps copies of itself
+only 80 ticks back; it costs one more simulation of the game up to the
+stop, for a game that stops this way only.
+
+In this game the candidates are ticks 9381, 9380 and 9382. 9381 is accepted
+(the 302 frames to the stop and 600 after it match) and the game then
+matches to its end, 13405 / 13405; it is the tick retail's
+`..._lag9382b_t9800` proves. A pass skipped by hand at 9380 or 9382 leaves
+the stop at 9684 (`a_jumbotron_lag_frame_is_the_pass_where_the_close_up_was_lost`
+in `tests/slippi_replay.rs`).
 
 ### The stop at 11591 is a port fault
 

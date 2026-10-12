@@ -2570,7 +2570,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 114] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 118] = [
     // A Slippi Online (netplay) game played back whole: every tick starts
     // from the netplay code's seed (InitOnlinePlay.asm's FN_SyncRNG: the
     // scene frame counter turned sixteen bits plus the RNG offset, which the
@@ -3016,6 +3016,20 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 114] = [
     // (pad_queue_x [100, 1]). The console kept the turn; retail and the
     // port do not.
     ("slp_fod_captainfalcon_iceclimbers_r203101_r1_t7100_cold", 7100),
+    // The same game with a poll no tick consumed in the pad queue before
+    // record 7023: UCF reads 100 against the 45 of the record before, the
+    // turn is kept, and retail follows the console for all 7099 frames.
+    ("slp_fod_captainfalcon_iceclimbers_r203101_poll7023_t7100_cold", 7100),
+    // Pichu's slow turn, the same shape (raw X -2, -53, -100). One poll per
+    // tick: retail dashes at record 2159 and leaves the console. A poll no
+    // tick consumed before record 2159 (UCF reads -100 against -53), or
+    // before record 2158 (the poll itself, taken as record 2158's pad, is
+    // what record 2159 reads): retail keeps the turn and follows the
+    // console for all 2399 frames either way, so a replay cannot say which
+    // record the poll preceded.
+    ("slp_dl_captainfalcon_pichu_r232910_r1_t2400_cold", 2400),
+    ("slp_dl_captainfalcon_pichu_r232910_poll2159_t2400_cold", 2400),
+    ("slp_dl_captainfalcon_pichu_r232910_poll2158_t2400_cold", 2400),
     // The HNC Stadium game (slp_ps_fox_drmario_wide9263_r1_t9800) with pads
     // that read as Pre Frame, and with the console's lag frame: no display
     // pass before record 9382, where the jumbotron's close-up is lost

@@ -1,0 +1,28 @@
+# CaptainFalcon vs Pichu on DreamLand, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_dl_slippi73_ns2019_p34_captainfalcon1_pichu0_4_r232910"
+gate = "start_dl_slippi73_ns2019_p34_captainfalcon1_pichu0_4_r232910_cold"
+savestate = "harness/roms/start_dl_slippi73_ns2019_p34_captainfalcon1_pichu0_4_r232910.sav"
+frames = 600
+seed = 1
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 3986022382
+stage = "DreamLand"
+gecko = ["ucf-0.73", "neutral-spawn-2019"]
+
+inputs = []
+
+[[fighters]]
+slot = 2
+kind = "CaptainFalcon"
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Pichu"
+controller = "idle"
+controller_fix = "ucf-0.73"

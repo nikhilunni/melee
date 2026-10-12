@@ -1,0 +1,33 @@
+# PICHU/Game_20161120T232910.slp played back on retail from its own boundary, a display pass after every tick and one poll per tick: the control of slp_dl_captainfalcon_pichu_r232910_poll2159_t2400. The replay keeps Pichu's slow Turn at frame 2158.
+# The port's side of slp_dl_captainfalcon_pichu_r232910_r1_t2400: boundary start_dl_slippi73_ns2019_p34_captainfalcon1_pichu0_4_r232910 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_dl_captainfalcon_pichu_r232910_r1_t2400_cold"
+expected = "slp_dl_captainfalcon_pichu_r232910_r1_t2400"
+frames = 2400
+seed = 2730955292
+game_start_seed = 3986022382
+boundary_seed = 2730955292
+stage = "DreamLand"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2019"
+inputs = []
+
+[[fighters]]
+slot = 2
+kind = "CaptainFalcon"
+costume = 1
+stocks = 4
+spawn_point = 0
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Pichu"
+costume = 0
+stocks = 4
+spawn_point = 1
+controller = "scripted"
+controller_fix = "ucf-0.73"

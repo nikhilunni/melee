@@ -1,0 +1,33 @@
+# ICE_CLIMBERS/20_31_01 Captain Falcon + Ice Climbers (FoD).slp played back on retail from its own boundary, a display pass after every tick, with a poll no tick consumed in the pad queue before record 7023: UCF 0.73's dashback then compares Captain Falcon's raw X 100 with the 45 of the record before, not the 1 of two before, and leaves the slow turn alone, as the console did (frame 7022).
+# The port's side of slp_fod_captainfalcon_iceclimbers_r203101_poll7023_t7100: boundary start_fod_slippi73_ns_p13_captainfalcon1_iceclimbers0_4_r203101 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fod_captainfalcon_iceclimbers_r203101_poll7023_t7100_cold"
+expected = "slp_fod_captainfalcon_iceclimbers_r203101_poll7023_t7100"
+frames = 7100
+seed = 2166665568
+game_start_seed = 3536640920
+boundary_seed = 2166665568
+stage = "FountainOfDreams"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+costume = 1
+stocks = 4
+spawn_point = 0
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 2
+kind = "IceClimbers"
+costume = 0
+stocks = 4
+spawn_point = 1
+controller = "scripted"
+controller_fix = "ucf-0.73"
