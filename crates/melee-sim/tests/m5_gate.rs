@@ -2318,7 +2318,8 @@ fn ness_witnesses_match_retail() {
 }
 
 /// Kirby against Fox on Final Destination, all from the retail start
-/// boundary `start_fd_kirby_fox4` (gated warm and cold in `m4_gate`).
+/// boundary `start_fd_kirby_fox4` (gated warm and cold in `m4_gate`); the
+/// three `_ys_` scenes are on Yoshi's Story (`start_ys_kirby_fox4`).
 const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // Movement on the common rows with PlKb.dat's attributes and scripts;
     // the bump star (ftKb_SpecialN_800F1D24) at every landing.
@@ -2541,6 +2542,54 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // then a Hammer off the revival platform.
     ("kirby_hammer_struck_fd_fox4", 460),
     ("kirby_hammer_death_fd_fox4", 620),
+    // Stone (ftkirbyspeciallw.c). On the ground for its whole 150 frames
+    // (the form drawn with HSD_Randi(4), the flicker, the puffs efAlt 0x49B
+    // and 0x49C, the end row off the floor into Fall); a B press before the
+    // minimum time does nothing.
+    ("kirby_stone_ground_fd_fox4", 620),
+    // From a full hop: the rock falls at +104, lands with the quake and
+    // goes on in the grounded row; B ends the second one on the floor.
+    ("kirby_stone_air_fd_fox4", 700),
+    // The aerial start landing on its first frame into the grounded start.
+    ("kirby_stone_short_hop_fd_fox4", 460),
+    // B in the air: the aerial end row from high up and from the rock's
+    // last frame above the floor.
+    ("kirby_stone_air_cancel_fd_fox4", 760),
+    // Five in a row: each form follows the random stream.
+    ("kirby_stone_repeat_fd_fox4", 800),
+    // The shell (x221C_b4, dmg.x1834 = 38): Fox's jabs come off it with no
+    // reaction (ftcoll.c:674-680, the spark 1052); three up smashes break
+    // it and the rest reaches Kirby; his Blaster's shots come off it too
+    // (ftcoll.c:1286-1292), and after two up smashes break it. A broken
+    // shell is up again on the next frame with its health below zero, so
+    // each later shot does that much more.
+    ("kirby_stone_jabs_fd_fox4", 520),
+    ("kirby_stone_break_fd_fox4", 520),
+    ("kirby_stone_lasers_fd_fox4", 460),
+    ("kirby_stone_laser_break_fd_fox4", 520),
+    // Fox's down smash before the rock has formed; his grab and throw of
+    // the rock (a motion change takes the shell and the model).
+    ("kirby_stone_start_struck_fd_fox4", 520),
+    ("kirby_stone_grab_fd_fox4", 520),
+    // The falling rock on Fox.
+    ("kirby_stone_drop_fd_fox4", 560),
+    // Off the stage: the rock crosses the blast zone (ftKb_Init_800EE74C);
+    // Stone off the revival platform and on the floor (the form drawn at
+    // the revival, then past it).
+    ("kirby_stone_offstage_fd_fox4", 900),
+    // Pushed off the floor's end by Fox as a rock (the falling rock hits
+    // him) and before the rock has formed (the aerial start at its frame).
+    ("kirby_stone_pushed_fd_fox4", 520),
+    ("kirby_stone_start_pushed_fd_fox4", 520),
+    // Yoshi's Story (boundary `start_ys_kirby_fox4`): on the left slope the
+    // rock slides down by the mean of four frames' floor normals
+    // (ftKb_SpecialHi_800F3570 / 800F37EC / 800F3B28) and off the end; a
+    // rock landing on the slope starts at the slide's speed times the
+    // normal's x; pushed by Fox up the right slope onto the level floor, it
+    // settles (the 0.9 damping) and brakes.
+    ("kirby_stone_slope_ys_fox4", 520),
+    ("kirby_stone_slope_land_ys_fox4", 520),
+    ("kirby_stone_slope_up_ys_fox4", 560),
 ];
 
 #[test]

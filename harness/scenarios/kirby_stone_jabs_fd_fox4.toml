@@ -1,0 +1,33 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby runs to x=51 beside Fox at +60): Stone beside Fox, who jabs the rock four times: the shell takes them and Kirby does not react.
+name = "kirby_stone_jabs_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 240, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 283, port = 1, buttons = {  }, raw = {  } },
+  { frame = 304, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 307, port = 1, buttons = {  }, raw = {  } },
+  { frame = 328, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 331, port = 1, buttons = {  }, raw = {  } },
+  { frame = 352, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 355, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

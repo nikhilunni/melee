@@ -1,0 +1,31 @@
+# KIRBY directed witness from start_ys_kirby_fox4 (Yoshi's Story, whose floor slopes down to both edges): Kirby drops to the floor, runs to the top of the right slope and uses Stone there; Fox drops beside the rock on its downhill side and walks up into it.
+name = "kirby_stone_slope_up_ys_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_kirby_fox4.sav"
+frames = 560
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = {  } },
+  { frame = 185, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 236, port = 0, buttons = {  }, raw = {  } },
+  { frame = 275, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 279, port = 0, buttons = {  }, raw = {  } },
+  { frame = 290, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 300, port = 1, buttons = {  }, raw = {  } },
+  { frame = 312, port = 1, buttons = {  }, raw = { stickX = -45 } },
+  { frame = 420, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
