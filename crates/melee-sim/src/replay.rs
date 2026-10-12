@@ -693,7 +693,7 @@ pub(crate) fn cold_scenario_base(replay: &Replay, root: &Path, setup: Setup) -> 
     // The boundary seed is found from a provisional scenario with Game
     // Start's seed.
     let cold = ColdScenario::from_replay(replay, "slippi_replay", replay.start.random_seed, false)?;
-    let mut scenario: Scenario = toml::from_str(&cold.to_toml()?)?;
+    let mut scenario = scenario_of(cold)?;
     scenario.root = root.into();
     if replay.start.timer_type() == 2 && replay.start.game_timer != 0 {
         scenario.time_limit = Some(replay.start.game_timer);
@@ -709,6 +709,69 @@ pub(crate) fn cold_scenario_base(replay: &Replay, root: &Path, setup: Setup) -> 
     scenario.seed = Some(seed);
     scenario.all_characters_unlocked = Some(unlocked);
     Ok(scenario)
+}
+
+/// The scenario a cold replay's TOML (`ColdScenario::to_toml`) loads as.
+///
+/// Printing and parsing a long game's input list costs more than starting
+/// its match, so the fields are moved across instead. Every value survives
+/// TOML unchanged except a NaN, whose bits the text does not carry: an
+/// input list holding one goes through the text, as it always did.
+fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
+    let floats = |input: &slp::cold::ControllerFrame| {
+        [input.stick, input.cstick, input.triggers]
+            .into_iter()
+            .flatten()
+            .chain([input.trigger])
+    };
+    if cold.replay_rules.damage_ratio.is_nan()
+        || cold.replay_inputs.iter().flat_map(floats).any(f32::is_nan)
+    {
+        return Ok(toml::from_str(&cold.to_toml()?)?);
+    }
+    Ok(Scenario {
+        name: cold.name,
+        savestate: None,
+        expected: None,
+        all_characters_unlocked: Some(cold.all_characters_unlocked),
+        frames: cold.frames,
+        seed: Some(cold.seed),
+        gate: None,
+        boundary_seed: None,
+        game_start_seed: None,
+        after_map: false,
+        render_every_tick: false,
+        no_display_pass_before: Vec::new(),
+        sudden_death: false,
+        time_limit: None,
+        spawn: Default::default(),
+        stadium_preload: false,
+        stadium_frozen: false,
+        frozen_stages: false,
+        widescreen: false,
+        widescreen_92_63: false,
+        fountain_level: false,
+        stage: cold.stage,
+        fighters: cold
+            .fighters
+            .into_iter()
+            .map(|fighter| crate::scenario::FighterScenario {
+                slot: fighter.slot,
+                kind: fighter.kind,
+                controller: fighter.controller.into(),
+                costume: fighter.costume,
+                spawn_point: fighter.spawn_point,
+                stocks: fighter.stocks,
+                controller_fix: None,
+            })
+            .collect(),
+        inputs: Vec::new(),
+        input_clock: None,
+        replay_inputs: cold.replay_inputs,
+        replay_rules: Some(cold.replay_rules),
+        gecko: Vec::new(),
+        root: Default::default(),
+    })
 }
 
 /// Write the codes a setup names into the replay's cold scenario: the stage
@@ -1132,6 +1195,95 @@ mod tests {
         ] {
             assert_eq!(ucf_by_date(day), (dated, other), "{day}");
         }
+    }
+
+    /// A cold scenario whose inputs hold these floats, among them values a
+    /// careless text round trip would change.
+    fn cold_with(floats: [f32; 4]) -> ColdScenario {
+        let input = |frame: u64, port: u8, raw: Option<[i8; 2]>| slp::cold::ControllerFrame {
+            frame,
+            port,
+            buttons_physical: 0x1160,
+            buttons_processed: 0x8000_0100,
+            stick: [floats[0], floats[1]],
+            cstick: [floats[2], -0.0],
+            trigger: floats[3],
+            triggers: [0.3, 1.0],
+            raw_stick: raw,
+            raw_cstick: None,
+            raw_stick_x: raw.map(|[x, _]| x),
+        };
+        ColdScenario {
+            name: "slippi_replay".into(),
+            frames: 2,
+            seed: 0xFEDC_BA98,
+            stage: "Battlefield".into(),
+            all_characters_unlocked: false,
+            fighters: [(0, "Fox", "scripted"), (3, "Marth", "cpu")]
+                .into_iter()
+                .map(|(slot, kind, controller)| slp::cold::ColdPlayer {
+                    slot,
+                    kind: kind.into(),
+                    costume: 2,
+                    spawn_point: -1,
+                    stocks: 4,
+                    controller,
+                })
+                .collect(),
+            replay_rules: slp::cold::ReplayRules {
+                game_start_seed: 0x8000_0001,
+                time_seconds: 480,
+                timer_type: 2,
+                game_mode: 1,
+                teams: false,
+                item_spawn_behavior: -1,
+                item_spawn_bitfields: [0xFF, 0, 1, 2, 0x80],
+                damage_ratio: 1.0,
+            },
+            replay_inputs: vec![
+                input(0, 0, Some([-128, 127])),
+                input(0, 3, None),
+                input(1, 0, None),
+                input(1, 3, Some([5, -5])),
+            ],
+        }
+    }
+
+    #[test]
+    fn a_cold_scenario_is_its_toml_without_the_text() {
+        for floats in [
+            [0.0, -0.0, 1.0, -1.0],
+            [0.2875, -0.7125, 0.95, 1.0 / 140.0],
+            [f32::MIN_POSITIVE, f32::from_bits(1), f32::MAX, f32::EPSILON],
+            [f32::INFINITY, f32::NEG_INFINITY, 0.1, 0.300_000_04],
+        ] {
+            let through_text: Scenario =
+                toml::from_str(&cold_with(floats).to_toml().unwrap()).unwrap();
+            let moved = scenario_of(cold_with(floats)).unwrap();
+            assert_eq!(format!("{moved:?}"), format!("{through_text:?}"), "{floats:?}");
+            let bits = |scenario: &Scenario| -> Vec<u32> {
+                scenario
+                    .replay_inputs
+                    .iter()
+                    .flat_map(|input| {
+                        [input.stick, input.cstick, input.triggers]
+                            .into_iter()
+                            .flatten()
+                            .chain([input.trigger])
+                    })
+                    .map(f32::to_bits)
+                    .collect()
+            };
+            assert_eq!(bits(&moved), bits(&through_text), "{floats:?}");
+        }
+        // A NaN's bits are not in the text: such a list goes through it.
+        let nan = [f32::NAN, 0.0, 0.0, 0.0];
+        let through_text: Scenario = toml::from_str(&cold_with(nan).to_toml().unwrap()).unwrap();
+        let moved = scenario_of(cold_with(nan)).unwrap();
+        assert_eq!(
+            moved.replay_inputs[0].stick[0].to_bits(),
+            through_text.replay_inputs[0].stick[0].to_bits()
+        );
     }
 
     #[test]
