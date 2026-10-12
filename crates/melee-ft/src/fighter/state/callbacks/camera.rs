@@ -10,9 +10,23 @@ pub fn follow_fighter(fighter: &mut Fighter, phase: CameraPhase<'_>) {
     update(&mut fighter.core, phase, false);
 }
 
-/// ftCo_Cliff_Cam (80081644): the scheduler notifies the ledge after updating.
-pub fn cliff(fighter: &mut Fighter, phase: CameraPhase<'_>) {
+/// ftCo_Cliff_Cam (80081644), ftcliffcommon.c:143-151: the camera box, then,
+/// while the fighter hangs in the air, the supporting stage joint is told
+/// (mpLib_8005811C with mv.co.cliff.ledge_id) and the subject's on_ledge bit
+/// set. Only this callback notifies: the bit itself stays set through rows
+/// whose callback never rebuilds the box (a second climber put to sleep on
+/// the ledge by its leader's death carries it into Rebirth).
+pub fn cliff(fighter: &mut Fighter, mut phase: CameraPhase<'_>) {
+    let map = phase.map.take();
     update(&mut fighter.core, phase, true);
+    if !fighter.core.camera.on_ledge {
+        return;
+    }
+    let Some(map) = map else { return };
+    let MotionData::Cliff(cliff) = &fighter.core.state_data else {
+        panic!("cliff camera scratch missing")
+    };
+    map.notify_ledge_grab(&mut fighter.core.collision.data, cliff.ledge_id);
 }
 
 /// ftCo_DeadDown_Cam / DeadLeft_Cam / DeadRight_Cam: the subject stays where
@@ -88,7 +102,7 @@ fn set_horizontal(subject: &mut Subject, horizontal: Vec3, facing: f32, fixed_zo
 }
 
 fn update(fighter: &mut FighterCore, phase: CameraPhase<'_>, on_ledge: bool) {
-    let CameraPhase { assets, stage } = phase;
+    let CameraPhase { assets, stage, .. } = phase;
     let [h, _] = scaled_extents(assets.camera_extents, fighter.player.scale);
     set_horizontal(
         &mut fighter.camera,

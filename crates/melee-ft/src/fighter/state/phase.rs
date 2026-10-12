@@ -39,6 +39,9 @@ pub struct CameraPhase<'a> {
     /// The stage's camera description (Stage_GetCamFixedZoom and the bounds
     /// the dead-fighter callbacks aim at).
     pub stage: &'a melee_cm::StageCamera,
+    /// The collision map ftCo_Cliff_Cam notifies (mpLib_8005811C); `None`
+    /// only where a test runs the camera proc without a stage.
+    pub map: Option<&'a mut CollMap>,
 }
 
 pub type AnimFn = fn(&mut Fighter, AnimationPhase<'_>) -> Result<Option<WaitChoice>>;

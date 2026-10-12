@@ -249,30 +249,32 @@ impl Fighter {
             );
         }
     }
-    /// ftCo_Cliff_Cam (80081644), ftcliffcommon.c:160-168: camera box first,
-    /// then notify the supporting stage joint while hanging airborne.
+    /// Fighter camera procedure at 0x8006D9EC (0x8006D9EC), s_link 18, with
+    /// the map ftCo_Cliff_Cam notifies.
     pub fn proc_camera_with_map(
         &mut self,
         assets: &FighterAssets,
         stage: &melee_cm::StageCamera,
         map: &mut CollMap,
     ) {
-        self.proc_camera(assets, stage);
-        if !self.core.status.disabled && self.core.camera.on_ledge {
-            let MotionData::Cliff(cliff) = &self.core.state_data else {
-                panic!("cliff camera scratch missing")
-            };
-            map.notify_ledge_grab(&mut self.core.collision.data, cliff.ledge_id);
-        }
+        self.run_camera_callback(assets, stage, Some(map));
     }
-    /// Fighter camera procedure at 0x8006D9EC (0x8006D9EC), s_link 18.
+    /// The camera procedure without a stage map (a ledge is not notified).
     pub fn proc_camera(&mut self, assets: &FighterAssets, stage: &melee_cm::StageCamera) {
+        self.run_camera_callback(assets, stage, None);
+    }
+    fn run_camera_callback(
+        &mut self,
+        assets: &FighterAssets,
+        stage: &melee_cm::StageCamera,
+        map: Option<&mut CollMap>,
+    ) {
         if self.core.status.disabled {
             return;
         }
         self.core.status.require_supported();
         self.core.status.camera_shift = Vec2::ZERO;
-        (self.motion_row.camera)(self, state::CameraPhase { assets, stage });
+        (self.motion_row.camera)(self, state::CameraPhase { assets, stage, map });
     }
 }
 impl FighterCore {
