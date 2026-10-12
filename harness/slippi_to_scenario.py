@@ -59,6 +59,13 @@ the magnifier's damage, a screen KO's position) is otherwise another game's.
 console's lag frame: records N-1 and N run in one frame, so the display pass
 between them does not happen (`no_display_pass_before`, tick_trace.py).
 
+A Slippi Online game (`online_rng_offset` in the header): both scenarios
+carry the offset, the recorder stores each tick's seed as the netplay code
+did (tick_trace.py, sync_seed) and the port's tick driver does the same.
+Retail cannot run a rollback's loop, so the ticks one ran
+(`rollback_loop_ticks`) are played as ordinary ticks: the note printed says
+how many fall inside the scenario.
+
 The controller fix is the boundary's (its codes live in the savestate), which
 may be a later UCF than the replay's build ran. The Stadium codes are the
 boundary's too (`stadium_preload`, `stadium_frozen`, from its Gecko list) and
@@ -294,6 +301,12 @@ def main(argv: list[str] | None = None) -> None:
         cadence += f"unconsumed_poll_before = {sorted(a.unconsumed_poll_before)}\n"
     if a.after_map:
         cadence += "after_map = true\n"
+    online = ""
+    if header.get("online_rng_offset") is not None:
+        online = f"online_rng_offset = {header['online_rng_offset']}\n"
+        looped = sum(1 for tick in header.get("rollback_loop_ticks", []) if tick + 1 < ticks)
+        print(f"note: a Slippi Online game; {looped} of its ticks ran in a rollback's loop "
+              "(no display pass before them) and are played here as ordinary ticks", file=sys.stderr)
 
     def fix(fighter: dict) -> str:
         return f'controller_fix = "{fighter["controller_fix"]}"\n' if "controller_fix" in fighter else ""
@@ -313,7 +326,7 @@ input_clock = "tick"
 frames = {ticks}
 seed = 1
 {creation}boundary_seed = {seed}
-stage = "{cold["stage"]}"
+{online}stage = "{cold["stage"]}"
 {stage_codes}{gecko_list}inputs = [
 {chr(10).join(schedule)}
 ]
@@ -337,7 +350,7 @@ expected = "{a.name}"
 frames = {ticks}
 seed = {cold["seed"]}
 {creation}boundary_seed = {seed}
-stage = "{cold["stage"]}"
+{online}stage = "{cold["stage"]}"
 {stage_codes}all_characters_unlocked = true
 {timer}{spawn}inputs = []
 

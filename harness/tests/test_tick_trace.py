@@ -448,3 +448,67 @@ def test_a_scenario_without_after_map_watches_only_the_tick_counter(capture):
     store(tracer, mem, 101)
     assert [call[:2] for call in calls] == [("add", tick.WATCH_ADDR)]
     assert "after_map" not in json.loads(raw.read_text().splitlines()[0])
+
+
+def online_capture(tmp_path, frames=4):
+    """`capture` for a scenario with Slippi Online's per-tick seed."""
+    mem = build_two_fighter_world()
+    for addr, word in tick.BOUNDARY_CODE.items():
+        mem.write_u32(addr, word)
+    mem.write_u32(tick.WATCH_ADDR, 100)
+    mem.add_memcheck = lambda addr: None
+    mem.remove_memcheck = lambda addr: None
+    raw = tmp_path / "ticks.raw.jsonl"
+    tracer = tick.TickTracer({"frames": frames, "online_rng_offset": 0x3AAE}, raw.open("w"),
+                             tmp_path / "match.sav", {"seed": 123}, tmp_path / "ticks.raw.jsonl.done",
+                             mem, _FakeController(), _FakeStates(mem, 123), Events())
+    return tracer, mem, raw
+
+
+def test_an_online_scenario_gets_the_netplay_seed_before_every_tick(tmp_path):
+    tracer, mem, raw = online_capture(tmp_path)
+    tracer.on_frame()
+    # The scene's start: gm_801A4D34 zeroes the tick count (this callback)
+    # and then the scene frame counter. The first tick runs on counter 0.
+    mem.write_u32(tick.SCENE_FRAME_ADDR, 77)
+    tracer.on_memory(True, tick.WATCH_ADDR, 0)
+    mem.write_u32(tick.WATCH_ADDR, 0)
+    mem.write_u32(tick.SCENE_FRAME_ADDR, 0)
+    assert mem.read_u32(tick.SEED_ADDR) == 0x3AAE
+    seeds = []
+    for value in (1, 2):
+        # The tick draws; its record holds the seed it ended on, and only
+        # then is the next tick's seed stored. The game increments the
+        # counter after the store this callback precedes.
+        mem.write_u32(tick.SEED_ADDR, 0xDEAD0000 + value)
+        store(tracer, mem, value)
+        mem.write_u32(tick.SCENE_FRAME_ADDR, value)
+        seeds.append(mem.read_u32(tick.SEED_ADDR))
+    assert seeds == [0x13AAE, 0x23AAE]
+    rows = [json.loads(line) for line in raw.read_text().splitlines()]
+    assert len(rows) == 3 and not raw.with_suffix(".jsonl.err").exists()
+    assert tracer.summary()["rng_sync_writes"] == 3
+    tracer.fail("test cleanup")
+
+
+def test_an_online_tick_that_ran_on_another_scene_frame_fails(tmp_path):
+    tracer, mem, raw = online_capture(tmp_path)
+    tracer.on_frame()
+    # A boundary inside a match: the counter is 40 and the next tick runs on 41.
+    mem.write_u32(tick.SCENE_FRAME_ADDR, 40)
+    store(tracer, mem, 101)
+    assert mem.read_u32(tick.SEED_ADDR) == (41 << 16) + 0x3AAE
+    # The counter did not move (a paused scene): the seed was for another frame.
+    store(tracer, mem, 102)
+    assert "seeded for scene frame 41, the tick ran on 40" in raw.with_suffix(".jsonl.err").read_text()
+
+
+def test_a_scenario_without_an_rng_offset_never_writes_the_seed(capture):
+    tracer, mem, raw, done, calls = capture
+    tracer.on_frame()
+    mem.write_u32(tick.SEED_ADDR, 0xABCD)
+    store(tracer, mem, 101)
+    store(tracer, mem, 102)
+    assert mem.read_u32(tick.SEED_ADDR) == 0xABCD
+    assert "rng_sync_writes" not in tracer.summary()
+    tracer.fail("test cleanup")

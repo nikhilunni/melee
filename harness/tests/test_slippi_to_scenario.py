@@ -288,3 +288,33 @@ def test_an_unconsumed_poll_names_its_record(scenarios):
               "--unconsumed-poll-before", "7023"])
     assert tomllib.loads((scenarios / "slp_poll.toml").read_text())["unconsumed_poll_before"] == [7023]
     assert "unconsumed_poll_before" not in tomllib.loads((scenarios / "slp_poll_cold.toml").read_text())
+def test_an_online_game_carries_its_rng_offset_and_code_to_both_scenarios(scenarios, capsys):
+    codes = ["ucf-0.8", "online-offscreen-damage"]
+    write_boundary(scenarios, "start_bf", "Battlefield", codes)
+    write_inputs(scenarios / "inputs.jsonl", "Battlefield", online_rng_offset=39851,
+                 online_offscreen_damage=True, rollback_loop_ticks=[0, 1, 5])
+    s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp_online", "--boundary", "start_bf"])
+    retail = tomllib.loads((scenarios / "slp_online.toml").read_text())
+    twin = tomllib.loads((scenarios / "slp_online_cold.toml").read_text())
+    for scenario in (retail, twin):
+        assert scenario["online_rng_offset"] == 39851
+        assert scenario["online_offscreen_damage"] is True
+    assert retail["gecko"] == codes
+    # Ticks 0 and 1 are records 1 and 2 of the three played; tick 5 is past them.
+    assert "2 of its ticks ran in a rollback's loop" in capsys.readouterr().err
+
+
+def test_a_boundary_without_the_online_code_is_refused_for_an_online_game(scenarios):
+    write_boundary(scenarios, "start_bf", "Battlefield", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "Battlefield", online_rng_offset=39851,
+                 online_offscreen_damage=True)
+    with pytest.raises(SystemExit, match="--gecko online-offscreen-damage"):
+        s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp_online", "--boundary", "start_bf"])
+
+
+def test_an_offline_game_has_no_online_keys(scenarios):
+    write_boundary(scenarios, "start_bf", "Battlefield", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "Battlefield")
+    s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp_bf", "--boundary", "start_bf"])
+    for name in ("slp_bf", "slp_bf_cold"):
+        assert "online" not in (scenarios / f"{name}.toml").read_text()

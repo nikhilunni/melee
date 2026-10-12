@@ -186,6 +186,8 @@ def main(argv: list[str] | None = None) -> None:
         if any(step.get("buttons") or step.get("raw") for step in scenario.get("inputs", [])) or any(
                 f.get("controller") == "human" for f in scenario.get("fighters", [])):
             flags.append("--scripted")  # inputs drive the fighters: animation rates vary
+        if scenario.get("online_rng_offset") is not None:
+            flags += ["--online-rng-offset", str(scenario["online_rng_offset"])]
         if validate_ticks.main([str(expected), *flags]):
             sys.exit(1)
     if not a.no_compress:

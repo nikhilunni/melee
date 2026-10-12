@@ -86,3 +86,23 @@ def test_scripted_mode_accepts_non_unit_animation_rates():
     records[1]["state"]["p0.cur_anim_frame"]["v"]["bits"] = 0x40900000  # 4.5: rate 2.5
     assert v.validate(iter(records))["violations"]
     assert not v.validate(iter(records), scripted=True)["violations"]
+
+
+def test_an_online_recording_reaches_each_seed_from_the_netplay_seed_of_its_tick():
+    from validate_ticks import online_seed
+
+    # The seeds of crates/slp/tests/data/v3.16.slp's first frames (offset 0x3AAE):
+    # the scene frame counter turned sixteen bits, plus the offset.
+    assert [online_seed(ordinal, 0x3AAE) for ordinal in (1, 2, 5)] == [0x3AAE, 0x13AAE, 0x43AAE]
+    assert online_seed(0x10003, 0xFFFF) == 0x30000  # the counter's high half wraps round
+    offset = 39851
+    # Record 0 is the boundary; record n ends the tick seeded for scene frame n - 1.
+    rows = [record(0, 0, 7), record(1, 1, online_seed(1, offset)),
+            record(2, 2, lcg(lcg(online_seed(2, offset)))), record(3, 3, lcg(online_seed(3, offset)))]
+    assert validate(rows, max_draws=2, online_rng_offset=offset) == {
+        "records": 4, "histogram": {0: 1, 1: 1, 2: 1}, "violations": []}
+    # Without the offset no record follows the one before.
+    assert len(validate(rows, max_draws=2)["violations"]) == 3
+    # A seed off the tick's stream is still a violation.
+    rows[2] = record(2, 2, online_seed(3, offset))
+    assert len(validate(rows, max_draws=2, online_rng_offset=offset)["violations"]) == 1

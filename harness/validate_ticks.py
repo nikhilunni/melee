@@ -146,9 +146,22 @@ def animations(state: dict) -> dict[str, float]:
             for key, field in state.items() if key.endswith(".cur_anim_frame")}
 
 
-def validate(records, max_draws: int = 64, scripted: bool = False) -> dict:
+def online_seed(ordinal: int, offset: int) -> int:
+    """The seed Slippi Online's netplay code stores before the tick that
+    ends at record `ordinal` (tick_trace.py, sync_seed): the scene frame
+    counter, `ordinal - 1` from a match-start boundary, turned left sixteen
+    bits, plus the RNG offset."""
+    scene_frame = (ordinal - 1) & 0xFFFFFFFF
+    return (((scene_frame << 16) | (scene_frame >> 16)) + offset) & 0xFFFFFFFF
+
+
+def validate(records, max_draws: int = 64, scripted: bool = False,
+             online_rng_offset: int | None = None) -> dict:
     """`scripted`: inputs drive the fighters, so animation rates are not unit;
-    only finiteness, RNG reachability and the tick metadata are checked."""
+    only finiteness, RNG reachability and the tick metadata are checked.
+    `online_rng_offset`: the recorder wrote Slippi Online's seed before every
+    tick, so a record's seed is reached from that seed, not from the record
+    before."""
     if max_draws < 0:
         raise ValueError("max_draws must be nonnegative")
     histogram = Counter()
@@ -187,6 +200,8 @@ def validate(records, max_draws: int = 64, scripted: bool = False) -> dict:
             if current_anim.keys() != previous_anim.keys():
                 violations.append(f"ordinal {ordinal}: fighter animation field set changed")
             before_seed = previous["state"]["rng.seed"]["v"]
+            if online_rng_offset is not None:
+                before_seed = online_seed(ordinal, online_rng_offset)
             draws = draw_count(before_seed, seed, max_draws)
             if draws is None:
                 violations.append(f"ordinal {ordinal}: rng.seed {before_seed} -> {seed} "
@@ -256,6 +271,9 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--max-draws", type=int, default=64, metavar="K")
     parser.add_argument("--scripted", action="store_true",
                         help="inputs drive the fighters: skip the unit animation-rate rule")
+    parser.add_argument("--online-rng-offset", type=int, metavar="OFFSET",
+                        help="the scenario's online_rng_offset: each tick starts from Slippi "
+                             "Online's seed for its scene frame")
     parser.add_argument("--items", action="store_true",
                         help="show item spawn/despawn events and motion-check coverage")
     args = parser.parse_args(argv)
@@ -264,7 +282,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         with trace_io.open_text(args.trace) as stream:
             result = validate((json.loads(line) for line in stream if line.strip()),
-                              args.max_draws, args.scripted)
+                              args.max_draws, args.scripted, args.online_rng_offset)
     except (OSError, ValueError, KeyError, TypeError, struct.error, OverflowError) as exc:
         print(f"invalid trace: {exc}")
         return 1

@@ -31,6 +31,11 @@ Two codes are constructed, not copied: `gecko_fod_level.py` writes
 `fod-level.txt`, the consoles with level Fountain of Dreams platforms
 (docs/SLIPPI.md).
 
+`online-offscreen-damage.txt` is the C206A880 block of slippi-ssbm-asm's
+Output/Netplay/GALE01r2.ini at 0e90140 (Online/Core/BrawlOffscreenDamage.asm):
+the one netplay code of 2020 that changes a match and runs without the netplay
+transport (docs/SLIPPI.md, "Slippi Online").
+
 `install` writes the codes into a private Dolphin user folder's
 GameSettings/GALE01.ini ([Gecko] and [Gecko_Enabled]); the recorder then
 launches Dolphin with cheats enabled (dolphin_config: DOLPHIN_CHEATS=1).
@@ -57,7 +62,8 @@ BRANCH_OPCODE = 18
 #: `gecko` list, carries the flag alone).
 SCENARIO_FLAGS = {"ps-preload": "stadium_preload", "ps-frozen": "stadium_frozen",
                   "frozen-stages": "frozen_stages", "widescreen": "widescreen",
-                  "widescreen-92-63": "widescreen_92_63", "fod-level": "fountain_level"}
+                  "widescreen-92-63": "widescreen_92_63", "fod-level": "fountain_level",
+                  "online-offscreen-damage": "online_offscreen_damage"}
 
 
 def scenario_flags(codes: list[str] | None) -> dict[str, bool]:

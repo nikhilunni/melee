@@ -96,7 +96,7 @@ from pathlib import Path
 #: them, or it records another game from the first tick a display pass feeds
 #: back into (Pokemon Stadium's close-up test, a tether, a screen KO).
 PLAYBACK_KEYS = ("input_clock", "boundary_seed", "render_every_tick", "no_display_pass_before",
-                 "unconsumed_poll_before")
+                 "unconsumed_poll_before", "online_rng_offset")
 
 
 def playback(scripted: dict) -> dict:
@@ -126,6 +126,11 @@ sys.path.insert(0, str(HERE.parent))
 import gecko  # noqa: E402
 
 WATCH_ADDR = symbols.addr("gm_80479D58")  # unk_0, +0: scheduler tick count
+# unk_8, +8: the scene frame counter Slippi's netplay code seeds each frame
+# from (Online.s `loadGlobalFrame`: 0x80479D60). gm_801A4D34 zeroes it with
+# the tick count and increments it after the tick count's store.
+SCENE_FRAME_ADDR = WATCH_ADDR + 8
+SEED_ADDR = symbols.addr("seed")
 STORE_PC = 0x801A4FB8
 MASK = 0xFFFFFFFF
 SATURATED = 0xFFFFFFFE  # gm_1A45.c:341 deliberately stops incrementing here
@@ -275,6 +280,11 @@ class TickTracer(Tracer):
         if any(n < 2 or n - 1 in self.unconsumed_polls for n in self.unconsumed_polls):
             raise ValueError("unconsumed_poll_before: records from 2 on, no two in a row")
         self.gecko_hooks = gecko.hooks_from_env()
+        # `online_rng_offset = N`: see sync_seed.
+        offset = self.scenario.get("online_rng_offset")
+        self.rng_sync_offset = None if offset is None else int(offset) & MASK
+        self.rng_sync_writes = 0
+        self.synced_scene_frame: int | None = None
         # `after_map = true`: the current tick's samples (Fighter* -> struct hex).
         self.after_map = bool(self.scenario.get("after_map", False))
         self.after_map_samples: dict[int, str] = {}
@@ -370,6 +380,21 @@ class TickTracer(Tracer):
         if ordinal - 1 in self.unconsumed_polls and self.tick_history:
             return [self.tick_history[0], self.tick_history[0]]
         return self.tick_history
+    def sync_seed(self, reset: bool) -> None:
+        """Slippi Online's seed for the tick about to run, written where this
+        callback stands: between two ticks. The netplay code's proc
+        (InitOnlinePlay.asm, FN_SyncRNG: a GObj on p_link 7, s_link 0) stores
+        rotl(scene frame counter, 16) + the RNG offset before any fighter proc
+        of every tick; nothing draws between the previous tick's last proc
+        and it, so the store made here is the same write. The counter
+        (gm_80479D58 +8) is zeroed with the tick count at a scene's start
+        (`reset`) and otherwise incremented right after the store this
+        callback watches."""
+        scene_frame = 0 if reset else (self.mem.read_u32(SCENE_FRAME_ADDR) + 1) & MASK
+        seed = (((scene_frame << 16) | (scene_frame >> 16)) + self.rng_sync_offset) & MASK
+        self.mem.write_u32(SEED_ADDR, seed)
+        self.synced_scene_frame = scene_frame
+        self.rng_sync_writes += 1
 
     def lag_frame(self, queue: int) -> None:
         """Two ticks in the frame that starts now, and so no display pass
@@ -540,6 +565,12 @@ class TickTracer(Tracer):
                                  f"last={self.last_tick}, memory={before}, callback={value}")
             if self.frame == 0 and self.gecko_hooks:
                 self.check_gecko_hooks()
+            if self.rng_sync_offset is not None and self.synced_scene_frame is not None:
+                # The tick that just ran read the counter the seed was made for.
+                ran = self.mem.read_u32(SCENE_FRAME_ADDR)
+                if ran != self.synced_scene_frame:
+                    raise ValueError(f"tick ordinal {self.frame}: seeded for scene frame "
+                                     f"{self.synced_scene_frame}, the tick ran on {ran}")
             record = self.record("frame_end")
             if not record["fighters"]:
                 raise ValueError(f"no fighters at tick ordinal {self.frame}")
@@ -551,6 +582,8 @@ class TickTracer(Tracer):
                           pad_queue_sticks=self.read_pad_queue_sticks())
             self.out.write(json.dumps(record) + "\n")
             self.out.flush()
+            if self.rng_sync_offset is not None:
+                self.sync_seed(reset=self.frame == 0 and self.counter_reset_at_start)
             self.last_tick = value
             self.last_tick_vi = self.vi_frame
             self.frame += 1
@@ -601,6 +634,7 @@ class TickTracer(Tracer):
                 "counter_reset_at_start": self.counter_reset_at_start,
                 "input_clock": "tick" if self.tick_clock else "vi",
                 **({"after_map_samples": self.after_map_count} if self.after_map else {}),
+                **({"rng_sync_writes": self.rng_sync_writes} if self.rng_sync_offset is not None else {}),
                 **({"injected_ticks": self.injected_ticks} if self.tick_clock else {})}
 
 

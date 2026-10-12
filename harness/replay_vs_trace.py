@@ -30,6 +30,10 @@ not of the tick: a scenario recorded with `after_map = true` carries that
 sample and it is compared; without it the fields of such a replay differ on
 any tick a later proc moves the fighter, and only the seed check decides.
 
+A Slippi Online recording (`--online-rng-offset`, the scenario's
+`online_rng_offset`): each tick starts from the netplay code's seed, not from
+the record before, so the stream searched for a Pre Frame seed starts there.
+
 It prints the first frame each check fails on and the count of failing
 frames, and for the inputs the first differing pad with both sides' values.
 A bridge that fails is retail, but not that console's game from the first
@@ -44,6 +48,7 @@ import sys
 
 import data_root
 import trace_io
+import validate_ticks
 
 MULTIPLIER, INCREMENT, MASK = 214013, 2531011, 0xFFFFFFFF
 #: The first Slippi version whose Post Frame is taken at the end of the tick.
@@ -118,7 +123,8 @@ def fighters_of(state: dict) -> dict[tuple[int, int], str]:
     return found
 
 
-def compare(frames_path: str, scenario: str, limit: int | None) -> int:
+def compare(frames_path: str, scenario: str, limit: int | None,
+            online_rng_offset: int | None = None) -> int:
     trace = data_root.TRACES / f"{scenario}.tick.expected.jsonl"
     records, pads = {}, {}
     sampled = False
@@ -148,6 +154,8 @@ def compare(frames_path: str, scenario: str, limit: int | None) -> int:
                 break
             compared += 1
             start, end = before["rng.seed"]["v"], state["rng.seed"]["v"]
+            if online_rng_offset is not None:
+                start = validate_ticks.online_seed(n + 1, online_rng_offset)
             total = steps(start, end)
             by_kind = fighters_of(state)
             failed = set()
@@ -211,8 +219,10 @@ def main() -> int:
     ap.add_argument("scenario", help="the bridged retail scenario's name")
     ap.add_argument("--frames-limit", type=int, metavar="N",
                     help="compare replay frames below N only")
+    ap.add_argument("--online-rng-offset", type=int, metavar="OFFSET",
+                    help="the scenario's online_rng_offset (a Slippi Online game)")
     a = ap.parse_args()
-    return compare(a.frames, a.scenario, a.frames_limit)
+    return compare(a.frames, a.scenario, a.frames_limit, a.online_rng_offset)
 
 
 if __name__ == "__main__":
