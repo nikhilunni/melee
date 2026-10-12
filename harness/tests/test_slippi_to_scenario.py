@@ -149,3 +149,17 @@ def test_other_stages_take_any_boundary_of_the_setup(scenarios):
     write_inputs(scenarios / "inputs.jsonl", "Battlefield", game_start_seed=41)
     s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp", "--boundary", "start_bf"])
     assert "game_start_seed" not in tomllib.loads((scenarios / "slp.toml").read_text())
+
+
+def test_a_lag_frame_names_the_record_with_no_display_pass_before_it(scenarios):
+    write_boundary(scenarios, "start_bf", "Battlefield", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "Battlefield", game_start_seed=41)
+    args = [str(scenarios / "inputs.jsonl"), "--boundary", "start_bf"]
+    s2s.main([*args, "--name", "slp_lag", "--no-display-pass-before", "9", "4"])
+    retail = tomllib.loads((scenarios / "slp_lag.toml").read_text())
+    assert retail["render_every_tick"] is True and retail["no_display_pass_before"] == [4, 9]
+    # The port follows the recording's display clock: its twin names nothing.
+    assert "no_display_pass_before" not in tomllib.loads((scenarios / "slp_lag_cold.toml").read_text())
+    # A lag frame is a dropped pass of the console's cadence, not of Dolphin's.
+    with pytest.raises(SystemExit, match="console's cadence"):
+        s2s.main([*args, "--name", "slp_lag2", "--no-display-pass-before", "4", "--dolphin-cadence"])

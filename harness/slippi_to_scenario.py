@@ -39,7 +39,9 @@ The retail scenario carries `render_every_tick = true` (tick_trace.py): the
 recorder then renders after every tick, as the console that made the replay
 did. What follows the display pass (a tether's rope and so its wall catch,
 the magnifier's damage, a screen KO's position) is otherwise another game's.
-`--dolphin-cadence` leaves it out.
+`--dolphin-cadence` leaves it out. `--no-display-pass-before N` plays a
+console's lag frame: records N-1 and N run in one frame, so the display pass
+between them does not happen (`no_display_pass_before`, tick_trace.py).
 
 The controller fix is the boundary's (its codes live in the savestate), which
 may be a later UCF than the replay's build ran. The Stadium codes are the
@@ -181,6 +183,9 @@ def main(argv: list[str] | None = None) -> None:
                     help="leave out render_every_tick: the recorder then runs two ticks per render, "
                          "which a console does not (a tether's rope, the magnifier and a screen KO "
                          "follow the display pass)")
+    ap.add_argument("--no-display-pass-before", type=int, nargs="+", default=[], metavar="RECORD",
+                    help="a console's lag frames: each record runs in one frame with the record before "
+                         "it, with no display pass between (tick_trace.py, lag_frame)")
     ap.add_argument("--overwrite", action="store_true",
                     help="replace existing scenario files of this name (their recordings no longer "
                          "belong to them)")
@@ -207,6 +212,10 @@ def main(argv: list[str] | None = None) -> None:
     gecko_list = "gecko = [" + ", ".join(f'"{c}"' for c in codes) + "]\n" if codes else ""
     comment = "".join(f"# {line}\n" for line in a.comment.splitlines())
     cadence = "" if a.dolphin_cadence else "render_every_tick = true\n"
+    if a.no_display_pass_before:
+        if a.dolphin_cadence:
+            sys.exit("--no-display-pass-before drops a display pass of the console's cadence")
+        cadence += f"no_display_pass_before = {sorted(a.no_display_pass_before)}\n"
 
     def fix(fighter: dict) -> str:
         return f'controller_fix = "{fighter["controller_fix"]}"\n' if "controller_fix" in fighter else ""

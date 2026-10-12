@@ -150,3 +150,43 @@ def test_tick_clock_rewrites_queue_to_the_next_ticks_pad(tmp_path):
     assert mem.status(2, 0)[:2] == b"\x01\x00"  # port 0 keeps its held step
     assert mem.status(2, 1)[2] == 64
     assert tracer.injected_ticks == 3
+
+
+def test_a_lag_frame_queues_two_ticks_and_the_next_injection_restores_one(tmp_path):
+    # Records 2 and 3 run in one frame: no display pass before record 3.
+    scenario = {"frames": 5, "input_clock": "tick", "render_every_tick": True,
+                "no_display_pass_before": [3], "inputs": [
+                    {"frame": 0, "port": 0, "buttons": {}, "raw": {}},
+                    {"frame": 2, "port": 0, "buttons": {"A": True}, "raw": {"button": 0x100}},
+                    {"frame": 3, "port": 0, "buttons": {}, "raw": {"stickX": 64}}]}
+    mem = QueueMemory(qnum=5, qwrite=2, qcount=0)
+    tracer = tick.TickTracer(scenario, None, tmp_path / "unused.sav", mem=mem)
+    lib = tick.PAD_LIB_ADDR
+
+    def queue():  # qnum, qread, qcount
+        return mem.read_u8(lib), mem.read_u8(lib + 1), mem.read_u8(lib + 3)
+
+    for record in (0, 1):
+        tracer.inject_tick_pads(record)
+        assert queue() == (1, 4, 1)
+    # Record 2 starts the lag frame: gm_801A4D34 finds two queued polls. The
+    # tick dequeues entry 1, a copy of the injected entry 4, which UCF reads.
+    tracer.inject_tick_pads(2)
+    assert queue() == (2, 1, 2)
+    assert mem.status(1, 0)[:2] == mem.status(4, 0)[:2] == b"\x01\x00"
+    # Record 3's injection, inside the same frame, is a one-entry queue again.
+    tracer.inject_tick_pads(3)
+    assert queue() == (1, 4, 1) and mem.status(4, 0)[2] == 64
+    tracer.inject_tick_pads(4)
+    assert queue() == (1, 4, 1)
+
+
+@pytest.mark.parametrize("keys, message", [
+    ({"no_display_pass_before": [3]}, "needs render_every_tick"),
+    ({"render_every_tick": True, "no_display_pass_before": [1]}, "records from 2 on"),
+    ({"render_every_tick": True, "no_display_pass_before": [5, 6]}, "no two in a row"),
+])
+def test_a_lag_frame_is_refused_where_the_queue_cannot_hold_it(tmp_path, keys, message):
+    scenario = {"frames": 9, "input_clock": "tick", "inputs": [], **keys}
+    with pytest.raises(ValueError, match=message):
+        tick.TickTracer(scenario, None, tmp_path / "unused.sav", mem=QueueMemory(qnum=5))

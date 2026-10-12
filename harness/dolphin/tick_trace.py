@@ -38,6 +38,15 @@ replay's bridge sets it: what the display pass feeds back into the game (a
 tether's rope reads rendered joint matrices, the magnifier, a screen KO) is
 otherwise not the console's.
 
+A console's lag frame (`no_display_pass_before = [N, ...]`, with
+`render_every_tick`): a frame that overruns its retrace leaves two polls in the
+queue, so the next pass of gm_801A4D34's loop runs two ticks and renders once.
+For each listed record N the queue holds two entries when record N-1 starts
+(`lag_frame`), so records N-1 and N run with no display pass between them:
+ps_frame does not move at N. What a display pass writes into the game (a screen
+KO's cur_pos, ftDrawCommon_80080E18 at 0x80080E90) then keeps the tick's own
+value for one record, as on the console.
+
 After-map sample (`after_map = true`): each record also carries `after_map`,
 every fighter's struct as it stood when its map proc returned (Fighter_procMap,
 0x8006C27C, s_link 6), where Slippi before 3.4.0 reads Post Frame (hook
@@ -210,6 +219,12 @@ class TickTracer(Tracer):
         if self.render_every_tick and not self.tick_clock:
             raise ValueError("render_every_tick needs the tick input clock")
         self.one_entry_installed = False
+        # `no_display_pass_before = [N, ...]`: see lag_frame.
+        self.lag_records = {int(n) for n in self.scenario.get("no_display_pass_before", [])}
+        if self.lag_records and not self.render_every_tick:
+            raise ValueError("no_display_pass_before needs render_every_tick")
+        if any(n < 2 or n - 1 in self.lag_records for n in self.lag_records):
+            raise ValueError("no_display_pass_before: records from 2 on, no two in a row")
         self.gecko_hooks = gecko.hooks_from_env()
         # `after_map = true`: the current tick's samples (Fighter* -> struct hex).
         self.after_map = bool(self.scenario.get("after_map", False))
@@ -287,7 +302,28 @@ class TickTracer(Tracer):
         self.tick_history = [dict(self.tick_held), *self.tick_history][:2]
         self.mem.write_u8(PAD_LIB_ADDR + 1, slot)  # qread
         self.mem.write_u8(PAD_LIB_ADDR + 3, 1)     # qcount
+        if self.lag_records:
+            self.mem.write_u8(PAD_LIB_ADDR, 1)     # qnum: one entry again after a lag frame
+            if ordinal + 1 in self.lag_records:
+                self.lag_frame(queue)
         self.injected_ticks += 1
+
+    def lag_frame(self, queue: int) -> None:
+        """Two ticks in the frame that starts now, and so no display pass
+        before the second. lb_80019894 (0x800198B0) reads qcount once per pass
+        of gm_801A4D34's loop: a full queue of two makes it run this record and
+        the next back to back, and qtype 2 still drops the retrace's poll. This
+        record is dequeued from entry 1, a copy of the injected entry 4: qread
+        is then (1 + 1) % 2 = 0, so UCF's qread-1 and qread-3 are entries 4 and
+        2 as on every other tick. The next record's injection (at this
+        record's end, inside the loop) restores the one-entry queue."""
+        last = UCF_QUEUE_WRAP - 1
+        for i in range(PAD_ENTRY_BYTES):
+            self.mem.write_u8(queue + PAD_ENTRY_BYTES + i,
+                              self.mem.read_u8(queue + last * PAD_ENTRY_BYTES + i))
+        self.mem.write_u8(PAD_LIB_ADDR, 2)      # qnum
+        self.mem.write_u8(PAD_LIB_ADDR + 1, 1)  # qread
+        self.mem.write_u8(PAD_LIB_ADDR + 3, 2)  # qcount
 
     def one_entry_queue(self, queue: int, latest: int, qnum: int) -> tuple[int, int]:
         """Render after every tick, as a console does. gm_801A4D34 runs one

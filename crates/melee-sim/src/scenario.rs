@@ -53,6 +53,12 @@ pub struct Scenario {
     /// from it: it follows the recording's display clock either way.
     #[serde(default)]
     pub render_every_tick: bool,
+    /// Records the recorder ran in one frame with the record before, so no
+    /// display pass separates the two: a console's lag frame
+    /// (`harness/dolphin/tick_trace.py`, `lag_frame`). The port needs nothing
+    /// from it either: the recording's display clock does not move there.
+    #[serde(default)]
+    pub no_display_pass_before: Vec<u64>,
     /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
     #[serde(default)]
     pub sudden_death: bool,
