@@ -1882,3 +1882,167 @@ five lag-frame stops stay, since the runner renders every tick):
 Of the 2529 scenario files, 2474 gate exact with the change; the other 55
 (missing or shorter traces, other work in flight) give the same result on
 the build before it.
+||||||| parent of 8fba6a24 (SLIPPI: the magnifier's damage tick: order of operations, the sleeping form's bit, the 92:63 widescreen aspect)
+
+## The magnifier's damage tick (2026-10-11)
+
+Every replay stop where a fighter's `percent` is one point from the
+console's at an off-screen damage tick, taken again under the every-tick
+rule: each window was played back on retail in Dolphin with the game's own
+codes and a display pass after every tick (`render_every_tick`). This
+replaces what "Display passes are not in a replay", "Still open on the
+widescreen consoles", the HNC 1 paragraph of "The Dr. Mario stops" and
+"Display-pass stops under the every-tick rule" say about these games.
+
+**Order of operations**, from the asm and the raw tick traces (each record
+carries the fighter struct: the off-screen bit at +0x221F bit 7, the count
+at +0x1910, the window position of the last pass at +0x2188):
+
+1. *The tick.* The quake's proc (s_link 1) writes this tick's shake offset;
+   Fighter_8006A360 (the fighter's first proc, fighter.c:898) runs the
+   count at 0x8006A830..0x8006A8F8: not for a player's second fighter
+   (x221F_b4, 0x8006A830), only with the camera unzoomed (Camera_80031144
+   == 1.0, 0x8006A83C) and below PlCo +0x7B0 percent (0x8006A874); when
+   ifMagnify_802FC998(player) (0x8006A880) and Player_GetMoreFlagsBit3
+   (0x8006A890) hold, x1910 is incremented (0x8006A89C), otherwise zeroed
+   (0x8006A8AC); at PlCo +0x7AC it deals PlCo +0x7B4 and is zeroed. The
+   camera's own proc then moves the camera. Nothing here reads a display
+   pass's result except through ifMagnify's flag.
+2. *The display pass* (HSD_GObj_80390FC0, by GX link priority). The
+   magnifier's camera is first (priority 0, ifmagnify.c:528):
+   ifMagnify_802FBBDC clears every player's `is_offscreen` and sets it for
+   a player whose current fighter (Player_GetEntity, 0x802FBD1C) has the
+   off-screen bit (ftLib_80086B64, 0x802FBD3C) and is visible
+   (ftLib_80086ED0, 0x802FBD4C). The main camera is next (priority 2,
+   camera.c:4110): fn_800301D0 loads the CObj from this tick's camera and
+   shake (Camera_8002A4AC, 0x800301FC) and draws the fighters, whose
+   callback ftDrawCommon_80080E18 skips a sleeping fighter (x221F_b3,
+   0x80080E34) and otherwise calls ftLib_80086A8C (0x80080E44): it projects
+   the camera bone with a fresh look-at of that CObj
+   (lbVector_WorldToScreen), truncates (`fctiwz`, 0x80030C48) and compares
+   with the scissor (0x80030C7C..0x80030CA8), setting x221F_b0.
+3. So the bit a pass sets is seen by the magnifier on the next pass and
+   counted on the tick after that. With a pass after every tick: bit set
+   in the record of tick T, count 1 at T + 1, the point of damage at
+   T + 60. A pass that is skipped delays the bit; nothing can bring a point
+   forward.
+4. The Widescreen code changes two inputs of the test and nothing of its
+   place in the frame: the CObj's aspect (0x8036A4A8) and the bounds
+   (0x80030C7C, 0x80030C88).
+
+**The games.** Trace ticks; a replay frame N is trace tick N + 1.
+
+| Replay | Stop before | Retail, every tick | Cause | Now |
+|---|---|---|---|---|
+| `ZELDA_SHEIK/Game_20120109T050633` (BF) | 2013, the port a point above | `slp_bf_sheik_peach_r1_t2200`: no point at 2014; the port left retail there | port fault: the sleeping form's off-screen bit (below) | 10941 / 10941 |
+| `ZELDA_SHEIK/Marth vs Sheik [FD] Game_20181024T232813` | 6345, a point above | `slp_fd_marth_sheik_r1_t6500`: the point at 6349, not 6346 | the same port fault | 13618 / 13618 |
+| `PEACH/20200219 - HNC 6 ... Marth vs WOO Peach - Pokemon Stadium` | 4456, a point below | `slp_ps_marth_peach_wide9263_r1_t4600` (local data): the point at 4457, the console's tick; 4458 with the 320:219 code | the console's Widescreen code had the 92:63 aspect (below) | 5251, `input_seed` |
+| `DOC/20200219 - HNC 1 ... Fox vs ME Dr. Mario - Pokemon Stadium` | 7008, a point below | `slp_ps_fox_drmario_wide9263_nopause_r1_t7200`: the point at 7009, the console's tick | 92:63 | 9684, `input_seed` |
+| `DK/20200115 - HNC 19 ... Donkey Kong vs Donkey Kong - Pokemon Stadium` | 7930, `percent` | not recorded | 92:63 (the 320:219 run leaves the recording at 4262, the standard one at 7930) | 12548 / 12548 |
+| `MARTH/20200115 - HNC 21 ... Marth vs Jigglypuff - Fountain of Dreams` | 5267, a point below | not recorded | 92:63 | 5394 / 5394 |
+| `FALCO/02_33_48 Falco + Marth (PS)` (first corpus) | 3042, a point above | `slp_ps_falco_marth_frz_r1_t3200`: bit at 2983, point at 3043, as the port | not a port fault: the console's point is a tick later than retail's | unchanged |
+| `ZELDA_SHEIK/19_56_47 [TREW] Sheik + Captain Falcon (DL)` | 3073, a point above | `slp_dl_sheik_captainfalcon_r1_t3300`: bit at 3014, point at 3074, as the port | not a port fault, as above | unchanged |
+
+`FOX/Game_20190824T124750` (1482) is a `percent` stop of another kind (a
+hit's damage, 28.58 against 28.61) and is not in this list.
+
+**A sleeping fighter keeps its off-screen bit.** The port projected every
+fighter on every pass. Retail does not draw a transforming character's
+sleeping form, so its x221F_b0 is whatever its last pass awake left (clear,
+if it has never been off screen). A transformation off screen copies the
+count to the waking form (ftCommon_8007EFC8, ftcommon.c:1309), the next
+pass's magnifier asks the waking form and finds the bit clear, and the next
+tick zeroes the count; the pass after sets the bit again. In
+`slp_bf_sheik_peach_r1_t2200` Sheik's count is 42 at tick 1996 when she
+transforms: Zelda's reads 42, 0, 1, 2 over ticks 1996..1999 where the port
+went on to sixty at 2014. The form that goes to sleep keeps its bit set
+(its struct shows `off` and the old window position to the end of the
+trace), so a later transformation back on screen counts one tick before
+the next pass clears it. Both recordings were classed as a console's lag
+frame by `--skip-display-pass` alone; both consoles were right.
+
+**The Widescreen code's aspect was 92:63 on the 2020 consoles.**
+`External/Widescreen/Overwrite CObj Values.asm` multiplied the
+description's aspect by 92 / 63 from its first commit (703f953, 2019-01-17)
+until ef8e734 (2019-10-29, "update fov to 320:219"); the bounds of 100 and
+540 came five days later (e9457ee). The HNC consoles, which loaded their
+own code list, ran the older float with the bounds: no tree of
+slippi-ssbm-asm holds that pair (every commit from 2019 to mid-2021 was
+searched as text for `42B80000 427C0000` beside `04030C7C 38000064`), so the text
+is the consoles' own; `widescreen-92-63` in `MELEE_GECKO_DIR` is
+`widescreen.txt` with those two floats (`harness/gecko.py`). The aspect is
+0x3FE38B73 against 0x3FE3AE24: the picture is wider by 0.06%, 0.13 of a
+pixel at the bounds.
+
+What shows it:
+
+- HNC 6. In the port at 320:219 Marth's window x on the passes after ticks
+  4396..4398 is 539.24, 539.93, 541.48 against the right bound of 540; the
+  console's point needs the second to be outside. Retail in Dolphin with
+  the 92:63 text (boundary
+  `start_ps_slippi74_ns_frozen_wide9263_p12_marth0_peach0_4`, camera dump
+  recorded): the main CObj's aspect reads 0x3FE38B73, Marth's
+  window x reads 539, 540, 541 with the off-screen bit at 4397, and the
+  point comes at 4457. The port equals that recording on every fighter key
+  of its 4600 ticks (the gate itself stops at 3710 on Mr. Saturn's unported
+  idle state).
+- HNC 1. Dr. Mario's x at 320:219 is 101.32, 100.05, 98.45; with 92:63
+  retail reads 101, 99 with the bit at tick 6949 and the point at 7009
+  (`slp_ps_fox_drmario_wide9263_nopause_r1_t7200`, exact for 7200 ticks
+  with 0 differing particle ticks; `SLIPPI_REPLAY_WITNESSES`).
+- No widescreen game of either corpus matches fewer frames at 92:63 than at
+  320:219 (below), and six match more: the four above and two Stadium games that stopped on `input_seed`, where the jumbotron's close-up test (grStadium_801D32D0) reads the same aspect (`DOC/20200101 - HNC 7` 16853 to 18884 / 18884, `PIKACHU/20200219 - HNC 11` 10437 to 13554 / 13554).
+
+So the one-tick question of HNC 6 has a code for an answer, not a console:
+a lag frame was ruled out because it can only delay a point, a different
+bound because 539 moves the point two ticks, and neither the preload nor
+the frozen-stage code touches the camera. The earlier measurement that
+"bounds of 101 and 539 make 35 games match fewer frames" stands: the
+consoles' bounds were 100 and 540 and their picture a fraction wider.
+
+`replay_screen_codes::resolve_screen` now reads the screen among three
+candidates run in step (standard, 320:219, 92:63;
+`replay_stage_codes::recorded_among`): a run that stops matching the
+recording on a tick another still matches is left behind, and runs never
+told apart are taken for the first in that order. The report names each
+rejected screen and its tick; `--screen widescreen-92-63` names the code
+instead. `--retail-inputs` writes `widescreen_92_63` in its header and a
+boundary made with `--gecko widescreen-92-63` sets the flag.
+
+**The two stops that stay.** `FALCO/02_33_48` and `ZELDA_SHEIK/19_56_47`
+have a fighter launched off the right side on the standard screen (window
+x 637 then 658; 635 then 643). Retail with a pass after every tick gives
+the point where the port does, and both scenarios gate exact with 0
+differing particle ticks (`SLIPPI_REPLAY_WITNESSES`); each console's point
+is one tick later. One display pass skipped before the crossing
+(`--skip-display-pass 2982`, `3013`) makes each whole replay match (11421 /
+11421 and 15970 / 15970 on this branch). That is what is established:
+retail equals the port, and one lag frame is sufficient. That those
+consoles dropped a frame there is not shown by anything recorded.
+
+**Tooling found on the way.**
+
+- `slippi_to_scenario.py` no longer feeds a recorded Start press to retail.
+  HNC 1's Dr. Mario presses Start at tick 1671; the console had Pause off
+  and retail in Dolphin paused for the rest of the recording
+  (`slp_ps_fox_drmario_wide9263_r1_t7200`, local data, is that paused run).
+- `boundary_script.py` saved a Sheik start on Final Destination before the
+  sleeping Zelda existed: the Game Start seed plus eight draws, where
+  creation makes ten. It now waits for one sleeping fighter per Zelda or
+  Sheik player (`start_fd_slippi73_ns_p24_marth0_sheik1_4_r232813b`; the
+  boundary without the `b` is the early save).
+- `neutral-spawn-2019` (`harness/gecko.py`): the 2020 NeutralSpawn text with
+  the Dream Land row of late 2019. Retail places the fighters where
+  `NeutralTable::V2019` does (`start_dl_slippi73_ns2019_p14_sheik1_captainfalcon4_4`
+  gates exact), so the Dream Land games of that row can be bridged.
+- The earlier Stadium bridge of `FALCO/02_33_48` (`slp_ps_falco_marth_ns_t3200`)
+  ran without the console's Frozen Stadium code; the new boundary
+  `start_ps_slippi73prefrz_ns_p14_falco3_marth4_4` carries it.
+
+Corpora before and after (`replay-batch`, main at c82bba7f; no replay
+matches fewer frames; every recorded scenario gates as before, 2249 pass of 2281 before and 2254 after, the five more being scenarios recorded here):
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
+| `public-v3.7-b` (502) | 434 to 440 | 4,676,200 to 4,705,765 |

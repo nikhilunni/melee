@@ -2649,7 +2649,7 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 60] = [
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
 /// `<name>.gobj.raw.jsonl`): every GObj creation and destruction in
 /// retail's order. Each was recorded for an order the port had wrong.
-const GOBJ_LEDGER_WITNESSES: [&str; 0] = [
+const GOBJ_LEDGER_WITNESSES: [&str; 15] = [
     // The Slippi bridge above: the countdown's and GO's HUD models, the
     // stage's start GObjs, hit quakes, needles.
     "slp_bf_falco_sheik_t3100_cold",
