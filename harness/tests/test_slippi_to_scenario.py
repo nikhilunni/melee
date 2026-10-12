@@ -92,7 +92,9 @@ def test_stadium_codes_reach_the_scenario_and_its_cold_twin(scenarios, codes, fl
     write_boundary(scenarios, "start_ps", "PokemonStadium", codes)
     header = {"stadium_preload": False, "stadium_frozen": False, **flags}
     write_inputs(scenarios / "inputs.jsonl", "PokemonStadium", **header)
-    s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp_ps", "--boundary", "start_ps"])
+    # A Stadium that transforms keeps its creation draw (below).
+    foreign = [] if flags.get("stadium_frozen") else ["--foreign-creation"]
+    s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp_ps", "--boundary", "start_ps", *foreign])
     retail = tomllib.loads((scenarios / "slp_ps.toml").read_text())
     twin = tomllib.loads((scenarios / "slp_ps_cold.toml").read_text())
     for scenario in (retail, twin):
@@ -150,6 +152,17 @@ def test_a_stage_that_keeps_its_creation_draws_needs_the_replays_boundary(scenar
     assert tomllib.loads((scenarios / "slp.toml").read_text())["render_every_tick"] is True
     s2s.main([*args, "start_own", "--foreign-creation", "--overwrite", "--dolphin-cadence"])
     assert "render_every_tick" not in tomllib.loads((scenarios / "slp.toml").read_text())
+
+
+@pytest.mark.parametrize("flag", s2s.STADIUM_NEVER_TRANSFORMS)
+def test_a_stadium_that_never_transforms_takes_any_boundary_of_the_setup(scenarios, flag):
+    # The creation draw is the base form's first duration, which a frozen
+    # Stadium never reads.
+    codes = ["ucf-0.8", {"stadium_frozen": "ps-frozen", "frozen_stages": "frozen-stages"}[flag]]
+    write_boundary(scenarios, "start_ps", "PokemonStadium", codes)
+    write_inputs(scenarios / "inputs.jsonl", "PokemonStadium", game_start_seed=41, **{flag: True})
+    s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp", "--boundary", "start_ps"])
+    assert "game_start_seed" not in tomllib.loads((scenarios / "slp.toml").read_text())
 
 
 def test_other_stages_take_any_boundary_of_the_setup(scenarios):

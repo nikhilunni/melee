@@ -18,12 +18,14 @@ that setup, for example
     make_boundary.py --stage Battlefield --players Marth Peach --costumes 1 1 --ports 2 4 \
         --time-limit 8 --gecko ucf-0.8 neutral-spawn --spawn neutral-2020 --no-register
 
-On Final Destination and Fountain of Dreams the boundary must be made for the
-replay, with `--game-start-seed <header game_start_seed> --name <its own>`:
-those stages keep what they drew at creation (the background's accelerations,
-the platforms' first waits), which `boundary_seed` cannot change afterwards.
+On Final Destination, Fountain of Dreams and a transforming Pokemon Stadium
+the boundary must be made for the replay, with `--game-start-seed <header
+game_start_seed> --name <its own>`: those stages keep what they drew at
+creation (the background's accelerations, the platforms' first waits, the
+base form's first duration), which `boundary_seed` cannot change afterwards.
 `--foreign-creation` accepts another boundary there; retail then plays the
-replay's pads but leaves its random stream at the stage's first draw.
+replay's pads but leaves its random stream at the stage's first draw (on
+Stadium, at the first transformation).
 
 Two scenarios are written:
 
@@ -97,9 +99,21 @@ def check_stage_codes(header: dict, flags: dict[str, bool], boundary: str) -> No
 
 
 #: Stages whose creation draws set state that outlives the boundary:
-#: grLast_8021AC30's two background accelerations (four draws) and
-#: grIzumi_801CC358's first platform waits.
-CREATION_DRAW_STAGES = ("FinalDestination", "FountainOfDreams")
+#: grLast_8021AC30's two background accelerations (four draws),
+#: grIzumi_801CC358's first platform waits and grStadium_801D13E0's first
+#: base-form duration (one draw: when the first transformation begins).
+CREATION_DRAW_STAGES = ("FinalDestination", "FountainOfDreams", "PokemonStadium")
+#: Header flags of codes under which Stadium's duration is never read: Frozen
+#: Stadium (0x801D45FC, the wait never ends) and Frozen Stages (0x801D1548,
+#: the controller never runs).
+STADIUM_NEVER_TRANSFORMS = ("stadium_frozen", "frozen_stages")
+
+
+def keeps_creation_draws(header: dict) -> bool:
+    """Whether what the replay's stage drew at creation shapes its match."""
+    if header["stage"] == "PokemonStadium" and any(header.get(flag) for flag in STADIUM_NEVER_TRANSFORMS):
+        return False
+    return header["stage"] in CREATION_DRAW_STAGES
 
 
 def check_creation(header: dict, cold: dict, boundary: str, foreign: bool = False) -> int | None:
@@ -117,7 +131,7 @@ def check_creation(header: dict, cold: dict, boundary: str, foreign: bool = Fals
     if made is not None:
         sys.exit(f"{boundary} was created from Game Start seed {made}, the replay's is {want}: "
                  "it is another replay's boundary (--foreign-creation to use it anyway)")
-    if header["stage"] in CREATION_DRAW_STAGES:
+    if keeps_creation_draws(header):
         sys.exit(f"{header['stage']} keeps its creation draws: make the boundary for this replay "
                  f"with make_boundary.py --game-start-seed {want} --name <name> "
                  "(--foreign-creation to use this one; retail will not follow the replay's draws)")
