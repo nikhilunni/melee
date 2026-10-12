@@ -116,6 +116,9 @@ pub struct CombatState {
     /// What a Koopa Klaw captor's callback asked of the fighter it holds
     /// this proc; the scene runs it on the pair.
     pub koopa_request: Option<super::capture_koopa::CaptorRequest>,
+    /// What an inhaling captor's callback asked of the fighter in its mouth
+    /// this proc; the scene runs it on the pair.
+    pub mouth_request: Option<super::capture_kirby::CaptorRequest>,
     /// unk_gobj / x221C_b5: the fighter one of this fighter's inert
     /// hitboxes touched this frame (ftColl_80078C70), cleared by ProcessHit.
     pub detected: Option<InertTouch>,
@@ -1002,6 +1005,11 @@ impl Fighter {
                 hitlag_multiplier = assets.damage.electric_hitlag_scale;
             }
             if hit.knockback != 0.0 {
+                // fighter.c:2860: ftKb_SpecialN_800F5BA4.
+                if let Some(draw) = self.character.table().damage_draw {
+                    let cape = hit.descriptor.element == melee_types::HitElement::Cape;
+                    draw(self, cape, rng);
+                }
                 // fighter.c:2862: take_dmg_2_cb, before the reaction.
                 if let Some(hit_taken) = self.character.table().hit_taken {
                     hit_taken(self);
@@ -1009,6 +1017,8 @@ impl Fighter {
                 // ftCo_DamageIce_OnHit2, the frozen state's own.
                 self.core
                     .frozen_hit_taken(hit.descriptor.element, assets);
+                // ftCo_800BE7C0, a Kirby star's.
+                self.core.star_hit_taken();
             }
             if self.core.motion_state.id == S::YoshiEgg && hit.knockback != 0.0 {
                 // take_dmg_2_cb = ftCo_800BC3D0 sets x1828 = 4, which no
@@ -1146,6 +1156,10 @@ impl Fighter {
         // an expired phantom) still reaches percent.
         if !received_knockback && self.core.combat.frame_damage != 0.0 {
             self.core.physics.percent += self.core.combat.frame_damage;
+            // fighter.c:2960: ftKb_SpecialN_800F5C34.
+            if let Some(draw) = self.character.table().damage_draw {
+                draw(self, false, rng);
+            }
             // ftCommon_800804FC (fighter.c:2961).
             let ground_or_air = self.core.physics.ground_or_air;
             self.core.combat.ko_source.clear_if_grounded(ground_or_air);
@@ -1264,6 +1278,9 @@ impl Fighter {
                 .effects
                 .push(melee_ef::request::EffectRequest::ArticlesFreed);
         }
+        // ftCo_800BE7C0, the take_dmg_cb of a Kirby star and of the fighter
+        // out of it.
+        self.core.star_hit_taken();
         // ftCo_DamageIce_OnHit (80090B48), DamageIce's take_dmg_cb.
         if self.core.motion_state.id == S::DamageIce {
             self.core.status.frozen = false;

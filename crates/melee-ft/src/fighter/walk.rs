@@ -42,7 +42,7 @@ fn walk_state(
 }
 
 /// ftWalkCommon_GetWalkType (800DFB54): 0 slow, 1 middle, 2 fast.
-pub(super) fn walk_tier(
+pub fn walk_tier(
     speed: f32,
     max_speed: f32,
     multiplier: f32,

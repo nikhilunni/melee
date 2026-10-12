@@ -733,15 +733,17 @@ impl Fighter {
         // ftCo_800DD100 -> ftCo_800DC920: separate a grab pair. The scene
         // releases the partner (ftCommon_8007D92C) right after this proc.
         if let Some(link) = self.core.combat.grab.take() {
+            super::capture_kirby::refuse_parting_in_the_pull(&self.core);
             if self.core.combat.thrown_pose.is_some() {
                 // ftCo_800DC920 (800DC920), x2226_b2: the pinned fighter is
                 // set down where its XRotN points before the death goes on.
-                let Some((thrower, map)) = thrower else {
-                    unimplemented!(
-                        "ftCo_800DC920: a thrown fighter's constraint release on a death its thrower is not passed to (ftCo_CaptureCut.c:112)"
-                    )
-                };
-                super::grab_damage::release_thrown(thrower, self, assets, map);
+                // A death its thrower is not passed to (a fighter in
+                // Kirby's mouth crossing the blast zone) is set free by the
+                // scene with the partner (`release_from_dead_partner`),
+                // which refuses a release that would move it.
+                if let Some((thrower, map)) = thrower {
+                    super::grab_damage::release_thrown(thrower, self, assets, map);
+                }
             }
             self.core.released_link = Some(link);
         }
@@ -770,8 +772,28 @@ impl Fighter {
         &mut self,
         dead: &mut Fighter,
         assets: &FighterAssets,
+        dead_assets: &FighterAssets,
         map: &mut melee_mp::CollMap,
     ) -> Result<()> {
+        super::capture_kirby::refuse_parting_in_the_pull(&self.core);
+        if dead.core.combat.thrown_pose.is_some() {
+            // ftCo_800DD100 on the dying fighter, pinned to this one
+            // (ftCo_800DC920's x2226_b2 path): retail sets it down before
+            // its death entry, the port after. The two agree while the
+            // release leaves it where its accessory last put it (a fighter
+            // dying in a falling Kirby's mouth); a release that moves it,
+            // onto a floor or against a wall, is not ported.
+            let before = dead.core.physics.position;
+            super::grab_damage::release_thrown(self, dead, dead_assets, map);
+            if dead.core.physics.position != before {
+                unimplemented!(
+                    "ftCo_800DC920 (ftCo_CaptureCut.c:137-189): a fighter dying pinned to its \
+                     captor is moved by its release, ahead of the death entry"
+                );
+            }
+            let root = dead.core.animation.root;
+            dead.core.skeleton.set_translate(root, &before);
+        }
         if self.core.combat.thrown_pose.is_some() {
             assert!(
                 matches!(

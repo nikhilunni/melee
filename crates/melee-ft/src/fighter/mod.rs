@@ -13,6 +13,7 @@ pub mod cape_turn;
 pub mod capture_captain;
 pub mod capture_mewtwo;
 pub mod bury;
+pub mod capture_kirby;
 pub mod capture_koopa;
 pub mod capture_yoshi;
 pub mod cargo;
@@ -158,6 +159,17 @@ pub struct PartnerMotionChanges {
     pub partner: bool,
 }
 
+/// The captor's side of ftCo_CaptureWaitKirby.c's calls into it.
+#[derive(Clone, Copy)]
+pub struct MouthHold {
+    /// ftKb_SpecialN_800F5A38: the captor stands or falls with its mouth
+    /// full, where the held fighter's stick moves it.
+    pub steerable: fn(&Fighter) -> bool,
+    /// ftKb_SpecialS_800F6BB0: the captor's aerial row when the held
+    /// fighter hops it off the floor.
+    pub leave_floor: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
+}
+
 pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const TABLE: CharacterTable = CharacterTable::new::<Self>();
 
@@ -237,6 +249,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// knockback landed, before the reaction is chosen (armour or not). The
     /// hook decides whether the current motion installed the callback.
     const HIT_TAKEN: Option<fn(&mut Fighter)> = None;
+    /// Fighter_ProcessHit's kind calls once the frame's damage has reached
+    /// percent: ftKb_SpecialN_800F5BA4 for a hit with knockback
+    /// (fighter.c:2860, ahead of take_dmg_2_cb; the flag says the hit was a
+    /// cape's) and ftKb_SpecialN_800F5C34 for damage without one
+    /// (fighter.c:2960). Kirby draws there for the loss of his ability.
+    const DAMAGE_DRAW: Option<fn(&mut Fighter, bool, &mut gekko_math::HsdRng)> = None;
     /// ftData_UnkMotionStates4[kind] as the kind's state stands once
     /// OnDeath has run: the colour animation the secondary slot takes
     /// whenever it empties (`CombatState::secondary_color_fallback`), for a
@@ -368,6 +386,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     }
 
     fn kind(&self) -> FighterKind;
+    /// ftCo_800BD9E0 (800BD9E0): the kind a Kirby that swallows this
+    /// fighter copies, where it is not the fighter's own: Nana gives
+    /// Popo's, Kirby his own hat's.
+    const SWALLOWED_ABILITY: Option<fn(&CharacterState) -> FighterKind> = None;
     /// decideFighter's character arm (ftCo_AttackS4.c:150-156), after the
     /// facing is set: Peach's ftPe_AttackS4_Enter. It draws from the RNG,
     /// so it runs once the IASA returns (`Fighter::finish_input`).
@@ -548,6 +570,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftCo_Catch.c, ftCo_CatchPull.c, ftCo_CatchWait.c and the accessory
     /// callbacks); `None` for an ordinary grab.
     const TETHER: Option<tether::Tether> = None;
+    /// What a fighter held in this character's mouth asks of it from its
+    /// own callbacks (ftCo_CaptureWaitKirby.c reaching into
+    /// ftkirbyspecialn.c); `None` for a kind that inhales nothing.
+    const MOUTH_HOLD: Option<MouthHold> = None;
 
     /// The second motion scratch word (mv+4) while `action`, one of this
     /// character's special rows, is current. Common states that leave that
@@ -1368,6 +1394,11 @@ pub enum MotionData {
     YoshiEgg(capture_yoshi::YoshiEggState),
     /// The Koopa Klaw's hold and throw rows (278..287).
     CaptureKoopa(capture_koopa::CaptureKoopaState),
+    /// CaptureKirby and CaptureWaitKirby (288, 289): pulled into Kirby's
+    /// mouth and held there.
+    CaptureKirby(capture_kirby::CaptureKirbyState),
+    /// ThrownKirbyStar, ThrownCopyStar and ThrownKirby (290..292).
+    KirbyStar(capture_kirby::StarState),
     CaptureJump(grab_escape::CaptureJumpState),
     #[default]
     None,

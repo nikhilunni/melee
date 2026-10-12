@@ -2147,6 +2147,55 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 283,
         ..rows[S::ThrownKoopaF as usize]
     };
+    // ftCo_MS_CaptureKirby = 288 (ftCo_SM_DamageFall): pulled toward Kirby's
+    // mouth. Its four callbacks are empty; accessory1 places the fighter.
+    rows[S::CaptureKirby as usize] = MotionRow {
+        action: ActionId(288),
+        id: S::CaptureKirby,
+        animation: 29,
+        anim: crate::fighter::capture_kirby::animation,
+        iasa: crate::fighter::capture_kirby::input,
+        physics: callbacks::physics::capture,
+        collision: crate::fighter::capture_kirby::thrown_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    // ftCo_MS_CaptureWaitKirby = 289 (no animation): in the mouth. The scene
+    // runs ftCo_CaptureWaitKirby_IASA on the pair.
+    rows[S::CaptureWaitKirby as usize] = MotionRow {
+        action: ActionId(289),
+        id: S::CaptureWaitKirby,
+        animation: -1,
+        ..rows[S::CaptureKirby as usize]
+    };
+    // ftCo_MS_ThrownKirbyStar = 290 and ftCo_MS_ThrownCopyStar = 291
+    // (ftCo_SM_ThrownKirbyStar, ftCo_SM_ThrownCopyStar: Kirby's animations).
+    rows[S::ThrownKirbyStar as usize] = MotionRow {
+        action: ActionId(290),
+        id: S::ThrownKirbyStar,
+        animation: crate::fighter::capture_kirby::SPIT_STAR_MOTION,
+        anim: crate::fighter::capture_kirby::star_animation,
+        iasa: callbacks::input::catch,
+        physics: crate::fighter::capture_kirby::star_physics,
+        collision: crate::fighter::capture_kirby::star_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::ThrownCopyStar as usize] = MotionRow {
+        action: ActionId(291),
+        id: S::ThrownCopyStar,
+        animation: crate::fighter::capture_kirby::COPY_STAR_MOTION,
+        ..rows[S::ThrownKirbyStar as usize]
+    };
+    // ftCo_MS_ThrownKirby = 292 (ftCo_SM_DamageFall): out of the star.
+    rows[S::ThrownKirby as usize] = MotionRow {
+        action: ActionId(292),
+        id: S::ThrownKirby,
+        animation: 29,
+        physics: crate::fighter::capture_kirby::thrown_physics,
+        collision: crate::fighter::capture_kirby::thrown_collision,
+        ..rows[S::ThrownKirbyStar as usize]
+    };
     // ftCo_MS_YoshiEgg = 277 (ftCo_SM_YoshiEgg, Yoshi's animation).
     rows[S::YoshiEgg as usize] = MotionRow {
         action: ActionId(277),

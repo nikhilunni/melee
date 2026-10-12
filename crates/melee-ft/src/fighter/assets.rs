@@ -623,7 +623,11 @@ impl FighterAssets {
                         super::capture_mewtwo::AIR_VICTIM_MOTION,
                     ])
                     .chain(cargo_motions.iter().copied())
-                    .chain(super::capture_koopa::VICTIM_MOTIONS);
+                    .chain(super::capture_koopa::VICTIM_MOTIONS)
+                    .chain([
+                        super::capture_kirby::COPY_STAR_MOTION,
+                        super::capture_kirby::SPIT_STAR_MOTION,
+                    ]);
                 for borrowed in borrowed {
                     if let Some(motion) = motions.get_mut(&borrowed) {
                         let source = crate::desc::bones::AnimationSource::read(

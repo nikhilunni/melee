@@ -444,6 +444,10 @@ impl FighterCore {
     /// egg, then restore the model scale and uninstall. Returns whether the
     /// accessory4 slot is the egg's. Separate fsubs/fdivs/fmuls/fadds.
     pub fn egg_accessory(&mut self) -> bool {
+        // ftCo_800BE6AC, the same slot out of a Kirby star.
+        if self.star_accessory() {
+            return true;
+        }
         let MotionData::YoshiEgg(egg) = &mut self.state_data else {
             return false;
         };

@@ -88,11 +88,13 @@ pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
                 | melee_types::CommonMotionState::ThrownFHi
                 | melee_types::CommonMotionState::ThrownFLw
         )
-        // The Koopa Klaw's rows have no physics callback either.
+        // The Koopa Klaw's rows have no physics callback either, nor the
+        // rows of a fighter Kirby inhaled.
         || matches!(
             f.state_data,
             melee_ft::fighter::MotionData::CaptureKoopa(_)
-        ))
+        )
+        || melee_ft::fighter::capture_kirby::captured(&f.core))
     {
         return Ok(());
     }
@@ -359,7 +361,12 @@ pub(super) fn release_from_dead_partner(
 ) -> Result<()> {
     let (dead_fighter, partner_fighter) = pair(&mut state.fighters, dead, partner);
     with_fighter!(dead_fighter, |d| with_fighter!(partner_fighter, |p| {
-        p.release_from_dead_partner(d, &state.assets.fighters[partner], &mut state.map)
+        p.release_from_dead_partner(
+            d,
+            &state.assets.fighters[partner],
+            &state.assets.fighters[dead],
+            &mut state.map,
+        )
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))
 }
@@ -421,8 +428,10 @@ pub(super) fn map_capture(state: &mut InitialState, player: usize) -> Result<()>
     let Some(GrabLink::Captured { captor }) = link else {
         return Ok(());
     };
-    // CaptureCaptain has its own collision callback.
-    if with_fighter!(&state.fighters[player], |f| f.in_capture_captain()) {
+    // CaptureCaptain has its own collision callback; CaptureKirby's is empty.
+    if with_fighter!(&state.fighters[player], |f| f.in_capture_captain()
+        || melee_ft::fighter::capture_kirby::captured(&f.core))
+    {
         return Ok(());
     }
     let other = state
@@ -791,4 +800,81 @@ pub(super) fn koopa_escape(state: &mut InitialState, player: usize) -> Result<Op
     }))
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(Some(other))
+}
+
+/// The fighter index of `player`'s captor.
+fn captor_of(state: &InitialState, player: usize) -> Option<usize> {
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    let Some(GrabLink::Captured { captor }) = link else {
+        return None;
+    };
+    state
+        .fighters
+        .iter()
+        .position(|f| with_fighter!(f, |f| f.spawn_number == captor))
+}
+
+/// ftCo_800BD39C, CaptureKirby's accessory1: the inhaled fighter moves a
+/// step toward its captor's mouth as that now stands.
+pub(super) fn mouth_pull(state: &mut InitialState, player: usize) {
+    use melee_ft::fighter::capture_kirby;
+    if !with_fighter!(&state.fighters[player], |f| !f.status.disabled
+        && !f.in_hitlag()
+        && capture_kirby::pulling(&f.core))
+    {
+        return;
+    }
+    let other = captor_of(state, player).expect("an inhaled fighter's captor");
+    let (victim, captor) = pair(&mut state.fighters, player, other);
+    with_fighter!(captor, |c| with_fighter!(victim, |v| capture_kirby::pull(
+        &mut v.core,
+        &c.core
+    )));
+}
+
+/// What an inhaling captor's callback asked of the fighter in its mouth
+/// (ftCo_800BD620; ftCo_800DE2CC with ftCo_800BDB58 or ftCo_800BE000), run
+/// on the pair once the callback has returned. Returns the victim's index.
+pub(super) fn mouth_request(state: &mut InitialState, player: usize) -> Result<Option<usize>> {
+    use melee_ft::fighter::capture_kirby::{self, CaptorRequest};
+    let Some(request) = with_fighter!(&mut state.fighters[player], |f| f
+        .combat
+        .mouth_request
+        .take())
+    else {
+        return Ok(None);
+    };
+    let other = held_victim(state, player).expect("a mouth request without a victim");
+    let (captor, victim) = pair(&mut state.fighters, player, other);
+    let (va, ca) = (&state.assets.fighters[other], &state.assets.fighters[player]);
+    with_fighter!(captor, |c| with_fighter!(victim, |v| match request {
+        CaptorRequest::Close => capture_kirby::close(v, c, va, ca),
+        CaptorRequest::Spit(star) => capture_kirby::spit(v, c, va, ca, &mut state.map, star),
+        CaptorRequest::Swallow(star) => capture_kirby::swallow(v, c, va, ca, &mut state.map, star),
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some(other))
+}
+
+/// ftCo_CaptureWaitKirby_IASA on the pair: the held fighter's stick moves
+/// its captor, and its spent hold timer frees both. Returns the captor's
+/// index with what changed motion.
+pub(super) fn mouth_hold(
+    state: &mut InitialState,
+    player: usize,
+) -> Result<Option<(usize, melee_ft::fighter::capture_kirby::HoldChanges)>> {
+    use melee_ft::fighter::capture_kirby;
+    if !with_fighter!(&mut state.fighters[player], |f| capture_kirby::take_input(
+        &mut f.core
+    )) {
+        return Ok(None);
+    }
+    let other = captor_of(state, player).expect("a held fighter's captor");
+    let (victim, captor) = pair(&mut state.fighters, player, other);
+    let (va, ca) = (&state.assets.fighters[player], &state.assets.fighters[other]);
+    let changes = with_fighter!(captor, |c| with_fighter!(victim, |v| {
+        capture_kirby::hold_input(v, c, va, ca, &mut state.map)
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some((other, changes)))
 }

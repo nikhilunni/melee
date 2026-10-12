@@ -1357,7 +1357,13 @@ impl Runtime {
                 if proc == FighterProc::Grab {
                     grab_pairs::select(state, player)?;
                 }
-                if proc == FighterProc::HitboxPositions {
+                // Falcon Dive's accessory4 reads the held fighter's position;
+                // so does the Inhale's pull from its animation callback
+                // (ftCo_800BD19C).
+                if matches!(
+                    proc,
+                    FighterProc::HitboxPositions | FighterProc::Animation
+                ) {
                     grab_pairs::offer_partner_position(state, player);
                 }
                 if proc == FighterProc::Update {
@@ -1623,7 +1629,10 @@ impl Runtime {
                         .pickup_candidates
                         .withdraw());
                 }
-                if proc == FighterProc::HitboxPositions {
+                if matches!(
+                    proc,
+                    FighterProc::HitboxPositions | FighterProc::Animation
+                ) {
                     grab_pairs::withdraw_partner_position(state, player);
                 }
                 if proc == FighterProc::ProcessHit {
@@ -1785,6 +1794,38 @@ impl Runtime {
                         })?;
                     }
                 }
+                if matches!(proc, FighterProc::Animation | FighterProc::Input) {
+                    // The Inhale: Kirby's animation callback changes the
+                    // motion of the fighter in his mouth (ftCo_800BD620,
+                    // ftCo_800BDB58, ftCo_800BE000), and that fighter's IASA
+                    // Kirby's (ftKb_SpecialS_800F6BB0, ftCo_800DA698). Each
+                    // Fighter_ChangeMotionState flushes that fighter's
+                    // efAsync queue then.
+                    let mut members = [None; 2];
+                    if proc == FighterProc::Animation {
+                        if let Some(victim) = grab_pairs::mouth_request(state, player)? {
+                            members = [Some(victim), None];
+                        }
+                    } else if let Some((captor, changes)) = grab_pairs::mouth_hold(state, player)? {
+                        members = [
+                            changes.victim.then_some(player),
+                            changes.captor.then_some(captor),
+                        ];
+                    }
+                    for member in members.into_iter().flatten() {
+                        crate::scene_fighter::with_fighter!(&mut state.fighters[member], |f| {
+                            state.effects.flush::<RetailTrig>(
+                                melee_ef::EffectTiming::Immediate,
+                                member,
+                                &mut f.core,
+                                &state.assets.common_particle_bank,
+                                &state.assets.particle_bank,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )
+                        })?;
+                    }
+                }
                 if proc == FighterProc::ProcessHit {
                     credit_phantom_source(state, player);
                 }
@@ -1859,6 +1900,8 @@ impl Runtime {
                             )?;
                         }
                     }
+                    // ftCo_800BD39C (accessory1 on the way into Kirby's mouth).
+                    grab_pairs::mouth_pull(state, player);
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
                         // fn_800D54A4 / fn_800D55B4 (accessory1 while reviving).
                         if f.reviving() {

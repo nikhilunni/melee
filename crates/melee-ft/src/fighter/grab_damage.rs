@@ -340,6 +340,7 @@ pub(super) fn release_pair(
     map: &mut melee_mp::CollMap,
 ) {
     captor.combat.grab = None;
+    super::capture_kirby::refuse_parting_in_the_pull(&captured.core);
     if captured.combat.thrown_pose.is_some() {
         release_thrown(captor, captured, captured_assets, map);
     }
