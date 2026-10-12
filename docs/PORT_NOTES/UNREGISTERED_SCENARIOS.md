@@ -54,6 +54,17 @@ a Stadium boundary is retail's game only up to the first read whose timing
 differs (`..._ec3145eb3_p2_edgeguard` is the explorer's game past tick
 5198 and not at 5559).
 
+Explorer faults with no owner, each recorded on retail from a Final
+Destination boundary (every tick rendered, 120 ticks past the port's fault)
+and left local; the port stops at the fault on retail's own game:
+
+| Scenario | Tick | The port's stop |
+|---|---|---|
+| `corpus_v3_fd_iceclimbers_peach4_ecad2716f_p0` | 949 | `ftCo_800AC5A0`: the tumble steer with no knockback. Retail's Nana (Fighter at 0x80C9D2A0) steers y = -96, x = 0 on 950 and 951: the low byte of her address and a leftover r5 (`melee-cpu` `tumble.rs`) |
+| `corpus_v3_fd_iceclimbers_peach4_e59d49e21_p0` | 599 | `ftCo_800ADE48`: CPU item use (Nana holding a turnip) |
+| `corpus_v3_fd_iceclimbers_peach4_e15946934_p0` | 605 | "ftPe specials: mv+4 inherited from an unmodelled scratch word" |
+| `corpus_v3_fd_mario_peach4_efb86521f_p1` | 330 | `itPeachToadSpore_Logic68_Reflected`: Mario's cape and Toad's spores |
+
 ### Newly diagnosed
 
 No scenario of the 231 shows a port fault that was not already known or

@@ -251,11 +251,11 @@ impl Fighter {
             self.core.physics.facing = -self.core.physics.facing;
         }
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            assert!(
-                self.core.held_item.is_none(),
-                "ft_8008A2BC: a throw ending with the item still held"
-            );
-            // ftCommon_8007D92C: Fall in the air, Wait on the ground.
+            // ftCommon_8007D92C: Fall in the air, Wait on the ground. No
+            // test of the item (ftCo_ItemThrow.c:503-505): a throw whose
+            // release flag never came ends with the item in hand, as
+            // Peach's aerial down throw does when it lands
+            // (`corpus_v3_fd_iceclimbers_peach4_e0696dc6c_p1`, 5501..5524).
             let next = if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
                 S::Fall
             } else {
