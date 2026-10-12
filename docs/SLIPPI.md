@@ -924,6 +924,8 @@ wide one at an earlier magnifier tick; the other two never separate them).
 The other two are not the magnifier: `FOX/Game_20190824T124750.slp` (1482:
 28.58 recorded, 28.61 in the port) and `ZELDA_SHEIK/21_27_18 Zelda + Falco
 (DL).slp` (4666: 85.37 and 85.17) differ by a hit's damage, not a point.
+The second was a stale-move entry the port did not make ("Zelda and Sheik
+stops" below) and now matches to its last frame.
 
 Nothing in these recordings bounds when a display pass happened. They are
 Slippi 2.0.1: Pre Frame and Post Frame only, one pair per fighter and tick
@@ -1399,6 +1401,8 @@ and handed out again), so the hitbox takes it for a victim it already has.
 The port names an item victim by its unique id, and the hitbox strikes
 again (spark, glance roll, bounce spark). Following retail needs the GObj
 allocator's free list, which every GObj kind shares.
+Fixed 2026-10-11 ("Zelda and Sheik stops" below): the game matches 10883 /
+10883.
 
 **Fixed 2026-10-10.** `FALCO/Game_20190420T213132` (2336, now complete;
 `slp_fod_fox_falco_t2400`). Fox techs Fountain of Dreams' wall while smoking
@@ -1639,3 +1643,136 @@ Left as they were:
   Dolphin still has 0x41EC558E where the console recorded 0x41EC558D, and
   the port gates exact. `Game_20190903T151039` (Stadium) was not played
   back.
+
+## Zelda and Sheik stops; GObj addresses (2026-10-11)
+
+Six games of `public-v3.7-b` stopped with Zelda or Sheik in play. Two were
+port faults; four stop on a display pass (below).
+
+**An article left by another article keeps that article's attack.**
+`ZELDA_SHEIK/21_27_18 Zelda + Falco (DL)` (4666: 85.37 recorded, 85.17 in
+the port). it_8027B0C4 (0x8027B0C4) gives a new item the attack id and
+instance of SpawnItem.x4_parent_gobj2: the owner's current ones when that
+is the fighter, the spawning article's own when it is an article
+(0x8027B158). Din's Fire's explosion names the fire (it_802C4580,
+0x802C4608). The port took Zelda's current attack; hit out of the end
+state (whose motion change has removed the take-damage callback, so the
+fire is still hers), she had none, and the explosion's hit never entered
+her stale-move table. Witness `sheikzelda_zd_din_end_hurt_fd_zelda`
+(`MATRIX_WITNESSES`): the next Din's Fire deals 6.37, where the port dealt
+7.0. Ness's PK Fire pillar, PK Flash burst and PK Thunder segments name
+their spawner the same way (from the asm; no recording separates them).
+The game matches 11122 / 11122. It could not be played back on retail: it
+ran the 2019 Dream Land spawn row.
+
+**A hitbox's victim list keeps GObj addresses.**
+`ZELDA_SHEIK/Game_20161023T221503` (3039). Every GObj comes from one
+allocator whose free list is last in, first out (HSD_ObjAlloc 0x8037ABC8,
+HSD_ObjFree 0x8037AD20), and a victim list is never cleared of a destroyed
+victim, so an item created where a struck one was is not struck.
+`hsd_gobj::GObjAddresses` keeps the identity those addresses give; every
+GObj the match creates or destroys passes through it in retail's order:
+items and their ItemLink GObjs, effect models, screen-shake models, the
+stage's start GObjs and the GO banner. `ItemCore::hitbox_victim` is the
+item's GObj address. The game matches 10883 / 10883;
+`slp_bf_falco_sheik_t3100_cold` is in `SLIPPI_REPLAY_WITNESSES`.
+
+Two oracles:
+
+```sh
+cd harness && uv run python gobj_ledger_record.py scenarios/<name>.toml --out <file.jsonl>
+melee-sim gobj-diff harness/scenarios/<name>.toml --ledger <file.jsonl>   # every event, in order
+melee-sim gobj-diff harness/scenarios/<name>.toml                         # item identities, any tick trace
+```
+
+`dolphin/gobj_ledger.py` watches `gobj_alloc_data.freehead` and records
+each store with the GObj whose proc is running. A ledger kept as
+`harness/traces/<name>.gobj.raw.jsonl.zst` is gated by
+`gobj_addresses_match_retail_ledgers` (`GOBJ_LEDGER_WITNESSES`, fifteen
+scenarios, each event for event). What the ledgers corrected:
+
+| Retail | Port before |
+|---|---|
+| A KO's quake, then its blast, after the article ftCo_800D331C destroyed (ft_0D31.c:220) | blast, quake, article |
+| A struck fighter's article goes (take_dmg_cb) before the hit's quake | quake first |
+| A wall bounce's quake precedes its queued flash (ftCo_800C7CA0) | flash first |
+| A throw's release hit lands in the thrower's animation proc: the quake's model is stepped by that tick's quake procs (s_link 1, p_link 18) and lasts 30 ticks, not 31 | requested at the victim's next proc, a tick late |
+| Common models whose efAsync row does not set EF_STATE_ASYNC wait out their owner's hitlag (efasync.c:105-527) | only some did |
+| Shield Breaker installs the effect hitlag callbacks (ftMs_SpecialN_801365A8) | not installed |
+| Spent models are freed p_link 11 first, then the KO models' p_link 12 | creation order |
+| A chain's links are GObjs: created after the article, freed newest first before it | not modelled |
+| Peach's pulled item, then the pull's model (spawnVeg 0x8011D018) | model first |
+
+A HUD model rebuilt in place (a player's icons at a KO or return: four
+consecutive events on one address) leaves the list as it was and is not
+modelled; `gobj-diff` skips it.
+
+**Not finished.** Item identities agree with the tick trace on 2184 of the
+2239 recorded scenarios that have a raw trace; 55 differ somewhere (mostly
+long explorer matches: Roy 9, Peach and Yoshi on Yoshi's Story 7, Stadium
+7, Dream Land 5, Link 4). Each is an order or a model lifetime the port
+still has otherwise; a ledger of the scenario names it. Likely causes, not
+triaged: the other states that call Fighter_SetEffectHitlagCallbacks (about
+a hundred sites in the C, about fifty in the port), Stadium's
+transformation GObjs, Whispy's wind. The Sheik chain's, the Grapple Beam's
+and the Belay rope's link GObjs follow the same C as the hookshot's and the
+yo-yo's but have no ledger.
+
+### The throw-release quake and three consoles
+
+The throw-release timing is its own commit. It moves the camera's shake a
+tick earlier after a throw, which three recordings see:
+
+| Replay | Without it | With it |
+|---|---|---|
+| `PEACH/Game_20191013T105824` (FoD, standard screen) | 6022, `percent`, the port a point above (listed above as a skipped display pass) | 7298 / 7298 |
+| `DOC/20200101 - HNC 7 - PM 0608 - Dr. Mario vs Peach - Pokemon Stadium` (widescreen) | 9027, `input_seed` | 16853, `input_seed` |
+| `PEACH/20200219 - HNC 6 - PM 1113 - Marth vs WOO Peach - Pokemon Stadium` (widescreen) | 5251, `input_seed` | 4456, `percent`, the port a point below |
+
+The third matches fewer frames. Its window was played back on retail with
+a render after every tick (`slp_ps_marth_peach_wide_r1_t4600`, local data;
+boundary `start_ps_slippi74_ns_frozen_wide_p12_marth0_peach0_4`: UCF 0.74,
+NeutralSpawn, preload, Frozen Stages, Widescreen), with a GObj ledger:
+
+- Peach's throw shakes at 4372 (its script's quake, freed at 4403, 31
+  ticks) and releases at 4375 (the release quake, freed at 4405, 30
+  ticks). The port with the timing equals all 716 ledger events; without
+  it the release quake is freed at 4406.
+- Marth leaves the screen and the magnifier's point comes at trace tick
+  4458 on retail. The port with the timing has it at 4458 and equals
+  retail on every fighter key of all 4600 ticks; main and the port without
+  the timing have it at 4457, their one differing fighter key.
+- The console's recording has the point at trace tick 4457 (replay frame
+  4456): a tick before retail in Dolphin with the same codes. No single
+  skipped display pass from 4370 to 4457 moves the port's point there
+  (`--skip-display-pass`), and a lag frame cannot bring a point forward.
+  One pixel of the widescreen right bound moves it two ticks (539: 4455),
+  so the shake's phase decides it.
+
+So main agreed with that console by being a tick late in the shake; what
+the console ran differently is not in the replay. The recording does not
+gate: Mr. Saturn's position leaves retail at 3710 (the idle and slide
+states, unported), with the seed 17 ticks apart and equal again from 3747.
+
+### Display-pass stops under the every-tick rule
+
+None of these has an every-tick retail recording, so none is confirmed as
+"not a port fault"; each is consistent with one lag frame
+(`--skip-display-pass`, on this branch):
+
+| Replay | Stop | One skipped pass |
+|---|---|---|
+| `PIKACHU/Game_20190629T164554` | 4576, star KO position | at 4576: 7668 / 7668 |
+| `ZELDA_SHEIK/19_56_47 Sheik + Captain Falcon (DL)` | 3073, magnifier | at 3013 or 3014: 15970 / 15970 |
+| `ZELDA_SHEIK/Marth vs Sheik [FD] Game_20181024T232813` | 6345, magnifier | at 6288: 13618 / 13618 |
+| `ZELDA_SHEIK/Game_20120109T050633` | 2013, magnifier | at 1996: 10793 / 10941, then `percent` again |
+
+Corpora before and after, on main at e251d486 (`replay-batch`); every
+scenario recorded before gates as it did (2433 pass before, 2436 after, of
+2467):
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
+| `public-v3.7-b` (502), without the throw-release commit | 431 to 433 | 4,653,593 to 4,667,893; no replay fewer |
+| `public-v3.7-b` (502), with it | 431 to 434 | 4,653,593 to 4,676,200; one replay fewer (above) |
