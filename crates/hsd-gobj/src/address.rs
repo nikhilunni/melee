@@ -25,6 +25,8 @@
 const CAPACITY: usize = 512;
 /// The most creations and destructions one tick's diagnostic log keeps.
 const LOG_CAPACITY: usize = 192;
+/// The most creations and destructions one proc makes after a mark.
+const JOURNAL_CAPACITY: usize = 96;
 
 /// A GObj's address, as an identity: equal for two objects exactly when
 /// retail created the second where the first had been.
@@ -86,9 +88,55 @@ pub struct GObjEvent {
     pub address: GObjAddress,
 }
 
+/// One operation made after a [`mark`](GObjAddresses::mark).
+#[derive(Clone, Copy, Debug)]
+enum Operation {
+    /// `fresh`: the address was new memory, not the free list's head.
+    Create {
+        class: GObjClass,
+        address: GObjAddress,
+        fresh: bool,
+    },
+    Destroy {
+        class: GObjClass,
+        address: GObjAddress,
+    },
+}
+
+/// The objects a [`replay`](GObjAddresses::replay) created at another
+/// address than they first took: each live object's own address is renamed
+/// through it. A stale pointer (a victim list's) names a dead object and
+/// keeps its value.
+#[derive(Clone, Debug)]
+pub struct Renamed {
+    pairs: [(GObjAddress, GObjAddress); JOURNAL_CAPACITY],
+    len: usize,
+}
+
+impl Renamed {
+    pub fn is_empty(&self) -> bool {
+        self.len == 0
+    }
+    /// The address the live object created at `address` has now.
+    pub fn apply(&self, address: GObjAddress) -> GObjAddress {
+        self.pairs[..self.len]
+            .iter()
+            .find(|(from, _)| *from == address)
+            .map_or(address, |&(_, to)| to)
+    }
+}
+
 /// `gobj_alloc_data`'s free list, from the first tick of a match (the scene
 /// initialises the allocator, and what it creates before the first tick is
 /// taken from an empty list).
+///
+/// The port runs some of a proc's work after the proc: a fighter's effect
+/// requests are flushed when it returns, the articles it removed are freed
+/// after that. Where retail freed the articles first (a death, a hit's
+/// take-damage callback: Item_8026A8EC, then the fighter's own teardown and
+/// new effects), the flush [`mark`](Self::mark)s the point, and the scene
+/// puts the frees there: [`rewind`](Self::rewind) to the mark, free the
+/// articles, [`replay`](Self::replay) what followed.
 #[derive(Clone, Debug)]
 pub struct GObjAddresses {
     /// The free list, head last.
@@ -99,6 +147,12 @@ pub struct GObjAddresses {
     /// This tick's events, for diagnostics; not game state.
     log: [Option<GObjEvent>; LOG_CAPACITY],
     log_len: usize,
+    /// The operations since the mark, while one is set.
+    journal: [Option<Operation>; JOURNAL_CAPACITY],
+    journal_len: usize,
+    /// The diagnostic log's length at the mark.
+    journal_log_start: usize,
+    marked: bool,
 }
 
 impl Default for GObjAddresses {
@@ -109,6 +163,10 @@ impl Default for GObjAddresses {
             fresh: 1,
             log: [None; LOG_CAPACITY],
             log_len: 0,
+            journal: [None; JOURNAL_CAPACITY],
+            journal_len: 0,
+            journal_log_start: 0,
+            marked: false,
         }
     }
 }
@@ -117,13 +175,19 @@ impl GObjAddresses {
     /// HSD_ObjAlloc (0x8037ABC8) from GObj_Create: the free list's head, or
     /// new memory when the list is empty (objalloc.c:103-110).
     pub fn create(&mut self, class: GObjClass) -> GObjAddress {
-        let address = if self.free_len == 0 {
+        let fresh = self.free_len == 0;
+        let address = if fresh {
             self.outside()
         } else {
             self.free_len -= 1;
             self.free[self.free_len]
         };
         self.record(true, class, address);
+        self.note(Operation::Create {
+            class,
+            address,
+            fresh,
+        });
         address
     }
 
@@ -134,6 +198,106 @@ impl GObjAddresses {
         self.free[self.free_len] = address;
         self.free_len += 1;
         self.record(false, class, address);
+        self.note(Operation::Destroy { class, address });
+    }
+
+    /// The point retail freed the running proc's articles at: what is
+    /// created and destroyed from here is kept, to be replayed after those
+    /// frees. A second mark in one proc keeps the first.
+    pub fn mark(&mut self) {
+        if !self.marked {
+            self.marked = true;
+            self.journal_len = 0;
+            self.journal_log_start = self.log_len;
+        }
+    }
+
+    pub fn marked(&self) -> bool {
+        self.marked
+    }
+
+    /// Drops the mark: nothing was freed late.
+    pub fn release(&mut self) {
+        self.marked = false;
+        self.journal_len = 0;
+    }
+
+    /// Back to the mark: every operation since is undone, newest first.
+    /// What is destroyed next goes where retail freed it;
+    /// [`replay`](Self::replay) follows.
+    pub fn rewind(&mut self) {
+        assert!(self.marked, "rewinding without a mark");
+        self.marked = false;
+        for operation in self.journal[..self.journal_len].iter().rev().flatten() {
+            match *operation {
+                Operation::Create { fresh: true, .. } => self.fresh -= 1,
+                Operation::Create { address, .. } => {
+                    self.free[self.free_len] = address;
+                    self.free_len += 1;
+                }
+                Operation::Destroy { .. } => self.free_len -= 1,
+            }
+        }
+        self.log_len = self.journal_log_start.min(self.log_len);
+    }
+
+    /// The operations undone by [`rewind`](Self::rewind), again in order.
+    /// An object created now may take another address than it first did.
+    pub fn replay(&mut self) -> Renamed {
+        assert!(!self.marked, "replaying under a mark");
+        let mut renamed = Renamed {
+            pairs: [(GObjAddress(0), GObjAddress(0)); JOURNAL_CAPACITY],
+            len: 0,
+        };
+        // Addresses as first given, to addresses as given now, for the
+        // objects of this journal (also those it destroyed again).
+        let mut given = [(GObjAddress(0), GObjAddress(0)); JOURNAL_CAPACITY];
+        let mut given_len = 0;
+        let len = std::mem::take(&mut self.journal_len);
+        for index in 0..len {
+            match self.journal[index].expect("journal entry") {
+                Operation::Create { class, address, .. } => {
+                    let now = self.create(class);
+                    given[given_len] = (address, now);
+                    given_len += 1;
+                }
+                Operation::Destroy { class, address } => {
+                    // The newest object created at that address, if the
+                    // journal created one; an older object otherwise.
+                    let at = given[..given_len]
+                        .iter()
+                        .rposition(|(from, _)| *from == address);
+                    let now = match at {
+                        Some(at) => {
+                            let now = given[at].1;
+                            given[at] = given[given_len - 1];
+                            given_len -= 1;
+                            now
+                        }
+                        None => address,
+                    };
+                    self.destroy(class, now);
+                }
+            }
+        }
+        for &(from, to) in &given[..given_len] {
+            if from != to {
+                renamed.pairs[renamed.len] = (from, to);
+                renamed.len += 1;
+            }
+        }
+        renamed
+    }
+
+    fn note(&mut self, operation: Operation) {
+        if self.marked {
+            assert!(
+                self.journal_len < JOURNAL_CAPACITY,
+                "GObj journal bound exceeded"
+            );
+            self.journal[self.journal_len] = Some(operation);
+            self.journal_len += 1;
+        }
     }
 
     /// The address of an object created before the match's first tick (a
@@ -194,6 +358,69 @@ mod tests {
         assert_ne!(a, banner);
         addresses.destroy(GObjClass::Hud, banner);
         assert_eq!(addresses.create(GObjClass::Item), banner);
+    }
+
+    #[test]
+    fn frees_put_at_a_mark_precede_what_followed_it() {
+        let mut addresses = GObjAddresses::default();
+        let create = |a: &mut GObjAddresses| a.create(GObjClass::Effect);
+        let (spark, model, article) = (
+            create(&mut addresses),
+            create(&mut addresses),
+            addresses.create(GObjClass::Item),
+        );
+        addresses.destroy(GObjClass::Effect, spark);
+        // The port's order: the fighter's model goes, a new effect takes
+        // its address, and only then is the article freed.
+        addresses.mark();
+        addresses.destroy(GObjClass::Effect, model);
+        let bounce = create(&mut addresses);
+        assert_eq!(bounce, model);
+        // Retail's: the article, the model, then the effect at the model's
+        // address still, and the quake at the article's.
+        addresses.rewind();
+        addresses.destroy(GObjClass::Item, article);
+        let renamed = addresses.replay();
+        assert!(renamed.is_empty());
+        assert_eq!(addresses.create(GObjClass::Quake), article);
+        assert_eq!(addresses.create(GObjClass::Effect), spark);
+    }
+
+    #[test]
+    fn an_object_replayed_after_a_free_is_renamed() {
+        let mut addresses = GObjAddresses::default();
+        let (older, article) = (
+            addresses.create(GObjClass::Effect),
+            addresses.create(GObjClass::Item),
+        );
+        addresses.destroy(GObjClass::Effect, older);
+        addresses.mark();
+        let bounce = addresses.create(GObjClass::Effect);
+        assert_eq!(bounce, older);
+        let passing = addresses.create(GObjClass::Effect);
+        addresses.destroy(GObjClass::Effect, passing);
+        addresses.rewind();
+        addresses.destroy(GObjClass::Item, article);
+        let renamed = addresses.replay();
+        // Retail created the bounce where the article had just been.
+        assert_eq!(renamed.apply(bounce), article);
+        assert_eq!(renamed.apply(article), article);
+        let events: Vec<_> = addresses.take_events().collect();
+        assert_eq!(
+            events
+                .iter()
+                .map(|e| (e.created, e.address))
+                .collect::<Vec<_>>(),
+            [
+                (true, older),
+                (true, article),
+                (false, older),
+                (false, article),
+                (true, article),
+                (true, older),
+                (false, older),
+            ]
+        );
     }
 
     #[test]

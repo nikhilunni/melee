@@ -1257,8 +1257,8 @@ pub fn request(
             return None;
         }
         ItemRequest::Destroy { item } => {
-            destroy_object(world, objects, item);
-            pool.destroy::<SceneItems>(item, gobjs);
+            // Freed with this proc's other articles, in request order.
+            pool.get_mut(item).expect("a held item").destroyed = true;
             return None;
         }
         ItemRequest::SpawnInHand { spawn, .. } => (spawn, None, None),

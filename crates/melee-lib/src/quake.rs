@@ -128,6 +128,14 @@ impl Quakes {
         }
     }
 
+    /// The models a replay created at another address
+    /// (`hsd_gobj::GObjAddresses::replay`).
+    pub(crate) fn rename_gobjs(&mut self, renamed: &hsd_gobj::Renamed) {
+        for playing in self.playing.iter_mut() {
+            playing.1 = renamed.apply(playing.1);
+        }
+    }
+
     /// Whether the stage has screen-shake models (quake_model_set).
     pub(crate) fn has_models(&self) -> bool {
         !self.instances.is_empty()

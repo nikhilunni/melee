@@ -1257,6 +1257,12 @@ impl Fighter {
         }
         if let Some(take_damage) = self.character.table().take_damage {
             take_damage(self);
+            // The callback's Item_8026A8EC calls free its articles before
+            // the damage entry's own effects and teardown (the floor
+            // bounce's model, Fighter_ChangeMotionState's efLib_DestroyAll).
+            self.core
+                .effects
+                .push(melee_ef::request::EffectRequest::ArticlesFreed);
         }
         // ftCo_DamageIce_OnHit (80090B48), DamageIce's take_dmg_cb.
         if self.core.motion_state.id == S::DamageIce {

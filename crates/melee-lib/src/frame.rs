@@ -2317,7 +2317,11 @@ impl Runtime {
                     // Item_8026A8EC's DestroyItemInline: a destroyed held
                     // item lets go of the hand (ftCommon_8007E6DC).
                     if let Some(held) = f.held_item {
-                        if !state.items.iter().any(|i| i.id == held.item) {
+                        if !state
+                            .items
+                            .iter()
+                            .any(|i| i.id == held.item && !i.destroyed)
+                        {
                             f.core
                                 .release_held_item(held.item, &state.assets.fighters[slot]);
                         }
@@ -2406,6 +2410,15 @@ impl Runtime {
                 }
             }
         }
+        // Where the proc's flush marked retail's Item_8026A8EC calls, the
+        // frees below go back to that point and what the flush did after
+        // it follows them.
+        let spliced = state.effects.gobjs.marked();
+        if spliced && state.items.iter().any(|item| item.destroyed) {
+            state.effects.gobjs.rewind();
+        } else {
+            state.effects.gobjs.release();
+        }
         for item in state
             .items
             .iter()
@@ -2464,6 +2477,14 @@ impl Runtime {
                 &mut self.item_objects,
                 destroyed,
             );
+        }
+        if spliced {
+            let renamed = state.effects.gobjs.replay();
+            if !renamed.is_empty() {
+                state.effects.rename_gobjs(&renamed);
+                state.quakes.rename_gobjs(&renamed);
+                state.items.rename_gobjs(&renamed);
+            }
         }
         // Effects a proc spawned after the items it created (their creation
         // particles came first) and after the articles it removed

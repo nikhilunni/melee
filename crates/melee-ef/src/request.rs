@@ -149,6 +149,13 @@ pub enum EffectRequest {
     /// the generator insertion cursor at the list's tail for whatever the
     /// fighter spawns next in the same proc.
     ArticleDestroyed,
+    /// Item_8026A8EC has run on every article this proc removed so far (a
+    /// death's callbacks and held item, ftCo_800D331C; a hit's take-damage
+    /// callback, ftCommon_8007DB58): their GObjs, and their models', were
+    /// freed before whatever the fighter's queue holds next. The scene
+    /// frees them after the proc, so the flush marks the allocator here
+    /// (`hsd_gobj::GObjAddresses::mark`).
+    ArticlesFreed,
     /// efSync_Spawn(0x43F, NULL, &pos, &scale) (efasync.c:758-771): the puff
     /// a second fighter (Nana) vanishes in when its leader's death ends
     /// (ftCo_800D4F24): common generator 0xCA whose AppSRT carries the point
@@ -455,7 +462,9 @@ impl EffectQueue {
                     let entry = self.entries.iter().nth(index).unwrap();
                     let teardown = matches!(
                         entry.request,
-                        EffectRequest::DestroyOwned | EffectRequest::ArticleDestroyed
+                        EffectRequest::DestroyOwned
+                            | EffectRequest::ArticleDestroyed
+                            | EffectRequest::ArticlesFreed
                     );
                     if entry.matrix.is_some() || teardown {
                         drained.push(self.entries.remove(index));
@@ -526,6 +535,7 @@ impl EffectRequest {
                 | Self::ShieldSpark { .. }
                 | Self::Clank { .. }
                 | Self::DestroyOwned
+                | Self::ArticlesFreed
         )
     }
     fn bone(&self) -> Option<usize> {

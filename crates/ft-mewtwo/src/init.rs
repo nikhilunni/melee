@@ -100,6 +100,9 @@ fn take_damage_callback(f: &mut Fighter) {
     let mewtwo = f.character.get::<Mewtwo>();
     if mewtwo.shadow_ball_charge as f32 != mewtwo.attributes.shadow_ball.full_charge {
         crate::special_n::set_charge(f, 0);
+        // The ball's Item_8026A8EC (it_802C573C) came first.
+        f.effects
+            .push(melee_ef::request::EffectRequest::ArticlesFreed);
         f.effects
             .push(melee_ef::request::EffectRequest::DestroyOwned);
     }
@@ -116,6 +119,9 @@ fn death_callback(f: &mut Fighter) {
     // charge is lost with its effects whatever it was.
     crate::special_n::remove_ball(f);
     crate::special_n::set_charge(f, 0);
+    // The ball's Item_8026A8EC (it_802C573C) came first.
+    f.effects
+        .push(melee_ef::request::EffectRequest::ArticlesFreed);
     f.effects
         .push(melee_ef::request::EffectRequest::DestroyOwned);
 }

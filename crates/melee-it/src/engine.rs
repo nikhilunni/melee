@@ -2078,6 +2078,16 @@ impl ItemPool {
         item.destroy_gobjs(gobjs);
         self.freed_rest_lines.push(item.rest_line);
     }
+    /// The items a replay created at another address
+    /// (`hsd_gobj::GObjAddresses::replay`).
+    pub fn rename_gobjs(&mut self, renamed: &hsd_gobj::Renamed) {
+        for item in self.items.iter_mut() {
+            item.gobj = renamed.apply(item.gobj);
+            for link in item.link_gobjs.iter_mut() {
+                *link = renamed.apply(*link);
+            }
+        }
+    }
     /// Notes the items marked destroyed since the last call, in pool
     /// order. Called after each request or proc that can mark one, so the
     /// notes follow retail's Item_8026A8EC calls: Link's take-damage

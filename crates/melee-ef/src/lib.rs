@@ -327,6 +327,16 @@ impl Effects {
         }
         self.recycle_where(|e| e.owner == Some(ModelOwner::Blaster(owner)));
     }
+    /// The models a replay created at another address
+    /// (`hsd_gobj::GObjAddresses::replay`).
+    pub fn rename_gobjs(&mut self, renamed: &hsd_gobj::Renamed) {
+        for effect in self.instances.iter_mut() {
+            effect.gobj = renamed.apply(effect.gobj);
+        }
+        for quake in self.camera_quakes.iter_mut() {
+            quake.2 = quake.2.map(|gobj| renamed.apply(gobj));
+        }
+    }
     /// Item_8026A8EC -> efLib_DestroyAll(item) (0x8005B880, eflib.c:249-279):
     /// the models whose parent is the item go, each tree walked with
     /// hsd_8039D688 first, so the spark of a hit that destroys the item
@@ -440,6 +450,10 @@ impl Effects {
             }
             if matches!(request, EffectRequest::ArticleDestroyed) {
                 particles.walk_unowned_joint();
+                continue;
+            }
+            if matches!(request, EffectRequest::ArticlesFreed) {
+                self.gobjs.mark();
                 continue;
             }
             if matches!(request, EffectRequest::DestroyOwned) {
@@ -1537,6 +1551,7 @@ impl Effects {
                 | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned
                 | EffectRequest::ArticleDestroyed
+                | EffectRequest::ArticlesFreed
                 | EffectRequest::Attached { .. }
                 | EffectRequest::AttachedParameter { .. }
                 | EffectRequest::IceBlock { .. }
