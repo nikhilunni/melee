@@ -1,7 +1,9 @@
 //! Cold replay comparison. Expected state never initializes or repairs a tick.
 use crate::replay_screen_codes::{resolve_screen, ScreenChoice, ScreenReason};
 use crate::replay_stage_codes::{resolve_stage_codes, StageCodeChoice, StageCodeReason};
-use crate::{frame::Simulation, initial_state::InitialState, scenario::Scenario};
+use crate::replay_cost::{self as cost, Part};
+use crate::replay_game::{Game, StartError, Stopped};
+use crate::scenario::Scenario;
 use anyhow::{ensure, Result};
 use melee_diff::{first_divergence, Divergence, Record};
 use slp::{cold::ColdScenario, Replay};
@@ -254,14 +256,6 @@ pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
     reasons
 }
 
-/// The first Slippi version whose Post Frame is sampled at the end of the
-/// fighter procs rather than after the map proc.
-const POST_FRAME_AT_CAMERA: slp::Version = slp::Version {
-    major: 3,
-    minor: 4,
-    build: 0,
-};
-
 /// The first Slippi version recorded with the Stadium transformation
 /// preload code. Replays before the Gecko code list (3.3) do not name it;
 /// Slippi's own playback enables it by this version (Ishiiruka
@@ -459,11 +453,8 @@ fn is_dween(p: &slp::PlayerStart) -> bool {
 /// between them, the recorded facing is one version's. That version then
 /// runs the comparison (every frame, from the start). A game the versions
 /// never disagree on keeps the dated one.
-pub fn resolve_controller_fix(
-    replay: &Replay,
-    root: &Path,
-    setup: Setup,
-) -> (Setup, Option<FixChoice>) {
+pub(crate) fn resolve_controller_fix(game: &mut Game, setup: Setup) -> (Setup, Option<FixChoice>) {
+    let replay = game.replay;
     let ucf_ports = || {
         replay
             .leader_ports()
@@ -487,8 +478,9 @@ pub fn resolve_controller_fix(
     if let Some(other) = other.filter(|_| unsupported_setup(replay, named(dated)).is_empty()) {
         // An unported boundary or setup error before any disagreement
         // leaves the dated version; the comparison run reports it.
+        let _t = cost::time(Part::FixProbe);
         let probe = catch_unwind(AssertUnwindSafe(|| {
-            first_facing_disagreement(replay, root, named(dated), named(other))
+            first_facing_disagreement(game, named(dated), named(other))
         }));
         if let Ok(Ok(Some(disagreement))) = probe {
             let (fix, over) = if disagreement.recorded_is_second {
@@ -513,107 +505,46 @@ struct FacingDisagreement {
     recorded_is_second: bool,
 }
 
+/// A dry pass found no answer because a run could not start or stopped
+/// (an unported boundary, a simulation error); the comparison reports it.
+pub(crate) struct NoAnswer;
+
 /// Run the replay's inputs under two setups in step, up to the first tick
 /// any compared field differs between them. `None` unless a UCF leader's
 /// `facing_dir` is among what differs there (a dashback's first effect).
 fn first_facing_disagreement(
-    replay: &Replay,
-    root: &Path,
+    game: &mut Game,
     first: Setup,
     second: Setup,
-) -> Result<Option<FacingDisagreement>> {
-    let mut first = ColdRun::start(replay, &cold_scenario(replay, root, first)?)?;
-    let mut second = ColdRun::start(replay, &cold_scenario(replay, root, second)?)?;
-    let leaders: Vec<usize> = replay.leader_ports().collect();
-    let last_tick = first.unavailable.as_ref().map(|(tick, _)| *tick);
-    for expected in slp::to_trace(replay) {
-        if last_tick == Some(expected.frame) {
+) -> Result<Option<FacingDisagreement>, NoAnswer> {
+    let first = game.run(first).map_err(|_| NoAnswer)?;
+    let second = game.run(second).map_err(|_| NoAnswer)?;
+    let replay = game.replay;
+    let last_tick = game.unavailable().map(|(tick, _)| *tick);
+    for index in 0..game.ticks() {
+        let tick = game.tick_number(index);
+        if last_tick == Some(tick) {
             break;
         }
-        let frame = &replay.frames[&(expected.frame as i32 + slp::SLIPPI_FIRST_FRAME)];
-        let tick = |run: &mut ColdRun| -> Result<Record> {
-            let record = run.simulation.tick()?;
-            let record = run.simulation.after_map_record(&record).unwrap_or(record);
-            Ok(by_leader(&record, &leaders, frame, expected.frame))
-        };
-        let (a, b) = (tick(&mut first)?, tick(&mut second)?);
-        if expected
-            .state
-            .keys()
-            .all(|key| a.state.get(key) == b.state.get(key))
-        {
+        if !(game.observe(first, index) && game.observe(second, index)) {
+            return Err(NoAnswer);
+        }
+        if game.same_recorded(first, second, index) {
             continue;
         }
-        return Ok(leaders.iter().enumerate().find_map(|(index, &port)| {
-            let key = format!("p{index}.facing_dir");
-            let (a, b) = (a.state.get(&key), b.state.get(&key));
+        let leaders = game.leaders();
+        return Ok(leaders.iter().enumerate().find_map(|(leader, &port)| {
+            let (a, b) = (
+                game.facing(first, index, leader),
+                game.facing(second, index, leader),
+            );
             (is_ucf(&replay.start.players[port]) && a != b).then(|| FacingDisagreement {
-                tick: expected.frame,
-                recorded_is_second: expected.state.get(&key) == b,
+                tick,
+                recorded_is_second: game.recorded_facing(index, leader) == b.as_ref(),
             })
         }));
     }
     Ok(None)
-}
-
-/// A replay's cold simulation, before its first compared tick.
-pub(crate) struct ColdRun {
-    pub(crate) simulation: Simulation,
-    /// Observation zero: a reset store, not Slippi frame -123.
-    pub(crate) initial: Record,
-    /// The first tick whose recorded controller cannot be installed. A bad
-    /// late controller field must not discard an already comparable prefix,
-    /// and no guessed pads stand in for it.
-    pub(crate) unavailable: Option<(u64, String)>,
-}
-
-impl ColdRun {
-    pub(crate) fn start(replay: &Replay, scenario: &Scenario) -> Result<Self> {
-        let unavailable = scenario.replay_inputs.iter().find_map(|input| {
-            crate::inputs::replay_pad(input)
-                .err()
-                .map(|error| (input.frame, format!("port {}: {error}", input.port + 1)))
-        });
-        let pad_frames = unavailable
-            .as_ref()
-            .map_or(scenario.frames, |(frame, _)| *frame);
-        let prefix: Vec<_> = scenario
-            .replay_inputs
-            .iter()
-            .filter(|input| input.frame < pad_frames)
-            .cloned()
-            .collect();
-        let pads = crate::inputs::PadScript::from_replay_inputs(
-            &prefix,
-            pad_frames as usize,
-            &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
-        )?;
-        let mut simulation =
-            Simulation::with_inputs(InitialState::from_parameters(scenario)?, pads);
-        let initial = simulation.tick()?;
-        if let Some(seed) = replay
-            .frames
-            .values()
-            .next()
-            .and_then(slp::Frame::scheduler_start_seed)
-        {
-            ensure!(
-                initial.state["rng.seed"] == melee_diff::Value::UInt(u64::from(seed)),
-                "boundary seed does not reach first Frame Start"
-            );
-        }
-        // Slippi before 3.4.0 sampled Post Frame at 0x8006C5D8, the end of
-        // each fighter's map proc (Fighter_8006C27C, s_link 6), before hit
-        // detection and damage; 3.4.0 moved it to 0x8006DA34 in the camera
-        // proc (s_link 18), after the fighter procs the trace reads
-        // (slippi-ssbm-asm 9398d52).
-        simulation.capture_after_map(replay.version() < POST_FRAME_AT_CAMERA);
-        Ok(Self {
-            simulation,
-            initial,
-            unavailable,
-        })
-    }
 }
 
 fn has_controller_fix(p: &slp::PlayerStart) -> bool {
@@ -750,33 +681,49 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
         unsupported_setup(replay, setup).is_empty(),
         "unsupported replay setup"
     );
-    let build = |seed: u32, unlocked: bool| -> Result<Scenario> {
-        let cold = ColdScenario::from_replay(replay, "slippi_replay", seed, unlocked)?;
-        let mut scenario: Scenario = toml::from_str(&cold.to_toml()?)?;
-        scenario.root = root.into();
-        if replay.start.timer_type() == 2 && replay.start.game_timer != 0 {
-            scenario.time_limit = Some(replay.start.game_timer);
-        }
-        scenario.spawn = spawn_rule(replay);
-        scenario.stadium_preload = replay.version() >= STADIUM_PRELOAD;
-        scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
-        scenario.frozen_stages = setup.frozen_stages.unwrap_or(false);
-        scenario.set_screen(setup.screen.unwrap_or_default());
-        scenario.fountain_level = fountain_level(replay).is_some();
-        if !setup.ignore_controller_fixes {
-            for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
-                let fix = ucf_version(replay, &replay.start.players[port], setup)
-                    .expect("checked by unsupported_setup");
-                fighter.controller_fix = Some(fix.name().to_string());
-            }
-        }
-        scenario.validate()?;
-        Ok(scenario)
-    };
-    let provisional = build(replay.start.random_seed, false)?;
+    let scenario = cold_scenario_base(replay, root, setup)?;
+    scenario.validate()?;
+    Ok(scenario)
+}
+
+/// [`cold_scenario`] for a supported setup. Only [`set_candidate`]'s fields
+/// depend on which codes the setup names, so one scenario serves every
+/// candidate setup of a replay.
+pub(crate) fn cold_scenario_base(replay: &Replay, root: &Path, setup: Setup) -> Result<Scenario> {
+    // The boundary seed is found from a provisional scenario with Game
+    // Start's seed.
+    let cold = ColdScenario::from_replay(replay, "slippi_replay", replay.start.random_seed, false)?;
+    let mut scenario: Scenario = toml::from_str(&cold.to_toml()?)?;
+    scenario.root = root.into();
+    if replay.start.timer_type() == 2 && replay.start.game_timer != 0 {
+        scenario.time_limit = Some(replay.start.game_timer);
+    }
+    scenario.spawn = spawn_rule(replay);
+    scenario.stadium_preload = replay.version() >= STADIUM_PRELOAD;
+    scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
+    scenario.fountain_level = fountain_level(replay).is_some();
+    set_candidate(replay, &mut scenario, setup);
+    scenario.validate()?;
     let (seed, unlocked) =
-        cold_boundary(replay, &provisional, setup).map_err(|e| anyhow::anyhow!(e))?;
-    build(seed, unlocked)
+        cold_boundary(replay, &scenario, setup).map_err(|e| anyhow::anyhow!(e))?;
+    scenario.seed = Some(seed);
+    scenario.all_characters_unlocked = Some(unlocked);
+    Ok(scenario)
+}
+
+/// Write the codes a setup names into the replay's cold scenario: the stage
+/// code, the screen and each port's controller fix.
+pub(crate) fn set_candidate(replay: &Replay, scenario: &mut Scenario, setup: Setup) {
+    scenario.frozen_stages = setup.frozen_stages.unwrap_or(false);
+    scenario.set_screen(setup.screen.unwrap_or_default());
+    for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
+        fighter.controller_fix = (!setup.ignore_controller_fixes).then(|| {
+            ucf_version(replay, &replay.start.players[port], setup)
+                .expect("checked by unsupported_setup")
+                .name()
+                .to_string()
+        });
+    }
 }
 
 /// What a replay does not record, as chosen for one comparison.
@@ -797,8 +744,14 @@ pub struct Resolved {
 /// that probe then names the other UCF version, the codes are read again
 /// under it.
 pub fn resolve_setup(replay: &Replay, root: &Path, setup: Setup) -> Resolved {
-    let (coded, stage_code, screen) = resolve_codes(replay, root, setup);
-    let (fixed, controller_fix) = resolve_controller_fix(replay, root, coded);
+    resolve_setup_of(&mut Game::new(replay, root), setup)
+}
+
+/// [`resolve_setup`] over the replay's shared runs, which the comparison
+/// then reads too.
+fn resolve_setup_of(game: &mut Game, setup: Setup) -> Resolved {
+    let (coded, stage_code, screen) = resolve_codes(game, setup);
+    let (fixed, controller_fix) = resolve_controller_fix(game, coded);
     let redated = matches!(
         controller_fix,
         Some(FixChoice {
@@ -819,7 +772,7 @@ pub fn resolve_setup(replay: &Replay, root: &Path, setup: Setup) -> Resolved {
         screen: setup.screen,
         ..fixed
     };
-    let (setup, stage_code, screen) = resolve_codes(replay, root, uncoded);
+    let (setup, stage_code, screen) = resolve_codes(game, uncoded);
     Resolved {
         setup,
         controller_fix,
@@ -831,13 +784,9 @@ pub fn resolve_setup(replay: &Replay, root: &Path, setup: Setup) -> Resolved {
 /// The stage code, then the screen under it. A stage code the standard
 /// screen could not show (the wide screen's first difference came before
 /// the stage's) is read again on the wide screen.
-fn resolve_codes(
-    replay: &Replay,
-    root: &Path,
-    setup: Setup,
-) -> (Setup, Option<StageCodeChoice>, ScreenChoice) {
-    let (staged, stage_code) = resolve_stage_codes(replay, root, setup);
-    let (screened, screen) = resolve_screen(replay, root, staged);
+fn resolve_codes(game: &mut Game, setup: Setup) -> (Setup, Option<StageCodeChoice>, ScreenChoice) {
+    let (staged, stage_code) = resolve_stage_codes(game, setup);
+    let (screened, screen) = resolve_screen(game, staged);
     let stage_unread = matches!(
         stage_code,
         Some(StageCodeChoice {
@@ -854,13 +803,18 @@ fn resolve_codes(
         frozen_stages: None,
         ..screened
     };
-    let (setup, stage_code) = resolve_stage_codes(replay, root, unstaged);
+    let (setup, stage_code) = resolve_stage_codes(game, unstaged);
     (setup, stage_code, screen)
 }
 
 pub fn run_file(path: &Path, root: &Path, setup: Setup) -> Result<Report> {
-    let replay = Replay::parse(&std::fs::read(path)?)?;
-    run(&replay, root, setup)
+    let replay = {
+        let _t = cost::time(Part::Parse);
+        Replay::parse(&std::fs::read(path)?)?
+    };
+    let report = run(&replay, root, setup);
+    cost::report(&path.display().to_string(), replay.frames.len());
+    report
 }
 
 pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
@@ -868,12 +822,13 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         !replay.incomplete && !replay.frames.is_empty(),
         "incomplete or empty replay"
     );
+    let mut game = Game::new(replay, root);
     let Resolved {
         setup,
         controller_fix,
         stage_code,
         screen,
-    } = resolve_setup(replay, root, setup);
+    } = resolve_setup_of(&mut game, setup);
     let mut report = Report {
         stage: slp::ids::stage_name(replay.start.stage)
             .unwrap_or("unknown")
@@ -913,75 +868,29 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
         report.stop = Stop::Unsupported(reasons);
         return Ok(report);
     }
-    let scenario = match cold_scenario(replay, root, setup) {
-        Ok(scenario) => scenario,
-        Err(error) => {
+    let _t = cost::time(Part::Compare);
+    let run = match game.comparison_run(setup) {
+        Ok(run) => run,
+        Err(StartError::Scenario(error)) => {
             report.stop = Stop::NeedsSetup(format!("{error:#}"));
             return Ok(report);
         }
+        Err(StartError::Start(error)) => return Err(error),
     };
-    let ColdRun {
-        mut simulation,
-        initial,
-        unavailable,
-    } = ColdRun::start(replay, &scenario)?;
-    let leaders: Vec<usize> = replay.leader_ports().collect();
-    let mut previous_seed = seed_of(&initial);
-    for expected in slp::to_trace(replay) {
-        if let Some((tick, reason)) = &unavailable {
-            if *tick == expected.frame {
-                report.stop = Stop::UnavailableInput {
-                    tick: *tick,
-                    reason: reason.clone(),
-                };
-                return Ok(report);
-            }
-        }
-        let frame = &replay.frames[&(expected.frame as i32 + slp::SLIPPI_FIRST_FRAME)];
+    // The frame of the last tick the comparison reached: its leaders'
+    // recorded actions are the report's context.
+    let mut reached = None;
+    let stop = compare(&mut game, run, &mut report.matched, &mut reached);
+    if let Some(frame) = reached {
         report.context = leader_actions(replay, frame);
-        if setup.skipped_display_pass == Some(expected.frame) {
-            simulation.skip_display_pass();
-        }
-        let result = catch_unwind(AssertUnwindSafe(|| simulation.tick()));
-        let actual = match result {
-            Ok(record) => {
-                let record = record?;
-                simulation.after_map_record(&record).unwrap_or(record)
-            }
-            Err(payload) => {
-                let message = payload
-                    .downcast_ref::<String>()
-                    .map(String::as_str)
-                    .or_else(|| payload.downcast_ref::<&str>().copied())
-                    .unwrap_or("unknown panic");
-                if !message.starts_with("not implemented:") {
-                    report.stop = Stop::Panicked {
-                        tick: expected.frame,
-                        message: message.into(),
-                    };
-                    return Ok(report);
-                }
-                report.stop = Stop::Unported {
-                    tick: expected.frame,
-                    action: frame
-                        .ports
-                        .iter()
-                        .filter_map(|p| p.leader.post.as_ref())
-                        .map(|p| action_name(p.action_state))
-                        .collect::<Vec<_>>()
-                        .join(" / "),
-                    reason: message.into(),
-                };
-                return Ok(report);
-            }
-        };
-        let ComparedTick {
-            expected,
-            actual,
-            end_seed,
-        } = compared_tick(&actual, &leaders, frame, expected, previous_seed);
-        previous_seed = end_seed;
-        if let Some(diff) = compare_frame(&expected, &actual) {
+    }
+    match stop? {
+        Compared::Complete => {}
+        Compared::Stopped(stop) => report.stop = stop,
+        Compared::Diverged { index } => {
+            let (expected, actual) = game.records(run, index);
+            let diff = compare_frame(&expected, &actual)
+                .expect("a tick that does not match has a first divergence");
             report.differing = expected
                 .state
                 .iter()
@@ -989,149 +898,69 @@ pub fn run(replay: &Replay, root: &Path, setup: Setup) -> Result<Report> {
                 .map(|(key, _)| key.clone())
                 .collect();
             report.stop = Stop::Diverged(diff);
-            return Ok(report);
         }
-        report.matched += 1;
     }
     Ok(report)
 }
 
-/// One simulated tick beside its recorded frame, both keyed by leader and
-/// with the Pre Frame seed check added.
-pub(crate) struct ComparedTick {
-    pub(crate) expected: Record,
-    pub(crate) actual: Record,
-    /// The simulation's seed at the end of the tick.
-    pub(crate) end_seed: Option<u32>,
+/// How the comparison of a run with the recording ended.
+enum Compared {
+    Complete,
+    /// Tick `index` does not match the recording.
+    Diverged { index: usize },
+    Stopped(Stop),
 }
 
-impl ComparedTick {
-    pub(crate) fn matches(&self) -> bool {
-        compare_frame(&self.expected, &self.actual).is_none()
-    }
-}
-
-/// Key the tick's record like the recording's and add the seed check from
-/// the previous tick's end seed.
-pub(crate) fn compared_tick(
-    record: &Record,
-    leaders: &[usize],
-    frame: &slp::Frame,
-    mut expected: Record,
-    previous_seed: Option<u32>,
-) -> ComparedTick {
-    let end_seed = seed_of(record);
-    let mut actual = by_leader(record, leaders, frame, expected.frame);
-    if let (Some(from), Some(to)) = (previous_seed, end_seed) {
-        compare_input_seeds(from, to, leaders, frame, &mut expected, &mut actual);
-    }
-    ComparedTick {
-        expected,
-        actual,
-        end_seed,
-    }
-}
-
-/// The simulated record keyed like the replay's: `pN` is the Nth leader's
-/// fighter in play, found by player slot and internal kind (a player's
-/// other fighters, such as Nana or Zelda's sleeping form, shift fighter-list
-/// indices). Nana's recorded follower frame is keyed `pN.follower`.
-fn by_leader(actual: &Record, leaders: &[usize], frame: &slp::Frame, tick: u64) -> Record {
-    let fighter_of = |slot: usize, kind: i64| {
-        (0..8).find(|k| {
-            actual.state.get(&format!("p{k}.player_id"))
-                == Some(&melee_diff::Value::UInt(slot as u64))
-                && actual.state.get(&format!("p{k}.kind")) == Some(&melee_diff::Value::Int(kind))
-        })
-    };
-    let mut state = std::collections::BTreeMap::new();
-    if let Some(seed) = actual.state.get("rng.seed") {
-        state.insert("rng.seed".to_string(), seed.clone());
-    }
-    for (index, &port) in leaders.iter().enumerate() {
-        let ports = &frame.ports[port];
-        let members = [
-            (ports.leader.post.as_ref(), format!("p{index}.")),
-            (ports.follower.post.as_ref(), format!("p{index}.follower.")),
-        ];
-        for (post, prefix) in members {
-            let Some(post) = post else { continue };
-            let Some(k) = fighter_of(port, i64::from(post.internal_character)) else {
-                continue;
-            };
-            let from = format!("p{k}.");
-            for (key, value) in actual.state.range(from.clone()..) {
-                let Some(field) = key.strip_prefix(&from) else {
-                    break;
-                };
-                state.insert(format!("{prefix}{field}"), value.clone());
+/// Compare the run with every recorded frame in turn, counting the frames
+/// that match up to the first that does not.
+fn compare<'a>(
+    game: &mut Game<'a>,
+    run: crate::replay_game::RunId,
+    matched: &mut usize,
+    reached: &mut Option<&'a slp::Frame>,
+) -> Result<Compared> {
+    for index in 0..game.ticks() {
+        let tick = game.tick_number(index);
+        if let Some((unavailable, reason)) = game.unavailable() {
+            if *unavailable == tick {
+                return Ok(Compared::Stopped(Stop::UnavailableInput {
+                    tick,
+                    reason: reason.clone(),
+                }));
             }
         }
-    }
-    Record {
-        frame: tick,
-        phase: actual.phase.clone(),
-        state,
-    }
-}
-
-pub(crate) fn seed_of(record: &Record) -> Option<u32> {
-    match record.state.get("rng.seed")? {
-        melee_diff::Value::UInt(seed) => u32::try_from(*seed).ok(),
-        _ => None,
-    }
-}
-
-/// The most draws one tick is searched for (a tick with more is not checked).
-const MAX_TICK_DRAWS: usize = 1 << 16;
-
-/// Add `pN.input_seed` to both records: Pre Frame's seed (hook 0x8006B0E0,
-/// in the fighter's input proc) must be one the port's stream passes through
-/// during the same tick, from the previous tick's end seed (`from`) to this
-/// one's (`to`). The port does not keep retail's draw timing inside a tick,
-/// only the sequence, so the test is membership, not position. A stream that
-/// has left retail's fails it on the first quiet tick, which names the drift
-/// long before a fighter field shows it. The actual value reported is the
-/// tick's first seed.
-fn compare_input_seeds(
-    from: u32,
-    to: u32,
-    leaders: &[usize],
-    frame: &slp::Frame,
-    expected: &mut Record,
-    actual: &mut Record,
-) {
-    use melee_diff::Value;
-    let mut rng = gekko_math::rng::HsdRng { seed: from };
-    let mut path = vec![from];
-    while rng.seed != to {
-        if path.len() > MAX_TICK_DRAWS {
-            return;
-        }
-        rng.rand();
-        path.push(rng.seed);
-    }
-    for (index, &port) in leaders.iter().enumerate() {
-        let ports = &frame.ports[port];
-        let members = [
-            (&ports.leader, format!("p{index}.input_seed")),
-            (&ports.follower, format!("p{index}.follower.input_seed")),
-        ];
-        for (member, key) in members {
-            let Some(pre) = member.pre.as_ref() else {
-                continue;
+        let frame = game.frame(index);
+        *reached = Some(frame);
+        if !game.observe(run, index) {
+            let message = match game.stop(run, index).expect("a run that stopped") {
+                Stopped::Error(error) => {
+                    return Err(error.take().unwrap_or_else(|| {
+                        anyhow::anyhow!("simulation is poisoned by a prior tick error")
+                    }))
+                }
+                Stopped::Panic(message) => message.clone(),
             };
-            let seen = if path.contains(&pre.random_seed) {
-                pre.random_seed
-            } else {
-                from
-            };
-            expected
-                .state
-                .insert(key.clone(), Value::UInt(u64::from(pre.random_seed)));
-            actual.state.insert(key, Value::UInt(u64::from(seen)));
+            if !message.starts_with("not implemented:") {
+                return Ok(Compared::Stopped(Stop::Panicked { tick, message }));
+            }
+            return Ok(Compared::Stopped(Stop::Unported {
+                tick,
+                action: frame
+                    .ports
+                    .iter()
+                    .filter_map(|p| p.leader.post.as_ref())
+                    .map(|p| action_name(p.action_state))
+                    .collect::<Vec<_>>()
+                    .join(" / "),
+                reason: message,
+            }));
         }
+        if !game.matches(run, index) {
+            return Ok(Compared::Diverged { index });
+        }
+        *matched += 1;
     }
+    Ok(Compared::Complete)
 }
 
 fn leader_actions(replay: &Replay, frame: &slp::Frame) -> String {

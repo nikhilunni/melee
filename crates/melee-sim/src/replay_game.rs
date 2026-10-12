@@ -1,0 +1,425 @@
+//! One replay's simulations, shared by its dry passes and its comparison.
+//!
+//! A replay does not record every code its console ran, so the runner tries
+//! candidate setups (`replay::resolve_setup`): a dry pass steps two of them
+//! side by side until the recording follows one, and the comparison then
+//! runs the chosen setup. The same setup is asked for again and again (the
+//! standard screen under the dated UCF version is one side of the stage
+//! pass, of the screen pass and of the UCF pass, and usually the comparison
+//! too), so a [`Game`] simulates each setup once: a [`Run`] advances only as
+//! far as a reader asks and keeps what every tick showed
+//! (`replay_observed`), and later readers start from its first tick without
+//! simulating it again. What no setup changes is prepared once as well: the
+//! scenario and its pads, the archives, the recorded frames.
+//!
+//! A new candidate dimension is a field in [`Codes`] and its own dry pass.
+use crate::replay::{cold_scenario_base, set_candidate, unsupported_setup, Setup};
+use crate::replay_cost::{self as cost, Part};
+use crate::replay_observed::{member_frames, Expected, Observation, Target, MEMBERS};
+use crate::{
+    frame::Simulation, initial_state::InitialState, inputs::PadScript, scenario::Scenario,
+};
+use anyhow::{ensure, Result};
+use melee_diff::Record;
+use melee_lib::diagnostics::{Assets, FighterValues};
+use melee_types::snapshot::SnapValue;
+use slp::Replay;
+use std::panic::{catch_unwind, AssertUnwindSafe};
+use std::path::Path;
+use std::sync::Arc;
+
+/// The first Slippi version whose Post Frame is sampled at the end of the
+/// fighter procs rather than after the map proc.
+const POST_FRAME_AT_CAMERA: slp::Version = slp::Version {
+    major: 3,
+    minor: 4,
+    build: 0,
+};
+
+/// What a setup's simulation depends on: the codes a dry pass varies.
+/// Everything else a [`Setup`] holds is the same for every run of a replay.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct Codes {
+    frozen_stages: bool,
+    screen: melee_lib::slippi::Screen,
+    /// `Setup::controller_fix`: the UCF version named for the UCF ports.
+    controller_fix: Option<melee_lib::ControllerFix>,
+    /// `Setup::skipped_display_pass`, which only the comparison applies.
+    skipped_display_pass: Option<u64>,
+}
+
+impl Codes {
+    fn of(setup: Setup, skipped_display_pass: Option<u64>) -> Self {
+        Self {
+            frozen_stages: setup.frozen_stages.unwrap_or(false),
+            screen: setup.screen.unwrap_or_default(),
+            controller_fix: setup.controller_fix,
+            skipped_display_pass,
+        }
+    }
+}
+
+/// A run of a [`Game`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct RunId(usize);
+
+/// Why a setup has no run.
+pub(crate) enum StartError {
+    /// The cold scenario could not be built (`Stop::NeedsSetup`).
+    Scenario(anyhow::Error),
+    /// The match could not be constructed or did not reach the recording's
+    /// first seed.
+    Start(anyhow::Error),
+}
+
+/// Why a run has no further tick.
+pub(crate) enum Stopped {
+    /// The tick returned an error (taken by the first reader that reports
+    /// it; a poisoned simulation says no more).
+    Error(Option<anyhow::Error>),
+    /// The tick panicked with this message.
+    Panic(String),
+}
+
+/// What every run of a replay starts from, whatever its setup.
+struct Shared {
+    pads: Arc<PadScript>,
+    assets: Arc<Assets>,
+}
+
+/// One setup's simulation and every tick it has run.
+struct Run {
+    codes: Codes,
+    simulation: Simulation,
+    /// The seed at the end of the last tick run.
+    previous_seed: u32,
+    observed: Vec<Observation>,
+    /// The fighters `Observation::members` name.
+    values: Vec<FighterValues>,
+    stopped: Option<Stopped>,
+}
+
+pub(crate) struct Game<'a> {
+    pub(crate) replay: &'a Replay,
+    root: &'a Path,
+    /// The leaders' ports, ascending: `pN` is the Nth.
+    leaders: Vec<usize>,
+    /// The recorded frames from the match's first, one per tick.
+    frames: Vec<&'a slp::Frame>,
+    /// The first tick whose recorded controller cannot be installed. A bad
+    /// late controller field must not discard an already comparable prefix,
+    /// and no guessed pads stand in for it.
+    unavailable: Option<(u64, String)>,
+    /// The cold scenario; its candidate fields are rewritten for each run.
+    scenario: Option<Scenario>,
+    shared: Option<Shared>,
+    expected: Option<Expected>,
+    runs: Vec<Run>,
+}
+
+impl<'a> Game<'a> {
+    pub(crate) fn new(replay: &'a Replay, root: &'a Path) -> Self {
+        Self {
+            replay,
+            root,
+            leaders: replay.leader_ports().collect(),
+            frames: replay
+                .frames
+                .values()
+                .filter(|frame| slp::harness_frame(frame.number).is_some())
+                .collect(),
+            unavailable: None,
+            scenario: None,
+            shared: None,
+            expected: None,
+            runs: Vec::new(),
+        }
+    }
+
+    /// How many ticks the recording holds.
+    pub(crate) fn ticks(&self) -> usize {
+        self.frames.len()
+    }
+
+    /// Tick `index` as reports number it.
+    pub(crate) fn tick_number(&self, index: usize) -> u64 {
+        slp::harness_frame(self.frames[index].number).expect("a frame of the match")
+    }
+
+    pub(crate) fn frame(&self, index: usize) -> &'a slp::Frame {
+        self.frames[index]
+    }
+
+    pub(crate) fn leaders(&self) -> &[usize] {
+        &self.leaders
+    }
+
+    /// The first tick whose recorded controller cannot be installed, known
+    /// once a run has started.
+    pub(crate) fn unavailable(&self) -> Option<&(u64, String)> {
+        self.unavailable.as_ref()
+    }
+
+    /// The run of a setup as a dry pass steps it: started now unless an
+    /// earlier reader already did.
+    pub(crate) fn run(&mut self, setup: Setup) -> Result<RunId, StartError> {
+        self.run_of(setup, Codes::of(setup, None))
+    }
+
+    /// The run the comparison reads: the dry passes' run of the setup,
+    /// unless the comparison skips a display pass they did not.
+    pub(crate) fn comparison_run(&mut self, setup: Setup) -> Result<RunId, StartError> {
+        self.run_of(setup, Codes::of(setup, setup.skipped_display_pass))
+    }
+
+    fn run_of(&mut self, setup: Setup, codes: Codes) -> Result<RunId, StartError> {
+        if let Some(index) = self.runs.iter().position(|run| run.codes == codes) {
+            return Ok(RunId(index));
+        }
+        let run = self.start(setup, codes)?;
+        self.runs.push(run);
+        Ok(RunId(self.runs.len() - 1))
+    }
+
+    /// A replay's cold simulation, before its first compared tick.
+    fn start(&mut self, setup: Setup, codes: Codes) -> Result<Run, StartError> {
+        self.set_scenario(setup).map_err(StartError::Scenario)?;
+        self.start_run(codes).map_err(StartError::Start)
+    }
+
+    /// The replay's cold scenario with the setup's codes.
+    fn set_scenario(&mut self, setup: Setup) -> Result<()> {
+        let _t = cost::time(Part::Scenario);
+        ensure!(
+            unsupported_setup(self.replay, setup).is_empty(),
+            "unsupported replay setup"
+        );
+        match &mut self.scenario {
+            Some(scenario) => set_candidate(self.replay, scenario, setup),
+            None => self.scenario = Some(cold_scenario_base(self.replay, self.root, setup)?),
+        }
+        self.scenario.as_ref().expect("built").validate()
+    }
+
+    fn start_run(&mut self, codes: Codes) -> Result<Run> {
+        let _t = cost::time(Part::Start);
+        if self.shared.is_none() {
+            self.shared = Some(self.share()?);
+        }
+        let (scenario, shared) = (
+            self.scenario.as_ref().expect("built"),
+            self.shared.as_ref().expect("shared"),
+        );
+        let state =
+            InitialState::from_parameters_with_assets(scenario, Arc::clone(&shared.assets))?;
+        let mut simulation = Simulation::with_shared_inputs(state, Arc::clone(&shared.pads));
+        simulation.tick_without_snapshot()?;
+        let seed = simulation.seed();
+        if let Some(first) = self
+            .replay
+            .frames
+            .values()
+            .next()
+            .and_then(slp::Frame::scheduler_start_seed)
+        {
+            ensure!(
+                seed == first,
+                "boundary seed does not reach first Frame Start"
+            );
+        }
+        // Slippi before 3.4.0 sampled Post Frame at 0x8006C5D8, the end of
+        // each fighter's map proc (Fighter_8006C27C, s_link 6), before hit
+        // detection and damage; 3.4.0 moved it to 0x8006DA34 in the camera
+        // proc (s_link 18), after the fighter procs the trace reads
+        // (slippi-ssbm-asm 9398d52).
+        simulation.capture_after_map_values(self.replay.version() < POST_FRAME_AT_CAMERA);
+        Ok(Run {
+            codes,
+            simulation,
+            previous_seed: seed,
+            observed: Vec::with_capacity(self.frames.len()),
+            values: Vec::new(),
+            stopped: None,
+        })
+    }
+
+    /// The pads and archives every run of the replay starts from.
+    fn share(&mut self) -> Result<Shared> {
+        let scenario = self.scenario.as_ref().expect("built");
+        self.unavailable = scenario.replay_inputs.iter().find_map(|input| {
+            crate::inputs::replay_pad(input)
+                .err()
+                .map(|error| (input.frame, format!("port {}: {error}", input.port + 1)))
+        });
+        let pad_frames = self
+            .unavailable
+            .as_ref()
+            .map_or(scenario.frames, |(frame, _)| *frame);
+        let prefix: Vec<_> = scenario
+            .replay_inputs
+            .iter()
+            .filter(|input| input.frame < pad_frames)
+            .cloned()
+            .collect();
+        let pads = PadScript::from_replay_inputs(
+            &prefix,
+            pad_frames as usize,
+            &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
+        )?;
+        let assets = InitialState::load_assets(scenario)?;
+        Ok(Shared {
+            pads: Arc::new(pads),
+            assets,
+        })
+    }
+
+    /// Simulate the run through tick `index` unless it already has.
+    /// `false` when the run stopped at or before that tick ([`Self::stop`]).
+    pub(crate) fn observe(&mut self, run: RunId, index: usize) -> bool {
+        while self.runs[run.0].observed.len() <= index {
+            if self.runs[run.0].stopped.is_some() {
+                return false;
+            }
+            self.advance(run);
+        }
+        true
+    }
+
+    /// Why the run has no tick `index`.
+    pub(crate) fn stop(&mut self, run: RunId, _index: usize) -> Option<&mut Stopped> {
+        self.runs[run.0].stopped.as_mut()
+    }
+
+    /// Run the run's next tick and keep what it showed.
+    fn advance(&mut self, id: RunId) {
+        let run = &mut self.runs[id.0];
+        let index = run.observed.len();
+        let tick = slp::harness_frame(self.frames[index].number).expect("a frame of the match");
+        let frame = self.frames[index];
+        if run.codes.skipped_display_pass == Some(tick) {
+            run.simulation.skip_display_pass();
+        }
+        cost::ticks(1);
+        let result = catch_unwind(AssertUnwindSafe(|| run.simulation.tick_without_snapshot()));
+        match result {
+            Ok(Ok(())) => {
+                if self.expected.is_none() {
+                    self.expected = Some(Expected::compile(
+                        self.replay,
+                        &self.frames,
+                        run.simulation.fighter_paths(),
+                    ));
+                }
+                let observation = self.expected.as_ref().expect("compiled").observe(
+                    &run.simulation,
+                    run.previous_seed,
+                    &self.leaders,
+                    frame,
+                    &mut run.values,
+                );
+                run.previous_seed = observation.end_seed;
+                run.observed.push(observation);
+            }
+            Ok(Err(error)) => run.stopped = Some(Stopped::Error(Some(error))),
+            Err(payload) => {
+                let message = payload
+                    .downcast_ref::<String>()
+                    .map(String::as_str)
+                    .or_else(|| payload.downcast_ref::<&str>().copied())
+                    .unwrap_or("unknown panic");
+                run.stopped = Some(Stopped::Panic(message.into()));
+            }
+        }
+    }
+
+    fn observation(&self, run: RunId, index: usize) -> (&Run, &Observation) {
+        let run = &self.runs[run.0];
+        (run, &run.observed[index])
+    }
+
+    fn member(&self, run: RunId, index: usize, member: usize) -> Option<&FighterValues> {
+        let (run, observation) = self.observation(run, index);
+        observation.members[member].map(|at| &run.values[at as usize])
+    }
+
+    /// The value an observed tick holds for a recorded key.
+    fn value(&self, run: RunId, index: usize, target: Target) -> Option<SnapValue> {
+        match target {
+            Target::Seed => Some(SnapValue::U64(u64::from(
+                self.observation(run, index).1.end_seed,
+            ))),
+            Target::Field { member, index: at } => self
+                .member(run, index, usize::from(member))?
+                .get(usize::from(at)),
+            Target::Absent => None,
+        }
+    }
+
+    fn expected(&self) -> &Expected {
+        self.expected.as_ref().expect("a tick was observed")
+    }
+
+    /// Whether the observed tick holds every recorded value, the Pre Frame
+    /// seeds included: no divergence from the recording on this tick.
+    pub(crate) fn matches(&self, run: RunId, index: usize) -> bool {
+        let (_, observation) = self.observation(run, index);
+        self.expected()
+            .entries(index)
+            .iter()
+            .all(|(target, value)| self.value(run, index, *target).as_ref() == Some(value))
+            && member_frames(&self.leaders, self.frames[index]).all(|(member, frame)| {
+                match (observation.input_seeds[member], frame.pre.as_ref()) {
+                    (Some(seen), Some(pre)) => seen == pre.random_seed,
+                    _ => true,
+                }
+            })
+    }
+
+    /// Whether two runs' ticks are the same to the recording's eyes: the
+    /// end seed, every value of each recorded fighter and the Pre Frame
+    /// seeds the tick passed through.
+    pub(crate) fn same(&self, a: RunId, b: RunId, index: usize) -> bool {
+        let (first, second) = (self.observation(a, index).1, self.observation(b, index).1);
+        first.end_seed == second.end_seed
+            && first.input_seeds == second.input_seeds
+            && (0..MEMBERS)
+                .all(|member| self.member(a, index, member) == self.member(b, index, member))
+    }
+
+    /// Whether two runs' ticks agree on every key the recording holds for
+    /// the tick (the Pre Frame seeds aside).
+    pub(crate) fn same_recorded(&self, a: RunId, b: RunId, index: usize) -> bool {
+        self.expected()
+            .entries(index)
+            .iter()
+            .all(|(target, _)| self.value(a, index, *target) == self.value(b, index, *target))
+    }
+
+    /// A leader's `facing_dir` on an observed tick.
+    pub(crate) fn facing(&self, run: RunId, index: usize, leader: usize) -> Option<SnapValue> {
+        self.value(run, index, self.expected().facing(leader)?)
+    }
+
+    /// A leader's recorded `facing_dir` on a tick.
+    pub(crate) fn recorded_facing(&self, index: usize, leader: usize) -> Option<&SnapValue> {
+        let target = self.expected().facing(leader)?;
+        self.expected()
+            .entries(index)
+            .iter()
+            .find(|(recorded, _)| *recorded == target)
+            .map(|(_, value)| value)
+    }
+
+    /// The recorded and the simulated record of an observed tick, as a
+    /// report prints them (`Expected::records`).
+    pub(crate) fn records(&self, run: RunId, index: usize) -> (Record, Record) {
+        self.expected().records(
+            self.replay,
+            &self.leaders,
+            self.frames[index],
+            self.frames.get(index + 1).copied(),
+            self.observation(run, index).1,
+            |member| self.member(run, index, member),
+        )
+    }
+}

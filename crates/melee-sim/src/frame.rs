@@ -4,7 +4,9 @@ pub use melee_lib::diagnostics::RenderedPose;
 #[derive(Clone)]
 pub struct Simulation {
     engine: melee_lib::diagnostics::Simulation,
-    pads: PadScript,
+    /// Shared, so a copy of a long match's simulation does not copy its
+    /// whole input script.
+    pads: std::sync::Arc<PadScript>,
     /// [`Self::skip_display_pass`], taken by the next tick.
     display_override: Option<bool>,
 }
@@ -13,6 +15,10 @@ impl Simulation {
         Self::with_inputs(state, PadScript::default())
     }
     pub fn with_inputs(state: InitialState, pads: PadScript) -> Self {
+        Self::with_shared_inputs(state, std::sync::Arc::new(pads))
+    }
+    /// [`Self::with_inputs`] for simulations that run the same script.
+    pub fn with_shared_inputs(state: InitialState, pads: std::sync::Arc<PadScript>) -> Self {
         Self {
             engine: melee_lib::diagnostics::Simulation::new(state),
             pads,
@@ -21,7 +27,7 @@ impl Simulation {
     }
     /// Replace the pad script; ticks already run keep the pads they used.
     pub fn set_pads(&mut self, pads: PadScript) {
-        self.pads = pads;
+        self.pads = std::sync::Arc::new(pads);
     }
     /// The pads, raw stick bytes and display pass the next tick consumes.
     fn set_tick_inputs(&mut self) {

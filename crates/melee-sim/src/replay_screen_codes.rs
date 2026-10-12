@@ -9,13 +9,11 @@
 //! differ; the run the recording then follows names the screen, which runs
 //! the whole comparison from its first frame.
 use crate::replay::{dated_controller_fix, unsupported_setup, Setup};
+use crate::replay_cost::{self as cost, Part};
+use crate::replay_game::Game;
 use crate::replay_stage_codes::{recorded_among, Left};
 use melee_lib::slippi::Screen;
-use slp::Replay;
-use std::{
-    panic::{catch_unwind, AssertUnwindSafe},
-    path::Path,
-};
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 /// The screens a recording is read against, retail's first: runs the
 /// recording does not tell apart are taken for the earliest here.
@@ -101,7 +99,8 @@ fn name(screen: Screen) -> &'static str {
 }
 
 /// Choose the screen code for a recording, under the setup's stage code.
-pub fn resolve_screen(replay: &Replay, root: &Path, setup: Setup) -> (Setup, ScreenChoice) {
+pub(crate) fn resolve_screen(game: &mut Game, setup: Setup) -> (Setup, ScreenChoice) {
+    let replay = game.replay;
     let named = |screen| Setup {
         screen: Some(screen),
         ..setup
@@ -119,8 +118,9 @@ pub fn resolve_screen(replay: &Replay, root: &Path, setup: Setup) -> (Setup, Scr
     if unsupported_setup(replay, dated(Screen::Standard)).is_empty() {
         // An unported boundary or setup error before the recording decides
         // leaves retail's screen; the comparison run reports it.
+        let _t = cost::time(Part::ScreenProbe);
         let probe = catch_unwind(AssertUnwindSafe(|| {
-            recorded_among(replay, root, CANDIDATES.map(dated))
+            recorded_among(game, CANDIDATES.map(dated))
         }));
         if let Ok(Ok(Some(followed))) = probe {
             let rejected = followed

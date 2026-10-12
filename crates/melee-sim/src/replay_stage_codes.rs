@@ -9,15 +9,10 @@
 //! in step, from the recorded inputs alone, until the two differ; the run
 //! the recording then follows names the setup, which runs the whole
 //! comparison from its first frame.
-use crate::replay::{
-    cold_scenario, compared_tick, dated_controller_fix, unsupported_setup, ColdRun, Setup,
-};
-use anyhow::Result;
-use slp::Replay;
-use std::{
-    panic::{catch_unwind, AssertUnwindSafe},
-    path::Path,
-};
+use crate::replay::{dated_controller_fix, unsupported_setup, NoAnswer, Setup};
+use crate::replay_cost::{self as cost, Part};
+use crate::replay_game::Game;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 
 /// Whether the frozen-stage code ran and what decided it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -79,11 +74,11 @@ pub fn changes_stage(stage: u16) -> bool {
 
 /// Choose the stage code for a recording on a stage it changes. `None` on
 /// the other stages, where the question does not arise.
-pub fn resolve_stage_codes(
-    replay: &Replay,
-    root: &Path,
+pub(crate) fn resolve_stage_codes(
+    game: &mut Game,
     setup: Setup,
 ) -> (Setup, Option<StageCodeChoice>) {
+    let replay = game.replay;
     if !changes_stage(replay.start.stage) {
         return (setup, None);
     }
@@ -105,8 +100,9 @@ pub fn resolve_stage_codes(
     if unsupported_setup(replay, dated(false)).is_empty() {
         // An unported boundary or setup error before the recording decides
         // leaves retail's stage; the comparison run reports it.
+        let _t = cost::time(Part::StageProbe);
         let probe = catch_unwind(AssertUnwindSafe(|| {
-            recorded_between(replay, root, dated(false), dated(true))
+            recorded_between(game, dated(false), dated(true))
         }));
         if let Ok(Ok(Some(recorded))) = probe {
             choice = StageCodeChoice {
@@ -136,12 +132,11 @@ pub(crate) struct Recorded {
 /// for two setups. `None` when they never differ, or both stop matching on
 /// the same tick.
 pub(crate) fn recorded_between(
-    replay: &Replay,
-    root: &Path,
+    game: &mut Game,
     plain: Setup,
     coded: Setup,
-) -> Result<Option<Recorded>> {
-    let Some(followed) = recorded_among(replay, root, [plain, coded])? else {
+) -> Result<Option<Recorded>, NoAnswer> {
+    let Some(followed) = recorded_among(game, [plain, coded])? else {
         return Ok(None);
     };
     let other = 1 - followed.chosen;
@@ -181,20 +176,14 @@ pub(crate) struct Left {
 /// remain together to the end, or stop matching together, are not told
 /// apart, and the first of them in the order given is chosen.
 pub(crate) fn recorded_among<const N: usize>(
-    replay: &Replay,
-    root: &Path,
+    game: &mut Game,
     setups: [Setup; N],
-) -> Result<Option<Followed<N>>> {
+) -> Result<Option<Followed<N>>, NoAnswer> {
     let mut runs = Vec::with_capacity(N);
     for setup in setups {
-        runs.push(ColdRun::start(replay, &cold_scenario(replay, root, setup)?)?);
+        runs.push(game.run(setup).map_err(|_| NoAnswer)?);
     }
-    let leaders: Vec<usize> = replay.leader_ports().collect();
-    let last_tick = runs[0].unavailable.as_ref().map(|(tick, _)| *tick);
-    let mut previous_seeds: Vec<_> = runs
-        .iter()
-        .map(|run| crate::replay::seed_of(&run.initial))
-        .collect();
+    let last_tick = game.unavailable().map(|(tick, _)| *tick);
     // Runs the recording has not left, and each pair's first differing tick.
     let mut together = [true; N];
     let mut apart = [[None; N]; N];
@@ -209,39 +198,23 @@ pub(crate) fn recorded_among<const N: usize>(
         });
         Followed { chosen, left }
     };
-    for expected in slp::to_trace(replay) {
-        if last_tick == Some(expected.frame) {
+    for index in 0..game.ticks() {
+        let tick = game.tick_number(index);
+        if last_tick == Some(tick) {
             break;
         }
-        let tick = expected.frame;
-        let frame = &replay.frames[&(tick as i32 + slp::SLIPPI_FIRST_FRAME)];
-        let mut compared: [Option<crate::replay::ComparedTick>; N] = std::array::from_fn(|_| None);
         for run in (0..N).filter(|run| together[*run]) {
-            let record = runs[run].simulation.tick()?;
-            let record = runs[run]
-                .simulation
-                .after_map_record(&record)
-                .unwrap_or(record);
-            let ticked = compared_tick(
-                &record,
-                &leaders,
-                frame,
-                expected.clone(),
-                previous_seeds[run],
-            );
-            previous_seeds[run] = ticked.end_seed;
-            compared[run] = Some(ticked);
+            if !game.observe(runs[run], index) {
+                return Err(NoAnswer);
+            }
         }
         let mut asked = false;
         for a in 0..N {
             for b in a + 1..N {
-                let (Some(first), Some(second)) = (&compared[a], &compared[b]) else {
+                if !(together[a] && together[b]) {
                     continue;
-                };
-                if apart[a][b].is_none()
-                    && (first.end_seed != second.end_seed
-                        || first.actual.state != second.actual.state)
-                {
+                }
+                if apart[a][b].is_none() && !game.same(runs[a], runs[b], index) {
                     apart[a][b] = Some(tick);
                 }
                 asked |= apart[a][b].is_some();
@@ -251,7 +224,7 @@ pub(crate) fn recorded_among<const N: usize>(
             continue;
         }
         let matches: [bool; N] =
-            std::array::from_fn(|run| compared[run].as_ref().is_some_and(|c| c.matches()));
+            std::array::from_fn(|run| together[run] && game.matches(runs[run], index));
         if !matches.contains(&true) {
             // Every remaining run stops here: nothing tells them apart.
             return Ok(left
