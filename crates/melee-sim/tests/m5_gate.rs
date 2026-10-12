@@ -980,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 548] = [
+const MATRIX_WITNESSES: [(&str, usize); 550] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1340,6 +1340,11 @@ const MATRIX_WITNESSES: [(&str, usize); 548] = [
     ("roy_counter_hit_fd_fox4", 241),
     ("roy_counter_laser_fd_fox4", 225),
     ("roy_aircounter_laser_fd_fox4", 225),
+    // A Counter that catches Link's boomerang is a shield contact
+    // (ftColl_80077688, 0x800776B0): the hitbox's x41_b6 records the fighter
+    // with its rehit timer, so the returning boomerang strikes him (3%).
+    ("mars_counter_boomerang_dl_marth4", 400),
+    ("mars_counter_boomerang_dl_roy4", 400),
     // DRMARIO: Dr. Mario runs Mario's specials (ft-mario-family) with his own
     // attributes: the Super Sheet (reflector, turnaround on the ground, in the air
     // and on a shield, a whiff), the Megavitamin (thrown, reflected by Fox, into Fox
@@ -2570,7 +2575,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 118] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 120] = [
     // A Slippi Online (netplay) game played back whole: every tick starts
     // from the netplay code's seed (InitOnlinePlay.asm's FN_SyncRNG: the
     // scene frame counter turned sixteen bits plus the RNG offset, which the
@@ -3040,6 +3045,13 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 118] = [
     // 12, then 11).
     ("slp_ps_fox_drmario_wide9263_r2_t9800_cold", 9800),
     ("slp_ps_fox_drmario_wide9263_lag9382b_t9800_cold", 9800),
+    // Two Slippi Online games in which Marth's Counter catches a boomerang
+    // (ftColl_80077688 records him with the hitbox's rehit timer, mode 2).
+    // Young Link's runs out after 16 ticks and the Counter's slash clanks
+    // with the boomerang's hitbox (ftColl_80077970) at record 1938; Link's
+    // returning boomerang strikes Marth at 1071.
+    ("slp_online_bf_younglink_marth_r224303_t2100_cold", 2100),
+    ("slp_online_ys_link_marth_r232021_t1300_cold", 1300),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

@@ -1,0 +1,29 @@
+# YoungLink vs Marth on Battlefield, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_bf_online37_wide_p12_younglink3_marth2_4_r224303"
+savestate = "harness/roms/start_bf_online37_wide_p12_younglink3_marth2_4_r224303.sav"
+frames = 600
+seed = 1
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 48725
+stage = "Battlefield"
+widescreen = true
+online_offscreen_damage = true
+gecko = ["ucf-0.74", "neutral-spawn", "online-offscreen-damage", "widescreen"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "YoungLink"
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"
+controller_fix = "ucf-0.74"

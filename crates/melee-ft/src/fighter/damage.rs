@@ -1892,8 +1892,11 @@ impl FighterCore {
             }
         }
         let group = desc.group;
-        // inlineItemA1: it_8026FAC4 with mode 4 (x41_b5, timed) or 3.
-        if item.hit_flags[id].damage_without_hitlag {
+        // ftColl_80077688 (retail 0x800776B0..0x800776D8): it_8026FAC4 with
+        // mode 2 (x41_b6, timed) or 1, as for the ordinary shield. A timed
+        // record runs out, and the hitbox can then meet this fighter again
+        // (a boomerang caught by the Counter clanks with the slash).
+        if item.hit_flags[id].shield_rehit {
             item.record_timed_victim(group, self.spawn_number);
         } else {
             melee_coll::detection::record_victim(&mut item.hitboxes, group, self.spawn_number);

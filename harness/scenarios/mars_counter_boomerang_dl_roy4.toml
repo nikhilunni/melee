@@ -1,0 +1,32 @@
+# MARS directed witness: Roy drops through Dream Land's left platform and
+# his Counter catches Link's boomerang (233). The catch is a shield contact
+# (ftColl_80077688): the boomerang's hitbox has x41_b6 set, so it records
+# Roy with its rehit timer (30) and not for good. The boomerang, turned
+# upward, comes back and strikes him at 347 for 3%; an untimed record
+# would have let it pass through him.
+name = "mars_counter_boomerang_dl_roy4"
+input_clock = "tick"
+savestate = "harness/roms/start_dl_link_roy4.sav"
+frames = 400
+seed = 1
+stage = "DreamLand"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 120, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 135, port = 1, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512, stickX = -90 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 224, port = 1, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 226, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Roy"
+controller = "scripted"

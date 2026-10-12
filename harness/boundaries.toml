@@ -738,3 +738,12 @@ stage = "Battlefield"
 players = ["Pikachu", "Ganondorf"]
 stocks = 4
 seed = 3458432933
+
+[[boundary]]
+name = "start_dl_link_roy4"
+cold = "start_dl_link_roy4_cold"
+savestate = "harness/roms/start_dl_link_roy4.sav"
+stage = "DreamLand"
+players = ["Link", "Roy"]
+stocks = 4
+seed = 2516155741
