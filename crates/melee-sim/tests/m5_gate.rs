@@ -2519,6 +2519,28 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // The mid-stage up throw recorded with the gameplay camera dump
     // (ftCo_ThrowHi_Cam / ftCo_ThrownHi_Cam: ftCamera_800762F4).
     ("kirby_throw_hi_camera_fd_fox4", 420),
+    // Hammer (ftkirbyspecials.c) and its article (itkirbyhammer.c), items
+    // compared. On the ground, whiffed, facing either way: the hammer out
+    // from the first frame with its trail (efAlt 0x496, 0x498), put away
+    // by the script.
+    ("kirby_hammer_ground_fd_fox4", 420),
+    // From a full hop: the lift (u.kb.x64), the aerial trail (efAlt 0x497,
+    // 0x499), and the landing in the swing (LandingFallSpecial, +D0).
+    ("kirby_hammer_air_land_fd_fox4", 420),
+    // On Fox, from the ground and from a short hop (two hits in the air).
+    ("kirby_hammer_hit_fd_fox4", 420),
+    ("kirby_hammer_air_hit_fd_fox4", 420),
+    // Twice in one flight: the first lifts and ends in Fall, the second
+    // does not lift and lands.
+    ("kirby_hammer_air_twice_fd_fox4", 520),
+    // Pushed off the floor's end by Fox in the grounded swing
+    // (ftKb_SpecialS_Coll: the hammer goes, Fall).
+    ("kirby_hammer_edge_fd_fox4", 460),
+    // Fox's dash attack on Kirby with the hammer out (ftKb_Init_800EE7B8),
+    // and Kirby crossing the blast zone with it out (ftKb_Init_800EE74C);
+    // then a Hammer off the revival platform.
+    ("kirby_hammer_struck_fd_fox4", 460),
+    ("kirby_hammer_death_fd_fox4", 620),
 ];
 
 #[test]

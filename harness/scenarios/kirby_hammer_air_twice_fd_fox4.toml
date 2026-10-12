@@ -1,0 +1,33 @@
+# KIRBY directed witness from start_fd_kirby_fox4: Hammer twice in one flight from the top of three midair jumps: the first lifts Kirby, the second does not; he lands in it.
+name = "kirby_hammer_air_twice_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 106, port = 0, buttons = {  }, raw = {  } },
+  { frame = 126, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 132, port = 0, buttons = {  }, raw = {  } },
+  { frame = 152, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 158, port = 0, buttons = {  }, raw = {  } },
+  { frame = 178, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 184, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 204, port = 0, buttons = {  }, raw = {  } },
+  { frame = 272, port = 0, buttons = {  }, raw = { button = 512, stickX = 127 } },
+  { frame = 276, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
