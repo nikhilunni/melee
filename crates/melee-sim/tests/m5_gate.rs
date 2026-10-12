@@ -2570,7 +2570,16 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 111] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 112] = [
+    // A Slippi Online (netplay) game played back whole: every tick starts
+    // from the netplay code's seed (InitOnlinePlay.asm's FN_SyncRNG: the
+    // scene frame counter turned sixteen bits plus the RNG offset, which the
+    // recorder and the port's tick driver both write, `online_rng_offset`),
+    // and off-screen damage follows BrawlOffscreenDamage.asm (0x8006A880:
+    // the stage's camera limits; without it the port takes a magnifier
+    // point retail does not, at 1782). Retail follows the replay on all
+    // 13610 frames.
+    ("slp_online_bf_drmario_marth_r1_t13611_cold", 13611),
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),

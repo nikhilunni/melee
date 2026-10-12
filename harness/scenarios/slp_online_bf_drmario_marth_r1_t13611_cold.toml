@@ -1,0 +1,35 @@
+# Slippi Online (netplay) game played back on retail: DOC/Game_20200721T200318.slp (Slippi 3.7.0, Dr. Mario vs Marth, Battlefield, ports 1 and 2), every tick seeded as the netplay code seeds it (online_rng_offset) under its off-screen damage code.
+# The port's side of slp_online_bf_drmario_marth_r1_t13611: boundary start_bf_online37_wide_p12_drmario4_marth2_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_online_bf_drmario_marth_r1_t13611_cold"
+expected = "slp_online_bf_drmario_marth_r1_t13611"
+frames = 13611
+seed = 1783383482
+boundary_seed = 3010487590
+online_rng_offset = 39851
+stage = "Battlefield"
+widescreen = true
+online_offscreen_damage = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "DrMario"
+costume = 4
+stocks = 4
+spawn_point = 0
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 2
+stocks = 4
+spawn_point = 1
+controller = "scripted"
+controller_fix = "ucf-0.74"
