@@ -721,6 +721,9 @@ pub struct ItemCore {
     pub push_settled: bool,
     /// xBEC (ItemAttr x20, scaled by it_80274E44): its push box.
     pub push_box: melee_types::mp::ItEcb,
+    /// xBDC: the kind's push box at the item's scale, which the accessory
+    /// proc turns with the model into `push_box` (it_80271A58).
+    pub push_box_base: melee_types::mp::ItEcb,
     /// xDD1 b0: it_8027518C started its explosion lifetime; items no
     /// longer push off it.
     pub exploding: bool,
@@ -1297,11 +1300,15 @@ impl ItemCore {
         self.grab_offset.y *= scale;
         self.grab_range.x *= scale;
         self.grab_range.y *= scale;
-        // it_80274E44: the push box (xBEC); xBDC has no port consumer.
+        // it_80274E44: the push box (xBEC) and its unturned source (xBDC).
         self.push_box.top *= scale;
         self.push_box.bottom *= scale;
         self.push_box.right *= scale;
         self.push_box.left *= scale;
+        self.push_box_base.top *= scale;
+        self.push_box_base.bottom *= scale;
+        self.push_box_base.right *= scale;
+        self.push_box_base.left *= scale;
     }
     /// it_80272460 (80272460) for an existing hitbox `id`: its count and
     /// the damage restaled for the item's attack (ft_80089228).
@@ -1612,6 +1619,7 @@ impl ItemPool {
             pushed_by_open_palm: true,
             push_settled: false,
             push_box: assets.push_box,
+            push_box_base: assets.push_box,
             exploding: false,
             environmental_velocity: Vec3::ZERO,
             platform_velocity: Vec3::ZERO,

@@ -46,6 +46,43 @@ fn overlaps(x: f32, y: f32, a: &ItEcb, b: &ItEcb, target: Vec3) -> bool {
 }
 
 impl ItemCore {
+    /// it_80271A58 (80271A58), in the accessory proc's tail: the push box
+    /// (xBEC) is the scaled box of the kind (xBDC), mirrored for a
+    /// right-facing item whose model is locked to its facing (xDC8 x19),
+    /// then turned with the model about its spin axis and boxed again
+    /// (it_80271830): each side's point rotated about Z
+    /// (lbVector_RotateAboutUnitAxis) and the four points' extremes taken,
+    /// by fcmpo in retail's order (0x80271930..0x80271A40). The angle is
+    /// first brought into [0, 2 pi] in double precision (0x80271878,
+    /// 0x80271890: fadd / fsub, frsp).
+    pub(crate) fn refresh_push_box(&mut self) {
+        use melee_lb::vector::rotate;
+        let mut b = self.push_box_base;
+        if self.facing == 1.0 && self.spin_ignores_facing {
+            let right = -b.right;
+            b.right = -b.left;
+            b.left = right;
+        }
+        let mut angle = self.ecb_angle();
+        while angle < 0.0 {
+            angle = (f64::from(angle) + core::f64::consts::TAU) as f32;
+        }
+        while f64::from(angle) > core::f64::consts::TAU {
+            angle = (f64::from(angle) - core::f64::consts::TAU) as f32;
+        }
+        let axis = Vec3::new(0.0, 0.0, 1.0);
+        let top = rotate(Vec3::new(0.0, b.top, 0.0), axis, angle);
+        let bottom = rotate(Vec3::new(0.0, b.bottom, 0.0), axis, angle);
+        let right = rotate(Vec3::new(b.right, 0.0, 0.0), axis, angle);
+        let left = rotate(Vec3::new(b.left, 0.0, 0.0), axis, angle);
+        self.push_box = ItEcb {
+            left: greatest([top.x, bottom.x, right.x, left.x]),
+            top: greatest([top.y, bottom.y, right.y, left.y]),
+            right: least([top.x, bottom.x, right.x, left.x]),
+            bottom: least([top.y, bottom.y, right.y, left.y]),
+        };
+    }
+
     /// it_8027518C's flags (xDD1 b0, then it_8026BDB4 clears xDC8 x1A): an
     /// exploding item neither pushes nor is pushed. Its explosion lifetime
     /// and destroy effect are the caller's.
@@ -55,16 +92,43 @@ impl ItemCore {
     }
 }
 
+/// `(a > b) ? a : b` over the four points, as it_80271830 folds them
+/// (fcmpo, ble: an unordered pair takes the later point).
+#[allow(clippy::neg_cmp_op_on_partial_ord)]
+fn greatest(values: [f32; 4]) -> f32 {
+    let mut result = values[0];
+    for value in &values[1..] {
+        if !(result > *value) {
+            result = *value;
+        }
+    }
+    result
+}
+/// `(a < b) ? a : b` over the four points (fcmpo, bge).
+#[allow(clippy::neg_cmp_op_on_partial_ord)]
+fn least(values: [f32; 4]) -> f32 {
+    let mut result = values[0];
+    for value in &values[1..] {
+        if !(result < *value) {
+            result = *value;
+        }
+    }
+    result
+}
+
 impl ItemPool {
-    /// it_802722B0 (802722B0), at the end of an item's accessory proc: the
-    /// first item in the list samples every fighter's position.
+    /// Item_80269A9C's tail, at the end of an item's accessory proc: the
+    /// push box follows the model (it_80271A58), x1B clears (it_80272280),
+    /// and the first item in the list samples every fighter's position
+    /// (it_802722B0).
     pub fn sample_fighters_for_push(&mut self, id: u32, positions: impl IntoIterator<Item = Vec3>) {
+        if let Some(item) = self.get_mut(id) {
+            item.refresh_push_box();
+            // it_80272280: x1B clears for the next animation proc's item push.
+            item.push_settled = false;
+        }
         if self.items.first().map(|item| item.id) == Some(id) {
             self.fighter_push.record(positions);
-        }
-        // it_80272280: x1B clears for the next animation proc's item push.
-        if let Some(item) = self.get_mut(id) {
-            item.push_settled = false;
         }
     }
 

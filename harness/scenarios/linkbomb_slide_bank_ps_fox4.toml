@@ -1,0 +1,42 @@
+# LINK BOMB SLIDE directed witness (boundary start_ps_link_fox4, Pokemon
+# Stadium; `melee-sim search`, 40 of the first 40 candidates over the 45
+# degree bank reached). Both idle until the first transformation has risen
+# (from this boundary the form whose floor dips between x = -25 and 25).
+# Link pulls a bomb (4450), walks right (4520), hops (4578) and drops it (Z,
+# 4616) onto the bank that climbs from (20, 0) to (25, 5). The dropped bomb
+# touches the floor slowly, so it is grounded and rolls
+# (itLinkbomb_UnkMotion2_Coll, state 4); on the next tick
+# itLinkbomb_UnkMotion4_Coll's it_8026D62C finds a floor past ItCo +C0 with
+# xD5C still 2 (it_80277544), and Item_8026ADC0 runs
+# itLinkBomb_Logic16_EnteredAir (state 6). It slides back down the bank
+# (it_8027737C) to the level floor, where it_8026E8C4 finds the slide over
+# and it rolls again (it_8029F18C); Link, standing beside it, pushes it off twice
+# (it_80271B60), from the tick its push box, turned by the roll
+# (it_80271A58), first reaches him. The scene ends before the fuse does.
+name = "linkbomb_slide_bank_ps_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_link_fox4.sav"
+frames = 4750
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4450, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 4452, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4520, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 4578, port = 0, buttons = {  }, raw = { button = 1024, stickX = 40 } },
+  { frame = 4580, port = 0, buttons = {  }, raw = {  } },
+  { frame = 4616, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 4618, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

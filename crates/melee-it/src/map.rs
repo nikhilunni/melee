@@ -112,7 +112,7 @@ impl ItemCore {
     }
 
     /// it_80274990: the rotation about xDC8 x17's axis (Z, X, then Y).
-    fn ecb_angle(&self) -> f32 {
+    pub(crate) fn ecb_angle(&self) -> f32 {
         match self.rotation_axis {
             0 => self.rotation.z,
             1 => self.rotation.x,
