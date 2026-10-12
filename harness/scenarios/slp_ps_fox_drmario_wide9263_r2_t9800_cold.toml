@@ -1,0 +1,33 @@
+# DOC/20200219 - HNC 1 - PM 0655 - Fox (Default) vs ME Dr. Mario (Red) - Pokemon Stadium.slp (public-v3.7-b; ports 1 and 3, UCF 0.74, NeutralSpawn, preload, Frozen Stages, Widescreen 92:63) played back on retail, a display pass after every tick; the pads read as the replay's Pre Frame (direction bits included). The replay stops at frame 9684.
+# The port's side of slp_ps_fox_drmario_wide9263_r2_t9800: boundary start_ps_slippi74_ns_frozen_wide9263_p13_fox0_drmario1_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_fox_drmario_wide9263_r2_t9800_cold"
+expected = "slp_ps_fox_drmario_wide9263_r2_t9800"
+frames = 9800
+seed = 800695388
+boundary_seed = 2243760243
+stage = "PokemonStadium"
+stadium_preload = true
+frozen_stages = true
+widescreen_92_63 = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "DrMario"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

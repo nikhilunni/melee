@@ -2539,7 +2539,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 104] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 111] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2945,6 +2945,33 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 104] = [
     // ulp above the console's recording, as the port does.
     ("slp_ys_jigglypuff_iceclimbers_t400_cold", 400),
     ("slp_ys_jigglypuff_iceclimbers_r171524_t400_cold", 400),
+    // Two more screen KOs whose consoles dropped a frame, each from a
+    // boundary created from the replay's Game Start seed (Dream Land keeps
+    // its first fly-by delay, Fountain of Dreams its platform waits) and fed
+    // pads that read as Pre Frame. Every tick: retail places the fighter in
+    // the display pass (Peach at frame 8501, Dr. Mario at 4813) where the
+    // console recorded the held position. With no display pass before
+    // records 8502 and 4814 no frame of either KO differs from the replay.
+    // The Fountain boundary runs NeutralSpawn with entry by spawn order.
+    ("slp_dl_peach_younglink_r155233_r1_t8700_cold", 8700),
+    ("slp_dl_peach_younglink_r155233_lag8502_t8700_cold", 8700),
+    ("slp_fod_fox_drmario_r211939_r1_t5000_cold", 5000),
+    ("slp_fod_fox_drmario_r211939_lag4814_t5000_cold", 5000),
+    // UCF 0.73's dashback with one poll per tick: Captain Falcon's raw X
+    // runs 1, 45, 100 and his slow turn is cut short at record 7023
+    // (pad_queue_x [100, 1]). The console kept the turn; retail and the
+    // port do not.
+    ("slp_fod_captainfalcon_iceclimbers_r203101_r1_t7100_cold", 7100),
+    // The HNC Stadium game (slp_ps_fox_drmario_wide9263_r1_t9800) with pads
+    // that read as Pre Frame, and with the console's lag frame: no display
+    // pass before record 9382, where the jumbotron's close-up is lost
+    // (grStadium_801D32D0 reads the CObj of the last pass). The standings
+    // that follow draw nothing on entry (grStadium_801D2A60's counter
+    // branch) and last 300 frames, so the lag frame shows only when they
+    // end: record 9684 every tick (21 draws), 9685 with it (the console's
+    // 12, then 11).
+    ("slp_ps_fox_drmario_wide9263_r2_t9800_cold", 9800),
+    ("slp_ps_fox_drmario_wide9263_lag9382b_t9800_cold", 9800),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

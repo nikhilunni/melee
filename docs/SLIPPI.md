@@ -740,6 +740,8 @@ cd harness && uv run python slippi_to_scenario.py inputs.jsonl --name slp_<...> 
     --boundary start_<...> --ticks 6500
 cd harness && uv run python record_many.py scenarios/slp_<...>.toml
 melee-sim gate harness/scenarios/slp_<...>.toml             # follows `gate` to slp_<...>_cold
+cargo run -q --release -p slp --example frames -- <game.slp> > frames.jsonl
+cd harness && uv run python replay_vs_trace.py frames.jsonl slp_<...>   # is it the console's game?
 ```
 
 What makes retail follow the replay:
@@ -781,11 +783,14 @@ What makes retail follow the replay:
   4000 ticks): when it runs out the fly-by draws four values
   (grOldPupupu_80210D10) on another tick than the console's, so a bridge
   past tick 3000 needs the replay's own boundary as well ("Five stops of
-  the second corpus" below). On the other stages any boundary of the setup
-  has served (the witnesses below follow their replays from one);
-  `slippi_to_scenario.py` insists on the replay's own boundary for these
-  two, and for Dream Land past tick 3000, unless `--foreign-creation` is
-  given.
+  the second corpus" below). Battlefield keeps its first background delay
+  the same way (grBattle_BG_Callback0, 0x8021A344, 2400 to 3600 ticks: "The
+  bridge follows the console" below). Yoshi's Story takes any boundary (its
+  creation draw is overwritten, 0x801E3304). `slippi_to_scenario.py` insists
+  on the replay's own boundary for these two, for Dream Land past tick 3000
+  and for Battlefield past tick 2400, unless `--foreign-creation` is given.
+  The Battlefield witnesses below longer than that were made before the
+  rule and follow their replays only up to the first background change.
 - *Display passes.* gm_801A4D34 runs one tick per queued pad poll and then
   renders once. The tick input clock's injected entry and the retrace's own
   poll made two, so a recording ran two ticks per render, where a console
@@ -800,9 +805,12 @@ What makes retail follow the replay:
   Bridges recorded before 2026-10-11 lack it; one that touches a tether or
   an off-screen fighter may be another game than the console's from there.
 - *Pads.* Pre Frame's joystick is the fighter's dead-zoned stick, with the
-  raw X beside it (1.2+). `--retail-inputs` finds the raw Y whose clamped,
-  dead-zoned pair is the recorded one, with the recorded raw X (what UCF
-  reads); the tick input clock injects it.
+  raw X beside it (1.2+). `--retail-inputs` finds the raw bytes that read as
+  every recorded field (sticks, HSD's direction bits, triggers, buttons)
+  with the recorded raw X (what UCF reads); the tick input clock injects
+  them, `record.py` checks each tick consumed them and `replay_vs_trace.py`
+  compares the recording's pads with Pre Frame ("The bridge follows the
+  console" below).
 
 The port gates the cold twin `<name>_cold.toml`: the boundary built from
 parameters with its own `seed`, then `boundary_seed`, driven by the pads the
@@ -2176,8 +2184,8 @@ fewer frames, and nine replays hold one inferred lag frame each:
 | `FOX/Fox vs Marth [YS] Game_20200115T192755` | 5873 `cur_pos` | 5873, screen KO, 22 frames | 7816 / 7816 | proven: `slp_ys_fox_marth_r1_t6000`, `_lag5874_` |
 | `PIKACHU/Game_20190629T164554` | 4576 `cur_pos` | 4576, screen KO, 121 | 7668 / 7668 | proven: `slp_fod_sheik_pikachu_r1_t4700`, `_lag4577_` |
 | `YOSHI/17_50_44 Falco + Yoshi (FD)` | 9868 `cur_pos` | 9868, screen KO, 36 | 11052 / 11052 | proven: `slp_fd_falco_yoshi_r1_t10000`, `_lag9869_` |
-| `DOC/Game_20191106T211939` | 4813 `cur_pos` | 4813, screen KO, 70 | 7932 / 7932 | none: its console spawned by `neutral-2019-entry` on Fountain of Dreams, for which there is no Gecko text |
-| `PEACH/15_52_33 Peach + Young Link (DL)` | 8501 `cur_pos` | 8501, screen KO, 62 | 11591 / 14695, `input_seed` | none that reaches it: see below |
+| `DOC/Game_20191106T211939` | 4813 `cur_pos` | 4813, screen KO, 70 | 7932 / 7932 | proven since: `slp_fod_fox_drmario_r211939_r1_t5000`, `_lag4814_` ("The bridge follows the console" below) |
+| `PEACH/15_52_33 Peach + Young Link (DL)` | 8501 `cur_pos` | 8501, screen KO, 62 | 11591 / 14695, `input_seed` | proven since, from the replay's own boundary: `slp_dl_peach_younglink_r155233_r1_t8700`, `_lag8502_` ("The bridge follows the console" below) |
 | `FALCO/02_33_48 Falco + Marth (PS)` (first corpus) | 3042 `percent` | 2982, magnifier, 120 | 11421 / 11421 | proven: `slp_ps_falco_marth_frz_r1_t3200` (bit at record 2983, point at 3043), `_lag2983_` (bit 2984, point 3044, the console's tick) |
 | `ZELDA_SHEIK/19_56_47 Sheik + Captain Falcon (DL)` | 3073 `percent` | 3013, magnifier, 120 | 15970 / 15970 | proven: `slp_dl_sheik_captainfalcon_r1_t3300` (point at 3074), `_lag3014_` (no point: Captain Falcon is back on screen with the count at 59; the console's percent stays 108.78) |
 | `SAMUS/Game_20190629T124717` (FoD) | 7813 `input_seed` | 7809, particles, 600 | 9587 / 9587 | proven: `slp_fod_samus_marth_r1_t7900` (the console's Pre Frame seeds leave retail's draws at record 7814), `_lag7810_` (all 7899 on them) |
@@ -2198,11 +2206,14 @@ inputs follows the console to 8501: the bridge's pads and the replay's are
 not the same game from 3196. Not diagnosed (the bridge's raw pads are
 reconstructed from the recorded sticks; "The pad queue is not in a replay").
 The lag frame at 8501 therefore rests on the three proven screen KOs.
+(Diagnosed since: Dream Land keeps its first fly-by delay from creation, and
+that boundary was another seed's. "The bridge follows the console" below.)
 
 **The one new stop.** `PEACH/15_52_33`, 11591, `p0.input_seed` with Peach in
 DamageAir3 and Young Link in JumpF: random-stream drift on the tick before
 (Peach hit out of her float); no skipped pass within eight ticks explains
 it. Not a display-pass stop.
+(A port fault, shown on retail: "The stop at 11591 is a port fault" below.)
 
 **What else a display pass writes.** The completeness argument for "these
 three kinds are what a lag frame changes": every write made in the display
@@ -2574,3 +2585,166 @@ in a stage generator's x (-9.6 in retail, -23.6 in the port), with the same
 draw sites and seeds. Not diagnosed; a guess is a fly-by's generator, which
 is placed from the rendered camera (Camera_800307D0).
 
+## The bridge follows the console (2026-10-12)
+
+Several bridges had not reproduced their consoles while the port, run from
+the replay, did. Each case was taken again with a checker that compares a
+recording with its replay input for input. None was a pad the bridge had
+rebuilt wrongly in a way a fighter reads; four other things were wrong, and
+with them fixed every case is settled on retail.
+
+### The checks
+
+```sh
+cargo run -q --release -p slp --example frames -- <game.slp> > frames.jsonl
+cd harness && uv run python replay_vs_trace.py frames.jsonl <scenario>   # recording against replay
+cd harness && uv run python pad_schedule_check.py <scenario>             # recording against schedule
+cargo run -q --release -p melee-sim --example retail_pads -- <dir>       # which replays can be fed
+```
+
+- `replay --retail-inputs` writes only raw pads that read as Pre Frame
+  (`melee-sim/src/replay_retail_pads.rs`): each candidate goes through HSD's
+  clamp (HSD_PadClampCheck3, 0x80376E90), its direction test
+  (HSD_PadADConvertCheck1, 0x803771D4: length 30 and a sector) and the
+  fighter's dead zone, and must give the recorded sticks, direction bits and
+  triggers with the recorded raw X. A pad that cannot be fed ends the
+  schedule there: the header's `ticks` is that tick and `pads_end` says why;
+  `slippi_to_scenario.py` refuses a longer scenario.
+- `record.py` fails a tick-clock recording whose records did not dequeue
+  the scheduled pads (`pad_schedule_check.py`: the queue entry's stick bytes
+  and the status's buttons and triggers).
+- `replay_vs_trace.py` compares each record's HSD status and queue entry
+  with Pre Frame and prints the first differing pad; from GO on (frame 84) a
+  difference fails the bridge. With `slippi_to_scenario.py --after-map` the
+  recording carries the map proc's sample and every Post Frame field is
+  compared too.
+
+### What was wrong
+
+| Fault | Where it showed | Fix |
+|---|---|---|
+| A dead-zoned stick axis was fed as zero, so HSD's direction bits (the held word, fp+0x65C) were not the console's. The raw Y beside a recorded X, and both C-stick bytes, were derived from the fighter's values | `PEACH/15_52_33`: 25 of the first 6000 pads (the C-stick's up bit at tick 3011: raw (0, 27) is under the threshold of 30); one to four steps of the older witnesses. No fighter code reads those bits, so no game changed | the search above |
+| A boundary of another seed on a stage that keeps a creation draw. Dream Land's first fly-by delay was found the same day ("Five stops of the second corpus" above); Battlefield keeps its first background delay the same way (grBattle_BG_Callback0, 0x8021A344, 2400 to 3600 ticks) | `PEACH/15_52_33`, the bridge "not diagnosed" above: the fly-by's four draws (0x80210D68..) come at record 3196 where the console drew them at 3197, with every pad and fighter field equal until 3207. `DOC/Doc vs Fox [BF]`: the background's two draws (lr 0x8021A508) at record 3633 | `slippi_to_scenario.py` asks for the replay's own boundary on Battlefield past tick 2400, as on Dream Land past 3000. Yoshi's Story takes any boundary: its creation draw is overwritten (0x801E3304) |
+| The one-entry queue of `render_every_tick` left qwrite at the five-entry queue's value, so the first poll accepted while a tick ran overwrote the injected entry or its history | record 124 of the Dream Land bridges (raw X 82, Dolphin's poll of the tick before's pad, for the scheduled 106) and record 302 of `slp_ps_fox_drmario_wide9263_r1_t9800` (78 for 16). The fighter's status was right; what UCF read on that tick depended on when the poll came | qwrite is 0 from installation: such polls go to entry 0, which nothing reads |
+| A recorded raw X of zero beside the tick before's stick, buttons and triggers was refused ("no raw stick Y gives ...") | tick 2 or 3 of 26 replays (`DOC/Doc vs Fox [BF]`), and 64 to 105 ticks after GO in four games | It is a console's failed poll: PAD_ERR_TRANSFER zeroes the SDK entry and HSD_PadRenewMasterStatus keeps the last status (controller.c:386, `cmpwi r0, -3` at 0x803778B0). The bridge feeds it as one (`raw = { err = -3 }`): retail keeps the pad and UCF reads the zero |
+
+Two readings were not faults of the bridge at all:
+
+- *`slp_fd_captainfalcon_iceclimbers_r001727_t17300` "near tick 350".* The
+  replay shows Captain Falcon in JumpF on frame 346 and retail in
+  CapturePulledLw; on the console he was grabbed on that tick too (ThrownLw
+  from frame 353 in the replay itself). Slippi 2.0.1 reads Post Frame when
+  the fighter's map proc returns, before the grab resolves. That recording
+  really leaves its console at record 3722, because it predates
+  `render_every_tick`: the magnifier's point comes two ticks late. Recorded
+  again from a boundary with the replay's spawn points
+  (`slp_fd_captainfalcon_iceclimbers_r001727b_r1_t3900`, local data) retail
+  follows the replay for all 3899 frames and the port equals it.
+- *The 84 position ticks of `slp_fod_level_fox_jigglypuff_r1_t13500`.* 83 of
+  them are ten throws (ThrownF, ThrownHi, ThrownLw): the captor's accessory
+  pins the victim after the victim's map proc, where Post Frame was read.
+  `slp_fod_level_fox_jigglypuff_aftermap_t3100` (local data) records that
+  sample over the first two throws: seeds, actions, positions and percents
+  equal the replay on every one of 3099 frames.
+
+Before GO, Pre Frame's stick need not be a pad's (-127/128 in `19_18_23
+Luigi + Fox (DL)`, 1.0 without a direction bit in two Pichu games); the pad
+then keeps what HSD's side records and the record says `frozen`. Those
+three games hold such sticks after GO too and end their schedules there. A port that ran Dween's fix records
+the code's output, not the pad: seven replays end their schedule at the
+first rewritten stick. Of 610 replays 570 read on every tick, 30 hold failed
+polls or frozen sticks, and 10 end early (`retail_pads`).
+
+Re-bridged with the new writer, `slp_ys_iceclimbers_marth_t200` and
+`slp_ys_jigglypuff_fox_t300` give the recorded schedule step for step;
+`slp_bf_yoshi_samus_t860` differs in one step of 595 and
+`slp_ys_fox_falco_t1900` in four of 2193, each a raw Y that restores a
+direction bit.
+
+### The cases, on retail
+
+Every recording below has a display pass after every tick, was fed its
+replay's pads on every frame (`replay_vs_trace.py`), consumed its schedule,
+and gates exact in the port over its whole length.
+
+| Replay | Stop | Retail | Verdict |
+|---|---|---|---|
+| `PEACH/15_52_33 Peach + Young Link (DL)` | 8501, screen KO position | `slp_dl_peach_younglink_r155233_r1_t8700` (boundary `start_dl_slippi73_ns2019_p24_peach0_younglink4_4_r155233`): keeps the console's seed on all 8699 frames and places Peach at frame 8501 at (-12.372, 155.081) where the console recorded the held (-11.008, 158.963); 61 frames differ to the end of the KO. `..._lag8502_t8700` (no display pass before record 8502): no frame differs | a console's lag frame, now proven; the port equals both |
+| the same game | 11591, `input_seed` | `slp_dl_peach_younglink_r155233_lag8502_t11700` (local data) keeps the console's seed on all 11699 frames; the port leaves retail at record 11587 | **port fault**, open (below) |
+| `DOC/Game_20191106T211939` (FoD) | 4813, screen KO position | `slp_fod_fox_drmario_r211939_r1_t5000` (boundary `start_fod_slippi74_ns2019entry_p14_fox2_drmario0_4_r211939`, with the constructed code `neutral-spawn-2019-entry`): Dr. Mario at (-23.595, 70.570) for the console's (-22.556, 74.932) at frame 4813, 70 frames differ; `..._lag4814_t5000`: no position differs in 4999 frames | a console's lag frame, now proven |
+| `DOC/20200219 - HNC 1 ... Fox vs ME Dr. Mario - Pokemon Stadium` | 9684, `input_seed` | `slp_ps_fox_drmario_wide9263_r2_t9800`: leaves the console at frame 9684, as the port; `..._lag9382b_t9800` (no display pass before record 9382): keeps the console's seed on all 9799 frames | a console's lag frame 302 ticks before the stop (below); the port equals both |
+| `ICE_CLIMBERS/20_31_01 Captain Falcon + Ice Climbers (FoD)` | 7022, the pad queue | `slp_fod_captainfalcon_iceclimbers_r203101_r1_t7100` (boundary `start_fod_slippi73_ns_p13_captainfalcon1_iceclimbers0_4_r203101`): Captain Falcon leaves his slow turn for a Dash at record 7023 (`pad_queue_x` [100, 1]) and the seed leaves the console's at frame 7026, as in the port. `..._poll7023_t7100` (local data; `unconsumed_poll_before = [7023]`): keeps the console's seed on all 7099 frames | not a port fault: one poll no tick consumed in the console's queue, shown sufficient on retail |
+| `ICE_CLIMBERS/Game_20190903T151039` (PS) | 423, Nana's x one ulp | `slp_ps_iceclimbers_jigglypuff_r151039_r1_t500` (local data; `start_ps_slippi73pre_p12_iceclimbers0_jigglypuff4_4_r151039`): 0xC131386A at frame 423, the console 0xC1313869; seeds and pads equal throughout | retail in Dolphin equals the port, not the console |
+| `ICE_CLIMBERS/Game_20191209T171524` (YS) | 200, Nana's x one ulp | `slp_ys_jigglypuff_iceclimbers_r171524b_r1_t400` (local data; `..._r171524b`, with the replay's spawn points): 0x41EC558E, the console 0x41EC558D | the same |
+
+**The two Nana positions.** Both are the tick's whole difference: the frame
+before is equal bit for bit, y is equal, the random stream and both pads are
+the console's, and from there the x stays an ulp or so apart (40 and 71
+frames in the windows recorded). So with a faithful bridge the answer is
+neither a pad nor the port: retail in Dolphin computes the port's value and
+the console recorded another. Nothing in a replay says whether that is
+Dolphin's arithmetic or something the console ran. The 2019-12-09 game's
+Ice Climbers port ran Dween's fix (its schedule ends at tick 786); the
+window to 400 holds no rewritten stick.
+
+**The pad queue.** UCF's dashback reads queue entries qread-1 and qread-3.
+With one poll per tick Captain Falcon's raw X runs 1, 45, 100 and the
+change over two ticks is 99: the turn is cut short, on retail as in the
+port. With
+a poll that no tick dequeued between records 7022 and 7023 the code reads
+100 against 45 (`pad_queue_x` of record 7023 is [100, 45]), leaves the slow
+turn, and retail then plays the console's game to the end of the
+recording. What put the poll there is not in the replay.
+`PICHU/Game_20161120T232910` (2158) is the same shape ("Five stops of the
+second corpus" above, where the recorder's lag frame did not reproduce it);
+an unconsumed poll was not recorded for it.
+
+### A lag frame that shows 302 ticks later (HNC 1)
+
+Stadium's jumbotron (grStadium_801D2344) leaves the player close-up (mode
+8) when the close-up box no longer fits the viewport (grStadium_801D32D0,
+which reads the CObj of the last display pass). The next mode is chosen by
+grStadium_801D2A60: one or more draws, except when the counter xF2 has
+reached `yakumono_param->x50`: then the standings (mode 14) come with no
+draw, for a fixed 300 frames (grStadium_801D2528). That is the one mode
+change that leaves nothing in the random stream.
+
+In this game the close-up entered at record 9006 is lost at record 9382 (in
+the port, with 803 frames of its timer left), into the standings; their
+timer ends at record 9684 and the next mode draws (0x801D2ABC five times,
+0x801D27C8 once): 21 values on that tick. The console drew 12 there and 11
+on the next. With no display pass before record 9382 the test reads the
+camera of a tick earlier, the close-up lasts one tick more, the standings
+end at 9685, and retail draws 12 and then 11 (one mode draw and its
+duration): the console's seeds on every frame. `--skip-display-pass 9381`
+makes the port match all 13405 frames of the replay. Lag frames at records
+9683, 9684 and 9685 (three recordings, local data) change nothing on
+retail, which is why "no single skipped pass near the stop" had found
+nothing.
+
+**What rule would let the runner infer it.** Not a wider search: the
+candidate is named by the port's own state. On an `input_seed` stop on
+Pokemon Stadium whose tick (or the one before) holds the end of a
+jumbotron mode that was entered without a draw (the standings, entered
+from a lost close-up), try the display pass before the tick that close-up
+was lost on, and the two beside it; accept under the `particles` margin
+unchanged (every frame from the candidate through the stop and 600 more,
+seeds included). Three candidates, each fixed by where the simulation
+itself lost the close-up, and none when the silent mode was entered by a
+timer. The runner is unchanged: its rule still tries only the stop and the
+eight ticks before, so this game still stops at 9684 without
+`--skip-display-pass 9381`.
+
+### The stop at 11591 is a port fault
+
+`slp_dl_peach_younglink_r155233_lag8502_t11700` (local data: it does not
+gate) follows its console past the stop, so the stop is the port's. At
+record 11587 Young Link's boomerang (item kind 59) strikes Peach under her
+open parasol (state 367, frame 45; 144.49 to 146.49 percent). Retail's
+generator list after the tick reads 10, 59, 58, 57, 24, 23, 21, 22: three
+new generators (57, 58, 59) directly behind the head, then the hit's four.
+The port has 10, 24, 23, 21, 22, 58: one of the three, at the tail, and 32
+particle draws for retail's 39. The parasol is an article removed on
+damage, as the boomerang in hand and Mr. Game & Watch's articles are
+("The generator cursor" above); which call creates 57 and 59 was not
+followed. Every fighter key still agrees on that tick.

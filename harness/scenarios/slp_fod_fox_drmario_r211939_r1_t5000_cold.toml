@@ -1,0 +1,31 @@
+# DOC/Game_20191106T211939.slp (public-v3.7-b; Fox vs Dr. Mario, Fountain of Dreams, ports 1 and 4, UCF 0.74, NeutralSpawn with entry by spawn order) played back on retail from a boundary created from its Game Start seed, a display pass after every tick. The replay stops at frame 4813 on a screen KO position.
+# The port's side of slp_fod_fox_drmario_r211939_r1_t5000: boundary start_fod_slippi74_ns2019entry_p14_fox2_drmario0_4_r211939 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fod_fox_drmario_r211939_r1_t5000_cold"
+expected = "slp_fod_fox_drmario_r211939_r1_t5000"
+frames = 5000
+seed = 3360378876
+game_start_seed = 1279566030
+boundary_seed = 3360378876
+stage = "FountainOfDreams"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2019-entry"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "DrMario"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
