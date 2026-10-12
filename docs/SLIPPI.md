@@ -1830,7 +1830,10 @@ paths, where the fighter's code goes on in the same proc:
 A death is covered: its teardown walks the fighter's joints after the
 articles. No recording shows any of these as a difference in particle
 order (it shows only when the cursor is not already the tail), so none was
-changed.
+changed. (Since then one does, for Peach's parasol on a take-damage
+callback: `slp_dl_peach_younglink_r155233_lag8502_t11700`, record 11587.
+Her three removers now queue it: "The stop at 11591 is a port fault"
+below.)
 
 Checked on main at 6064692d, before and after: of 2790 scenario files 2689
 gate exact on both builds and no result changes; `gobj-diff` differs on 103
@@ -2905,6 +2908,23 @@ matches to its end, 13405 / 13405; it is the tick retail's
 `..._lag9382b_t9800` proves. A pass skipped by hand at 9380 or 9382 leaves
 the stop at 9684 (`a_jumbotron_lag_frame_is_the_pass_where_the_close_up_was_lost`
 in `tests/slippi_replay.rs`).
+
+Corpora (`replay-batch`, main at 595a009b against this rule and the Peach
+fix below; no replay matches fewer frames, and no other replay changes in
+any field):
+
+| Corpus | Inference | Complete | Frames matched |
+|---|---|---|---|
+| `public-v3.7` (108) | on | 108 to 108 | 964,782 (unchanged) |
+| `public-v3.7` | `--no-lag-frames` | 107 to 107 | 956,403 (unchanged) |
+| `public-v3.7-b` (502) | on | 475 to 477 | 5,005,881 to 5,012,706 |
+| `public-v3.7-b` | `--no-lag-frames` | 467 to 467 | 4,968,080 (unchanged) |
+
+The two games are this one (the only `jumbotron` lag frame in either
+corpus) and `PEACH/15_52_33`. Ten games of the second corpus now hold one
+inferred lag frame each. With `--no-lag-frames` both JSONL files are byte
+for byte main's. Of the 2584 scenarios with a retail trace, 2456 gate exact
+on main and 2457 here: the one that changes is the Peach witness.
 
 ### The stop at 11591 is a port fault
 
