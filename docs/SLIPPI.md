@@ -1802,9 +1802,10 @@ NeutralSpawn, preload, Frozen Stages, Widescreen), with a GObj ledger:
   so the shake's phase decides it.
 
 So main agreed with that console by being a tick late in the shake; what
-the console ran differently is not in the replay. The recording does not
-gate: Mr. Saturn's position leaves retail at 3710 (the idle and slide
-states, unported), with the seed 17 ticks apart and equal again from 3747.
+the console ran differently is not in the replay. The recording did not
+gate then: Mr. Saturn's position left retail at 3710 (its release box, see
+the HNC 6 row under "Pokemon Stadium bridges"; fixed since), with the seed 17
+ticks apart and equal again from 3747.
 
 ### Display-pass stops under the every-tick rule
 
@@ -2045,8 +2046,8 @@ What shows it:
   recorded): the main CObj's aspect reads 0x3FE38B73, Marth's
   window x reads 539, 540, 541 with the off-screen bit at 4397, and the
   point comes at 4457. The port equals that recording on every fighter key
-  of its 4600 ticks (the gate itself stops at 3710 on Mr. Saturn's unported
-  idle state).
+  of its 4600 ticks (the gate itself stopped at 3710 on Mr. Saturn's release
+  box, since fixed: it now passes).
 - HNC 1. Dr. Mario's x at 320:219 is 101.32, 100.05, 98.45; with 92:63
   retail reads 101, 99 with the bit at tick 6949 and the point at 7009
   (`slp_ps_fox_drmario_wide9263_nopause_r1_t7200`, exact for 7200 ticks
@@ -2349,7 +2350,7 @@ and compared with its replay (`replay_vs_trace.py`) and with the port.
 | `ICE_CLIMBERS/19_16_18 Ice Climbers + Samus (PS)` | 6698, `follower.input_seed` | `slp_ps_iceclimbers_samus_r191618_t6750` (and `_t6900`): keeps the console's seed throughout; the port left retail at 6680 | port fault: an ice block's efLib_DestroyAll was queued (below) | 12040 / 15027, `follower.input_seed` again, not looked at |
 | `LINK/11_58_33 Marth + Link (DL)` | 3267, `input_seed` | `slp_dl_marth_link_r115833_t3400`: equals the port for 3400 ticks; its particle interpreter draws 160, 138, 179 on records 3265..3267, the console 172, 132, 171 | a console's lag frame, shown on retail: `slp_dl_marth_link_r115833_lag3265_t3400` (no display pass before record 3265) draws the console's counts and keeps its seed on all 3399 frames; the port equals it too | unchanged; `--skip-display-pass 3264` matches 10982 / 10982 |
 | `DOC/20200219 - HNC 1 ... Fox vs ME Dr. Mario - Pokemon Stadium` | 9684, `input_seed` | `slp_ps_fox_drmario_wide9263_r1_t9800`: equals the port for 9800 ticks and leaves the console on the same frame, 9684 | not a port fault found: retail in Dolphin under the console's known codes does what the port does. On record 9684 retail's jumbotron changes mode (grStadium_801D2A60, five draws, and grStadium_801D2528's duration; its last change was at 9006) and the tick draws 21 values, the console 12; on the next 9 against 11 | unchanged; no single `--skip-display-pass` in 9676..9685 moves it |
-| `PEACH/20200219 - HNC 6 ... Marth vs WOO Peach - Pokemon Stadium` | 5251, `input_seed` | `slp_ps_marth_peach_wide9263_r1_t5400` (local data): keeps the console's seed on all 5399 frames; the port leaves retail at 3710 | open, in `it-dosei`: a thrown Mr. Saturn (state 5, owner slot 0) lands at record 3709 and bounces (velocity y -1.2182 to +0.8284, y 1.9545, then 2.7089); the port has it at 4.5641 on 3710. Retail flies on to 3729 and walks (state 1) from 3730 | unchanged |
+| `PEACH/20200219 - HNC 6 ... Marth vs WOO Peach - Pokemon Stadium` | 5251, `input_seed` | `slp_ps_marth_peach_wide9263_r1_t5400` (local data): keeps the console's seed on all 5399 frames; the port left retail at 3710, and now leaves it at 5250 | two faults. The first, a port fault, fixed: a Mr. Saturn thrown again before it had landed (Marth caught Peach's in the air) keeps its release box on the floor, because it_80275BC8 saves the box in use (xC0C = xC1C, 0x80275C8C) and the landing restores that (it_80275DFC); retail's xC0C and xC1C both read (1.75, 2.1, 2.1, 1.925) against the kind's (2.5, 3, 3, 2.75), and the port restored the kind's. The second is open and is the replay's stop: on record 5250 retail creates five effect families (its counter goes 3536 to 3541) and the port three; among retail's is a generator of program 64 at (-55.1, 27.35), by the left platform's edge, that the port does not make, with five more draws (0x8039E1E4, 0x8039E3D4 twice each, then 0x8039C870). Marth has just started Run and Peach a back air high above; no item is alive | 5251, `input_seed`, the second fault |
 
 **An air dodge's first three frames.** ftCo_EscapeAir_IASA (0x80099C24)
 counts mv.co.escapeair.timer down from PlCo +334 (3). While it runs each
