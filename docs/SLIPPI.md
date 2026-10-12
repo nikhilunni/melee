@@ -2422,7 +2422,16 @@ and compared with its replay (`replay_vs_trace.py`) and with the port.
 | `ICE_CLIMBERS/19_16_18 Ice Climbers + Samus (PS)` | 6698, `follower.input_seed` | `slp_ps_iceclimbers_samus_r191618_t6750` (and `_t6900`): keeps the console's seed throughout; the port left retail at 6680 | port fault: an ice block's efLib_DestroyAll was queued (below) | 12040 / 15027, `follower.input_seed` again, not looked at |
 | `LINK/11_58_33 Marth + Link (DL)` | 3267, `input_seed` | `slp_dl_marth_link_r115833_t3400`: equals the port for 3400 ticks; its particle interpreter draws 160, 138, 179 on records 3265..3267, the console 172, 132, 171 | a console's lag frame, shown on retail: `slp_dl_marth_link_r115833_lag3265_t3400` (no display pass before record 3265) draws the console's counts and keeps its seed on all 3399 frames; the port equals it too | unchanged; `--skip-display-pass 3264` matches 10982 / 10982 |
 | `DOC/20200219 - HNC 1 ... Fox vs ME Dr. Mario - Pokemon Stadium` | 9684, `input_seed` | `slp_ps_fox_drmario_wide9263_r1_t9800`: equals the port for 9800 ticks and leaves the console on the same frame, 9684 | not a port fault found: retail in Dolphin under the console's known codes does what the port does. On record 9684 retail's jumbotron changes mode (grStadium_801D2A60, five draws, and grStadium_801D2528's duration; its last change was at 9006) and the tick draws 21 values, the console 12; on the next 9 against 11 | unchanged; no single `--skip-display-pass` in 9676..9685 moves it |
-| `PEACH/20200219 - HNC 6 ... Marth vs WOO Peach - Pokemon Stadium` | 5251, `input_seed` | `slp_ps_marth_peach_wide9263_r1_t5400` (local data): keeps the console's seed on all 5399 frames; the port left retail at 3710, and now leaves it at 5250 | two faults. The first, a port fault, fixed: a Mr. Saturn thrown again before it had landed (Marth caught Peach's in the air) keeps its release box on the floor, because it_80275BC8 saves the box in use (xC0C = xC1C, 0x80275C8C) and the landing restores that (it_80275DFC); retail's xC0C and xC1C both read (1.75, 2.1, 2.1, 1.925) against the kind's (2.5, 3, 3, 2.75), and the port restored the kind's. The second is open and is the replay's stop: on record 5250 retail creates five effect families (its counter goes 3536 to 3541) and the port three; among retail's is a generator of program 64 at (-55.1, 27.35), by the left platform's edge, that the port does not make, with five more draws (0x8039E1E4, 0x8039E3D4 twice each, then 0x8039C870). Marth has just started Run and Peach a back air high above; no item is alive | 5251, `input_seed`, the second fault |
+| `PEACH/20200219 - HNC 6 ... Marth vs WOO Peach - Pokemon Stadium` | 5251, `input_seed` | `slp_ps_marth_peach_wide9263_r1_t5400` (local data): keeps the console's seed on all 5399 frames; the port left retail at 3710, and then left it at 5250; recorded again as `..._r2_t5400` (the particle pass at the tick pass's cadence), which the port now equals for 5400 ticks | two port faults, both fixed. The first, a port fault, fixed: a Mr. Saturn thrown again before it had landed (Marth caught Peach's in the air) keeps its release box on the floor, because it_80275BC8 saves the box in use (xC0C = xC1C, 0x80275C8C) and the landing restores that (it_80275DFC); retail's xC0C and xC1C both read (1.75, 2.1, 2.1, 1.925) against the kind's (2.5, 3, 3, 2.75), and the port restored the kind's. The second was the replay's stop: a Mr. Saturn resting at (-55.1, 27.35), on the left platform's edge, runs out of lifetime on record 5250. Item_80269528 sets destroy_type 0 and calls Item_8026A8EC (0x80269650..0x8026965C), whose ItemSwitch plays the kind's destroy effect (it_8027327C, it_802787B4, it_80278800: three spread draws, efSync_Spawn of effect 64 at the item); the port removed the item without it. Found with a family ledger (below the table) | 6565 / 6565 |
+
+**Who made a generator.** `harness/family_ledger_record.py <scenario> --out
+<file> [--from TICK]` records every store to the particle system's family
+counter (lbl_804D6368) with the chain of saved link registers, and `--show
+<file> --tick N` prints it with symbol names: the effect call that made each
+family and the proc it ran in. For record 5250 above it reads
+efLib_CreateGenerator, efAsync_Dispatch, efSync_Spawn, it_80278800,
+it_802787B4, it_8027327C, Item_8026A8EC, Item_80269528: an item's own proc,
+on a tick whose end-of-tick record holds no item.
 
 **An air dodge's first three frames.** ftCo_EscapeAir_IASA (0x80099C24)
 counts mv.co.escapeair.timer down from PlCo +334 (3). While it runs each
@@ -2994,7 +3003,7 @@ rendering, the build carries its own codes, and the machine is an emulator.
 (`crates/melee-sim/src/replay_online.rs`); the 14 games refused as "Slippi
 Online initialization/seed resets" and the 3.6.0 game refused as "Game Start
 seed ... does not reach the first Frame Start" (all `public-v3.7-b`, July and
-August 2020) now run, 13 of the 15 to their last frame.
+August 2020) now run, all 15 to their last frame.
 
 ### What Online changes
 
@@ -3183,7 +3192,7 @@ Widescreen and the bridge insists on the replay's codes.
 | `FOX/Game_20200801T193753` | FD | refused | 2722 / 2722 |
 | `GANONDORF/Game_20200808T002332` | FoD | refused | 10947 / 10947 |
 | `JIGGLYPUFF/Game_20200719T184251` | FD | refused | 7955 / 7955 |
-| `LINK/Game_20200725T232021` | YS | refused | 1070 / 13543, then `p1.cur_anim_frame` |
+| `LINK/Game_20200725T232021` | YS | refused | 1070 / 13543, then `p1.cur_anim_frame`; 13543 / 13543 with the fix below |
 | `LUIGI/Game_20200727T190741` | PS | refused | 11225 / 11225 |
 | `MARTH/Game_20200817T043324` | BF | refused | 14423 / 14423 |
 | `PEACH/Game_20200808T225408` | FD | refused | 19879 / 19879 |
@@ -3191,7 +3200,7 @@ Widescreen and the bridge insists on the replay's codes.
 | `PIKACHU/Game_20200729T213607` | FoD | refused | 2918 / 2918 |
 | `ROY/Game_20200711T210029` (3.6.0) | FD | setup seed | 13325 / 13325 |
 | `ROY/Game_20200822T235500` | PS | refused | 6706 / 6706 |
-| `YLINK/Game_20200722T224303` | BF | refused | 1938 / 9969, then `p1.cur_anim_frame` |
+| `YLINK/Game_20200722T224303` | BF | refused | 1938 / 9969, then `p1.cur_anim_frame`; 9969 / 9969 with the fix below |
 | `YLINK/Game_20200801T003748` | BF | refused | 18382 / 18382 |
 | `YOSHI/Game_20200801T185053` | YS | refused | 7959 / 7959 |
 
@@ -3202,7 +3211,21 @@ The two stops are one port fault and not Online's: Marth's Counter attack
 port's runs on; in `LINK/0725` Marth, his counter finished, takes 3% at
 tick 1070 with Link shielding sixty units away and the port has no hit.
 Both stop on the same tick with the rollback ticks rendered, skipped or
-looped and on either screen. Not diagnosed.
+looped and on either screen.
+
+Diagnosed on retail (`slp_online_bf_younglink_marth_r224303_t2100` and
+`slp_online_ys_link_marth_r232021_t1300`, each from its replay's own
+boundary, every tick; both in `SLIPPI_REPLAY_WITNESSES`): the Counter had
+caught a boomerang. An item hit that meets `fp->shield_hit`, the shield
+or a character's volume, is recorded by ftColl_80077688 with mode 2 when
+the hitbox's x41_b6 is set (0x800776B0), that is with the hitbox's rehit
+timer: Young Link's boomerang holds Marth for 16 ticks, Link's for 30. The
+port recorded a volume's catch by the clank rule (x41_b5, else for good).
+In `YLINK/0722` the timer runs out during the slash, whose hitbox then
+clanks with the boomerang's (ftColl_80077970; two clank sparks and the
+hitlag the replay shows); in `LINK/0725` the returning boomerang strikes
+Marth. Directed: `mars_counter_boomerang_dl_{marth4,roy4}`. Both games
+now match to their last frame.
 
 **What each piece is shown by** (the 15 games run again with one piece
 changed, the knockback zeros left free):
