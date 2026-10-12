@@ -99,6 +99,9 @@ pub struct InitialState {
     pub(crate) dween_previous_x: [f32; 4],
     /// StaticPlayer.kos_by_player: no KOs at a match's start.
     pub(crate) ko_counts: crate::ko_counts::KoCounts,
+    /// `SlippiCodes::offscreen_damage_by_camera_limits` (match setup, not
+    /// saved state).
+    pub(crate) offscreen_damage_by_camera_limits: bool,
 }
 /// ftCo_MS_Sleep: a transformation partner's motion at a boundary.
 const SLEEP_MOTION: u32 = melee_types::CommonMotionState::Sleep as u32;
@@ -527,6 +530,7 @@ impl InitialState {
             pad_buffers: Default::default(),
             dween_previous_x: [0.0; 4],
             ko_counts: Default::default(),
+            offscreen_damage_by_camera_limits: setup.slippi.offscreen_damage_by_camera_limits,
         })
     }
 }

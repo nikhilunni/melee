@@ -765,6 +765,8 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
         widescreen: false,
         widescreen_92_63: false,
         fountain_level: false,
+        online_offscreen_damage: false,
+        online_rng_offset: None,
         stage: cold.stage,
         fighters: cold
             .fighters

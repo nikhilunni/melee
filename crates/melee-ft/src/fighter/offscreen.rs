@@ -50,6 +50,43 @@ impl FighterCore {
         }
     }
 
+    /// Slippi's netplay code `Online/Core/BrawlOffscreenDamage.asm`
+    /// (slippi-ssbm-asm 0e90140; logic ported, not copied; GPL-3) replaces
+    /// the magnifier's answer at 0x8006A880 (`bl ifMagnify_802FC998`) with
+    /// one no camera or display pass enters: a fighter is off screen while
+    /// its position is outside the stage's camera limits
+    /// (Stage_GetCamBounds*Offset, 0x80224A54..0x80224A98), unless it has
+    /// vanished (x221F_b1) or is in DeadUpStar or DeadUpFall. The four
+    /// tests are `fcmpo` with `blt` / `bgt`, in the order left, right, top,
+    /// bottom; a NaN position is inside.
+    pub fn outside_camera_limits(&self, limits: &melee_cm::StageCamera) -> bool {
+        use melee_types::CommonMotionState as S;
+        if self.vanished() || matches!(self.motion_state.id, S::DeadUpStar | S::DeadUpFall) {
+            return false;
+        }
+        let position = self.physics.position;
+        position.x < limits.left()
+            || position.x > limits.right()
+            || position.y > limits.top()
+            || position.y < limits.bottom()
+    }
+
+    /// x221F_b1 (+221F mask 40): set after the motion change by the match
+    /// entry (ft_0C31.c:46), Sleep (ftcolanim.c:46), DeadDown,
+    /// DeadLeft, DeadRight and DeadUp at their entry (ft_0D31.c:219, 325,
+    /// 424, 523) and the star and screen KO when the fighter vanishes
+    /// (ft_0D31.c:681, 865); cleared by every motion change (fighter.c:1066).
+    fn vanished(&self) -> bool {
+        use super::life::{LifeState, ScreenKoPhase};
+        use melee_types::CommonMotionState as S;
+        match &self.state_data {
+            // The wait for the respawn is Sleep (ftCo_800BFD9C).
+            MotionData::Life(LifeState::Dead { .. } | LifeState::AwaitingRespawn) => true,
+            MotionData::Life(LifeState::ScreenKo(ko)) => ko.phase == ScreenKoPhase::Vanished,
+            _ => matches!(self.motion_state.id, S::Entry | S::Sleep),
+        }
+    }
+
     /// The subaction self-damage (ftAction_80072BF4) the last command step
     /// ran, in script order.
     pub(super) fn apply_script_damage(&mut self) {

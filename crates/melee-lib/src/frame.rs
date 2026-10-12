@@ -267,7 +267,20 @@ struct Runtime {
     /// Scenario input: retail rendered (and so ran particleSort) between the
     /// previous tick and this one. Live play renders every tick; a recording
     /// that ran behind executes several ticks per VI frame and renders once.
-    display_pass: bool,
+    display_pass: DisplayPass,
+}
+/// What ran between the previous tick and the next one.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DisplayPass {
+    /// The display pass (HSD_GObj_80390FC0).
+    Rendered,
+    /// Nothing: the two ticks ran in one pass of gm_801A4D34's loop.
+    Skipped,
+    /// A Slippi Online rollback ran both ticks in its loop
+    /// (Online/Core/LoopEngineForRollback.asm, 0x801A5014): no display
+    /// pass, but the code calls Camera_8002A4AC and then ftLib_80086A8C for
+    /// every fighter before it branches back to the tick body (0x801A4DE4).
+    RollbackLoop,
 }
 impl Clone for Runtime {
     fn clone(&self) -> Self {
@@ -1317,6 +1330,14 @@ impl Runtime {
                 grab_pairs::constrain(state, player);
                 if proc == FighterProc::Animation {
                     grab_pairs::offer_carrier_ground(state, player);
+                    if state.offscreen_damage_by_camera_limits {
+                        // BrawlOffscreenDamage.asm answers Fighter_8006A360's
+                        // question (0x8006A880) from the fighter as its
+                        // animation proc finds it.
+                        let limits = &state.assets.stage_camera;
+                        let f = &mut state.fighters[player].0;
+                        f.offscreen.magnified = f.outside_camera_limits(limits);
+                    }
                 }
                 if proc == FighterProc::Grab {
                     grab_pairs::select(state, player)?;
@@ -2604,7 +2625,15 @@ impl Simulation {
     }
     /// Whether a display pass (particleSort) precedes the next tick.
     pub fn set_display_pass(&mut self, rendered: bool) {
-        self.runtime.display_pass = rendered;
+        self.set_display(if rendered {
+            DisplayPass::Rendered
+        } else {
+            DisplayPass::Skipped
+        });
+    }
+    /// What precedes the next tick in place of a display pass.
+    pub fn set_display(&mut self, display: DisplayPass) {
+        self.runtime.display_pass = display;
     }
     pub fn frame(&self) -> u64 {
         self.runtime.frame
@@ -2756,7 +2785,7 @@ impl Simulation {
             state,
             interface,
             match_finished: false,
-            display_pass: true,
+            display_pass: DisplayPass::Rendered,
             pads,
             raw_sticks: None,
             recorded_pad_queue_x: None,
@@ -2846,13 +2875,19 @@ impl Simulation {
             // dynamics reclaim a chain) and runs particleSort
             // (psdisp.c:0x8039FC70); both happen only when a display pass
             // separated this tick from the previous one.
-            if runtime.frame != 0 && runtime.display_pass {
-                for fighter in &mut runtime.state.fighters {
-                    fighter.0.prepare_dynamic_display_caches();
+            match runtime.display_pass {
+                DisplayPass::Rendered if runtime.frame != 0 => {
+                    for fighter in &mut runtime.state.fighters {
+                        fighter.0.prepare_dynamic_display_caches();
+                    }
+                    runtime.state.particles.sort_for_display(7);
+                    render_cameras(&mut runtime.state);
+                    display_posed_articles(&mut runtime.state, runtime.frame - 1);
                 }
-                runtime.state.particles.sort_for_display(7);
-                render_cameras(&mut runtime.state);
-                display_posed_articles(&mut runtime.state, runtime.frame - 1);
+                DisplayPass::RollbackLoop if runtime.frame != 0 => {
+                    rollback_loop_cameras(&mut runtime.state);
+                }
+                _ => {}
             }
         }
         let runtime = self.runtime.as_mut();
@@ -3313,6 +3348,32 @@ fn render_cameras(state: &mut InitialState) {
         let on_screen = melee_cm::to_screen(&camera, f.camera.bone_position, screen)
             .is_some_and(|point| point.on_screen);
         f.offscreen.outside_camera = !on_screen;
+    }
+}
+
+/// What Slippi Online's rollback loop runs between two ticks in place of
+/// the display pass (Online/Core/LoopEngineForRollback.asm, 0x801A5014,
+/// slippi-ssbm-asm 0e90140): Camera_8002A4AC on the main camera, then
+/// ftLib_80086A8C (0x80086A8C) for both fighters of every player slot. The
+/// call is direct, not through the render callback, so the draw's own
+/// conditions do not apply: a sleeping fighter (x221F_b3) is tested too,
+/// and a fighter in the screen KO (x2220_b7) is reported on screen without
+/// being placed (the placement is ftDrawCommon_80080E18's, 0x80080E90). The
+/// magnifier (ifMagnify_802FBBDC) does not run; the netplay build does not
+/// read it (`SlippiCodes::offscreen_damage_by_camera_limits`).
+fn rollback_loop_cameras(state: &mut InitialState) {
+    let camera = state.camera.render_camera(&state.assets.stage_camera);
+    let screen = state.camera.screen;
+    state.rendered_camera = camera;
+    for fighter in &mut state.fighters {
+        let f = &mut fighter.0;
+        let in_screen_ko = matches!(
+            f.state_data,
+            melee_ft::fighter::MotionData::Life(melee_ft::fighter::life::LifeState::ScreenKo(_))
+        );
+        f.offscreen.outside_camera = !in_screen_ko
+            && !melee_cm::to_screen(&camera, f.camera.bone_position, screen)
+                .is_some_and(|point| point.on_screen);
     }
 }
 

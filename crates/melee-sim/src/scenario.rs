@@ -98,6 +98,17 @@ pub struct Scenario {
     /// (`melee_lib::slippi::SlippiCodes::fountain_level`).
     #[serde(default)]
     pub fountain_level: bool,
+    /// Slippi Online's off-screen damage rule
+    /// (`melee_lib::slippi::SlippiCodes::offscreen_damage_by_camera_limits`).
+    #[serde(default)]
+    pub online_offscreen_damage: bool,
+    /// Slippi Online's per-frame seed write
+    /// (`melee_lib::slippi::online_sync_seed`):
+    /// the RNG offset. The recorder stores the frame's seed before each
+    /// tick, as the netplay code's proc does (`harness/dolphin/tick_trace.py`),
+    /// and so does the port's tick driver (`Simulation::sync_seed_each_tick`).
+    #[serde(default)]
+    pub online_rng_offset: Option<u32>,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -119,7 +130,8 @@ pub struct Scenario {
     /// `stadium_preload` and `stadium_frozen`, `"frozen-stages"` with
     /// `frozen_stages`, `"widescreen"` with `widescreen`,
     /// `"widescreen-92-63"` with `widescreen_92_63`, `"fod-level"` with
-    /// `fountain_level`; the port reads only those.
+    /// `fountain_level`, `"online-offscreen-damage"` with
+    /// `online_offscreen_damage`; the port reads only those.
     #[serde(default)]
     pub gecko: Vec<String>,
     #[serde(skip)]
@@ -273,6 +285,7 @@ impl Scenario {
             (WIDESCREEN_GECKO, self.widescreen),
             (WIDESCREEN_92_63_GECKO, self.widescreen_92_63),
             (FOUNTAIN_LEVEL_GECKO, self.fountain_level),
+            (ONLINE_OFFSCREEN_DAMAGE_GECKO, self.online_offscreen_damage),
         ];
         ensure!(
             !(self.widescreen && self.widescreen_92_63),
@@ -502,6 +515,7 @@ impl Scenario {
                 frozen_stages: self.frozen_stages,
                 screen: self.screen(),
                 fountain_level: self.fountain_level,
+                offscreen_damage_by_camera_limits: self.online_offscreen_damage,
             },
         }
     }
@@ -665,6 +679,8 @@ const WIDESCREEN_GECKO: &str = "widescreen";
 const WIDESCREEN_92_63_GECKO: &str = "widescreen-92-63";
 /// The `gecko` name of the level Fountain of Dreams platforms code.
 const FOUNTAIN_LEVEL_GECKO: &str = "fod-level";
+/// The `gecko` name of Slippi Online's BrawlOffscreenDamage code.
+const ONLINE_OFFSCREEN_DAMAGE_GECKO: &str = "online-offscreen-damage";
 
 /// `spawn = "retail" | "neutral-2019" | "neutral-2019-entry" | "neutral-2020"
 /// | "neutral-2020-entry-fod-level"` in scenario TOML.

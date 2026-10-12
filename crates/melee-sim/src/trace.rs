@@ -96,6 +96,7 @@ fn simulation_with(scenario: &Scenario, pads: PadScript) -> Result<Simulation> {
     if let Some(seed) = scenario.boundary_seed {
         simulation.set_rng_seed(seed);
     }
+    simulation.sync_seed_each_tick(scenario.online_rng_offset);
     simulation.capture_after_map(scenario.after_map);
     Ok(simulation)
 }

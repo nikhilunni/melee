@@ -69,9 +69,30 @@ pub struct SlippiCodes {
     /// consoles also spawned from [`NeutralTable::LevelFountainEntryByOrder`]
     /// (docs/SLIPPI.md, "Consoles with level Fountain of Dreams platforms").
     pub fountain_level: bool,
+    /// Slippi's netplay code `Online/Core/BrawlOffscreenDamage.asm`
+    /// (0x8006A880, in every online build): the magnifier's damage counts
+    /// the ticks a fighter is outside the stage's camera limits instead of
+    /// the ticks its bubble was drawn
+    /// (`FighterCore::outside_camera_limits`), so no camera, screen code or
+    /// display pass enters it.
+    pub offscreen_damage_by_camera_limits: bool,
 }
 
 pub use melee_cm::Screen;
+
+/// The seed Slippi's netplay build stores before every tick of an online
+/// game (slippi-ssbm-asm `Online/Core/InitOnlinePlay.asm`, FN_SyncRNG: a
+/// GObj proc on p_link 7, s_link 0, ahead of every fighter proc):
+/// `rlwinm r4, r3, 16, 0xFFFFFFFF` on the scene frame counter (0x80479D60,
+/// zero on the match's first tick), then `add` the RNG offset the two
+/// players agreed on, which is also the seed the match is created from
+/// (stored at 0x8016E748) and so Game Start's.
+///
+/// The simulated match holds nothing of this: whoever drives it sets the
+/// seed before each tick (`diagnostics::Simulation::set_rng_seed`).
+pub fn online_sync_seed(scene_frame: u32, rng_offset: u32) -> u32 {
+    scene_frame.rotate_left(16).wrapping_add(rng_offset)
+}
 
 /// The creation height of both side platforms under
 /// [`SlippiCodes::fountain_level`]: the mean of retail's 20.0 and 28.0.
@@ -195,6 +216,18 @@ mod tests {
 
     fn row(table: NeutralTable, stage_id: i32, order: usize) -> Option<[f32; 2]> {
         neutral_spawn(table, stage_id, order).map(|(spawn, _)| [spawn.x, spawn.y])
+    }
+
+    #[test]
+    fn the_online_sync_seed_turns_the_frame_counter_sixteen_bits_and_adds_the_offset() {
+        // The first seeds of an online game with offset 0x3AAE
+        // (`crates/slp/tests/data/v3.16.slp`).
+        for (scene_frame, seed) in [(0, 0x0000_3AAE), (1, 0x0001_3AAE), (4, 0x0004_3AAE)] {
+            assert_eq!(online_sync_seed(scene_frame, 0x3AAE), seed);
+        }
+        // The counter's high half comes round to the low one, and the add wraps.
+        assert_eq!(online_sync_seed(0x0001_0002, 0xFFFF), 0x0003_0000);
+        assert_eq!(online_sync_seed(0xFFFF, 0xFFFF_FFFF), 0xFFFE_FFFF);
     }
 
     #[test]
