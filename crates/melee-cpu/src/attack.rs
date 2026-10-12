@@ -528,6 +528,10 @@ fn turn_toward(fp: &mut Fighter) {
     command(cpu, C::Done);
 }
 
+/// ftCo_800B732C's "@294" (0x800B7410), 1.3089969 rad: a ledge target is
+/// guarded when it hangs more than 75 degrees above the CPU.
+const LEDGE_GUARD_BEARING: f32 = 1.308_996_9;
+
 /// ftCo_800B732C (0x800B732C): whether to guard the ledge the target
 /// hangs from (1) or jump at it (2); 0 otherwise.
 pub fn edge_guard_style(fp: &mut Fighter, scene: &mut Scene, _rng: &mut HsdRng) -> u8 {
@@ -537,15 +541,32 @@ pub fn edge_guard_style(fp: &mut Fighter, scene: &mut Scene, _rng: &mut HsdRng) 
     if fp.core.physics.ground_or_air == GroundOrAir::Air {
         return 0;
     }
-    if ledge_state(target) != 0 {
+    let (on_ledge, theirs) = (ledge_state(target) != 0, target.core.physics.position);
+    if on_ledge {
+        let own = fp.core.physics.position;
         // 800B738C..800B7398: a ledge target below the CPU (fcmpo, bge) is
         // left alone.
-        if target.core.physics.position.y < fp.core.physics.position.y {
+        if theirs.y < own.y {
             return 0;
         }
-        unimplemented!(
-            "ftCo_800B732C: a target on a ledge above the CPU (ftcpuattack.c:1258, mpCheckCeiling and the 75 degree test)"
-        );
+        // 800B73A4..800B73C4: mpCheckCeiling from the CPU to the target; a
+        // ceiling between them ends it.
+        if scene
+            .map
+            .check_ceiling(own.x, own.y, theirs.x, theirs.y, -1, -1)
+            .is_some()
+        {
+            return 0;
+        }
+        // 800B73E0: ftCo_800A1AB4's distance is computed and dropped.
+        // 800B73E4..800B7418: the target's bearing, lb_8000D008(dy, |dx|)
+        // (two fsubs, fneg below zero), steeper than 75 degrees (fcmpo, ble).
+        let mut across = theirs.x - own.x;
+        if across < 0.0 {
+            across = -across;
+        }
+        let bearing = melee_lb::trigf::stick_angle(theirs.y - own.y, across);
+        return u8::from(bearing > LEDGE_GUARD_BEARING);
     }
     if !fp.core.cpu.xf9_b3 {
         return 0;
