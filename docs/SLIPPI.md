@@ -820,29 +820,20 @@ recorded range:
 | `slp_dl_peach_fox_t1300` | Peach vs Fox (DL, ports 1, 4) | Peach, sparking from a shine, starts her down smash in the input proc (1048): Fighter_ChangeMotionState flushes the queued spark (0x800694A0) before the new script's frame-0 commands (0x8006A0A4), so the spark generator's initial count (0x8039F250) is drawn ahead of the smash voice and it emits on its first update |
 | `slp_bf_yoshi_samus_t860` | Yoshi vs Samus (BF, ports 1, 3) | the Yoshi Bomb's collision callback catches a ledge twice (828): ftCliffCommon_80081298 enters CliffCatch (0x8012E9D8) and the callback calls ftCliffCommon_80081370 again (0x8012E9E8), so there are two ledge flashes and the second generator draws on every tick it lives |
 
-Two Yoshi bridges are local probes, not witnesses: each shows a fault that is
+One Yoshi bridge is a local probe, not a witness: it shows a fault that is
 still open.
 
 - `slp_bf_yoshi_samus_t1000` (the same game to tick 1000) gates exact but
   differs in particle draw order at tick 870: Yoshi's Egg Throw (frame 20)
   and Samus's Run dust create a generator each on that tick (effect banks 9
   and 0), and the port creates them in the other order. The draw count is
-  the same.
-- `slp_ps_fox_yoshi_t1300` (`YOSHI/Fox vs Yoshi [PS] Game_20200222T144019.slp`,
-  ports 1 and 4, boundary `start_ps_slippi74pre_ns_p14_fox2_yoshi4_4`) stops
-  at tick 1091. Yoshi's plain GuardOn (ftYs_Init_8012BECC) does not clear the
-  reflect and powershield bits (x221C_b1/b2) as ftCo_800924C0 does, nor write
-  their countdowns (guard x14/x18, fp+0x2354/0x2358): both keep whatever the
-  last state left in the motion scratch. Retail's memory in that trace: a
-  delayed powershield (345) at 809 sets the bits with x14 = 1, x18 = 3; a hit
-  at 810 leaves them set; DamageFly writes x14 = 1 (846); the next plain
-  shield's stun (877) counts 1/2 down to 0/1; a later Damage writes x18 = 0.5
-  and x14 = 23 (1049, 1060); so at 1090 the bits are still set and Fox's hit
-  on the held egg takes the powershield branch of ftColl_80076CBC (effect 27,
-  not 1052). The port starts a plain GuardOn out of any other state with both
-  countdowns at zero, so the first stun clears the bits. Following retail
-  needs the scratch words at +0x14 and +0x18 of every state Yoshi passes
-  through (Damage, Walk and Turn write them in this trace).
+  the same. `slp_fod_yoshi_yoshi_r1_t10100` shows it four more times ("The
+  Yoshi stops" below).
+
+`slp_ps_fox_yoshi_t1300` (`YOSHI/Fox vs Yoshi [PS] Game_20200222T144019.slp`,
+ports 1 and 4, boundary `start_ps_slippi74pre_ns_p14_fox2_yoshi4_4`), which
+stopped at tick 1091 on the stale powershield scratch of Yoshi's plain
+GuardOn, is exact since 2026-10-12 and a witness ("The Yoshi stops" below).
 
 `slp_dl_peach_fox_t1300` plays the replay's pads but is not its game after
 tick 78: that console spawned Dream Land from the 2019 NeutralSpawn row (no
@@ -1380,6 +1371,9 @@ Stops that are not port faults, or are left open:
   needs the roll at the second value (0.413, 0.491) or from the fourth on:
   the port draws one value too many, or too few, before the roll when the
   victim is in these looping specials. Needs the windows on retail.
+  Both were take-damage hooks whose draws retail makes before the roll:
+  Sheik's dropped needle (533db83e) and, on 2026-10-12, the Egg Roll's shell
+  burst ("The Yoshi stops" below); both games now match to their last frame.
 - *`DOC/Doc vs Fox [BF] Game_20180701T000930` (8598)*: Fox's FlyReflectCeil
   under Battlefield starts at y = -25.461 recorded, -22.261 in the port (x
   and the state match). Fixed 2026-10-11 (ab0fa45b, "Link and Young Link
@@ -2367,3 +2361,78 @@ for retail's 32.
 Scenarios in `SLIPPI_REPLAY_WITNESSES`: the Link, Mr. Game & Watch, Ice
 Climbers, HNC 1 and both Dream Land bridges; the six directed ones are in
 `MATRIX_WITNESSES`.
+
+
+## The Yoshi stops (2026-10-12)
+
+Three games of `public-v3.7-b` stopped on Yoshi; two port faults, both
+played back on retail.
+
+| Fault | Retail | Replays (matched before to after) | Witness |
+|---|---|---|---|
+| Yoshi's plain GuardOn started both powershield countdowns at zero | ftYs_Init_8012BECC (0x8012BECC) neither clears the reflect and powershield bits (x221C_b1/b2) nor writes their countdowns (guard x14, x18: fp+0x2354, fp+0x2358), where ftCo_800924C0 clears all four (0x80092504..10). The motion scratch is one union a motion change does not clear, so ftCo_80093BC0 counts down, as floats, what the last state to write those words left, and a bit a powershield set survives until a stun takes its word below zero; meanwhile a hit on the egg takes the powershield branch of ftColl_80076CBC (effect 27, not 1052) | `YOSHI/Fox vs Yoshi [PS] Game_20200222T144019` 1093 to 11164 / 11164; `MARIO/Game_20191207T130511` 6489 to 7723 / 7723 | `slp_ps_fox_yoshi_t1300` (809, 1049, 1060, 1091) |
+| The Egg Roll's shell burst drew after the damage reaction's roll | The take-damage hook fn_8012EDE8 (from ftCommon_8007DB58) spawns the burst at once (efSync_Spawn 0x4CF at 0x8012EE50): twelve fragments, three draws each (0x80060848, 0x800608D4, 0x800608E0), before ftCo_8008DCE0's DamageFlyRoll roll (0x8008E124) | `YOSHI/Game_20190309T173757` 9961 to 12893 / 12893 | `slp_fod_yoshi_yoshi_r1_t10100` (9961; boundary `start_fod_slippi73ns_p14_yoshi2_yoshi3_4_r173757`, every tick) |
+
+**The stale words.** The port keeps an image of the two scratch words
+(`melee_ft::fighter::scratch_tail`): each common row whose scratch reaches
+them reports what it wrote, a character's rows through
+`CharacterCallbacks::SCRATCH_TAIL`, and a motion change folds that in. A tick
+trace holds every fighter's memory, so `melee-sim scratch-diff <scenario>`
+checks the image on every tick of any recording; it found the writers (the
+damage rows' float and byte stores, FallSpecial, Walk, Turn, TurnRun, Entry,
+the screen KO, DamageIce, Bury, YoshiEgg, the catch's pointer, the Egg Roll)
+and every recorded Yoshi scenario now agrees on every countdown
+(`docs/PORT_NOTES/M4_YOSHI.md`). The Mario game was not played back: Game
+Start names its spawn points per player, which a boundary cannot set
+("State-timing and position stops" above); it stopped with Yoshi in his
+shield hold (342) under Mario's up aerial and completes with the first fix
+alone.
+
+**The burst.** On tick 9961 retail draws the hit spark (0x800785D0, the
+generator's count at 0x8039F250), the thirty-six fragment values, then the
+roll, and Yoshi stays in DamageFlyN; the port's roll took the first of the
+fragments' values and entered DamageFlyRoll, with the same number of draws,
+so the seed still agreed at the end of the tick. An `EffectRequest::EggShell`
+now says whether retail spawned it inside a callback, and the damage entry
+reserves such a burst's draws where retail made them
+(`EffectQueue::reserve_creation_draws`, as for Sheik's dropped needle).
+
+`slp_fod_yoshi_yoshi_r1_t10100` gates all 10100 ticks on every key and item
+but differs in particle call-site order on four ticks (4954, 5555, 7417,
+8799): each is 22 to 25 ticks into an aerial Egg Throw (365), the open fault
+of `slp_bf_yoshi_samus_t1000` above (two generators created on one tick in
+the other order; the same draws). It is therefore a named `m5_gate` test
+(`egg_roll_shell_burst_draws_before_the_reaction_roll`), not an entry of
+`SLIPPI_REPLAY_WITNESSES`, which also asserts that order.
+
+**Mr. Game & Watch's screen KO** now has two retail recordings, both with a
+display pass after every tick and both exact in the port
+(`docs/PORT_NOTES/GAMEWATCH.md`): the directed
+`gamewatch_screenko_flat_fd_fox4` (DeadUpFall at 2983,
+DeadUpFallHitCameraFlat at 3034) and the replay's own
+`slp_ps_gameandwatch_falco_r112449_t8200` (6921, 6972).
+
+**The generator cursor.** His explorer match
+`corpus_v3_fd_gameandwatch_fox4_e17844051_p0` (5464, particle draws only) is
+exact too: ftGw_Init_OnDamage destroys the article he has out inside his
+proc, and Item_8026A8EC's efLib_DestroyAll walk (hsd_8039D688) leaves the
+generator insertion cursor on the list's tail before the hit's burn overlay
+is created (hsd_8039D9C8 links behind the head when the cursor is null or
+the tail, behind the cursor's successor otherwise). It shows only when the
+cursor is not the tail, here a list of one generator that then got
+successors. The aerial Egg Throw's four ticks in
+`slp_fod_yoshi_yoshi_r1_t10100` may be the same kind of thing, a creation
+the port makes at another point of the tick: its launch, it_802B28C8,
+changes the egg's state inside Yoshi's accessory callback, where the port
+applies the launch after the proc. Not followed further.
+
+Corpora before and after these changes, on main at d1f39d6f
+(`replay-batch`; no replay matches fewer frames, and only the three Yoshi
+games match more). Of the 2529 scenario files of that day, 2488 gated exact
+before and 2491 after (`slp_ps_fox_yoshi_t1300` and its twin, and the Mr.
+Game & Watch match); the other 38 give the same result on both builds.
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
+| `public-v3.7-b` (502) | 446 to 449 | 4,771,099 to 4,785,336 |

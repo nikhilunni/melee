@@ -230,3 +230,35 @@ The lane's pre-existing decomp/ROM/trace symlinks remain in place.
 - `crates/melee-sim/src/scene_fighter.rs`
 - `crates/melee-sim/tests/m4_gate.rs`
 - `docs/YOSHI_DATA.md`
+
+## The egg shield's stale countdowns (2026-10-12)
+
+ftYs_Init_8012BECC, the plain GuardOn, neither clears the reflect and
+powershield bits (x221C_b1/b2) nor writes their countdowns (guard x14, x18:
+fp+0x2354, fp+0x2358); ftCo_800924C0 does both for every other character.
+Retail's motion scratch is one union a motion change does not clear, so once
+a powershield (GuardOn_1, 345) has set the bits, each later shield stun
+(ftCo_80093BC0 from ftYs_GuardDamage_Anim) counts down whatever the last
+state to write those two words left, read as floats: a launch's jump buffer
+(damage x14), a special fall's landing lag, an entry's scale, the Egg Roll's
+angle; an integer, a pointer or a float under 1.0 clears its bit on the
+first tick of stun, a NaN never would. While b2 stays set a hit on the egg
+takes the powershield branch of ftColl_80076CBC (effect 27, no 1052) and
+ftYs_Shield_8012C600 leaves the model as it is.
+
+The port keeps an image of the two words (`melee_ft::fighter::scratch_tail`):
+common rows report what they wrote from their typed scratch, Yoshi's Egg
+Roll through `CharacterCallbacks::SCRATCH_TAIL`, and a motion change folds
+it in. `melee-sim scratch-diff <scenario> [--kind 14] [--every-bit]`
+compares the image with each fighter's memory in the tick trace on every
+tick. Coverage on 2026-10-12: every recorded Yoshi scenario agrees on every
+countdown; common rows agree over the explorer matches of eight other
+characters. Not modelled (no reader but Yoshi, who cannot be in them): other
+characters' special rows. Not exact but equivalent (both clear at once):
+the catch's joint pointer (the port writes 0x80000000), Turn's `just_turned`
+on the tick it leaves for Dash (retail has cleared it).
+
+Witness `slp_ps_fox_yoshi_t1300`: a delayed powershield at 809 (x14 = 1,
+x18 = 3), DamageFly's jump buffer of 1 (846), a stun counting 1 / 2 down to
+0 / 1 (877), a launch's byte stores leaving 0.5 in x18 (1049) and a jump
+buffer of 23 (1060), so both bits survive to the stun at 1091.

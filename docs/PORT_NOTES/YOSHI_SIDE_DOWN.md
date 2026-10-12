@@ -38,3 +38,11 @@ with the star article (ityoshistar.c, `it-yoshistar`).
   (hits items). The Egg Roll's script clears x42_b5 on hitbox 1.
 - `CharacterCallbacks::DEAL_DAMAGE` (fighter.c:2929) and
   `FighterCore::set_part_rotation` (ftPartSetRotX/Y/Z).
+- `EffectQueue::reserve_creation_draws` (2026-10-12): the Egg Roll's
+  take-damage hook (fn_8012EDE8) spawns its shell burst at once
+  (efSync_Spawn 0x4CF at 0x8012EE50), so the twelve fragments draw
+  (0x80060848, 0x800608D4, 0x800608E0) before ftCo_8008DCE0's DamageFlyRoll
+  roll (0x8008E124). The damage entry reserves an `immediate` burst's
+  thirty-six values where retail made them and the spawn replays them.
+  Witness `slp_fod_yoshi_yoshi_r1_t10100` (tick 9961; `docs/SLIPPI.md`,
+  "The Yoshi stops").

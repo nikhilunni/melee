@@ -116,13 +116,58 @@ leaving its floor (hits on the block barely move it: PlCo +718), a frozen
 fighter leaving the top (ftCo_800D41C4/800D47B8, `unimplemented!`), a
 cape or a throw release freezing (`unimplemented!`), the hammer thaw.
 
-## Open
+## An article destroyed by a hit and the generator cursor (2026-10-12)
 
-- `corpus_v3_fd_gameandwatch_fox4_e17844051_p0` diverges at tick 5464 on
-  the particle RNG only: Fire Fox's first launch tick burns him in his back
-  aerial, and the 0x413 overlay's child generators differ (retail keeps
-  kinds 59 and 58 of family 2195 ahead of Fox's 2193 family; the port
-  keeps 354, 58, 57, 56 after it). The same hit is exact in isolation
-  (`gamewatch_punish_firefox_bair_fd_fox4`), so the difference is in the
-  particle system's list state late in a match (insertion cursor or
-  order), not in his code. Not registered.
+`corpus_v3_fd_gameandwatch_fox4_e17844051_p0` diverged at tick 5464 on the
+particle RNG only: Fire Fox's first launch tick burns him in his back aerial
+with the Turtle out, and the burn overlay's children differed (retail 59 and
+58 of family 2195 ahead of Fox's 2193 family; the port 354, 58, 57, 56
+behind it). The same hit was exact in isolation
+(`gamewatch_punish_firefox_bair_fd_fox4`).
+
+hsd_8039D9C8 (generator.c:328-341) links a new generator in behind the
+list's head when the insertion cursor (hsd_804D78F8) is null or the tail,
+and behind the cursor's successor otherwise. The cursor is whatever the last
+walk of the list left: the update pass (generator.c:980-1017) and the
+destroy walks hsd_8039D4DC and hsd_8039D688 all end on the tail. So outside
+the pass a new generator goes in behind the head, except when the cursor is
+no longer the tail, which needs a list whose only generator was head and
+tail at once and then got successors.
+
+That is tick 5464. Before it the list is Fox's charge fire (3010, the head)
+and one persistent generator (301). Fox's motion change destroys the head:
+one generator left, cursor on it. His launch fire's parent goes in behind
+the head, the hit's dust behind the cursor's successor (the fire), and then
+ftGw_Init_OnDamage (0x8014A4CC, the take-damage hook) destroys the Turtle:
+Item_8026A8EC's efLib_DestroyAll (item.c:1991) walks the article's joints
+with hsd_8039D688 and parks the cursor on the tail, so the burn overlay
+(efAsync 0x413, generator 0x37) goes in behind the head, ahead of Fox's
+fire. The port removed the article after the proc and linked the burn
+behind the fire; the pass then reached the two parents in the other order
+and each emitted its children with the other's draws. In isolation the
+stage's first generator (30000) is the head and another the tail, so every
+insertion is behind the head whatever the walks do.
+
+`articles::on_damage` now queues `EffectRequest::ArticleDestroyed` (as
+Samus's beam and Link's hookshot and boomerang do). The match gates all 5766
+ticks with 0 differing particle ticks and is in `CORPUS_V3_MATCHES`. The
+other removers (the specials' own, at a motion's end) call Item_8026A8EC
+inside his proc too and do not queue the walk; no recording separates them.
+
+## The flat screen KO (2026-10-12)
+
+`gamewatch_screenko_flat_fd_fox4` (directed, a display pass after every
+tick; `SLIPPI_REPLAY_WITNESSES`, as the other cold-twin directed scenes
+are): the pads of `corpus_v3_fd_gameandwatch_fox4_e45a17231_p2`, where Fox's
+up smash sends him off the top at 2983, with `boundary_seed = 14` so that
+ftCo_800D3158's roll (0x800D326C) is within PlCo +520 (16 in 100). Retail:
+DeadUpFall at 2983, DeadUpFallHitCameraFlat (8) at 3034. The port gates all
+3200 ticks with 0 differing particle ticks: the port of 01312e7b, made from
+the asm, needed no change. To find such a seed, run the port's cold scenario
+over seeds (a cold twin naming the recorded scenario as `expected`, with
+`boundary_seed`): six of the first 56 take the screen KO.
+
+`slp_ps_gameandwatch_falco_r112449_t8200` (the replay
+`GAMEANDWATCH/Game_20190629T112449` from its own boundary, recorded by the
+Stadium work of the same day) holds the console's own screen KO (6921, 6972)
+and the port gates it exact as well.
