@@ -69,7 +69,8 @@ inline 1024 bytes, so `Kirby` shares it behind an `Arc`.
 | Group | Offsets | Read so far |
 | --- | --- | --- |
 | Shared multijump (`Fighter_x2D0_t`) | +00..30 | yes |
-| Inhale, swallow, spit, the ability star | +38..C8 | no |
+| The Inhale's catch, the mouthful, swallow and spit | +38..A0, +B0..C8 | yes (`InhaleAttributes`) |
+| The star of a lost ability | +A4..AC | no |
 | Hammer | +CC..D0 | no |
 | Final Cutter | +D4..E8 | yes (+E8 has no reader) |
 | Stone | +EC..114 | no |
@@ -82,6 +83,21 @@ multipliers 0.8, vertical impulses 2.0, 2.0, 1.73, 1.56, 1.33, five states,
 first actions **341** (bare) and **346** (helmeted). As with Jigglypuff, the
 header declares +00 and +28..30 unsigned and the impulses floats;
 `ftCo_800D74A4` reads them so (`lwz` and `lfs`).
+
+The Inhale on the disc (the header's names for these are guesses; the port
+names them by use): the mouth 5.4 ahead and 3.4 up (+38, +3C); a caught
+fighter shrinks inside 7.4 units to 55% (+40, +44: 0.45 lost) and is pulled
+0.9 across and 1.2 up a tick (+48, +4C); the mouth closes within 1.0 (+50);
+the hold timer is 250, less 1 a tick and 12 per mash input (+5C, +58, +54);
+a star's timer loses the same 1 and 12 (+64, +60) from 30 spat or 10
+swallowed (+68, +6C); the fighter grows back over 4 ticks (+70); the turn
+needs the stick past 0.2 and the swallow past 0.4 down (+74, +78); the walk,
+the jump and the held fighter's taps all use 0.6 (+7C, +80, +84); the spat
+star flies at 4.0 less 0.13 a tick (+88, +8C), the copy star at 2.8 and
+1.309 radians less 0.17 (+94, +90, +98); a fighter leaves a spat star at
+0.73 across and 2.3 up (+9C, +A0); a hit takes the ability one time in 32
+(+B0); the star's box is 2.5 up, 0.5 down and 2.5 either side before the
+fighter's own co_attrs +DC (+B4..+C8).
 
 Final Cutter on the disc: the rise's upward speed times `3F666666` (0.9,
 +D4), PlCo's aerial drift acceleration times 8 (+D8), the beam 3.5 ahead
@@ -105,7 +121,7 @@ the rock, 38 HP (+108).
 | --- | --- |
 | 341..345, 346..350 | JumpAerialF1..F5 and the helmeted JumpAerialF1Met..F5Met (submotions 295..304) |
 | 351, 352 | AttackDash, AttackDashAir (both play `ftCo_SM_AttackDash`, 52) |
-| 353..382 | Inhale: start, loop, end, capture, the mouthful's walk, jumps and turn, swallow, spit; ground then air |
+| 353..382 | Inhale: start, loop, end (353..355), a fighter caught and an item caught (356, 357), the gulp and the wait (358, 359), the three walks, turn, jump squat, jump and landing (360..366), swallow and spit, each for a fighter then an item (367..370); then the aerial rows: start, loop, end (371..373), the two captures (374, 375), the gulp and the fall (376, 377), swallow and spit (378..381) and the turn (382) |
 | 383, 384 | Hammer |
 | 385..392 | Final Cutter |
 | 393..398 | Stone |
@@ -126,3 +142,11 @@ queue will need as `StaleMove` variants.
 | efAlt 0x494 | Final Cutter's blade: `efLib_Create_AttachChild(0x1388)` and `efLib_Create_Attach(0x1389)` on `fp->parts[44]`, `efLib_Create_Attach(0x138A)` on `fp->parts[1]`, each with a lifetime of 0x41 and `efLib_Cb_SetRotYAndTransition` (the last two turn to the fighter's facing; all loop frames 60..65 and play out from 65 once `efLib_SetFlags(gobj, 1)` marks them); efSync from both entries, so sync-loaded | `melee-ef` `kirby.rs`; AttachChild's orientation constraint is not applied (drawn pose only) |
 | efAlt 0x49A | the Inhale's wind: `efLib_CreateGenerator_AppSRT_SetFacingDir(0x138B)` | `melee-ef` `kirby.rs` |
 | efAlt 0x496..0x499, 0x49B, 0x49C | Stone, hammer and swallow models and generators | not ported |
+
+The catch's rows ask for no efAlt or efSync of their own in code: their
+graphics are their scripts' (the caught fighter's star plays Kirby's
+submotions 284 and 285 with their scripts), and the star itself is the
+fighter with an accessory model (`ftCommon_SetAccessory` with
+`ftData.x48_items[0]` +10, drawn only), not an item. The item kinds
+`It_Kind_Unk1` / `It_Kind_Unk2` that OnLoad registers serve the star of a lost
+ability and an inhaled item, neither ported.

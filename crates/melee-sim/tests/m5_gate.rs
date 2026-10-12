@@ -2403,6 +2403,72 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // Fox's dash attack out of the start (the blade goes with the motion)
     // and his up smash out of the landing.
     ("kirby_cutter_struck_fd_fox4", 760),
+    // The Inhale catching Fox (ftkirbyspecialn.c; ftCo_CaptureKirby.c,
+    // ftCo_CaptureWaitKirby.c, ftCo_ThrownKirby.c). The pull, the gulp, then
+    // A: the spat star flies its 30 ticks and Fox comes out past the edge.
+    ("kirby_catch_spit_fd_fox4", 700),
+    // The stick down swallows: the copy star, and Fox's ability as state.
+    // The same with B.
+    ("kirby_catch_swallow_fd_fox4", 700),
+    ("kirby_swallow_b_fd_fox4", 520),
+    // The hold timer runs out (CaptureCut / CatchCut), sooner for Fox's A
+    // presses, and his stick moves Kirby from inside: a tap up hops him
+    // (EatFall, EatLanding), taps sideways push him along the floor.
+    ("kirby_catch_hold_fd_fox4", 900),
+    ("kirby_catch_mash_fd_fox4", 800),
+    ("kirby_catch_struggle_fd_fox4", 900),
+    // The sideways tap while the hop has Kirby in the air.
+    ("kirby_mouthful_air_push_fd_fox4", 800),
+    // With a mouthful: the three walks, the turn, a short hop and its
+    // landing, then the spit toward the middle (the star hits nothing and
+    // Fox lands out of it).
+    ("kirby_mouthful_walk_fd_fox4", 800),
+    // The jump out of the walk, a full hop with the stick held; Fox breaks
+    // free as Kirby lands, and while Kirby is in the air.
+    ("kirby_mouthful_walk_jump_fd_fox4", 800),
+    ("kirby_mouthful_jump_escape_fd_fox4", 800),
+    // Caught from a short hop (the aerial rows landing into the grounded
+    // ones), and both in the air: the aerial gulp ends in EatFall.
+    ("kirby_catch_air_fd_fox4", 700),
+    ("kirby_catch_both_air_fd_fox4", 700),
+    // Walked off the right edge with a mouthful. Swallowed in the air:
+    // Kirby jumps with the ability and loses it in the blast zone.
+    ("kirby_mouthful_edge_swallow_fd_fox4", 900),
+    // Turned in the air and spat: the star turned back by the stage's side
+    // (Fox comes out at once); on the left, glancing down off the slant.
+    ("kirby_mouthful_edge_spit_fd_fox4", 900),
+    ("kirby_mouthful_left_edge_spit_fd_fox4", 900),
+    // Neither lets go: Fox, pinned in Kirby's mouth, crosses the blast zone
+    // first (ftCo_800DD100 on the dying fighter), then Kirby.
+    ("kirby_mouthful_edge_death_fd_fox4", 900),
+    // With Fox's ability: each of his two down smashes draws for its loss
+    // (ftKb_SpecialN_800F5BA4), neither takes it; the bare midair jumps and
+    // a ledge with the ability. Three lasers, damage without knockback:
+    // three more draws (ftKb_SpecialN_800F5C34).
+    ("kirby_copy_struck_fd_fox4", 900),
+    ("kirby_copy_laser_fd_fox4", 700),
+    // Caught out of the loop rows: Fox walks into the held Inhale, and
+    // jumps up into the aerial one.
+    ("kirby_catch_loop_fd_fox4", 700),
+    ("kirby_catch_air_loop_fd_fox4", 700),
+    // A late aerial Inhale: Kirby lands during the pull (fn_800F6A5C).
+    ("kirby_catch_air_land_fd_fox4", 700),
+    // The jump on the stick with a mouthful: a tap let go in the squat,
+    // then held.
+    ("kirby_mouthful_tap_jump_fd_fox4", 800),
+    // The aerial rows landing into their grounded twins, out of the hop
+    // Fox gives Kirby: the spit, the swallow and the turn.
+    ("kirby_mouthful_hop_spit_fd_fox4", 700),
+    ("kirby_mouthful_hop_swallow_fd_fox4", 700),
+    ("kirby_mouthful_hop_turn_fd_fox4", 800),
+    // The grounded rows leaving the floor's end: EatWait pushed off by
+    // Fox's tap, and the spit, the swallow, the turn and the jump squat
+    // entered while Kirby still slides from his walk.
+    ("kirby_mouthful_push_off_fd_fox4", 800),
+    ("kirby_mouthful_slide_spit_fd_fox4", 800),
+    ("kirby_mouthful_slide_swallow_fd_fox4", 800),
+    ("kirby_mouthful_slide_turn_fd_fox4", 800),
+    ("kirby_mouthful_slide_squat_fd_fox4", 800),
 ];
 
 #[test]

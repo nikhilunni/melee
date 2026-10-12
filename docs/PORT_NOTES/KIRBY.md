@@ -4,12 +4,13 @@ Kirby (PlKb.dat, scenario name `Kirby`) vs Fox on Final Destination,
 boundary `start_fd_kirby_fox4`. Crate: `ft-kirby`. Data facts are in
 `docs/KIRBY_DATA.md`.
 
-**Status: stage 1 of three.** Kirby is registered and his movement, common
-attacks, down throw, hit reactions, death and revival are exact. His own
-specials are stage 2: the Inhale that catches nothing and Final Cutter with
-its beam are exact; the Inhale's catch, Hammer and Stone are not ported.
-The copy abilities (stage 3) are not ported. Every unported row and entry
-fails closed, as do his three airborne throws.
+**Status: stage 2 of three, in part.** Kirby is registered and his movement,
+common attacks, down throw, hit reactions, death and revival are exact. Of
+his own specials (stage 2) the Inhale, with a caught fighter held, spat and
+swallowed, and Final Cutter with its beam are exact; Hammer and Stone are not
+ported, nor is inhaling an item. A swallow leaves the copied kind as state;
+the copy abilities themselves (stage 3) are not ported. Every unported row
+and entry fails closed, as do his three airborne throws.
 
 ## What is different about him
 
@@ -100,6 +101,75 @@ fails closed, as do his three airborne throws.
     the new script's timer at 0, so its commands ran late by the start
     frame. Retail sets the timer to `-anim_start` for every such entry
     (fighter.c:1287) before ftAction_80073354 seeks; `melee-ft` now does.
+- **The Inhale's catch** (`ft-kirby/src/mouthful.rs`, `swallow.rs`; the
+  caught fighter's states are common code, `melee-ft` `capture_kirby.rs`,
+  driven between the two fighters by `melee-lib` `grab_pairs.rs` like the
+  other capture families). Rows 356, 358..367, 369 and 374, 376..378, 380,
+  382 are live; the six item rows (357, 368, 370, 375, 379, 381) are not.
+  The reach is about 22 units: Fox at 24.4 is not caught, at 21.6 he is.
+  - The grab is the special grab armed since the whiff (category 0x10).
+    Kirby's grab_cb (fn_800F6210 / fn_800F6318) takes SpecialNCapture0;
+    the victim's grabbed_cb (ftCo_800BD1DC) turns it to face him in
+    CaptureKirby, still vulnerable, and its accessory1 (ftCo_800BD39C) moves
+    it each tick at most 0.9 across and 1.2 up toward the mouth (5.4 ahead
+    of Kirby, 3.4 up), shrinking it inside 7.4 units to 55% at the mouth.
+    Kirby's own Anim tests the squared distance (under 1.0) and closes the
+    mouth: ftCo_800BD620 pins the victim to his TransN2 (the thrown
+    fighters' constraint), hidden and intangible at its own size, with no
+    animation; Kirby gulps (Eat) and stands (EatWait).
+  - The victim's IASA (ftCo_CaptureWaitKirby_IASA) reaches into Kirby, so
+    the scene runs it on the pair: while Kirby is in EatWait or EatFall a
+    tap up hops him off the floor into EatFall at 0.6 (ftKb_SpecialS_800F6BB0,
+    `CharacterCallbacks::MOUTH_HOLD`) and a tap sideways sets his speed to
+    0.6 that way; each tap is spent (its tilt timer becomes 254). The hold
+    timer starts at 250, loses 1 a tick and 12 per mash input
+    (ftCommon_GrabMash); at its end the victim is set down facing away
+    (ftCo_800DC920, CaptureCut) and Kirby lets go (CatchCut).
+  - With a mouthful Kirby walks (ftWalkCommon on rows 360..362 with the
+    multiplier 0.6 and the common walk rates), turns (363), jumps (364 is
+    the squat with the common short-hop test, 365 the jump with
+    ftCo_800CB110 scaled by 0.6; 365 has no IASA, so nothing can be done in
+    it), lands (366) and falls (377, entered off a floor's end, from the
+    aerial gulp or from the victim's hop; the only aerial row that takes
+    input). Every row has its ground/air counterpart at the same frame.
+  - A (EatWait or EatFall) spits: on the script's flag ftCo_800DE2CC sets the
+    victim free at TransN2 with the script's throw record logged as damage
+    alone (10% on Fox; a swallow's is 8%), and ftCo_800BDB58 makes it a star (ThrownKirbyStar, playing
+    Kirby's submotion 285 and its script): hidden, intangible, flying level
+    at 4.0 less 0.13 a tick, its facing taken from the vertical speed's sign
+    each tick (retail 0x800BDE8C), with a hitbox of the victim's own co_attrs
+    +E0 that answers to Kirby. Its timer is 30, less 1 a tick and 12 per
+    mash input. At its end, or when what its box meets turns it back
+    (ftCo_ThrownKirbyStar_Coll: lbVector_Mirror, the dot product an
+    `fmadds`), the victim comes out (ThrownKirby) at 0.73 across and 2.3 up,
+    visible and vulnerable, growing back over 4 ticks (accessory4
+    ftCo_800BE6AC), then falls.
+  - B or the stick down past 0.4 swallows: the same release into the copy
+    star (ThrownCopyStar, submotion 284, no hitbox), 2.8 at 75 degrees less
+    0.17 a tick for 10 ticks; out of it the victim falls at once. Twelve
+    per mash input is more than that timer: one press ends it on its first
+    tick (the Slippi game below does exactly that).
+  - **The copied ability is state only** (`Kirby::copied`,
+    ftKb_SpecialN_800F1BAC). ftCo_800BD9E0's kind arms are
+    `CharacterCallbacks::SWALLOWED_ABILITY` (Kirby gives his own hat's
+    kind; a Kirby with one is refused, ftCo_800BDA50). Most hats are a
+    model of their own, loaded by ftKb_LoadHat and drawn at Kirby's part 6
+    matrix (ftKb_UnkMtxFunc0): nothing the simulation reads. Five kinds
+    (Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game & Watch: the LOAD_HAT
+    loaders, with replacement models) graft parts into his skeleton and
+    fail closed at the swallow. With an ability, a hit draws
+    `HSD_Randi(32)` for its loss in Fighter_ProcessHit (fighter.c:2860 and
+    2960, `CharacterCallbacks::DAMAGE_DRAW`): the draw is ported, taking the
+    ability away is not. The midair jumps are the bare rows under every hat
+    but five (fn_800F1CA0: Captain Falcon, Sheik, Popo, Nana, Samus), which
+    fail closed. Death takes the ability (ftKb_Init_800EE74C).
+  - **Shared code this added to:** a fighter that dies pinned to its captor
+    (in a falling Kirby's mouth it crosses the blast zone first) is set free
+    by ftCo_800DD100 before its death entry; the port does it right after,
+    which is the same while the release does not move it, and refuses
+    otherwise (`release_from_dead_partner`). ftCo_800DC920 has a Kirby arm
+    for a pair parted during the pull (ftCo_CaptureCut.c:115-122), which
+    fails closed.
 - **Landing** clears the three once-per-flight lifts (`x64` Hammer, `xC4`
   copied Ice Shot, `xCC` copied Toad).
 - **Items.** `ftKb_Init_OnItemPickup` maps hold kinds to hand poses
@@ -110,20 +180,29 @@ fails closed, as do his three airborne throws.
 
 | What | Where it stops |
 | --- | --- |
-| Inhale and its 30 rows, swallow, spit, the star (ftkirbyspecialn.c) | `enter_special` Neutral |
+| Inhaling an item (fn_800F6178 / fn_800F6280, ftKb_SpecialN_800F5DE8, it_802F23EC) and its six rows | nothing arms an item's catch; rows 357, 368, 370, 375, 379, 381 |
+| The held fighter dropping Kirby through a platform (ftCo_CaptureWaitKirby.c:56-62) | `capture_kirby` `steer_vertically` |
+| The pull and the gulp sliding off a floor's end (fn_800F697C, fn_800F6AC8: ftkirbyspecialn.c:565-571, 591-598); a mouthful's wait with no victim (:1211-1243) | `mouthful` `capture_collision`, `eat_collision`, `swallow_or_spit` |
+| A pair parted while the Inhale still pulls its catch in (ftCo_CaptureCut.c:115-122) | `refuse_parting_in_the_pull` |
+| A fighter out of Kirby's mouth landed by its release (ftCo_CaptureCut.c:29-30); one dying in his mouth moved by it (ftCo_CaptureCut.c:137-189) | `capture_kirby` `escape`, `release_from_dead_partner` |
+| A star on a floor or under a ceiling (ftCo_ThrownKirby.c:76-77, 82-83), slower than its deceleration (:177-179), and a hit on the fighter out of one (:340-343) | `capture_kirby` `contact_normal`, `star_physics`, `star_hit_taken` |
+| A mouthful walked over a slippery floor or with no forward speed (ftwalkcommon.c:106-112); a take-off past the scaled speed limit (ftCo_Jump.c:133-139) | `mouthful` `walk_anim`, `take_off` |
+| A hat grafted into Kirby's parts (ftkirby.c:3578-3592: Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game & Watch) | `swallow` `copy_ability` |
+| Losing the ability to a hit (ftkirbyspecialn.c:266-291, the star it_802ADA1C) or a taunt; a Kirby with an ability inhaled (ftCo_ThrownKirby.c:63-69, 283-289) | `ability_loss_draw`, `ENTER_TAUNT`, `SWALLOWED_ABILITY` |
 | Hammer (ftkirbyspecials.c), Stone (ftkirbyspeciallw.c) and their articles | `enter_special` Side / Down |
 | Final Cutter's aerial start landing (ftkirbyspecialhi.c:447-453) and its aerial landing row landing (:526-536): neither row descends on its own | `air_start_collision`, `air_landing_collision` |
 | The beam on a slope (itkirbycutterbeam.c:93-97, the one `fmadds`), landing from the air (:128-133), ended by a wall (:137-151), clanked (:162), absorbed (:167), glancing off a shield (:205-243) | `it-kirby` `cutter_beam.rs` |
-| Every copied neutral special (ftkirbyspecial<kind>.c), hats, the helmeted multijumps, losing the ability | rows 399..543; `ENTER_TAUNT` and `multi_jump_family` with a hat |
+| Every copied neutral special (ftkirbyspecial<kind>.c), the hat models, the helmeted multijumps | rows 399..543 (`enter_special` Neutral with an ability); `multi_jump_family` under the five helmets |
 | Forward, back and up throws | `THROW_ENTRY` |
-| CaptureKirby / CaptureWaitKirby / ThrownKirby on the victim | common rows, unported |
 | Item pickup hand poses | `item_hand` |
 
 ## Evidence
 
 - `start_fd_kirby_fox4` and `_cold`: 600 ticks, 0 differing particle ticks
   (`m4_gate`).
-- `KIRBY_WITNESSES` (`m5_gate`): twenty-one scenes, all recorded once and
+- `KIRBY_WITNESSES` (`m5_gate`) holds sixty-seven scenes: the twenty-one
+  below, the Inhale's whiff, Final Cutter's fifteen and the catch's
+  thirty. The twenty-one were all recorded once and
   exact on the first gate: the thirteen movement scenes, Kirby's down
   throw with a pummel, Fox's four throws on Kirby, Fox's up smash, dash
   attack and Reflector on Kirby through a tumble, the floor, a hit while
@@ -142,6 +221,56 @@ fails closed, as do his three airborne throws.
   timings each: the beam hits him every time) and a reflecting shield (the
   beam is grounded wherever Fox can shield, and only an airborne item
   glances off).
+- The Inhale's catch: thirty scenes in `KIRBY_WITNESSES`, each exact over
+  its full length with 0 differing particle ticks. Thirty-five were
+  recorded for it, each once. Five (`kirby_inhale_{spit,swallow,hold,mash,
+  struggle}_fd_fox4`) stopped the run-in eleven ticks early, at x=35.6,
+  just out of the Inhale's reach: they are whiffs (exact, but not evidence
+  of a catch) and are not registered; their scenario files and traces are
+  still in the main checkout. Of the thirty, twenty-nine were exact on
+  their first gate and `kirby_mouthful_edge_death` on its second: the first
+  stopped at the shared death code's refusal of a pinned fighter, ported
+  then. The first five scenes' inputs were written before the port existed;
+  the other twenty-five were timed on the port's own dry runs to reach
+  their states (several were retimed there before being recorded), and no
+  input was changed after a recording. Six headers were rewritten after
+  recording to say what retail did.
+  - What they cover: the catch out of the start and out of the loop, on the
+    floor and in the air; the pull (also landing during it), the gulp
+    (also ending in the air) and the wait; A and the spat star (thirty
+    ticks along the floor and past the edge, toward the middle and landing,
+    turned back at once by the stage's side, glancing down off its slant);
+    B and the stick down, the copy star; the hold timer on its own, with A
+    mashed, and ending while Kirby is in the air; the held fighter's taps
+    up and sideways, on the floor and in the air, one pushing Kirby off the
+    floor's end; the three walks, the turn, the jump on X and on the stick,
+    short and full, out of the wait and out of the walk, the landing;
+    walking off an edge into EatFall, the aerial turn, spit and swallow
+    there; every other row's ground/air counterpart (the spit, the swallow
+    and the turn landing and leaving the floor, the squat leaving it); both
+    falling to the blast zone, the held fighter first; and Kirby with Fox's
+    ability hit twice with knockback and three times without (five draws),
+    jumping, on a ledge and dying.
+  - How the rest was found: the retail histories' state changes against
+    every change the code can make, and a scratch run with a marker in each
+    single-line `fn`, `if`, `else` and match block of the three new files
+    (it cannot see a block opened by a multi-line condition, nor the code
+    after an early return, which is where the counterparts are: those came
+    from the histories). What neither reached is a refusal now
+    (`unimplemented!`): the rows of the table above from the platform drop
+    to the mouthful's take-off.
+  - Live without a scene of its own: a swallow that gives the kind Kirby
+    already has (only a Kirby swallowing a Kirby; the Slippi game below
+    does it and matches); the star's hitbox damage (the star answers to
+    Kirby, and the scenes have no third fighter for it to hit); any kind's
+    ability but Fox's; EatLanding leaving the floor (the callback the walk
+    and the squat share, fn_800F6450); and the one-in-32 loss itself, which
+    none of the five draws came to.
+  - Other captures, gated before and after: the 207 older `m5_gate` scenes
+    whose names mention a grab, throw, catch, capture, pummel, Egg Lay,
+    Klaw, Confusion, cargo or Falcon Dive (201 of other characters, six of
+    Kirby's own grab and throws) are all exact with this change, as they
+    were in the sweep of the commit before it (db6f8b1f).
 - Slippi (`public-v3.7-b`: the four games in `KIRBY` and one in
   `GAMEANDWATCH`, all refused before Kirby was registered): every frame
   matches up to the first unported boundary, which the runner names.
@@ -151,11 +280,16 @@ fails closed, as do his three airborne throws.
   | `14_16_24 Marth + Kirby (PS)` | 2488 of 7001 (1378 before Final Cutter) | Kirby's back throw |
   | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 1671 of 13271 | Kirby's up throw |
   | `Falco vs Kirby [YS]` | 1756 of 9109 | Kirby's forward throw |
-  | `Game_20190824T180214` (Kirby against Kirby) | 1175 of 13809 | the Inhale catching a fighter |
+  | `Game_20190824T180214` (Kirby against Kirby) | 5426 of 13809 (1175 before the catch) | Kirby's up throw |
   | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 563 of 15399 | Kirby's forward or back throw |
 
   `replay-batch` before and after on both corpora: 106 of 108 and 396 of
-  502 complete either way; those five games are the only changes.
+  502 complete either way; those five games are the only changes. (That
+  comparison predates the catch; the Kirby against Kirby row is from the
+  four-game run alone.) In that game one Kirby catches the other at tick
+  1176, turns and spits him (the star mashed out of after 17 ticks), and at
+  3480 is caught in turn and swallowed, mashing out of the copy star on its
+  first tick.
 
 - The explorer was not run from this boundary: its policies press B within
   the first seconds, so every case would stop at a special's entry.

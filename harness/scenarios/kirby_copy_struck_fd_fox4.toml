@@ -1,0 +1,41 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby runs to x=51 beside Fox at +60): Kirby swallows Fox and has his ability. Fox down smashes him (a draw for the ability), Kirby jumps twice in the air, Fox walks over and down smashes him again (a second draw) off the edge to the ledge, where Kirby hangs; Fox's up smash then misses.
+name = "kirby_copy_struck_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 1, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 433, port = 1, buttons = {  }, raw = {  } },
+  { frame = 490, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 493, port = 0, buttons = {  }, raw = {  } },
+  { frame = 515, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 518, port = 0, buttons = {  }, raw = {  } },
+  { frame = 590, port = 1, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 610, port = 1, buttons = {  }, raw = {  } },
+  { frame = 640, port = 1, buttons = {  }, raw = { button = 256, stickY = -127 } },
+  { frame = 643, port = 1, buttons = {  }, raw = {  } },
+  { frame = 720, port = 1, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 750, port = 1, buttons = {  }, raw = {  } },
+  { frame = 760, port = 1, buttons = {  }, raw = { button = 256, stickY = 127 } },
+  { frame = 763, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

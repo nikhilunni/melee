@@ -1,0 +1,49 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby runs to x=51 beside Fox at +60): the Inhale catches Fox, who mashes A in Kirby's mouth and breaks free early.
+name = "kirby_catch_mash_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 800
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 334, port = 1, buttons = {  }, raw = {  } },
+  { frame = 338, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 342, port = 1, buttons = {  }, raw = {  } },
+  { frame = 346, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 350, port = 1, buttons = {  }, raw = {  } },
+  { frame = 354, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 358, port = 1, buttons = {  }, raw = {  } },
+  { frame = 362, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 366, port = 1, buttons = {  }, raw = {  } },
+  { frame = 370, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 374, port = 1, buttons = {  }, raw = {  } },
+  { frame = 378, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 382, port = 1, buttons = {  }, raw = {  } },
+  { frame = 386, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 390, port = 1, buttons = {  }, raw = {  } },
+  { frame = 394, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 398, port = 1, buttons = {  }, raw = {  } },
+  { frame = 402, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 406, port = 1, buttons = {  }, raw = {  } },
+  { frame = 410, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 414, port = 1, buttons = {  }, raw = {  } },
+  { frame = 418, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 422, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

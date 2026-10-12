@@ -1,0 +1,42 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby runs to x=51 beside Fox at +60): with Fox in his mouth Kirby walks off the right edge, turns round in the air and spits him. The star passes under the lip and meets the side of the stage, which turns it back: Fox comes out at once and falls. Kirby jumps three times and falls too.
+name = "kirby_mouthful_edge_spit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 290, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 364, port = 0, buttons = {  }, raw = {  } },
+  { frame = 366, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 370, port = 0, buttons = {  }, raw = {  } },
+  { frame = 386, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 388, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 423, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 445, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 448, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 470, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 473, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 495, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 498, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 1024, stickX = -127 } },
+  { frame = 523, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 580, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,31 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby runs to x=51 beside Fox at +60): Kirby and Fox both jump and Kirby inhales Fox high in the air: the gulp ends before the floor, Kirby falls with him, lands and spits him out.
+name = "kirby_catch_both_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 232, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 244, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 242, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 1, buttons = {  }, raw = { button = 1024 } },
+  { frame = 252, port = 1, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

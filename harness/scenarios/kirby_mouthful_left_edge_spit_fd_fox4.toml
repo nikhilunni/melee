@@ -1,0 +1,33 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby at -60, Fox runs over to his left): Kirby turns round and inhales Fox, walks off the left edge with him, turns in the air and spits him at the slanted side of the stage: the star glances down off it without ending and runs out its timer. Both fall to the blast zone.
+name = "kirby_mouthful_left_edge_spit_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 112, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 162, port = 1, buttons = {  }, raw = {  } },
+  { frame = 180, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 184, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 254, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 308, port = 0, buttons = {  }, raw = {  } },
+  { frame = 311, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 315, port = 0, buttons = {  }, raw = {  } },
+  { frame = 328, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 330, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
