@@ -980,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 531] = [
+const MATRIX_WITNESSES: [(&str, usize); 539] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1486,6 +1486,21 @@ const MATRIX_WITNESSES: [(&str, usize); 531] = [
     ("samus_zair_shined_fd_fox4", 300),
     ("samus_zair_reach150_fd_fox4", 300),
     ("samus_grab_edge_fd_fox4", 300),
+    // Local recordings registered 2026-10-12. The Z-air grapple striking a
+    // Fox who walked in, and thrown at one who dashed in and stopped (the
+    // reach150 scene at two more spacings); a grab with L held that Fox
+    // shines on tick 216, the frame before the beam is thrown.
+    ("samus_zair_fox_fd_fox4", 300),
+    ("samus_zair_reach156_fd_fox4", 300),
+    ("samus_zair_reach162_fd_fox4", 300),
+    ("samus_grab_l_shined216_fd_fox4", 380),
+    // Explorer cases that stopped at the grapple beam (ftCo_Catch.c:125,
+    // fn_800D9558) and at the aerial tether hook (ftCo_AirCatch.c:54-79),
+    // with 240 neutral ticks after.
+    ("samus_x_e9943b4ab_p2", 341),
+    ("samus_x_ec3145eb3_p1", 332),
+    ("samus_x_e00f31913_p0", 392),
+    ("samus_x_edafcfddf_p1", 498),
     // The aerial tether into FD's wall below the ledge (ftCo_800C3CC0,
     // AirCatchHit; itsamusgrapple.c states 6-8, itlinkhookshot.c states
     // 6-8): paying out, the swing and its countdown into DamageFall, and A
@@ -2015,6 +2030,26 @@ const DONKEY_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_donkeykong_fox4_ee92d4a97_p0", 6001),
     ("corpus_v3_fd_donkeykong_fox4_e3e98e6dc_p0", 5851),
     ("corpus_v3_fd_donkeykong_fox4_e0211286e_p0", 4898),
+    // Explorer cases recorded while Donkey Kong's specials were unported
+    // (local recordings registered 2026-10-12): each runs to the tick its
+    // special starts. Giant Punch grounded and aerial,
+    ("corpus_v3_fd_donkeykong_fox4_e75fb4a9a_p1", 86),
+    ("corpus_v3_fd_donkeykong_fox4_ec3145eb3_p1", 93),
+    ("corpus_v3_fd_donkeykong_fox4_eae52f0ea_p2", 114),
+    ("corpus_v3_fd_donkeykong_fox4_ee62c6106_p0", 233),
+    // Headbutt grounded and aerial,
+    ("corpus_v3_fd_donkeykong_fox4_e4213e6a5_p2", 86),
+    ("corpus_v3_fd_donkeykong_fox4_ec13743d5_p2", 87),
+    ("corpus_v3_fd_donkeykong_fox4_e4213e6a5_p1", 348),
+    ("corpus_v3_fd_donkeykong_fox4_e89a89d0e_p2", 385),
+    // Spinning Kong grounded and aerial,
+    ("corpus_v3_fd_donkeykong_fox4_e3e74affa_p2", 97),
+    ("corpus_v3_fd_donkeykong_fox4_e573e2d95_p2", 105),
+    ("corpus_v3_fd_donkeykong_fox4_e00f31913_p2", 124),
+    ("corpus_v3_fd_donkeykong_fox4_ec13743d5_p0", 125),
+    // and Hand Slap.
+    ("corpus_v3_fd_donkeykong_fox4_ec3145eb3_p0", 120),
+    ("corpus_v3_fd_donkeykong_fox4_eeda0d0fc_p2", 195),
 ];
 
 #[test]
@@ -2408,6 +2443,13 @@ const MEWTWO_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_mewtwo_fox4_ee98155f3_p2", 2439),
     ("corpus_v3_fd_mewtwo_fox4_ef89b3e70_p0", 6001),
     ("corpus_v3_fd_mewtwo_fox4_ef9b6d16d_p0", 4352),
+    // Four more explorer matches from the boundary, with no fault in their
+    // headers (local recordings registered 2026-10-12): three to the
+    // explorer's 6000-tick limit, one to the end of its match.
+    ("corpus_v3_fd_mewtwo_fox4_e2af099ca_p0", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_e70b3084c_p0", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_e9a8e5048_p0", 6001),
+    ("corpus_v3_fd_mewtwo_fox4_ece1e43b7_p0", 4787),
 ];
 
 #[test]
@@ -3109,6 +3151,12 @@ fn frozen_stages_code_matches_retail() {
 fn widescreen_code_matches_retail() {
     combat_gate_ticks("widescreen_hover_slow_ps_marth_jigglypuff4", 560);
     combat_gate_ticks("standard_hover_slow_ps_marth_jigglypuff4", 560);
+    // The same hover with a faster drift: the first point comes at 326 with
+    // the code and 325 without. This pair alone does not separate the
+    // screens (docs/SLIPPI.md: the port without the code passes the
+    // widescreen recording too).
+    combat_gate_ticks("widescreen_hover_fast_ps_marth_jigglypuff4", 560);
+    combat_gate_ticks("standard_hover_fast_ps_marth_jigglypuff4", 560);
 }
 
 /// Pokemon Stadium's jumbotron close-up ends when the player's camera bone
@@ -4079,7 +4127,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 583] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 592] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4997,6 +5045,21 @@ const CORPUS_V3_MATCHES: [(&str, usize); 583] = [
     // Fox throws Popo as Nana's smash launches Fox: the light hit on the
     // captured member whose captor is launched (ftCo_Damage.c:875-880).
     ("corpus_v3_ys_iceclimbers_fox4_e0c0cbed8_p0", 950),
+    // Local recordings registered 2026-10-12, each to the tick the port
+    // stopped at when it was found. The same light hit on a captured member
+    // whose captor is launched (ftCo_8008EC90), on Final Destination.
+    ("corpus_v3_fd_iceclimbers_fox4_ea7c88fe6_p2", 1169),
+    // Captain Falcon's Raptor Boost, Falcon Kick and Falcon Dive entries.
+    ("corpus_v3_fd_captainfalcon_fox4_e00f160ee_p0", 86),
+    ("corpus_v3_fd_captainfalcon_fox4_e2af099ca_p2", 126),
+    ("corpus_v3_fd_captainfalcon_fox4_eecfcf1ea_p0", 140),
+    // Yoshi's Egg Roll and Yoshi Bomb entries, grounded and aerial.
+    ("corpus_v3_fd_yoshi_fox4_e00f160ee_p0", 86),
+    ("corpus_v3_fd_yoshi_fox4_ee2e29518_p1", 332),
+    ("corpus_v3_fd_yoshi_fox4_e00f160ee_p2", 579),
+    ("corpus_v3_fd_yoshi_fox4_efd4a7dd2_p1", 474),
+    // Link's aerial hookshot starts (the tether hook, ftCo_AirCatch.c:54-79).
+    ("corpus_v3_fd_link_fox4_e50814092_p0", 102),
 ];
 
 #[test]
