@@ -1283,10 +1283,15 @@ impl Fighter {
         let (state, stun) =
             self.core
                 .prepare_damage_reaction(&hit, forced_motion, percent_pending, assets, rng);
-        // ftCo_8008DA4C: with damage this frame (x1838_percentTemp), the
-        // element's color animation for the reaction level, else the plain
-        // damage flash (4), before Fighter_ChangeMotionState evaluates frame zero.
-        if hit.percent_damage != 0.0 {
+        // ftCo_8008DA4C, inlined in ftCo_8008DCE0 (retail 0x8008E19C: lfs
+        // 0x1838; fcmpu; beq): with damage logged this frame
+        // (x1838_percentTemp), the element's color animation for the
+        // reaction level, else the plain damage flash (4), before
+        // Fighter_ChangeMotionState evaluates frame zero. Damage a caller
+        // gave x1830_percent itself (Fighter_UnkTakeDamage_8006CC30: the
+        // cargo carry's breakout, ftCo_Shouldered.c:73, 113) is not logged
+        // and flashes nothing.
+        if self.core.combat.frame_damage != 0.0 {
             let level = if forced_motion.is_some() {
                 3
             } else {
