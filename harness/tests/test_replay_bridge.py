@@ -152,6 +152,29 @@ def test_tick_clock_rewrites_queue_to_the_next_ticks_pad(tmp_path):
     assert tracer.injected_ticks == 3
 
 
+def test_a_failed_poll_writes_err_and_every_other_entry_clears_it(tmp_path):
+    scenario = {"frames": 4, "input_clock": "tick", "render_every_tick": True, "inputs": [
+        {"frame": 0, "port": 0, "buttons": {}, "raw": {"button": 0x100, "stickX": 61}},
+        {"frame": 1, "port": 0, "buttons": {}, "raw": {"err": -3}},
+        {"frame": 2, "port": 0, "buttons": {}, "raw": {"button": 0x100, "stickX": 61}}]}
+    mem = QueueMemory(qnum=5, qwrite=0, qcount=0)
+    tracer = tick.TickTracer(scenario, None, tmp_path / "unused.sav", mem=mem)
+    err = tick.PAD_ERR_OFFSET
+    tracer.inject_tick_pads(0)
+    assert mem.status(4, 0)[err] == 0
+    tracer.inject_tick_pads(1)
+    assert mem.status(4, 0)[:3] == b"\x00\x00\x00" and mem.status(4, 0)[err] == 0xFD
+    tracer.inject_tick_pads(2)
+    assert mem.status(4, 0)[:3] == b"\x01\x00\x3d" and mem.status(4, 0)[err] == 0
+    # A schedule without one leaves err as Dolphin polled it.
+    plain = {"frames": 2, "input_clock": "tick", "inputs": [
+        {"frame": 0, "port": 0, "buttons": {}, "raw": {"stickX": 61}}]}
+    mem = QueueMemory(qnum=4, qwrite=2, qcount=0)
+    mem.write_u8(mem.queue + 1 * tick.PAD_ENTRY_BYTES + err, 0xFF)
+    tick.TickTracer(plain, None, tmp_path / "unused.sav", mem=mem).inject_tick_pads(0)
+    assert mem.status(1, 0)[err] == 0xFF
+
+
 def test_a_lag_frame_queues_two_ticks_and_the_next_injection_restores_one(tmp_path):
     # Records 2 and 3 run in one frame: no display pass before record 3.
     scenario = {"frames": 5, "input_clock": "tick", "render_every_tick": True,

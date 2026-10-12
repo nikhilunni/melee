@@ -1088,12 +1088,6 @@ pub fn compare_frame(expected: &Record, actual: &Record) -> Option<Divergence> {
     first_divergence([expected], [actual])
 }
 
-/// PlCo's stick dead zone (ftCommonData x0/x4): Pre Frame's joystick is
-/// Fighter.input's, zero at or inside it.
-const STICK_DEAD_ZONE: f32 = 0.275;
-/// HSD's analog trigger scale (HSD_PadScale): raw 140 is 1.0.
-const TRIGGER_MAX: f32 = 140.0;
-
 /// The replay as a retail recording's input schedule: a header with the
 /// match setup (the Game Start seed and the pre-music boundary seed it
 /// reaches, spawn rule, timer, stage, each player's slot, kind and
@@ -1102,10 +1096,13 @@ const TRIGGER_MAX: f32 = 140.0;
 /// (`harness/slippi_to_scenario.py`). `tick` is the scheduler tick that
 /// consumes the pad: Slippi frame + 124.
 ///
-/// Slippi before 3.15 records the raw main-stick X and the fighter's
-/// dead-zoned sticks. The raw Y is the one nearest the processed value
-/// whose clamped, dead-zoned pair (HSD_PadClampCheck3, then the fighter's
-/// dead zone) equals the recorded pair; every pair must have one.
+/// The raw bytes are `replay_retail_pads::reconstruct`'s: each must read,
+/// through HSD's clamp and direction test and the fighter's dead zone, as
+/// the recorded Pre Frame. A console's failed poll is fed as one (`err`: HSD
+/// keeps the last status on both sides), and a tick before GO whose
+/// recorded stick is no pad's says `frozen`. At the first tick with a pad
+/// that cannot be fed the schedule ends: the header's `ticks` is that tick
+/// (the scenario's length limit) and `pads_end` says why.
 pub fn write_retail_inputs(
     replay: &Replay,
     root: &Path,
@@ -1166,51 +1163,51 @@ pub fn write_retail_inputs(
     // its earlier aspect).
     header["widescreen"] = scenario.widescreen.into();
     header["widescreen_92_63"] = scenario.widescreen_92_63.into();
-    writeln!(out, "{header}")?;
-    let dead = |v: f32| if v.abs() <= STICK_DEAD_ZONE { 0.0 } else { v };
+    use crate::replay_retail_pads::{reconstruct, Reading, PAD_ERR_TRANSFER};
+    let mut previous: [Option<&slp::cold::ControllerFrame>; 4] = [None; 4];
+    let mut records = Vec::with_capacity(scenario.replay_inputs.len());
     for input in &scenario.replay_inputs {
-        let pad = crate::inputs::replay_pad(input)?;
-        let derived = pad.raw_sticks();
-        let mut stick = input.raw_stick.unwrap_or(derived.stick);
-        if let (None, Some(x)) = (input.raw_stick, input.raw_stick_x) {
-            let y = (-128i16..=127)
-                .map(|y| y as i8)
-                .filter(|&y| {
-                    let clamped = melee_ft::input::pad::normalize_stick(x, y);
-                    dead(clamped.x) == input.stick[0] && dead(clamped.y) == input.stick[1]
-                })
-                .min_by_key(|&y| (i16::from(y) - i16::from(derived.stick[1])).abs());
-            let Some(y) = y else {
-                anyhow::bail!(
-                    "tick {} port {}: no raw stick Y gives {:?} with raw X {x}",
-                    input.frame + 1,
-                    input.port,
-                    input.stick
-                );
-            };
-            stick = [x, y];
-        }
-        let cstick = input.raw_cstick.unwrap_or(derived.cstick);
-        let trigger = |value: f32| -> Result<u8> {
-            let raw = (value * TRIGGER_MAX).round();
-            ensure!(
-                raw / TRIGGER_MAX == value,
-                "trigger {value} is not a multiple of 1/140"
-            );
-            Ok(raw as u8)
+        let port = usize::from(input.port);
+        let before = previous
+            .get(port)
+            .copied()
+            .flatten()
+            .filter(|before| before.frame + 1 == input.frame);
+        let pad = match reconstruct(input, before) {
+            Ok(pad) => pad,
+            Err(error) => {
+                // Retail can be fed the replay's pads up to the tick before:
+                // the header ends the schedule there and says why.
+                let tick = input.frame + 1;
+                eprintln!("warning: the replay's pads can be fed to retail below tick {tick} only");
+                eprintln!("  {error}");
+                header["ticks"] = tick.into();
+                header["pads_end"] = error.to_string().into();
+                records.retain(|(record_tick, _)| *record_tick < tick);
+                break;
+            }
         };
-        writeln!(
-            out,
-            "{}",
-            serde_json::json!({
-                "tick": input.frame + 1,
-                "slot": input.port,
-                "button": input.buttons_physical,
-                "stick": stick,
-                "cstick": cstick,
-                "triggers": [trigger(input.triggers[0])?, trigger(input.triggers[1])?],
-            })
-        )?;
+        let mut record = serde_json::json!({
+            "tick": input.frame + 1,
+            "slot": input.port,
+            "button": pad.button,
+            "stick": pad.stick,
+            "cstick": pad.cstick,
+            "triggers": pad.triggers,
+        });
+        match pad.reading {
+            Reading::Read => {}
+            Reading::TransferError => record["err"] = PAD_ERR_TRANSFER.into(),
+            Reading::Frozen => record["frozen"] = true.into(),
+        }
+        records.push((input.frame + 1, record));
+        if let Some(slot) = previous.get_mut(port) {
+            *slot = Some(input);
+        }
+    }
+    writeln!(out, "{header}")?;
+    for (_, record) in records {
+        writeln!(out, "{record}")?;
     }
     Ok(())
 }

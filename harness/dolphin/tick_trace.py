@@ -28,6 +28,13 @@ entries before the injected one with the two previous ticks' pads, so the
 queue holds one poll per tick whatever Dolphin's own polls did, and the
 first record checks every injection holds its branch.
 
+A failed poll (`raw = { err = -3, ... }`): a console's poll that ended in
+PAD_ERR_TRANSFER leaves a zeroed queue entry with `err` -3, and
+HSD_PadRenewMasterStatus keeps the port's last status for that tick
+(controller.c:386) while UCF still reads the entry's raw X. A scenario with
+such a step has every injected entry's `err` written (the step's, or 0); any
+other scenario leaves `err` as Dolphin polled it.
+
 Display cadence (`render_every_tick = true`): gm_801A4D34 runs one tick per
 queued poll and then renders once. The injected entry and the retrace's own
 poll make two entries, so a tick-clock recording runs two ticks per render
@@ -124,7 +131,8 @@ PAD_LIB_ADDR = symbols.addr("HSD_PadLibData")
 PS_FRAME_ADDR = symbols.addr("psFrameNum")
 PAD_STATUS_BYTES = 12  # SDK PADStatus: button u16, 4 x s8 sticks, 4 x u8 analog, s8 err
 PAD_ENTRY_BYTES = 4 * PAD_STATUS_BYTES
-RAW_KEYS = ("button", "stickX", "stickY", "substickX", "substickY", "triggerL", "triggerR")
+RAW_KEYS = ("button", "stickX", "stickY", "substickX", "substickY", "triggerL", "triggerR", "err")
+PAD_ERR_OFFSET = 10
 PAD_PORTS = 4
 #: UCF's FETCH_INPUT wraps a negative queue index by this constant (qnum 5).
 UCF_QUEUE_WRAP = 5
@@ -232,6 +240,8 @@ class TickTracer(Tracer):
             for step in self.inputs:
                 if set(step.get("raw", {})) - set(RAW_KEYS):
                     raise ValueError(f"bad raw pad in step {step!r}")
+            # A schedule with a failed poll owns every injected entry's `err`.
+            self.raw_err = any("err" in step.get("raw", {}) for step in self.inputs)
             self.tick_steps = sorted(self.inputs, key=lambda step: step["frame"])
             self.tick_step_index = 0
             self.tick_held: dict[int, dict] = {0: {}, 1: {}}
@@ -323,6 +333,8 @@ class TickTracer(Tracer):
                 base = queue + entry * PAD_ENTRY_BYTES + port * PAD_STATUS_BYTES
                 for offset, byte in enumerate(raw_pad_bytes(step.get("raw", {}))):
                     self.mem.write_u8(base + offset, byte)
+                if self.raw_err:
+                    self.mem.write_u8(base + PAD_ERR_OFFSET, int(step.get("raw", {}).get("err", 0)) & 0xFF)
         self.tick_history = [dict(self.tick_held), *self.tick_history][:2]
         self.mem.write_u8(PAD_LIB_ADDR + 1, slot)  # qread
         self.mem.write_u8(PAD_LIB_ADDR + 3, 1)     # qcount

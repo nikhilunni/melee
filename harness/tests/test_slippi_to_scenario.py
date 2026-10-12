@@ -35,6 +35,18 @@ def test_steps_hold_a_pad_until_it_changes_and_stop_at_the_tick_limit():
     assert steps[4].endswith("buttons = {  }, raw = {  } },")
 
 
+def test_a_failed_poll_is_scheduled_as_one():
+    # The console's poll failed on tick 2 (PAD_ERR_TRANSFER): HSD kept tick
+    # 1's pad, and the queue entry UCF reads was zeroed. Tick 3 polls again.
+    records = [record(1, 1, button=0x100, stick=(61, 50)),
+               {**record(2, 1), "err": -3},
+               record(3, 1, button=0x100, stick=(61, 50))]
+    steps = s2s.steps(records, 4, TABLE)
+    assert len(steps) == 3
+    assert steps[1].endswith("buttons = {  }, raw = { err = -3 } },")
+    assert "raw = { button = 256, stickX = 61, stickY = 50 }" in steps[2]
+
+
 def test_a_recorded_start_press_is_not_fed_to_retail():
     # Start held on a recorded frame: the console ran with Pause off.
     records = [record(1, 1, button=0x1000), record(2, 1, button=0x1100), record(3, 1, button=0x100)]
@@ -220,3 +232,16 @@ def test_a_lag_frame_names_the_record_with_no_display_pass_before_it(scenarios):
     # A lag frame is a dropped pass of the console's cadence, not of Dolphin's.
     with pytest.raises(SystemExit, match="console's cadence"):
         s2s.main([*args, "--name", "slp_lag2", "--no-display-pass-before", "4", "--dolphin-cadence"])
+
+
+def test_a_replay_whose_pads_end_early_bridges_only_that_far(scenarios, capsys):
+    write_boundary(scenarios, "start_ys", "YoshisStory", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "YoshisStory", pads_end="tick 3 port 1: no raw stick reads as ...")
+    args = [str(scenarios / "inputs.jsonl"), "--boundary", "start_ys"]
+    with pytest.raises(SystemExit, match="for 3 ticks only, not 9"):
+        s2s.main([*args, "--name", "slp_long", "--ticks", "9"])
+    s2s.main([*args, "--name", "slp_all"])
+    assert tomllib.loads((scenarios / "slp_all.toml").read_text())["frames"] == 3
+    assert "the scenario ends at tick 3" in capsys.readouterr().err
+    s2s.main([*args, "--name", "slp_short", "--ticks", "2"])
+    assert tomllib.loads((scenarios / "slp_short.toml").read_text())["frames"] == 2

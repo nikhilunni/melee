@@ -125,7 +125,13 @@ impl PadScript {
                 let step = steps[next];
                 let port = usize::from(step.port);
                 anyhow::ensure!(port < PORTS, "input step port {port}");
-                current[port] = scheduled_pad(&step.raw)?;
+                // A failed poll (`err = -3`, PAD_ERR_TRANSFER): HSD keeps the
+                // port's last status (HSD_PadRenewMasterStatus,
+                // controller.c:386); the queue entry UCF reads is the step's.
+                let failed_poll = step.raw.get("err").and_then(toml::Value::as_integer) == Some(-3);
+                if !failed_poll {
+                    current[port] = scheduled_pad(&step.raw)?;
+                }
                 current_raw[port] = scheduled_raw_sticks(&step.raw)?;
                 next += 1;
             }
@@ -633,5 +639,41 @@ mod tests {
         assert_eq!(raw, [0, 127, 127, -40, -40]);
         // HSD clamps 127 to the 80-unit circle; the queue keeps the byte.
         assert_eq!(script.sample(1, 0).raw_sticks().stick[0], 80);
+    }
+
+    #[test]
+    fn a_failed_poll_keeps_the_status_and_shows_its_queue_entry() {
+        let step = |frame: u64, raw: toml::Table| crate::scenario::InputStep {
+            frame,
+            port: 0,
+            buttons: toml::Table::new(),
+            raw,
+        };
+        let steps = [
+            step(
+                1,
+                toml::toml! {
+                    button = 256
+                    stickX = 61
+                    stickY = 50
+                },
+            ),
+            step(2, toml::toml! { err = -3 }),
+            step(
+                3,
+                toml::toml! {
+                    stickX = 61
+                    stickY = 50
+                },
+            ),
+        ];
+        let script = PadScript::from_tick_schedule(&steps, 4).unwrap();
+        // HSD keeps tick 1's status through the failed poll of tick 2.
+        assert_eq!(script.sample(2, 0), script.sample(1, 0));
+        assert_eq!(script.sample(2, 0).buttons.0 & 0x100, 0x100);
+        assert_eq!(script.sample(3, 0).buttons.0 & 0x100, 0);
+        // UCF reads the zeroed entry.
+        assert_eq!(script.raw_sticks(2).unwrap()[0].stick, [0, 0]);
+        assert_eq!(script.raw_sticks(3).unwrap()[0].stick, [61, 50]);
     }
 }

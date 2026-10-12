@@ -39,6 +39,12 @@ Two scenarios are written:
   (its own `seed`), then `boundary_seed`, driven by the pads the recording
   consumed.
 
+The pads are the header's records, which `--retail-inputs` has already
+checked to read as the replay's Pre Frame (melee-sim replay_retail_pads.rs).
+A console's failed poll (`err`: PAD_ERR_TRANSFER, where HSD keeps the last
+status) is scheduled as one. replay_vs_trace.py compares a recording with
+the replay itself: inputs, seeds and fighter fields.
+
 The retail scenario carries `render_every_tick = true` (tick_trace.py): the
 recorder then renders after every tick, as the console that made the replay
 did. What follows the display pass (a tether's rope and so its wall catch,
@@ -198,6 +204,10 @@ def steps(records: list[dict], ticks: int, table: dict) -> list[str]:
             if value:
                 buttons[key] = table["trigger"][str(value)]
                 raw[raw_key] = value
+        if "err" in record:
+            # A failed poll: the queue entry as the console's stood, and no
+            # button for Dolphin's own poll.
+            buttons, raw = {}, {**raw, "err": record["err"]}
         if previous.get(slot) != raw:
             keys = ", ".join(f"{k} = {pads.toml_value(v)}" for k, v in buttons.items())
             raws = ", ".join(f"{k} = {v}" for k, v in raw.items())
@@ -240,6 +250,12 @@ def main(argv: list[str] | None = None) -> None:
     flags = stage_flags(start, cold)
     check_stage_codes(header, flags, a.boundary)
     stage_codes = gecko.scenario_flag_lines(flags)
+    if "pads_end" in header and (a.ticks or MAX_TICKS) > header["ticks"]:
+        # --retail-inputs stopped at a pad retail cannot be fed.
+        if a.ticks:
+            sys.exit(f"the replay's pads can be fed to retail for {header['ticks']} ticks only, not "
+                     f"{a.ticks}: {header['pads_end']}")
+        print(f"note: the scenario ends at tick {header['ticks']}: {header['pads_end']}", file=sys.stderr)
     ticks = min(a.ticks or header["ticks"], header["ticks"], MAX_TICKS)
     created = check_creation(header, cold, a.boundary, a.foreign_creation, ticks)
     creation = f"game_start_seed = {created}\n" if created is not None else ""
