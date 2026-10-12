@@ -506,3 +506,24 @@ fails closed.
 - The explorer has not been run from either boundary. It was held back
   while the specials refused (its policies press B within the first
   seconds); they no longer do, so it is the next check.
+
+## Stage 3 so far (copy abilities)
+
+- **Losing the ability** (`ftKb_SpecialN_800F5D04`): by taunt, by a hit whose
+  `HSD_Randi` draw is 0 (`DAMAGE_DRAW`), by death. The ability star is an
+  item (`It_Kind_Unk1`, `ftData.x48_items[2]`, `it-kirby` `ability_star.rs`);
+  it clears xDCE b7, so its ECB does not turn with it
+  (`ItemCore::ecb_follows_rotation`). The star against a wall or ceiling
+  (`it_8026DFB0`, itgroundcoll.c:381-382) fails closed.
+- **Helmeted midair jumps** (rows 346..350) for the hats of `fn_800F1CA0`
+  (Captain Falcon, Sheik, Popo, Nana, Samus); witnessed with Falcon's
+  (boundary `start_fd_kirby_captainfalcon4`).
+- **Stale-move ids** 0x16..0x2F are `StaleMove::CopiedMario..CopiedGkoops`;
+  no row uses them yet.
+- **A wall ends the Cutter beam** (itkirbycutterbeam.c:144-151), witnessed on
+  Yoshi's Story; the beam beside a wall with no horizontal speed (:138-143)
+  fails closed.
+- Not ported: every copied neutral special (`ftKb_Init_803C9DD0`), the five
+  hats grafted into Kirby's parts (Donkey Kong, Jigglypuff, Mewtwo, Falco,
+  Mr. Game & Watch; ftkirby.c:3578-3592), `ftKb_SpecialN_800F5C34`'s arm for a
+  copied special's row (ftkirbyspecialn.c:251-260), item pickup hand poses.
