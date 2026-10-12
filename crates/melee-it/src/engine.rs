@@ -979,6 +979,14 @@ impl ItemCore {
     /// (Item_80268E5C, retail 0x80268F44): what the proc queued so far is
     /// dispatched once it returns, ahead of every later link 9 flush.
     fn flush_queued_effects(&mut self) {
+        // A script or bounce effect this proc already requested
+        // (it_80278800) sits in the queue the flush empties; the scene only
+        // resolves it after the proc, so it is marked as dispatched now.
+        for event in self.events.iter_mut() {
+            if let ItemEvent::ScriptEffect(graphics) = event {
+                *event = ItemEvent::ScriptEffectNow(graphics.clone());
+            }
+        }
         while !self.queued_events.is_empty() {
             let event = self.queued_events.remove(0);
             self.events.push(event);
