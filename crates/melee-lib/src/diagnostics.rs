@@ -97,6 +97,9 @@ pub trait ScenarioSource {
 pub use crate::initial_state::{decode_camera, decode_subject, magnified};
 mod snapshot;
 pub use snapshot::snapshot;
+mod values;
+pub(crate) use values::fighter_paths;
+pub use values::FighterValues;
 mod items;
 pub use items::actual as item_snapshot;
 

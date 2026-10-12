@@ -37,7 +37,7 @@ pub use event::{
     PreFrame, Version,
 };
 pub use scenario::{to_scenario, to_scenario_named};
-pub use trace::to_trace;
+pub use trace::{frame_record, frame_values, to_trace, FrameKey};
 pub use ubjson::Ubj;
 
 /// The Slippi frame number of the first frame of a match.

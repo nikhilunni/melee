@@ -250,6 +250,9 @@ struct Runtime {
     /// Diagnostic only: each fighter's snapshot at the end of its map proc
     /// (Fighter_8006C27C) this tick, when requested.
     after_map: Option<Vec<(usize, Record)>>,
+    /// Diagnostic only: the same sample as plain values, each fighter's own
+    /// (`Simulation::capture_after_map_values`).
+    after_map_values: Option<Vec<(usize, crate::diagnostics::FighterValues)>>,
     /// This tick's external events: inputs like the pads, never state.
     external: crate::ExternalEvents,
     /// What the last tick consumed from `external`.
@@ -281,6 +284,10 @@ impl Clone for Runtime {
             pad_queue_x: self.pad_queue_x,
             consumed_sticks: self.consumed_sticks,
             after_map: self.after_map.clone(),
+            after_map_values: self
+                .after_map_values
+                .as_ref()
+                .map(hsd_types::storage::clone_vec),
             external: self.external,
             consumed: self.consumed,
             frame: self.frame,
@@ -1544,6 +1551,12 @@ impl Runtime {
                             crate::diagnostics::snapshot(state, self.frame),
                         ));
                     }
+                    if let Some(values) = self.after_map_values.as_mut() {
+                        values.push((
+                            player,
+                            crate::diagnostics::FighterValues::of(&state.fighters[player]),
+                        ));
+                    }
                 }
                 // Fighter_8006C80C's accessory4 may hand the player to its
                 // partner, whose own s_link 9 proc still runs this tick when
@@ -2507,6 +2520,37 @@ impl Simulation {
         }
         Some(record)
     }
+    /// [`Self::capture_after_map`] as plain values: each fighter's own
+    /// snapshot values at the end of its map proc, with no record built.
+    pub fn capture_after_map_values(&mut self, enabled: bool) {
+        // One sample per fighter and tick; room for a second keeps a
+        // repeated map proc from allocating.
+        let capacity = 2 * self.runtime.state.fighters.len();
+        self.runtime.after_map_values = enabled.then(|| Vec::with_capacity(capacity));
+    }
+    /// The last tick's after-map samples in the order the map procs ran:
+    /// (fighter index, its values). `None` unless
+    /// [`Self::capture_after_map_values`] is on.
+    pub fn after_map_values(&self) -> Option<&[(usize, crate::diagnostics::FighterValues)]> {
+        self.runtime.after_map_values.as_deref()
+    }
+    /// How many fighters the match holds (`pN` in a snapshot record).
+    pub fn fighter_count(&self) -> usize {
+        self.runtime.state.fighters.len()
+    }
+    /// Fighter `index`'s snapshot values now: what [`Self::tick`]'s record
+    /// holds under `p{index}.`, in the order of [`Self::fighter_paths`].
+    pub fn fighter_values(&self, index: usize) -> crate::diagnostics::FighterValues {
+        crate::diagnostics::FighterValues::of(&self.runtime.state.fighters[index])
+    }
+    /// The path of each of a fighter's snapshot values, without its `pN.`.
+    pub fn fighter_paths(&self) -> Vec<String> {
+        crate::diagnostics::fighter_paths(&self.runtime.state)
+    }
+    /// The random seed now (`rng.seed` in a snapshot record).
+    pub fn seed(&self) -> u32 {
+        self.runtime.state.rng.seed
+    }
     /// Replace each port's controller fix (a dry run or search borrowing
     /// another scenario's recorded boundary state).
     pub fn set_controller_fixes(&mut self, fixes: [melee_ft::input::ControllerFix; 4]) {
@@ -2687,6 +2731,7 @@ impl Simulation {
             pad_queue_x: Default::default(),
             consumed_sticks: Default::default(),
             after_map: None,
+            after_map_values: None,
             external: Default::default(),
             consumed: Default::default(),
             frame: 0,
@@ -2747,6 +2792,9 @@ impl Simulation {
             runtime.consume_pad_queue();
             if let Some(snapshots) = runtime.after_map.as_mut() {
                 snapshots.clear();
+            }
+            if let Some(values) = runtime.after_map_values.as_mut() {
+                values.clear();
             }
             runtime.consumed = Default::default();
             runtime.rng_writers.clear();

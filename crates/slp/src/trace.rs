@@ -40,48 +40,106 @@ pub fn to_trace(replay: &Replay) -> Vec<Record> {
     let mut out = Vec::with_capacity(replay.frames.len());
     let mut iter = replay.frames.values().peekable();
     while let Some(frame) = iter.next() {
-        let Some(hf) = harness_frame(frame.number) else {
-            continue;
-        };
-        let mut state = BTreeMap::new();
-
-        // Seed at end of this frame = seed at start of the next frame, when
-        // the next frame really is the successor.
-        if let Some(next) = iter.peek() {
-            if next.number == frame.number.wrapping_add(1) {
-                if let Some(seed) = next.scheduler_start_seed() {
-                    state.insert("rng.seed".to_string(), Value::UInt(seed as u64));
-                }
-            }
-        }
-
-        for (index, port) in replay.leader_ports().enumerate() {
-            let pf = &frame.ports[port];
-            let members = [
-                (pf.leader.post.as_ref(), format!("p{index}")),
-                (pf.follower.post.as_ref(), format!("p{index}.follower")),
-            ];
-            for (post, p) in members {
-                let Some(post) = post else {
-                    continue;
-                };
-                put_post(&mut state, &p, post);
-            }
-        }
-
-        out.push(Record {
-            frame: hf,
-            phase: PHASE_FRAME_END.to_string(),
-            state,
-        });
+        out.extend(frame_record(replay, frame, iter.peek().copied()));
     }
     out
 }
 
-fn put_post(state: &mut BTreeMap<String, Value>, p: &str, post: &crate::PostFrame) {
-    let mut put = |name: &str, v: Value| {
-        state.insert(format!("{p}.{name}"), v);
-    };
+/// One frame's record of [`to_trace`]; `next` is the frame recorded after
+/// it. `None` for a frame before the match's first.
+pub fn frame_record(
+    replay: &Replay,
+    frame: &crate::Frame,
+    next: Option<&crate::Frame>,
+) -> Option<Record> {
+    let mut state = BTreeMap::new();
+    let hf = frame_values(replay, frame, next, |key, value| {
+        state.insert(key.to_string(), value);
+    })?;
+    Some(Record {
+        frame: hf,
+        phase: PHASE_FRAME_END.to_string(),
+        state,
+    })
+}
+
+/// Where one value of a frame's record belongs.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum FrameKey {
+    /// `rng.seed`.
+    Seed,
+    /// `pN.<path>`, or `pN.follower.<path>` for Nana: a fighter schema path
+    /// of the Nth leader.
+    Field {
+        leader: usize,
+        follower: bool,
+        path: &'static str,
+    },
+}
+
+impl std::fmt::Display for FrameKey {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match *self {
+            Self::Seed => write!(f, "rng.seed"),
+            Self::Field {
+                leader,
+                follower: false,
+                path,
+            } => write!(f, "p{leader}.{path}"),
+            Self::Field {
+                leader,
+                follower: true,
+                path,
+            } => write!(f, "p{leader}.follower.{path}"),
+        }
+    }
+}
+
+/// [`frame_record`]'s values without the record: `put` takes each key and
+/// value. Returns the harness frame; `None` (and no values) for a frame
+/// before the match's first.
+pub fn frame_values(
+    replay: &Replay,
+    frame: &crate::Frame,
+    next: Option<&crate::Frame>,
+    mut put: impl FnMut(FrameKey, Value),
+) -> Option<u64> {
+    let hf = harness_frame(frame.number)?;
+
+    // Seed at end of this frame = seed at start of the next frame, when
+    // the next frame really is the successor.
+    if let Some(next) = next {
+        if next.number == frame.number.wrapping_add(1) {
+            if let Some(seed) = next.scheduler_start_seed() {
+                put(FrameKey::Seed, Value::UInt(seed as u64));
+            }
+        }
+    }
+
+    for (leader, port) in replay.leader_ports().enumerate() {
+        let pf = &frame.ports[port];
+        let members = [
+            (pf.leader.post.as_ref(), false),
+            (pf.follower.post.as_ref(), true),
+        ];
+        for (post, follower) in members {
+            let Some(post) = post else {
+                continue;
+            };
+            put_post(post, |path, value| {
+                let key = FrameKey::Field {
+                    leader,
+                    follower,
+                    path,
+                };
+                put(key, value)
+            });
+        }
+    }
+    Some(hf)
+}
+
+fn put_post(post: &crate::PostFrame, mut put: impl FnMut(&'static str, Value)) {
     put("kind", Value::Int(post.internal_character as i64));
     put("player_id", Value::UInt(post.player_index as u64));
     put("motion_id", Value::Int(post.action_state as i64));

@@ -28,17 +28,33 @@ impl InitialState {
     /// fn_8016E730 (gm_16AE.c): Ground creation, Player/Fighter creation,
     /// then the pre-music boundary. Only owned DAT resources are read.
     pub fn from_parameters(source: &dyn crate::diagnostics::ScenarioSource) -> Result<Self> {
+        let assets = Self::load_assets(source)?;
+        Self::from_parameters_with_assets(source, assets)
+    }
+    /// The archives a cold setup reads. They depend on the characters and
+    /// the stage alone, so setups that differ in anything else (seed,
+    /// costumes, codes) can share them.
+    pub fn load_assets(
+        source: &dyn crate::diagnostics::ScenarioSource,
+    ) -> Result<std::sync::Arc<Assets>> {
+        let setup = source.setup()?;
+        Ok(std::sync::Arc::new(Assets::load(
+            &source.assets_path(),
+            &setup.roster_descriptors(),
+            setup.stage_descriptor(),
+        )?))
+    }
+    /// [`Self::from_parameters`] with archives already read
+    /// ([`Self::load_assets`] of a setup with the same characters and stage).
+    pub fn from_parameters_with_assets(
+        source: &dyn crate::diagnostics::ScenarioSource,
+        assets: std::sync::Arc<Assets>,
+    ) -> Result<Self> {
         ensure!(
             source.is_cold(),
             "cold construction requires savestate omitted"
         );
-        let setup = source.setup()?;
-        let assets = std::sync::Arc::new(Assets::load(
-            &source.assets_path(),
-            &setup.roster_descriptors(),
-            setup.stage_descriptor(),
-        )?);
-        Self::from_assets(&setup, assets)
+        Self::from_assets(&source.setup()?, assets)
     }
     pub(crate) fn from_assets(scenario: &Setup, assets: std::sync::Arc<Assets>) -> Result<Self> {
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
