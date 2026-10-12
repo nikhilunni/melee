@@ -2,7 +2,11 @@
 //! Slippi version and Game Start seed, then one line per frame holding
 //! the harness frame (0 is Slippi's -123) and, per recorded fighter in port
 //! order (leader, then follower), Pre Frame's seed and Post Frame's internal
-//! kind, action, position bits and percent bits.
+//! kind, action, position bits and percent bits, and Pre Frame's inputs
+//! (`pad`): the fighter's dead-zoned sticks and trigger as float bits
+//! (Fighter +0x620, +0x624, +0x638, +0x63C, +0x650), its held word (+0x65C),
+//! the pad's physical buttons and analog triggers, and the raw stick bytes
+//! the Slippi version records.
 //!
 //!   cargo run -q --release -p slp --example frames -- <game.slp> > frames.jsonl
 use serde_json::json;
@@ -36,6 +40,19 @@ fn main() -> anyhow::Result<()> {
                     "x": post.position_x.to_bits(),
                     "y": post.position_y.to_bits(),
                     "percent": post.percent.to_bits(),
+                    "pad": {
+                        "stick": [pre.joystick_x.to_bits(), pre.joystick_y.to_bits()],
+                        "cstick": [pre.cstick_x.to_bits(), pre.cstick_y.to_bits()],
+                        "trigger": pre.trigger.to_bits(),
+                        "held": pre.buttons_processed,
+                        "physical": pre.buttons_physical,
+                        "triggers": [
+                            pre.physical_l_trigger.to_bits(),
+                            pre.physical_r_trigger.to_bits(),
+                        ],
+                        "raw_stick": [pre.raw_joystick_x, pre.raw_joystick_y],
+                        "raw_cstick": [pre.raw_cstick_x, pre.raw_cstick_y],
+                    },
                 }));
             }
         }
