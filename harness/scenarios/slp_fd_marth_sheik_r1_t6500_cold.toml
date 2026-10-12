@@ -1,0 +1,36 @@
+# ZELDA_SHEIK/Marth vs Sheik [FD] Game_20181024T232813.slp (Final Destination, ports 2 and 4,
+# UCF 0.73, NeutralSpawn; boundary created from the replay's Game Start seed) played back on
+# retail with a render after every tick. Sheik, off the left side, takes a magnifier point at
+# tick 6286 and transforms at 6288 with the count at 2. Zelda's count restarts at 6289 (a
+# sleeping fighter keeps its off-screen bit, ftDrawCommon_80080E18 0x80080E34), so the next
+# point of damage comes at 6349 and not 6346.
+# The port's side of slp_fd_marth_sheik_r1_t6500: boundary start_fd_slippi73_ns_p24_marth0_sheik1_4_r232813b built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fd_marth_sheik_r1_t6500_cold"
+expected = "slp_fd_marth_sheik_r1_t6500"
+frames = 6500
+seed = 3530190225
+game_start_seed = 2187173367
+boundary_seed = 3530190225
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Sheik"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

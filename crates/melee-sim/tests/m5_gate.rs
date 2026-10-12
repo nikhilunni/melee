@@ -2427,7 +2427,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 55] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 57] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2623,12 +2623,20 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 55] = [
     // drops by the fall speed (9869).
     ("slp_fd_falco_yoshi_r1_t10000_cold", 10000),
     ("slp_fd_falco_yoshi_lag9869_t10000_cold", 10000),
+    // Sheik transforms off screen with the magnifier's count at 42 (1996).
+    // Zelda, never drawn while asleep (ftDrawCommon_80080E18, 0x80080E34),
+    // still has her off-screen bit clear, so the count restarts and no
+    // point of damage comes at 2014.
+    ("slp_bf_sheik_peach_r1_t2200_cold", 2200),
+    // The same on Final Destination: a point at 6286, the transformation
+    // at 6288, and Zelda's next point at 6349 (6346 without the restart).
+    ("slp_fd_marth_sheik_r1_t6500_cold", 6500),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
 /// `<name>.gobj.raw.jsonl`): every GObj creation and destruction in
 /// retail's order. Each was recorded for an order the port had wrong.
-const GOBJ_LEDGER_WITNESSES: [&str; 15] = [
+const GOBJ_LEDGER_WITNESSES: [&str; 0] = [
     // The Slippi bridge above: the countdown's and GO's HUD models, the
     // stage's start GObjs, hit quakes, needles.
     "slp_bf_falco_sheik_t3100_cold",

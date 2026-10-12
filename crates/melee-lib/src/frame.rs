@@ -3196,17 +3196,24 @@ fn render_cameras(state: &mut InitialState) {
     hsd_anim::mtx::mtx_inverse(&copy_view, &mut inverse_copy_view);
     for fighter in &mut state.fighters {
         let f = &mut fighter.0;
+        // ftDrawCommon_80080E18 tests x221F_b3 first (retail 0x80080E34): a
+        // sleeping fighter (a transforming character's other form) is not
+        // drawn, so its off-screen bit keeps what its last pass awake left.
+        // The form that wakes off screen reads as on screen to the next
+        // pass's magnifier (ifMagnify_802FBBDC asks Player_GetEntity's
+        // fighter, 0x802FBD1C), and the count it took over (ftCommon_8007EFC8
+        // copies x1910, ftcommon.c:1309) restarts from zero.
+        if f.status.disabled {
+            continue;
+        }
         if matches!(
             f.state_data,
             melee_ft::fighter::MotionData::Life(melee_ft::fighter::life::LifeState::ScreenKo(_))
         ) {
-            // ftDrawCommon_80080E18: x2220_b7 places the fighter from camera
-            // space and ftLib_80086A8C then reports it on screen. A sleeping
-            // fighter (x221F_b3) is not drawn at all.
-            if !f.status.disabled {
-                f.place_screen_ko(&inverse_copy_view);
-                f.offscreen.outside_camera = false;
-            }
+            // x2220_b7 places the fighter from camera space and
+            // ftLib_80086A8C then reports it on screen.
+            f.place_screen_ko(&inverse_copy_view);
+            f.offscreen.outside_camera = false;
             continue;
         }
         let on_screen = melee_cm::to_screen(&camera, f.camera.bone_position, screen)
