@@ -19,6 +19,23 @@ pub struct KirbyAttributes {
     /// +34 (`jumpaerial_unk`, a halfword: 40 on the disc): the Inhale's
     /// loop lasts at least this many frames (u.kb.xE4).
     pub inhale_minimum_frames: i16,
+    /// +D4..+E4: Final Cutter.
+    pub final_cutter: FinalCutterAttributes,
+}
+
+/// ftKb_DatAttrs +D4..+E8 (`specialhi_*`). +E8 (`specialhi_unk`, 0 on the
+/// disc) has no reader in ftkirbyspecialhi.c.
+#[derive(Clone, Debug, PartialEq)]
+pub struct FinalCutterAttributes {
+    /// +D4: the scale on the rise's upward TransN speed.
+    pub vertical_momentum: f32,
+    /// +D8: the scale on PlCo's aerial drift acceleration.
+    pub horizontal_momentum: f32,
+    /// +DC, +E0: the beam's spawn point from TopN, ahead and up.
+    pub projectile_spawn_x: f32,
+    pub projectile_spawn_y: f32,
+    /// +E4: the stick deflection that turns Kirby round at the start.
+    pub reverse_stick_range: f32,
 }
 
 pub fn read_kirby_attributes(archive: &Archive) -> Result<KirbyAttributes> {
@@ -51,6 +68,13 @@ impl KirbyAttributes {
                 first_actions: [r.s32(0x2C)?, r.s32(0x30)?],
             },
             inhale_minimum_frames: r.s16(0x34)?,
+            final_cutter: FinalCutterAttributes {
+                vertical_momentum: r.f32(0xD4)?,
+                horizontal_momentum: r.f32(0xD8)?,
+                projectile_spawn_x: r.f32(0xDC)?,
+                projectile_spawn_y: r.f32(0xE0)?,
+                reverse_stick_range: r.f32(0xE4)?,
+            },
         })
     }
 }

@@ -71,7 +71,7 @@ inline 1024 bytes, so `Kirby` shares it behind an `Arc`.
 | Shared multijump (`Fighter_x2D0_t`) | +00..30 | yes |
 | Inhale, swallow, spit, the ability star | +38..C8 | no |
 | Hammer | +CC..D0 | no |
-| Final Cutter | +D4..E8 | no |
+| Final Cutter | +D4..E8 | yes (+E8 has no reader) |
 | Stone | +EC..114 | no |
 | One group per copied kind | +118..3E8 | no |
 | Peach's `AbsorbDesc`, Zelda's `ReflectDesc` | +3EC, +400 | no |
@@ -82,6 +82,17 @@ multipliers 0.8, vertical impulses 2.0, 2.0, 1.73, 1.56, 1.33, five states,
 first actions **341** (bare) and **346** (helmeted). As with Jigglypuff, the
 header declares +00 and +28..30 unsigned and the impulses floats;
 `ftCo_800D74A4` reads them so (`lwz` and `lfs`).
+
+Final Cutter on the disc: the rise's upward speed times `3F666666` (0.9,
++D4), PlCo's aerial drift acceleration times 8 (+D8), the beam 3.5 ahead
+and 0 above TopN (+DC, +E0; the code then lowers it by 1), a stick past
+`3E4CCCCD` (0.2, +E4) turns Kirby round at the start, and +E8 is 0.
+
+`ftData.x48_items[0]` (article at 0xE17C) is the Cutter beam,
+`It_Kind_Kirby_CBeam` (0x32); its special attributes at 0x7B2C
+(`itKirbyCutterBeamAttributes`): speed 4.0, an unread word 0, lifetime 25
+frames, deceleration 0.1 per frame. Items [1]..[3] (the hammer and two
+more) are not read.
 
 Stone words pinned for the later port: at most 150 and at least 18 ticks in
 the rock, 38 HP (+108).
@@ -112,4 +123,6 @@ queue will need as `StaleMove` variants.
 | efAlt 0x495 | the dash attack's flame: `efLib_Create_Attach_Scale(0x138B)` turned to the facing, from the script (efAsync kind 3) | `melee-ef` `kirby.rs` |
 | efAlt 0x49E | the bump star: `efLib_CreateGenerator(0x206, pos)` (efAsync kind 2 at TopN plus an ECB offset) | `EffectRequest::Graphics` with id 0x206 |
 | efAlt 0x49D | a rapid jab fist: `efLib_Create_Attach_Pos(0x1390)` at the script's offset, scaled as the fighter root, turned to the facing and tilted by the command's X range in 256ths of a degree; `efLib_Cb_SetJObjOffsetZ` moves its child 2 forward per update (efAsync kind 6) | `melee-ef` `kirby.rs` |
-| efAlt 0x494, 0x496..0x49C | Final Cutter, Stone, hammer and swallow models and generators | not ported |
+| efAlt 0x494 | Final Cutter's blade: `efLib_Create_AttachChild(0x1388)` and `efLib_Create_Attach(0x1389)` on `fp->parts[44]`, `efLib_Create_Attach(0x138A)` on `fp->parts[1]`, each with a lifetime of 0x41 and `efLib_Cb_SetRotYAndTransition` (the last two turn to the fighter's facing; all loop frames 60..65 and play out from 65 once `efLib_SetFlags(gobj, 1)` marks them); efSync from both entries, so sync-loaded | `melee-ef` `kirby.rs`; AttachChild's orientation constraint is not applied (drawn pose only) |
+| efAlt 0x49A | the Inhale's wind: `efLib_CreateGenerator_AppSRT_SetFacingDir(0x138B)` | `melee-ef` `kirby.rs` |
+| efAlt 0x496..0x499, 0x49B, 0x49C | Stone, hammer and swallow models and generators | not ported |

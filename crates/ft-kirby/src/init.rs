@@ -33,6 +33,22 @@ pub struct Kirby {
     /// x2222_b2, set by the Inhale's rows until a motion change that does
     /// not keep it: a cape hit does not turn Kirby round.
     pub cape_turn_blocked: bool,
+    /// fp->mv.kb.specialhi: Final Cutter's scratch.
+    pub final_cutter: crate::special_hi::FinalCutter,
+    /// take_dmg_cb = ftKb_Init_800EE7B8 and death2_cb = ftKb_Init_800EE74C
+    /// (ftKb_SpecialN_set_cbs), until the next motion change.
+    pub damage_callbacks: bool,
+    /// What accessory4_cb does while it is installed.
+    pub accessory: Accessory,
+}
+
+/// Kirby's accessory4 callbacks.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Accessory {
+    #[default]
+    None,
+    /// fn_800F21E8: Final Cutter's beam on the script's flag.
+    CutterBeam,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -47,6 +63,9 @@ impl Kirby {
             bump_star_cooldown: 0,
             inhale_hold: 0,
             cape_turn_blocked: false,
+            final_cutter: Default::default(),
+            damage_callbacks: false,
+            accessory: Accessory::None,
         }
     }
 }
@@ -150,19 +169,39 @@ impl CharacterCallbacks for Kirby {
             SpecialSlot::Side => unimplemented!(
                 "ftKb_SpecialS_Enter / ftKb_SpecialAirS_Enter (ftkirbyspecials.c): Hammer"
             ),
-            SpecialSlot::Up => unimplemented!(
-                "ftKb_SpecialHi_Enter / ftKb_SpecialAirHi_Enter (ftkirbyspecialhi.c): Final Cutter"
-            ),
+            // ftKb_SpecialHi_Enter (800F2300) / ftKb_SpecialAirHi_Enter
+            // (800F23B8).
+            SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
             SpecialSlot::Down => unimplemented!(
                 "ftKb_SpecialLw_Enter / ftKb_SpecialAirLw_Enter (ftkirbyspeciallw.c): Stone"
             ),
         }
     }
-    /// Fighter_ChangeMotionState clears x2222_b2; the rows that keep it set
-    /// it again.
+    /// Fighter_ChangeMotionState clears x2222_b2 and the per-motion
+    /// callbacks (fighter.c:1376-1389); the rows that keep them set them
+    /// again.
     fn on_motion_change(&mut self) {
         self.cape_turn_blocked = false;
+        self.damage_callbacks = false;
+        self.accessory = Accessory::None;
     }
+    /// Fighter_8006C80C: the special's accessory4, installed until the next
+    /// motion change.
+    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        if !f.core.accessory4_armed {
+            return;
+        }
+        match f.character.get::<Kirby>().accessory {
+            Accessory::CutterBeam => crate::special_hi::beam_accessory(f),
+            Accessory::None => {}
+        }
+    }
+    /// ftCommon_8007DB58: take_dmg_cb = ftKb_Init_800EE7B8 while a special
+    /// installed it.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_hi::damage_callback);
+    /// ftCo_800D331C: death2_cb = ftKb_Init_800EE74C, which without a hat
+    /// does the same.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special_hi::damage_callback);
     /// ftCo_800C7CA0: ftKb_SpecialN_800F1F1C.
     const WALL_BOUNCE_EFFECT: Option<fn(&mut Fighter, hsd_types::Vec3)> =
         Some(crate::bump_star::spawn);

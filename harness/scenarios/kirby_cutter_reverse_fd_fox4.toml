@@ -1,0 +1,32 @@
+# KIRBY directed witness from start_fd_kirby_fox4: Final Cutter turned round with the stick during the start, on the ground (the beam runs left and off the edge) and in the air; then a stick below the attribute range, which does not turn him.
+name = "kirby_cutter_reverse_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 760
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 103, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 110, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 310, port = 0, buttons = {  }, raw = {  } },
+  { frame = 325, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 328, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 336, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 523, port = 0, buttons = {  }, raw = { stickX = -20 } },
+  { frame = 540, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -146,6 +146,19 @@ impl ItemCore {
         true
     }
 
+    /// it_8026D564 (8026D564): a grounded pass (mpColl_8004B108) that moves
+    /// the item to the resolved position and keeps the floor's line (xC30).
+    /// Unlike it_8026D62C a loss of ground changes nothing: the caller
+    /// decides.
+    pub fn ground_pass(&mut self, map: &mut melee_mp::CollMap) -> bool {
+        let mut collision = self.refresh_collision();
+        let grounded = map.ground_collide_pass(&mut collision, None);
+        self.position = collision.cur_pos;
+        self.floor_line_from(&collision, grounded);
+        self.collision = Some(collision);
+        grounded
+    }
+
     /// it_8026D8A4 (8026D8A4) without its callback: it_80276214 twice, so
     /// the pass starts where it ends, then a grounded pass that stops at
     /// edges (mpColl_8004B2DC). Returns whether the item stayed grounded and

@@ -13,6 +13,28 @@ const RAPID_JAB_CHILD_STEP: f32 = 2.0;
 /// efAlt_Spawn 0x49A's generator, in Kirby's bank: the Inhale's wind.
 const INHALE_WIND_GENERATOR: u32 = 0x138B;
 const KIRBY_BANK: u8 = 5;
+/// efAlt_Spawn 0x494's models: Final Cutter's blade, two on the sword
+/// joint and one on the second joint the caller names.
+const FINAL_CUTTER_MODELS: [u32; 3] = [0x1388, 0x1389, 0x138A];
+/// efAlt 0x494 overwrites each model's lifetime (efalt.c:223).
+const BLADE_FRAMES: u16 = 0x41;
+/// efLib_Cb_SetRotYAndTransition: with one frame of life left the blade
+/// replays from frame 60 for six more (eflib.c:1120-1123); once marked to
+/// expire it plays out from frame 65 for eleven (eflib.c:1114-1118).
+pub(super) const BLADE_LOOP_FRAMES: u16 = 6;
+pub(super) const BLADE_LOOP_START: f32 = 60.0;
+pub(super) const BLADE_END_FRAMES: u16 = 0xB;
+pub(super) const BLADE_END_START: f32 = 65.0;
+
+/// An f64 +-M_PI_2 by the facing's sign, rounded on the store
+/// (eflib.c:1106-1112).
+pub(super) fn quarter_turn(facing: f32) -> f32 {
+    if facing < 0.0 {
+        -std::f64::consts::FRAC_PI_2 as f32
+    } else {
+        std::f64::consts::FRAC_PI_2 as f32
+    }
+}
 
 impl Effects {
     /// efAlt_Spawn 0x495 (efalt.c:253-270), from the dash attack's script
@@ -125,6 +147,69 @@ impl Effects {
             &mut self.events,
         )?;
         self.instances.push(effect);
+        Ok(())
+    }
+
+    /// efAlt_Spawn 0x494 (efalt.c:213-252), from Final Cutter's entries:
+    /// efLib_Create_AttachChild(0x1388) and efLib_Create_Attach(0x1389) on
+    /// the sword joint and efLib_Create_Attach(0x138A) on the second joint,
+    /// each with 0x41 frames of life and efLib_Cb_SetRotYAndTransition as
+    /// its update callback. The first has no user data; the other two carry
+    /// the fighter, whose facing turns their roots on every update (the
+    /// callback reads Fighter +2C through HSD_JObj.scale.x).
+    /// TODO(orientation): AttachChild's lb_8000C290 orientation constraint
+    /// is not applied (drawn pose only).
+    pub(super) fn spawn_kirby_final_cutter<T: InverseTrig>(
+        &mut self,
+        player: usize,
+        bones: [usize; 2],
+        fighter: &mut impl EffectOwner,
+        common_bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let mut blade = FINAL_CUTTER_MODELS.map(|model| {
+            let mut effect = self.acquire(model, particles);
+            effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+            self.next_joint += effect.tree.len();
+            effect
+        });
+        let facing = fighter.effect_facing();
+        for (index, effect) in blade.iter_mut().enumerate() {
+            let bone = bones[usize::from(index == 2)];
+            effect.owner = Some(ModelOwner::Fighter(player));
+            effect.hitlag_pause = HitlagPause::Active;
+            effect.attachment = Some(player);
+            effect.attachment_bone = Some(bone);
+            effect.scale_attachment = false;
+            effect.lifetime = BLADE_FRAMES;
+            effect.indefinite = false;
+            effect.blade_transition = true;
+            if index != 0 {
+                effect.facing_rotation = Some(quarter_turn(facing));
+            }
+            let matrix = fighter.effect_matrix(Some(bone));
+            effect.tree.set_translate(
+                effect.root,
+                &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+            );
+        }
+        // efAlt_Spawn drains efLib_AnimQueue newest first (efalt.c:534-542).
+        for effect in blade.iter_mut().rev() {
+            effect.animate_banks::<T>(
+                resources::Banks {
+                    common: common_bank,
+                    characters: &self.character_banks,
+                },
+                particles,
+                rng,
+                &mut self.draws,
+                &mut self.events,
+            )?;
+        }
+        for effect in blade {
+            self.instances.push(effect);
+        }
         Ok(())
     }
 

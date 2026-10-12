@@ -18,6 +18,17 @@ pub enum EffectRequest {
         model: u32,
         rotation: f32,
     },
+    /// The owner turned round: an owned model whose update callback turns
+    /// its root to the owner's facing (efLib_Cb_SetRotYAndTransition reads
+    /// the fighter's facing on every update) takes the new one.
+    OwnedFacing {
+        model: u32,
+        facing: f32,
+    },
+    /// efLib_SetFlags(gobj, 1) (eflib.c:189): every effect the fighter owns
+    /// is marked to expire; an update callback that reads the flag ends
+    /// its model (Final Cutter's blade).
+    ExpireOwned,
     // S6: ftColl_80076CBC, efSync_Spawn(27) at the physical powershield contact.
     PowershieldSpark {
         position: Vec3,
@@ -522,6 +533,8 @@ impl EffectRequest {
             self,
             Self::OwnedRotation { .. }
                 | Self::OwnedRotationZ { .. }
+                | Self::OwnedFacing { .. }
+                | Self::ExpireOwned
                 | Self::PowershieldSpark { .. }
                 | Self::SyncAttached { .. }
                 | Self::SyncAttachedPair { .. }

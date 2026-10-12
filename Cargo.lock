@@ -1164,6 +1164,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-kirby"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-types",
+]
+
+[[package]]
 name = "it-koopaflame"
 version = "0.0.1"
 dependencies = [
@@ -1642,6 +1653,7 @@ dependencies = [
  "it-foxlaser",
  "it-gamewatch",
  "it-heiho",
+ "it-kirby",
  "it-koopaflame",
  "it-link",
  "it-luigifire",

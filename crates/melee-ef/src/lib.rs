@@ -151,6 +151,11 @@ struct Effect {
     /// efLib_Cb_SetJObjOffsetZ (eflib.c:1126): after each update's
     /// animation, the root's first child moves this far along its own Z.
     child_drift_z: Option<f32>,
+    /// efLib_Cb_SetRotYAndTransition (eflib.c:1095) is the update callback:
+    /// Final Cutter's blade, which loops its last frames until it expires.
+    blade_transition: bool,
+    /// expire_flags != EF_DOES_NOT_EXPIRE (efLib_SetFlags).
+    expiring: bool,
     hitlag_pause: HitlagPause,
     joint_base: usize,
     /// The model's GObj (effect->gobj).
@@ -489,6 +494,31 @@ impl Effects {
                 }) {
                     effect.callback_rotation_z = Some(rotation);
                 }
+                continue;
+            }
+            if let EffectRequest::OwnedFacing { model, facing } = request {
+                for effect in self.instances.iter_mut().filter(|effect| {
+                    effect.owner == Some(ModelOwner::Fighter(player)) && effect.descriptor == model
+                }) {
+                    if effect.facing_rotation.is_some() {
+                        effect.facing_rotation = Some(kirby::quarter_turn(facing));
+                    }
+                }
+                continue;
+            }
+            if matches!(request, EffectRequest::ExpireOwned) {
+                // efLib_SetFlags(gobj, 1) (eflib.c:189).
+                for effect in self
+                    .instances
+                    .iter_mut()
+                    .filter(|effect| effect.owner == Some(ModelOwner::Fighter(player)))
+                {
+                    effect.expiring = true;
+                }
+                continue;
+            }
+            if let EffectRequest::SyncAttachedPair { id: 0x494, bones } = request {
+                self.spawn_kirby_final_cutter::<T>(player, bones, fighter, bank, particles, rng)?;
                 continue;
             }
             if let EffectRequest::OwnedRotation { model, rotation } = request {
@@ -1545,6 +1575,8 @@ impl Effects {
                 | EffectRequest::PositionalGenerator { .. }
                 | EffectRequest::PartnerVanish { .. }
                 | EffectRequest::OwnedRotationZ { .. }
+                | EffectRequest::OwnedFacing { .. }
+                | EffectRequest::ExpireOwned
                 | EffectRequest::EggShell { .. }
                 | EffectRequest::CameraQuake { .. }
                 | EffectRequest::DamageTrail { .. }
@@ -1939,6 +1971,19 @@ impl Effects {
                     particles.update_joint(effect.joint_base + joint.0, matrix);
                 }
             }
+            if effect.blade_transition {
+                // efLib_Cb_SetRotYAndTransition (eflib.c:1114-1123), after
+                // its turn to the owner's facing above.
+                if effect.expiring {
+                    effect.lifetime = kirby::BLADE_END_FRAMES;
+                    effect.blade_transition = false;
+                    effect.facing_rotation = None;
+                    effect.tree.req_anim_all(effect.root, kirby::BLADE_END_START);
+                } else if effect.lifetime == 1 {
+                    effect.lifetime = kirby::BLADE_LOOP_FRAMES;
+                    effect.tree.req_anim_all(effect.root, kirby::BLADE_LOOP_START);
+                }
+            }
             if let (Some(bone), Some(player)) = (effect.lifetime_end_spawn, effect.attachment) {
                 if effect.lifetime == 1 {
                     // hsd_8039EFAC(0, 0, 0x1AB, attach_jobj).
@@ -2054,6 +2099,8 @@ impl Effect {
             lifetime_end_spawn: None,
             follow_item: None,
             child_drift_z: None,
+            blade_transition: false,
+            expiring: false,
             hitlag_pause: HitlagPause::Ignore,
             attachment: None,
             owner: None,

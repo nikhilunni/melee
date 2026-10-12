@@ -203,6 +203,8 @@ impl Effect {
         self.follow_bone = None;
         self.follow_item = None;
         self.child_drift_z = None;
+        self.blade_transition = false;
+        self.expiring = false;
         self.hitlag_pause = initial.hitlag_pause;
         self.joint_base = 0;
         self.tree.events.clear();
@@ -232,7 +234,8 @@ impl Effect {
 
 /// Supported sync-load rows: shields/entry (efasync.c:407,429,453,751)
 /// egg shells (efsync.c:84,228-292) and Ganondorf's efSync models
-/// (efsync.c:594-640). All other modeled rows use async load.
+/// (efsync.c:594-640), and Final Cutter's blade (efAlt_Spawn sets
+/// EF_LOADKIND_SYNC, efalt.c:31). All other modeled rows use async load.
 fn is_sync(descriptor: u32) -> bool {
-    matches!(descriptor, 0xB | 0xC | 0xD | 0xE | 0x1E | 0x1F | 0x24 | 0xBB8..=0xBBD | 0xFA0..=0xFA1 | 0x1B58..=0x1B5C | 0x3A98 | 0x3E80..=0x3E81 | 0x4A38..=0x4A3D | 0xBF68..=0xBF69)
+    matches!(descriptor, 0xB | 0xC | 0xD | 0xE | 0x1E | 0x1F | 0x24 | 0xBB8..=0xBBD | 0xFA0..=0xFA1 | 0x1388..=0x138A | 0x1B58..=0x1B5C | 0x3A98 | 0x3E80..=0x3E81 | 0x4A38..=0x4A3D | 0xBF68..=0xBF69)
 }

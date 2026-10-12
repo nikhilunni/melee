@@ -1,0 +1,27 @@
+# KIRBY directed witness from start_fd_kirby_fox4: Kirby uses Final Cutter just short of the left edge and Fox runs into him during the landing, pushing him off the floor's end: the aerial landing row, which ends in Fall.
+name = "kirby_cutter_push_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 200, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 304, port = 0, buttons = {  }, raw = {  } },
+  { frame = 318, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 420, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,30 @@
+# KIRBY directed witness from start_fd_kirby_fox4: Final Cutter from the air at the top of a full hop, drifting right with the stick through the rise; then from a short hop just before the landing.
+name = "kirby_cutter_air_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 560
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 110, port = 0, buttons = {  }, raw = {  } },
+  { frame = 128, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 132, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 175, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 332, port = 0, buttons = {  }, raw = {  } },
+  { frame = 362, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 368, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

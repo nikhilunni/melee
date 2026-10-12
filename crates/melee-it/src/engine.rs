@@ -186,6 +186,7 @@ pub enum ItemScratch {
     Judge(JudgeState),
     MewtwoDisable(DisableState),
     ShadowBall(ShadowBallState),
+    CutterBeam(CutterBeamState),
     None,
 }
 /// Item.xDD4_itemVar.koopaflame (itkoopaflame.c): one flame of Bowser's
@@ -271,6 +272,19 @@ pub struct ShadowBallState {
     pub owner_scale: f32,
     /// x64: the burst's hitbox radius.
     pub burst_radius: f32,
+}
+/// Item.xDD4_itemVar.kirbycutterbeam (itkirbycutterbeam.c): Final Cutter's
+/// beam.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct CutterBeamState {
+    /// x0: the slope it runs along, the floor's angle signed by the facing.
+    pub angle: f32,
+    /// x4: its speed, which the attribute's deceleration wears down.
+    pub speed: f32,
+    /// x8: the floor's tangent at the launch.
+    pub direction: hsd_types::Vec3,
+    /// x14: the position before this frame's move.
+    pub previous_position: hsd_types::Vec3,
 }
 /// Item.xDD4_itemVar.mdisable (itmewtwodisable.c).
 #[derive(Clone, Copy, Debug, Default)]

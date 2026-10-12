@@ -87,6 +87,7 @@ melee_it::item_kinds! {
         NessPKThunder4: it_ness::NessPkThunderTrail<3>,
         MewtwoDisable: it_mewtwo::MewtwoDisable,
         MewtwoShadowBall: it_mewtwo::MewtwoShadowBall,
+        KirbyCBeam: it_kirby::CutterBeam,
     }
 }
 
@@ -612,6 +613,23 @@ impl Resources {
             kinds.push((ItemKind::MewtwoShadowBall, ball));
             visual_archives.push((ItemKind::MewtwoShadowBall, std::sync::Arc::clone(&a)));
             visual_archives.push((ItemKind::MewtwoDisable, a));
+        }
+        // ftKb_Init_OnLoad: ftData.x48_items[0] is Final Cutter's beam.
+        if let Some(character) = characters
+            .iter()
+            .find(|c| c.descriptor.data_file == "PlKb.dat")
+        {
+            let a = std::sync::Arc::clone(&character.data);
+            let root = a.public("ftDataKirby").context("Kirby fighter data")?;
+            let beam = ItemAssets::from_fighter_states(
+                &a,
+                root,
+                it_kirby::cutter_beam::ARTICLE_INDEX,
+                &it_kirby::cutter_beam::ARTICLE_STATES,
+                it_kirby::cutter_beam::SPECIAL_ATTRIBUTES,
+            )?;
+            kinds.push((ItemKind::KirbyCBeam, beam));
+            visual_archives.push((ItemKind::KirbyCBeam, a));
         }
         // ftSk_Init_OnLoad: ftData.x48_items[2] is Vanish's smoke. Sheik's
         // articles load with Zelda too: both forms come to every match.

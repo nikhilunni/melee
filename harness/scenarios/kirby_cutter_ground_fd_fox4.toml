@@ -1,0 +1,25 @@
+# KIRBY directed witness from start_fd_kirby_fox4: Final Cutter from the ground, the whole move (start, rise, fall, landing) and the beam running along the floor until it expires; then a second one.
+name = "kirby_cutter_ground_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 104, port = 0, buttons = {  }, raw = {  } },
+  { frame = 330, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 334, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

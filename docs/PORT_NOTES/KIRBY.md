@@ -6,8 +6,10 @@ boundary `start_fd_kirby_fox4`. Crate: `ft-kirby`. Data facts are in
 
 **Status: stage 1 of three.** Kirby is registered and his movement, common
 attacks, down throw, hit reactions, death and revival are exact. His own
-specials (stage 2) and the copy abilities (stage 3) are not ported: every
-special row and entry fails closed, as do his three airborne throws.
+specials are stage 2: the Inhale that catches nothing and Final Cutter with
+its beam are exact; the Inhale's catch, Hammer and Stone are not ported.
+The copy abilities (stage 3) are not ported. Every unported row and entry
+fails closed, as do his three airborne throws.
 
 ## What is different about him
 
@@ -61,6 +63,43 @@ special row and entry fails closed, as do his three airborne throws.
   throws the victim keeps its grab timer and can mash out
   (`ftCo_800DE3FC`); the up throw sets `x2219_b2` on both fighters (no
   blast-zone test) and uses `ftCamera_800762F4`.
+- **Final Cutter** (`ft-kirby/src/special_hi.rs`, `it-kirby`). Six of the
+  table's eight rows are live: the start (385, 389 in the air), the rise
+  (390), the fall (391) and the landing (388, 392 off the floor's end).
+  Nothing enters 386 or 387: every motion change in ftkirbyspecialhi.c
+  goes to one of the other six, so they stay unported rows.
+  - Both starts draw the blade (efAlt 0x494: three models, two on joint 44
+    and one on joint 1, `fp->parts` read by raw index). Their update
+    callback (`efLib_Cb_SetRotYAndTransition`) replays frames 60..65 once
+    the 0x41 frames are up, and plays out from 65 once the landing marks
+    Kirby's effects to expire (`efLib_SetFlags`, `EffectRequest::ExpireOwned`).
+    Two of the three turn with Kirby: the callback reads the fighter's
+    facing through `HSD_JObj.scale.x` (Fighter +2C), which the port sends
+    as `EffectRequest::OwnedFacing` when the stick turns him.
+  - The grounded start's physics calls ft_80084FA8 and then replaces its
+    acceleration with the stick's (ftCommon_8007CADC, no friction): a level
+    stick stops Kirby on the first tick. The aerial start and the rise take
+    their velocity from TransN (ft_80085134), the upward part scaled by
+    +D4; the fall has no gravity and keeps the rise's last velocity.
+  - The rise cannot land or catch a ledge for its first 21 collision
+    passes (`mv.kb.specialhi.x0 > 0x14`); it spends every jump on each of
+    them (ftCommon_8007D60C).
+  - The landing rows carry accessory4 `fn_800F21E8`: on the script's
+    cmd_vars[2], once per move, the beam leaves from TopN (+DC ahead, +E0
+    up, one unit down) with Kirby's root X rotation as its slope. The
+    landing tips that root with the floor.
+  - The beam starts grounded and follows the floor's angle (it_8026D564,
+    new in `melee-it`); past the floor's end it lifts 0.001 and flies level.
+    A hit does not end it; its hitlag holds its lifetime, so it can hit a
+    fighter twice. A reflection keeps the lifetime it has left.
+  - The collision callbacks' changes install `ftKb_Init_800EE7B8` /
+    `ftKb_Init_800EE74C` (the entries do not): a hit in the landing levels
+    the root and destroys Kirby's effects.
+  - **A shared fault this found:** a motion change that starts mid-animation
+    without `Ft_MF_UpdateCmd` (the 385 -> 389 change, flags 0xC1082) left
+    the new script's timer at 0, so its commands ran late by the start
+    frame. Retail sets the timer to `-anim_start` for every such entry
+    (fighter.c:1287) before ftAction_80073354 seeks; `melee-ft` now does.
 - **Landing** clears the three once-per-flight lifts (`x64` Hammer, `xC4`
   copied Ice Shot, `xCC` copied Toad).
 - **Items.** `ftKb_Init_OnItemPickup` maps hold kinds to hand poses
@@ -72,7 +111,9 @@ special row and entry fails closed, as do his three airborne throws.
 | What | Where it stops |
 | --- | --- |
 | Inhale and its 30 rows, swallow, spit, the star (ftkirbyspecialn.c) | `enter_special` Neutral |
-| Hammer (ftkirbyspecials.c), Final Cutter (ftkirbyspecialhi.c), Stone (ftkirbyspeciallw.c) and their articles | `enter_special` Side / Up / Down |
+| Hammer (ftkirbyspecials.c), Stone (ftkirbyspeciallw.c) and their articles | `enter_special` Side / Down |
+| Final Cutter's aerial start landing (ftkirbyspecialhi.c:447-453) and its aerial landing row landing (:526-536): neither row descends on its own | `air_start_collision`, `air_landing_collision` |
+| The beam on a slope (itkirbycutterbeam.c:93-97, the one `fmadds`), landing from the air (:128-133), ended by a wall (:137-151), clanked (:162), absorbed (:167), glancing off a shield (:205-243) | `it-kirby` `cutter_beam.rs` |
 | Every copied neutral special (ftkirbyspecial<kind>.c), hats, the helmeted multijumps, losing the ability | rows 399..543; `ENTER_TAUNT` and `multi_jump_family` with a hat |
 | Forward, back and up throws | `THROW_ENTRY` |
 | CaptureKirby / CaptureWaitKirby / ThrownKirby on the victim | common rows, unported |
@@ -88,16 +129,29 @@ special row and entry fails closed, as do his three airborne throws.
   attack and Reflector on Kirby through a tumble, the floor, a hit while
   lying down, a fall past the blast zone and the revival (whose Stone-form
   draw the seed checks), and the rapid jab whiffed and on Fox.
+- Final Cutter: fifteen `kirby_cutter_*` scenes in `KIRBY_WITNESSES`, items
+  compared, all exact with 0 differing particle ticks: from the ground and
+  the air, turned round, at and near the left edge (the beam off the
+  floor's end, the start sliding off, the fall to the blast zone, Fox
+  pushing the landing off), the ledge from the rise and from the fall, the
+  beam and the sword on Fox, his shield, his Reflector on the floor and in
+  the air, and Fox striking Kirby out of the start and the landing. The
+  unreached branches were replaced by `unimplemented!` and the fifteen
+  gated again, so none of them is taken. Searched and not reached on Final
+  Destination: a clank (Fox's forward and down smash into the beam, eleven
+  timings each: the beam hits him every time) and a reflecting shield (the
+  beam is grounded wherever Fox can shield, and only an airborne item
+  glances off).
 - Slippi (`public-v3.7-b`: the four games in `KIRBY` and one in
   `GAMEANDWATCH`, all refused before Kirby was registered): every frame
   matches up to the first unported boundary, which the runner names.
 
   | Game | Frames matched | Stops at |
   | --- | ---: | --- |
-  | `14_16_24 Marth + Kirby (PS)` | 1378 of 7001 | Final Cutter in the air |
+  | `14_16_24 Marth + Kirby (PS)` | 2488 of 7001 (1378 before Final Cutter) | Kirby's back throw |
   | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 1671 of 13271 | Kirby's up throw |
-  | `Falco vs Kirby [YS]` | 336 of 9109 | Inhale in the air (after a down throw) |
-  | `Game_20190824T180214` (Kirby against Kirby) | 1129 of 13809 | Inhale in the air (after a rapid jab) |
+  | `Falco vs Kirby [YS]` | 1756 of 9109 | Kirby's forward throw |
+  | `Game_20190824T180214` (Kirby against Kirby) | 1175 of 13809 | the Inhale catching a fighter |
   | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 563 of 15399 | Kirby's forward or back throw |
 
   `replay-batch` before and after on both corpora: 106 of 108 and 396 of

@@ -1,0 +1,32 @@
+# KIRBY directed witness from start_fd_kirby_fox4: Fox dash attacks Kirby out of Final Cutter's start (the blade goes with the motion), and up smashes him out of a second one's landing.
+name = "kirby_cutter_struck_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 760
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 270, port = 0, buttons = {  }, raw = {  } },
+  { frame = 290, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 294, port = 0, buttons = {  }, raw = {  } },
+  { frame = 290, port = 1, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 300, port = 1, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 302, port = 1, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 512, stickY = 127 } },
+  { frame = 524, port = 0, buttons = {  }, raw = {  } },
+  { frame = 570, port = 1, buttons = {  }, raw = { substickY = 127 } },
+  { frame = 573, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

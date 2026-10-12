@@ -217,6 +217,110 @@ pub fn seal_graphics(f: &mut Fighter, assets: &FighterAssets, rng: &mut gekko_ma
     }
 }
 
+/// The stick's acceleration toward its target speed with no friction
+/// (ftCommon_8007CA80 on the ground, ftCommon_8007D2E8 in the air): a
+/// target of zero stops outright.
+fn stick_acceleration(stick: f32, velocity: f32, threshold: f32, rate: f32, limit: f32) -> f32 {
+    let magnitude = if stick < 0.0 { -stick } else { stick };
+    let (mut acceleration, target) = if magnitude >= threshold {
+        (stick * rate, stick * limit)
+    } else {
+        (0.0, 0.0)
+    };
+    if target == 0.0 {
+        return -velocity;
+    }
+    // Retail branches on !(velocity * acceleration < 0), unordered included.
+    if (velocity * acceleration).partial_cmp(&0.0) != Some(std::cmp::Ordering::Less) {
+        if acceleration > 0.0 {
+            if velocity + acceleration > target {
+                acceleration = target - velocity;
+            }
+        } else if velocity + acceleration < target {
+            acceleration = target - velocity;
+        }
+    }
+    acceleration
+}
+
+/// ftCommon_8007CADC (8007CADC) -> ftCommon_8007CA80: walk toward the
+/// stick's target with no friction.
+pub fn walk_toward_stick(f: &mut Fighter, threshold: f32, rate: f32, limit: f32) {
+    f.physics.ground_acceleration = stick_acceleration(
+        f.input.current.stick.x,
+        f.physics.ground_velocity,
+        threshold,
+        rate,
+        limit,
+    );
+}
+
+/// ftCommon_8007D3A8 (8007D3A8) -> ftCommon_8007D2E8: drift toward the
+/// stick's target with no friction.
+pub fn drift_without_friction(f: &mut Fighter, threshold: f32, rate: f32, limit: f32) {
+    f.physics.animation_velocity.x = stick_acceleration(
+        f.input.current.stick.x,
+        f.physics.self_velocity.x,
+        threshold,
+        rate,
+        limit,
+    );
+}
+
+/// ft_80085134 (80085134): airborne velocity straight from TransN (fmuls
+/// by the facing).
+pub fn root_motion_air(f: &mut Fighter) {
+    let offset = f
+        .animation
+        .root_motion
+        .as_ref()
+        .expect("TransN root motion")
+        .primary_history
+        .offset;
+    f.physics.self_velocity.x = offset.z * f.physics.facing;
+    f.physics.self_velocity.y = offset.y;
+}
+
+/// ft_CheckGroundAndLedge (800822A4) toward the fighter's facing; true on
+/// landing.
+pub fn lands_facing(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
+    let c = &mut f.core;
+    air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    air::collide_pass(
+        &mut c.physics,
+        &mut c.collision,
+        p.map,
+        &mut c.skeleton,
+        c.animation.root,
+        c.status.ledge_cooldown == 0,
+    )
+}
+
+/// ft_80082578 (80082578) -> mpColl_800477E0: airborne collision that
+/// never lands.
+pub fn stay_airborne(f: &mut Fighter, p: &mut CollisionPhase<'_>) {
+    let c = &mut f.core;
+    air::begin_map(
+        &c.physics,
+        &mut c.collision,
+        &mut c.skeleton,
+        c.animation.root,
+    );
+    let cd = &mut c.collision.data;
+    cd.last_pos = cd.cur_pos;
+    cd.cur_pos = c.physics.position;
+    let pose = melee_ft::collision::ecb::EcbPose::read(&mut c.skeleton, c.animation.root, cd);
+    p.map.air_collide_stay(cd, Some(&|i| pose.position(i)));
+    c.physics.position = cd.cur_pos;
+    c.skeleton
+        .set_translate(c.animation.root, &c.physics.position);
+}
+
 /// ftCommon_FallBasic (8007D4B8): the fighter's own gravity and terminal
 /// speed.
 pub fn fall_basic(f: &mut Fighter) {

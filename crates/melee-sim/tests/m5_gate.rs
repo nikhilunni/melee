@@ -2365,6 +2365,44 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // a landing during the start (fn_800F6638, fn_800F6798); its wind is
     // efAlt 0x49A.
     ("kirby_inhale_whiff_fd_fox4", 900),
+    // Final Cutter (ftkirbyspecialhi.c) and its beam (itkirbycutterbeam.c),
+    // items compared. From the ground, twice: start, rise, landing, the
+    // blade (efAlt 0x494) and the beam running until its lifetime ends.
+    ("kirby_cutter_ground_fd_fox4", 520),
+    // From the air, drifting through the rise into the fall row; and from a
+    // short hop.
+    ("kirby_cutter_air_fd_fox4", 560),
+    // Turned round at the start on the ground and in the air; a stick
+    // inside the attribute range does not turn him.
+    ("kirby_cutter_reverse_fd_fox4", 760),
+    // At the left edge: the beam leaves the floor's end and flies level;
+    // then the grounded start sliding off into the aerial start at its
+    // frame (the script sought there, fighter.c:1287) and the fall past the
+    // stage to the blast zone.
+    ("kirby_cutter_edge_fd_fox4", 900),
+    // A landing within a unit of the edge: the beam starts past the floor.
+    ("kirby_cutter_slide_fd_fox4", 520),
+    // Fox pushes the landing off the floor: the aerial landing row, Fall.
+    ("kirby_cutter_push_fd_fox4", 520),
+    // The ledge caught from the rise (after its 21 locked passes) and from
+    // the fall.
+    ("kirby_cutter_ledge_fd_fox4", 480),
+    ("kirby_cutter_ledge_fall_fd_fox4", 420),
+    // The beam through Fox; the rising and falling sword and the beam on
+    // him; the beam in his down smash, held through its hitlag and hitting
+    // him again where he lands.
+    ("kirby_cutter_beam_hit_fd_fox4", 480),
+    ("kirby_cutter_sword_hit_fd_fox4", 560),
+    ("kirby_cutter_dsmash_fd_fox4", 480),
+    // The beam ends on Fox's shield; his Reflector turns it round on the
+    // floor (it hits Kirby in the landing: ftKb_Init_800EE7B8) and in the
+    // air past the right edge.
+    ("kirby_cutter_shield_fd_fox4", 440),
+    ("kirby_cutter_reflect_fd_fox4", 520),
+    ("kirby_cutter_air_reflect_fd_fox4", 560),
+    // Fox's dash attack out of the start (the blade goes with the motion)
+    // and his up smash out of the landing.
+    ("kirby_cutter_struck_fd_fox4", 760),
 ];
 
 #[test]
