@@ -34,6 +34,16 @@ at `unimplemented!` "ftKb_SpecialHi_Enter / ftKb_SpecialAirHi_Enter
 
 ## Not exact
 
+### Since fixed (2026-10-12, later the same day)
+
+The Luigi bridge and the four assertions below gate exact and are
+registered: `slp_bf_luigi_iceclimbers_t2300_cold` in
+`SLIPPI_REPLAY_WITNESSES` (the cold scene carries the boundary's stale word,
+`docs/PORT_NOTES/STALE_HEAP.md`; its boundary and cold twin are committed
+with it), and the two "cliff camera scratch missing" and two
+`ftCo_800DC920` explorer cases in `CORPUS_V3_MATCHES`. The sections below
+describe them as this pass found them.
+
 ### Newly diagnosed
 
 No scenario of the 231 shows a port fault that was not already known or

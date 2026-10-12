@@ -960,11 +960,16 @@ Popo's and gave her the point. With the test all four pass their stop
 (1178 to 3921, 1931 to 2765, 2098 to 3799, 2903 to 6004; each then reaches
 an unported Ice Climbers boundary) and no Ice Climbers game of either
 corpus matches fewer frames. There is no directed retail witness: the
-bridge of one of them (`slp_bf_luigi_iceclimbers_t2300`, local data, from
-`start_bf_slippi74_ns_p14_luigi2_iceclimbers0_4`) leaves the port at tick
-540 on Luigi's height (retail in Dolphin 1.946, the port and the console's
-replay 1.146), long before Nana is off screen, so retail there is not
-playing the replay's game. Not diagnosed.
+bridge of one of them (`slp_bf_luigi_iceclimbers_t2300`, from
+`start_bf_slippi74_ns_p14_luigi2_iceclimbers0_4`) leaves the console's game
+at tick 540 on Luigi's height (retail in Dolphin 1.946, the console's
+replay 1.146), long before Nana is off screen. The cause is stale heap, not
+the bridge: Fighter_Create leaves Luigi's +222C (`x222C_cycloneCharge`)
+unwritten, the booted boundary's block holds 0x0932038D there, and his first
+aerial Cyclone takes the charged branch, where the console's block held
+zero. The cold twin now carries the boundary's word and gates all 2300
+ticks (`SLIPPI_REPLAY_WITNESSES`); a replay still runs with zero
+(`docs/PORT_NOTES/STALE_HEAP.md`).
 
 ## Frozen Stages: the stage code a replay does not record (2026-10-03)
 

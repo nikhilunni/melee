@@ -2570,7 +2570,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 112] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 113] = [
     // A Slippi Online (netplay) game played back whole: every tick starts
     // from the netplay code's seed (InitOnlinePlay.asm's FN_SyncRNG: the
     // scene frame counter turned sixteen bits plus the RNG offset, which the
@@ -2906,6 +2906,13 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 112] = [
     // The game of slp_bf_falco_iceclimbers_t2400 to the end of retail's
     // match: Popo's four stocks, two of Nana's deaths and two of Falco's.
     ("slp_bf_falco_iceclimbers_t5600_cold", 4699),
+    // Luigi vs Ice Climbers on Battlefield (UCF 0.74, ports 1 and 4): retail
+    // from this boundary, not the console's game past 540. Fighter_Create
+    // left 0x0932038D at Luigi's +222C (x222C_cycloneCharge), so his first
+    // aerial Cyclone (540) takes the charged branch and rises 0.8 higher
+    // than the console's, whose block held zero. The cold scene carries the
+    // boundary's word (CharacterCallbacks::restore_stale_heap).
+    ("slp_bf_luigi_iceclimbers_t2300_cold", 2300),
     // Sheik vs Marth on Battlefield (UCF 0.74, ports 1 and 4) to Sheik's
     // first lost stock, off the left side (1666).
     ("slp_bf_sheik_marth_g02_t1700_cold", 1700),
@@ -4290,7 +4297,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 592] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 601] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5223,6 +5230,30 @@ const CORPUS_V3_MATCHES: [(&str, usize); 592] = [
     ("corpus_v3_fd_yoshi_fox4_efd4a7dd2_p1", 474),
     // Link's aerial hookshot starts (the tether hook, ftCo_AirCatch.c:54-79).
     ("corpus_v3_fd_link_fox4_e50814092_p0", 102),
+    // Nana, put to sleep on a ledge by Popo's death, revives with the camera
+    // subject's on_ledge bit still set: only ftCo_Cliff_Cam notifies a ledge.
+    ("corpus_v3_fd_iceclimbers_fox4_ed7f7dd2b_p0", 554),
+    ("corpus_v3_ys_iceclimbers_fox4_ec6468ea6_p1", 812),
+    // Nana vanishes with Popo while Fox throws her: ftCo_800DD100 sets her
+    // down (ftCo_800DC920) and settles Fox at once.
+    ("corpus_v3_bf_iceclimbers_fox4_ea1a1c9aa_p1", 2507),
+    ("corpus_v3_bf_iceclimbers_fox4_ec1d4b39b_p0", 1201),
+    // Ice Climbers vs Peach on Pokemon Stadium, each recorded 180 ticks past
+    // the port's old fault with every tick rendered.
+    // Peach teeters with a turnip: shield and A throw it (LightThrowF, 2908),
+    // ftCo_Catch_CheckInput's ftCo_800951D0, where the port entered Catch.
+    ("corpus_v3_ps_iceclimbers_peach4_e75fb4a9a_p0", 3089),
+    // Popo catches the turnip in the air (281) and uses the aerial Squall
+    // Hammer with it in hand (345 at 304, 343 at 330).
+    ("corpus_v3_ps_iceclimbers_peach4_ec13743d5_p0", 485),
+    // ftCo_800B732C: Peach catches a ledge two units above Nana's platform,
+    // 48 away (5198); no ceiling between, a bearing under 75 degrees, so 0.
+    ("corpus_v3_ps_iceclimbers_peach4_ec3145eb3_p2", 5380),
+    // The same seed played on by the explorer to 6000 ticks (the same test
+    // at 5198, then two more Stadium transformations).
+    ("corpus_v3_ps_iceclimbers_peach4_ec3145eb3_p2_edgeguard", 6001),
+    // Nana takes a turnip from the floor (LightGet, 1440): Popo's item hooks.
+    ("corpus_v3_ps_iceclimbers_peach4_e7ff378da_p0", 1622),
 ];
 
 #[test]
