@@ -2497,7 +2497,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 73] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 78] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2781,6 +2781,32 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 73] = [
     // PlCo +520) and hits the screen in DeadUpFallHitCameraFlat (8) at 3034
     // (ftCo_DeadUpFall_Anim, 0x800D4BC8), his root not turned to it.
     ("gamewatch_screenko_flat_fd_fox4_cold", 3200),
+    // A phantom's credit reads the GObj at dmg.x1894 when its lockout ends
+    // (ftColl_8007BE3C, 0x8007BF50): Falco's Phantasm ghost grazes Fox at
+    // 1374 and is gone at 1377, a tick before the damage lands, so the move
+    // never enters Falco's stale table and his next laser deals 2.88 (1482).
+    ("slp_dl_fox_falco_r1_t1600_cold", 1600),
+    // A Thunder bolt answers to the fighter that called it (x38), not its
+    // owner: Mario's cape takes the lead bolt (6284) and its end still ends
+    // Pikachu's loop (6297, 6298). Not the replay's game past tick 4233
+    // (a Stadium bridge); retail all the same.
+    ("slp_ps_mario_pikachu_r1_t6400_cold", 6400),
+    // The repeated-hit victim is forgotten by the hitstun bit (x221C_b6,
+    // ftColl_800764DC), not the damage state's timer: Falco teched out of a
+    // down throw, so Sheik's needles count from one and the fifth (8969)
+    // starts the push, which moves her from 8970.
+    ("slp_fod_level_falco_zelda_r1_t9100_cold", 9100),
+    // The damage flash needs damage logged this frame (x1838, 0x8008E19C):
+    // the cargo carry's breakout (4770) deals its damage directly, so
+    // nothing takes the primary colour slot and the charged Giant Punch's
+    // steam, restarted by the motion change, puffs at once (three offset
+    // draws and a generator). From the replay's own boundary: Dream Land
+    // keeps its first fly-by delay from creation.
+    ("slp_dl_donkeykong_ganondorf_gs_r1_t4900_cold", 4900),
+    // Not a port fault: Pichu's slow turn becomes a dash at 2158 under UCF
+    // 0.73 with the pad queue one poll per tick (-100 against -2), as the
+    // port has it; the console kept the turn.
+    ("slp_dl_captainfalcon_pichu_r1_t2300_cold", 2300),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

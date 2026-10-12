@@ -776,10 +776,16 @@ What makes retail follow the replay:
   storing gm_AnyControllerPressedStart at gm_80479D58 +0x14); nothing draws
   between. The savestate's seed is then the header's `boundary_seed`, which
   `slippi_to_scenario.py` checks, and the cold twin names `game_start_seed`,
-  which its gate checks against the port's setup draws. On the other stages
-  any boundary of the setup has served (the witnesses below follow their
-  replays from one); `slippi_to_scenario.py` insists on the replay's own
-  boundary only for these two, unless `--foreign-creation` is given.
+  which its gate checks against the port's setup draws. Dream Land keeps one
+  creation draw too, the first fly-by's delay (grOldPupupu_80210C7C, 3000 to
+  4000 ticks): when it runs out the fly-by draws four values
+  (grOldPupupu_80210D10) on another tick than the console's, so a bridge
+  past tick 3000 needs the replay's own boundary as well ("Five stops of
+  the second corpus" below). On the other stages any boundary of the setup
+  has served (the witnesses below follow their replays from one);
+  `slippi_to_scenario.py` insists on the replay's own boundary for these
+  two, and for Dream Land past tick 3000, unless `--foreign-creation` is
+  given.
 - *Display passes.* gm_801A4D34 runs one tick per queued pad poll and then
   renders once. The tick input clock's injected entry and the retrace's own
   poll made two, so a recording ran two ticks per render, where a console
@@ -2436,3 +2442,135 @@ Game & Watch match); the other 38 give the same result on both builds.
 |---|---|---|
 | `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
 | `public-v3.7-b` (502) | 446 to 449 | 4,771,099 to 4,785,336 |
+
+## Five stops of the second corpus (2026-10-11)
+
+Five `public-v3.7-b` games listed as open and undiagnosed, each played back
+on retail from its own setup with a display pass after every tick
+(`render_every_tick`). Four were port faults, each one cause; the fifth is
+retail and the port against the console. Trace ticks; a replay frame N is
+trace tick N + 1.
+
+| Replay | Stop before | Retail, every tick | Cause | Now |
+|---|---|---|---|---|
+| `FOX/Game_20190824T124750` (DL) | 1482, `percent`: 28.58 recorded, 28.61 in the port | `slp_dl_fox_falco_r1_t1600`: Falco's laser deals 2.88 | a phantom's credit reads a freed GObj (below) | 8316 / 8316 |
+| `MARIO/Game_20190309T094546` (PS) | 6305, `motion_id`: Pikachu's Thunder loop ends in the recording | `slp_ps_mario_pikachu_r1_t6400`: the loop ends at 6298 where the port's went on | a Thunder bolt answers to its caller, not its owner (below) | 7472 / 7472 |
+| `ZELDA_SHEIK/20200304 - HNC 22 - PM 0855 - Falco (Default) vs Zelda (White) - Fountain of Dreams` | 8969, `cur_pos`: Sheik 0.025 further left | `slp_fod_level_falco_zelda_r1_t9100`: Sheik moves from 8970, in the port from 8974 | the repeated-hit victim is forgotten by the hitstun bit (below) | 11472 / 11472 |
+| `DK/21_45_04 [INFP] Donkey Kong + [C2] Ganondorf (DL)` | 4779, `input_seed` | `slp_dl_donkeykong_ganondorf_gs_r1_t4900`: 28 draws at 4770, 22 in the port | the damage flash needs damage logged this frame (below) | 10442 / 10442 |
+| `PICHU/Game_20161120T232910` (DL) | 2158, `motion_id`: Pichu's Turn kept in the recording | `slp_dl_captainfalcon_pichu_r1_t2300`: retail dashes at 2158, as the port does | not a port fault: the console's pad queue (below) | unchanged |
+
+All five scenarios gate exact over their full length with 0 differing
+particle-site ticks and are in `SLIPPI_REPLAY_WITNESSES`.
+
+**A phantom's credit reads the GObj that is there when its lockout ends.**
+A phantom hit (half damage, no knockback) is applied by ftColl_8007BE3C when
+the victim's lockout (dmg.x189C) runs out, and only then credits its source:
+the function loads the GObj pointer kept at dmg.x1894 (retail 0x8007BF4C) and
+switches on its classifier (0x8007BF50: `lhz 0x0`; 4, a fighter, calls
+plStale_UpdateStaleMovesFromFighter and ftColl_80076444; 6, an item,
+plStale_UpdateStaleMovesFromItem and ftColl_8007646C; anything else nothing).
+Falco's Phantasm ghost grazes Fox at tick 1374 (lockout 4, damage 3.5) and
+its lifetime ends at 1377; at 1378 x1894 still holds 0x80D527C0, now a freed
+GObj whose first word is the allocator's free-list link (HSD_ObjFree,
+0x8037AD20), so nobody is credited and the side special never enters Falco's
+stale table. The port had captured the item's owner and attack at the hit and
+credited them at the end: one more entry in the table, the laser a slot
+older, 2.91 instead of 2.88. `melee_coll::damage_log::ItemSource` is now the
+item's GObj address (`hsd_gobj::GObjAddresses`, "GObj addresses" above), and
+the credit goes to whatever live item has that address when the lockout
+ends: the same item's current owner and attack, another item created there
+since, or nobody.
+
+**A Thunder bolt answers to the fighter that called it.** The bolt keeps its
+caller at xDD4 +0x38 (it_802B1DF8), and everything it does to Pikachu goes
+through that pointer, not ip->owner: the lead's end
+(it_2725_Logic39_Destroyed, 0x802B204C: `lwz 0xE0C`, then
+ftPk_SpecialLw_SetState_Unk0) and the floor strike's quake
+(itPikachuthunder_UnkMotion1_Coll, 0x802B2250); Pikachu in turn reaches the
+lead by its own pointer (mv.pk.speciallw.x0: 0x80127680, 0x80127758,
+0x80127770). The kind has no reflected callback, so a cape or a Reflector
+changes only the owner. The port routed all three by owner: Mario's cape took
+the lead bolt (tick 6284 of the recording), the bolt's end (6297) told Mario,
+and Pikachu's loop waited for its script. `ItemLogic::tracker` names the
+fighter an article answers to (its owner by default; the bolt's creator), for
+the owner report, the destroyed notice, control requests and the callbacks'
+owner context. The recording is retail but not the replay's game past tick
+4233: its boundary was not created from the replay's Game Start seed, and
+Stadium keeps its first base-form duration from creation ("Pokemon Stadium
+bridges" above), so the first transformation comes on another tick. It
+reaches the same reflected lead at 6284, and the replay itself now matches
+to its last frame.
+
+**The repeated-hit victim is forgotten by the hitstun bit.** ftColl_800764DC
+(Fighter_procAnim out of hitlag, fighter.c:1686) clears the attacker's
+victim pointer (x2094) when the victim's x221C_b6 is clear (0x80076504: `lbz
+0x221C`; `extrwi. 1, 30`) and its grace frames (x2098) have run out. The port
+asked whether the victim's damage state still had hitstun to count, and a
+tech out of hitstun leaves that timer where it was: Falco, down-thrown and
+teching in place, stayed Sheik's victim. Her first needle then found the
+victim with another move and counted from zero where retail starts a new
+victim at one (ftColl_800763C0), so the fifth needle (tick 8969) did not
+reach PlCo +0x4C4 and the push (0.025 a tick for twenty ticks,
+ftColl_80076528) began four ticks late, with the sixth. The test is now the
+bit, and it runs only when the attacker's animation proc does (not asleep,
+not in hitlag).
+
+**The damage flash needs damage logged this frame.** ftCo_8008DCE0 installs
+the hit's colour animation through ftCo_8008DA4C, which tests
+dmg.x1838_percentTemp first (0x8008E19C: `lfs 0x1838`; `fcmpu`; `beq`). A
+hit resolved by Fighter_ProcessHit has its damage there; the cargo carry's
+breakout does not: ftCo_Shouldered_Anim and ftCo_8009C744 give each fighter
+its damage with Fighter_UnkTakeDamage_8006CC30 and call ftCo_8008E908
+directly (ftCo_Shouldered.c:73, 113), so neither flashes. The port tested the
+hit's own damage and installed the flash. With a charged Giant Punch that
+shows in the random stream: the charge's steam is the secondary colour
+program, restarted by the motion change, and it spawns its first puff at
+once unless the primary slot is busy (ft_800BFF70). Retail draws the puff's
+three offsets (ftCo_8009F834) and its generator emits on the tick of the
+breakout (4770); the port's flash held the primary slot and the puff was
+skipped.
+
+That game needed its own boundary. Dream Land draws the first fly-by's delay
+when the stage is created (grOldPupupu_80210C7C, 3000 to 4000 ticks), before
+the boundary seed is written, so from another boundary the fly-by draws
+(grOldPupupu_80210D10, four values) on another tick: tick 3771 from
+`start_dl_slippi73_ns2019_p23_donkeykong4_ganondorf4_4` against 3856 from
+the replay's own `..._r214504` (created from its Game Start seed 3902852940).
+The first bridge (`slp_dl_donkeykong_ganondorf_r1_t4900`, local data) gates
+exact for 4900 ticks and says nothing about the stop: by tick 4615 Whispy
+blows in the replay and not in that recording. `slippi_to_scenario.py` now
+refuses a foreign boundary on Dream Land past tick 3000.
+
+**Pichu's turn: the console's pad queue, again.** Retail in Dolphin under
+UCF 0.73 with a pad queue of one poll per tick reads -100 against -2 at tick
+2159 (`pad_queue_x` in the trace) and restarts the turn as a dash, as the
+port does; the console kept the slow turn, which the code does only when the
+older sample is the previous tick's -53 ("The pad queue is not in a replay"
+above). Two probes with the recorder's lag frame at record 2158 or 2159
+(`slp_dl_captainfalcon_pichu_lag2158_t2300`, `..._lag2159_t2300`, local
+data; the port gates both exact) dash as well: a lag frame as the recorder
+plays it runs two ticks in one frame but still gives the queue one sample
+per tick, so it does not reproduce a queue holding an extra poll. Captain
+Falcon stays in RebirthWait through the window in the replay, retail and the
+port alike; nothing about the revival platform is involved.
+
+Corpora before and after (`replay-batch`; no replay matches fewer frames):
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 108 to 108 | 964,782 (unchanged) |
+| `public-v3.7-b` (502) | 453 to 457 | 4,810,990 to 4,827,157 |
+
+(On main at 3e20e9de, with the runner's lag-frame inference; before that
+merge the same four games took the second corpus from 446 to 450.) The
+four games above are the only replays that change. Every scenario
+recorded before gates as it did (2529 files: 2488 pass, 41 do not, the same
+ones), and of the 72 recorded during the work only the four bridges above
+change, from their stop to exact.
+
+Seen on the way, not followed: the particle dump of
+`slp_dl_donkeykong_ganondorf_gs_r1_t4900` differs from the port at tick 4852
+in a stage generator's x (-9.6 in retail, -23.6 in the port), with the same
+draw sites and seeds. Not diagnosed; a guess is a fly-by's generator, which
+is placed from the rendered camera (Camera_800307D0).
+
