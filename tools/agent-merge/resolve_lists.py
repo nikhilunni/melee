@@ -28,7 +28,7 @@ while k < len(out):
         n, depth, j = 0, 0, k + 1
         while not re.match(r"^\s*\];", out[j]):
             s = out[j].strip()
-            if depth == 0 and s.startswith("("): n += 1
+            if depth == 0 and s.startswith(("(", '"')): n += 1
             depth += s.count("(") - s.count(")") if not s.startswith("//") else 0
             j += 1
         res.append(f"{m.group(1)}{n}{m.group(3)}")
