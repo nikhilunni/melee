@@ -4330,7 +4330,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 605] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 606] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5301,6 +5301,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 605] = [
     // registers nobody set (950-951): x = 0 (ftCo_800B0CA8's scratch r5), y =
     // -96, the low byte of her Fighter's address 0x80C9D2A0.
     ("corpus_v3_fd_iceclimbers_peach4_ecad2716f_p0", 1071),
+    // ftCo_800ADE48's x18 = 0xE test with Nana holding a turnip (599):
+    // ftCo_800A5980 reads the Item's kind as a motion id, so a turnip (0x63)
+    // is not an item the CPU uses.
+    ("corpus_v3_fd_iceclimbers_peach4_e59d49e21_p0", 721),
 ];
 
 #[test]

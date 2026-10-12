@@ -337,13 +337,34 @@ fn pick_up_ready(fp: &mut Fighter, _scene: &Scene) -> bool {
     unimplemented!("ftCo_800A3710: picking up the targeted item");
 }
 
-/// ftCo_800ADE48's x18 = 0xE test: holding an item the CPU uses (a
-/// container or Bob-omb, or an item swung like a weapon).
+/// CpuFighter.xC of the mode that uses whatever it holds (800AE6C8).
+const ITEM_USER_MODE: i32 = 0x1D;
+
+/// ftCo_800ADE48's x18 = 0xE test (800AE6A8..800AE728): holding an item
+/// the CPU uses. Mode 0x1D uses any; the others a container, a Bob-omb, a
+/// Poke Ball or the event's Yoshi egg (800AE6D8..800AE704), and whatever
+/// ftCo_800A5980 accepts.
+///
+/// ftCo_800A5980 (0x800A5980) is a fighter's motion test (LandingFallSpecial
+/// to Attack13, Furafura, Catch to CatchAttack) and is handed the Item
+/// here (800AE6C4: lwz r3, 0x2c(r4)): it reads Item +0x10, the kind, as a
+/// motion id, so the stage enemies 0x2B..0x2E, 0xD3..0xD5 and 0xD9 count
+/// and no weapon does. A turnip (0x63) is not used
+/// (`corpus_v3_fd_iceclimbers_peach4_e59d49e21_p0`, Nana holding one).
 fn holding_usable_item(fp: &Fighter) -> bool {
-    if !crate::facts::has_item(fp) {
-        return false;
+    let kind = match (&fp.core.held_item, &fp.core.article_in_hand) {
+        (Some(item), _) => item.kind,
+        (None, Some(article)) => article.kind,
+        (None, None) => return false,
+    };
+    if fp.core.cpu.mode == ITEM_USER_MODE {
+        return true;
     }
-    unimplemented!("ftCo_800ADE48: CPU item use");
+    let kind = i32::from(kind);
+    matches!(kind, 0..=6 | 0x22 | 0x2A)
+        || (0x2B..0x2F).contains(&kind)
+        || (0xD3..=0xD5).contains(&kind)
+        || kind == 0xD9
 }
 
 /// ftCo_800A3554 (0x800A3554): on the destination's island and within
