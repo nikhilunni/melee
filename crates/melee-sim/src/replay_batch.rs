@@ -106,14 +106,27 @@ pub fn collect(inputs: &[PathBuf]) -> std::io::Result<Vec<PathBuf>> {
 
 /// Run every replay on `jobs` threads. A panic outside the replay runner's
 /// own `unimplemented!` handling becomes that replay's error, not the batch's.
+/// The outcomes are in `paths` order; the replays run longest first (by
+/// file size), so the batch does not end with one long game on one thread
+/// while the others idle.
 pub fn run(paths: &[PathBuf], root: &Path, setup: Setup, jobs: usize) -> Vec<Outcome> {
+    let mut longest_first: Vec<(u64, usize)> = paths
+        .iter()
+        .enumerate()
+        .map(|(index, path)| (std::fs::metadata(path).map_or(0, |file| file.len()), index))
+        .collect();
+    longest_first.sort_by(|a, b| b.0.cmp(&a.0).then(a.1.cmp(&b.1)));
     let next = AtomicUsize::new(0);
+    let done = AtomicUsize::new(0);
     let results: Mutex<Vec<Option<Outcome>>> = Mutex::new((0..paths.len()).map(|_| None).collect());
     std::thread::scope(|scope| {
         for _ in 0..jobs.max(1) {
             scope.spawn(|| loop {
-                let index = next.fetch_add(1, Ordering::Relaxed);
-                let Some(path) = paths.get(index) else { break };
+                let turn = next.fetch_add(1, Ordering::Relaxed);
+                let Some(&(_, index)) = longest_first.get(turn) else {
+                    break;
+                };
+                let path = &paths[index];
                 let report = catch_unwind(AssertUnwindSafe(|| {
                     crate::replay::run_file(path, root, setup)
                 }))
@@ -128,7 +141,7 @@ pub fn run(paths: &[PathBuf], root: &Path, setup: Setup, jobs: usize) -> Vec<Out
                 .and_then(|result| result.map_err(|error| format!("{error:#}")));
                 eprintln!(
                     "[{}/{}] {}",
-                    index + 1,
+                    done.fetch_add(1, Ordering::Relaxed) + 1,
                     paths.len(),
                     path.file_name().unwrap_or_default().to_string_lossy()
                 );
