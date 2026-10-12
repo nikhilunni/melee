@@ -716,6 +716,15 @@ impl Fighter {
     /// DestroyItemInline releases the hand); x197C/x1980, metal and the
     /// x2226_b4 hat are not part of the port yet.
     pub(super) fn release_for_death(&mut self, assets: &FighterAssets) {
+        self.release_for_death_from(assets, None);
+    }
+    /// ftCo_800D331C with the fighter this one is pinned to (`thrower`), for
+    /// a death that comes while it is being thrown.
+    pub(super) fn release_for_death_from(
+        &mut self,
+        assets: &FighterAssets,
+        thrower: Option<(&Fighter, &mut melee_mp::CollMap)>,
+    ) {
         // 0x800D34B4: mv x6C takes the motion the death interrupts.
         self.core.fatal_action = self.core.motion_state.action;
         if let Some(death) = self.character.table().death {
@@ -724,10 +733,16 @@ impl Fighter {
         // ftCo_800DD100 -> ftCo_800DC920: separate a grab pair. The scene
         // releases the partner (ftCommon_8007D92C) right after this proc.
         if let Some(link) = self.core.combat.grab.take() {
-            assert!(
-                self.core.combat.thrown_pose.is_none(),
-                "ftCo_800DC920: a thrown fighter's constraint release on death"
-            );
+            if self.core.combat.thrown_pose.is_some() {
+                // ftCo_800DC920 (800DC920), x2226_b2: the pinned fighter is
+                // set down where its XRotN points before the death goes on.
+                let Some((thrower, map)) = thrower else {
+                    unimplemented!(
+                        "ftCo_800DC920: a thrown fighter's constraint release on a death its thrower is not passed to (ftCo_CaptureCut.c:112)"
+                    )
+                };
+                super::grab_damage::release_thrown(thrower, self, assets, map);
+            }
             self.core.released_link = Some(link);
         }
         self.core.clear_velocities();

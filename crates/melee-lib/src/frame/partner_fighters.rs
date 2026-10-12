@@ -268,9 +268,33 @@ fn complete_partner_death(state: &mut InitialState, index: usize, leader: usize)
 /// puff is efSync (immediate), so the partner's queue flushes at once,
 /// ahead of the leader's revival.
 fn vanish(state: &mut InitialState, partner: usize) -> Result<()> {
-    with_fighter!(&mut state.fighters[partner], |f| f
-        .vanish_with_leader(&state.assets.fighters[partner]))
+    // ftCo_800D331C -> ftCo_800DD100 (800DD100): a partner that vanishes
+    // while a thrower holds it is set down (ftCo_800DC920), and the thrower
+    // settles at once (ftCommon_8007D92C), inside the leader's proc.
+    let thrower = with_fighter!(&state.fighters[partner], |f| f.thrown_by()).map(|captor| {
+        state
+            .fighters
+            .iter()
+            .position(|f| f.0.spawn_number == captor)
+            .expect("the thrower of a vanishing partner")
+    });
+    match thrower {
+        Some(thrower) => {
+            let (vanishing, thrower_fighter) = pair(&mut state.fighters, partner, thrower);
+            with_fighter!(vanishing, |f| with_fighter!(thrower_fighter, |t| f
+                .vanish_with_leader(
+                    &state.assets.fighters[partner],
+                    Some((&**t, &mut state.map))
+                )))
+        }
+        None => with_fighter!(&mut state.fighters[partner], |f| f
+            .vanish_with_leader(&state.assets.fighters[partner], None)),
+    }
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    if let Some(thrower) = thrower {
+        state.fighters[partner].0.released_link = None;
+        super::grab_pairs::release_from_dead_partner(state, partner, thrower)?;
+    }
     with_fighter!(&mut state.fighters[partner], |f| state
         .effects
         .flush::<RetailTrig>(

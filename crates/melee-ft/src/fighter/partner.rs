@@ -68,16 +68,30 @@ impl Fighter {
     /// leader's death ends (ftCo_800BFD9C): the vanish puff (efSync 0x43F at
     /// cur_pos, attribute +168 times x34_scale.y), the death releases
     /// (ftCo_800D331C) and Sleep (ftCo_800BFD04). The caller has checked
-    /// x221F_b3.
-    pub fn vanish_with_leader(&mut self, assets: &FighterAssets) -> Result<()> {
+    /// x221F_b3. `thrower` is the fighter this one is pinned to, if it
+    /// vanishes while being thrown (`thrown_by`).
+    pub fn vanish_with_leader(
+        &mut self,
+        assets: &FighterAssets,
+        thrower: Option<(&Fighter, &mut melee_mp::CollMap)>,
+    ) -> Result<()> {
         // 800D4F68: fmuls.
         let scale = self.core.attributes.size.unknown_168 * self.core.player.scale;
         self.core.effects.push(EffectRequest::PartnerVanish {
             position: self.core.physics.position,
             scale,
         });
-        self.release_for_death(assets);
+        self.release_for_death_from(assets, thrower);
         self.enter_sleep(assets)
+    }
+
+    /// The spawn number of the fighter this one is pinned to while thrown
+    /// (x2226_b2 with a captor link), for a death that must set it down.
+    pub fn thrown_by(&self) -> Option<u32> {
+        match (&self.core.combat.thrown_pose, &self.core.combat.grab) {
+            (Some(_), Some(super::grab::GrabLink::Captured { captor })) => Some(*captor),
+            _ => None,
+        }
     }
 
     /// Player_80032070's second fighter: ftCo_800D4FF4 at the platform the
