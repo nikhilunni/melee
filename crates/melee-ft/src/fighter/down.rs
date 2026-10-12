@@ -189,16 +189,19 @@ impl Fighter {
         self.core.input.buttons.special = 255;
         let normal = self.core.collision.data.floor.normal;
         let floor_angle = melee_lb::trigf::atan2f(-normal.x, normal.y);
-        // ftCo_800978D4: direct async kind 4 has no randomized offset.
-        self.core
-            .effects
-            .push(melee_ef::request::EffectRequest::Graphics {
+        // ftCo_800978D4: direct async kind 4 has no randomized offset. It
+        // is queued behind the new script's frame-0 commands (Roy's
+        // DownBound shakes the camera there), so the flush, newest first,
+        // creates this model before that quake's.
+        self.core.push_effect_after_issued_graphics(
+            melee_ef::request::EffectRequest::Graphics {
                 id: 0x406,
                 bone: 0,
                 offset: Vec3::ZERO,
                 facing: self.core.physics.facing,
                 floor_angle,
-            });
+            },
+        );
         // ftCo_800976A4 -> ftCo_8009F834: three draws, even for zero ranges.
         let effect = self.core.bound_effect();
         self.core
