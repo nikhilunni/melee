@@ -1327,8 +1327,9 @@ ticks; on tick 7810 the console drew 220 values where retail and the port
 draw 189, all in the particle interpreter. `melee-sim replay <game>
 --skip-display-pass 7809` (the tick runs with no display pass before it, so
 no particleSort) matches all 9587 frames: the console dropped one render
-there, as that stage does on a console. Nothing in the replay says so and
-the runner does not guess; the stop stays.
+there, as that stage does on a console. Since proven on retail with a
+lag-frame recording, and the runner now infers it ("Lag frames read from a
+replay" below).
 
 ## State-timing and position stops in the second corpus (2026-10-03)
 
@@ -1893,7 +1894,8 @@ with Peach hit out of her float, not of this class). By the rule that only
 an every-tick recording settles it, these two rest on the three above, not
 on a recording of their own.
 
-**What the runner could do (proposed, not implemented).** A lag frame is not
+**What the runner could do (proposed here; implemented since, "Lag frames
+read from a replay" below).** A lag frame is not
 in a replay, but in a screen KO it leaves an exact trace: the recorded
 `cur_pos` equals the previous frame's x bit for bit, with y equal or lower
 by the tick's integrated fall, while the port's display pass has moved it.
@@ -2069,7 +2071,10 @@ is one tick later. One display pass skipped before the crossing
 (`--skip-display-pass 2982`, `3013`) makes each whole replay match (11421 /
 11421 and 15970 / 15970 on this branch). That is what is established:
 retail equals the port, and one lag frame is sufficient. That those
-consoles dropped a frame there is not shown by anything recorded.
+consoles dropped a frame there is not shown by anything recorded. (Since
+recorded on retail with that lag frame, which gives the console's game,
+and inferred by the runner: "Lag frames read from a replay" below. Captain
+Falcon's point is not a tick later on the console: it never comes.)
 
 **Tooling found on the way.**
 
@@ -2097,3 +2102,132 @@ matches fewer frames; every recorded scenario gates as before, 2249 pass of 2281
 |---|---|---|
 | `public-v3.7` (108) | 107 to 107 | 956,403 (unchanged) |
 | `public-v3.7-b` (502) | 434 to 440 | 4,676,200 to 4,705,765 |
+
+## Lag frames read from a replay (2026-10-11)
+
+A console's lag frame runs two ticks before one display pass ("Screen KO
+positions" above), and the display pass writes game state. A replay does not
+record display passes. The runner now infers a lag frame from the frames,
+under the rule the user approved, and only under it
+(`crates/melee-sim/src/replay_lag_frames.rs`):
+
+1. The comparison runs with a display pass before every tick, as before.
+2. On a stop of one of the three kinds below, the runner takes the named
+   tick again with no display pass before it (the same
+   `Simulation::skip_display_pass` that `--skip-display-pass` calls; nothing
+   is added to the simulation) from a copy of the match kept a few ticks
+   back.
+3. It accepts the lag frame only if every frame from that tick through the
+   stop then matches the recording completely, Pre Frame seeds included,
+   **and** every frame of the kind's margin after the stop does too. A
+   candidate that merely moves the stop later is rejected: the run goes back
+   to what it was and the stop is reported exactly as without inference.
+4. Each accepted lag frame is a line of the report (tick, kind, the field
+   and tick of the stop it explains, how many frames confirmed it) and an
+   entry of the JSONL's `lag_frames` list. `--no-lag-frames` (`replay` and
+   `replay-batch`) turns inference off; `lag_frames` is then `null`, and the
+   rest of the JSONL is byte for byte what it was before this change.
+
+| Kind | Stop it explains | Ticks tried | Margin that must match |
+|---|---|---|---|
+| `screen-ko` | every differing field is the `cur_pos` of a fighter recorded in actions 6 to 10 (ftDrawCommon_80080E18 places it, 0x80080E90) | the stopping tick | the rest of that KO and the frame the fighter leaves it on; a further stop inside it must be a lag frame of the same KO by the same rule (at most four) or the first is rejected |
+| `magnifier` | every differing field is a `percent` | stop - 60 and stop - 59: the pass that sets the off-screen bit (ftLib_80086A8C from 0x80080E44) and the next one, which reads it (ifMagnify_802FBBDC, 0x802FBD3C); either one skipped starts the count (Fighter_8006A360, 0x8006A89C; PlCo +0x7AC = 60) a tick late | 120 frames: the delayed point's tick and, while the fighter stays out, the next one |
+| `particles` | every differing field is a Pre Frame `input_seed` | the stop and the eight ticks before it, nearest first (the seed check is membership in a tick's draws, so a stream off by a few draws passes busy ticks before a quiet one stops it: four ticks in the Samus game) | 600 frames, each with its seed check |
+
+Any other stop (a motion, a position outside a screen KO, facing, an
+unported boundary) is never retried. The rewindable run is a second
+simulation of the comparison's setup, started only when a comparison stops
+on one of these kinds; it copies the simulation every 16 ticks and keeps 80
+ticks of copies. Games that complete without a stop cost nothing more.
+
+**Why the margins.** A screen KO's positions stay a few hundredths off the
+every-tick game's to the end of the KO, so the whole KO is the evidence. A
+magnifier lag frame's only trace is the count's phase, which the next point
+shows again. A seed stop is the weakest signal (membership, not equality),
+so its margin is the longest: in `SAMUS/Game_20190629T124717`, skipping the
+pass before 7811 instead of 7809 passes the stop and matches eight more
+ticks; only 7809 matches on (to the end of the game). Without the margin
+rule that candidate would have been accepted.
+
+**What this cannot tell apart.** A port fault that has the same effect as
+one skipped pass (the off-screen bit a tick early; a particle order the
+display pass should not have changed) passes the rule as a lag frame would.
+That has happened: two Zelda games matched completely with one hand-named
+skipped pass and were port faults ("A sleeping fighter keeps its off-screen
+bit" above). So an inferred lag frame of a mechanism is trusted because
+retail in Dolphin, recorded with a pass after every tick, equals the port at
+that stop (the port is right without the lag frame) and, recorded with the
+lag frame, equals the console. The table says which games have that.
+
+**Results** (`replay-batch`, main at d1f39d6f; before / with `--no-lag-frames`
+/ with inference):
+
+| Corpus | Complete | Frames matched |
+|---|---|---|
+| `public-v3.7` (108) | 107 / 107 / 108 | 956,403 / 956,403 / 964,782 (all) |
+| `public-v3.7-b` (502) | 446 / 446 / 453 | 4,771,099 / 4,771,099 / 4,805,913 |
+
+With `--no-lag-frames` both JSONL files equal the ones from before the
+change in every field but the new one. With inference no replay matches
+fewer frames, and nine replays hold one inferred lag frame each:
+
+| Replay | Stop before | Lag frame (runner tick) | Now | Retail recordings |
+|---|---|---|---|---|
+| `FOX/Fox vs Marth [YS] Game_20200115T192755` | 5873 `cur_pos` | 5873, screen KO, 22 frames | 7816 / 7816 | proven: `slp_ys_fox_marth_r1_t6000`, `_lag5874_` |
+| `PIKACHU/Game_20190629T164554` | 4576 `cur_pos` | 4576, screen KO, 121 | 7668 / 7668 | proven: `slp_fod_sheik_pikachu_r1_t4700`, `_lag4577_` |
+| `YOSHI/17_50_44 Falco + Yoshi (FD)` | 9868 `cur_pos` | 9868, screen KO, 36 | 11052 / 11052 | proven: `slp_fd_falco_yoshi_r1_t10000`, `_lag9869_` |
+| `DOC/Game_20191106T211939` | 4813 `cur_pos` | 4813, screen KO, 70 | 7932 / 7932 | none: its console spawned by `neutral-2019-entry` on Fountain of Dreams, for which there is no Gecko text |
+| `PEACH/15_52_33 Peach + Young Link (DL)` | 8501 `cur_pos` | 8501, screen KO, 62 | 11591 / 14695, `input_seed` | none that reaches it: see below |
+| `FALCO/02_33_48 Falco + Marth (PS)` (first corpus) | 3042 `percent` | 2982, magnifier, 120 | 11421 / 11421 | proven: `slp_ps_falco_marth_frz_r1_t3200` (bit at record 2983, point at 3043), `_lag2983_` (bit 2984, point 3044, the console's tick) |
+| `ZELDA_SHEIK/19_56_47 Sheik + Captain Falcon (DL)` | 3073 `percent` | 3013, magnifier, 120 | 15970 / 15970 | proven: `slp_dl_sheik_captainfalcon_r1_t3300` (point at 3074), `_lag3014_` (no point: Captain Falcon is back on screen with the count at 59; the console's percent stays 108.78) |
+| `SAMUS/Game_20190629T124717` (FoD) | 7813 `input_seed` | 7809, particles, 600 | 9587 / 9587 | proven: `slp_fod_samus_marth_r1_t7900` (the console's Pre Frame seeds leave retail's draws at record 7814), `_lag7810_` (all 7899 on them) |
+| `LINK/11_58_33 Marth + Link (DL)` | 3267 `input_seed` | 3264, particles, 600 | 10982 / 10982 | proven, by a pair another agent recorded the same night (local data in the main checkout, not registered here): `slp_dl_marth_link_r115833_t3400` (the console's seeds leave retail's draws at record 3268), `_r115833_lag3265_t3400` (all 3399 on them); both gate exact |
+
+A retail record R is runner tick R - 1. Every recording above gates exact
+over its full length with 0 differing particle ticks (the port equals retail
+with and without the lag frame) and is in `SLIPPI_REPLAY_WITNESSES`.
+
+**The Peach bridge does not reach its KO.** `slp_dl_peach_younglink_r1_t8700`
+and `_lag8502_` (local data, boundary
+`start_dl_slippi73_ns2019_p24_peach0_younglink4_4`, not registered): retail's
+random stream leaves the console's at record 3197 (the console two draws
+ahead, Young Link in action 357), a DamageFlyRoll draw differs at 3512 and
+Young Link loses his last stock at 6484. The port's cold twin equals that
+retail trace for all 6599 ticks, while the port run from the replay's own
+inputs follows the console to 8501: the bridge's pads and the replay's are
+not the same game from 3196. Not diagnosed (the bridge's raw pads are
+reconstructed from the recorded sticks; "The pad queue is not in a replay").
+The lag frame at 8501 therefore rests on the three proven screen KOs.
+
+**The one new stop.** `PEACH/15_52_33`, 11591, `p0.input_seed` with Peach in
+DamageAir3 and Young Link in JumpF: random-stream drift on the tick before
+(Peach hit out of her float); no skipped pass within eight ticks explains
+it. Not a display-pass stop.
+
+**What else a display pass writes.** The completeness argument for "these
+three kinds are what a lag frame changes": every write made in the display
+pass (HSD_GObj_80390FC0's walk of the GX links) that outlives the pass and
+that a tick reads, from the decomp's render callbacks (fighter, item,
+stage, camera, magnifier, HUD, effects and particles). The port's display
+pass (`melee-lib/src/frame.rs`, the `display_pass` branch) does four
+things: the dynamics joints' caches, the particle sort, `render_cameras`
+and held articles' poses.
+
+| Display-pass write | Read by a tick | Port | A replay can show it |
+|---|---|---|---|
+| `fp->x221F_b0` and the window position +0x2188: ftLib_80086A8C (0x80086A8C) from ftDrawCommon_80080E18; not for a sleeping fighter | only through the next row | `render_cameras` | `percent`, sixty ticks on |
+| the magnifier's `is_offscreen`: ifMagnify_802FBBDC (GX priority 0, so it reads the previous pass's bit) | ifMagnify_802FC998 in Fighter_8006A360 (0x8006A880) | `render_cameras` | `percent` |
+| a screen-KO'd fighter's `cur_pos` and root translation (0x80080E90, 0x80080ECC) | everything that reads `cur_pos` | `Fighter::place_screen_ko` | `cur_pos` |
+| the main CObj's eye and interest and `cm_804D6464`: Camera_8002A4AC from fn_800301D0 (0x800301FC) | Stadium's jumbotron close-up test (grStadium_801D32D0); Camera_800307D0 for Dream Land's background model and the audio pan | the close-up from `state.rendered_camera`; the other two are not game state | seeds on Stadium |
+| the particle lists' order: particleSort (0x8039FC70) from psDispParticles (0x803A0088) | the particle interpreter's order, so the draws | `sort_for_display`, in the display pass | seeds |
+| every drawn joint's matrix and dirty flag (HSD_JObjDispAll) | readers of a raw matrix or of the flag: the dynamics chains (ftCo_8009CB40), Thrown's hip test (ftCommon_8007E3EC), the tether and chain links | the dynamics joints and held articles only; the rest of the skeleton is cleaned by tick-time setups. Not shown to diverge, and not traced reader by reader | position in a throw or on a tether, in principle; none seen |
+| the magnifier's edge state: ifMagnify_802FB73C (0x802FB73C) | bonus and statistics records only (fighter.c:2577, pltrick.c:180, plbonuslib.c:812) | not modelled | no |
+| Stadium's jumbotron capture flags (grpstadium.c:1261..1301) | hidden flags and the image pointer only | not modelled | no |
+
+Static particle joints, which HSD_JObjDisp would spawn at draw (0x80374A4C,
+efLib_Cb_SPtcl), do not occur: no stage, fighter, effect, item or HUD file
+on the disc has a joint with JOBJ_PTCL (a structural scan of 861 files; the
+typed walk of the six stages and every `Pl*.dat` covers 11,180 joints). No
+display code calls HSD_Rand. Not read: the per-kind item render tables, the
+bodies of lbShadow and lbRefract, the HUD callbacks (stock, timer, name
+tag), sysdolphin's draw internals, and stages outside the six.

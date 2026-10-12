@@ -120,6 +120,16 @@ steadier figure):
 
 `replay-batch --jsonl` is byte identical before and after on both corpora.
 
+**Lag-frame inference** (`replay_lag_frames`, `docs/SLIPPI.md` "Lag frames
+read from a replay") costs nothing for a game that completes or stops on a
+kind it does not retry: the shared runs keep no copies. A comparison that
+stops on a screen KO's `cur_pos`, a `percent` or an `input_seed` starts a
+second, rewindable simulation of its setup, which runs the matched ticks
+once more and then copies itself every 16 ticks; `LagFrames` in the cost
+line counts it (the Samus game of 9587 frames: 8452 ticks, the prefix to
+its stop at 7813 and the 600-frame margin). Not timed against the batch:
+the machine's load average was above 80 during these runs.
+
 ## C15 reference and active duplication ceilings
 
 The C15 COMPLETE PASS at **2026-09-10T08:10:28+00:00** records the baseline, with the
