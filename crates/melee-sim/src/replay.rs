@@ -755,6 +755,7 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
         after_map: false,
         render_every_tick: false,
         no_display_pass_before: Vec::new(),
+        unconsumed_poll_before: Vec::new(),
         sudden_death: false,
         time_limit: None,
         spawn: Default::default(),

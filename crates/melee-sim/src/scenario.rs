@@ -59,6 +59,12 @@ pub struct Scenario {
     /// from it either: the recording's display clock does not move there.
     #[serde(default)]
     pub no_display_pass_before: Vec<u64>,
+    /// Records before which the recorder left a poll in the pad queue that
+    /// no tick consumed (`harness/dolphin/tick_trace.py`, `queue_history`):
+    /// UCF's second sample is then one entry further back. The port needs
+    /// nothing from it: each record's `pad_queue_x` is what UCF read.
+    #[serde(default)]
+    pub unconsumed_poll_before: Vec<u64>,
     /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
     #[serde(default)]
     pub sudden_death: bool,

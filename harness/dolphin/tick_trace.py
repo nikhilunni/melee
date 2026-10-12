@@ -54,6 +54,14 @@ ps_frame does not move at N. What a display pass writes into the game (a screen
 KO's cur_pos, ftDrawCommon_80080E18 at 0x80080E90) then keeps the tick's own
 value for one record, as on the console.
 
+A poll no tick consumed (`unconsumed_poll_before = [N, ...]`, with Gecko
+hooks): the pad queue normally holds one poll per tick, so UCF's qread-3 is
+the pad of two ticks before. A console whose queue kept a poll that no tick
+dequeued between records N-1 and N has record N-1's pad there instead, one
+entry further back than usual, and the unconsumed poll at qread-3 of record
+N+1. The poll's own value is not known; it is taken to be record N's pad.
+Each record's `pad_queue_x` carries what UCF then read.
+
 After-map sample (`after_map = true`): each record also carries `after_map`,
 every fighter's struct as it stood when its map proc returned (Fighter_procMap,
 0x8006C27C, s_link 6), where Slippi before 3.4.0 reads Post Frame (hook
@@ -87,7 +95,8 @@ from pathlib import Path
 #: own scenario (the particle, bone and camera dumps) carries every one of
 #: them, or it records another game from the first tick a display pass feeds
 #: back into (Pokemon Stadium's close-up test, a tether, a screen KO).
-PLAYBACK_KEYS = ("input_clock", "boundary_seed", "render_every_tick", "no_display_pass_before")
+PLAYBACK_KEYS = ("input_clock", "boundary_seed", "render_every_tick", "no_display_pass_before",
+                 "unconsumed_poll_before")
 
 
 def playback(scripted: dict) -> dict:
@@ -259,6 +268,12 @@ class TickTracer(Tracer):
             raise ValueError("no_display_pass_before needs render_every_tick")
         if any(n < 2 or n - 1 in self.lag_records for n in self.lag_records):
             raise ValueError("no_display_pass_before: records from 2 on, no two in a row")
+        # `unconsumed_poll_before = [N, ...]`: see queue_history.
+        self.unconsumed_polls = {int(n) for n in self.scenario.get("unconsumed_poll_before", [])}
+        if self.unconsumed_polls and not self.tick_clock:
+            raise ValueError("unconsumed_poll_before needs the tick input clock")
+        if any(n < 2 or n - 1 in self.unconsumed_polls for n in self.unconsumed_polls):
+            raise ValueError("unconsumed_poll_before: records from 2 on, no two in a row")
         self.gecko_hooks = gecko.hooks_from_env()
         # `after_map = true`: the current tick's samples (Fighter* -> struct hex).
         self.after_map = bool(self.scenario.get("after_map", False))
@@ -324,8 +339,9 @@ class TickTracer(Tracer):
             if qnum != UCF_QUEUE_WRAP:
                 raise ValueError(f"pad queue holds {qnum} entries; UCF assumes {UCF_QUEUE_WRAP}")
             # Entries slot-1, slot-2: the previous ticks' pads (neutral before the first).
+            history = self.queue_history(ordinal)
             for back in (1, 2):
-                held = self.tick_history[back - 1] if len(self.tick_history) >= back \
+                held = history[back - 1] if len(history) >= back \
                     else {port: {} for port in self.tick_held}
                 entries.append(((slot - back) % qnum, held))
         for entry, held in entries:
@@ -343,6 +359,17 @@ class TickTracer(Tracer):
             if ordinal + 1 in self.lag_records:
                 self.lag_frame(queue)
         self.injected_ticks += 1
+
+    def queue_history(self, ordinal: int) -> list[dict[int, dict]]:
+        """The pads of the two queue entries before record `ordinal`'s, newest
+        first: the two ticks before, unless a poll no tick consumed lies
+        among them (`unconsumed_poll_before`). That poll is taken to be the
+        pad of the record it precedes."""
+        if ordinal in self.unconsumed_polls:
+            return [self.tick_held, *self.tick_history][:2]
+        if ordinal - 1 in self.unconsumed_polls and self.tick_history:
+            return [self.tick_history[0], self.tick_history[0]]
+        return self.tick_history
 
     def lag_frame(self, queue: int) -> None:
         """Two ticks in the frame that starts now, and so no display pass

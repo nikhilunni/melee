@@ -246,6 +246,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--no-display-pass-before", type=int, nargs="+", default=[], metavar="RECORD",
                     help="a console's lag frames: each record runs in one frame with the record before "
                          "it, with no display pass between (tick_trace.py, lag_frame)")
+    ap.add_argument("--unconsumed-poll-before", type=int, nargs="+", default=[], metavar="RECORD",
+                    help="a poll no tick consumed lies in the pad queue before each record's: UCF then "
+                         "reads the pad of the record before where it reads the one two back "
+                         "(tick_trace.py, queue_history)")
     ap.add_argument("--after-map", action="store_true",
                     help="also sample every fighter when its map proc returns (`after_map`, tick_trace.py): "
                          "where Slippi before 3.4.0 reads Post Frame, so replay_vs_trace.py can compare "
@@ -286,6 +290,8 @@ def main(argv: list[str] | None = None) -> None:
         if a.dolphin_cadence:
             sys.exit("--no-display-pass-before drops a display pass of the console's cadence")
         cadence += f"no_display_pass_before = {sorted(a.no_display_pass_before)}\n"
+    if a.unconsumed_poll_before:
+        cadence += f"unconsumed_poll_before = {sorted(a.unconsumed_poll_before)}\n"
     if a.after_map:
         cadence += "after_map = true\n"
 

@@ -214,6 +214,42 @@ def test_a_failed_poll_writes_err_and_every_other_entry_clears_it(tmp_path):
     assert mem.status(1, 0)[err] == 0xFF
 
 
+def test_an_unconsumed_poll_moves_the_queue_history_one_entry_back(tmp_path):
+    # Raw X 1, 45, 100, 100, 100 over records 1..5, and a poll nothing
+    # dequeued before record 3: UCF's qread-3 (entry 2) is 45 there, not 1.
+    scenario = {"frames": 6, "input_clock": "tick", "render_every_tick": True,
+                "unconsumed_poll_before": [3], "inputs": [
+                    {"frame": 1, "port": 0, "buttons": {}, "raw": {"stickX": 1}},
+                    {"frame": 2, "port": 0, "buttons": {}, "raw": {"stickX": 45}},
+                    {"frame": 3, "port": 0, "buttons": {}, "raw": {"stickX": 100}}]}
+    mem = QueueMemory(qnum=5, qwrite=2, qcount=0)
+    tracer = tick.TickTracer(scenario, None, tmp_path / "unused.sav", mem=mem)
+    tracer.gecko_hooks = True
+    read = []
+    for record in range(6):
+        tracer.inject_tick_pads(record)
+        read.append((mem.status(4, 0)[2], mem.status(2, 0)[2]))  # qread-1, qread-3
+    assert read == [(0, 0), (1, 0), (45, 0), (100, 45), (100, 100), (100, 100)]
+    # Without it: (100, 1) at record 3 and (100, 45) at record 4.
+    plain = tick.TickTracer({**scenario, "unconsumed_poll_before": []}, None, tmp_path / "unused.sav",
+                            mem=QueueMemory(qnum=5, qwrite=2, qcount=0))
+    plain.gecko_hooks = True
+    for record in range(4):
+        plain.inject_tick_pads(record)
+    assert (plain.mem.status(4, 0)[2], plain.mem.status(2, 0)[2]) == (100, 1)
+
+
+@pytest.mark.parametrize("keys,message", [
+    ({"input_clock": "vi", "unconsumed_poll_before": [3]}, "needs the tick input clock"),
+    ({"unconsumed_poll_before": [1]}, "records from 2 on"),
+    ({"unconsumed_poll_before": [4, 5]}, "no two in a row"),
+])
+def test_an_unconsumed_poll_is_refused_where_the_queue_cannot_hold_it(tmp_path, keys, message):
+    scenario = {"frames": 6, "input_clock": "tick", "inputs": [], **keys}
+    with pytest.raises(ValueError, match=message):
+        tick.TickTracer(scenario, None, tmp_path / "unused.sav", mem=QueueMemory())
+
+
 def test_a_lag_frame_queues_two_ticks_and_the_next_injection_restores_one(tmp_path):
     # Records 2 and 3 run in one frame: no display pass before record 3.
     scenario = {"frames": 5, "input_clock": "tick", "render_every_tick": True,

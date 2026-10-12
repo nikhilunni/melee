@@ -279,3 +279,12 @@ def test_the_map_proc_sample_is_asked_for_by_name(scenarios):
     s2s.main([*args, "--name", "slp_plain"])
     assert "after_map" not in tomllib.loads((scenarios / "slp_plain.toml").read_text())
     assert "after_map" not in tomllib.loads((scenarios / "slp_sampled_cold.toml").read_text())
+
+
+def test_an_unconsumed_poll_names_its_record(scenarios):
+    write_boundary(scenarios, "start_ys", "YoshisStory", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "YoshisStory")
+    s2s.main([str(scenarios / "inputs.jsonl"), "--boundary", "start_ys", "--name", "slp_poll",
+              "--unconsumed-poll-before", "7023"])
+    assert tomllib.loads((scenarios / "slp_poll.toml").read_text())["unconsumed_poll_before"] == [7023]
+    assert "unconsumed_poll_before" not in tomllib.loads((scenarios / "slp_poll_cold.toml").read_text())
