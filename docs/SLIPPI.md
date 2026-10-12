@@ -371,6 +371,17 @@ with both leaders' recorded actions). `--all-characters-unlocked` (default
 true) covers replays without Frame Start; `--ignore-controller-fixes` runs
 UCF recordings without the fix and marks each report.
 
+**How a replay is simulated (2026-10-11).** The dry passes below (stage
+code, screen, UCF version) and the comparison all read from one set of
+runs per replay (`replay_game`): each candidate setup is simulated once,
+only as far as a reader asks, and every later reader starts from its first
+tick without simulating it again. About 3.1 ticks are simulated per
+recorded frame; `docs/PERF.md`, "Replay runner", has the measurements.
+- `MELEE_REPLAY_COST=1` prints each replay's time and simulated ticks per
+  part of the runner to stderr.
+- A new code a replay does not record (a stage code, say) is a field in
+  `replay_game::Codes` and its own dry pass.
+
 **Local corpus.** `~/melee-data/replays/public-v3.7/<CHARACTER>/`: 108
 tournament games sampled from the public Slippi dataset
 (huggingface.co/datasets/erickfm/slippi-public-dataset-v3.7). All are Slippi

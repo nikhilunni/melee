@@ -72,6 +72,54 @@ duplicate counts. No count is inferred by dividing a
 shared total by roster size. See the upstream [llvm-lines interpretation](https://github.com/dtolnay/cargo-llvm-lines#multicrate-projects)
 and [cargo-bloat measurement limitations](https://github.com/RazrFalcon/cargo-bloat#usage).
 
+## Replay runner (2026-10-11)
+
+`melee-sim replay` and `replay-batch` are not part of the perf gate; this
+records where their time went and what it is now. `MELEE_REPLAY_COST=1`
+prints the same breakdown per replay (`crates/melee-sim/src/replay_cost.rs`).
+
+**Before** (`replay-batch`, `public-v3.7`, 108 games, 964,782 frames, at
+c82bba7f, when the screen pass read two screens; shares of the runner's
+time, from a sampling profile and the cost counters):
+
+| Part | Share | What it did |
+|---|---:|---|
+| Simulated ticks | 80% | 3.63 ticks per recorded frame: the stage pass (0.09), the screen pass (1.66), the UCF pass (0.89) and the comparison (0.99) each ran their own simulations from the first tick |
+| ... of which per-tick records | ~20% of a tick | a `Record` map of every fighter per tick, plus one per fighter's map proc for replays before Slippi 3.4.0, a clone and a re-keyed copy |
+| Cold scenario | 16% | 5.1 builds per game, each a TOML print and parse of the whole input list, twice |
+| Archives and construction | 3% | 5.1 reads of the archives per game |
+| Recorded frames as records | 0.5% per pass | rebuilt for every pass |
+| `.slp` parsing | 0.1% | |
+
+The simulation itself was not slower than in `benches/ticks.rs`: on the
+same loaded machine the bench's 600 ticks took 80 µs each and the runner's
+ticks 75-95 µs with their records (release build, no debug assertions);
+real play costs somewhat more per tick than the bench's quiet start. The
+screen pass has since gained a third screen (77c1e95d), one more
+simulation beside the others.
+
+**Now.** Each candidate setup is simulated once and shared by every pass
+(`replay_game`): the standard screen under the dated UCF version serves the
+stage pass, the screen pass, the UCF pass and the comparison. Ticks are
+compared by value index with no record built; the scenario, pads and
+archives are prepared once per replay, the scenario without its TOML text;
+the batch runs its longest replays first. 3.15 ticks per frame on
+`public-v3.7`, 3.07 on `public-v3.7-b` (502 games, 5,251,587 frames): the
+game once, plus the two other screens and the other UCF version beside it
+for as long as nothing recorded separates them. The simulation is 97% of
+what remains and match construction 2.2%.
+
+Against main at 0bceb7d0, `replay-batch --jobs 10` on the shared 12-core
+machine (load average about 15 from other agents; CPU seconds are the
+steadier figure):
+
+| Corpus | Before: CPU / wall | Now: CPU / wall |
+|---|---:|---:|
+| `public-v3.7` | 577 s / 1:06 | 228 s / 0:26 |
+| `public-v3.7-b` | 3213 s / 6:25 | 1203 s / 2:14 |
+
+`replay-batch --jsonl` is byte identical before and after on both corpora.
+
 ## C15 reference and active duplication ceilings
 
 The C15 COMPLETE PASS at **2026-09-10T08:10:28+00:00** records the baseline, with the
