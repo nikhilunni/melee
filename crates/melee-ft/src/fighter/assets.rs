@@ -148,6 +148,10 @@ impl CommonBehavior {
                 | FighterKind::Ness
                 | FighterKind::Peach
                 | FighterKind::Popo
+                // ftdata.c:739-740, 775-776, 811-812, 847-848: Nana's four
+                // entries are Popo's functions (ftPp_Init_OnItemPickup,
+                // 0x8011ED38: Fighter_OnItemPickup(gobj, flag, 1, 1)).
+                | FighterKind::Nana
                 | FighterKind::Yoshi
                 | FighterKind::Luigi
                 | FighterKind::Zelda
@@ -157,7 +161,7 @@ impl CommonBehavior {
                 | FighterKind::GameWatch
                 | FighterKind::Ganon
                 | FighterKind::GKoops => Some(ItemHandSlots { pose: 1, shown: 1 }),
-                // Kirby, Jigglypuff, Nana, Mewtwo and the bosses: own callbacks.
+                // Kirby, Jigglypuff, Mewtwo and the bosses: own callbacks.
                 _ => None,
             },
         }
