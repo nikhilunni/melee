@@ -43,7 +43,7 @@ fn laser_damage_callback_waits_for_item_event_phase() {
     pool.process_events::<Items>(id, &assets);
     assert!(pool.get_mut(id).unwrap().destroyed);
     assert_eq!(pool.get_mut(id).unwrap().pending_damage_dealt, 0);
-    pool.remove_destroyed::<Items>(&mut gobjs);
+    pool.remove_all_destroyed::<Items>(&mut gobjs);
     assert!(pool.is_empty());
 }
 #[test]
@@ -113,12 +113,12 @@ fn laser_moves_expires_and_keeps_spawn_order_after_removal() {
         "script clears tip capsule after one frame"
     );
     pool.retire(gun);
-    pool.remove_destroyed::<Items>(&mut gobjs);
+    pool.remove_all_destroyed::<Items>(&mut gobjs);
     assert_eq!(pool.iter().map(|i| i.id).collect::<Vec<_>>(), [ray]);
     for _ in 1..laser.special_attributes[0] as usize {
         pool.animate::<Items>(ray, &laser, None, None, &mut map, None, &rng);
     }
-    pool.remove_destroyed::<Items>(&mut gobjs);
+    pool.remove_all_destroyed::<Items>(&mut gobjs);
     assert!(pool.is_empty());
 }
 

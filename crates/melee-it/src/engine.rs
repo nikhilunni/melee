@@ -2113,6 +2113,12 @@ impl ItemPool {
         self.note_destroyed();
         (!self.destroy_order.is_empty()).then(|| self.destroy_order.remove(0))
     }
+    /// Every item marked destroyed goes, in the order they were marked.
+    pub fn remove_all_destroyed<D: ItemDispatch>(&mut self, gobjs: &mut hsd_gobj::GObjAddresses) {
+        while let Some(id) = self.next_destroyed() {
+            self.remove_destroyed::<D>(id, gobjs);
+        }
+    }
     /// Item_8026A8EC's end for an item marked destroyed: its kind's
     /// destroyed callback, then its GObjs are freed.
     pub fn remove_destroyed<D: ItemDispatch>(
