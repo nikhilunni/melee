@@ -51,6 +51,8 @@ special row and entry fails closed, as do his three airborne throws.
   0x0C4C5082), with TransN's forward delta as horizontal speed and the
   fighter's own gravity, and lands back into 351; the dash-grab window
   (`mv.co.attackdash`) survives both changes.
+- **The rapid jab** is the common Attack100 with a script effect of its
+  own: efAlt 0x49D, one fist model per punch (`melee-ef` `kirby.rs`).
 - **Throws.** The down throw is the common grounded throw. The forward,
   back and up throws leave the ground from their scripts
   (`ftCo_ThrowF_Phys` / `ftCo_ThrowF_Coll`'s airborne arms, the freeze on
@@ -80,11 +82,11 @@ special row and entry fails closed, as do his three airborne throws.
 
 - `start_fd_kirby_fox4` and `_cold`: 600 ticks, 0 differing particle ticks
   (`m4_gate`).
-- `KIRBY_WITNESSES` (`m5_gate`): nineteen scenes, all recorded once and
+- `KIRBY_WITNESSES` (`m5_gate`): twenty-one scenes, all recorded once and
   exact on the first gate: the thirteen movement scenes, Kirby's down
-  throw with a pummel, Fox's four throws on Kirby, and Fox's up smash,
-  dash attack and Reflector on Kirby through a tumble, the floor, a hit
-  while lying down, a fall past the blast zone and the revival (whose
-  Stone-form draw the seed checks).
+  throw with a pummel, Fox's four throws on Kirby, Fox's up smash, dash
+  attack and Reflector on Kirby through a tumble, the floor, a hit while
+  lying down, a fall past the blast zone and the revival (whose Stone-form
+  draw the seed checks), and the rapid jab whiffed and on Fox.
 - Slippi: the Kirby games stop at the first special or airborne throw
   (see the stage report for frames matched).

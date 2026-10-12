@@ -194,6 +194,20 @@ impl super::FighterCore {
                 });
                 continue;
             }
+            if id == 0x49D {
+                // ftCo_09F7.c block_65: efAsync kind 6 with the command's
+                // offset as given, the facing, and the X range as an angle
+                // in 256ths of a degree (two fmuls; Kirby's rapid jab).
+                let angle = 0.017453292 * (256.0 * command.range.x);
+                self.effects.push_graphics(EffectRequest::Graphics {
+                    id,
+                    bone,
+                    offset: command.offset,
+                    facing: command.issued_facing.unwrap_or(self.physics.facing),
+                    floor_angle: angle,
+                });
+                continue;
+            }
             if id == 0x495 {
                 // ftCo_09F7.c block_64: efAsync kind 3 with the facing
                 // (Kirby's dash attack flame, efAlt 0x495).

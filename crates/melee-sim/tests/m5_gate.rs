@@ -2270,6 +2270,10 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // floor, a hit while lying down, the fall past the blast zone and the
     // revival, which draws the next Stone form (ftKb_Init_OnDeath).
     ("kirby_struck_fd_fox4", 700),
+    // Both jabs into the rapid jab: a fist model per punch (efAlt 0x49D,
+    // ftCo_8009F834 block_65), whiffed and through Fox's hitlag.
+    ("kirby_rapid_jab_fd_fox4", 420),
+    ("kirby_rapid_jab_hit_fd_fox4", 520),
 ];
 
 #[test]

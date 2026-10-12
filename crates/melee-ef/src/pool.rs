@@ -202,6 +202,7 @@ impl Effect {
         self.facing_rotation = None;
         self.follow_bone = None;
         self.follow_item = None;
+        self.child_drift_z = None;
         self.hitlag_pause = initial.hitlag_pause;
         self.joint_base = 0;
         self.tree.events.clear();

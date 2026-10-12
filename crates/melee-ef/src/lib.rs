@@ -148,6 +148,9 @@ struct Effect {
     /// The same callback on an item's root JObj (the fire arrow's flame,
     /// efSync 0x448): the item and the world-axis offset.
     follow_item: Option<(u32, Vec3)>,
+    /// efLib_Cb_SetJObjOffsetZ (eflib.c:1126): after each update's
+    /// animation, the root's first child moves this far along its own Z.
+    child_drift_z: Option<f32>,
     hitlag_pause: HitlagPause,
     joint_base: usize,
     /// The model's GObj (effect->gobj).
@@ -476,6 +479,25 @@ impl Effects {
                 }) {
                     effect.callback_rotation = Some(rotation);
                 }
+                continue;
+            }
+            if let EffectRequest::Graphics {
+                id: 0x49D,
+                bone,
+                offset,
+                facing,
+                floor_angle: angle,
+            } = request
+            {
+                let mut position = Vec3::ZERO;
+                mtx_mult_vec(
+                    &resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone))),
+                    &offset,
+                    &mut position,
+                );
+                self.spawn_kirby_rapid_jab::<T>(
+                    player, position, facing, angle, fighter, bank, particles, rng,
+                )?;
                 continue;
             }
             if let EffectRequest::AttachedParameter {
@@ -1854,7 +1876,14 @@ impl Effects {
                     &Vec3::new(root.x + offset.x, root.y + offset.y, root.z + offset.z),
                 );
             }
+            if let Some(step) = effect.child_drift_z {
+                let child = effect.tree.child(effect.root).expect("drifting effect child");
+                // eflib.c:1138: one fadds.
+                let z = step + effect.tree.translation(child).z;
+                effect.tree.set_translate_z(child, z);
+            }
             if effect.callback_rotation.is_some()
+                || effect.child_drift_z.is_some()
                 || effect.callback_rotation_z.is_some()
                 || effect.facing_rotation.is_some()
                 || effect.follow_bone.is_some()
@@ -1994,6 +2023,7 @@ impl Effect {
             follow_bone_height: None,
             lifetime_end_spawn: None,
             follow_item: None,
+            child_drift_z: None,
             hitlag_pause: HitlagPause::Ignore,
             attachment: None,
             owner: None,
