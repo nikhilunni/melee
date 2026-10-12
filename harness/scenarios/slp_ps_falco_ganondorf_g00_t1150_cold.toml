@@ -1,0 +1,29 @@
+# The port's side of slp_ps_falco_ganondorf_g00_t1150: boundary start_ps_slippi74_p23_falco1_ganondorf4_4_g00 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_falco_ganondorf_g00_t1150_cold"
+expected = "slp_ps_falco_ganondorf_g00_t1150"
+frames = 1150
+seed = 1637333323
+boundary_seed = 318121161
+stage = "PokemonStadium"
+stadium_preload = true
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Falco"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "Ganondorf"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

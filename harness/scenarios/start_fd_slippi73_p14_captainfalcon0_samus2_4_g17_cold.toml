@@ -1,0 +1,29 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fd_slippi73_p14_captainfalcon0_samus2_4_g17_cold"
+expected = "start_fd_slippi73_p14_captainfalcon0_samus2_4_g17"
+frames = 600
+seed = 1998229287
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 3754248703
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+costume = 0
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Samus"
+costume = 2
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"

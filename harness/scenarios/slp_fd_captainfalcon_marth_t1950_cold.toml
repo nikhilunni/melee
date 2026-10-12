@@ -1,0 +1,29 @@
+# The port's side of slp_fd_captainfalcon_marth_t1950: boundary start_fd_slippi8_p12_captainfalcon2_marth0_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fd_captainfalcon_marth_t1950_cold"
+expected = "slp_fd_captainfalcon_marth_t1950"
+frames = 1950
+seed = 709530225
+boundary_seed = 3183760255
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"

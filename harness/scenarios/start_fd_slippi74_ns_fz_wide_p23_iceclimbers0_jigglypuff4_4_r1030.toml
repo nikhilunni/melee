@@ -1,0 +1,30 @@
+# IceClimbers vs Jigglypuff on FinalDestination, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_fd_slippi74_ns_fz_wide_p23_iceclimbers0_jigglypuff4_4_r1030"
+gate = "start_fd_slippi74_ns_fz_wide_p23_iceclimbers0_jigglypuff4_4_r1030_cold"
+savestate = "harness/roms/start_fd_slippi74_ns_fz_wide_p23_iceclimbers0_jigglypuff4_4_r1030.sav"
+frames = 600
+seed = 1
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 3786318127
+stage = "FinalDestination"
+frozen_stages = true
+widescreen = true
+gecko = ["ucf-0.74", "neutral-spawn", "frozen-stages", "widescreen"]
+
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "Jigglypuff"
+controller = "idle"
+controller_fix = "ucf-0.74"

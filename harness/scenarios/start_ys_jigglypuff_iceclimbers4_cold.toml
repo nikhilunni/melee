@@ -1,0 +1,27 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_ys_jigglypuff_iceclimbers4_cold"
+expected = "start_ys_jigglypuff_iceclimbers4"
+frames = 600
+seed = 2670220023
+stage = "YoshisStory"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+costume = 4
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+costume = 1
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"

@@ -1,0 +1,31 @@
+# frames = 3948 (written as 10400): retail's match ended at record 3948, where the
+# recorder stopped (`ended_early` in the tick and ledger passes); nothing was recorded after it.
+# The port's side of slp_fd_captainfalcon_samus_t10400: boundary start_fd_slippi73_p14_captainfalcon0_samus2_4_g17 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fd_captainfalcon_samus_t10400_cold"
+expected = "slp_fd_captainfalcon_samus_t10400"
+frames = 3948
+seed = 1998229287
+game_start_seed = 3754248703
+boundary_seed = 1998229287
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "CaptainFalcon"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Samus"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

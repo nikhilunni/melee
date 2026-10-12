@@ -2539,7 +2539,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 78] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 104] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2695,6 +2695,9 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 78] = [
     ("drmario_held_turnip_lw_ps_peach_cold", 5377),
     ("drmario_held_turnip_airlw_ps_peach_cold", 5377),
     ("drmario_held_turnip_appeal_ps_peach_cold", 5377),
+    // The side taunt again after a walk, already facing left: 341 with the
+    // turnip in hand and no turn (342).
+    ("drmario_held_turnip_appeal_turned_ps_peach_cold", 5377),
     // Jigglypuff, a tick into her second jump (341) with the shield button
     // just pressed, is hit by Dr. Mario's up air (5633): the launch is not
     // scaled, because ftCo_Damage_CheckAirMotion (0x8008E498) reads
@@ -2849,6 +2852,99 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 78] = [
     // 0.73 with the pad queue one poll per tick (-100 against -2), as the
     // port has it; the console kept the turn.
     ("slp_dl_captainfalcon_pichu_r1_t2300_cold", 2300),
+    // Local bridges registered 2026-10-12 (docs/PORT_NOTES/
+    // UNREGISTERED_SCENARIOS.md). Each equals retail on every key and item
+    // with 0 differing particle ticks. Most are not their replay's game to
+    // the end (docs/SLIPPI.md says where retail in Dolphin left the console
+    // and why): they are retail witnesses all the same. Where retail's
+    // match ended inside the window, the length is the one retail ran (the
+    // recorder's `ended_early`), stated in the scenario's header.
+    //
+    // Doc vs Fox on Battlefield (UCF 0.73, ports 1 and 3), retail's whole
+    // match: its seed leaves the console's at 3633, its fighters at 4935.
+    ("slp_bf_drmario_fox_t8628_cold", 8121),
+    // The game of slp_bf_falco_iceclimbers_t2400 to the end of retail's
+    // match: Popo's four stocks, two of Nana's deaths and two of Falco's.
+    ("slp_bf_falco_iceclimbers_t5600_cold", 4699),
+    // Sheik vs Marth on Battlefield (UCF 0.74, ports 1 and 4) to Sheik's
+    // first lost stock, off the left side (1666).
+    ("slp_bf_sheik_marth_g02_t1700_cold", 1700),
+    // Donkey Kong vs Ganondorf on Dream Land (2019 row) from a boundary of
+    // another seed, so not its replay's game past 3771: two of Donkey
+    // Kong's stocks.
+    ("slp_dl_donkeykong_ganondorf_r1_t4900_cold", 4900),
+    // The game of slp_dl_peach_fox_t1300 to the end of retail's match.
+    ("slp_dl_peach_fox_t4500_cold", 3547),
+    // Peach vs Young Link on Dream Land (2019 row), every tick: retail's
+    // stream leaves the console's at 3197 and Young Link loses his last
+    // stock at 6484, before the screen KO the bridge was made for.
+    ("slp_dl_peach_younglink_r1_t8700_cold", 6599),
+    // Captain Falcon vs Ice Climbers on Final Destination from the replay's
+    // own boundary: the pads stop acting as the console's near 350 (Falcon
+    // is grabbed where the replay has him jump); retail's whole match.
+    ("slp_fd_captainfalcon_iceclimbers_r001727_t17300_cold", 7510),
+    // Captain Falcon vs Marth on Final Destination from a boundary of
+    // another seed (the background's draws differ from 209): Marth's first
+    // stock.
+    ("slp_fd_captainfalcon_marth_t1950_cold", 1950),
+    // Captain Falcon vs Samus on Final Destination, two ticks per render: a
+    // game that left its replay at a tether, to the end of retail's match.
+    ("slp_fd_captainfalcon_samus_t10400_cold", 3948),
+    // HNC 7, Ice Climbers vs Jigglypuff on Final Destination (Frozen Stages,
+    // Widescreen) from its own boundary: Nana's death, two of Popo's and a
+    // revival between; it leaves the replay before the stale hit at 4979.
+    ("slp_fd_iceclimbers_jigglypuff_r1030_t5050_cold", 5050),
+    // Sheik vs Marth on Fountain of Dreams (UCF 0.74, ports 1 and 3):
+    // retail's whole match, seven KOs.
+    ("slp_fod_sheik_marth_t10300_cold", 3145),
+    // The game of slp_ps_drmario_peach_fzw_t5600 on to 9200: the fighters
+    // are the console's until 8700, the seed only to 1004 (the jumbotron's
+    // close-up reads the last display pass).
+    ("slp_ps_drmario_peach_fzw_t9200_cold", 9200),
+    // Falco vs Ganondorf on Pokemon Stadium with the preload (UCF 0.74,
+    // ports 2 and 3): Falco's first stock (283).
+    ("slp_ps_falco_ganondorf_g00_t1150_cold", 1150),
+    // Falco vs Marth on Pokemon Stadium with the preload (UCF 0.8, ports 1
+    // and 4): retail's whole match, seven KOs.
+    ("slp_ps_falco_marth_t3200_cold", 2856),
+    // Falco vs Young Link on Pokemon Stadium from the menus' spawn markers
+    // (2 and 3; the console used 0 and 1): Falco starts at x = 70 and both
+    // are dead by 365; retail's whole match.
+    ("slp_ps_falco_younglink_t4700_cold", 3345),
+    // Mr. Game & Watch vs Falco on Pokemon Stadium from a boundary of
+    // another seed, every tick: it leaves the console at the first
+    // transformation (4139); four of Falco's stocks.
+    ("slp_ps_gameandwatch_falco_r1_t7100_cold", 7100),
+    // The game of slp_ps_iceclimbers_samus_r191618_t6750, 150 ticks on.
+    ("slp_ps_iceclimbers_samus_r191618_t6900_cold", 6900),
+    // Link vs Luigi on Pokemon Stadium from a boundary of another seed, two
+    // ticks per render: Luigi's launch at 3137 takes DamageFlyRoll for the
+    // console's DamageFlyLw; retail's whole match.
+    ("slp_ps_link_luigi_t10500_cold", 7902),
+    // Mario vs Yoshi on Pokemon Stadium from a NeutralSpawn boundary: it has
+    // left the replay before the DownReflect it was made for; Mario shields
+    // at 5428.
+    ("slp_ps_mario_yoshi_t5500_cold", 5500),
+    // Samus vs Falco on a frozen widescreen Stadium, every tick: another
+    // game than its replay from tick 1 (the console spawned by the 2019
+    // entry rule).
+    ("slp_ps_samus_falco_wide_r1_t2700_cold", 2700),
+    // Zelda vs Sheik on Pokemon Stadium with the transformations stopped
+    // (`stadium_frozen`; UCF 0.73, ports 1 and 4), each player with a
+    // sleeping form: four KOs.
+    ("slp_ps_zelda_sheik_g03_t1900_cold", 1900),
+    // Falco vs Ice Climbers on Yoshi's Story from a boundary of another
+    // seed: retail's whole match.
+    ("slp_ys_falco_iceclimbers_t7250_cold", 3421),
+    // Ice Climbers vs Captain Falcon on Yoshi's Story from a boundary of
+    // another seed: Nana's CPU state is made at creation, so she leaves the
+    // replay at her first hit (348); retail's whole match.
+    ("slp_ys_iceclimbers_captainfalcon_t2450_cold", 2274),
+    // Jigglypuff vs Ice Climbers on Yoshi's Story, from a menu boundary and
+    // from the replay's Game Start seed: retail in Dolphin has Nana's x one
+    // ulp above the console's recording, as the port does.
+    ("slp_ys_jigglypuff_iceclimbers_t400_cold", 400),
+    ("slp_ys_jigglypuff_iceclimbers_r171524_t400_cold", 400),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

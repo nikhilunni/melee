@@ -1,0 +1,32 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fd_slippi74_ns_fz_wide_p23_iceclimbers0_jigglypuff4_4_r1030_cold"
+expected = "start_fd_slippi74_ns_fz_wide_p23_iceclimbers0_jigglypuff4_4_r1030"
+frames = 600
+seed = 3217792393
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 3786318127
+stage = "FinalDestination"
+frozen_stages = true
+widescreen = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+costume = 0
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "Jigglypuff"
+costume = 4
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"

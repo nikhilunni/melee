@@ -1,0 +1,25 @@
+# Falco vs IceClimbers on YoshisStory, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_ys_falco_iceclimbers4"
+gate = "start_ys_falco_iceclimbers4_cold"
+savestate = "harness/roms/start_ys_falco_iceclimbers4.sav"
+frames = 600
+seed = 1
+stage = "YoshisStory"
+gecko = ["ucf-0.74", "neutral-spawn"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "IceClimbers"
+controller = "idle"
+controller_fix = "ucf-0.74"

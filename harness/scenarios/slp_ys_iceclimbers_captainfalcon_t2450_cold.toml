@@ -1,0 +1,31 @@
+# frames = 2274 (written as 2450): retail's match ended at record 2274, where the
+# recorder stopped (`ended_early` in the tick and ledger passes); nothing was recorded after it.
+# The port's side of slp_ys_iceclimbers_captainfalcon_t2450: boundary start_ys_slippi8_ns_p14_iceclimbers3_captainfalcon2_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ys_iceclimbers_captainfalcon_t2450_cold"
+expected = "slp_ys_iceclimbers_captainfalcon_t2450"
+frames = 2274
+seed = 4175284503
+boundary_seed = 1901994895
+stage = "YoshisStory"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"
+
+[[fighters]]
+slot = 3
+kind = "CaptainFalcon"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.8"

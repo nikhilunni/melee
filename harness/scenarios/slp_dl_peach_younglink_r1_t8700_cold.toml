@@ -1,0 +1,33 @@
+# frames = 6599 (written as 8700): retail's match ended at record 6599, where the
+# recorder stopped (`ended_early` in the tick and ledger passes); nothing was recorded after it.
+# PEACH/15_52_33 Peach + Young Link (DL).slp (public-v3.7-b; ports 2 and 4, UCF 0.73, the 2019 NeutralSpawn row)
+# played back on retail with a display pass after every tick. The lag-frame twin is slp_dl_peach_younglink_lag8502_t8700.
+# The port's side of slp_dl_peach_younglink_r1_t8700: boundary start_dl_slippi73_ns2019_p24_peach0_younglink4_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_dl_peach_younglink_r1_t8700_cold"
+expected = "slp_dl_peach_younglink_r1_t8700"
+frames = 6599
+seed = 970768180
+boundary_seed = 2349057903
+stage = "DreamLand"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2019"
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Peach"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "YoungLink"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

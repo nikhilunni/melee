@@ -1,0 +1,27 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fod_slippi74_p13_sheik4_marth3_4_cold"
+expected = "start_fod_slippi74_p13_sheik4_marth3_4"
+frames = 600
+seed = 2295357796
+stage = "FountainOfDreams"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "retail"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+costume = 4
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "Marth"
+costume = 3
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"
