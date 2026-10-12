@@ -61,13 +61,17 @@ impl StageGObjs {
         map: u8,
         nth: usize,
     ) {
-        let index = self
-            .created
-            .iter()
-            .enumerate()
-            .filter(|(_, &(created, _))| created == map)
-            .map(|(index, _)| index)
-            .nth(nth);
+        let mut index = None;
+        let mut seen = 0;
+        for (at, &(created, _)) in self.created.iter().enumerate() {
+            if created == map {
+                if seen == nth {
+                    index = Some(at);
+                    break;
+                }
+                seen += 1;
+            }
+        }
         let address = match index {
             Some(index) => self.created.remove(index).1,
             None => gobjs.outside(),
