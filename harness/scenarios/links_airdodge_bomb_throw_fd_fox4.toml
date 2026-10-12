@@ -1,0 +1,34 @@
+# AIR DODGE directed witness (ftCo_EscapeAir_IASA, 0x80099C24): for its first
+# PlCo +334 (3) frames an air dodge runs ftCo_80095328 (0x80099C6C) and
+# ftCo_800D705C (0x80099CA4). Link pulls a bomb (160), jumps (230) and
+# air dodges left while rising (246). A with the stick forward two ticks
+# later (248) is the smash air throw LightThrowAirF4 (112), and the throw
+# takes back the jump's momentum the dodge replaced (mv.co.escapeair.self_vel,
+# 0x80099C84..0x80099C98): he rises again at 1.4 a tick.
+name = "links_airdodge_bomb_throw_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_link_fox4.sav"
+frames = 400
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 160, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 162, port = 0, buttons = {  }, raw = {  } },
+  { frame = 230, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 245, port = 0, buttons = {  }, raw = {  } },
+  { frame = 246, port = 0, buttons = {  }, raw = { button = 32, triggerR = 140, stickX = -127 } },
+  { frame = 248, port = 0, buttons = {  }, raw = { button = 288, triggerR = 140, stickX = 127 } },
+  { frame = 250, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Link"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -980,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 525] = [
+const MATRIX_WITNESSES: [(&str, usize); 531] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1683,6 +1683,21 @@ const MATRIX_WITNESSES: [(&str, usize); 525] = [
     ("held_item_throws_fd_peach", 700),
     ("held_item_throws_fd_link", 760),
     ("held_item_pass_throw_ys_peach", 400),
+    // An air dodge's first PlCo +334 (3) frames run the air throw test
+    // (ftCo_80095328, 0x80099C6C) and then open the catch window
+    // (ftCo_800D705C, 0x80099CA4). Link, holding a bomb: A with the stick
+    // forward is LightThrowAirF4, which takes back the momentum the dodge
+    // replaced (0x80099C84..0x80099C98); R and A with a neutral stick drop
+    // the bomb in place (ftCo_80095744) and the dodge runs on; a C-stick
+    // flick throws (ftCo_800DF50C); the third frame still throws and the
+    // fourth does nothing. Peach, her hand empty, opens the window with A
+    // and catches her falling turnip a tick later, in the dodge (274).
+    ("links_airdodge_bomb_throw_fd_fox4", 400),
+    ("links_airdodge_bomb_drop_fd_fox4", 400),
+    ("links_airdodge_bomb_cstick_fd_fox4", 400),
+    ("links_airdodge_bomb_third_frame_fd_fox4", 400),
+    ("links_airdodge_bomb_fourth_frame_fd_fox4", 400),
+    ("peach_airdodge_turnip_catch_fd_fox4", 420),
     // Peach's jump out of a platform drop with the stick down is one frame
     // of JumpAerial before the float: ftCo_Pass_IASA (8009A2D8) has no float
     // check, only the aerial jump (0x8009A36C).
@@ -2477,7 +2492,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 65] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 66] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2612,6 +2627,14 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 65] = [
     // where the port brought one out a tick: the chain was all out a tick
     // early and Link hung (state 8) at 9898, retail at 9899.
     ("slp_fd_link_marth_t10000_cold", 10000),
+    // Link drops a bomb out of an air dodge on Pokemon Stadium: R held, A
+    // on the dodge's second frame (10367, ftCo_80095744 from
+    // ftCo_EscapeAir_IASA). The port kept it in his hand, and the blast's
+    // draws were missing 32 ticks on. The boundary is made from the
+    // replay's Game Start seed, which a transforming Stadium needs (the
+    // base form's first duration is drawn at creation): retail keeps the
+    // console's Pre Frame seed on every one of the 10499 frames.
+    ("slp_ps_link_luigi_r175018_t10500_cold", 10500),
     // Dr. Mario throws Megavitamins (344, 343) with Peach's turnip in hand
     // (5162..5321): no row of his table reads fp->item_gobj.
     ("slp_ps_drmario_peach_fzw_t5600_cold", 5600),

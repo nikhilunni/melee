@@ -1,0 +1,30 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_ps_slippi73pre_p13_link4_luigi2_4_r175018_cold"
+expected = "start_ps_slippi73pre_p13_link4_luigi2_4_r175018"
+frames = 600
+seed = 2743647799
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 174442688
+stage = "PokemonStadium"
+stadium_preload = true
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Link"
+costume = 4
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 2
+kind = "Luigi"
+costume = 2
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"

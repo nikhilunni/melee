@@ -1,0 +1,38 @@
+# LINK/Game_20190406T175018.slp (public-v3.7-b) played back on retail with a
+# display pass after every tick, from a boundary created from the replay's
+# Game Start seed (a transforming Stadium keeps the base form's first
+# duration, drawn at creation). Retail keeps the console's Pre Frame seed on
+# all 10499 frames (harness/replay_vs_trace.py). Link air dodges holding a
+# bomb (10365) and drops it on the dodge's second frame with R held and A
+# (10367: ftCo_EscapeAir_IASA -> ftCo_80095328 -> ftCo_80095744); its blast
+# draws from 10398.
+# The port's side of slp_ps_link_luigi_r175018_t10500: boundary start_ps_slippi73pre_p13_link4_luigi2_4_r175018 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_link_luigi_r175018_t10500_cold"
+expected = "slp_ps_link_luigi_r175018_t10500"
+frames = 10500
+seed = 2743647799
+game_start_seed = 174442688
+boundary_seed = 2743647799
+stage = "PokemonStadium"
+stadium_preload = true
+all_characters_unlocked = true
+time_limit = 480
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Link"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 2
+kind = "Luigi"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

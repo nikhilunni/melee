@@ -43,6 +43,9 @@ impl Fighter {
     /// ftCo_80099A9C (80099A9C): retain momentum, then select the stick direction.
     pub(super) fn enter_air_dodge(&mut self, assets: &FighterAssets) -> Result<()> {
         let p = assets.air_dodge;
+        // ftCo_800D705C (0x80099AC4): the shoulder press with A opens the
+        // aerial catch window.
+        self.core.try_open_catch_window(assets);
         let saved_velocity = self.core.physics.self_velocity;
         let stick = self.core.input.current.stick;
         if fabsf(stick.x) < p.deadzone.x && fabsf(stick.y) < p.deadzone.y {
@@ -70,14 +73,29 @@ impl Fighter {
         }
         Ok(())
     }
-    /// ftCo_EscapeAir_IASA (80099C24), item-free path; item interaction is
-    /// rejected by Status::require_supported before the saved-momentum throw branch.
+    /// ftCo_EscapeAir_IASA (80099C24). For its first PlCo +334 frames the
+    /// dodge can throw or drop a held item, or open the catch window.
     pub(super) fn air_dodge_input(&mut self, assets: &FighterAssets) {
-        let MotionData::EscapeAir(dodge) = &mut self.core.state_data else {
+        let MotionData::EscapeAir(dodge) = &self.core.state_data else {
             panic!("air dodge scratch missing")
         };
         if dodge.item_throw_frames != 0 {
-            dodge.item_throw_frames -= 1;
+            let saved_velocity = dodge.saved_velocity;
+            // ftCo_80095328 (0x80099C6C). A throw state takes back the
+            // momentum the dodge replaced (0x80099C84..0x80099C98); a drop
+            // in place (ftCo_80095744, `*arg1 = false`) leaves the dodge
+            // running with its own.
+            if self.try_air_item_throw(assets).expect("air item throw") {
+                if self.core.motion_state.id != CommonMotionState::EscapeAir {
+                    self.core.physics.self_velocity = saved_velocity;
+                }
+                return;
+            }
+            // ftCo_800D705C (0x80099CA4), then the countdown.
+            self.core.try_open_catch_window(assets);
+            if let MotionData::EscapeAir(dodge) = &mut self.core.state_data {
+                dodge.item_throw_frames -= 1;
+            }
         }
         // ftCo_800C3B10 last: a tether keeps a tenth of the drift (fmuls).
         if self.try_air_tether(assets) {

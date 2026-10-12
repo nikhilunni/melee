@@ -253,7 +253,8 @@ const HELD_ITEM_STATES: [S; 152] = [
     S::DownFowardD,
     S::DownBackD,
     S::DownSpotD,
-    // ftCo_EscapeAir: no item branch; an air dodge keeps it.
+    // ftCo_EscapeAir_IASA: ftCo_80095328's air throws and drop for the
+    // dodge's first PlCo +334 frames; otherwise an air dodge keeps it.
     S::EscapeAir,
     // ftCo_Capture*: no item branch; a captured fighter keeps it.
     S::CapturePulledHi,
