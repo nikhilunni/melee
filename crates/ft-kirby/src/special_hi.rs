@@ -474,11 +474,12 @@ pub fn beam_accessory(f: &mut Fighter) {
 }
 
 /// ftKb_Init_800EE7B8 / ftKb_Init_800EE74C, the take-damage and death
-/// callbacks the collision changes install. Without a hat, a hammer, a
-/// mouthful or Stone's armour, what is left is
-/// ftKb_AttackDashAir_800F22D4 and ftKb_SpecialAirLw_800F5318: the held
-/// item and the articles show again (ftCommon_8007F5CC, x221E_b4), the
-/// root is level, and Kirby's effects go (efLib_DestroyAll).
+/// callbacks the specials install. Without a hat or a mouthful, what they
+/// do is ftKb_SpecialAirLw_800F5524 (the hammer goes),
+/// ftKb_AttackDashAir_800F22D4 (the root is level) and
+/// ftKb_SpecialAirLw_800F5318: the held item and the articles show again
+/// (ftCommon_8007F5CC, x221E_b4), Stone's shell is gone, and Kirby's
+/// effects go (efLib_DestroyAll).
 pub fn damage_callback(f: &mut Fighter) {
     if !std::mem::take(&mut f.character.get_mut::<Kirby>().damage_callbacks) {
         return;
@@ -492,5 +493,7 @@ pub fn damage_callback(f: &mut Fighter) {
     );
     f.commands.held_item_hidden = false;
     f.commands.articles_visible = true;
+    f.commands.accessory_visible = true;
+    crate::special_lw::drop_shell(f);
     f.effects.push(EffectRequest::DestroyOwned);
 }

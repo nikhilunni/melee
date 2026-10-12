@@ -27,6 +27,32 @@ pub struct KirbyAttributes {
     pub hammer: HammerAttributes,
     /// +D4..+E4: Final Cutter.
     pub final_cutter: FinalCutterAttributes,
+    /// +EC..+114: Stone.
+    pub stone: StoneAttributes,
+}
+
+/// ftKb_DatAttrs +EC..+114 (`speciallw_*`). +10C and +110 (16 and 28 on
+/// the disc) have no reader in ftkirbyspeciallw.c.
+#[derive(Clone, Debug, PartialEq)]
+pub struct StoneAttributes {
+    /// +EC: the frames the rock lasts.
+    pub maximum_frames: u32,
+    /// +F0: the frames before B can end it.
+    pub minimum_frames: u32,
+    /// +F4: the floor angle, in radians, from which the rock slides.
+    pub minimum_slant: f32,
+    /// +F8: the floor angle past which a slope counts no steeper.
+    pub maximum_slant: f32,
+    /// +FC: the slide's acceleration down a slope.
+    pub slide_acceleration: f32,
+    /// +100: the slide's top speed.
+    pub slide_speed: f32,
+    /// +104: the falling rock's speed.
+    pub fall_speed: f32,
+    /// +108: the damage the rock takes before a hit reaches Kirby.
+    pub health: i32,
+    /// +114: the special fall's landing lag after the rock; zero is Fall.
+    pub free_fall_lag: f32,
 }
 
 /// ftKb_DatAttrs +CC, +D0 (`specials_*`).
@@ -186,6 +212,17 @@ impl KirbyAttributes {
                 projectile_spawn_x: r.f32(0xDC)?,
                 projectile_spawn_y: r.f32(0xE0)?,
                 reverse_stick_range: r.f32(0xE4)?,
+            },
+            stone: StoneAttributes {
+                maximum_frames: r.u32(0xEC)?,
+                minimum_frames: r.u32(0xF0)?,
+                minimum_slant: r.f32(0xF4)?,
+                maximum_slant: r.f32(0xF8)?,
+                slide_acceleration: r.f32(0xFC)?,
+                slide_speed: r.f32(0x100)?,
+                fall_speed: r.f32(0x104)?,
+                health: r.s32(0x108)?,
+                free_fall_lag: r.f32(0x114)?,
             },
         })
     }

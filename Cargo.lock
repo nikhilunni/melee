@@ -549,6 +549,7 @@ dependencies = [
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "melee-cm",
  "melee-coll",
  "melee-ef",
  "melee-ft",

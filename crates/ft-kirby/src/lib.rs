@@ -6,6 +6,7 @@ pub mod common;
 pub mod init;
 pub mod mouthful;
 pub mod special_hi;
+pub mod special_lw;
 pub mod special_n;
 pub mod special_s;
 pub mod swallow;
@@ -53,6 +54,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     place_all(&mut rows, swallow::rows());
     place_all(&mut rows, special_s::rows());
     place_all(&mut rows, special_hi::rows());
+    place_all(&mut rows, special_lw::rows());
     rows
 }
 

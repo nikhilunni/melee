@@ -41,6 +41,8 @@ pub struct Kirby {
     pub mouthful_jump: crate::mouthful::MouthfulJump,
     /// fp->mv.kb.specialhi: Final Cutter's scratch.
     pub final_cutter: crate::special_hi::FinalCutter,
+    /// fp->mv.kb.speciallw: Stone's scratch.
+    pub stone: crate::special_lw::Stone,
     /// take_dmg_cb = ftKb_Init_800EE7B8 and death2_cb = ftKb_Init_800EE74C
     /// (ftKb_SpecialN_set_cbs), until the next motion change.
     pub damage_callbacks: bool,
@@ -76,6 +78,7 @@ impl Kirby {
             mouthful_ability: FighterKind::Kirby,
             mouthful_jump: Default::default(),
             final_cutter: Default::default(),
+            stone: Default::default(),
             damage_callbacks: false,
             accessory: Accessory::None,
             hammer_out: false,
@@ -220,9 +223,9 @@ impl CharacterCallbacks for Kirby {
             // ftKb_SpecialHi_Enter (800F2300) / ftKb_SpecialAirHi_Enter
             // (800F23B8).
             SpecialSlot::Up => crate::special_hi::enter(f, airborne, assets),
-            SpecialSlot::Down => unimplemented!(
-                "ftKb_SpecialLw_Enter / ftKb_SpecialAirLw_Enter (ftkirbyspeciallw.c): Stone"
-            ),
+            // ftKb_SpecialLw_Enter (800F3D50) / ftKb_SpecialAirLw_Enter
+            // (800F3E68).
+            SpecialSlot::Down => crate::special_lw::enter(f, airborne, assets),
         }
     }
     /// Fighter_ChangeMotionState clears x2222_b2 and the per-motion

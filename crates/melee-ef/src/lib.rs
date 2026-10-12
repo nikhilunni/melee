@@ -971,7 +971,7 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x4BE | 0x4BF | 0x4EC | 0x4FB | 0x4FC | 0x4FD),
+                id: id @ (0x49B | 0x49C | 0x4BE | 0x4BF | 0x4EC | 0x4FB | 0x4FC | 0x4FD),
                 bone,
             } = request
             {
@@ -982,6 +982,10 @@ impl Effects {
                 let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
                 let matrix = fighter.effect_matrix(Some(bone));
                 let (bank_id, kind) = match id {
+                    // efalt.c:292-297: hsd_8039EFAC(0, 5, 0x138F / 0x1395,
+                    // jobj), the puffs of Kirby's Stone forming and ending.
+                    0x49B => (5, 0x138F),
+                    0x49C => (5, 0x1395),
                     0x4BE => (7, 0x1B5C),
                     0x4BF => (7, 0x1B5D),
                     // efsync.c:423-425: the Blizzard's breath,
