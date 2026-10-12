@@ -1,0 +1,25 @@
+# The port's side of gamewatch_screenko_flat_fd_fox4: boundary start_fd_gameandwatch_fox4 built from
+# parameters, boundary_seed in place of its own seed, and the pads that
+# recording consumed.
+name = "gamewatch_screenko_flat_fd_fox4_cold"
+expected = "gamewatch_screenko_flat_fd_fox4"
+frames = 3200
+seed = 2517060990
+boundary_seed = 14
+stage = "FinalDestination"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "GameAndWatch"
+costume = 0
+stocks = 4
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "scripted"

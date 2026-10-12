@@ -2492,7 +2492,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 72] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 73] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2770,6 +2770,12 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 72] = [
     // bit through the stun at 1091, where Fox's hit on the egg takes the
     // powershield branch of ftColl_80076CBC.
     ("slp_ps_fox_yoshi_t1300_cold", 1300),
+    // Directed: a flat fighter's screen KO, with a display pass after every
+    // tick. Mr. Game & Watch leaves the top of Final Destination (2983,
+    // DeadUpFall; boundary_seed puts ftCo_800D3158's roll, 0x800D326C, within
+    // PlCo +520) and hits the screen in DeadUpFallHitCameraFlat (8) at 3034
+    // (ftCo_DeadUpFall_Anim, 0x800D4BC8), his root not turned to it.
+    ("gamewatch_screenko_flat_fd_fox4_cold", 3200),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
