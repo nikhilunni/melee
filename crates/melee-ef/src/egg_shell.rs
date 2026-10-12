@@ -21,10 +21,16 @@ impl Effects {
         self.make_room(0x1E, SHELL_COUNT, particles);
         // The creation draws come from where retail made them when the
         // requester reserved them; the animations draw from the stream.
-        let mut reserved = seed.map(|seed| HsdRng { seed });
+        let mut reserved = HsdRng {
+            seed: seed.unwrap_or_default(),
+        };
         let mut shells = FixedVec::<_, ANIMATION_QUEUE_CAPACITY>::default();
         for _ in 0..SHELL_COUNT {
-            let creation = reserved.as_mut().unwrap_or(&mut *rng);
+            let creation = if seed.is_some() {
+                &mut reserved
+            } else {
+                &mut *rng
+            };
             let id = if creation.randf() < 0.5 { 0x1E } else { 0x1F };
             let y = (std::f64::consts::TAU * f64::from(creation.randf())) as f32;
             let x = (std::f64::consts::TAU * f64::from(creation.randf())) as f32;

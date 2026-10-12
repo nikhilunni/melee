@@ -78,8 +78,10 @@ pub fn diff(scenario: &Scenario, kind: Option<u32>, every_bit: bool) -> Result<R
             let Some(&image) = port.get(index) else {
                 continue;
             };
-            if kind.is_some_and(|kind| kind != retail[0]) {
-                continue;
+            if let Some(kind) = kind {
+                if kind != retail[0] {
+                    continue;
+                }
             }
             if image != [retail[2], retail[3]] {
                 // Report a difference where it starts, not on every tick
@@ -113,7 +115,9 @@ pub fn diff(scenario: &Scenario, kind: Option<u32>, every_bit: bool) -> Result<R
         }
     }
     let mut summary = String::new();
+    let mut countdowns = 0;
     for ((motion, word), [ticks, bits, class]) in &by_state {
+        countdowns += class;
         if *bits != 0 {
             summary.push_str(&format!(
                 "motion {motion} mv+0x{:X}: {ticks} ticks, {bits} with other bits, {class} with another countdown\n",
@@ -121,7 +125,6 @@ pub fn diff(scenario: &Scenario, kind: Option<u32>, every_bit: bool) -> Result<R
             ));
         }
     }
-    let countdowns: usize = by_state.values().map(|counts| counts[2]).sum();
     summary.push_str(&format!("{countdowns} countdown differences"));
     Ok(Report {
         differences,
