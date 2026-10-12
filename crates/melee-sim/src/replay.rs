@@ -26,9 +26,9 @@ pub struct Setup {
     /// Whether the console ran the frozen-stage code, instead of what the
     /// recording's seeds show (`replay_stage_codes`).
     pub frozen_stages: Option<bool>,
-    /// Whether the console ran the Widescreen code, instead of what the
-    /// recording's frames show (`replay_screen_codes`).
-    pub widescreen: Option<bool>,
+    /// The screen code the console ran, instead of what the recording's
+    /// frames show (`replay_screen_codes`).
+    pub screen: Option<melee_lib::slippi::Screen>,
     /// The tick (as the report numbers frames) the console did not render
     /// before: a lag frame. A replay does not record display passes and the
     /// runner renders every tick, so this is a diagnostic for a stop that
@@ -741,7 +741,7 @@ pub fn cold_scenario(replay: &Replay, root: &Path, setup: Setup) -> Result<Scena
         scenario.stadium_preload = replay.version() >= STADIUM_PRELOAD;
         scenario.stadium_frozen = replay.start.frozen_ps == Some(true);
         scenario.frozen_stages = setup.frozen_stages.unwrap_or(false);
-        scenario.widescreen = setup.widescreen.unwrap_or(false);
+        scenario.set_screen(setup.screen.unwrap_or_default());
         if !setup.ignore_controller_fixes {
             for (fighter, port) in scenario.fighters.iter_mut().zip(replay.leader_ports()) {
                 let fix = ucf_version(replay, &replay.start.players[port], setup)
@@ -795,7 +795,7 @@ pub fn resolve_setup(replay: &Replay, root: &Path, setup: Setup) -> Resolved {
     }
     let uncoded = Setup {
         frozen_stages: setup.frozen_stages,
-        widescreen: setup.widescreen,
+        screen: setup.screen,
         ..fixed
     };
     let (setup, stage_code, screen) = resolve_codes(replay, root, uncoded);
@@ -824,7 +824,8 @@ fn resolve_codes(
             ..
         })
     );
-    let wide_recorded = screen.widescreen && matches!(screen.reason, ScreenReason::Recorded { .. });
+    let wide_recorded = screen.screen != melee_lib::slippi::Screen::Standard
+        && matches!(screen.reason, ScreenReason::Recorded { .. });
     if !(stage_unread && wide_recorded) {
         return (screened, stage_code, screen);
     }
@@ -1194,8 +1195,10 @@ pub fn write_retail_inputs(
     if crate::replay_stage_codes::changes_stage(replay.start.stage) {
         header["frozen_stages"] = scenario.frozen_stages.into();
     }
-    // The Widescreen code (`--gecko widescreen`).
+    // The Widescreen code (`--gecko widescreen`, or `widescreen-92-63` for
+    // its earlier aspect).
     header["widescreen"] = scenario.widescreen.into();
+    header["widescreen_92_63"] = scenario.widescreen_92_63.into();
     writeln!(out, "{header}")?;
     let dead = |v: f32| if v.abs() <= STICK_DEAD_ZONE { 0.0 } else { v };
     for input in &scenario.replay_inputs {

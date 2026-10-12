@@ -2427,7 +2427,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 57] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 58] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2631,6 +2631,11 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 57] = [
     // The same on Final Destination: a point at 6286, the transformation
     // at 6288, and Zelda's next point at 6349 (6346 without the restart).
     ("slp_fd_marth_sheik_r1_t6500_cold", 6500),
+    // An HNC console's Widescreen code had the 92:63 aspect (0x3FE38B73):
+    // Dr. Mario's window x is 99 at tick 6949, under the left bound of
+    // 100, and the magnifier's point comes at 7009. At 320:219 it is
+    // 100.05 and the point a tick later.
+    ("slp_ps_fox_drmario_wide9263_nopause_r1_t7200_cold", 7200),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

@@ -300,7 +300,7 @@ impl InitialState {
         // setup resume creates keeps the subject its spawn reset.
         let (clock, bomb_rain) = scene_flow::restore_clock(&saved)?;
         let (mut camera, subjects) = camera::restore(&saved)?;
-        camera.screen = setup.slippi.screen();
+        camera.screen = setup.slippi.screen;
         ensure!(
             subjects.len() <= fighters.len(),
             "unsupported camera subjects: {} for {} fighters",

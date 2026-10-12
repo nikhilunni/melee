@@ -175,7 +175,7 @@ fn cold_replay_bridge_matches_599_independent_oracle_frames() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
-            widescreen: None,
+            screen: None,
             skipped_display_pass: None,
         },
     )
@@ -204,7 +204,7 @@ fn a_ported_state_one_bit_mismatch_is_a_failure() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
-            widescreen: None,
+            screen: None,
             skipped_display_pass: None,
         },
     )
@@ -233,7 +233,7 @@ fn battlefield_music_seed_and_first_full_tick_match_the_oracle() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
-            widescreen: None,
+            screen: None,
             skipped_display_pass: None,
         },
     )
@@ -263,7 +263,7 @@ fn missing_late_input_preserves_the_matched_prefix() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
-            widescreen: None,
+            screen: None,
             skipped_display_pass: None,
         },
     )
@@ -296,7 +296,7 @@ fn gapped_ports_keep_spawn_markers_and_delay_entry_by_slot() {
         ignore_controller_fixes: false,
         controller_fix: None,
         frozen_stages: None,
-        widescreen: None,
+        screen: None,
         skipped_display_pass: None,
     };
     // The marker, facing and pads route by port, so the prefix matches until
@@ -348,7 +348,7 @@ fn story_primary_music_seed_and_first_full_tick_match_the_oracle() {
             ignore_controller_fixes: false,
             controller_fix: None,
             frozen_stages: None,
-            widescreen: None,
+            screen: None,
             skipped_display_pass: None,
         },
     )

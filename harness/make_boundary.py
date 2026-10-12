@@ -47,7 +47,8 @@ random stream there. Such a boundary serves that one replay; the cold twin
 names the seed, and its gate checks the port's setup draws reach the saved one.
 A code the port names with a scenario flag (`ps-preload`: `stadium_preload`,
 `ps-frozen`: `stadium_frozen`, `frozen-stages`: `frozen_stages`, `widescreen`:
-`widescreen`; gecko.SCENARIO_FLAGS) sets it in both scenarios. The Widescreen
+`widescreen`, `widescreen-92-63` (the same code with its earlier aspect):
+`widescreen_92_63`; gecko.SCENARIO_FLAGS) sets it in both scenarios. The Widescreen
 code changes a CObj as it is loaded, so only a boundary booted with it runs it
 whole: on another boundary's savestate the camera keeps retail's aspect.
 

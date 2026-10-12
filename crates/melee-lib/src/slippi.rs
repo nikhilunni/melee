@@ -43,11 +43,13 @@ pub struct SlippiCodes {
     /// "Widescreen 16:9" [Dan Salvato, mirrorbender, Achilles1515,
     /// UnclePunch] (External/Widescreen, `Output/Console/g_screen_wide`; the
     /// off-screen bounds from e9457ee, 2019-11-03). A replay does not record
-    /// it. Two parts reach gameplay (`melee_cm::Screen::Widescreen`):
+    /// it. Two parts reach gameplay (`Screen::Widescreen`):
     /// - 0x8036A4A8, CObjLoad: a perspective CObj's aspect is the
     ///   description's times 320 / 219, so every projected x lies nearer the
     ///   centre. Pokémon Stadium's close-up test (grStadium_801D32D0) then
-    ///   frames a fighter over a wider range;
+    ///   frames a fighter over a wider range. Until ef8e734 (2019-10-29) the
+    ///   factor was 92 / 63, and the tournament consoles of early 2020 ran
+    ///   that one with the bounds below (`Screen::Widescreen92By63`);
     /// - 0x80030C7C / 0x80030C88, Camera_80030BBC: the on-screen test's left
     ///   and right bounds are 100 and 540, not the scissor's 0 and 640. The
     ///   magnifier's damage (Fighter_8006A360) follows that test.
@@ -56,19 +58,10 @@ pub struct SlippiCodes {
     /// (0x803BB05C), the bubble's zoom and placement (0x804DDB28..58), the
     /// nametag scale (0x802FCFC4, 0x804DDB84) and 0x80086B24, which draws a
     /// fighter's model whether or not ftLib_80086A8C finds it near the screen.
-    pub widescreen: bool,
+    pub screen: Screen,
 }
 
-impl SlippiCodes {
-    /// The screen code these codes install on the game camera.
-    pub fn screen(&self) -> melee_cm::Screen {
-        if self.widescreen {
-            melee_cm::Screen::Widescreen
-        } else {
-            melee_cm::Screen::Standard
-        }
-    }
-}
+pub use melee_cm::Screen;
 
 /// Where each player starts.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

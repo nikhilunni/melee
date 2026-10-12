@@ -38,10 +38,10 @@ enum Command {
         /// `none`), instead of what the recording's seeds show.
         #[arg(long, value_parser = parse_stage_codes)]
         stage_codes: Option<bool>,
-        /// Whether the console ran the Widescreen code (`widescreen`,
+        /// The screen code the console ran (`widescreen`, `widescreen-92-63`,
         /// `standard`), instead of what the recording's frames show.
         #[arg(long, value_parser = parse_screen)]
-        screen: Option<bool>,
+        screen: Option<melee_lib::slippi::Screen>,
         /// Instead of comparing, write the replay's setup and per-tick raw
         /// pads (JSONL) for `harness/slippi_to_scenario.py`, which feeds
         /// them to retail from a boundary.
@@ -75,10 +75,10 @@ enum Command {
         /// `none`), instead of what the recording's seeds show.
         #[arg(long, value_parser = parse_stage_codes)]
         stage_codes: Option<bool>,
-        /// Whether the console ran the Widescreen code (`widescreen`,
+        /// The screen code the console ran (`widescreen`, `widescreen-92-63`,
         /// `standard`), instead of what the recording's frames show.
         #[arg(long, value_parser = parse_screen)]
-        screen: Option<bool>,
+        screen: Option<melee_lib::slippi::Screen>,
         /// Write one JSON object per replay here.
         #[arg(long)]
         jsonl: Option<PathBuf>,
@@ -228,12 +228,12 @@ fn parse_stage_codes(name: &str) -> Result<bool, String> {
         })
 }
 
-fn parse_screen(name: &str) -> Result<bool, String> {
+fn parse_screen(name: &str) -> Result<melee_lib::slippi::Screen, String> {
     let names = melee_sim::replay_screen_codes::NAMES;
     names
         .iter()
         .find(|(n, _)| *n == name)
-        .map(|(_, widescreen)| *widescreen)
+        .map(|(_, screen)| *screen)
         .ok_or_else(|| {
             let names: Vec<_> = names.iter().map(|(n, _)| *n).collect();
             format!("unknown screen (one of {})", names.join(", "))
@@ -266,7 +266,7 @@ fn main() -> anyhow::Result<()> {
                 ignore_controller_fixes,
                 controller_fix,
                 frozen_stages: stage_codes,
-                widescreen: screen,
+                screen,
                 skipped_display_pass: skip_display_pass,
             };
             if let Some(out) = retail_inputs {
@@ -321,7 +321,7 @@ fn main() -> anyhow::Result<()> {
                     ignore_controller_fixes,
                     controller_fix,
                     frozen_stages: stage_codes,
-                    widescreen: screen,
+                    screen,
                     skipped_display_pass: None,
                 },
                 jobs,

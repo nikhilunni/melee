@@ -192,13 +192,16 @@ def test_frozen_stages_sets_its_flag_in_the_start_scene_and_its_cold_twin():
     assert "gecko" not in cold
 
 
-def test_widescreen_sets_its_flag_in_the_start_scene_and_its_cold_twin():
-    codes = ["widescreen"]
+@pytest.mark.parametrize("code, flag, other", [("widescreen", "widescreen", "widescreen_92_63"),
+                                               ("widescreen-92-63", "widescreen_92_63", "widescreen")])
+def test_widescreen_sets_its_aspects_flag_in_the_start_scene_and_its_cold_twin(code, flag, other):
+    codes = [code]
     start = tomllib.loads(mb.start_scenario("b", "PokemonStadium", ["Fox", "Marth"], 4, codes, [0, 1]))
     cold = tomllib.loads(mb.cold_scenario("b", "PokemonStadium", ["Fox", "Marth"], 4, 7, [0, 0],
                                           "retail", codes, [0, 1], None))
-    assert start["widescreen"] is True and cold["widescreen"] is True
-    assert start["gecko"] == ["widescreen"] and "gecko" not in cold
+    assert start[flag] is True and cold[flag] is True
+    assert other not in start and other not in cold
+    assert start["gecko"] == [code] and "gecko" not in cold
 
 
 def creation_driver(seed=0x1234_5678):

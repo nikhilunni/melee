@@ -84,6 +84,10 @@ pub struct Scenario {
     /// (`melee_lib::slippi::SlippiCodes::widescreen`).
     #[serde(default)]
     pub widescreen: bool,
+    /// The Widescreen code with its earlier aspect, 92 / 63
+    /// (`melee_lib::slippi::Screen::Widescreen92By63`); not with `widescreen`.
+    #[serde(default)]
+    pub widescreen_92_63: bool,
     pub stage: String,
     pub fighters: Vec<FighterScenario>,
     /// The VI-frame schedule that drove Dolphin. The port itself replays the
@@ -103,8 +107,9 @@ pub struct Scenario {
     /// `["ucf-0.8"]`. Every fighter then names the matching
     /// `controller_fix`, and `"ps-preload"` and `"ps-frozen"` go with
     /// `stadium_preload` and `stadium_frozen`, `"frozen-stages"` with
-    /// `frozen_stages`, `"widescreen"` with `widescreen`; the port reads
-    /// only those.
+    /// `frozen_stages`, `"widescreen"` with `widescreen`,
+    /// `"widescreen-92-63"` with `widescreen_92_63`; the port reads only
+    /// those.
     #[serde(default)]
     pub gecko: Vec<String>,
     #[serde(skip)]
@@ -256,7 +261,12 @@ impl Scenario {
             (STADIUM_FROZEN_GECKO, self.stadium_frozen),
             (FROZEN_STAGES_GECKO, self.frozen_stages),
             (WIDESCREEN_GECKO, self.widescreen),
+            (WIDESCREEN_92_63_GECKO, self.widescreen_92_63),
         ];
+        ensure!(
+            !(self.widescreen && self.widescreen_92_63),
+            "widescreen and widescreen_92_63 name two aspects of one code"
+        );
         // Codes that are not controller fixes (`neutral-spawn`) have no
         // per-fighter setting.
         let fixes: Vec<&String> = self
@@ -299,6 +309,23 @@ impl Scenario {
             );
         }
         Ok(())
+    }
+    /// The screen code the scenario's flags name.
+    pub fn screen(&self) -> melee_lib::slippi::Screen {
+        use melee_lib::slippi::Screen;
+        if self.widescreen_92_63 {
+            Screen::Widescreen92By63
+        } else if self.widescreen {
+            Screen::Widescreen
+        } else {
+            Screen::Standard
+        }
+    }
+    /// Set the flags that name `screen`.
+    pub fn set_screen(&mut self, screen: melee_lib::slippi::Screen) {
+        use melee_lib::slippi::Screen;
+        self.widescreen = screen == Screen::Widescreen;
+        self.widescreen_92_63 = screen == Screen::Widescreen92By63;
     }
     /// Each port's controller fix (Off for an empty port).
     pub fn controller_fixes(&self) -> Result<[melee_lib::ControllerFix; 4]> {
@@ -462,7 +489,7 @@ impl Scenario {
                 stadium_preload: self.stadium_preload,
                 stadium_frozen: self.stadium_frozen,
                 frozen_stages: self.frozen_stages,
-                widescreen: self.widescreen,
+                screen: self.screen(),
             },
         }
     }
@@ -622,6 +649,8 @@ const STADIUM_FROZEN_GECKO: &str = "ps-frozen";
 const FROZEN_STAGES_GECKO: &str = "frozen-stages";
 /// The `gecko` name of the Widescreen 16:9 code.
 const WIDESCREEN_GECKO: &str = "widescreen";
+/// The `gecko` name of the Widescreen 16:9 code with the 92 / 63 aspect.
+const WIDESCREEN_92_63_GECKO: &str = "widescreen-92-63";
 
 /// `spawn = "retail" | "neutral-2019" | "neutral-2019-entry" | "neutral-2020"`
 /// in scenario TOML.

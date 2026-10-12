@@ -14,6 +14,10 @@ line, e.g. g_ucf.bin). For UCF, from a slippi-ssbm-asm checkout:
                    (the toggle set's "Arduino" code), then `004DEC08 00030002`
                    (each port's toggle byte at 0x804DEC08 set to 2)
 
+`widescreen-92-63.txt` is `widescreen.txt` with the two floats of its C236A4A8
+block, `43A00000 435B0000` (320, 219), replaced by `42B80000 427C0000` (92,
+63): External/Widescreen/Overwrite CObj Values.asm before ef8e734.
+
 `install` writes the codes into a private Dolphin user folder's
 GameSettings/GALE01.ini ([Gecko] and [Gecko_Enabled]); the recorder then
 launches Dolphin with cheats enabled (dolphin_config: DOLPHIN_CHEATS=1).
@@ -39,7 +43,8 @@ BRANCH_OPCODE = 18
 #: list naming the code and the flag go together; a cold twin, which has no
 #: `gecko` list, carries the flag alone).
 SCENARIO_FLAGS = {"ps-preload": "stadium_preload", "ps-frozen": "stadium_frozen",
-                  "frozen-stages": "frozen_stages", "widescreen": "widescreen"}
+                  "frozen-stages": "frozen_stages", "widescreen": "widescreen",
+                  "widescreen-92-63": "widescreen_92_63"}
 
 
 def scenario_flags(codes: list[str] | None) -> dict[str, bool]:

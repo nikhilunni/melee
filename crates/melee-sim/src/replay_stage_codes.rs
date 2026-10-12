@@ -132,56 +132,147 @@ pub(crate) struct Recorded {
     pub tick: u64,
 }
 
-/// Run the replay's inputs without and with a code in step. Until the two
-/// runs differ (a compared field or the tick's end seed) nothing is asked of
-/// the recording. From then on each is compared with it as the comparison
-/// run would be, Pre Frame seeds included: the first tick only one of them
-/// matches names that one. `None` when they never differ, or both stop
-/// matching on the same tick.
+/// Run the replay's inputs without and with a code in step: `recorded_among`
+/// for two setups. `None` when they never differ, or both stop matching on
+/// the same tick.
 pub(crate) fn recorded_between(
     replay: &Replay,
     root: &Path,
     plain: Setup,
     coded: Setup,
 ) -> Result<Option<Recorded>> {
-    let mut runs = [
-        ColdRun::start(replay, &cold_scenario(replay, root, plain)?)?,
-        ColdRun::start(replay, &cold_scenario(replay, root, coded)?)?,
-    ];
+    let Some(followed) = recorded_among(replay, root, [plain, coded])? else {
+        return Ok(None);
+    };
+    let other = 1 - followed.chosen;
+    let left = followed.left[other].expect("one of two setups was left");
+    Ok(Some(Recorded {
+        coded: followed.chosen == 1,
+        apart: left.apart,
+        tick: left.tick,
+    }))
+}
+
+/// Which of several setups a recording followed, read from its frames.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Followed<const N: usize> {
+    /// The first setup, in the order given, the recording never left alone.
+    pub chosen: usize,
+    /// For each setup the recording left while another still matched it:
+    /// where.
+    pub left: [Option<Left>; N],
+}
+
+/// Where a recording left one setup's run.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Left {
+    /// The first tick this run differs from the chosen one.
+    pub apart: u64,
+    /// The tick the recording matches another run and not this one.
+    pub tick: u64,
+}
+
+/// Run the replay's inputs under each setup in step. Until two runs differ
+/// (a compared field or the tick's end seed) nothing is asked of the
+/// recording. From then on each is compared with it as the comparison run
+/// would be, Pre Frame seeds included: a run that stops matching on a tick
+/// another still matches is left behind. `None` when no run is left behind:
+/// they never differ, or all stop matching on the same tick. Runs that
+/// remain together to the end, or stop matching together, are not told
+/// apart, and the first of them in the order given is chosen.
+pub(crate) fn recorded_among<const N: usize>(
+    replay: &Replay,
+    root: &Path,
+    setups: [Setup; N],
+) -> Result<Option<Followed<N>>> {
+    let mut runs = Vec::with_capacity(N);
+    for setup in setups {
+        runs.push(ColdRun::start(replay, &cold_scenario(replay, root, setup)?)?);
+    }
     let leaders: Vec<usize> = replay.leader_ports().collect();
     let last_tick = runs[0].unavailable.as_ref().map(|(tick, _)| *tick);
-    let mut previous_seeds = runs
-        .each_ref()
-        .map(|run| crate::replay::seed_of(&run.initial));
-    let mut apart = None;
+    let mut previous_seeds: Vec<_> = runs
+        .iter()
+        .map(|run| crate::replay::seed_of(&run.initial))
+        .collect();
+    // Runs the recording has not left, and each pair's first differing tick.
+    let mut together = [true; N];
+    let mut apart = [[None; N]; N];
+    let mut left = [None; N];
+    let followed = |together: &[bool; N], left: [Option<u64>; N], apart: &[[Option<u64>; N]; N]| {
+        let chosen = together.iter().position(|t| *t).expect("a run remains");
+        let left = std::array::from_fn(|run| {
+            left[run].map(|tick| Left {
+                apart: apart[chosen.min(run)][chosen.max(run)].expect("left runs differ"),
+                tick,
+            })
+        });
+        Followed { chosen, left }
+    };
     for expected in slp::to_trace(replay) {
         if last_tick == Some(expected.frame) {
             break;
         }
         let tick = expected.frame;
         let frame = &replay.frames[&(tick as i32 + slp::SLIPPI_FIRST_FRAME)];
-        let mut compared = Vec::with_capacity(2);
-        for (run, previous) in runs.iter_mut().zip(&mut previous_seeds) {
-            let record = run.simulation.tick()?;
-            let record = run.simulation.after_map_record(&record).unwrap_or(record);
-            let tick = compared_tick(&record, &leaders, frame, expected.clone(), *previous);
-            *previous = tick.end_seed;
-            compared.push(tick);
+        let mut compared: [Option<crate::replay::ComparedTick>; N] = std::array::from_fn(|_| None);
+        for run in (0..N).filter(|run| together[*run]) {
+            let record = runs[run].simulation.tick()?;
+            let record = runs[run]
+                .simulation
+                .after_map_record(&record)
+                .unwrap_or(record);
+            let ticked = compared_tick(
+                &record,
+                &leaders,
+                frame,
+                expected.clone(),
+                previous_seeds[run],
+            );
+            previous_seeds[run] = ticked.end_seed;
+            compared[run] = Some(ticked);
         }
-        let (plain, coded) = (&compared[0], &compared[1]);
-        if apart.is_none()
-            && (plain.end_seed != coded.end_seed || plain.actual.state != coded.actual.state)
-        {
-            apart = Some(tick);
+        let mut asked = false;
+        for a in 0..N {
+            for b in a + 1..N {
+                let (Some(first), Some(second)) = (&compared[a], &compared[b]) else {
+                    continue;
+                };
+                if apart[a][b].is_none()
+                    && (first.end_seed != second.end_seed
+                        || first.actual.state != second.actual.state)
+                {
+                    apart[a][b] = Some(tick);
+                }
+                asked |= apart[a][b].is_some();
+            }
         }
-        let Some(apart) = apart else { continue };
-        match (plain.matches(), coded.matches()) {
-            (true, true) => {}
-            (false, false) => return Ok(None),
-            (_, coded) => return Ok(Some(Recorded { coded, apart, tick })),
+        if !asked {
+            continue;
+        }
+        let matches: [bool; N] =
+            std::array::from_fn(|run| compared[run].as_ref().is_some_and(|c| c.matches()));
+        if !matches.contains(&true) {
+            // Every remaining run stops here: nothing tells them apart.
+            return Ok(left
+                .iter()
+                .any(Option::is_some)
+                .then(|| followed(&together, left, &apart)));
+        }
+        for run in 0..N {
+            if together[run] && !matches[run] {
+                together[run] = false;
+                left[run] = Some(tick);
+            }
+        }
+        if together.iter().filter(|t| **t).count() == 1 {
+            break;
         }
     }
-    Ok(None)
+    Ok(left
+        .iter()
+        .any(Option::is_some)
+        .then(|| followed(&together, left, &apart)))
 }
 
 #[cfg(test)]

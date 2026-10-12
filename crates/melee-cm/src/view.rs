@@ -24,11 +24,18 @@ pub enum Screen {
     /// the scissor's left and right (0x80030C7C, 0x80030C88): about where
     /// the 4:3 edges fall in the wider picture, a pixel or so outside them.
     Widescreen,
+    /// The same code with the aspect it had before slippi-ssbm-asm ef8e734
+    /// (2019-10-29, "update fov to 320:219"): the description's times
+    /// 92 / 63, the factor the tree started with (703f953). The picture is
+    /// wider by 0.06%, an eighth of a pixel at the bounds, which are still
+    /// 100 and 540.
+    Widescreen92By63,
 }
 
 /// Overwrite CObj Values.asm: `.float 320`, `.float 219`.
-const WIDESCREEN_ASPECT_NUMERATOR: f32 = 320.0;
-const WIDESCREEN_ASPECT_DENOMINATOR: f32 = 219.0;
+const WIDESCREEN_ASPECT: (f32, f32) = (320.0, 219.0);
+/// Overwrite CObj Values.asm before ef8e734: `.float 92`, `.float 63`.
+const WIDESCREEN_92_BY_63_ASPECT: (f32, f32) = (92.0, 63.0);
 /// Left Camera Bound.asm (`li r0, 0+100`) and Right Camera Bound.asm
 /// (`li r0, 640-100`).
 const WIDESCREEN_LEFT: i32 = 100;
@@ -38,11 +45,12 @@ impl Screen {
     /// The main CObj's aspect. Widescreen: `fmuls` then `fdivs` on the
     /// description's (hook 0x8036A4A8).
     pub fn aspect(self) -> f32 {
+        let scaled =
+            |(numerator, denominator): (f32, f32)| DESCRIPTION.aspect * numerator / denominator;
         match self {
             Self::Standard => DESCRIPTION.aspect,
-            Self::Widescreen => {
-                DESCRIPTION.aspect * WIDESCREEN_ASPECT_NUMERATOR / WIDESCREEN_ASPECT_DENOMINATOR
-            }
+            Self::Widescreen => scaled(WIDESCREEN_ASPECT),
+            Self::Widescreen92By63 => scaled(WIDESCREEN_92_BY_63_ASPECT),
         }
     }
 
@@ -51,7 +59,7 @@ impl Screen {
     fn horizontal_bounds(self, scissor: hsd_anim::cobj::Scissor) -> (i32, i32) {
         match self {
             Self::Standard => (i32::from(scissor.left), i32::from(scissor.right)),
-            Self::Widescreen => (WIDESCREEN_LEFT, WIDESCREEN_RIGHT),
+            Self::Widescreen | Self::Widescreen92By63 => (WIDESCREEN_LEFT, WIDESCREEN_RIGHT),
         }
     }
 }
@@ -132,13 +140,15 @@ mod tests {
     use super::*;
 
     #[test]
-    fn the_widescreen_aspect_is_the_descriptions_times_320_over_219() {
+    fn the_widescreen_aspect_is_the_descriptions_scaled_by_the_codes_floats() {
         assert_eq!(
             Screen::Standard.aspect().to_bits(),
             DESCRIPTION.aspect.to_bits()
         );
         // 1.2173333 * 320 = 389.54666, / 219 = 1.7787519 (fmuls, fdivs).
         assert_eq!(Screen::Widescreen.aspect().to_bits(), 0x3FE3_AE24);
+        // 1.2173333 * 92 = 111.99466, / 63 = 1.7776932.
+        assert_eq!(Screen::Widescreen92By63.aspect().to_bits(), 0x3FE3_8B73);
     }
 
     #[test]
@@ -146,6 +156,7 @@ mod tests {
         let cases = [
             (Screen::Standard, (0, 640)),
             (Screen::Widescreen, (100, 540)),
+            (Screen::Widescreen92By63, (100, 540)),
         ];
         for (screen, bounds) in cases {
             assert_eq!(
