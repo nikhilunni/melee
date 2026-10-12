@@ -814,9 +814,11 @@ impl Runtime {
         let current_stale = stale_for(Some((owner_slot, owner_secondary)));
         let reflected_stale = stale_for(reflected_owner);
         item.stale_multiplier = current_stale;
-        let owner = owner_slot.and_then(|slot| {
-            let index =
-                crate::scene_items::owner_index(&state.fighters, Some(slot), owner_secondary)?;
+        // The fighter the kind's callbacks read: the owner, or the creator
+        // a kind keeps past a reflection (`ItemLogic::tracker`).
+        let tracker = (<SceneItems as melee_it::ItemDispatch>::logic(kind).tracker)(item);
+        let owner = tracker.and_then(|(slot, secondary)| {
+            let index = crate::scene_items::owner_index(&state.fighters, Some(slot), secondary)?;
             Some(crate::scene_fighter::with_fighter!(
                 &mut state.fighters[index],
                 |f| f.item_owner(&state.assets.fighters[index])

@@ -1005,7 +1005,8 @@ pub fn owner_report(
 ) -> Option<melee_it::ArticleReport> {
     pool.iter()
         .filter(|item| {
-            item.owner == Some(owner) && item.owner_secondary == secondary && !item.destroyed
+            !item.destroyed
+                && (SceneItems::logic(item.kind).tracker)(item) == Some((owner, secondary))
         })
         .find_map(|item| {
             (SceneItems::logic(item.kind).owner_report)(item, resources.get(item.kind))
@@ -1642,15 +1643,16 @@ pub fn article_destroyed(
     fighters: &mut [crate::scene_fighter::SceneFighter],
     item: &melee_it::ItemCore,
 ) {
-    let Some(owner) = item.owner else {
+    let logic = SceneItems::logic(item.kind);
+    let Some((owner, secondary)) = (logic.tracker)(item) else {
         return;
     };
-    if item.owner_notified || !(SceneItems::logic(item.kind).notifies_owner)(item) {
+    if item.owner_notified || !(logic.notifies_owner)(item) {
         return;
     }
     for fighter in fighters.iter_mut() {
         crate::scene_fighter::with_fighter!(fighter, |f| {
-            if f.player.id == owner && f.player.secondary == item.owner_secondary {
+            if f.player.id == owner && f.player.secondary == secondary {
                 f.article_destroyed(item.kind);
             }
         });

@@ -544,6 +544,11 @@ pub struct ThunderState {
     pub velocity: Vec3,
     /// x28: where the bolt before it stopped.
     pub reached: Vec3,
+    /// x38: the fighter that called the chain (its slot, and whether it is
+    /// the player's second fighter). A reflection changes the bolt's owner
+    /// and not this; only the fighter's removal clears it
+    /// (itPikachuThunder_Logic39_EvtUnk).
+    pub creator: Option<(u8, bool)>,
 }
 /// Item.xDD4_itemVar.pikachujoltground and .pikachujoltair
 /// Item.xDD4_itemVar.climbersice (itclimbersice.c): an ice block.
@@ -1840,10 +1845,13 @@ impl ItemPool {
         assets: &ItemAssets,
         immediate: bool,
     ) {
+        // The fighter calls its article by the pointer it keeps, whoever
+        // owns the article now (`ItemLogic::tracker`).
+        let tracker = D::logic(kind).tracker;
         for item in self
             .items
             .iter_mut()
-            .filter(|i| i.owner == Some(owner) && i.owner_secondary == secondary && i.kind == kind)
+            .filter(|i| i.kind == kind && tracker(i) == Some((owner, secondary)))
         {
             item.efasync_immediate = immediate;
             (D::logic(kind).control)(item, control, assets);

@@ -1,0 +1,25 @@
+# Mario vs Pikachu on PokemonStadium, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_ps_slippi73pre_p12_mario4_pikachu1_4"
+savestate = "harness/roms/start_ps_slippi73pre_p12_mario4_pikachu1_4.sav"
+frames = 600
+seed = 1
+stage = "PokemonStadium"
+stadium_preload = true
+gecko = ["ucf-0.73", "ps-preload"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Mario"
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 1
+kind = "Pikachu"
+controller = "idle"
+controller_fix = "ucf-0.73"

@@ -140,6 +140,7 @@ impl<O: crate::Owner> ItemLogic for ThunderBolt<O> {
                     scale: 1.0,
                     velocity,
                     reached: Vec3::ZERO,
+                    creator: item.owner.map(|owner| (owner, item.owner_secondary)),
                 };
             }
             // it_802B22B8's inline update of the next bolt.
@@ -171,6 +172,26 @@ impl<O: crate::Owner> ItemLogic for ThunderBolt<O> {
     /// it_2725_Logic39_Destroyed: only the lead tells Pikachu.
     fn notifies_owner(item: &ItemCore) -> bool {
         thunder_ref(item).index == 0
+    }
+    /// The bolt answers to the fighter that called it (x38), not to
+    /// ip->owner: it_2725_Logic39_Destroyed (retail 0x802B204C: lwz 0xE0C)
+    /// and the floor strike's quake (itPikachuthunder_UnkMotion1_Coll,
+    /// 0x802B2250) read x38, and Pikachu reaches the lead by its own
+    /// pointer (mv.pk.speciallw.x0, 0x80127680 / 0x80127758 / 0x80127770).
+    /// A cape or a Reflector that takes the lead changes none of them.
+    fn tracker(item: &ItemCore) -> Option<(u8, bool)> {
+        thunder_ref(item).creator
+    }
+    /// itPikachuThunder_Logic39_EvtUnk (802B2528): the caller's removal
+    /// clears x38, then it_8026B894 the owner.
+    fn owner_removed(item: &mut ItemCore, owner: u8) {
+        let state = thunder(item);
+        if state.creator.is_some_and(|(slot, _)| slot == owner) {
+            state.creator = None;
+        }
+        if item.owner == Some(owner) {
+            item.owner = None;
+        }
     }
     /// it_802B1FC8: Pikachu struck by its lead bolt.
     fn control(item: &mut ItemCore, control: ItemControl, assets: &ItemAssets) {

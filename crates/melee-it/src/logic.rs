@@ -222,6 +222,14 @@ pub trait ItemLogic {
     fn notifies_owner(_item: &ItemCore) -> bool {
         true
     }
+    /// The fighter this article answers to (its player slot, and whether it
+    /// is the player's second fighter): the one its report and its end
+    /// reach, whose requests control it and whose state its callbacks read.
+    /// Its owner, unless the kind keeps a pointer to its creator that a
+    /// reflection does not change (itPikachuthunder's x38).
+    fn tracker(item: &ItemCore) -> Option<(u8, bool)> {
+        item.owner.map(|owner| (owner, item.owner_secondary))
+    }
     /// The kind's on_accessory (Item_80269A9C, item link 9) is its owner's
     /// work: the scene runs the owner's ARTICLE_ACCESSORY hook in its place
     /// (Sheik's chain, whose links are the owner's).
@@ -274,6 +282,7 @@ pub trait ItemLogic {
         owner_report: Self::owner_report,
         effect_joint_matrix: Self::effect_joint_matrix,
         notifies_owner: Self::notifies_owner,
+        tracker: Self::tracker,
         link_received: Self::link_received,
         owner_accessory: Self::OWNER_ACCESSORY,
         owner_physics: Self::OWNER_PHYSICS,
@@ -335,6 +344,7 @@ pub struct ItemLogicRow {
     pub owner_report: fn(&ItemCore, &ItemAssets) -> Option<crate::ArticleReport>,
     pub effect_joint_matrix: fn(&ItemCore, &ItemAssets, hsd_types::Mtx) -> hsd_types::Mtx,
     pub notifies_owner: fn(&ItemCore) -> bool,
+    pub tracker: fn(&ItemCore) -> Option<(u8, bool)>,
     pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
     pub owner_accessory: bool,
     pub owner_physics: bool,
