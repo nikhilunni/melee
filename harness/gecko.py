@@ -14,6 +14,14 @@ line, e.g. g_ucf.bin). For UCF, from a slippi-ssbm-asm checkout:
                    (the toggle set's "Arduino" code), then `004DEC08 00030002`
                    (each port's toggle byte at 0x804DEC08 set to 2)
 
+`neutral-spawn-2019.txt` is `neutral-spawn.txt` with the first two entries of
+its Dream Land row (after `0000001C`), `C23A6666 4214CCCD` and
+`423D999A 42153333`, replaced by `C23A6666 42140000` and `423D8E70 42140000`:
+the row late-2019 consoles spawned from, measured from their replays
+(melee_lib::slippi::NeutralTable::V2019). No commit of slippi-ssbm-asm
+carries it; a boundary made with it gates exact against `spawn =
+"neutral-2019"`.
+
 `widescreen-92-63.txt` is `widescreen.txt` with the two floats of its C236A4A8
 block, `43A00000 435B0000` (320, 219), replaced by `42B80000 427C0000` (92,
 63): External/Widescreen/Overwrite CObj Values.asm before ef8e734.

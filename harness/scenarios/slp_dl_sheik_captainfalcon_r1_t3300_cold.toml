@@ -1,0 +1,37 @@
+# ZELDA_SHEIK/19_56_47 [TREW] Sheik + Captain Falcon (DL).slp (ports 1 and 4, UCF 0.73, the
+# 2019 NeutralSpawn row for Dream Land: `neutral-spawn-2019`, the 2020 code text with that
+# row's two singles entries replaced by the values the port measured from such replays)
+# played back on retail with a render after every tick. Captain Falcon leaves the right
+# side (window x 635, then 643 and the off-screen bit at tick 3014), the magnifier counts
+# from 3015 and the point of damage comes at tick 3074. The port equals this. The console's recording
+# has the point one tick later: no retail run reproduces that, and one display pass skipped
+# before tick 3014 or 3015 does.
+# The port's side of slp_dl_sheik_captainfalcon_r1_t3300: boundary start_dl_slippi73_ns2019_p14_sheik1_captainfalcon4_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_dl_sheik_captainfalcon_r1_t3300_cold"
+expected = "slp_dl_sheik_captainfalcon_r1_t3300"
+frames = 3300
+seed = 1749127015
+boundary_seed = 634089718
+stage = "DreamLand"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2019"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "CaptainFalcon"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

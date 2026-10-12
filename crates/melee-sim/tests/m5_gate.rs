@@ -2427,7 +2427,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 58] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 60] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2636,6 +2636,14 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 58] = [
     // 100, and the magnifier's point comes at 7009. At 320:219 it is
     // 100.05 and the point a tick later.
     ("slp_ps_fox_drmario_wide9263_nopause_r1_t7200_cold", 7200),
+    // The magnifier with a render after every tick, standard screen: the
+    // off-screen bit at tick T (ftLib_80086A8C), the count from T + 1
+    // (Fighter_8006A360) and the point of damage at T + 60. Falco off
+    // Stadium's right side (2983, 3043) and Captain Falcon off Dream
+    // Land's (3014, 3074). Each console's replay has the point a tick
+    // later, which no retail run reproduces.
+    ("slp_ps_falco_marth_frz_r1_t3200_cold", 3200),
+    ("slp_dl_sheik_captainfalcon_r1_t3300_cold", 3300),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as

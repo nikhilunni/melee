@@ -1,0 +1,38 @@
+# FALCO/02_33_48 Falco + Marth (PS).slp (ports 1 and 4, Slippi's preload and Frozen Stadium
+# codes, UCF 0.73) played back on retail with a render after every tick. Marth's forward
+# smash launches Falco off the right side at 2967; his off-screen bit is set at tick 2983
+# (window x 637, then 658), the magnifier counts from 2984 and the point of damage comes at
+# tick 3043. The port equals this. The console's recording has the point one tick
+# later (replay frame 3043, this trace's 3044): no retail run reproduces that, and one
+# display pass skipped before tick 2983 or 2984 does.
+# The port's side of slp_ps_falco_marth_frz_r1_t3200: boundary start_ps_slippi73prefrz_ns_p14_falco3_marth4_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ps_falco_marth_frz_r1_t3200_cold"
+expected = "slp_ps_falco_marth_frz_r1_t3200"
+frames = 3200
+seed = 2097880818
+boundary_seed = 1786853954
+stage = "PokemonStadium"
+stadium_preload = true
+stadium_frozen = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Marth"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
