@@ -39,7 +39,19 @@ pub fn steer(fp: &mut Fighter) {
 
 /// The stick bytes 800AC640..800AC740 pass: the knockback direction
 /// turned a quarter (ftcpu's own swap of x and y), 127 * the unit vector,
-/// fctiwz. With no knockback retail passes two uninitialised registers.
+/// fctiwz. With no knockback retail passes two registers it never set
+/// (800AC6D0 branches past both stores to 800AC744):
+/// - SetLstickY takes r30 (800AC754), which the function saved and did not
+///   write: the caller's, and ftCo_800B2790 keeps the Fighter pointer there
+///   (800B27A4: mr r30, r3). The stick's y is the low byte of the
+///   fighter's address.
+/// - SetLstickX takes r5 as it arrived: ftCo_800B2790 does not write it
+///   and ftCo_800ADC28 only for Donkey Kong, Samus, Mewtwo and Kirby
+///   (li r5, 1), so it is whatever the think's last call before the
+///   dispatch left there. Not traced.
+///
+/// Retail, `corpus_v3_fd_iceclimbers_peach4_ecad2716f_p0` ticks 950-951:
+/// Nana, whose Fighter is at 0x80C9D2A0, steers y = -96 (0xA0) and x = 0.
 fn away_from_knockback(fp: &Fighter) -> (i8, i8) {
     let kb = fp.core.physics.knockback_velocity;
     // 800AC648: fmuls, fmadds, then the inlined sqrtf when positive.
