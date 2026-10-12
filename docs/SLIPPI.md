@@ -1934,7 +1934,6 @@ five lag-frame stops stay, since the runner renders every tick):
 Of the 2529 scenario files, 2474 gate exact with the change; the other 55
 (missing or shorter traces, other work in flight) give the same result on
 the build before it.
-||||||| parent of 8fba6a24 (SLIPPI: the magnifier's damage tick: order of operations, the sleeping form's bit, the 92:63 widescreen aspect)
 
 ## The magnifier's damage tick (2026-10-11)
 
