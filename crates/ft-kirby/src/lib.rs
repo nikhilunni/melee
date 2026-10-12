@@ -4,8 +4,10 @@ pub mod attributes;
 pub mod bump_star;
 pub mod common;
 pub mod init;
+pub mod mouthful;
 pub mod special_hi;
 pub mod special_n;
+pub mod swallow;
 
 use melee_ft::fighter::{
     state::{self, callbacks},
@@ -46,6 +48,8 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     }
     place_all(&mut rows, attack_dash::rows());
     place_all(&mut rows, special_n::rows());
+    place_all(&mut rows, mouthful::rows());
+    place_all(&mut rows, swallow::rows());
     place_all(&mut rows, special_hi::rows());
     rows
 }

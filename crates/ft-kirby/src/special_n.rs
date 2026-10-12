@@ -1,13 +1,13 @@
 //! Inhale, ftkirbyspecialn.c (800F5F68..800F9090).
 //!
-//! Ported: the Inhale that catches nothing. The start rows (353 ground,
-//! 371 air) open the mouth and, on the script's flag, start the wind
-//! (efAlt 0x49A); the loop rows (354, 372) hold it for at least the
-//! attribute's frames and then while B is held; the end rows (355, 373)
-//! close the mouth. Each row has its ground/air counterpart at the same
-//! frame. The grab is armed throughout the start and loop rows
-//! (ftCommon_8007E2D0 with category 0x10); catching a fighter or an item
-//! is not ported and stops at `CharacterCallbacks::SPECIAL_GRAB`.
+//! Here: the Inhale until it catches. The start rows (353 ground, 371 air)
+//! open the mouth and, on the script's flag, start the wind (efAlt 0x49A);
+//! the loop rows (354, 372) hold it for at least the attribute's frames and
+//! then while B is held; the end rows (355, 373) close the mouth. Each row
+//! has its ground/air counterpart at the same frame. The grab is armed
+//! throughout the start and loop rows (ftCommon_8007E2D0 with category
+//! 0x10). A caught fighter continues in `mouthful.rs`
+//! (`CharacterCallbacks::SPECIAL_GRAB`); catching an item is not ported.
 use crate::{common, init::Kirby};
 use melee_ef::request::EffectRequest;
 use melee_ft::{

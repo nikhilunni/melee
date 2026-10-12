@@ -33,6 +33,11 @@ pub struct Kirby {
     /// x2222_b2, set by the Inhale's rows until a motion change that does
     /// not keep it: a cape hit does not turn Kirby round.
     pub cape_turn_blocked: bool,
+    /// Fighter +230C (u.kb.xE0) as the swallow sets it: the ability the
+    /// fighter in Kirby's mouth gives (ftCo_800BD9E0), read at the catch.
+    pub mouthful_ability: FighterKind,
+    /// The mouthful's jump (mv.co.kneebend and mv.co.jump in rows 364, 365).
+    pub mouthful_jump: crate::mouthful::MouthfulJump,
     /// fp->mv.kb.specialhi: Final Cutter's scratch.
     pub final_cutter: crate::special_hi::FinalCutter,
     /// take_dmg_cb = ftKb_Init_800EE7B8 and death2_cb = ftKb_Init_800EE74C
@@ -63,6 +68,8 @@ impl Kirby {
             bump_star_cooldown: 0,
             inhale_hold: 0,
             cape_turn_blocked: false,
+            mouthful_ability: FighterKind::Kirby,
+            mouthful_jump: Default::default(),
             final_cutter: Default::default(),
             damage_callbacks: false,
             accessory: Accessory::None,
@@ -107,6 +114,30 @@ fn draw_stone_form(state: &mut melee_ft::fighter::CharacterState, rng: &mut gekk
     state.get_mut::<Kirby>().stone_form = rng.randi(STONE_FORMS) + 1;
 }
 
+/// ftCo_800BD9E0's FTKIND_KIRBY arm: a swallowed Kirby gives the ability
+/// he has copied. With one, ftCo_800BDA50 marks him to lose it as he leaves
+/// the copy star (ftCo_ThrownKirby.c:283-289), which is not ported.
+fn swallowed_ability(state: &melee_ft::fighter::CharacterState) -> FighterKind {
+    let copied = state.get::<Kirby>().copied;
+    if copied != FighterKind::Kirby {
+        unimplemented!(
+            "ftCo_800BDA50 (ftCo_ThrownKirby.c:63-69): a Kirby with a copied ability inhaled"
+        );
+    }
+    copied
+}
+
+/// ftKb_Init_800EE74C (800EE74C), the death callback: the specials'
+/// cleanup, then ftKb_SpecialN_800F5D04(gobj, false) takes the copied
+/// ability without its star.
+fn death_callback(f: &mut Fighter) {
+    let state = f.character.get_mut::<Kirby>();
+    if state.damage_callbacks {
+        state.copied = FighterKind::Kirby;
+    }
+    crate::special_hi::damage_callback(f);
+}
+
 fn cape_turn_blocked(f: &mut Fighter) -> bool {
     f.character.get::<Kirby>().cape_turn_blocked
 }
@@ -149,6 +180,21 @@ impl CharacterCallbacks for Kirby {
     const THROW_ENTRY: Option<fn(&mut Fighter, melee_types::CommonMotionState)> = Some(throw_entry);
     /// ftCo_800C3538's x2222_b2.
     const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = cape_turn_blocked;
+    /// fn_800F6210 / fn_800F6318 and ftCo_800BD1DC: the Inhale's catch.
+    const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::mouthful::grab;
+    /// ftKb_SpecialN_800F5A38 and ftKb_SpecialS_800F6BB0, for the fighter
+    /// in his mouth.
+    const MOUTH_HOLD: Option<melee_ft::fighter::MouthHold> = Some(melee_ft::fighter::MouthHold {
+        steerable: crate::mouthful::steerable,
+        leave_floor: crate::mouthful::leave_floor,
+    });
+    const SWALLOWED_ABILITY: Option<fn(&melee_ft::fighter::CharacterState) -> FighterKind> =
+        Some(swallowed_ability);
+    /// ftKb_SpecialN_800F5BA4 / ftKb_SpecialN_800F5C34.
+    const DAMAGE_DRAW: Option<fn(&mut Fighter, bool, &mut gekko_math::HsdRng)> =
+        Some(crate::swallow::ability_loss_draw);
+    /// EatWait (359) and EatLanding (366) carry MotionState.x9_b1.
+    const KO_COUNTDOWN_ROWS: &'static [u16] = &[359, 366];
     /// ftData_SpecialN/S/Hi/Lw[Kirby] and the aerial tables.
     fn enter_special(
         f: &mut Fighter,
@@ -201,7 +247,7 @@ impl CharacterCallbacks for Kirby {
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_hi::damage_callback);
     /// ftCo_800D331C: death2_cb = ftKb_Init_800EE74C, which without a hat
     /// does the same.
-    const DEATH: Option<fn(&mut Fighter)> = Some(crate::special_hi::damage_callback);
+    const DEATH: Option<fn(&mut Fighter)> = Some(death_callback);
     /// ftCo_800C7CA0: ftKb_SpecialN_800F1F1C.
     const WALL_BOUNCE_EFFECT: Option<fn(&mut Fighter, hsd_types::Vec3)> =
         Some(crate::bump_star::spawn);
@@ -252,10 +298,17 @@ impl CharacterCallbacks for Kirby {
     fn multi_jump_attributes(&self) -> Option<&melee_ft::fighter::multi_jump::MultiJumpAttributes> {
         Some(&self.attributes.multi_jump)
     }
-    /// ftCo_800D7268 -> ftKb_SpecialN_800F1CD8: the helmeted rows while a
-    /// hat is worn.
+    /// ftCo_800D7268 -> ftKb_SpecialN_800F1CD8 -> fn_800F1CA0: the helmeted
+    /// rows under the five hats that cover Kirby's face.
     fn multi_jump_family(&self) -> usize {
-        if self.copied != FighterKind::Kirby {
+        if matches!(
+            self.copied,
+            FighterKind::Captain
+                | FighterKind::Seak
+                | FighterKind::Popo
+                | FighterKind::Nana
+                | FighterKind::Samus
+        ) {
             unimplemented!("ftKb_SpecialN_800F1CD8 (ftkirby.c:4086): the helmeted multijump rows");
         }
         0
