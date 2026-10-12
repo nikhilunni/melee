@@ -1,0 +1,31 @@
+# FOX/Fox vs Marth [YS] Game_20200115T192755.slp (public-v3.7-b) played back on retail with a display pass after every tick but one:
+# records 5873 and 5874 run in one frame (a console's lag frame).
+# The port's side of slp_ys_fox_marth_lag5874_t6000: boundary start_ys_slippi74ns_p14_fox0_marth1_4 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_ys_fox_marth_lag5874_t6000_cold"
+expected = "slp_ys_fox_marth_lag5874_t6000"
+frames = 6000
+seed = 169686724
+boundary_seed = 2529384591
+stage = "YoshisStory"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 3
+kind = "Marth"
+costume = 1
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

@@ -1,0 +1,32 @@
+# PIKACHU/Game_20190629T164554.slp (public-v3.7-b) played back on retail with a display pass after every tick but one:
+# records 4576 and 4577 run in one frame (a console's lag frame).
+# The port's side of slp_fod_sheik_pikachu_lag4577_t4700: boundary start_fod_slippi73ns_p24_sheik3_pikachu2_4_r164554 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fod_sheik_pikachu_lag4577_t4700_cold"
+expected = "slp_fod_sheik_pikachu_lag4577_t4700"
+frames = 4700
+seed = 2943066723
+game_start_seed = 1308650427
+boundary_seed = 2943066723
+stage = "FountainOfDreams"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020"
+inputs = []
+
+[[fighters]]
+slot = 1
+kind = "Sheik"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Pikachu"
+costume = 2
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.73"

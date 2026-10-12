@@ -2427,7 +2427,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 49] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 55] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2605,6 +2605,24 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 49] = [
     // one's was (HSD_ObjAlloc's free list), so the hitbox's victim list
     // (lbColl_80008688) already names it and it passes through (3039).
     ("slp_bf_falco_sheik_t3100_cold", 3100),
+    // A screen KO's cur_pos is written by the display pass
+    // (ftDrawCommon_80080E18, 0x80080E90: the inverse view of cm_804D6464
+    // times fp+0x2350). Three replays whose console held it for one tick,
+    // each recorded twice: with a pass after every tick (`_r1_`), where
+    // retail places the fighter on that tick as the port does, and with the
+    // console's lag frame (`no_display_pass_before`, `_lagN_`), where the
+    // tick keeps Fighter_procUpdate's integration and retail's positions
+    // are the replay's (docs/SLIPPI.md, "Screen KO positions").
+    // Sheik in DeadUpFall's hold on Fountain of Dreams (4577).
+    ("slp_fod_sheik_pikachu_r1_t4700_cold", 4700),
+    ("slp_fod_sheik_pikachu_lag4577_t4700_cold", 4700),
+    // Marth in DeadUpFallHitCamera on Yoshi's Story (5874).
+    ("slp_ys_fox_marth_r1_t6000_cold", 6000),
+    ("slp_ys_fox_marth_lag5874_t6000_cold", 6000),
+    // Yoshi sliding down the screen on Final Destination: x holds and y
+    // drops by the fall speed (9869).
+    ("slp_fd_falco_yoshi_r1_t10000_cold", 10000),
+    ("slp_fd_falco_yoshi_lag9869_t10000_cold", 10000),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
