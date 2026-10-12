@@ -357,7 +357,11 @@ fn eat_air_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitCho
 /// inlines: B, or the stick down past +78, swallows; A spits.
 fn swallow_or_spit(f: &mut Fighter, air: bool, assets: &FighterAssets) -> Result<bool> {
     if !holding(f) {
-        return Ok(false);
+        // `fp->victim_gobj != NULL` fails: neither. Kirby leaves these rows
+        // whenever the pair parts (CatchCut, or Fall when the victim dies).
+        unimplemented!(
+            "ftKb_EatWait_IASA (ftkirbyspecialn.c:1211-1243): a mouthful's wait with no victim"
+        );
     }
     let range = f
         .character
@@ -592,7 +596,7 @@ fn jump_squat_input(f: &mut Fighter, p: InputPhase<'_>) {
     let released = match jump.input {
         JumpInput::Buttons => !f.input.current.held.intersects(Buttons::XY),
         JumpInput::Stick => f.input.current.stick.y < p.assets.jumping.release_threshold,
-        JumpInput::CStick => f.input.current.cstick.y < p.assets.jumping.release_threshold,
+        JumpInput::CStick => unreachable!("ftCo_Jump_GetInput never names the C-stick"),
     };
     if released {
         f.character.get_mut::<Kirby>().mouthful_jump.short_hop = true;
@@ -668,17 +672,10 @@ fn capture_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if common::grounded(f, &mut p) {
         return Ok(());
     }
-    f.leave_ground();
-    let frame = f.animation.frame;
-    f.change_motion_state_with_flags(
-        AIR_CAPTURE,
-        p.assets.expect("Inhale assets"),
-        MotionEntryFlags(CAPTURE_COUNTERPART),
-        frame,
-        1.0,
-    )?;
-    ungrabbable(f);
-    Ok(())
+    // SpecialAirNCapture0 at this frame with ftKb_MF_SpecialN_Capture_Coll.
+    // Kirby would have to slide off a floor's end in the few ticks of the
+    // pull; no scene does.
+    unimplemented!("fn_800F697C (ftkirbyspecialn.c:565-571): the pull leaving the floor");
 }
 
 /// ftKb_SpecialAirNCapture_Coll (800F8D78) -> fn_800F6A5C.
@@ -704,15 +701,9 @@ fn eat_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if common::grounded(f, &mut p) {
         return Ok(());
     }
-    f.leave_ground();
-    counterpart(
-        f,
-        EAT_AIR,
-        CAPTURE_COUNTERPART,
-        p.assets.expect("Inhale assets"),
-    )?;
-    ungrabbable(f);
-    Ok(())
+    // EatAir at this frame with ftKb_MF_SpecialN_Capture_Coll and the
+    // callbacks. As the pull: no scene slides Kirby off during the gulp.
+    unimplemented!("fn_800F6AC8 (ftkirbyspecialn.c:591-598): the gulp leaving the floor");
 }
 
 /// ftKb_SpecialAirNCaptured_Coll (800F8DC8) -> fn_800F6B3C.
