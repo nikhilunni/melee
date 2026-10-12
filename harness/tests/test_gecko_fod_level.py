@@ -54,3 +54,11 @@ def test_a_block_that_is_not_the_spawn_code_is_refused():
 ])
 def test_relative_branch_displacements(word, expected):
     assert level.displacement(word) == expected
+
+
+def test_the_entry_code_alone_keeps_every_row():
+    plain = body_of(level.spawn_code(block(BODY), level_fountain=False))
+    leveled = body_of(level.spawn_code(block(BODY)))
+    # Only the two Fountain of Dreams heights differ from the level code.
+    assert [(a, b) for a, b in zip(plain, leveled) if a != b] \
+        == [(0x41A80000, level.LEVEL), (0x41D80000, level.LEVEL)]

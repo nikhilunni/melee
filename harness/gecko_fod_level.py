@@ -5,8 +5,14 @@
 Six tournament games of 2020-03-04 (docs/SLIPPI.md, "Consoles with level
 Fountain of Dreams platforms") ran a code set whose text is not public. Their
 frames fix what it did; these two codes do exactly that and nothing else, so
-retail can be recorded doing it. Both are written into MELEE_GECKO_DIR and
-never overwrite a file there.
+retail can be recorded doing it. Each is written into MELEE_GECKO_DIR unless
+a file of its name is already there; none is overwritten.
+
+`neutral-spawn-2019-entry.txt` is the same construction for the consoles
+that entered by spawn order without the level platforms (late 2019 to
+March 2020, `spawn = "neutral-2019-entry"`): `neutral-spawn-2019.txt` (the
+table with late 2019's Dream Land row, harness/gecko.py) with
+SetSpawn_AdjustEntryFrames back and no row changed.
 
 `neutral-spawn-entry-fod-level.txt` is `neutral-spawn.txt` (slippi-ssbm-asm
 External/NeutralSpawn/NeutralSpawn.asm, the C2 block at 0x8016E510) with two
@@ -88,7 +94,7 @@ def with_displacement(word: int, value: int) -> int:
     return (word & ~mask) | (value & mask)
 
 
-def spawn_code(lines: list[str]) -> list[str]:
+def spawn_code(lines: list[str], level_fountain: bool = True) -> list[str]:
     words = [int(part, 16) for line in lines for part in line.split()]
     if words[0] != 0xC216E510 or words[1] * 2 != len(words) - 2:
         sys.exit("neutral-spawn.txt must be the one C2 block at 0x8016E510")
@@ -103,8 +109,9 @@ def spawn_code(lines: list[str]) -> list[str]:
     epilogue = body[at:body.index(BLR, at)]
     assert all(displacement(word) is None for word in epilogue)
     body[at:at] = ENTRY_FRAMES
-    row = find(body, FOUNTAIN_ROWS)
-    body[row + 2] = body[row + 4] = LEVEL
+    if level_fountain:
+        row = find(body, FOUNTAIN_ROWS)
+        body[row + 2] = body[row + 4] = LEVEL
     assert len(body) % 2 == 0 and body[-1] == 0
     return [f"C216E510 {len(body) // 2:08X}",
             *(f"{body[i]:08X} {body[i + 1]:08X}" for i in range(0, len(body), 2))]
@@ -116,6 +123,10 @@ def main() -> None:
         sys.exit(f"set {gecko.DIR_ENV} to the directory holding neutral-spawn.txt")
     directory = Path(env)
     codes = {
+        "neutral-spawn-2019-entry.txt": [
+            "$NeutralSpawn (2019 Dream Land row), entry by spawn order "
+            "(constructed by harness/gecko_fod_level.py from neutral-spawn-2019.txt)",
+            *spawn_code(gecko.code_lines("neutral-spawn-2019", directory), level_fountain=False)],
         "neutral-spawn-entry-fod-level.txt": [
             "$NeutralSpawn, entry by spawn order, level Fountain of Dreams rows "
             "(constructed by harness/gecko_fod_level.py from neutral-spawn.txt)",
@@ -124,10 +135,10 @@ def main() -> None:
             "$Level Fountain of Dreams platforms (constructed by harness/gecko_fod_level.py)",
             *(line for site in LEVEL_SITES for line in (site, *LEVEL_LOAD))],
     }
-    existing = [name for name in codes if (directory / name).exists()]
-    if existing:
-        sys.exit(f"refusing to overwrite {', '.join(existing)} in {directory}")
     for name, lines in codes.items():
+        if (directory / name).exists():
+            print(f"kept {directory / name}: it exists and is not overwritten")
+            continue
         (directory / name).write_text("\n".join(lines) + "\n")
         print(f"wrote {directory / name}: {len(lines) - 1} code lines")
 
