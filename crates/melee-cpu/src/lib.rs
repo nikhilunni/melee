@@ -18,6 +18,7 @@ mod behave;
 mod captured;
 mod damage_fall;
 pub mod desc;
+mod edge_guard;
 mod facts;
 mod get_up;
 mod hold;

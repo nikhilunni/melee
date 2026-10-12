@@ -4330,7 +4330,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 608] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 609] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5312,6 +5312,11 @@ const CORPUS_V3_MATCHES: [(&str, usize); 608] = [
     // Mario's cape turns Toad's spores back (330): it_80273030 with the
     // lifetime put back (itPeachToadSpore_Logic68_Reflected, 0x802BE538).
     ("corpus_v3_fd_mario_peach4_efb86521f_p1", 452),
+    // ftCo_800B732C answers 1 and behaviour 8 runs (ftCo_800B7180): Nana lands
+    // on Randall under the ledge Fox hangs from (2820, 15.35 below him, 2.4
+    // across), jumps at him (2823, stick 19/125), drifts toward his x while
+    // rising and goes back to behaviour 1 once level (2855).
+    ("corpus_v3_ys_iceclimbers_fox4_ecad2716f_p2", 2943),
 ];
 
 #[test]

@@ -35,6 +35,7 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         B::DAMAGE_FALL => crate::damage_fall::steer(fp, scene, rng),
         B::TUMBLE => crate::tumble::steer(fp, scene),
         B::RECOVER => crate::recover::recover(fp, scene),
+        B::EDGE_GUARD => crate::edge_guard::run(fp, scene),
         behavior @ (2..=19) => {
             unimplemented!("ftCo_800B2790: behaviour {behavior}")
         }
