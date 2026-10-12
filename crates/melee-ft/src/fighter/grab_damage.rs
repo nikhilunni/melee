@@ -77,12 +77,19 @@ pub fn resolve_linked_hit(
             if fighter.combat.pending_from_captor || fighter.combat.frame_damage < LIGHT_HIT_DAMAGE
             {
                 if partner_launched {
-                    // inlineB0(captor), ftCo_Damage.c:866-874: an armoured
-                    // captor keeps the grab and follows x1828 = 3.
-                    if partner.combat.armor != 0.0 {
+                    // inlineB0(captor), ftCo_Damage.c:861-868: the captor
+                    // keeps the grab and follows x1828 = 3 when its hit is
+                    // one ftCo_8008E984 would not launch: it is still in an
+                    // earlier knockback hit's hitlag (allow_sdi, x221A_b3)
+                    // and this knockback is under that one's (x18A8) plus
+                    // PlCo +140. The port does not keep x18A8, so any captor
+                    // in such hitlag stops here. (A holder is in one only
+                    // if its grab landed as it was struck.)
+                    if partner.combat.armor != 0.0 || partner.combat.struck_hitlag {
                         unimplemented!(
-                            "ftCo_8008EC90 (ftCo_Damage.c:866-874): a light hit on a captured \
-                             member whose armoured captor is launched (x1828 = 3)"
+                            "ftCo_8008EC90 (ftCo_Damage.c:861-868): a light hit on a captured \
+                             member whose captor is struck again in a knockback hit's hitlag \
+                             (ftCo_8008E984, x1828 = 3)"
                         );
                     }
                     // ftCo_Damage.c:875-880: the captor's launch throws this
