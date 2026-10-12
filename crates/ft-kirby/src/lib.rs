@@ -71,21 +71,48 @@ const fn place_all<const N: usize>(
     }
 }
 
-/// ftKb_Init_MotionStateTable move IDs (the table's third word): the
-/// multijumps are FtMoveId_Default, the dash attack's two rows its own, then
-/// each special's rows. The copied specials' ids (FtMoveId_KbSpecialNMr and
-/// on, 0x16..0x2F) arrive with their rows.
+/// ftKb_Init_MotionStateTable move IDs (the table's third word, read from
+/// the retail DOL), by action: the multijumps are FtMoveId_Default, the dash
+/// attack's two rows its own, then each special's rows. Every copied special
+/// has an id of its own (FtMoveId_KbSpecialNMr and on, 0x16..0x2F); two rows
+/// of the copied Egg Lay (416, 417) carry the Inhale's.
 pub const SPECIAL_MOVES: [Option<melee_types::combat::StaleMove>; SPECIAL_ROW_COUNT] = {
     use melee_types::combat::StaleMove as M;
     let mut moves = [None; SPECIAL_ROW_COUNT];
     let mut i = MULTI_JUMP_ROWS;
     while i < SPECIAL_ROW_COUNT {
-        moves[i] = match i {
-            10..=11 => Some(M::Dash),
-            12..=41 | 75..=76 => Some(M::SpecialNeutral),
-            42..=43 => Some(M::SpecialSide),
-            44..=51 => Some(M::SpecialUp),
-            52..=57 => Some(M::SpecialDown),
+        moves[i] = match FIRST_ACTION as usize + i {
+            351..=352 => Some(M::Dash),
+            353..=382 | 416..=417 => Some(M::SpecialNeutral),
+            383..=384 => Some(M::SpecialSide),
+            385..=392 => Some(M::SpecialUp),
+            393..=398 => Some(M::SpecialDown),
+            399..=400 => Some(M::CopiedMario),
+            401..=406 => Some(M::CopiedLink),
+            407..=412 => Some(M::CopiedSamus),
+            413..=415 | 418..=422 => Some(M::CopiedYoshi),
+            423..=428 => Some(M::CopiedFox),
+            429..=430 => Some(M::CopiedPikachu),
+            431..=432 => Some(M::CopiedLuigi),
+            433..=434 => Some(M::CopiedCaptain),
+            435..=442 => Some(M::CopiedNess),
+            443..=448 => Some(M::CopiedKoopa),
+            449..=452 => Some(M::CopiedPeach),
+            453..=454 => Some(M::CopiedPopo),
+            455..=464 => Some(M::CopiedDonkey),
+            465..=466 => Some(M::CopiedZelda),
+            467..=474 => Some(M::CopiedSeak),
+            475..=491 => Some(M::CopiedPurin),
+            492..=499 => Some(M::CopiedMars),
+            500..=509 => Some(M::CopiedMewtwo),
+            510..=511 => Some(M::CopiedGameWatch),
+            512..=513 => Some(M::CopiedDrMario),
+            514..=519 => Some(M::CopiedCLink),
+            520..=525 => Some(M::CopiedFalco),
+            526..=527 => Some(M::CopiedPichu),
+            528..=529 => Some(M::CopiedGanon),
+            530..=537 => Some(M::CopiedEmblem),
+            538..=543 => Some(M::CopiedGkoops),
             _ => None,
         };
         i += 1;

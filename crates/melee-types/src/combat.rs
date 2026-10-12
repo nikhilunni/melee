@@ -107,6 +107,35 @@ pub enum StaleMove {
     SwordSwing3,
     SwordSwing4,
     SwordSwingDash,
+    /// FtMoveId_KbSpecialNMr..KbSpecialNGk (0x16..0x2F): Kirby's copied
+    /// neutral specials, one id per copied kind in retail's order (the two
+    /// Bowsers, the two Links and the rest each stale on their own).
+    CopiedMario,
+    CopiedFox,
+    CopiedCaptain,
+    CopiedDonkey,
+    CopiedKoopa,
+    CopiedLink,
+    CopiedSeak,
+    CopiedNess,
+    CopiedPeach,
+    CopiedPopo,
+    CopiedPikachu,
+    CopiedSamus,
+    CopiedYoshi,
+    CopiedPurin,
+    CopiedMewtwo,
+    CopiedLuigi,
+    CopiedMars,
+    CopiedZelda,
+    CopiedCLink,
+    CopiedDrMario,
+    CopiedFalco,
+    CopiedPichu,
+    CopiedGameWatch,
+    CopiedGanon,
+    CopiedEmblem,
+    CopiedGkoops,
 }
 
 /// One attack instance retained by projectiles after their owner changes motion.
