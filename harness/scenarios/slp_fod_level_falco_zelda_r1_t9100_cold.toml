@@ -1,0 +1,33 @@
+# ZELDA_SHEIK/20200304 - HNC 22 - PM 0855 - Falco vs Zelda - Fountain of Dreams played back on retail to its cur_pos stop at 8969.
+# The port's side of slp_fod_level_falco_zelda_r1_t9100: boundary start_fod_slippi74_level_wide_p13_falco0_zelda4_4_r0855 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fod_level_falco_zelda_r1_t9100_cold"
+expected = "slp_fod_level_falco_zelda_r1_t9100"
+frames = 9100
+seed = 13343418
+game_start_seed = 2289863346
+boundary_seed = 13343418
+stage = "FountainOfDreams"
+widescreen = true
+fountain_level = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020-entry-fod-level"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+costume = 0
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "Zelda"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

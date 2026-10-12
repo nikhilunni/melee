@@ -1290,10 +1290,25 @@ impl Runtime {
             Callback::Fighter { player, proc } => {
                 if proc == FighterProc::Animation {
                     use crate::scene_fighter::with_fighter;
-                    let victim = with_fighter!(&state.fighters[player], |f| f.combat.combo.victim);
-                    let expired = victim.is_some_and(|id| state.fighters.iter().any(|other| {
-                        with_fighter!(other, |f| f.spawn_number == id && f.combat.combo.grace == 0 && !matches!(&f.state_data, melee_ft::fighter::MotionData::Damage(d) if d.hitstun > 0.0))
-                    }));
+                    // ftColl_800764DC (800764DC), from Fighter_procAnim out of
+                    // hitlag (fighter.c:1686): the repeated-hit victim is
+                    // forgotten once it is out of hitstun (x221C_b6, retail
+                    // 0x80076504: lbz 0x221C; extrwi. 1, 30) with its grace
+                    // frames run out (x2098, 0x80076510). The bit, not the
+                    // damage state's timer: a tech or a landing out of
+                    // hitstun leaves a timer that no longer counts down.
+                    let (victim, runs) = with_fighter!(&state.fighters[player], |f| (
+                        f.combat.combo.victim,
+                        !f.status.disabled && !f.in_hitlag()
+                    ));
+                    let expired = runs
+                        && victim.is_some_and(|id| {
+                            state.fighters.iter().any(|other| {
+                                with_fighter!(other, |f| f.spawn_number == id
+                                    && f.combat.combo.grace == 0
+                                    && !f.status.in_hitstun)
+                            })
+                        });
                     if expired {
                         with_fighter!(&mut state.fighters[player], |f| f.combat.combo.victim =
                             None);

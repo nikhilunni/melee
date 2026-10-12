@@ -1,0 +1,30 @@
+# Falco vs Zelda on FountainOfDreams, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_fod_slippi74_level_wide_p13_falco0_zelda4_4_r0855"
+gate = "start_fod_slippi74_level_wide_p13_falco0_zelda4_4_r0855_cold"
+savestate = "harness/roms/start_fod_slippi74_level_wide_p13_falco0_zelda4_4_r0855.sav"
+frames = 600
+seed = 1
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 2289863346
+stage = "FountainOfDreams"
+widescreen = true
+fountain_level = true
+gecko = ["ucf-0.74", "neutral-spawn-entry-fod-level", "fod-level", "widescreen"]
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 2
+kind = "Zelda"
+controller = "idle"
+controller_fix = "ucf-0.74"
