@@ -55,8 +55,11 @@ differs (`..._ec3145eb3_p2_edgeguard` is the explorer's game past tick
 5198 and not at 5559).
 
 Explorer faults with no owner, each recorded on retail from a Final
-Destination boundary (every tick rendered, 120 ticks past the port's fault)
-and left local; the port stops at the fault on retail's own game:
+Destination boundary (every tick rendered, 120 ticks past the port's fault).
+When this pass ended the port stopped at each fault on retail's own game;
+all four gate exact since and are in `CORPUS_V3_MATCHES` (the no-knockback
+steer's two unset registers, the item-use test, the capture states' mv+4,
+the reflected spore). As they were found:
 
 | Scenario | Tick | The port's stop |
 |---|---|---|
