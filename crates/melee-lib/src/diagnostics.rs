@@ -3,6 +3,10 @@
 pub use crate::assets::Assets;
 pub use crate::frame::rendered_pose::RenderedPose;
 pub use crate::frame::{DisplayPass, LocalSrt, Simulation};
+pub use crate::initial_state::particles::{
+    key as particle_key, program_id as particle_program_id, FieldSink as ParticleFieldSink,
+    Scope as ParticleScope,
+};
 pub use crate::initial_state::InitialState;
 pub use crate::scene_stage::{
     descriptor as stage_descriptor, StageDescriptor, BATTLEFIELD, DREAM_LAND, FINAL_DESTINATION,

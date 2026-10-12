@@ -2734,6 +2734,17 @@ impl Simulation {
     /// The particle system in the retail particle-dump format, for
     /// `melee-sim particles-diff`.
     pub fn particle_snapshot(&self, frame: u64) -> Record {
+        let mut state = std::collections::BTreeMap::new();
+        self.write_particle_fields(&mut state);
+        Record {
+            frame,
+            phase: "particles".into(),
+            state,
+        }
+    }
+    /// Every field of the retail particle dump into `sink`: what
+    /// [`Self::particle_snapshot`] holds, without spelling a record.
+    pub fn write_particle_fields(&self, sink: &mut impl crate::diagnostics::ParticleFieldSink) {
         struct LiveBanks<'a>(&'a InitialState);
         impl crate::initial_state::particles::Banks for LiveBanks<'_> {
             fn bank(&self, id: u8) -> &hsd_particle::bank::ParticleBank {
@@ -2745,12 +2756,12 @@ impl Simulation {
             }
         }
         let state = &self.runtime.state;
-        crate::initial_state::particles::snapshot(
+        crate::initial_state::particles::write_fields(
             &state.particles,
             state.rng.seed,
-            frame,
             &LiveBanks(state),
-        )
+            sink,
+        );
     }
     /// Every fighter's local joint SRT in part order, for bone-dump oracles.
     pub fn local_poses(&self) -> Vec<Vec<LocalSrt>> {

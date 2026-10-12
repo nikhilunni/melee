@@ -66,17 +66,95 @@ impl Scalar for Option<usize> {
         }
     }
 }
+/// What a snapshot field belongs to. With the field's name and optional
+/// array component it spells the dump's key (`harness/particle_dump.py`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Scope {
+    /// A whole key such as `rng.seed`.
+    Global,
+    /// `particles.generator[i]`, in generator-list order.
+    Generator(usize),
+    /// `particles.link[l]`, one of the sixteen particle lists.
+    Link(usize),
+    /// `particles.link[l].particle[i]`, in list order.
+    Particle { link: usize, index: usize },
+    /// `particles.appsrt[i]`, in first-encounter order.
+    AppSrt(usize),
+    /// `particles.pending[i]`, the pending-generator list.
+    Pending(usize),
+}
+
+/// The dump's key of one field.
+pub fn key(scope: Scope, name: &str, component: Option<usize>) -> String {
+    let mut key = match scope {
+        Scope::Global => name.to_string(),
+        Scope::Generator(index) => format!("particles.generator[{index}].{name}"),
+        Scope::Link(link) => format!("particles.link[{link}].{name}"),
+        Scope::Particle { link, index } => {
+            format!("particles.link[{link}].particle[{index}].{name}")
+        }
+        Scope::AppSrt(index) => format!("particles.appsrt[{index}].{name}"),
+        Scope::Pending(index) => format!("particles.pending[{index}].{name}"),
+    };
+    if let Some(component) = component {
+        key.push_str(&format!("[{component}]"));
+    }
+    key
+}
+
+/// The bank descriptor whose program `program` is. Some banks hold
+/// byte-identical programs (bank 0's 116 and 424), so the shared allocation
+/// identifies it; bytes are the fallback.
+pub fn program_id(bank: &ParticleBank, program: &std::sync::Arc<[u8]>) -> Option<u32> {
+    let find = |matches: &dyn Fn(&std::sync::Arc<[u8]>) -> bool| {
+        bank.descriptors.iter().enumerate().find_map(|(index, d)| {
+            d.as_ref()
+                .filter(|d| matches(&d.program))
+                .map(|_| bank.first_descriptor_id + index as u32)
+        })
+    };
+    find(&|p| std::sync::Arc::ptr_eq(p, program))
+        .or_else(|| find(&|p| p.as_ref() == program.as_ref()))
+}
+
+/// Where a snapshot's fields go: a record's key map, or a digest that never
+/// spells the keys (`melee-sim`'s particle gate).
+pub trait FieldSink {
+    fn put(&mut self, scope: Scope, name: &str, component: Option<usize>, value: Value);
+    /// [`program_id`]; a sink that sees every tick may remember the answer.
+    fn program_id(
+        &mut self,
+        _bank_id: u8,
+        bank: &ParticleBank,
+        program: &std::sync::Arc<[u8]>,
+    ) -> Option<u32> {
+        program_id(bank, program)
+    }
+    /// Whether the sink takes the AppSRT display caches (`particles.appsrt[i]`).
+    fn wants_appsrts(&self) -> bool {
+        true
+    }
+}
+impl FieldSink for BTreeMap<String, Value> {
+    fn put(&mut self, scope: Scope, name: &str, component: Option<usize>, value: Value) {
+        self.insert(key(scope, name, component), value);
+    }
+}
+
 /// The same field map reads and writes. Round-trip equality detects unknown
 /// capture fields; replay compares independently updated state with the oracle.
-struct Fields<'a> {
-    prefix: String,
+struct Fields<'a, S: FieldSink> {
+    scope: Scope,
     source: Option<&'a Record>,
-    output: &'a mut BTreeMap<String, Value>,
+    output: &'a mut S,
 }
-impl Fields<'_> {
+impl<S: FieldSink> Fields<'_, S> {
     fn scalar<T: Scalar>(&mut self, name: &str, value: &mut T) {
-        let key = format!("{}.{name}", self.prefix);
+        self.component(name, None, value);
+    }
+    fn component<T: Scalar>(&mut self, name: &str, component: Option<usize>, value: &mut T) {
         if let Some(source) = self.source {
+            let key = key(self.scope, name, component);
             *value = T::decode(
                 source
                     .state
@@ -84,48 +162,40 @@ impl Fields<'_> {
                     .unwrap_or_else(|| panic!("missing {key}")),
             );
         }
-        self.output.insert(key, value.encode());
+        self.output.put(self.scope, name, component, value.encode());
     }
     fn array<T: Scalar, const N: usize>(&mut self, name: &str, values: &mut [T; N]) {
         for (index, value) in values.iter_mut().enumerate() {
-            self.scalar(&format!("{name}[{index}]"), value);
+            self.component(name, Some(index), value);
         }
     }
-    fn program(&mut self, bank: &ParticleBank, program: &std::sync::Arc<[u8]>) {
-        // The dump names the descriptor whose program the pointer is. Some
-        // banks hold byte-identical programs (bank 0's 116 and 424), so the
-        // shared allocation identifies it; bytes are the fallback.
-        let find = |matches: &dyn Fn(&std::sync::Arc<[u8]>) -> bool| {
-            bank.descriptors.iter().enumerate().find_map(|(index, d)| {
-                d.as_ref()
-                    .filter(|d| matches(&d.program))
-                    .map(|_| bank.first_descriptor_id + index as u32)
-            })
-        };
-        let id = find(&|p| std::sync::Arc::ptr_eq(p, program))
-            .or_else(|| find(&|p| p.as_ref() == program.as_ref()));
+    fn program(&mut self, bank_id: u8, bank: &ParticleBank, program: &std::sync::Arc<[u8]>) {
+        // The dump names the descriptor whose program the pointer is.
+        let id = self.output.program_id(bank_id, bank, program);
         let resolved = u8::from(id.is_some());
         let index = id.map(|n| n as usize);
         // These are derived from the actual program, never copied from expected.
         self.output
-            .insert(format!("{}.program_kind", self.prefix), index.encode());
-        self.output.insert(
-            format!("{}.program_resolved", self.prefix),
-            resolved.encode(),
-        );
+            .put(self.scope, "program_kind", None, index.encode());
+        self.output
+            .put(self.scope, "program_resolved", None, resolved.encode());
         if let Some(source) = self.source {
             assert_eq!(
-                source.state[&format!("{}.program_kind", self.prefix)],
+                source.state[&key(self.scope, "program_kind", None)],
                 index.encode()
             );
             assert_eq!(
-                source.state[&format!("{}.program_resolved", self.prefix)],
+                source.state[&key(self.scope, "program_resolved", None)],
                 resolved.encode()
             );
         }
     }
 }
-fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl Banks) {
+fn generator_fields<S: FieldSink>(
+    value: &mut Generator,
+    fields: &mut Fields<'_, S>,
+    banks: &impl Banks,
+) {
     let bank = banks.bank(value.bank);
     fields.scalar("kind", &mut value.descriptor.kind);
     fields.scalar("random", &mut value.emission_rate);
@@ -146,7 +216,7 @@ fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl
     fields.scalar("angle", &mut value.descriptor.angle);
     fields.scalar("child_count", &mut value.children);
     fields.scalar("appsrt_index", &mut value.appsrt_id);
-    fields.program(bank, &value.descriptor.program);
+    fields.program(value.bank, bank, &value.descriptor.program);
     match &mut value.shape {
         EmissionShape::Sphere {
             speed,
@@ -203,21 +273,33 @@ fn generator_fields(value: &mut Generator, fields: &mut Fields<'_>, banks: &impl
             fields.scalar("aux.flags", &mut flags);
             assert_eq!(flags, expected, "rectangle surface flags");
         }
-        EmissionShape::Line { end } => fields.array("aux.end", end),
+        EmissionShape::Line { end } => {
+            for (name, value) in ["aux.line_x", "aux.line_y", "aux.line_z"]
+                .into_iter()
+                .zip(end.iter_mut())
+            {
+                fields.scalar(name, value);
+            }
+        }
         EmissionShape::Cone {
             mode,
             minimum_angle,
             maximum_angle,
             height,
         } => {
-            fields.scalar("aux.mode", mode);
+            // The dump holds no mode: it is the shape number in `type`.
+            let _ = mode;
             fields.scalar("aux.minimum_angle", minimum_angle);
             fields.scalar("aux.maximum_angle", maximum_angle);
             fields.scalar("aux.height", height);
         }
     }
 }
-fn particle_fields(value: &mut Particle, fields: &mut Fields<'_>, banks: &impl Banks) {
+fn particle_fields<S: FieldSink>(
+    value: &mut Particle,
+    fields: &mut Fields<'_, S>,
+    banks: &impl Banks,
+) {
     let bank = banks.bank(value.bank);
     fields.scalar("kind", &mut value.kind);
     fields.scalar("bank", &mut value.bank);
@@ -270,7 +352,7 @@ fn particle_fields(value: &mut Particle, fields: &mut Fields<'_>, banks: &impl B
     fields.scalar("trail", &mut value.trail);
     fields.scalar("generator_index", &mut value.generator_id);
     fields.scalar("appsrt_index", &mut value.appsrt_id);
-    fields.program(bank, &value.program);
+    fields.program(value.bank, bank, &value.program);
 }
 
 pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
@@ -278,6 +360,7 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
     let mut generators = Vec::new();
     for index in 0..uint(record, "particles.generator_count") {
         let prefix = format!("particles.generator[{index}]");
+        let scope = Scope::Generator(index as usize);
         let id = uint(record, &format!("{prefix}.program_kind")) as u32;
         let bank_id = uint(record, &format!("{prefix}.bank")) as u8;
         let bank = banks.bank(bank_id);
@@ -296,7 +379,7 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
         generator_fields(
             &mut generator,
             &mut Fields {
-                prefix,
+                scope,
                 source: Some(record),
                 output: &mut output,
             },
@@ -324,6 +407,10 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
         let prefix = format!("particles.link[{link}]");
         (0..uint(record, &format!("{prefix}.count")))
             .map(|index| {
+                let scope = Scope::Particle {
+                    link,
+                    index: index as usize,
+                };
                 let prefix = format!("{prefix}.particle[{index}]");
                 let id = uint(record, &format!("{prefix}.program_kind")) as u32;
                 let bank_id = uint(record, &format!("{prefix}.bank")) as u8;
@@ -333,7 +420,7 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
                 particle_fields(
                     &mut particle,
                     &mut Fields {
-                        prefix,
+                        scope,
                         source: Some(record),
                         output: &mut output,
                     },
@@ -425,11 +512,11 @@ fn restore_appsrts(
         .collect()
 }
 
-fn appsrt_fields(
+fn appsrt_fields<S: FieldSink>(
     value: &hsd_particle::appsrt::ApplicationTransform,
     mut count: usize,
     mut generator_index: Option<usize>,
-    fields: &mut Fields<'_>,
+    fields: &mut Fields<'_, S>,
 ) {
     let mut value = value.clone();
     let mut translation = [
@@ -474,6 +561,21 @@ fn appsrt_fields(
 
 pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Banks) -> Record {
     let mut output = BTreeMap::new();
+    write_fields(system, seed, bank, &mut output);
+    Record {
+        frame,
+        phase: "particles".into(),
+        state: output,
+    }
+}
+
+/// Every field of the retail particle dump, from the port's particle system.
+pub fn write_fields(
+    system: &ParticleSystem,
+    seed: u32,
+    bank: &impl Banks,
+    output: &mut impl FieldSink,
+) {
     // Dump identities are first-encounter order, not allocator/generator IDs.
     let mut transforms = Vec::new();
     for (id, transform) in system
@@ -508,7 +610,12 @@ pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Bank
                 .unwrap()
         })
     };
-    for (index, (id, transform, count)) in transforms.iter().enumerate() {
+    let appsrts = if output.wants_appsrts() {
+        transforms.as_slice()
+    } else {
+        &[]
+    };
+    for (index, (id, transform, count)) in appsrts.iter().enumerate() {
         // hsd_8039F05C / eflib_create_generator_add_appsrt set the owner;
         // psRemoveGeneratorSRT clears it when the allocating generator dies.
         let owner = system.generators.iter().position(|generator| {
@@ -521,66 +628,70 @@ pub fn snapshot(system: &ParticleSystem, seed: u32, frame: u64, bank: &impl Bank
             *count,
             owner,
             &mut Fields {
-                prefix: format!("particles.appsrt[{index}]"),
+                scope: Scope::AppSrt(index),
                 source: None,
-                output: &mut output,
+                output,
             },
         );
     }
-    output.insert("rng.seed".into(), seed.encode());
-    output.insert(
-        "particles.generator_count".into(),
-        system.generators.len().encode(),
-    );
-    output.insert(
-        "particles.family_id_counter".into(),
-        system.family_counter.encode(),
-    );
-    output.insert(
-        "particles.pending_count".into(),
-        system.pending_generators.len().encode(),
-    );
+    let generator_index = |id: usize| system.generators.iter().position(|g| g.id == id);
+    for (name, value) in [
+        ("rng.seed", seed.encode()),
+        (
+            "particles.generator_count",
+            system.generators.len().encode(),
+        ),
+        (
+            "particles.family_id_counter",
+            system.family_counter.encode(),
+        ),
+        (
+            "particles.pending_count",
+            system.pending_generators.len().encode(),
+        ),
+    ] {
+        output.put(Scope::Global, name, None, value);
+    }
+    for (index, pending) in system.pending_generators.iter().enumerate() {
+        // hsd_804D78F4: an entry whose generator died holds a null.
+        output.put(
+            Scope::Pending(index),
+            "generator_index",
+            None,
+            pending.and_then(generator_index).encode(),
+        );
+    }
     for (index, generator) in system.generators.iter().enumerate() {
         let mut generator = generator.clone();
         generator.appsrt_id = normalized(generator.appsrt_id);
         generator_fields(
             &mut generator,
             &mut Fields {
-                prefix: format!("particles.generator[{index}]"),
+                scope: Scope::Generator(index),
                 source: None,
-                output: &mut output,
+                output,
             },
             bank,
         );
     }
     for (link, particles) in system.particles.iter().enumerate() {
-        let prefix = format!("particles.link[{link}]");
-        output.insert(format!("{prefix}.count"), particles.len().encode());
+        output.put(Scope::Link(link), "count", None, particles.len().encode());
         for (index, particle) in particles.iter().enumerate() {
             let mut particle = particle.clone();
             particle.appsrt_id = normalized(particle.appsrt_id);
-            particle.generator_id = particle.generator_id.map(|id| {
-                system
-                    .generators
-                    .iter()
-                    .position(|g| g.id == id)
-                    .expect("live generator association")
-            });
+            particle.generator_id = particle
+                .generator_id
+                .map(|id| generator_index(id).expect("live generator association"));
             particle_fields(
                 &mut particle,
                 &mut Fields {
-                    prefix: format!("{prefix}.particle[{index}]"),
+                    scope: Scope::Particle { link, index },
                     source: None,
-                    output: &mut output,
+                    output,
                 },
                 bank,
             );
         }
-    }
-    Record {
-        frame,
-        phase: "particles".into(),
-        state: output,
     }
 }
 
