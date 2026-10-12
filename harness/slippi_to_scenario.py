@@ -24,10 +24,14 @@ game_start_seed> --name <its own>`: those stages keep what they drew at
 creation (the background's accelerations, the platforms' first waits, the
 base form's first duration), which `boundary_seed` cannot change afterwards.
 Dream Land keeps the first fly-by's delay (3000 to 4000 ticks), so a bridge
-past tick 3000 there needs the replay's boundary too.
+past tick 3000 there needs the replay's boundary too, and Battlefield the
+first background delay (2400 to 3600 ticks), so one past tick 2400.
 `--foreign-creation` accepts another boundary there; retail then plays the
 replay's pads but leaves its random stream at the stage's first draw (on
-Stadium, at the first transformation; on Dream Land, at the first fly-by).
+Stadium, at the first transformation; on Dream Land, at the first fly-by; on
+Battlefield, at the first background change). Yoshi's Story takes any
+boundary: its creation draw is overwritten (0x801E32B8, then 0x801E3304
+sets the Shy Guy timer to 120).
 
 Two scenarios are written:
 
@@ -121,6 +125,11 @@ STADIUM_NEVER_TRANSFORMS = ("stadium_frozen", "frozen_stages")
 #: 3000..4000 ticks). When it runs out grOldPupupu_80210D10 draws the fly-by
 #: (four values) on another tick than the console's; nothing shows before.
 DREAM_LAND_FIRST_FLY_BY = 3000
+#: Battlefield's is the first background delay (grBattle_BG_Callback0,
+#: 0x8021A344: 2400..3600 ticks). When it runs out the background change
+#: draws (lr 0x8021A508) on another tick than the console's: record 3633 of
+#: `DOC/Doc vs Fox [BF]` from a boundary of another seed.
+BATTLEFIELD_FIRST_BACKGROUND = 2400
 
 
 def keeps_creation_draws(header: dict, ticks: int | None = None) -> bool:
@@ -130,6 +139,8 @@ def keeps_creation_draws(header: dict, ticks: int | None = None) -> bool:
         return False
     if header["stage"] == "DreamLand":
         return ticks is None or ticks > DREAM_LAND_FIRST_FLY_BY
+    if header["stage"] == "Battlefield":
+        return ticks is None or ticks > BATTLEFIELD_FIRST_BACKGROUND
     return header["stage"] in CREATION_DRAW_STAGES
 
 

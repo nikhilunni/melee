@@ -213,6 +213,29 @@ def test_dream_land_takes_any_boundary_until_its_first_fly_by_can_draw(scenarios
     assert not (scenarios / "slp_long.toml").exists() and not (scenarios / "slp_whole.toml").exists()
 
 
+def test_battlefield_takes_any_boundary_until_its_first_background_change_can_draw(scenarios):
+    # grBattle_BG_Callback0 (0x8021A344) draws the first delay at creation: 2400..3600 ticks.
+    write_boundary(scenarios, "start_bf", "Battlefield", ["ucf-0.8"])
+    inputs = scenarios / "inputs.jsonl"
+    write_inputs(inputs, "Battlefield", game_start_seed=41, ticks=9000)
+    args = [str(inputs), "--boundary", "start_bf", "--name"]
+    s2s.main([*args, "slp_short", "--ticks", "2400"])
+    assert "game_start_seed" not in tomllib.loads((scenarios / "slp_short.toml").read_text())
+    with pytest.raises(SystemExit, match="--game-start-seed 41"):
+        s2s.main([*args, "slp_long", "--ticks", "2401"])
+    with pytest.raises(SystemExit, match="--game-start-seed 41"):
+        s2s.main([*args, "slp_whole"])
+    assert not (scenarios / "slp_long.toml").exists() and not (scenarios / "slp_whole.toml").exists()
+
+
+def test_yoshis_story_takes_any_boundary_for_a_whole_replay(scenarios):
+    # Its creation draw is overwritten (the Shy Guy timer, 0x801E3304).
+    write_boundary(scenarios, "start_ys", "YoshisStory", ["ucf-0.8"])
+    write_inputs(scenarios / "inputs.jsonl", "YoshisStory", game_start_seed=41, ticks=9000)
+    s2s.main([str(scenarios / "inputs.jsonl"), "--name", "slp", "--boundary", "start_ys"])
+    assert "game_start_seed" not in tomllib.loads((scenarios / "slp.toml").read_text())
+
+
 def test_other_stages_take_any_boundary_of_the_setup(scenarios):
     write_boundary(scenarios, "start_bf", "Battlefield", ["ucf-0.8"])
     write_inputs(scenarios / "inputs.jsonl", "Battlefield", game_start_seed=41)
