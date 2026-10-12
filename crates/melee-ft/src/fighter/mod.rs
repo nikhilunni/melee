@@ -1145,7 +1145,7 @@ pub struct FighterCore {
     /// Synchronous effects a proc spawned after creating an item it
     /// requested (ftMr_SpecialN_ItemFireSpawn: the fireball, then its
     /// efSync flash): the scene dispatches them once those requests ran.
-    pub effects_after_items: melee_types::fixed::FixedVec<melee_ef::request::EffectRequest, 4>,
+    pub effects_after_items: melee_types::fixed::FixedVec<melee_ef::request::EffectRequest, 8>,
     pub capabilities: Capabilities,
     pub cpu: CpuState,
     pub status: Status,

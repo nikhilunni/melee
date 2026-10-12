@@ -752,9 +752,15 @@ impl Fighter {
                 .push(melee_it::ItemRequest::Destroy { item: held.item });
             self.core.release_held_item(held.item, assets);
         }
-        // ftCommon_8007DB24: x2219_b0 = 0, then efLib_DestroyAll.
+        // ftCommon_8007DB24 (ft_0D31.c:132): x2219_b0 = 0, then
+        // efLib_DestroyAll, after the Item_8026A8EC of every article and
+        // held item above (ft_0D31.c:99-125): the fighter's models are
+        // freed after those items and their models, so the teardown follows
+        // this proc's item requests.
         self.core.effect_state.destroy_on_state_change = false;
-        self.core.effects.push(EffectRequest::DestroyOwned);
+        self.core
+            .effects_after_items
+            .push(EffectRequest::DestroyOwned);
         // x6C / x70 keep the fatal motion id for the stale-move stats.
     }
     /// ftCo_800DD100's other half: the partner of a fighter that died while
