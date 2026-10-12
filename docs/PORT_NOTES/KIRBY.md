@@ -527,3 +527,63 @@ fails closed.
   hats grafted into Kirby's parts (Donkey Kong, Jigglypuff, Mewtwo, Falco,
   Mr. Game & Watch; ftkirby.c:3578-3592), `ftKb_SpecialN_800F5C34`'s arm for a
   copied special's row (ftkirbyspecialn.c:251-260), item pickup hand poses.
+
+## Where this stands and how to resume (2026-10-12)
+
+Exact against retail (125 scenes in `KIRBY_WITNESSES`, boundaries
+`start_fd_kirby_fox4`, `start_ys_kirby_fox4`, `start_fd_kirby_captainfalcon4`
+warm and cold): movement and the five midair jumps (bare and helmeted), the
+common attacks with the dash attack's own rows and the rapid jab's fists, all
+four throws (the three airborne ones with their mash-outs and Kirbycides),
+hit reactions, death and revival; Inhale (whiff, catch, mouthful walk / jump /
+turn, spit as a star, swallow, the copied kind as state), Final Cutter and its
+beam, Hammer, Stone (with the damage shell and the slide on Yoshi's Story);
+losing an ability by taunt, hit or death and its star.
+
+Slippi (`public-v3.7-b`): four of the five Kirby games match every frame
+(7001, 13271, 9109, 13809). `GAMEANDWATCH/18_09_37 Kirby + Mr. Game _ Watch
+(FoD)` stops at tick 5100 of 15399 when Kirby swallows Mr. Game & Watch
+(ftkirby.c:3578-3592).
+
+Remaining work, in the order to take it:
+
+1. **The five grafted hats** (Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game
+   & Watch; `LOAD_HAT`, ftkirby.c:3578-3592). Analysis so far: no bone table
+   of PlKb.dat names any of the thirteen empty parts, `LOAD_HAT` creates no
+   GObj and draws nothing, and hat dynamics move hat joints only, so these
+   hats look like drawn-only state. Unwitnessed: the one-line change is in
+   `target/kirby/wip_stage3.patch` (scratch, not in git: drop
+   `hat::require_supported` from `ability::take`); boundaries
+   `start_fd_kirby_{falco,jigglypuff,donkeykong,mewtwo,gameandwatch}4` are
+   recorded in the main checkout but not registered. This unblocks the fifth
+   replay.
+2. **The copied specials**, one kind at a time (`ftKb_Init_803C9DD0` /
+   `803C9E54`, rows 399..543, `ftkirbyspecial<kind>.c`): Fox and Falco
+   (Blaster, items `Kirby_FoxLaser` / `FalcoLaser` / `FoxBlaster` /
+   `FalcoBlaster`) first to set the pattern of sharing with the original's
+   family and item crates, then Marth, Sheik, Captain Falcon, Peach,
+   Jigglypuff, Samus, then the rest. Each row's stale-move id exists already
+   (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (charge flashes) and
+   `ftKb_SpecialN_800F5C34`'s arm for a copied special's row
+   (ftkirbyspecialn.c:251-260) come with them.
+3. **Inhaling items** (rows 357, 368, 370, 375, 379, 381; `fn_800F6178`,
+   `ftKb_SpecialN_800F5DE8`) and **item pickup hand poses**
+   (`ftKb_Init_OnItemPickup`).
+4. **Branches that fail closed for want of a witness** (each `unimplemented!`
+   names its C line): the aerial Final Cutter rows landing
+   (ftkirbyspecialhi.c:447-453, 526-536); the beam on a slope, landing from
+   the air, clanked, absorbed, shield-bounced (itkirbycutterbeam.c:93-97,
+   128-133, 162, 167, 205-243) and beside a wall at rest (:138-143); an
+   airborne throw landing before its flag (`fn_800DD5EC`, ftCo_Throw.c:207-223)
+   and a throwing pair losing its floor (`fn_800DD684`, :225-234); the victim
+   side's rarer partings (ftCo_CaptureCut.c:29-30, 115-122, 137-189;
+   ftCo_CaptureWaitKirby.c:56-62; ftCo_Throw.c:534-538; ftCo_ThrownKirby.c:
+   63-69, 76-83, 340-343); the mouthful sliding off a floor's end
+   (ftkirbyspecialn.c:565-571, 591-598); Stone's steeper slides
+   (ftkirbyspeciallw.c:177-188, 273-285, 308-313, 338-352) and a phantom hit
+   on the shell (ftcoll.c:3666-3676); the ability star against a wall or
+   ceiling (itgroundcoll.c:381-382). The explorer from the three Kirby
+   boundaries (not yet run) and `melee-sim search` are the way to reach them.
+5. **No witness yet**: the wall-bounce star (`WALL_BOUNCE_EFFECT`), the
+   bump-star cooldown in a state without a collision callback, the grounded
+   Inhale rows leaving a floor, the spat star's hitbox on a third fighter.
