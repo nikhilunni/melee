@@ -417,8 +417,9 @@ four stocks, eight minutes, **UCF on for both ports**, no Frame Start.
   2020-03-04). `NeutralTable::V2019EntryByOrder` (`spawn =
   "neutral-2019-entry"`); the runner chooses it when the first leader is
   already in EntryStart on the first frame, which no other rule produces.
-  No retail witness: recording one needs that build's code assembled from
-  the GPL source; the whole 9638-frame replay matching is the check.
+  Retail runs the restored entry code in `slp_fod_level_fox_jigglypuff_r1_t13500`
+  ("Consoles with level Fountain of Dreams platforms" below): the six words
+  put back into the 2020 block by `harness/gecko_fod_level.py`.
 - *Fighter mapping.* Each Slippi port maps to its fighter in play by slot
   and kind; Nana compares as `pN.follower`.
 
@@ -1153,63 +1154,103 @@ three Stadium games on `input_seed` further in than before (2470, 3709,
 does not record (above); nothing here separates a skipped pass from a
 difference in the code those consoles ran.
 
-## Consoles with level Fountain of Dreams platforms (2026-10-03, not ported)
+## Consoles with level Fountain of Dreams platforms (2026-10-11)
 
 Six second-corpus games, all Fountain of Dreams at one tournament day (HNC,
-2020-03-04, entry by spawn order), stop at tick 0 on `p0.cur_anim_frame`
-(EntryStart frame 0 recorded, Entry -1 in the port). That field is only the
-first one compared: no spawn rule fits their first frame, so the runner fell
-back to retail's. Frame zero shows both leaders at y = 24.0 (the first, one
-tick into EntryStart, at 24.04; x = -41.25 and 41.25), where every other
-Fountain of Dreams game in both corpora, 35 of them, including the two
-others with entry by order (`CPTFALCON/Game_19490902T135513.slp`,
-`DOC/Game_20191106T211939.slp`) and the same series' earlier days, shows the
-NeutralSpawn row (21.0 and 27.0).
+2020-03-04, stations 4, 12, 13, 18, 21 and 22), stopped at tick 0 on
+`p0.cur_anim_frame` (EntryStart frame 0 recorded, Entry -1 in the port).
+That field was only the first one compared: no spawn rule fitted their first
+frame, so the runner fell back to retail's.
 
-The spawn rule is not at fault. NeutralSpawn's Fountain of Dreams row is
-(-41.25, 21), (41.25, 27) at every commit of the file (b5f06ae through
-1e9eef5); those are the heights retail creates the side platforms at
-(`yakumono_param` +0x0 = 20 and +0x8 = 28, the arguments of
-grIzumi_801CCBDC at 0x801CBE64's two calls). These consoles created both
-platforms level, and their spawn rows followed: a fighter standing on the
-right platform is at y = 19.125 at tick 77 where an ordinary game has
-22.125, and the platforms move afterwards (71 distinct heights in one game),
-so nothing is frozen.
+**What the frames require.** Every game of that day, on every stage (25 in
+the corpus), has the first player in EntryStart on the first frame: entry by
+spawn order (above). Its Fountain of Dreams games differ from all 35 others
+in both corpora in two more things, and in nothing else:
 
-Measured with a temporary experiment (not committed): both platforms created
-at height 24.0 and both rows at y = 24.
+| | Ordinary game | 2020-03-04 |
+|---|---|---|
+| Leaders on the first frame | (-41.25, 21.0), (41.25, 27.0): NeutralSpawn's row | (-41.25, 24.0), (41.25, 24.0) |
+| Where each lands on its side platform | y = 16.125 and 22.125 | y = 19.125 both |
 
-| Replay | Matched |
+A landing height is 0.75 x the platform's height + 1.125 (the map scale and
+the collision joint's parent), so the platforms were created at 24.0 and
+24.0 where retail passes 20.0 and 28.0 (`yakumono_param` +0x0 and +0x8, the
+`lfs f1` at 0x801CC02C and 0x801CC084 before grIzumi_801CBE64's two calls of
+grIzumi_801CCBDC, which stores the argument as height and target, gp+D0 and
+gp+D4). Each spawn row is 4.875 above its platform in both columns. The
+platforms then move as retail's do: five whole games match with nothing
+else of the stage changed.
+
+**The code is not public.** No text was found for it (2026-10-03 and again
+2026-10-11): every `Output/Console/*.bin` of slippi-ssbm-asm at 4dc7447^
+(NeutralSpawn's row is (21, 27) at every commit of the file and in
+UnclePunch's Training-Mode copy; the External directory today names no
+Fountain code but "Disable FoD During Doubles"); Slippi
+Nintendont's history for a Gecko line on 0x801CBB00..0x801CD400; 20XX TE's
+source; Altimor's 1.03 (`qol/spawns.cpp` has (21, 27), `stages/fod.cpp`
+only the reflection); Slippi's "Lagless FoD" (0x801CBB90, 0x801CC8AC,
+0x801CBE9C, 0x801CBEF0, 0x801CBF54, 0x80390838, 0x801CD250, 0x801CCDCC:
+reflection, particles and the pillar's x scale, neither height); and a
+GitHub code search for a C2 or 04 line at 0x801CC02C, 0x801CC030,
+0x801CC084, 0x801CC088 or 0x801CCBDC. Those consoles loaded their own
+`.gct`, as they did Frozen Stages and Widescreen; this one changed between
+2020-02-19 and 2020-03-04. Whether it was a Gecko code or a changed
+`GrIz.dat` cannot be told from a replay.
+
+**The port.** `SlippiCodes::fountain_level` makes both creation heights 24.0
+(`fountain_creation_heights`, at the two argument loads), and
+`NeutralTable::LevelFountainEntryByOrder` (`spawn =
+"neutral-2020-entry-fod-level"`) is the 2020 table with entry by spawn order
+and Fountain of Dreams' first two singles rows at y = 24. Rows 2 and 3 and
+the teams rows were never shown and are not ported (`neutral_spawn` returns
+`None`: the setup fails instead of guessing).
+
+**Which replays ran it.** The first frame says so, as it says the spawn
+rule: `spawn_rule` tries the level table last, and it fits only when both
+leaders stand on the y = 24 rows of Fountain of Dreams with the first
+already in EntryStart. No game that another rule fits can change. The report
+prints a `fountain fod-level (...)` line with the reason; `--retail-inputs`
+writes `fountain_level` in its header on this stage, and
+`slippi_to_scenario.py` refuses a boundary whose flag differs.
+
+**Retail witness, with constructed codes.** `harness/gecko_fod_level.py`
+writes two codes into `MELEE_GECKO_DIR` that do what the frames require and
+nothing else (a scenario lists them in `gecko` and says `fountain_level =
+true`):
+
+| Code | Text | Why this form |
+|---|---|---|
+| `fod-level` | `C21CC02C` and `C21CC084`, three lines each: `bl .+8`, `.float 24.0`, `mflr r6`, `lfs f1, 0(r6)` | the instruction replaced is the load of the creation height itself (`lfs f1, 0x0(r6)` / `lfs f1, 0x8(r6)`); r6 is dead after it and the caller's own `bl` follows, with its lr saved in its frame |
+| `neutral-spawn-entry-fod-level` | `neutral-spawn` (the 2020 C2 block at 0x8016E510) with `SetSpawn_AdjustEntryFrames` back after the facing store (`mr r3, r31`; `mulli r4, r30, 5`; `branchl r12, 0x80035FDC`, the lines the source comments out since 4dc7447; ten relative branches across them moved 24 bytes) and the two singles rows at y = 24 | the consoles' entry timing and rows |
+
+| Scenario | Retail |
 |---|---|
-| `JIGGLYPUFF/20200304 - HNC 12 - PM 0728 - Fox (Green) vs Jigglypuff (Yellow) - Fountain of Dreams.slp` | 13511 / 13511 |
-| `GANONDORF/20200304 - HNC 4 - PM 0900 - Ganondorf (Default) vs Marth (Default) - Fountain of Dreams.slp` | 15081 / 15081 |
-| `YLINK/20200304 - HNC 21 - ...` | 4142 / 10312, then `p0.percent` |
-| `ZELDA_SHEIK/20200304 - HNC 22 - ...` | 2258 / 11472, then `p1.percent` |
-| `FALCO/20200304 - HNC 13 - ...` | 1356 / 7607, then `p0.percent`, one point apart |
-| `PIKACHU/20200304 - HNC 18 - ...` | 1331 / 8616, then `p0.percent`, one point apart |
+| `start_fod_slippi74_level_p12_fox3_jigglypuff4_4_r0728` (boundary; created from the replay's Game Start seed 1209004498, which reaches the header's boundary seed 1675093088) | Fox leaves Entry on the first tick and Jigglypuff five ticks later; both stand at y = 24 and land on platforms at 19.125 (tick 68). The cold twin gates exact over 600 ticks; without `fountain_level` it leaves retail at tick 68 (Fox falls through where the platform is), and with any other spawn rule at tick 0 |
+| `slp_fod_level_fox_jigglypuff_r1_t13500` (`SLIPPI_REPLAY_WITNESSES`) | `JIGGLYPUFF/20200304 - HNC 12 - PM 0728 - Fox (Green) vs Jigglypuff (Yellow) - Fountain of Dreams.slp` played back for the whole game (13500 ticks, a display pass after every tick): the port equals retail on every tick, seed included, and the port's own run of the replay matches all 13511 recorded frames, so retail under these codes plays the console's game, seven KOs long |
 
-Two whole games match, so the code's effect is exactly that. Its text is
-unknown: no Slippi console set of the time hooks grizumi.c (every
-`Output/Console/*.bin` at 4dc7447^ decoded; `20xxNeutralSpawns.bin` hooks
-0x80263058 and 0x801C0A48 only) and no commit of slippi-ssbm-asm carries a
-y = 24 row. Searched again with the Widescreen code (2026-10-03), with no
-result: every blob of Slippi Nintendont's history for a Gecko line (text or
-binary, 04 or C2) on grizumi.c's range 0x801CBB00..0x801CD400 (only
-Recording's SendFountainInfo hook at 0x801CC998); 20XX TE's source
-(`neutral_spawn_points.mgc` remaps players to the stage's own markers and
-has no Fountain of Dreams write; `frozen_mode.mgc` has none either); and
-Slippi's "Lagless FoD" [Achilles, Myougi, Dan Salvato] (0x801CBB90,
-0x801CC8AC, 0x801CBE9C, 0x801CBEF0, 0x801CBF54, 0x80390838, 0x801CD250,
-0x801CCDCC), which removes the reflection and particles and writes neither
-platform height (0x801CC8AC zeroes a joint's scale). The four games that
-then stopped on `percent` were measured on the standard screen; these
-consoles may have run the Widescreen code as well, which the tick-0 stop
-hides. Like the consoles without Shy Guys, it is a tournament code the
-recording does not name. Porting it needs the code text for a retail
-witness, a flag beside `stadium_frozen` in `SlippiCodes` (the two creation
-heights), a NeutralSpawn table variant with the level row, and frame zero
-to choose it (both leaders at y = 24 on Fountain of Dreams, which no other
-rule produces).
+That is evidence for the behaviour, not for the console's code text: a code
+that differed in something no fighter field or seed shows (the pillar's
+model, say) would pass the same checks.
+
+`slp_fod_level_fox_jigglypuff_t13500` (local data) is the same pads without
+`render_every_tick`, from the bridge before it wrote that flag: retail there
+leaves the console's game near tick 3500 and ends at 6914, as other
+two-ticks-per-render recordings do. It is not a witness.
+
+| Replay | Before | After |
+|---|---|---|
+| `JIGGLYPUFF/20200304 - HNC 12 - PM 0728 - Fox (Green) vs Jigglypuff (Yellow)` | 0 / 13511 | 13511 / 13511 |
+| `GANONDORF/20200304 - HNC 4 - PM 0900 - Ganondorf (Default) vs Marth (Default)` | 0 / 15081 | 15081 / 15081 |
+| `FALCO/20200304 - HNC 13 - PM 0659 - Falco (Red) vs Sheik (Red)` | 0 / 7607 | 7607 / 7607 (widescreen, read at 1356) |
+| `PIKACHU/20200304 - HNC 18 - PM 0832 - Falco (Green) vs Pikachu (Blue)` | 0 / 8616 | 8616 / 8616 (widescreen, 1331) |
+| `YLINK/20200304 - HNC 21 - PM 0854 - Fox (Default) vs Young Link (Black)` | 0 / 10312 | 10312 / 10312 (widescreen, 4142) |
+| `ZELDA_SHEIK/20200304 - HNC 22 - PM 0855 - Falco (Default) vs Zelda (White)` | 0 / 11472 | 8969 / 11472 (widescreen, 2258), then `p1.cur_pos.x`: the second player's fighter, in special state 344, is 0.025 further left on the console one tick before the port moves it, as Falco (DamageHi2) leaves hitlag. Another fault, open |
+
+Both corpora, `replay-batch` before and after: `public-v3.7-b` 434 to 439
+complete of 502 (frames matched 4,676,200 to 4,740,296), these six the only
+replays that change; `public-v3.7` unchanged (107 of 108). No replay matches
+fewer frames and no replay's controller fix, stage code or screen choice
+changes.
 
 ## The pad queue is not in a replay (2026-10-03)
 

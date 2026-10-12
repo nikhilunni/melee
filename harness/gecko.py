@@ -26,6 +26,11 @@ carries it; a boundary made with it gates exact against `spawn =
 block, `43A00000 435B0000` (320, 219), replaced by `42B80000 427C0000` (92,
 63): External/Widescreen/Overwrite CObj Values.asm before ef8e734.
 
+Two codes are constructed, not copied: `gecko_fod_level.py` writes
+`neutral-spawn-entry-fod-level.txt` (from `neutral-spawn.txt`) and
+`fod-level.txt`, the consoles with level Fountain of Dreams platforms
+(docs/SLIPPI.md).
+
 `install` writes the codes into a private Dolphin user folder's
 GameSettings/GALE01.ini ([Gecko] and [Gecko_Enabled]); the recorder then
 launches Dolphin with cheats enabled (dolphin_config: DOLPHIN_CHEATS=1).
@@ -52,7 +57,7 @@ BRANCH_OPCODE = 18
 #: `gecko` list, carries the flag alone).
 SCENARIO_FLAGS = {"ps-preload": "stadium_preload", "ps-frozen": "stadium_frozen",
                   "frozen-stages": "frozen_stages", "widescreen": "widescreen",
-                  "widescreen-92-63": "widescreen_92_63"}
+                  "widescreen-92-63": "widescreen_92_63", "fod-level": "fountain_level"}
 
 
 def scenario_flags(codes: list[str] | None) -> dict[str, bool]:

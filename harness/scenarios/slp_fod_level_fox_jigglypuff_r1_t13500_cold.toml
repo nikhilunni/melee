@@ -1,0 +1,31 @@
+# The port's side of slp_fod_level_fox_jigglypuff_r1_t13500: boundary start_fod_slippi74_level_p12_fox3_jigglypuff4_4_r0728 built from
+# parameters, the replay's seed in place of its own, and the pads that
+# recording consumed.
+name = "slp_fod_level_fox_jigglypuff_r1_t13500_cold"
+expected = "slp_fod_level_fox_jigglypuff_r1_t13500"
+frames = 13500
+seed = 1675093088
+game_start_seed = 1209004498
+boundary_seed = 1675093088
+stage = "FountainOfDreams"
+fountain_level = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020-entry-fod-level"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 3
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+costume = 4
+stocks = 4
+controller = "scripted"
+controller_fix = "ucf-0.74"

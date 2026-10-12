@@ -48,7 +48,8 @@ names the seed, and its gate checks the port's setup draws reach the saved one.
 A code the port names with a scenario flag (`ps-preload`: `stadium_preload`,
 `ps-frozen`: `stadium_frozen`, `frozen-stages`: `frozen_stages`, `widescreen`:
 `widescreen`, `widescreen-92-63` (the same code with its earlier aspect):
-`widescreen_92_63`; gecko.SCENARIO_FLAGS) sets it in both scenarios. The Widescreen
+`widescreen_92_63`, `fod-level`: `fountain_level`; gecko.SCENARIO_FLAGS) sets it
+in both scenarios. The Widescreen
 code changes a CObj as it is loaded, so only a boundary booted with it runs it
 whole: on another boundary's savestate the camera keeps retail's aspect.
 
@@ -261,7 +262,8 @@ def main(argv: list[str] | None = None) -> None:
                     help="one costume per port (CSS X presses; default: each port's first free costume)")
     ap.add_argument("--gecko", nargs="+", default=[],
                     help="Gecko codes installed from boot (gecko.py names, e.g. neutral-spawn)")
-    ap.add_argument("--spawn", choices=["retail", "neutral-2019", "neutral-2019-entry", "neutral-2020"],
+    ap.add_argument("--spawn", choices=["retail", "neutral-2019", "neutral-2019-entry", "neutral-2020",
+                                        "neutral-2020-entry-fod-level"],
                     help="the cold scenario's spawn rule, matching --gecko")
     ap.add_argument("--ports", type=int, nargs="+", choices=[1, 2, 3, 4],
                     help="each player's controller port, ascending (default: the first ports)")

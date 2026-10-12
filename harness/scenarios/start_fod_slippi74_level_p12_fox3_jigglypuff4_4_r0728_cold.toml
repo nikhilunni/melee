@@ -1,0 +1,31 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fod_slippi74_level_p12_fox3_jigglypuff4_4_r0728_cold"
+expected = "start_fod_slippi74_level_p12_fox3_jigglypuff4_4_r0728"
+frames = 600
+seed = 1675093088
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 1209004498
+stage = "FountainOfDreams"
+fountain_level = true
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2020-entry-fod-level"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 3
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+costume = 4
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.74"
