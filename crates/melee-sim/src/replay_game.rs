@@ -618,3 +618,42 @@ impl<'a> Game<'a> {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn fixture(name: &str) -> Replay {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../slp/tests/data")
+            .join(name);
+        Replay::parse(&std::fs::read(path).unwrap()).unwrap()
+    }
+
+    /// The knockback zeros' sign is left free only where the recording was
+    /// computed by Slippi's Dolphin: a game the runner identified as online.
+    /// In a console's game -0 against +0 stays a divergence, whatever the
+    /// caller asks.
+    #[test]
+    fn only_an_online_game_leaves_the_sign_of_a_knockback_zero_free() {
+        let root = Path::new(".");
+        // (fixture, online, strict zeros asked for, sign left free)
+        for (name, online, strict, free) in [
+            ("v3.16.slp", true, false, true),
+            ("v3.16.slp", true, true, false),
+            ("netplay.slp", true, false, true),
+            ("v3.18.slp", false, false, false),
+            ("v3.18.slp", false, true, false),
+            ("v3.13.slp", false, false, false),
+            ("v0.1.slp", false, false, false),
+        ] {
+            let replay = fixture(name);
+            let mut game = Game::new(&replay, root);
+            assert_eq!(game.online().is_some(), online, "{name}");
+            // Before the comparison says otherwise, nothing is free.
+            assert!(!game.zero_sign_free, "{name}");
+            game.set_strict_zeros(strict);
+            assert_eq!(game.zero_sign_free, free, "{name} strict {strict}");
+        }
+    }
+}

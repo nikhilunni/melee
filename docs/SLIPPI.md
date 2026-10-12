@@ -2876,6 +2876,17 @@ and "We implement nmsub a little differently ((b - a*c) instead of
 | The 15 online games, the same frames | 9 | 1463 |
 | The witness game on retail in this project's Dolphin against its replay | 221 fighter-frames where the replay has +0 | (the replay's value) |
 
+Console recordings hold +0 too, but not from this instruction. Split by
+whether the air decay ran on the tick (the frame before airborne as well,
+its zero `kb_vel.y` kept and its `kb_vel.x` changed; last versions only):
+consoles have -0 on 2504 such frames and +0 on 2 (one each in two doubles
+games), the online games +0 on 1054 and -0 on none. The consoles' other
+466 +0 frames (and the online games' 97) are zeros no decay has touched:
+the tick a fighter leaves the floor, hitlag, a fresh horizontal hit. The
+port computes those +0 as well, and every console game is compared by
+sign: the rule below applies only to a game the runner identified as
+online (`Game::set_strict_zeros`; a test pins it).
+
 The last row is exact: the retail recording of the game below differs from
 the replay in the sign of `kb_vel.y` on 221 fighter-frames and in nothing
 else, and 221 is the count the runner reports for that game.
