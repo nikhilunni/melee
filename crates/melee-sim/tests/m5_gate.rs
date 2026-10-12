@@ -980,7 +980,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 539] = [
+const MATRIX_WITNESSES: [(&str, usize); 548] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1848,6 +1848,37 @@ const MATRIX_WITNESSES: [(&str, usize); 539] = [
     ("pair_light_hit_captor_launched_pkfire_fd_ness_fox4", 1875),
     ("pair_light_hit_captor_launched_thunder_fd_ness_fox4", 1678),
     ("pair_light_hit_captor_launched_ys_iceclimbers_fox4", 1250),
+    // An item sliding down a floor (it_80277040, it_8027737C), which among
+    // the tournament stages only Pokemon Stadium's transformations have
+    // (ItCo +C0 is 15 degrees). Mr. Saturn dropped, and thrown up, onto the
+    // rock form's peak settles into the slide instead of its landing
+    // callback (it_8026DD5C -> itDosei_Logic7_EnteredAir, state 6) and
+    // falls off the face's foot; walking onto a side steeper than
+    // itDosei_UnkMotion1_Coll's pi/4 it slides from the walk.
+    ("dosei_slide_drop_ps_peach", 4800),
+    ("dosei_slide_throwhi_ps_peach", 4800),
+    ("dosei_slide_steep_ps_peach", 5000),
+    // Samus's bomb at rest on the rock form while it rises slides once the
+    // face under it passes 15 degrees (it_8026D62C -> it_80277544 ->
+    // itSamusBomb_Logic50_EnteredAir, state 2), riding the floor line
+    // meanwhile (mpGetSpeed, retail 0x8026993C); it leaves the face into its
+    // fall, and in the second scene rests again on the shelf below.
+    ("samus_bomb_slide_ps_fox4", 4420),
+    ("samus_bomb_slide_rest_ps_fox4", 4420),
+    // Link's dropped bomb rolls for a tick on a bank and slides down it
+    // (itLinkBomb_Logic16_EnteredAir, state 6) until it_8026E8C4 finds the
+    // slide over and it rolls again; in the first scene Link then pushes it
+    // from the tick its push box, turned by the roll (it_80271A58), reaches
+    // him.
+    ("linkbomb_slide_bank_ps_fox4", 4750),
+    ("linkbomb_slide_down_ps_fox4", 4900),
+    // The Beam Sword settles into the slide on a face
+    // (itSword_Logic12_EnteredAir, state 4) and rests where it ends.
+    ("sword_slide_ps_peach", 4700),
+    // A grounded item pushed by another (it_80271D2C): two Mr. Saturns
+    // walking into each other slow to 0.05 a tick, pass and are pushed
+    // apart.
+    ("dosei_push_pair_fd_peach", 1400),
 ];
 
 #[test]

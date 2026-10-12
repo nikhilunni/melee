@@ -57,8 +57,10 @@ rope's callers (`it_802B99A0`, `it_802B9CE8`) have no witness.
 
 ## Not ported (fail closed)
 
-- `itSamusbomb_UnkMotion2` (a sliding bomb) and the shared item slide
-  `it_80277040`: no retail witness yet (no corpus stop reaches them).
+- Nothing in the bomb: `itSamusbomb_UnkMotion2` (a sliding bomb) and the
+  shared item slide `it_80277040` are ported, with the witnesses
+  `samus_bomb_slide_ps_fox4` and `samus_bomb_slide_rest_ps_fox4`
+  (`docs/INTERACTION_MATRIX.md`, "Items sliding down a floor").
 
 The wall tether (beam states 6..8, `ftSs_MS_AirCatchHit`) is ported
 (`grapple/air.rs`, `melee-ft` `air_catch.rs`).

@@ -450,6 +450,67 @@ fails closed for anything else.
 | Laser hits a Bob-omb; Reflector reflects a thrown Bob-omb; shield against a thrown Bob-omb; Counter against a Bob-omb's blast; Illusion hits a Bob-omb | `sudden_death_laserbomb_fd_marth`, `sudden_death_reflectbomb_fd_marth` (it_80273030, fixed), `sudden_death_shieldbomb_fd_marth`, `sudden_death_illusionbomb_fd_marth` | `sudden_death_counterbomb_fd_marth` |
 | Down states while holding; tilts with an item; HeavyGet; unlit Bob-omb; a walking Bob-omb leaving the ground | HeavyGet, an unlit Bob-omb and a walking Bob-omb leaving the ground: audit, fail closed (unreachable or unwitnessed) | Down states: `sudden_death_hitholding_bomb_fd_fox` (4f7beb2); a tilt with a throwable item throws it (3a78890): `sudden_death_throw{b,hi,lw}_bomb_fd_fox`; the rest as Marth |
 | Item hitbox against an item hitbox (it_8026FE68) | Fails closed (audit) | same |
+| A grounded item pushed by another (it_80271D2C) | `dosei_push_pair_fd_peach`: two Mr. Saturns walking into each other (Peach's second pull found by `melee-sim search`, 839 candidates, 2 reached). The branch for one straight above the other (xDC8 x1B, HSD_Randi(2)) is ported and unwitnessed | same |
+| An inert item hitbox touching another item's (it_802706D0: xDCE b6 and the toucher) | Fails closed. Two attempts did not reach it: a second Link bomb dropped onto a rolling one hits it through the ordinary hitbox path (the first is knocked away, the second pops back), and two Mr. Saturns meeting on the ground have no live hitboxes | same |
+
+### Items sliding down a floor (it_80277040)
+
+Retail: it_80277040 (the slope test and its pull, x88), it_80277544 (a
+resting item starts to slide), it_8027737C (the slide's velocity x7C, from
+Item_802697D4 at 0x8026985C), Item_8026ADC0 (the kind's EnteredAir),
+it_8026DD5C (a landing that slides instead of resting), it_8026E8C4 (the
+sliding states' pass). ItCo: +C0 = 15 degrees (the least slope), +C4 = 30
+degrees, +C8 = 1.15 (top speed), +CC = 0.22 (squared stop speed), +38 = 4.
+Every item is created able to slide (xD5C = 2, item.c:636); nearly every
+kind has a slide speed (ItemAttr x50 is 1.0 or 1.2).
+
+Where it can happen, from each stage's `coll_data` floors: Final
+Destination, Battlefield and Dream Land are level; Yoshi's Story's sides are
+11.77 degrees and Fountain of Dreams' lips 14.96, both under +C0; Pokemon
+Stadium's base is level and only its transformations have steeper floors (18
+to 63 degrees). A frozen Stadium never slides anything.
+
+| Branch | Witness (Pokemon Stadium) |
+| --- | --- |
+| A settled landing on a slope runs EnteredAir instead of the landing callback (it_8026DD5C); Mr. Saturn's state 6; the slide carries it with x7C beside a zero x40; off the foot of the face it falls (it_8026E8C4's airborne callback) | `dosei_slide_drop_ps_peach` (dropped), `dosei_slide_throwhi_ps_peach` (thrown up: bounces on the face first) |
+| Mr. Saturn walking onto a floor whose normal's X is pi/4 or more (itDosei_UnkMotion1_Coll: xD5C 1, EnteredAir called directly); a slide found over walks on (itDosei_80281734) | `dosei_slide_steep_ps_peach` |
+| A resting item starts to slide when its floor passes +C0 (it_8026D62C -> it_80277544, xD5C still 2); Samus's bomb's state 2 and its x7C clamp; the slide crosses from one line to the next; off the face it falls; it rests again | `samus_bomb_slide_ps_fox4`, `samus_bomb_slide_rest_ps_fox4` (the rock form rising under the bomb) |
+| A grounded item rides its floor line (mpGetSpeed, Item_802697D4 at 0x8026993C) | the same two: without it the rising face leaves the bomb one ulp off after nine ticks of slide |
+| Link's bomb, grounded by a slow landing (state 4), slides on the next tick (state 6); a slide that ends on level floor rolls again (it_8029F18C) | `linkbomb_slide_bank_ps_fox4`, `linkbomb_slide_down_ps_fox4` |
+| The push box turns with the model (it_80271A58, in Item_80269A9C's tail): a bomb that rolled as it slid is pushed by the fighter beside it from the tick its turned box reaches him | `linkbomb_slide_bank_ps_fox4` (retail pushes on ticks 4630 and 4631; the unturned box pushed from 4629) |
+| The Beam Sword settles into the slide (itSword_Logic12_EnteredAir, state 4) and rests where it ends | `sword_slide_ps_peach` |
+
+Fail closed, with why:
+
+- **Samus's bomb settling on a floor that is not moving.** Its fuse is 72
+  ticks; the pop at creation puts its first floor contact 43 ticks in, and
+  the next hop off an 18 degree face lasts 30. `melee-sim search` from
+  `start_ps_samus_fox4` on the risen rock form: 402 air bombs over the peak,
+  111 and 166 grounded bombs on its faces, 876 air bombs from the peak's
+  top, none slid. The code path is the witnessed one (it_8026E248 ->
+  it_8026DD5C), so nothing is left unported here.
+- **Mr. Saturn's states 7, 8, 9 and 10** (the spawn's fall, the idle, the
+  look-round and their slide) and EnteredAir's motion 10. Call graph: state 8
+  is entered only by itDosei_80282BFC (from itDosei_Logic7_Spawned and from
+  states 7 and 10), 7 only by itDosei_80282CD4 (from 8 and 10), 9 only by
+  itDosei_80282DE4 (from 7), 10 only by EnteredAir with xDC8 x19 clear.
+  Peach's pull is in her hand before its first proc (itDosei_Logic7_PickedUp
+  sets x19, state 4) and nothing clears x19. They need an item spawned by
+  the stage, which the port does not model.
+- **it_3F14_Logic6_EnteredAir (0x80280E9C, the Bob-omb).** Reachable on
+  Stadium's transformations in principle; no witness was built. A Bob-omb
+  that walks has xD5C 0 (fn_80280974, it_8027EE04), so only one standing
+  on a slope before its walk gets there.
+- **it_80276D9C between two walls** (itmaplib.c:616-647): unchanged.
+- **xC2C of an Item no item has rested.** Item_80268B18 does not clear the
+  struct (HSD_ObjAlloc), so the line it_80277040 compares with the floor's
+  is whatever the heap held: retail traces show 0xC0C0C0C0, 0x8A97CE97,
+  0x95428D21, 0xC656A205, 0x03030303, 0xFFFFFF00, 0x98898989 and 0. The
+  compare is reached only on a floor turned 30 degrees from the item's
+  remembered normal, which on these stages means a Stadium line with an
+  index of 4 or more; the port takes an unused struct's word as no line and
+  follows item_alloc_data's free list for a reused one
+  (`ItemPool::freed_rest_lines`).
 
 ## 11. Lasers, reflection and contact
 
