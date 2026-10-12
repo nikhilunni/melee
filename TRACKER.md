@@ -5,25 +5,32 @@ Legend: `[ ]` todo, `[~]` in progress (add date), `[x]` done, `[!]` blocked
 and what is next. Finished work lives in git history and `docs/PORT_NOTES/`;
 do not keep a session log here.
 
-## Current state (2026-10-11, sixth Slippi wave: display timing, console codes, runner speed)
+## Current state (2026-10-12, seventh Slippi wave: lag frames, Kirby's first stage, Stadium bridges)
 
-- **25 of 26 characters and all six tournament stages run bit-exact.**
-  Registered: Fox, Falco, Marth, Roy, Captain Falcon, Ganondorf, Peach,
-  Yoshi, Jigglypuff, Pikachu, Pichu, Mario, Dr. Mario, Luigi, Samus, Sheik,
-  Zelda, Ice Climbers, Link, Young Link, and new this wave Donkey Kong
-  (cargo carry, Bury), Bowser, Mr. Game & Watch, Ness (with the yo-yo
-  smashes) and Mewtwo. Only Kirby is unregistered. Each new character has
-  a start boundary vs Fox on FD (`m4_gate`), a witness list in `m5_gate`
-  and explorer matches.
+- **All 26 characters are registered and all six tournament stages run
+  bit-exact.** Kirby (2026-10-12) has his movement, normals, aerials,
+  throws taken and given (down throw), and the Inhale that catches
+  nothing; his other specials, three throws and every copy ability are
+  `unimplemented!` by name (`docs/PORT_NOTES/KIRBY.md`). Each character
+  has a start boundary vs Fox on FD (`m4_gate`), a witness list in
+  `m5_gate` and, except Kirby, explorer matches.
 - **Slippi replays** (every tick's Pre Frame seed is checked, so a complete
   game has no random-stream drift):
-  - `~/melee-data/replays/public-v3.7` (108 games): **107 complete**, 99.1%
-    of frames;
+  - `~/melee-data/replays/public-v3.7` (108 games): **108 complete**, every
+    frame (one with an inferred lag frame);
   - `~/melee-data/replays/public-v3.7-b` (502 games, sampled 2026-10-03):
-    **446 complete**, 90.9% of frames (247 when sampled); 23 diverge, 32
-    are refused at setup (14 Slippi Online, 5 Kirby, doubles, CPU players,
-    other stages), one setup-seed mismatch. The batch takes about two
-    minutes on 10 cores (`docs/PERF.md` "Replay runner").
+    **462 complete** (8 of them with one inferred lag frame), 92.5% of
+    frames (247 complete when sampled); 13 stop (5 at Kirby's unported
+    moves), 27 are refused at setup (14 Slippi Online, doubles, CPU
+    players, other stages). The batch takes about two minutes on 10 cores.
+  - **Lag frames are inferred** (`replay_lag_frames.rs`, `--no-lag-frames`
+    turns it off): on a screen-KO position stop, a magnifier percent stop
+    or a seed stop the runner retries with one display pass skipped and
+    accepts only if the frame and a margin after it match, seeds included.
+    Seven of the nine inferred are proven on retail with a
+    `no_display_pass_before` recording; `DOC/Game_20191106T211939` and
+    `PEACH/15_52_33` are not. A port fault that acts exactly like a
+    skipped pass would pass the rule: count such games separately.
 - **Console codes a replay does not record are read from its frames** by a
   dry pass that compares the candidate setups and then runs the whole
   comparison under one (never a switch mid-run; the report prints each
@@ -41,9 +48,18 @@ do not keep a session log here.
   from 2020-03-04, level Fountain of Dreams platforms with entry by spawn
   order (both read from a replay's frames; code text constructed, not
   found).
-- Gates at the checkpoint (2026-10-11): release and debug workspace
-  1784/0 (`m4_gate` 318, `m5_gate` 287), clippy clean, pytest 316. The perf
-  gate: see the wave's closing commit.
+- Gates at the checkpoint (2026-10-12): release workspace 1804/0
+  (`m4_gate` 321, `m5_gate` 289), clippy clean. The perf gate fails on
+  `ft-kirby`'s duplicate label (1 against a missing baseline of 0; every
+  character crate has that one) and, measured under load, on time; the
+  stripped size is 6,769,600 of a 6,876,693 ceiling. Baselines are the
+  user's call (`docs/PERF.md`).
+- A bridge needs the replay's own boundary (`--game-start-seed`) wherever
+  the stage draws at creation: Final Destination, Fountain of Dreams,
+  a transforming Pokemon Stadium, Dream Land past tick 3000, and any Ice
+  Climbers game. The recorder's particle, bone and camera passes ran at
+  the wrong cadence for every-tick scenarios until 2026-10-12: existing
+  dumps of such scenarios are not re-recorded (`docs/SLIPPI.md`).
 - Tooling (`CLAUDE.md` "Slippi replays", `docs/SLIPPI.md`):
   - `make_boundary.py`: any stage, characters, costumes; with
     `--no-register`, ports, Gecko codes, spawn rule, timer, and
@@ -60,40 +76,43 @@ do not keep a session log here.
 
 ## Next (recommended order)
 
-1. [~] **Slippi corpus.** 24 games still diverge (`target/checkpoint`
-   batch of 2026-10-11; `docs/SLIPPI.md` has each wave's findings):
-   - console lag frames, to be inferred by the runner under a strict rule
-     (rerun the tick with no display pass; accept only if the whole frame
-     then matches, seed included; report it as inferred): three screen KOs
-     proven on retail, two more unproven (`DOC/Game_20191106T211939`,
-     `PEACH/15_52_33`, bridgeable now with `neutral-spawn-2019`), two
-     magnifier points one tick late (`FALCO/02_33_48`, `19_56_47 Sheik +
-     Captain Falcon`), Samus on FoD (7813);
-   - set aside with evidence: the pad-queue game (`20_31_01 Captain Falcon
-     + Ice Climbers`), two one-ulp Nana positions;
-   - open, undiagnosed: DK + Ganondorf (4779), Fox vs Dr. Mario PS (9684),
-     Fox percent (1482), Ice Climbers + Samus PS (6698, Ice Shot), Link DL
-     (3267, a bomb blast) and PS (10399), Mario vs Pikachu (6305), Mario vs
-     Yoshi (6489), Marth vs Peach PS (5251), Falcon vs Pichu (2158), Fox vs
-     Yoshi PS (1093), Yoshi dittos (9961), Falco vs Zelda FoD (8969);
-   - known causes not yet fixed: Yoshi's plain GuardOn keeps stale
-     powershield scratch (`slp_ps_fox_yoshi_t1300`); Game & Watch's seed
-     drift (`docs/PORT_NOTES/GAMEWATCH.md`);
-   - Stadium bridges leave the console's game at the first transformation
-     (seen twice); undiagnosed;
+1. [~] **Slippi corpus.** 13 games stop (`target/checkpoint` batch of
+   2026-10-12):
+   - five at Kirby's unported moves (item 2);
+   - open: Fox vs Dr. Mario PS (9684: every-tick retail equals the port,
+     the console differs where the jumbotron changes mode), Marth vs Peach
+     PS (5251: a thrown Mr. Saturn's bounce at 3709, `it-dosei`), Peach vs
+     Young Link DL (11591, Peach hit out of float);
+   - every-tick retail equals the port, the console differs (pad queue):
+     Falcon vs Pichu (2158), Falcon + Ice Climbers FoD (7022); two one-ulp
+     Nana positions (423 and 200; the second re-recorded every tick, the
+     first not);
+   - the bridge sometimes feeds retail pads that are not the console's
+     (Peach vs Young Link from 3196, a Squall Hammer game near 350);
+   - one Roy game needs setup; 14 are Slippi Online;
+   - particle order with equal seeds: Yoshi's aerial Egg Throw (four ticks
+     of `slp_fod_yoshi_yoshi_r1_t10100`), one Dream Land generator's x in
+     `slp_dl_donkeykong_ganondorf_gs_r1_t4900`;
+   - a display pass also writes drawn joint matrices that dynamics, the
+     Thrown hip test and tether links read; the port models only part of
+     that (no divergence known);
+   - `slp_bf_luigi_iceclimbers_t2300`: Luigi's aerial Cyclone reads stale
+     heap at Fighter +0x222C; the cold scene must carry the boundary's word;
    - item GObj identity differs from retail somewhere in 55 of 2239
      scenarios (`melee-sim gobj-diff`), untriaged;
-   - explorer faults with recorded witnesses and no owner: "cliff camera
-     scratch missing" (`procs.rs`), `ftCo_800DC920`, `ftCo_800B732C`,
-     "holding an item" in DamageIce / Catch / FlyReflectWall;
-   - unported: Mr. Saturn's idle and slide states (two recordings leave
-     the port there at tick 3710), the sliding Samus bomb, `ftCo_8008EC90`
-     with an armoured captor, Mario's held-item specials, a frozen fighter
-     leaving the top, `ftCo_800AC5A0`.
-   Then Slippi Online (14 games refused: per-frame RNG sync, netplay
-   codes) and Gecko-list (3.3+) code detection instead of inference.
-2. [ ] **Kirby**, last: copy abilities need every copied character's
-   specials, all of which now exist.
+   - explorer faults with witnesses and no owner: "cliff camera scratch
+     missing" (`procs.rs`), `ftCo_800DC920`, `ftCo_800B732C`, "holding an
+     item" in DamageIce / Catch / FlyReflectWall;
+   - unported: Mr. Saturn's idle and slide states, the sliding Samus bomb
+     and the shared item slide, `ftCo_8008EC90` with an armoured captor,
+     Mario's held-item specials, a frozen fighter leaving the top,
+     `ftCo_800AC5A0`, other Game & Watch article removers' cursor walk.
+2. [~] **Kirby** (2026-10-12): stage 1 landed. Next: Final Cutter, Inhale
+   catching a fighter (swallow, spit, copy; CaptureKirby on the victim),
+   the forward, back and up throws, Hammer, Stone; then the copy abilities
+   one kind at a time, the helmeted jumps, losing an ability. Remove the
+   Kirby exemption in `melee-lib/tests/presentation_characters.rs` when
+   his specials exist.
 3. [ ] **Fail-closed branches left from wave D**: Captain Falcon's sword
    Swing42, item-on-item push, Mr. Saturn's idle and slide states, UCF 0.84
    branches without witnesses (KO totals, Nana's behaviours 5, 6 and 15,
@@ -116,12 +135,11 @@ For a new matchup or stage, reuse the Fox-Marth approach:
 ## Status by area
 
 **Characters** (`crates/ft-<name>`):
-- 25 of 26 are registered, with all their specials; fail-closed branches
+- All 26 are registered; 25 have all their specials (Kirby: `Next` 2); fail-closed branches
   are listed in Next, items 2 and 4.
 - Family crates: fox, mars, mario, pikachu, captain, link.
 - Two-fighter players share one model: Ice Climbers, and Sheik/Zelda (the
   sleeping form).
-- Unregistered: Kirby. Its scenes fail at load.
 
 **Stages**: all six tournament stages run explorer matches and long witnesses
 exactly. This covers Yoshi's Story's Shy Guys and slopes, Fountain of Dreams'
@@ -192,13 +210,8 @@ stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
       the factor of 12 goes (the dry passes that choose console codes, the
       per-frame comparison, loading) and cut it: the batch runs before and
       after every change.
-- [ ] Untracked local scenarios (`harness/scenarios`, about 140 after this
-      wave): most gate exact and are unregistered (explorer cases for DK,
-      Link, Mewtwo, Yoshi, Falcon; 8 `samus_*`; camera and widescreen; 25
-      replay start boundaries; 10 `slp_*` bridges). Run `particle-sites`
-      and register them. Five `slp_*` bridges need `frames` cut to where
-      retail's match ended. `x.toml` and `bridged.toml` are fixtures a
-      pytest run leaked from `test_replay_bridge.py`.
+- [x] Untracked local scenarios: classified and registered 2026-10-12
+      (`docs/PORT_NOTES/UNREGISTERED_SCENARIOS.md`).
 - [ ] Perf gate: stripped `melee-sim` is 6,939,624 bytes, over the
       6,766,519 ceiling (user decides whether to raise `REVIEWED_SIZE`).
 - [ ] `Match` is 96 MB and clone/new/reset cost 8-10 ms; a smaller state
