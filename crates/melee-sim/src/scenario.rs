@@ -563,10 +563,13 @@ impl melee_lib::diagnostics::ScenarioSource for Scenario {
     fn open_trace(&self, path: &Path) -> anyhow::Result<Box<dyn std::io::BufRead>> {
         Ok(Box::new(melee_trace_io::open(path)?))
     }
-    /// A cold twin names its boundary's recording as `expected`; the raw
-    /// tick trace is then required (`required_files`).
+    /// A cold twin names its boundary's recording as `expected`. A gate
+    /// requires that raw tick trace (`required_files`); a run of the port
+    /// alone, with only the disc's assets, goes without and keeps zeros.
     fn has_boundary_recording(&self) -> bool {
-        self.is_cold() && self.expected.is_some()
+        self.is_cold()
+            && self.expected.is_some()
+            && melee_trace_io::exists(&self.trace_path("tick.raw.jsonl"))
     }
 }
 
