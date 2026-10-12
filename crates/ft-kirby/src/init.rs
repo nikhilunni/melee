@@ -143,21 +143,18 @@ fn cape_turn_blocked(f: &mut Fighter) -> bool {
     f.character.get::<Kirby>().cape_turn_blocked
 }
 
-/// The down throw is the common grounded one. The other three leave the
-/// ground from their scripts and are not ported.
+/// The FTKIND_KIRBY arms of the common throw code. The forward and back
+/// throws leave the thrown fighter its grab timer (ftCo_800DE3FC,
+/// ftCo_Thrown.c:36: `msid - ftCo_MS_ThrownF > 1` fails for those two). The
+/// up throw carries both fighters above the screen: no blast-zone test
+/// until its script's flag (ftCo_800DD398 and ftCo_800DD724,
+/// ftCo_Throw.c:146-150, 287-292) and no camera box (ftCo_ThrowHi_Cam,
+/// ftCo_ThrownHi_Cam). The down throw is an ordinary one.
 fn throw_traits(throw: melee_types::CommonMotionState) -> ThrowTraits {
     use melee_types::CommonMotionState as S;
-    match throw {
-        S::ThrowF | S::ThrowB => unimplemented!(
-            "ftCo_800DE3FC (ftCo_Thrown.c:36): Kirby's forward and back throws, whose victim \
-             keeps its grab timer"
-        ),
-        S::ThrowHi => unimplemented!(
-            "ftCo_800DD398 (ftCo_Throw.c:146-150): Kirby's up throw, x2219_b2 on both fighters \
-             until the script's flag (ftCo_800DD724, ftCo_Throw.c:287), and ftCo_ThrowHi_Cam's \
-             ftCamera_800762F4"
-        ),
-        _ => ThrowTraits::default(),
+    ThrowTraits {
+        victim_keeps_grab_timer: matches!(throw, S::ThrowF | S::ThrowB),
+        leaves_the_screen: throw == S::ThrowHi,
     }
 }
 
@@ -361,3 +358,25 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
         },
     ],
 };
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use melee_types::CommonMotionState as S;
+
+    #[test]
+    fn the_forward_and_back_throws_leave_the_grab_timer_and_the_up_throw_leaves_the_screen() {
+        for (throw, keeps_timer, leaves_the_screen) in [
+            (S::ThrowF, true, false),
+            (S::ThrowB, true, false),
+            (S::ThrowHi, false, true),
+            (S::ThrowLw, false, false),
+        ] {
+            let expected = ThrowTraits {
+                victim_keeps_grab_timer: keeps_timer,
+                leaves_the_screen,
+            };
+            assert_eq!(throw_traits(throw), expected, "{throw:?}");
+        }
+    }
+}
