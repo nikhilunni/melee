@@ -1,0 +1,30 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_dl_slippi73_ns2019_p14_marth1_link3_4_r115833_cold"
+expected = "start_dl_slippi73_ns2019_p14_marth1_link3_4_r115833"
+frames = 600
+seed = 366140947
+# The match was created from this seed, written at Slippi's Game Start read
+# (0x8016E74C, before fn_8016E730 creates the Ground and Players).
+game_start_seed = 3946527549
+stage = "DreamLand"
+all_characters_unlocked = true
+time_limit = 480
+spawn = "neutral-2019"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Marth"
+costume = 1
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"
+
+[[fighters]]
+slot = 3
+kind = "Link"
+costume = 3
+stocks = 4
+controller = "idle"
+controller_fix = "ucf-0.73"

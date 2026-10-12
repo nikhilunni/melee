@@ -2492,7 +2492,7 @@ fn ucf_controller_fix_witnesses_match_retail() {
 /// tournament inputs from a boundary with the replay's ports, timer, codes
 /// and seed. Each is gated through its cold twin, with items and the
 /// ledger's particle draw order.
-const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 66] = [
+const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 70] = [
     // A shield in hitlag keeps its cached position: Sheik's second needle
     // strikes where Marth's shield was a tick before (148, 149).
     ("slp_bf_sheik_marth_t400_cold", 400),
@@ -2740,6 +2740,22 @@ const SLIPPI_REPLAY_WITNESSES: [(&str, usize); 66] = [
     // particles).
     ("slp_fod_samus_marth_r1_t7900_cold", 7900),
     ("slp_fod_samus_marth_lag7810_t7900_cold", 7900),
+    // A whole game on a transforming Pokemon Stadium (Mr. Game & Watch vs
+    // Falco, 8199 frames), from a boundary created from the replay's Game
+    // Start seed: the base form's first duration is drawn at creation
+    // (grStadium_801D13E0), so only that boundary transforms when the
+    // console did. Retail keeps the console's Pre Frame seed throughout.
+    ("slp_ps_gameandwatch_falco_r112449_t8200_cold", 8200),
+    // An HNC Stadium game (Frozen Stages, Widescreen 92:63) to the tick its
+    // replay stops on: retail's jumbotron changes mode on record 9684 and
+    // draws 21 values where the console drew 12. The port equals retail.
+    ("slp_ps_fox_drmario_wide9263_r1_t9800_cold", 9800),
+    // A console's lag frame in a bomb's blast on Dream Land (the 2019 spawn
+    // row): with a display pass after every tick the particle interpreter
+    // draws 160, 138, 179 on records 3265..3267; with none before record
+    // 3265 it draws the console's 172, 132, 171. The port equals both.
+    ("slp_dl_marth_link_r115833_t3400_cold", 3400),
+    ("slp_dl_marth_link_r115833_lag3265_t3400_cold", 3400),
 ];
 
 /// Scenarios with a GObj ledger (`harness/gobj_ledger_record.py`, kept as
