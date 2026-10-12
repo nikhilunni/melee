@@ -191,9 +191,12 @@ stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
   bans std float math); `tools/wasm-check.sh` diffs match hashes.
 ## Backlog
 
-- [ ] Debug gate: debug test binaries overflow the default 2 MB
-      test-thread stack (pass at 3 MB); find the large frame or set the
-      stack size for tests. Predates the 2026-10-10 wave.
+- [ ] Profile `replay-batch`: a replay runs at about 2,000 frames/s per
+      core (three `public-v3.7-b` games, 4 to 11 s each, 2026-10-11) against
+      about 25,000 ticks/s for the headless sim (`docs/PERF.md`). Find where
+      the factor of 12 goes (the dry passes that choose console codes, the
+      per-frame comparison, loading) and cut it: the batch runs before and
+      after every change.
 - [ ] Untracked local scenarios (`harness/scenarios`, about 140 after this
       wave): most gate exact and are unregistered (explorer cases for DK,
       Link, Mewtwo, Yoshi, Falcon; 8 `samus_*`; camera and widescreen; 25
