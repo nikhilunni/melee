@@ -8,6 +8,10 @@ const SHELL_COUNT: usize = 12;
 /// it (0x80060848, 0x800608D4, 0x800608E0).
 pub(crate) const CREATION_DRAWS: usize = 3 * SHELL_COUNT;
 impl Effects {
+    /// `owner` is efSync_Spawn's gobj, each fragment's parent
+    /// (efLib_Create_Attach_Pos, efsync.c:246-252): efLib_DestroyAll on it
+    /// frees the fragments still out, a fighter's at a motion change that
+    /// tears its effects down, a thrown egg's when the egg is destroyed.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn spawn_egg_shell<T: InverseTrig>(
         &mut self,
@@ -17,6 +21,7 @@ impl Effects {
         matrix: &Mtx,
         scale: f32,
         seed: Option<u32>,
+        owner: ModelOwner,
     ) -> Result<()> {
         self.make_room(0x1E, SHELL_COUNT, particles);
         // The creation draws come from where retail made them when the
@@ -39,6 +44,7 @@ impl Effects {
             self.next_joint += effect.tree.len();
             effect.lifetime = 50;
             effect.indefinite = false;
+            effect.owner = Some(owner);
             // Retail efSync_Spawn: double M_TAU products, then frsp; no FMA.
             effect
                 .tree
@@ -88,8 +94,10 @@ impl Effects {
     /// effect at the root's world translation (lb_8000B1CC(jobj, NULL)),
     /// with kind 4's float parameter. The Egg Throw burst's two requests
     /// (it_802B2C38) and the fireball's bounce (8029B9F4) are ported.
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn_item_root<T: InverseTrig>(
         &mut self,
+        item: u32,
         id: u16,
         position: Vec3,
         parameter: Option<f32>,
@@ -116,7 +124,8 @@ impl Effects {
                 matrix.0[0][3] = position.x;
                 matrix.0[1][3] = position.y;
                 matrix.0[2][3] = position.z;
-                self.spawn_egg_shell::<T>(common_bank, particles, rng, &matrix, scale, None)
+                let owner = ModelOwner::Item(item);
+                self.spawn_egg_shell::<T>(common_bank, particles, rng, &matrix, scale, None, owner)
             }
             _ => anyhow::bail!("efAsync item root effect {id:#x} ({parameter:?})"),
         }

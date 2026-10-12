@@ -520,7 +520,13 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
-                    melee_it::ItemEvent::ScriptEffect(graphics) => {
+                    event @ (melee_it::ItemEvent::ScriptEffect(_)
+                    | melee_it::ItemEvent::ScriptEffectNow(_)) => {
+                        let (graphics, now) = match event {
+                            melee_it::ItemEvent::ScriptEffect(graphics) => (graphics, false),
+                            melee_it::ItemEvent::ScriptEffectNow(graphics) => (graphics, true),
+                            _ => unreachable!(),
+                        };
                         // it_80278800: the offset's random spread, x then y then z.
                         let mut offset = graphics.offset;
                         let range = graphics.range;
@@ -543,7 +549,14 @@ impl Runtime {
                             },
                             id => anyhow::bail!("it_80278800: item effect {id:#x}"),
                         };
-                        item.queued_events.push(event);
+                        if now {
+                            // Link 9 and later: created now, ahead of what
+                            // the same callback spawns next (a bursting
+                            // egg's quake, then its shell).
+                            item.events.insert(0, event);
+                        } else {
+                            item.queued_events.push(event);
+                        }
                     }
                     melee_it::ItemEvent::JointEffect { id, joint, offset } => {
                         ensure!(joint == 0, "item effect at joint {joint}");
@@ -569,6 +582,7 @@ impl Runtime {
                     melee_it::ItemEvent::RootEffect { id, parameter } => {
                         // lb_8000B1CC(jobj, NULL): the root's world translation.
                         state.effects.spawn_item_root::<RetailTrig>(
+                            item.id,
                             id,
                             item.position,
                             parameter,

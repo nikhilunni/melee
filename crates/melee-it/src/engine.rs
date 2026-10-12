@@ -89,6 +89,10 @@ pub enum ItemEvent {
     /// Script opcode 10 (it_80278F2C): an effect at a joint whose offset gets
     /// a random spread (it_80278800) when the scene resolves it.
     ScriptEffect(melee_types::combat::GraphicsCommand),
+    /// [`Self::ScriptEffect`] from a script run past the item's link 9
+    /// flush (a motion change in a hit's callback, Item_80268E5C ->
+    /// it_802799E4): efAsync_Spawn dispatches it at once.
+    ScriptEffectNow(melee_types::combat::GraphicsCommand),
     /// EF_SPAWN_CAMERA_SHAKE: Camera_RequestQuake(kind) at a joint offset.
     Quake {
         kind: u16,
@@ -1442,7 +1446,13 @@ impl ItemCore {
                 }
                 Command::SetVariable { index, value } => self.command_variables[*index] = *value,
                 Command::Graphics(graphics) => {
-                    self.events.push(ItemEvent::ScriptEffect(graphics.clone()))
+                    let graphics = graphics.clone();
+                    self.events
+                        .push(if self.past_hitbox_refresh || self.efasync_immediate {
+                            ItemEvent::ScriptEffectNow(graphics)
+                        } else {
+                            ItemEvent::ScriptEffect(graphics)
+                        })
                 }
                 // it_8027990C: controller rumble only.
                 Command::Rumble { .. } => {}

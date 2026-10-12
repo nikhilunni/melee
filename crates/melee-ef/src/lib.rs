@@ -406,7 +406,8 @@ impl Effects {
             } = request
             {
                 let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
-                self.spawn_egg_shell::<T>(bank, particles, rng, &matrix, scale, seed)?;
+                let owner = ModelOwner::Fighter(player);
+                self.spawn_egg_shell::<T>(bank, particles, rng, &matrix, scale, seed, owner)?;
                 continue;
             }
             if let EffectRequest::HitSpark {
