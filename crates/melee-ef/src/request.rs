@@ -216,10 +216,12 @@ pub enum EffectRequest {
         facing: f32,
         floor_angle: f32,
     },
-    /// efAsync_Spawn(..., 3, 0x43E, root, scale), ft_0C31.c:130.
+    /// efAsync_Spawn(..., 3, 0x43E, root, scale), ft_0C31.c:130: `scale` is
+    /// the one float kind 3 queues (efasync.c:1427, retail 0x800677F0), the
+    /// x of the fighter root's scale before the entry.
     EntryWarp {
         id: u16,
-        scale: Vec3,
+        scale: f32,
     },
     /// ftAction_80072E4C / ftCo_8009F834: root-relative landing dust; also the star-KO
     /// twinkle (efAsync_Spawn 0x42D at cur_pos, ftCo_DeadUpStar_Anim).

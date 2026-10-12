@@ -105,8 +105,11 @@ impl Fighter {
                 // Retail 0x800C644C changes motion (flushing efAsync,
                 // fighter.c:951) before 0x800C66C8 queues the warp
                 // (efAsync_Spawn kind 3): the warp waits for the fighter's
-                // s_link 9 flush, after the stage's procs.
-                let scale = entry.original_scale;
+                // s_link 9 flush, after the stage's procs. Kind 3 queues
+                // one float from the pointer it is given (retail
+                // 0x800677F0: lfs f0, 0(r3)): the root scale's x, which a
+                // flat fighter (Mr. Game & Watch) holds at its model width.
+                let scale = entry.original_scale.x;
                 self.change_motion_state(next.into(), assets)?;
                 self.core.effects.push(EffectRequest::EntryWarp { id: 0x43E, scale });
                 return Ok(());

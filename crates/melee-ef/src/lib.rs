@@ -1704,9 +1704,10 @@ impl Effects {
                     }
                 }
                 // efasync.c:750-756; efLib_Create_Attach, eflib.c:538-555.
-                EffectRequest::EntryWarp { scale, .. } => {
-                    effect.tree.set_scale(effect.root, &scale)
-                }
+                // efAsync_SetEffectScaleXYZ writes the float to all three.
+                EffectRequest::EntryWarp { scale, .. } => effect
+                    .tree
+                    .set_scale(effect.root, &Vec3::new(scale, scale, scale)),
                 EffectRequest::Landing {
                     id,
                     offset,
