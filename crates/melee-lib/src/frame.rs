@@ -2894,10 +2894,21 @@ impl Simulation {
         let runtime = self.runtime.as_mut();
         // gm_GetFFAOutcome (8016BF74): the supported two-player stock match ends
         // when only one player retains stocks. The pause takes effect next tick.
-        runtime.match_finished |= runtime.state.clock.timed_out()
+        let finished = runtime.state.clock.timed_out()
             || runtime.state.fighters.iter().any(|fighter| {
                 crate::scene_fighter::with_fighter!(fighter, |f| f.player.stocks == 0)
             });
+        if finished && !runtime.match_finished {
+            // The GAME! (or TIME!) banner's GObj (classifier 0xE, p_link
+            // 14), created by the scene's frame callback before this
+            // tick's procs: it takes the address freed last.
+            runtime
+                .state
+                .effects
+                .gobjs
+                .create(hsd_gobj::GObjClass::Hud);
+        }
+        runtime.match_finished |= finished;
         // fn_8016CFE0 -> fn_8016758C, every scene frame. Only the count of
         // ticks between two revivals matters, not their place in the frame.
         runtime.state.revival_offsets.tick();
