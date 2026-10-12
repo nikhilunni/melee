@@ -371,6 +371,27 @@ pub fn on_damage(f: &mut Fighter) {
     crate::special_s::remove_judgement(f);
     crate::special_lw::remove_panic(f);
     crate::special_hi::remove_rescue(f);
+    let any_out = out.greenhouse
+        || out.manhole
+        || out.torch
+        || out.parachute
+        || out.turtle
+        || out.sparky
+        || out.judgement
+        || out.panic
+        || out.rescue;
+    if any_out {
+        // Item_8026A8EC runs here, inside his proc (item.c:1991): its
+        // efLib_DestroyAll walks the article's joints with hsd_8039D688,
+        // which leaves the generator insertion cursor (hsd_804D78F8) on the
+        // list's tail before anything he spawns later in the proc. A hit's
+        // burn overlay then links in behind the list's head
+        // (hsd_8039D9C8, generator.c:328-337), not behind the cursor's
+        // successor.
+        f.core
+            .effects
+            .push(melee_ef::request::EffectRequest::ArticleDestroyed);
+    }
 }
 
 /// ftCommon_8007DB58 / ftCo_800D331C: take_dmg_cb and death2_cb while a

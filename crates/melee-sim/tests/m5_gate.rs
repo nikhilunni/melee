@@ -4048,7 +4048,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 582] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 583] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -4902,6 +4902,12 @@ const CORPUS_V3_MATCHES: [(&str, usize); 582] = [
     ("corpus_v3_fd_gameandwatch_fox4_e7254fba4_p0", 6001),
     ("corpus_v3_fd_gameandwatch_fox4_ed486ea18_p1", 4880),
     ("corpus_v3_fd_gameandwatch_fox4_e3e98e6dc_p0", 4673),
+    // Fire Fox burns him in his back aerial while the generator list holds
+    // one generator (5464). ftGw_Init_OnDamage destroys the Turtle inside
+    // his proc: Item_8026A8EC's efLib_DestroyAll walk (hsd_8039D688) parks
+    // the insertion cursor on the tail, so the burn overlay's generator
+    // links in behind the head (hsd_8039D9C8), ahead of Fox's fire.
+    ("corpus_v3_fd_gameandwatch_fox4_e17844051_p0", 5766),
     // Fire caught on a ledge makes the catch's effect twice:
     // ftGw_SpecialAirHi_Coll calls ftCliffCommon_80081370 after
     // ftCliffCommon_80081298 already has (ftgamewatchspecialhi.c:274-275).
