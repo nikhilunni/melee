@@ -231,10 +231,38 @@ fn versions_and_version_gated_fields() {
         .is_some());
     let end = r.end.as_ref().unwrap();
     assert!(end.placements.is_some());
-    // Gecko codes travel as message-splitter events, skipped by size.
-    assert!(r
+    // Gecko codes travel as message-splitter events and are reassembled:
+    // this build's table holds the recorder's own hooks, such as Game
+    // Start's at 0x8016E74C (Recording/SendGameInfo.asm).
+    assert!(!r
         .skipped_commands
         .contains(&slp::event::CMD_MESSAGE_SPLITTER));
+    let table = r.gecko_list.as_ref().expect("a Gecko list");
+    assert!(slp::gecko::codes(table).count() > 100);
+    assert!(slp::gecko::injection_at(table, 0x8016_E74C).is_some());
+    // An offline game sends each frame once, in order.
+    assert!(r.frame_sends.windows(2).all(|pair| pair[1] == pair[0] + 1));
+    assert_eq!(r.frame_sends.len(), r.frames.len());
+}
+
+#[test]
+fn a_rollback_game_sends_frames_again_and_keeps_the_last_version() {
+    let r = Replay::parse(&data("v3.16.slp")).unwrap();
+    assert!(r.start.is_online());
+    // Seven frames were sent again, in five rollbacks of at most two frames.
+    assert_eq!(r.frame_sends.len(), r.frames.len() + 7);
+    let steps_back = r.frame_sends.windows(2).filter(|pair| pair[1] <= pair[0]);
+    assert_eq!(steps_back.count(), 5);
+    // Every frame holds exactly the two leaders of its last version.
+    for frame in r.frames.values() {
+        let leaders = frame.ports.iter().filter(|port| !port.leader.is_empty());
+        assert_eq!(leaders.count(), 2, "frame {}", frame.number);
+        assert!(frame.ports.iter().all(|port| port.follower.is_empty()));
+    }
+    // The netplay code table: the per-frame seed write lives in the
+    // StartMelee hook (Online/Core/InitOnlinePlay.asm, 0x8016E748).
+    let table = r.gecko_list.as_ref().expect("a Gecko list");
+    assert!(slp::gecko::injection_at(table, 0x8016_E748).is_some());
 }
 
 #[test]

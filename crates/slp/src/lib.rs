@@ -24,6 +24,7 @@
 
 pub mod cold;
 pub mod event;
+pub mod gecko;
 pub mod ids;
 mod scenario;
 mod trace;
@@ -116,6 +117,14 @@ pub struct Replay {
     /// Command bytes seen in the stream that this parser does not decode
     /// (skipped by their declared payload size).
     pub skipped_commands: Vec<u8>,
+    /// The Gecko code table the game ran (3.3.0+), reassembled from its
+    /// Message Splitter events; [`gecko::codes`] reads it.
+    pub gecko_list: Option<Vec<u8>>,
+    /// The frame number of every Frame Start, in stream order. A rollback
+    /// game sends a frame again each time it simulates it again, so this
+    /// steps back where the game rolled back; `frames` keeps each frame's
+    /// last version.
+    pub frame_sends: Vec<i32>,
 }
 
 impl Replay {
@@ -154,6 +163,9 @@ impl Replay {
         let mut end = None;
         let mut frames: BTreeMap<i32, Frame> = BTreeMap::new();
         let mut skipped_commands = Vec::new();
+        let mut gecko_list = None;
+        let mut split_message = Vec::new();
+        let mut frame_sends = Vec::new();
 
         while pos < raw.len() {
             let cmd = raw[pos];
@@ -187,11 +199,18 @@ impl Replay {
                 event::CMD_GAME_END => end = Some(GameEnd::parse(ev)?),
                 event::CMD_FRAME_START => {
                     let fs = FrameStart::parse(ev)?;
+                    frame_sends.push(fs.frame);
                     let f = frame_mut(&mut frames, fs.frame);
-                    // A Frame Start marks a (re)transmission of this frame;
-                    // drop the previous attempt's per-frame item list.
-                    f.items.clear();
-                    f.start = Some(fs);
+                    // A Frame Start marks a (re)transmission of this frame:
+                    // everything the previous attempt recorded for it (its
+                    // fighters, among them a follower this version may not
+                    // have, and its items) belongs to a game state that
+                    // was rolled back.
+                    *f = Frame {
+                        number: fs.frame,
+                        start: Some(fs),
+                        ..Frame::default()
+                    };
                 }
                 event::CMD_ITEM_UPDATE => {
                     let it = ItemUpdate::parse(ev)?;
@@ -200,6 +219,17 @@ impl Replay {
                 event::CMD_FRAME_BOOKEND => {
                     let b = FrameBookend::parse(ev)?;
                     frame_mut(&mut frames, b.frame).bookend = Some(b);
+                }
+                event::CMD_GECKO_LIST => gecko_list = Some(ev[1..].to_vec()),
+                event::CMD_MESSAGE_SPLITTER
+                    if ev.get(SPLIT_COMMAND) == Some(&event::CMD_GECKO_LIST) =>
+                {
+                    let size = ev.get(SPLIT_SIZE..SPLIT_SIZE + 2).context("message part size")?;
+                    let size = usize::from(u16::from_be_bytes([size[0], size[1]]));
+                    split_message.extend(ev[1..].get(..size).context("message part size")?);
+                    if ev.get(SPLIT_LAST).is_some_and(|&last| last != 0) {
+                        gecko_list = Some(std::mem::take(&mut split_message));
+                    }
                 }
                 other => {
                     if !skipped_commands.contains(&other) {
@@ -217,6 +247,8 @@ impl Replay {
             metadata: container.metadata,
             incomplete,
             skipped_commands,
+            gecko_list,
+            frame_sends,
         })
     }
 
@@ -251,6 +283,13 @@ impl Replay {
             .unwrap_or(self.start.random_seed)
     }
 }
+
+/// Message Splitter (0x10) offsets: a 512-byte block at 0x1, then the
+/// count of its bytes that belong to the message, the command the message
+/// is for, and whether this is its last part.
+const SPLIT_SIZE: usize = 0x201;
+const SPLIT_COMMAND: usize = 0x203;
+const SPLIT_LAST: usize = 0x204;
 
 fn frame_mut(frames: &mut BTreeMap<i32, Frame>, number: i32) -> &mut Frame {
     frames.entry(number).or_insert_with(|| Frame {
