@@ -365,6 +365,14 @@ pub fn particle_state_diff_with(
 ) -> Result<Vec<String>> {
     let path = scenario.trace_path("particles.jsonl");
     let expected = read_trace(melee_trace_io::open(&path)?)?;
+    // The dump is its own Dolphin pass and may be capped (`record.py
+    // --particle-ticks`) or, before that pass carried the display cadence,
+    // have ended its match early: no record means nothing was compared.
+    let last = expected.last().map_or(0, |record| record.frame);
+    ensure!(
+        last >= from,
+        "the particle dump ends at tick {last}, before tick {from}: nothing to compare"
+    );
     // The dump's per-tick VI frames live in its metadata sidecar.
     let meta = scenario.trace_path("particles.jsonl.meta.jsonl");
     let mut simulation = simulation_displayed_as(scenario, &meta)?;

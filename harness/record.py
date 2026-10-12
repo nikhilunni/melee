@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -71,6 +72,40 @@ def run_dolphin_until(script: Path, env: dict, done: Path, err: Path, log: Path,
                 proc.kill()
     if err.exists():
         sys.exit(f"{script.name} failed:\n{err.read_text()[-2000:]}")
+
+
+#: The head of a raw tick record: every capture pass writes the frame and
+#: the seed the tick ended with first.
+RECORD_SEED = re.compile(r'"frame": (\d+), "phase": "frame_end", "seed": (\d+)')
+
+
+def record_seeds(raw: Path) -> dict[int, int]:
+    """Each record's end-of-tick seed, from a pass's raw trace."""
+    seeds = {}
+    with trace_io.open_text(raw) as lines:
+        for line in lines:
+            found = RECORD_SEED.search(line[:160])
+            if found:
+                seeds[int(found.group(1))] = int(found.group(2))
+    return seeds
+
+
+def require_same_game(name: str, tick_raw: Path, passes: list[tuple[str, Path, int]]) -> None:
+    """Every capture pass is its own Dolphin run from the savestate: each
+    must be the game the tick trace recorded. Compare the seed of every
+    record a pass wrote and require the `wanted` records of it; a pass that
+    plays another game (a scenario key it did not carry, a match that ended
+    early) fails the recording instead of leaving a dump of something else."""
+    tick = record_seeds(tick_raw)
+    for label, raw, wanted in passes:
+        seeds = record_seeds(raw)
+        differs = next((n for n in sorted(seeds) if tick.get(n) != seeds[n]), None)
+        if differs is not None:
+            sys.exit(f"{name}: the {label} pass is not the tick trace's game: its seed differs from "
+                     f"record {differs} ({seeds[differs]:#010x}, the tick trace has "
+                     f"{tick.get(differs, 0):#010x})")
+        if len(seeds) < wanted:
+            sys.exit(f"{name}: the {label} pass wrote {len(seeds)} records of {wanted}")
 
 
 def motions(expected: Path, player: int = 0) -> list[tuple[int, int, float, float]]:
@@ -158,6 +193,8 @@ def record(a: argparse.Namespace, scenario: dict) -> None:
 
     human_ports = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))
                    if f.get("controller") == "human"]
+    # (label, raw trace, records wanted) of each pass after the tick trace.
+    passes: list[tuple[str, Path, int]] = []
     # run_scenario leaves its outputs plain; this script compresses everything at the end.
     tick_cmd = [sys.executable, str(HERE / "dolphin/run_scenario.py"), str(scenario_path),
                 "--tick-trace", *(["--video", a.video] if a.video else []), "--ports", "2",
@@ -220,6 +257,7 @@ def record(a: argparse.Namespace, scenario: dict) -> None:
                           {"MELEE_SCENARIO": str(replay_path), "MELEE_RAW_OUT": str(out)},
                           Path(str(out) + ".done"), Path(str(out) + ".err"),
                           traces / f"{name}.ledger.dolphin.out", a.timeout, a.video)
+        passes.append(("RNG ledger", out, frames))
         report = subprocess.run([sys.executable, str(HERE / "rng_ledger_report.py"), str(out), "--ticks", "1"],
                                 capture_output=True, text=True).stdout
         extra = []
@@ -241,6 +279,7 @@ def record(a: argparse.Namespace, scenario: dict) -> None:
                            "MELEE_PARTICLES_OUT": str(out), "MELEE_PARTICLES_TICKS": str(particle_ticks)},
                           Path(str(out) + ".done"), Path(str(out) + ".err"),
                           traces / f"{name}.particles.dolphin.out", a.timeout, a.video)
+        passes.append(("particle dump", Path(str(out) + ".meta.jsonl"), particle_ticks))
 
     if a.bones:
         out = traces / f"{name}.bones.jsonl"
@@ -255,6 +294,7 @@ def record(a: argparse.Namespace, scenario: dict) -> None:
                           Path(str(out.with_suffix(".raw.jsonl")) + ".done"),
                           Path(str(out.with_suffix(".raw.jsonl")) + ".err"),
                           traces / f"{name}.bones.dolphin.out", a.timeout, a.video)
+        passes.append(("bone dump", out.with_suffix(".raw.jsonl"), 0))
     if a.camera:
         out = traces / f"{name}.camera.jsonl"
         outputs += [out, out.with_suffix(".raw.jsonl")]
@@ -266,6 +306,8 @@ def record(a: argparse.Namespace, scenario: dict) -> None:
                           Path(str(out.with_suffix(".raw.jsonl")) + ".done"),
                           Path(str(out.with_suffix(".raw.jsonl")) + ".err"),
                           traces / f"{name}.camera.dolphin.out", a.timeout, a.video)
+        passes.append(("camera dump", out.with_suffix(".raw.jsonl"), 0))
+    require_same_game(name, traces / f"{name}.tick.raw.jsonl", passes)
     if not a.no_compress:
         print(f"== {name}: compressing large traces (verified zstd)")
         trace_io.compress_outputs(outputs)

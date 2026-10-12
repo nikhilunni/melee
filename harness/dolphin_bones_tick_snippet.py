@@ -23,7 +23,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "dolphin"))
 import jobjdump  # noqa: E402
 import walk  # noqa: E402
-from tick_trace import TickTracer  # noqa: E402
+from tick_trace import TickTracer, playback_toml  # noqa: E402
 from trace_common import ENTITIES_ADDR, event, run  # noqa: E402
 
 
@@ -85,10 +85,8 @@ def main() -> None:
                  + (f', raw = {table(st["raw"])}' if "raw" in st else "") + " }"
                  for st in scripted.get("inputs", [])]
         inputs = "inputs = [\n" + ",\n".join(steps) + "\n]\n"
-        if "input_clock" in scripted:
-            clock = f'input_clock = "{scripted["input_clock"]}"\n'
-        if "boundary_seed" in scripted:
-            clock += f'boundary_seed = {scripted["boundary_seed"]}\n'
+        # The tick clock, the seed and the display cadence (tick_trace.py).
+        clock = playback_toml(scripted)
     scenario.write_text(f'name = "{out.stem}"\n{clock}savestate = "{saved}"\nframes = {ticks}\n{inputs}')
     os.environ["MELEE_SCENARIO"] = str(scenario)
     os.environ["MELEE_RAW_OUT"] = str(out.with_suffix(".raw.jsonl"))

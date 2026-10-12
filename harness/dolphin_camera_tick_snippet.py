@@ -27,7 +27,7 @@ sys.path.insert(0, str(HERE))
 sys.path.insert(0, str(HERE / "dolphin"))
 import symbols  # noqa: E402
 import walk  # noqa: E402
-from tick_trace import TickTracer  # noqa: E402
+from tick_trace import TickTracer, playback_toml  # noqa: E402
 from trace_common import event, run  # noqa: E402
 
 CAMERA_ADDR = symbols.addr("game_camera")
@@ -110,9 +110,8 @@ def main() -> None:
              f'buttons = {table(st.get("buttons", {}))}'
              + (f', raw = {table(st["raw"])}' if "raw" in st else "") + " }"
              for st in scripted.get("inputs", [])]
-    clock = f'input_clock = "{scripted["input_clock"]}"\n' if "input_clock" in scripted else ""
-    if "boundary_seed" in scripted:
-        clock += f'boundary_seed = {scripted["boundary_seed"]}\n'
+    # The tick clock, the seed and the display cadence (tick_trace.py).
+    clock = playback_toml(scripted)
     scenario = out.with_suffix(".scenario.toml")
     scenario.write_text(f'name = "{out.stem}"\n{clock}savestate = "{saved}"\nframes = {ticks}\n'
                         "inputs = [\n" + ",\n".join(steps) + "\n]\n")

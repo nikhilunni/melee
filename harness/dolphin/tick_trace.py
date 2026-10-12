@@ -74,6 +74,30 @@ import time
 import traceback
 from pathlib import Path
 
+#: The scenario keys that decide which game a capture pass plays, besides its
+#: savestate, inputs and fighters: the input clock, the seed written over the
+#: saved one, and the display cadence. A pass that replays a scenario from its
+#: own scenario (the particle, bone and camera dumps) carries every one of
+#: them, or it records another game from the first tick a display pass feeds
+#: back into (Pokemon Stadium's close-up test, a tether, a screen KO).
+PLAYBACK_KEYS = ("input_clock", "boundary_seed", "render_every_tick", "no_display_pass_before")
+
+
+def playback(scripted: dict) -> dict:
+    """`scripted`'s playback keys, for a pass that builds its own scenario."""
+    return {key: scripted[key] for key in PLAYBACK_KEYS if key in scripted}
+
+
+def playback_toml(scripted: dict) -> str:
+    """The same keys as top-level TOML lines."""
+    def value(v) -> str:
+        if isinstance(v, bool):
+            return str(v).lower()
+        if isinstance(v, str):
+            return f'"{v}"'
+        return str(list(v)) if isinstance(v, (list, tuple)) else str(v)
+    return "".join(f"{key} = {value(v)}\n" for key, v in playback(scripted).items())
+
 HERE = Path(globals().get("__file__") or sys._getframe().f_code.co_filename).resolve().parent
 sys.path.insert(0, str(HERE))
 from trace_common import FIGHTER_SIZE, GOBJ_USER_DATA_OFF, Tracer, event, read_items, read_stage_io, run  # noqa: E402
