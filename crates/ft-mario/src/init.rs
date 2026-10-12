@@ -78,6 +78,12 @@ impl CharacterCallbacks for Mario {
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> AssetResult<()> =
         Fighter::enter_common_taunt;
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    /// No row of ftMr_Init_MotionStateTable reads fp->item_gobj: in the
+    /// ftMario units only the item hooks of ftmario.c load +1974
+    /// (ftMr_Init_OnItemPickup 0x800E0A44 / 0x800E0A54, OnItemInvisible
+    /// 0x800E0B18, OnItemVisible 0x800E0B60). These are Dr. Mario's rows,
+    /// witnessed there one by one (`drmario_held_turnip_*_ps_peach`).
+    const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_mario_family::SPECIAL_MOVES;
     /// ftData_SpecialN/S/Hi/Lw[Mario] and the aerial tables.

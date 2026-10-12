@@ -44,6 +44,16 @@ with it), and the two "cliff camera scratch missing" and two
 `ftCo_800DC920` explorer cases in `CORPUS_V3_MATCHES`. The sections below
 describe them as this pass found them.
 
+Recorded the same day and left local: `corpus_v3_ps_iceclimbers_peach4_eae02b66b_p1`
+(4562 ticks, every tick rendered) gates exact on the build before the day's
+fixes too. It was bridged for a frozen Peach holding a turnip (the explorer's
+tick 4320), which retail fed the same pads never reaches: a Stadium
+transformation follows its disc read, and the explorer's recording carries
+the port's read timing (`stage_reads`), not retail's. An explorer case from
+a Stadium boundary is retail's game only up to the first read whose timing
+differs (`..._ec3145eb3_p2_edgeguard` is the explorer's game past tick
+5198 and not at 5559).
+
 ### Newly diagnosed
 
 No scenario of the 231 shows a port fault that was not already known or

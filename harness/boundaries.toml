@@ -567,3 +567,21 @@ stage = "PokemonStadium"
 players = ["Link", "Fox"]
 stocks = 4
 seed = 2224148256
+
+[[boundary]]
+name = "start_fd_mario_peach4"
+cold = "start_fd_mario_peach4_cold"
+savestate = "harness/roms/start_fd_mario_peach4.sav"
+stage = "FinalDestination"
+players = ["Mario", "Peach"]
+stocks = 4
+seed = 134876611
+
+[[boundary]]
+name = "start_fd_iceclimbers_peach4"
+cold = "start_fd_iceclimbers_peach4_cold"
+savestate = "harness/roms/start_fd_iceclimbers_peach4.sav"
+stage = "FinalDestination"
+players = ["IceClimbers", "Peach"]
+stocks = 4
+seed = 176491922
