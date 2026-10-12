@@ -779,6 +779,12 @@ pub struct ItemCore {
     pub hit_flags: [desc::ItemHitFlags; 4],
     /// x378_itemColl, created by it_80275E98 at spawn.
     pub collision: Option<melee_types::mp::CollData>,
+    /// xC1C: the ECB box in use (Item_80267454 starts all three boxes from
+    /// ItemAttr x40; xBFC stays the kind's).
+    pub collision_box: melee_types::mp::ItEcb,
+    /// xC0C: the box a landing restores (it_80275DFC), which is whatever
+    /// was in use at the last release (it_80275BC8).
+    pub saved_collision_box: melee_types::mp::ItEcb,
     /// xDC8 x17: the model rotation axis the fixed ECB follows (0 Z, 1 X, else Y).
     pub rotation_axis: u8,
     /// xC30: the floor (or wall/ceiling) line of the last map contact.
@@ -1621,6 +1627,8 @@ impl ItemPool {
             scratch: ItemScratch::None,
             hit_flags: [desc::ItemHitFlags::default(); 4],
             collision: None,
+            collision_box: assets.collision_box,
+            saved_collision_box: assets.collision_box,
             rotation_axis: assets.rotation_axis,
             floor_line: -1,
             platform_drop: 0,

@@ -462,7 +462,7 @@ fn super_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 /// itSamusmissile_UnkMotion0_Coll / UnkMotion1_Coll: it_8026E71C, whose
 /// callback explodes the missile on any contact.
 fn flight_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if item.air_contact_any(ctx.map, ctx.assets) {
+    if item.air_contact_any(ctx.map) {
         explode(item, ctx.assets);
     }
     false

@@ -489,7 +489,7 @@ fn flight_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
     let bits = item.air_contact_bits(ctx.map);
     if bits & 0xF != 0 && !blast_if_fast(item, velocity, ctx.assets) && bits & 1 != 0 {
         item.land_on_floor();
-        item.restore_collision_box(ctx.assets);
+        item.restore_collision_box();
         roll(item, ctx.assets);
     }
     false

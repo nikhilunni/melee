@@ -290,7 +290,7 @@ impl ItemCore {
             self.bounce_off_surfaces(contact.bits(), map, assets);
         }
         if floor {
-            self.restore_collision_box(assets);
+            self.restore_collision_box();
             self.ground_or_air = GroundOrAir::Ground;
         }
         contact
@@ -320,7 +320,7 @@ impl ItemCore {
     /// (it_80276D9C), and a floor restores the grounded box and grounds it
     /// (it_80275DFC, it_802762B0). True on any contact, when retail calls
     /// the callback.
-    pub fn air_contact_any(&mut self, map: &mut melee_mp::CollMap, assets: &ItemAssets) -> bool {
+    pub fn air_contact_any(&mut self, map: &mut melee_mp::CollMap) -> bool {
         let bits = self.air_contact_bits(map);
         if bits & 0xF == 0 {
             return false;
@@ -329,7 +329,7 @@ impl ItemCore {
             self.leave_repeated_contact(bits);
         }
         if bits & 1 != 0 {
-            self.restore_collision_box(assets);
+            self.restore_collision_box();
             self.land_on_floor();
         }
         true
@@ -361,7 +361,7 @@ impl ItemCore {
     pub(crate) fn settle(&mut self, assets: &ItemAssets) -> bool {
         if self.land_count <= 1 {
             self.update_spin(assets.landing_spin_degrees);
-            self.restore_collision_box(assets);
+            self.restore_collision_box();
         }
         use gekko_math::msl::fabsf;
         if fabsf(self.velocity.x) <= 0.00001 {
@@ -616,9 +616,19 @@ impl ItemCore {
         }
     }
 
-    /// it_80275DFC (80275DFC): the fixed ECB from the ItemAttr box again.
-    pub fn restore_collision_box(&mut self, assets: &ItemAssets) {
-        let b = assets.collision_box;
+    /// it_80275DFC (80275DFC): the box saved at the last release (xC0C) is
+    /// in use again (xC1C). A release saves the box in use, not the kind's
+    /// (it_80275BC8, retail 0x80275C8C..C9C), so an item thrown again before
+    /// it has landed keeps its release box on the floor.
+    pub fn restore_collision_box(&mut self) {
+        self.collision_box = self.saved_collision_box;
+        self.apply_collision_box();
+    }
+
+    /// it_80275D5C's tail (80275D5C): the fixed ECB from xC1C at the item's
+    /// scale, facing its direction.
+    fn apply_collision_box(&mut self) {
+        let b = self.collision_box;
         let scale = self.scale;
         let facing = if self.facing == -1.0 { -1 } else { 1 };
         let collision = self.collision.as_mut().expect("item map collision");
@@ -771,9 +781,10 @@ impl ItemCore {
         }
     }
 
-    /// it_80275BC8 (80275BC8): grow the saved ECB box by the common release
-    /// scale (it_80275D5C, as xDCE b7 is set at creation), then an airborne
-    /// pass from the holder's centre to the hand (it_80276100).
+    /// it_80275BC8 (80275BC8): the box in use is saved (xC0C = xC1C), the
+    /// kind's box (xBFC) at the common release scale takes its place
+    /// (it_80275D5C, as xDCE b7 is set at creation), then an airborne pass
+    /// from the holder's centre to the hand (it_80276100).
     fn sweep_from_holder(
         &mut self,
         center: hsd_types::Vec3,
@@ -782,24 +793,16 @@ impl ItemCore {
     ) {
         let box_scale = assets.release_box_scale;
         let b = assets.collision_box;
-        let (top, bottom, right, left) = (
-            b.top * box_scale,
-            b.bottom * box_scale,
-            b.right * box_scale,
-            b.left * box_scale,
-        );
-        let scale = self.scale;
-        let facing = if self.facing == -1.0 { -1 } else { 1 };
+        self.saved_collision_box = self.collision_box;
+        self.collision_box = melee_types::mp::ItEcb {
+            top: b.top * box_scale,
+            bottom: b.bottom * box_scale,
+            right: b.right * box_scale,
+            left: b.left * box_scale,
+        };
+        self.collision.as_mut().expect("item map collision").cur_pos = self.position;
+        self.apply_collision_box();
         let mut collision = self.collision.take().expect("item map collision");
-        collision.cur_pos = self.position;
-        melee_mp::set_ecb_source_fixed(
-            &mut collision,
-            top * scale,
-            bottom * scale,
-            right * scale,
-            left * scale,
-        );
-        melee_mp::set_facing_dir(&mut collision, facing);
         collision.last_pos = center;
         melee_mp::mark_ecb_clear(&mut collision);
         map.air_collide_pass(&mut collision, None);
