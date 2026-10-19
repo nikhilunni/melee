@@ -204,6 +204,54 @@ fn cloned_matches_replay_identically() {
     );
 }
 
+/// Effect models live in per-match pools sized by the banks the fighters
+/// hold (every bank once a Kirby is present): branches cloned, and copied
+/// into a match of another roster, while models play continue identically.
+#[test]
+fn branches_with_live_effect_models_replay_identically() {
+    let Some(assets) = assets() else {
+        return;
+    };
+    for name in ["airreflector_fd_fox", "kirby_copy_laser_fd_fox4"] {
+        let Some((scenario, mut game, pads)) = fixture(name) else {
+            return;
+        };
+        let mut other = Match::new(assets, config()).unwrap();
+        let mut frame = 0;
+        while frame < scenario.frames && game.status().is_running() {
+            if frame % 40 != 20 {
+                game.step(&row(&pads, frame)).unwrap();
+                frame += 1;
+                continue;
+            }
+            let mut branch = game.clone();
+            other.clone_from(&game);
+            let mut grandchild = branch.clone();
+            for _ in 0..12.min(scenario.frames - frame) {
+                if !game.status().is_running() {
+                    break;
+                }
+                let inputs = row(&pads, frame);
+                game.step(&inputs).unwrap();
+                let expected = diagnostics::inspect(&game).unwrap();
+                for (label, copy) in [
+                    ("clone", &mut branch),
+                    ("clone_from", &mut other),
+                    ("clone of a clone", &mut grandchild),
+                ] {
+                    copy.step(&inputs).unwrap();
+                    assert_eq!(
+                        expected,
+                        diagnostics::inspect(copy).unwrap(),
+                        "{name} {label} at {frame}"
+                    );
+                }
+                frame += 1;
+            }
+        }
+    }
+}
+
 #[test]
 fn cloned_matches_do_not_share_mutable_state() {
     let Some(assets) = assets() else {
