@@ -1000,12 +1000,12 @@ impl Fighter {
             .as_ref()
             .is_some_and(|hit| hit.knockback != 0.0);
         // dmg.x1860_element of a hit without knockback, for its kind call.
-        let unlaunched_element = self
-            .core
-            .combat
-            .pending
-            .as_ref()
-            .map_or(melee_types::HitElement::Normal, |hit| hit.descriptor.element);
+        // A plain match: a closure here is a second copy of the same label
+        // in melee-ft's census (docs/PERF.md).
+        let unlaunched_element = match &self.core.combat.pending {
+            Some(hit) => hit.descriptor.element,
+            None => melee_types::HitElement::Normal,
+        };
         if !received_knockback {
             self.core.combat.pending_from_captor = false;
         }
