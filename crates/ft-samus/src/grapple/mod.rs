@@ -852,13 +852,14 @@ fn catch_animation(
     Ok(None)
 }
 
-/// ftCo_Catch_Coll (800D8E08) / ftCo_CatchDash_Coll: ft_800841B8; off the
-/// floor fn_800D8E30 removes the beam (fn_800D9C64) and falls.
+/// ftCo_Catch_Coll (800D8E08) / ftCo_CatchDash_Coll: ft_800841B8, whose
+/// ground collision (ft_800827A0) stops at the floor's edge; off the floor
+/// fn_800D8E30 removes the beam (fn_800D9C64) and falls.
 fn catch_collision(
     f: &mut Fighter,
     mut p: melee_ft::fighter::state::CollisionPhase<'_>,
 ) -> melee_ft::fighter::assets::Result<()> {
-    if !crate::common::stays_grounded(f, &mut p) {
+    if !crate::common::stays_on_edge(f, &mut p) {
         let assets = p.assets.expect("grab collision assets");
         remove(f);
         crate::common::fall(f, assets)?;

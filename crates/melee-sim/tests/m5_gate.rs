@@ -4637,7 +4637,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 692] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 693] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5741,6 +5741,11 @@ static CORPUS_V3_MATCHES: [(&str, usize); 692] = [
     // Luigi's thrown Popo hits Nana: the launch direction is Nana against the
     // thrower's position, not the thrown body's (ftColl_8007A06C).
     ("corpus_v3_dl_luigi_iceclimbers4_e052f4d33_p0", 4393),
+    // Pichu respawned out of Quick Attack keeps the magnifier's damage (x221E_b2
+    // clears on any motion change), the second leg's IK reaches by the first
+    // leg's measured length (one IKState, ft_0899.c:95-97), and Samus's grab
+    // stops at the floor's edge (ft_800841B8 -> ft_800827A0).
+    ("corpus_v3_fod_pichu_samus4_ef41f983a_p0", 3977),
 ];
 
 #[test]
