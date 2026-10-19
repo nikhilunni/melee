@@ -107,7 +107,7 @@ impl CharacterCallbacks for Fox {
         fighter: &mut melee_ft::fighter::Fighter,
         assets: &melee_ft::fighter::assets::FighterAssets,
     ) -> Option<(hsd_types::Vec3, f32)> {
-        Some(ft_fox_family::special_n::item_muzzle(
+        Some(ft_fox_family::special_n::item_muzzle::<Self>(
             &mut fighter.core,
             assets,
         ))

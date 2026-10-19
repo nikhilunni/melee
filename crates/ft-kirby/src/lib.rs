@@ -5,6 +5,7 @@ pub mod attributes;
 pub mod bump_star;
 pub mod damage_callbacks;
 pub mod common;
+pub mod copied;
 pub mod hat;
 pub mod init;
 pub mod mouthful;
@@ -58,6 +59,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     place_all(&mut rows, special_s::rows());
     place_all(&mut rows, special_hi::rows());
     place_all(&mut rows, special_lw::rows());
+    place_all(&mut rows, copied::rows());
     rows
 }
 

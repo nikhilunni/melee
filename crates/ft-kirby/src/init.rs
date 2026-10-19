@@ -52,6 +52,8 @@ pub struct Kirby {
     pub accessory: Accessory,
     /// Fighter +222C (u.kb.hat.x0): the hammer article is out.
     pub hammer_out: bool,
+    /// The copied Blaster: u.kb.xB0 (the gun is out) and mv.fx.SpecialN.
+    pub blaster: ft_fox_family::SpecialNeutral,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -85,6 +87,7 @@ impl Kirby {
             ability_callbacks: Default::default(),
             accessory: Accessory::None,
             hammer_out: false,
+            blaster: Default::default(),
         }
     }
 }
@@ -184,7 +187,7 @@ impl CharacterCallbacks for Kirby {
     const SWALLOWED_ABILITY: Option<fn(&melee_ft::fighter::CharacterState) -> FighterKind> =
         Some(swallowed_ability);
     /// ftKb_SpecialN_800F5BA4 / ftKb_SpecialN_800F5C34.
-    const DAMAGE_DRAW: Option<fn(&mut Fighter, bool, &mut gekko_math::HsdRng)> =
+    const DAMAGE_DRAW: Option<melee_ft::fighter::DamageDrawFn> =
         Some(crate::swallow::ability_loss_draw);
     /// EatWait (359) and EatLanding (366) carry MotionState.x9_b1.
     const KO_COUNTDOWN_ROWS: &'static [u16] = &[359, 366];
@@ -197,14 +200,9 @@ impl CharacterCallbacks for Kirby {
     ) {
         use melee_ft::fighter::SpecialSlot;
         match slot {
-            // ftKb_SpecialN_Enter (800F1638): ftKb_Init_803C9DD0[hat.kind],
-            // or the Inhale without a hat.
-            SpecialSlot::Neutral => {
-                if f.character.get::<Kirby>().copied != FighterKind::Kirby {
-                    unimplemented!("ftKb_Init_803C9DD0 (ftkirby.c:3777): a copied neutral special");
-                }
-                crate::special_n::enter(f, airborne, assets)
-            }
+            // ftKb_SpecialN_Enter (800F1638) / ftKb_SpecialAirN_Enter:
+            // ftKb_Init_803C9DD0[hat.kind], or the Inhale without a hat.
+            SpecialSlot::Neutral => crate::copied::enter_neutral(f, airborne, assets),
             // ftKb_SpecialS_Enter (800F5550) / ftKb_SpecialAirS_Enter
             // (800F55C0).
             SpecialSlot::Side => crate::special_s::enter(f, airborne, assets),
@@ -226,7 +224,8 @@ impl CharacterCallbacks for Kirby {
     }
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.
-    fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+    fn accessory(f: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+        crate::copied::accessory(f, assets);
         if !f.core.accessory4_armed {
             return;
         }
@@ -235,6 +234,12 @@ impl CharacterCallbacks for Kirby {
             Accessory::Hammer => crate::special_s::hammer_accessory(f),
             Accessory::None => {}
         }
+    }
+    fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+        crate::copied::item_owner(f)
+    }
+    fn item_muzzle(f: &mut Fighter, assets: &FighterAssets) -> Option<(hsd_types::Vec3, f32)> {
+        crate::copied::item_muzzle(f, assets)
     }
     /// ftCommon_8007DB58: take_dmg_cb, then death1_cb.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::damage_callbacks::take_damage);

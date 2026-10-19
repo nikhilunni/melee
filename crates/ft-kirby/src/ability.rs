@@ -28,10 +28,11 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are xC4 and xCC.
+/// The ones with a reader so far are xC4, xCC and xB0.
 fn reset_copied_scratch(state: &mut Kirby) {
     state.ice_shot_lift_used = false;
     state.toad_lift_used = false;
+    state.blaster = Default::default();
 }
 
 /// ftKb_SpecialN_800F1BAC (800F1BAC) with `arg2` true: a new kind replaces
@@ -43,10 +44,13 @@ pub fn take(f: &mut Fighter, kind: FighterKind) {
     let sound = if state.copied != kind {
         state.copied = kind;
         reset_copied_scratch(state);
+        // ftKb_Init_803C9CC8[kind * 2]: the hat's loader.
+        crate::hat::load(f, kind);
         COPY_SOUND
     } else {
         SWALLOW_SOUND
     };
+    let state = f.character.get_mut::<Kirby>();
     state.ability_callbacks = crate::damage_callbacks::AbilityCallbacks {
         hit: true,
         death: true,
@@ -90,13 +94,15 @@ fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
 }
 
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
-/// the death callback and ftKb_SpecialN_800F5D04. The kinds whose arm only
-/// releases an article or a held fighter (Ice Climbers, Peach, Fox, Falco,
-/// Link, Young Link, Ness, Sheik, Yoshi, Mr. Game & Watch; the Yoshi arm's
-/// hat animation is drawn) do nothing while no copied special is ported:
-/// their scratch is always at rest.
+/// the death callback and ftKb_SpecialN_800F5D04. Fox's and Falco's arm
+/// destroys the blaster. The other kinds whose arm only releases an article
+/// or a held fighter (Ice Climbers, Peach, Link, Young Link, Ness, Sheik,
+/// Yoshi, Mr. Game & Watch; the Yoshi arm's hat animation is drawn) do
+/// nothing while their copied special is not ported: their scratch is
+/// always at rest.
 fn put_away(f: &mut Fighter) {
     let kind = f.character.get::<Kirby>().copied;
+    crate::copied::blaster::put_away(f, kind);
     if put_away_charge(f, kind) {
         return;
     }
@@ -115,6 +121,7 @@ pub fn put_away_on_hit(f: &mut Fighter) {
     let state = f.character.get::<Kirby>();
     let kind = state.copied;
     let full_charge = 0.0 == state.attributes.mewtwo_charge_time;
+    crate::copied::blaster::put_away(f, kind);
     if put_away_charge(f, kind) {
         return;
     }
@@ -149,5 +156,8 @@ pub fn lose(f: &mut Fighter, star: bool) {
         f.core.item_requests.push(ItemRequest::Spawn(spawn));
         play(f, LOSS_SOUND);
     }
+    // ftKb_SpecialN_800EEEC4: the hat's unloader.
+    let copied = f.character.get::<Kirby>().copied;
+    crate::hat::unload(f, copied);
     f.character.get_mut::<Kirby>().copied = FighterKind::Kirby;
 }

@@ -219,18 +219,21 @@ pub enum EffectTiming {
     Deferred,
 }
 impl Effects {
-    /// efAlt_Spawn(0x48E), efLib_Create_Attach_Pos(0xBBD): Fox table row 5.
+    /// efAlt_Spawn(0x48E), efLib_Create_Attach_Pos(0xBBD): Fox table row 5;
+    /// Kirby's copied blasters spawn 0x4AC, the same with model 0x80E8.
     /// Loading is initialization-only; all 64 synchronous model slots are warm.
+    #[allow(clippy::too_many_arguments)]
     pub fn spawn_blaster_muzzle<T: InverseTrig>(
         &mut self,
         owner: usize,
+        model: u32,
         position: Vec3,
         angle: f32,
         common_bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        let mut effect = self.acquire(0xBBD, particles);
+        let mut effect = self.acquire(model, particles);
         effect.owner = Some(ModelOwner::Blaster(owner));
         effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
         self.next_joint += effect.tree.len();

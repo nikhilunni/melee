@@ -2636,6 +2636,20 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_hat_gameandwatch_fd_gameandwatch4", 900),
     ("kirby_hat_jigglypuff_fd_jigglypuff4", 900),
     ("kirby_hat_mewtwo_fd_mewtwo4", 900),
+    // The copied Blaster (ftkirbyspecialfox.c over ft_fox_family's states):
+    // a single grounded shot timing out off the stage, a string of four
+    // repeats, a turn and shots into the copied fighter, a full-hop aerial
+    // Blaster ending in the air and a short-hop one that lands. Falco's
+    // rows need his grafted hat's parts (mask 0x1800) present.
+    ("kirby_copy_blaster_fd_fox4", 900),
+    ("kirby_copy_blaster_fd_falco4", 900),
+    // Fox jabs Kirby mid-string (take_dmg_cb destroys the blaster,
+    // ftKb_SpecialNFx_800FDEE0), then lasers him in the Blaster's rows.
+    ("kirby_copy_blaster_jab_fd_fox4", 700),
+    // A laser without knockback wins the ability's draw in the Blaster's
+    // rows (ftKb_SpecialN_800F5C34, ftkirbyspecialn.c:251-258): the flash,
+    // the star and Wait.
+    ("kirby_copy_blaster_lost_fd_fox4", 492),
 ];
 
 #[test]
@@ -5707,6 +5721,8 @@ static CORPUS_V3_MATCHES: [(&str, usize); 694] = [
     ("corpus_v3_fd_kirby_fox4_ef41f983a_p2", 4963),
     ("corpus_v3_fd_kirby_captainfalcon4_ee42e8dad_p0", 6001),
     ("corpus_v3_fd_kirby_falco4_e6eb56344_p2", 6001),
+    // Kirby uses Falco's copied Blaster (ftKb_SpecialNFx_800FE100).
+    ("corpus_v3_fd_kirby_falco4_ed4320157_p0", 1572),
     ("corpus_v3_fd_kirby_jigglypuff4_e7da23597_p0", 6001),
     ("corpus_v3_fd_kirby_donkeykong4_e170dc03b_p2", 6001),
     ("corpus_v3_fd_kirby_mewtwo4_ef540a761_p2", 6001),

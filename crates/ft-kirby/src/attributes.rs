@@ -4,7 +4,9 @@
 //! and action ids, `lfs` for the impulses (ftCo_800D74A4).
 use hsd_archive::{Archive, Reader};
 use hsd_types::Vec2;
-use melee_ft::desc::{special_attributes_offset, FighterDescError};
+use melee_ft::desc::{
+    fox_attributes::BlasterAttributes, special_attributes_offset, FighterDescError,
+};
 use melee_ft::fighter::multi_jump::MultiJumpAttributes;
 use melee_types::mp::FtCollisionBox;
 
@@ -29,6 +31,10 @@ pub struct KirbyAttributes {
     pub final_cutter: FinalCutterAttributes,
     /// +EC..+114: Stone.
     pub stone: StoneAttributes,
+    /// +220..+244 (`specialn_fx_*`): the copied Fox Blaster.
+    pub fox_blaster: BlasterAttributes,
+    /// +244..+268 (`specialn_fc_*`): the copied Falco Blaster.
+    pub falco_blaster: BlasterAttributes,
     /// +384 (`specialn_mt_charge_time`): the copied Shadow Ball's full
     /// charge; a hit keeps a full charge (ftKb_SpecialNMt_80107130).
     pub mewtwo_charge_time: f32,
@@ -242,6 +248,8 @@ impl KirbyAttributes {
                 health: r.s32(0x108)?,
                 free_fall_lag: r.f32(0x114)?,
             },
+            fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,
+            falco_blaster: BlasterAttributes::read(Reader::new(r.slice(0x244, 0x24)?))?,
             mewtwo_charge_time: r.f32(0x384)?,
         })
     }

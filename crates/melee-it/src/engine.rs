@@ -43,6 +43,8 @@ pub struct HeldState {
     pub opening_direction: i32,
     pub shot_pending: bool,
     pub opening_sound_played: bool,
+    /// The effect model of the shot's flash (it_802ADF10's efSync_Spawn).
+    pub muzzle_model: u32,
 }
 #[derive(Clone, Debug, Default)]
 pub struct AfterimageState {

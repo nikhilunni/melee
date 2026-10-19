@@ -20,7 +20,9 @@ pub struct FoxAttributes {
     pub reflector: ReflectorAttributes,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+/// The Blaster's words, ftFox_DatAttrs +0x00..+0x24; Kirby's copied
+/// Blasters carry the same block twice (ftKb_DatAttrs +220, +244).
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BlasterAttributes {
     /// +0x00, ft/kinds/ftFox/types.h:79.
     // TODO(meaning): the decomp has not named this parameter.
@@ -166,7 +168,8 @@ impl FoxAttributes {
 }
 
 impl BlasterAttributes {
-    fn read(r: Reader<'_>) -> Result<Self> {
+    /// The block at the start of `r`.
+    pub fn read(r: Reader<'_>) -> Result<Self> {
         Ok(Self {
             unknown_1: r.f32(0x00)?,
             unknown_2: r.f32(0x04)?,

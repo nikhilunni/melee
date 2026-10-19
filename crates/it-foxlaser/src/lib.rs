@@ -7,6 +7,12 @@ pub struct FoxLaser;
 pub struct FalcoLaser;
 pub struct FoxBlaster;
 pub struct FalcoBlaster;
+/// Kirby's copied Blasters (ftkirbyspecialfox.c): the same item code, with
+/// Kirby's articles (PlKbCpFx.dat, PlKbCpFc.dat) and muzzle flash.
+pub struct KirbyFoxLaser;
+pub struct KirbyFalcoLaser;
+pub struct KirbyFoxBlaster;
+pub struct KirbyFalcoBlaster;
 /// it_803F67D0: both laser animations share the same three callbacks.
 pub static LASER_STATES: [ItemStateRow; 2] = [laser_row(0), laser_row(1)];
 const fn laser_row(animation_id: i32) -> ItemStateRow {
@@ -84,6 +90,8 @@ macro_rules! laser {
 }
 laser!(FoxLaser, FoxLaser);
 laser!(FalcoLaser, FalcoLaser);
+laser!(KirbyFoxLaser, KirbyFoxLaser);
+laser!(KirbyFalcoLaser, KirbyFalcoLaser);
 /// it_8029C504: normalize angle, initialize the selected animation and ray vars.
 #[allow(clippy::manual_range_contains)] // Retail comparisons preserve the NaN branch.
 pub fn initialize_laser(
@@ -207,8 +215,17 @@ const fn blaster_row(animation_id: i32) -> ItemStateRow {
         collision: empty_collision,
     }
 }
+/// it_802ADF10's efSync_Spawn: the shot's flash, 0x48E (model 0xBBD in
+/// Fox's bank) for Fox's and Falco's blasters, 0x4AC (model 0x80E8, the
+/// first of EfKbFx.dat) for Kirby's.
+const FOX_MUZZLE_MODEL: u32 = 0xBBD;
+const KIRBY_MUZZLE_MODEL: u32 = 0x80E8;
+/// ftFox_SpecialN_SpawnBlaster: it_8026BAE8(blaster, 0.85). Kirby's spawn
+/// (ftKb_SpecialNFx_800FE100) leaves the article's own scale.
+const FOX_HELD_SCALE: f32 = 0.85;
+const KIRBY_HELD_SCALE: f32 = 1.0;
 macro_rules! blaster {
-    ($type:ty,$kind:ident,$open:expr,$holster:expr) => {
+    ($type:ty,$kind:ident,$open:expr,$holster:expr,$scale:expr,$muzzle:expr) => {
         impl ItemLogic for $type {
             const KIND: ItemKind = ItemKind::$kind;
             const STATES: &'static [ItemStateRow] = &BLASTER_STATES;
@@ -219,7 +236,9 @@ macro_rules! blaster {
             }
             // ftFox_SpecialN: it_8026BAE8 sets the blaster model scale.
             const MODEL_COPIES: usize = 1;
-            const HELD_SCALE: f32 = 0.85;
+            const HELD_SCALE: f32 = $scale;
+            // Kirby's spawn names bone 44 directly (FtPart_R3rdNa as an
+            // index), which PlCo's parts table maps to his RThumbNb.
             const HELD_PART: Option<melee_types::FtPart> = Some(melee_types::FtPart::RThumbNb);
             fn model_pose(
                 item: &ItemCore,
@@ -234,6 +253,7 @@ macro_rules! blaster {
                 item.held = true;
                 item.scratch = ItemScratch::Held(HeldState {
                     visibility: 1,
+                    muzzle_model: $muzzle,
                     ..Default::default()
                 });
                 item.change_motion(0, assets);
@@ -297,8 +317,39 @@ macro_rules! blaster {
         }
     };
 }
-blaster!(FoxBlaster, FoxBlaster, 0x1AE05, 0x1AE14);
-blaster!(FalcoBlaster, FalcoBlaster, 0x186F1, 0x18700);
+blaster!(
+    FoxBlaster,
+    FoxBlaster,
+    0x1AE05,
+    0x1AE14,
+    FOX_HELD_SCALE,
+    FOX_MUZZLE_MODEL
+);
+blaster!(
+    FalcoBlaster,
+    FalcoBlaster,
+    0x186F1,
+    0x18700,
+    FOX_HELD_SCALE,
+    FOX_MUZZLE_MODEL
+);
+// itFoxBlaster_PlaySFX: Kirby's blasters play Fox's and Falco's sounds.
+blaster!(
+    KirbyFoxBlaster,
+    KirbyFoxBlaster,
+    0x1AE05,
+    0x1AE14,
+    KIRBY_HELD_SCALE,
+    KIRBY_MUZZLE_MODEL
+);
+blaster!(
+    KirbyFalcoBlaster,
+    KirbyFalcoBlaster,
+    0x186F1,
+    0x18700,
+    KIRBY_HELD_SCALE,
+    KIRBY_MUZZLE_MODEL
+);
 /// itFoxblaster_UnkMotion8_Anim: item motion follows the owner's SpecialN index;
 /// ending rows 2/5/6/7/8 retain their animation until cleanup.
 fn blaster_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {

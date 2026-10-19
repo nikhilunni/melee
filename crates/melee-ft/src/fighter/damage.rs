@@ -996,6 +996,13 @@ impl Fighter {
             .pending
             .as_ref()
             .is_some_and(|hit| hit.knockback != 0.0);
+        // dmg.x1860_element of a hit without knockback, for its kind call.
+        let unlaunched_element = self
+            .core
+            .combat
+            .pending
+            .as_ref()
+            .map_or(melee_types::HitElement::Normal, |hit| hit.descriptor.element);
         if !received_knockback {
             self.core.combat.pending_from_captor = false;
         }
@@ -1048,7 +1055,7 @@ impl Fighter {
                 // fighter.c:2860: ftKb_SpecialN_800F5BA4.
                 if let Some(draw) = self.character.table().damage_draw {
                     let cape = hit.descriptor.element == melee_types::HitElement::Cape;
-                    draw(self, cape, rng);
+                    draw(self, super::DamageDraw::Knockback { cape }, assets, rng)?;
                 }
                 // fighter.c:2862: take_dmg_2_cb, before the reaction.
                 if let Some(hit_taken) = self.character.table().hit_taken {
@@ -1198,7 +1205,8 @@ impl Fighter {
             self.core.physics.percent += self.core.combat.frame_damage;
             // fighter.c:2960: ftKb_SpecialN_800F5C34.
             if let Some(draw) = self.character.table().damage_draw {
-                draw(self, false, rng);
+                let element = unlaunched_element;
+                draw(self, super::DamageDraw::Damage { element }, assets, rng)?;
             }
             // ftCommon_800804FC (fighter.c:2961).
             let ground_or_air = self.core.physics.ground_or_air;
@@ -3161,12 +3169,34 @@ impl FighterCore {
         hit: &ReceivedHit,
         assets: &FighterAssets,
     ) {
-        if hit.percent_damage == 0.0 {
+        self.unlaunched_flash(knockback, hit.percent_damage, hit.descriptor.element, assets);
+    }
+
+    /// ftCo_8008EC90 with dmg.kb_applied 0 (inlineB2), for damage that
+    /// reached percent without knockback (fighter.c:2958): ftCo_800C8D00
+    /// (inert in every supported mode), the element's flash at reaction
+    /// level 0, and ftCommon_800804FC. Kirby's ftKb_SpecialN_800F5C34 calls
+    /// it before he loses his ability in a copied special's row.
+    pub fn unlaunched_reaction(&mut self, element: melee_types::HitElement, assets: &FighterAssets) {
+        self.unlaunched_flash(0.0, self.combat.frame_damage, element, assets);
+        self.combat
+            .ko_source
+            .clear_if_grounded(self.physics.ground_or_air);
+    }
+
+    fn unlaunched_flash(
+        &mut self,
+        knockback: f32,
+        damage: f32,
+        element: melee_types::HitElement,
+        assets: &FighterAssets,
+    ) {
+        if damage == 0.0 {
             return;
         }
         let scaled = knockback * assets.damage.hitstun_scale;
         let level = assets.damage.reaction_level(scaled) as u8;
-        let id = match hit.descriptor.element {
+        let id = match element {
             melee_types::HitElement::Fire => 11 + level,
             melee_types::HitElement::Electric => 15 + level,
             melee_types::HitElement::Ice => 31 + level,

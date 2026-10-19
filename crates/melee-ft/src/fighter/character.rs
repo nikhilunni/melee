@@ -48,7 +48,7 @@ pub struct CharacterTable {
     pub reflector_keeps_owner: bool,
     pub take_damage: Option<fn(&mut Fighter)>,
     pub hit_taken: Option<fn(&mut Fighter)>,
-    pub damage_draw: Option<fn(&mut Fighter, bool, &mut gekko_math::HsdRng)>,
+    pub damage_draw: Option<super::DamageDrawFn>,
     pub map_accessory:
         Option<fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap)>,
     pub on_absorb: Option<fn(&mut Fighter, &assets::FighterAssets, super::absorb::Absorbed)>,

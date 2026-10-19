@@ -1,0 +1,89 @@
+# KIRBY directed witness from start_fd_kirby_fox4 (Kirby swallows Fox and keeps his Blaster): Kirby fires a string of Blaster shots and Fox jabs him from behind mid-string (the take-damage callback puts the blaster away); Kirby fires again and Fox's lasers, which have no knockback, strike him in the Blaster's rows.
+name = "kirby_copy_blaster_jab_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 402, port = 0, buttons = {  }, raw = {  } },
+  { frame = 406, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 408, port = 0, buttons = {  }, raw = {  } },
+  { frame = 412, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 414, port = 0, buttons = {  }, raw = {  } },
+  { frame = 418, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 420, port = 0, buttons = {  }, raw = {  } },
+  { frame = 424, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 426, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 430, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 432, port = 0, buttons = {  }, raw = {  } },
+  { frame = 432, port = 1, buttons = {  }, raw = {  } },
+  { frame = 436, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 438, port = 0, buttons = {  }, raw = {  } },
+  { frame = 442, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 444, port = 0, buttons = {  }, raw = {  } },
+  { frame = 448, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 450, port = 0, buttons = {  }, raw = {  } },
+  { frame = 454, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 456, port = 0, buttons = {  }, raw = {  } },
+  { frame = 460, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 462, port = 0, buttons = {  }, raw = {  } },
+  { frame = 466, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 468, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 522, port = 0, buttons = {  }, raw = {  } },
+  { frame = 526, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 528, port = 0, buttons = {  }, raw = {  } },
+  { frame = 532, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 534, port = 0, buttons = {  }, raw = {  } },
+  { frame = 538, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 540, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 542, port = 1, buttons = {  }, raw = {  } },
+  { frame = 544, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 546, port = 0, buttons = {  }, raw = {  } },
+  { frame = 550, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 552, port = 0, buttons = {  }, raw = {  } },
+  { frame = 556, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 556, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 558, port = 0, buttons = {  }, raw = {  } },
+  { frame = 558, port = 1, buttons = {  }, raw = {  } },
+  { frame = 562, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 564, port = 0, buttons = {  }, raw = {  } },
+  { frame = 568, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 570, port = 0, buttons = {  }, raw = {  } },
+  { frame = 572, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 574, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 574, port = 1, buttons = {  }, raw = {  } },
+  { frame = 576, port = 0, buttons = {  }, raw = {  } },
+  { frame = 580, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 582, port = 0, buttons = {  }, raw = {  } },
+  { frame = 586, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 588, port = 0, buttons = {  }, raw = {  } },
+  { frame = 588, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 590, port = 1, buttons = {  }, raw = {  } },
+  { frame = 592, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 594, port = 0, buttons = {  }, raw = {  } },
+  { frame = 598, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 600, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

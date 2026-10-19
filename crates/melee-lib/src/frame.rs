@@ -1092,6 +1092,7 @@ impl Runtime {
                 if let melee_it::ItemScratch::Held(held) = &mut item.scratch {
                     if held.shot_pending && !in_hitlag {
                         held.shot_pending = false;
+                        let model = held.muzzle_model;
                         let slot = owner_slot.expect("blaster owner");
                         let index = state
                             .fighters
@@ -1107,6 +1108,7 @@ impl Runtime {
                             .expect("blaster muzzle callback");
                         state.effects.spawn_blaster_muzzle::<RetailTrig>(
                             usize::from(slot),
+                            model,
                             position,
                             angle,
                             &state.assets.common_particle_bank,

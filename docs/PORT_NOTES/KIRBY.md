@@ -530,10 +530,9 @@ fails closed.
 - **A wall ends the Cutter beam** (itkirbycutterbeam.c:144-151), witnessed on
   Yoshi's Story; the beam beside a wall with no horizontal speed (:138-143)
   fails closed.
-- Not ported: every copied neutral special (`ftKb_Init_803C9DD0`), the five
-  hats grafted into Kirby's parts (Donkey Kong, Jigglypuff, Mewtwo, Falco,
-  Mr. Game & Watch; ftkirby.c:3578-3592), `ftKb_SpecialN_800F5C34`'s arm for a
-  copied special's row (ftkirbyspecialn.c:251-260), item pickup hand poses.
+- Not ported: the copied neutral specials other than Fox's and Falco's
+  Blaster (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its
+  name), item pickup hand poses.
 
 ## Where this stands and how to resume (2026-10-12)
 
@@ -566,14 +565,36 @@ Remaining work, in the order to take it:
    the hatless scratch scene `kirby_nohat_mewtwo_jab_fd_mewtwo4`
    (unregistered; port 48.61, retail 50.99). Not yet diagnosed.
 2. **The copied specials**, one kind at a time (`ftKb_Init_803C9DD0` /
-   `803C9E54`, rows 399..543, `ftkirbyspecial<kind>.c`): Fox and Falco
-   (Blaster, items `Kirby_FoxLaser` / `FalcoLaser` / `FoxBlaster` /
-   `FalcoBlaster`) first to set the pattern of sharing with the original's
-   family and item crates, then Marth, Sheik, Captain Falcon, Peach,
-   Jigglypuff, Samus, then the rest. Each row's stale-move id exists already
-   (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (charge flashes) and
-   `ftKb_SpecialN_800F5C34`'s arm for a copied special's row
-   (ftkirbyspecialn.c:251-260) come with them.
+   `803C9E54`, rows 399..543, `ftkirbyspecial<kind>.c`). Done (wave 12):
+   Fox's and Falco's Blaster and `ftKb_SpecialN_800F5C34`'s arm for a
+   copied special's row (`kirby_copy_blaster_*`,
+   `corpus_v3_fd_kirby_falco4_ed4320157_p0`). Next: Marth, Sheik, Captain
+   Falcon, Peach, Jigglypuff, Samus, then the rest; each row's stale-move id
+   exists already (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (the
+   charge flashes of Donkey Kong, Samus, Mewtwo and Sheik) comes with those
+   kinds. The pattern, per kind:
+   - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,
+     `KirbyFalco`) implementing the original family's trait over Kirby's
+     state (rows, items, hand, attributes, scratch in `Kirby`, callbacks =
+     `ftKb_SpecialN_set_cbs`); the states themselves stay in the family
+     crate, generic over that trait (`ft_fox_family::special_n::Blaster`,
+     which `FoxFamily` gets by a blanket impl). A kind whose original has no
+     family crate makes its shared states generic first.
+   - `copied/mod.rs`: the kind's `NEUTRAL` entry becomes `Ported`, its rows
+     join `rows()`, and its arms of accessory4, the article owner view and
+     the muzzle (each a switch on `hat.kind` in retail).
+   - `ability.rs`: its arm of `ftKb_SpecialN_800F19AC` / `800F1A8C` (the
+     put-away), and `reset_copied_scratch` (800F190C) for its words.
+   - Articles: the item kinds in the original's item crate (as
+     `it_foxlaser::KirbyFoxBlaster`), registered in `melee-lib`
+     `scene_items` (`SceneItems` and `KIRBY_COPY_ARCHIVES`: the copy
+     archive, its `hat_dynamics` slot per article, as
+     `ftKb_SpecialN_800F16D0` registers them); effects from the copy's bank
+     (`ftKb_Init_803CB46C[kind]`, e.g. EfKbFx.dat = bank 33) join
+     `melee_ef::CHARACTER_EFFECT_FILES`.
+   - A grafted hat's kind (Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game
+     & Watch): `hat::grafted_parts` already makes the hat's parts present,
+     which the copied rows' animations need.
 3. **Inhaling items** (rows 357, 368, 370, 375, 379, 381; `fn_800F6178`,
    `ftKb_SpecialN_800F5DE8`) and **item pickup hand poses**
    (`ftKb_Init_OnItemPickup`).

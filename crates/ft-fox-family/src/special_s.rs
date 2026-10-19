@@ -539,8 +539,8 @@ pub fn accessory<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) {
 /// the DOL), which Fighter.x2073 holds during them.
 const ILLUSION_MOVE_ID: u32 = 19;
 
-pub fn item_owner<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> melee_it::ItemOwner {
-    let mut owner = crate::special_n::item_owner::<C>(f, assets);
+pub fn item_owner<C: FoxFamily>(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
+    let mut owner = crate::special_n::item_owner::<C>(f);
     let action = f.motion_state.action.0;
     let in_illusion = ILLUSION.contains(&action);
     // A fall past a side or the bottom keeps the ghost samples in the

@@ -298,6 +298,20 @@ impl ItemAssets {
         Self::from_article(archive, article, &rows, 10)
     }
 
+    /// The Article a pointer at `slot` names, its `states` motion states in
+    /// order, as [`Self::from_fighter`] reads them: Kirby's copy archives
+    /// keep their articles in KirbyHatStruct.hat_dynamics (+C), which
+    /// ftKb_SpecialN_800F16D0 registers (it_8026B3F8).
+    pub fn from_article_slot(
+        archive: &Archive,
+        slot: u32,
+        states: usize,
+    ) -> hsd_archive::desc::Result<Self> {
+        let article = archive.reader().u32(slot)?;
+        let rows: Vec<i32> = (0..states as i32).collect();
+        Self::from_article(archive, article, &rows, 10)
+    }
+
     /// ftData.x48_items[item_index] for an article whose motion states do
     /// not map one to one onto article states: `article_states` is the
     /// kind's ItemStateTable anim_id column, as for [`Self::from_common`].

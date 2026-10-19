@@ -98,6 +98,10 @@ impl Assets {
             files.extend([descriptor.data_file, descriptor.animation_file]);
             files.extend(descriptor.costumes.iter().map(|c| c.file));
         }
+        files.extend(
+            crate::scene_items::kirby_copy_archives(descriptors.iter().map(|d| d.kind))
+                .map(|copy| copy.file),
+        );
         files.push(stage_descriptor.file);
         if stage_descriptor.kind == melee_types::GrKind::PStadium {
             files.extend(STADIUM_FORM_FILES);

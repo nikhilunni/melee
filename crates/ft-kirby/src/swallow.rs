@@ -17,7 +17,7 @@ use melee_ft::{
         capture_kirby::{CaptorRequest, StarParameters},
         ledge::GrabExclusions,
         state::{AnimationPhase, CollisionPhase, MotionRow},
-        ActionId, Fighter,
+        ActionId, DamageDraw, Fighter,
     },
 };
 use melee_types::FighterKind;
@@ -258,16 +258,46 @@ fn air_spit_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> 
 /// ftKb_SpecialN_800F5BA4 (800F5BA4) / ftKb_SpecialN_800F5C34 (800F5C34),
 /// from Fighter_ProcessHit: a hit on a Kirby with a copied ability and
 /// nothing in his mouth draws for its loss, one in +B0, and a 0 throws the
-/// ability away as a star (ftKb_SpecialN_800F5D04).
-pub fn ability_loss_draw(f: &mut Fighter, cape: bool, rng: &mut gekko_math::HsdRng) {
+/// ability away as a star (ftKb_SpecialN_800F5D04). Damage without
+/// knockback that wins the draw in a copied special's row (399..543,
+/// ftkirbyspecialn.c:251-258) first takes ftCo_8008EC90's reaction, and
+/// Kirby leaves the row for Wait or Fall.
+pub fn ability_loss_draw(
+    f: &mut Fighter,
+    draw: DamageDraw,
+    assets: &FighterAssets,
+    rng: &mut gekko_math::HsdRng,
+) -> Result<()> {
     let state = f.character.get::<Kirby>();
     // hat.x8_b0 (Player_GetFlagsAEBit1) is set in no supported mode;
     // victim_gobj names the other fighter of a grab pair, either way round.
+    let cape = draw == DamageDraw::Knockback { cape: true };
     if state.copied == FighterKind::Kirby || f.combat.grab.is_some() || cape {
-        return;
+        return Ok(());
     }
     let odds = gekko_math::msl::fctiwz(state.attributes.inhale.ability_loss_odds);
-    if rng.randi(odds) == 0 {
-        crate::ability::lose(f, true);
+    if rng.randi(odds) != 0 {
+        return Ok(());
+    }
+    let action = f.motion_state.action.0;
+    match draw {
+        DamageDraw::Damage { element } if COPIED_SPECIAL_ROWS.contains(&action) => {
+            f.core.unlaunched_reaction(element, assets);
+            crate::ability::lose(f, true);
+            let air = f.physics.ground_or_air != melee_types::GroundOrAir::Ground;
+            if air {
+                crate::common::enter_fall(f, assets)
+            } else {
+                crate::common::finish(f, false, assets)
+            }
+        }
+        _ => {
+            crate::ability::lose(f, true);
+            Ok(())
+        }
     }
 }
+
+/// ftKb_MS_MrSpecialN (0x18F) through ftKb_MS_GkSpecialAirNEnd: every
+/// copied special's row.
+const COPIED_SPECIAL_ROWS: std::ops::Range<u16> = 399..544;

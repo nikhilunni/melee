@@ -90,7 +90,57 @@ melee_it::item_kinds! {
         KirbyCBeam: it_kirby::CutterBeam,
         KirbyHammer: it_kirby::Hammer,
         Unk1: it_kirby::AbilityStar,
+        KirbyFoxLaser: it_foxlaser::KirbyFoxLaser,
+        KirbyFalcoLaser: it_foxlaser::KirbyFalcoLaser,
+        KirbyFoxBlaster: it_foxlaser::KirbyFoxBlaster,
+        KirbyFalcoBlaster: it_foxlaser::KirbyFalcoBlaster,
     }
+}
+
+/// One of Kirby's copy archives (ftKb_Init_803CA9D0[kind]) whose articles
+/// the port registers: KirbyHatStruct `symbol`, and per article its
+/// hat_dynamics slot (+C + 4 * slot) and motion-state count.
+pub(crate) struct KirbyCopyArchive {
+    pub kind: melee_types::FighterKind,
+    pub file: &'static str,
+    pub symbol: &'static str,
+    pub articles: &'static [(ItemKind, u32, usize)],
+}
+
+/// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
+/// special whose code spawns an article adds its kind's row here.
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 2] = [
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Fox,
+        file: "PlKbCpFx.dat",
+        symbol: "ftDataKirbyCopyFox",
+        // The laser's two states and the blaster's nine, as Fox's own.
+        articles: &[
+            (ItemKind::KirbyFoxLaser, 0, 2),
+            (ItemKind::KirbyFoxBlaster, 1, 9),
+        ],
+    },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Falco,
+        file: "PlKbCpFc.dat",
+        symbol: "ftDataKirbyCopyFalco",
+        // hat_dynamics[0..3] are the grafted hat's spring chains.
+        articles: &[
+            (ItemKind::KirbyFalcoLaser, 3, 2),
+            (ItemKind::KirbyFalcoBlaster, 4, 9),
+        ],
+    },
+];
+
+/// ftKb_Init_UnkMotionStates5 -> Player_80031DC8(ftKb_SpecialN_800EED50):
+/// with a Kirby in the match, the copy archive of every kind in it.
+pub(crate) fn kirby_copy_archives(
+    kinds: impl Iterator<Item = melee_types::FighterKind> + Clone,
+) -> impl Iterator<Item = &'static KirbyCopyArchive> {
+    let kirby = kinds.clone().any(|kind| kind == melee_types::FighterKind::Kirby);
+    KIRBY_COPY_ARCHIVES
+        .iter()
+        .filter(move |copy| kirby && kinds.clone().any(|kind| kind == copy.kind))
 }
 
 /// The grabbable items (Item_IsGrabbable: xDC8 x15 and a pickup callback)
@@ -658,6 +708,18 @@ impl Resources {
             )?;
             kinds.push((ItemKind::Unk1, star));
             visual_archives.push((ItemKind::Unk1, a));
+        }
+        for copy in kirby_copy_archives(characters.iter().map(|c| c.descriptor.kind)) {
+            let a = std::sync::Arc::new(archive(copy.file)?);
+            let hat = a.public(copy.symbol).context("Kirby copy archive")?;
+            for &(kind, slot, states) in copy.articles {
+                // KirbyHatStruct.hat_dynamics (+C).
+                kinds.push((
+                    kind,
+                    ItemAssets::from_article_slot(&a, hat + 0xC + slot * 4, states)?,
+                ));
+                visual_archives.push((kind, std::sync::Arc::clone(&a)));
+            }
         }
         // ftSk_Init_OnLoad: ftData.x48_items[2] is Vanish's smoke. Sheik's
         // articles load with Zelda too: both forms come to every match.

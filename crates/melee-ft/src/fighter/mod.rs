@@ -255,7 +255,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// (fighter.c:2860, ahead of take_dmg_2_cb; the flag says the hit was a
     /// cape's) and ftKb_SpecialN_800F5C34 for damage without one
     /// (fighter.c:2960). Kirby draws there for the loss of his ability.
-    const DAMAGE_DRAW: Option<fn(&mut Fighter, bool, &mut gekko_math::HsdRng)> = None;
+    const DAMAGE_DRAW: Option<DamageDrawFn> = None;
     /// ftData_UnkMotionStates4[kind] as the kind's state stands once
     /// OnDeath has run: the colour animation the secondary slot takes
     /// whenever it empties (`CombatState::secondary_color_fallback`), for a
@@ -361,29 +361,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     }
 
     fn item_owner(fighter: &mut Fighter, _assets: &assets::FighterAssets) -> melee_it::ItemOwner {
-        melee_it::ItemOwner {
-            illusion: None,
-            position: fighter.physics.position,
-            facing: fighter.physics.facing,
-            hold_position: fighter.physics.position,
-            blaster_action: 9,
-            remove_blaster: true,
-            motion: fighter.motion_state.action.0,
-            articles_fired: 0,
-            charge: None,
-            holds_needles: false,
-            stick: hsd_types::Vec2::new(
-                fighter.input.current.stick.x,
-                fighter.input.current.stick.y,
-            ),
-            steering_article: false,
-            detonating_article: false,
-            motion_flags: fighter.motion_flags(),
-            in_hitlag: fighter.core.in_hitlag(),
-            anchor: fighter.physics.position,
-            article_stage: None,
-            model_scale: fighter.player.scale * fighter.attributes.size.model_scaling,
-        }
+        default_item_owner(fighter)
     }
 
     fn kind(&self) -> FighterKind;
@@ -1477,3 +1455,52 @@ pub enum MotionData {
         retained_drop_timer: f32,
     },
 }
+
+/// What an article reads of an owner whose character holds no article of
+/// its own state: no Blaster (`blaster_action` 9), nothing charged or fired.
+pub fn default_item_owner(fighter: &Fighter) -> melee_it::ItemOwner {
+    melee_it::ItemOwner {
+        illusion: None,
+        position: fighter.physics.position,
+        facing: fighter.physics.facing,
+        hold_position: fighter.physics.position,
+        blaster_action: 9,
+        remove_blaster: true,
+        motion: fighter.motion_state.action.0,
+        articles_fired: 0,
+        charge: None,
+        holds_needles: false,
+        stick: hsd_types::Vec2::new(
+            fighter.input.current.stick.x,
+            fighter.input.current.stick.y,
+        ),
+        steering_article: false,
+        detonating_article: false,
+        motion_flags: fighter.motion_flags(),
+        in_hitlag: fighter.core.in_hitlag(),
+        anchor: fighter.physics.position,
+        article_stage: None,
+        model_scale: fighter.player.scale * fighter.attributes.size.model_scaling,
+    }
+}
+
+/// Which of Fighter_ProcessHit's two kind calls a hit reaches
+/// (`CharacterCallbacks::DAMAGE_DRAW`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DamageDraw {
+    /// fighter.c:2860, a hit with knockback; `cape`: dmg.x1860_element is
+    /// a cape's.
+    Knockback { cape: bool },
+    /// fighter.c:2960, damage without knockback, after it reached percent;
+    /// `element` is dmg.x1860_element.
+    Damage {
+        element: melee_types::HitElement,
+    },
+}
+
+pub type DamageDrawFn = fn(
+    &mut Fighter,
+    DamageDraw,
+    &assets::FighterAssets,
+    &mut gekko_math::HsdRng,
+) -> assets::Result<()>;
