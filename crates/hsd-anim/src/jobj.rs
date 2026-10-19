@@ -444,11 +444,14 @@ pub struct JObjTree {
     /// REFTYPE_JOBJ subtype 4 (lb_8000C290): the target joint, and the
     /// retail rotation recovery (HSD_MtxGetRotation with the caller's
     /// inverse trigonometry) JObjUpdateFunc type 0x37 runs. `None` is an
-    /// inactive slot reserved before the tick loop.
-    orientation_constraints: std::collections::BTreeMap<
+    /// inactive slot reserved before the tick loop. A list, not a map: a
+    /// tree constrains one joint at most (an effect's root, an article's
+    /// attach point), and a map's first node holds eleven ~1.2 kB values,
+    /// which every pooled effect slot would carry.
+    orientation_constraints: Vec<(
         JObjId,
         Option<(crate::orientation::OrientationTarget, OrientationRecovery)>,
-    >,
+    )>,
     nodes: Vec<JObj>,
     /// Inactive joint track buffers, reserved once by fixed-skeleton owners.
     spare_tracks: Vec<Vec<crate::fobj::FObj>>,
@@ -530,7 +533,9 @@ impl JObjTree {
     /// Prepare an inactive orientation slot before animation updates begin,
     /// so setting the constraint in the tick does not allocate.
     pub fn reserve_orientation_constraint(&mut self, id: JObjId) {
-        self.orientation_constraints.entry(id).or_insert(None);
+        if !self.orientation_constraints.iter().any(|(joint, _)| *joint == id) {
+            self.orientation_constraints.push((id, None));
+        }
     }
 
     /// lb_8000C290 / resolveCnsOrientation: the target joint for this frame
@@ -540,10 +545,14 @@ impl JObjTree {
         id: JObjId,
         target: Option<(crate::orientation::OrientationTarget, OrientationRecovery)>,
     ) {
-        if let Some(slot) = self.orientation_constraints.get_mut(&id) {
-            *slot = target;
-        } else if target.is_some() {
-            self.orientation_constraints.insert(id, target);
+        match self
+            .orientation_constraints
+            .iter_mut()
+            .find(|(joint, _)| *joint == id)
+        {
+            Some((_, slot)) => *slot = target,
+            None if target.is_some() => self.orientation_constraints.push((id, target)),
+            None => {}
         }
         self.set_mtx_dirty_sub(id);
     }
@@ -1161,7 +1170,10 @@ impl JObjTree {
                 self.nodes[id.0].translate = Vec3::new(local.0[0][3], local.0[1][3], local.0[2][3]);
             }
             if let Some((target, recover)) =
-                self.orientation_constraints.get(&id).copied().flatten()
+                self.orientation_constraints
+                    .iter()
+                    .find(|(joint, _)| *joint == id)
+                    .and_then(|(_, target)| *target)
             {
                 self.resolve_orientation(id, &target, recover);
             }
