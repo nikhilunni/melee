@@ -229,9 +229,42 @@ Open:
   world rotation about its parent is not Rz(rotate.z) (cos -0.4225 against
   cos(1.8657) = -0.2906), so something besides HSD_MtxSRT writes it (an RObj
   constraint or IK the port does not model?). Not diagnosed.
-- program 74 (`corpus_v3_bf_yoshi_pikachu4_ec13743d5_p2` tick 918): the
-  Quick Attack trail reads XRotN from ftPk_SpecialAirHiStart1_Anim. Draws and
-  end-of-tick bones match retail; retail's XRotN at the callback is posed
-  differently on this tick only (offset from the root (4.61, 2.05) against
-  the port's (-0.95, 5.49)), as if the animation re-wrote the joint before
-  the callback. Not diagnosed.
+- program 74 (`corpus_v3_bf_yoshi_pikachu4_ec13743d5_p2` tick 918): fixed in
+  wave 12 (below); the joint was right, the random scatter was not.
+
+Programs 225 and 19 no longer fault in the 2026-10-18 sweep (TRACKER.md):
+2 of the 112 remained, the two below.
+
+## Wave 12: the last two (2026-10-19)
+
+Both now `particles: N ticks, 0 divergences`, and a full sweep of
+`gate --particles` has no particle fault left.
+
+- program 74, `corpus_v3_bf_yoshi_pikachu4_ec13743d5_p2` tick 918: not a
+  pose. The RNG ledger shows retail drawing 36 randoms at efSync_Spawn
+  0x80060848/8D4/8E0 (twelve shell fragments, request 0x4CF) before
+  Pikachu's two scatter draws (0x8012639C/0x801263B8): Yoshi (player 0) is in
+  the Egg Roll's end state, whose animation callback
+  (ftYs_SpecialAirSEnd_Anim / ftYs_SpecialAirSLanding_Anim) bursts the shell
+  with efSync_Spawn when the script sets cmd_vars[1]. The port queued that
+  request until Yoshi's link-9 flush, so Pikachu's callback, between the
+  two, drew the scatter from the wrong stream position and the trail landed
+  (5.56, -3.43) away; the tick's final seed matched because the draw count
+  did. Now the burst reads part 4 and takes its draws in the callback
+  (`EffectQueue::push_synchronous`), and the proc's immediate flush creates
+  it from the reserved seed. (The offset the wave-10 note computed came from
+  assuming the scatter matched.) The take-damage burst (fn_8012EDE8) keeps
+  its path: damage.rs reserves its draws after the hook.
+- program 14000, `corpus_v3_dl_luigi_iceclimbers4_e86fddb60_p1` tick 2380:
+  Popo is KO'd through the bottom blast zone in Fighter_procUpdate
+  (ftCo_800D3158, s_link 4), and his death callback (ftPp_Init_8011F060)
+  breaks the ice block he holds (it_802C17DC -> Item_8026A8EC). The block's
+  state (motion 1) has no animation, and its collision proc's
+  HSD_JObjSetTranslate (Item_80269978, s_link 5) has not run yet this tick,
+  so its joints are still clean from the last particle pass: the kept
+  generator reads the bone's last world matrix, not its local SRT alone
+  (9fa4e7da's rule, which holds when the item was dirtied first).
+  `ItemCore::joints_dirty` records HSD_JObjSetMtxDirty since the particle
+  pass (root translations through `set_root_translation`, an animated
+  state's AnimAll step, the melting block's scale); the teardown rebuilds a
+  kept generator's bone only when it is set.
