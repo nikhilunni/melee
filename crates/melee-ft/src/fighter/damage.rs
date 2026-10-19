@@ -551,6 +551,15 @@ impl DamageParameters {
         )
     }
 }
+/// The fighter throwing a hit's attacker (ftColl_8007B8CC grabber_unk1,
+/// x1064_thrownHitbox.owner): its player is excluded and its position
+/// decides the knockback direction.
+#[derive(Clone, Copy, Debug)]
+pub struct Thrower {
+    pub player: u8,
+    pub position_x: f32,
+}
+
 /// ftColl_80078C70 (80078C70): receiver first, other fighters then hitbox IDs,
 /// then hurt-table order. The scene supplies that entity-list ordering.
 pub fn detect_hit(
@@ -558,7 +567,7 @@ pub fn detect_hit(
     attacker: &mut Fighter,
     assets: &FighterAssets,
     incoming_after_receiver: bool,
-    attacker_thrower_player: Option<u8>,
+    thrower: Option<Thrower>,
     rng: &mut gekko_math::HsdRng,
 ) {
     if victim.core.status.disabled
@@ -570,7 +579,7 @@ pub fn detect_hit(
     // ftcoll.c:1664-1676: a thrown attacker hits anyone but its grabber's
     // player (grabber_unk1, ftColl_8007B8CC); any other attacker hits only
     // other players, so Popo and Nana never hit each other.
-    let excluded_player = attacker_thrower_player.unwrap_or(attacker.core.player.id);
+    let excluded_player = thrower.map_or(attacker.core.player.id, |t| t.player);
     if victim.core.player.id == excluded_player {
         return;
     }
@@ -600,8 +609,13 @@ pub fn detect_hit(
         }
         // ftColl_8007A06C: the hit's source is the fighter its log entry
         // names (`hit_owner`), a thrown fighter's thrower.
-        let credit = HitCredit::Player(excluded_player);
-        detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id, credit);
+        let origin = HitOrigin {
+            credit: HitCredit::Player(excluded_player),
+            // ftColl_8007A06C: the knockback direction compares the victim
+            // with the log entry's fighter, a thrown fighter's thrower.
+            position_x: thrower.map_or(attacker.core.physics.position.x, |t| t.position_x),
+        };
+        detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id, origin);
     }
 }
 /// A character's shield volume as its bone places it this frame.
@@ -2085,6 +2099,27 @@ impl FighterCore {
     }
 }
 
+/// Who a fighter's hit is logged under (ftColl_80076ED8: the attacker, or
+/// a thrown fighter's x1064 owner).
+#[derive(Clone, Copy)]
+struct HitOrigin {
+    credit: HitCredit,
+    /// That fighter's position, against which ftColl_8007A06C sets the
+    /// knockback direction.
+    position_x: f32,
+}
+
+impl HitOrigin {
+    /// ftColl_8007A06C (ftcoll.c:2838): away from the log entry's fighter.
+    fn facing(self, victim_x: f32) -> f32 {
+        if victim_x > self.position_x {
+            -1.0
+        } else {
+            1.0
+        }
+    }
+}
+
 /// ftColl_80078C70 / ftColl_80079AB0: capsule work after the character's
 /// hurtbox-interaction hook and before advancing to the next hitbox ID.
 fn detect_eligible_hit(
@@ -2092,7 +2127,7 @@ fn detect_eligible_hit(
     attacker: &mut FighterCore,
     assets: &FighterAssets,
     id: usize,
-    credit: HitCredit,
+    origin: HitOrigin,
 ) {
     let hit = attacker.commands.hitboxes[id]
         .as_ref()
@@ -2143,7 +2178,7 @@ fn detect_eligible_hit(
         let invincible = capsule_status == melee_types::combat::HurtStatus::Invincible
             || victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal;
         if contact.overlap < assets.damage.phantom_threshold {
-            log_phantom_contact(victim, attacker, id, contact, height, invincible, credit);
+            log_phantom_contact(victim, attacker, id, contact, height, invincible, origin);
             return;
         }
         if victim.status.revival_invincibility != 0 || invincible {
@@ -2205,15 +2240,11 @@ fn detect_eligible_hit(
         // whose knockback and effects wait until every contact is logged.
         victim.combat.log_hit(LoggedHit {
             source: HitSource::Fighter(hit_owner(attacker)),
-            credit,
+            credit: origin.credit,
             hit: ReceivedHit {
                 descriptor: descriptor.clone(),
                 height,
-                facing: if victim.physics.position.x > attacker.physics.position.x {
-                    -1.0
-                } else {
-                    1.0
-                },
+                facing: origin.facing(victim.physics.position.x),
                 knockback: 0.0,
                 facing_override: None,
                 percent_damage: damage,
@@ -2293,7 +2324,7 @@ fn log_phantom_contact(
     contact: Contact,
     height: HurtHeight,
     invincible_capsule: bool,
-    credit: HitCredit,
+    origin: HitOrigin,
 ) {
     let hit = attacker.commands.hitboxes[id]
         .as_ref()
@@ -2324,15 +2355,11 @@ fn log_phantom_contact(
         victim.combat.phantom_max_damage = victim.combat.phantom_max_damage.max(fctiwz(damage));
         victim.combat.phantom_log.push(LoggedHit {
             source: HitSource::Fighter(hit_owner(attacker)),
-            credit,
+            credit: origin.credit,
             hit: ReceivedHit {
                 descriptor,
                 height,
-                facing: if victim.physics.position.x > attacker.physics.position.x {
-                    -1.0
-                } else {
-                    1.0
-                },
+                facing: origin.facing(victim.physics.position.x),
                 knockback: 0.0,
                 facing_override: None,
                 percent_damage: damage,

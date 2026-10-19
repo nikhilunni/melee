@@ -1530,16 +1530,18 @@ impl Runtime {
                             &assets.fighters,
                             other,
                         );
-                        // grabber_unk1: the player of the fighter throwing `other`.
-                        let thrower_player =
+                        // grabber_unk1 / x1064 owner: the fighter throwing `other`.
+                        let thrower =
                             state.fighters[other].commands.thrown_by.map(|spawn| {
-                                state
+                                let thrower = state
                                     .fighters
                                     .iter()
                                     .find(|f| f.spawn_number == spawn)
-                                    .expect("the thrower")
-                                    .player
-                                    .id
+                                    .expect("the thrower");
+                                melee_ft::fighter::damage::Thrower {
+                                    player: thrower.player.id,
+                                    position_x: thrower.physics.position.x,
+                                }
                             });
                         let (victim, attacker) = if player < other {
                             let (left, right) = state.fighters.split_at_mut(other);
@@ -1554,7 +1556,7 @@ impl Runtime {
                                 a,
                                 &assets.fighters[player],
                                 player < other,
-                                thrower_player,
+                                thrower,
                                 &mut state.rng,
                             )
                         }));
