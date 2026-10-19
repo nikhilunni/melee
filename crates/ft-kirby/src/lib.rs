@@ -3,6 +3,7 @@ pub mod ability;
 pub mod attack_dash;
 pub mod attributes;
 pub mod bump_star;
+pub mod damage_callbacks;
 pub mod common;
 pub mod hat;
 pub mod init;

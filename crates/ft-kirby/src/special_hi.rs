@@ -473,23 +473,22 @@ pub fn beam_accessory(f: &mut Fighter) {
     c.item_requests.push(ItemRequest::Spawn(spawn));
 }
 
-/// ftKb_Init_800EE7B8 / ftKb_Init_800EE74C, the take-damage and death
-/// callbacks the specials install. Without a hat or a mouthful, what they
-/// do is ftKb_SpecialAirLw_800F5524 (the hammer goes),
+/// The first three calls of both damage and death callbacks
+/// (ftKb_Init_800EE7B8 / 800EE74C, `crate::damage_callbacks`):
+/// ftKb_SpecialAirLw_800F5524 (the hammer goes),
 /// ftKb_AttackDashAir_800F22D4 (the root is level) and
 /// ftKb_SpecialAirLw_800F5318: the held item and the articles show again
 /// (ftCommon_8007F5CC, x221E_b4), Stone's shell is gone, and Kirby's
 /// effects go (efLib_DestroyAll).
-pub fn damage_callback(f: &mut Fighter) {
-    if !std::mem::take(&mut f.character.get_mut::<Kirby>().damage_callbacks) {
-        return;
-    }
+pub fn release_specials(f: &mut Fighter) {
     // ftKb_SpecialAirLw_800F5524: the hammer goes.
     crate::special_s::remove_hammer(f);
     level_root(f);
+    // ftCommon_8007F5CC(gobj, 1): an item already shown in hand stays as it
+    // is; one a script hid would show again through the kind's hand pose.
     assert!(
-        f.held_item.is_none(),
-        "ftCommon_8007F5CC: Final Cutter holding an item"
+        f.held_item.is_none() || !f.commands.held_item_hidden,
+        "ftCommon_8007F5CC: Kirby's callbacks showing a hidden held item"
     );
     f.commands.held_item_hidden = false;
     f.commands.articles_visible = true;

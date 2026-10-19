@@ -2618,6 +2618,18 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // (itkirbycutterbeam.c:144-147), as in the Slippi game
     // `Falco vs Kirby [YS]` at tick 2362.
     ("kirby_cutter_wall_ys_fox4", 1275),
+    // The five grafted hats (LOAD_HAT, ftkirby.c:3578-3592), each from its
+    // own boundary `start_fd_kirby_<kind>4`: the swallow, a jab from the
+    // copied fighter (the first hit runs death1_cb, ftKb_Init_800EE7B8:
+    // Kirby's effects go, and for Mewtwo the Dark flame goes to the head of
+    // the particle list behind the parked cursor), a full hop with two
+    // midair jumps, a dash attack and the taunt that throws the hat away
+    // (ftKb_SpecialN_800F19AC: Donkey Kong's arm destroys Kirby's effects).
+    ("kirby_hat_donkeykong_fd_donkeykong4", 900),
+    ("kirby_hat_falco_fd_falco4", 900),
+    ("kirby_hat_gameandwatch_fd_gameandwatch4", 900),
+    ("kirby_hat_jigglypuff_fd_jigglypuff4", 900),
+    ("kirby_hat_mewtwo_fd_mewtwo4", 900),
 ];
 
 #[test]

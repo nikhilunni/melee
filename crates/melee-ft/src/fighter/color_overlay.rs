@@ -181,6 +181,18 @@ impl FighterCore {
         }
     }
 
+    /// ftCo_800BFFAC (800BFFAC): lb_80014498 on the secondary slot (x488)
+    /// alone, with no fallback. Retail installs requests as they come, so a
+    /// queued request would already own its slot and go with it; no caller
+    /// clears with one queued (fails closed otherwise).
+    pub fn clear_secondary_color_slot(&mut self) {
+        assert!(
+            self.commands.color_animations.is_empty(),
+            "ftCo_800BFFAC with a color animation queued"
+        );
+        self.combat.secondary_color_overlay = ColorOverlaySlot::default();
+    }
+
     /// ftCo_800C0408's primary-slot loop: run the program; when it ends or its
     /// frame count runs out, clear the slot (lb_80014498) and install the
     /// invincibility flash if the fighter is still protected, then run that.

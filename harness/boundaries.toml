@@ -765,3 +765,48 @@ stage = "FinalDestination"
 players = ["Kirby", "CaptainFalcon"]
 stocks = 4
 seed = 4055080798
+
+[[boundary]]
+name = "start_fd_kirby_falco4"
+cold = "start_fd_kirby_falco4_cold"
+savestate = "harness/roms/start_fd_kirby_falco4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Falco"]
+stocks = 4
+seed = 3610688323
+
+[[boundary]]
+name = "start_fd_kirby_jigglypuff4"
+cold = "start_fd_kirby_jigglypuff4_cold"
+savestate = "harness/roms/start_fd_kirby_jigglypuff4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Jigglypuff"]
+stocks = 4
+seed = 3514883452
+
+[[boundary]]
+name = "start_fd_kirby_donkeykong4"
+cold = "start_fd_kirby_donkeykong4_cold"
+savestate = "harness/roms/start_fd_kirby_donkeykong4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "DonkeyKong"]
+stocks = 4
+seed = 238253671
+
+[[boundary]]
+name = "start_fd_kirby_mewtwo4"
+cold = "start_fd_kirby_mewtwo4_cold"
+savestate = "harness/roms/start_fd_kirby_mewtwo4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Mewtwo"]
+stocks = 4
+seed = 3002509635
+
+[[boundary]]
+name = "start_fd_kirby_gameandwatch4"
+cold = "start_fd_kirby_gameandwatch4_cold"
+savestate = "harness/roms/start_fd_kirby_gameandwatch4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "GameAndWatch"]
+stocks = 4
+seed = 63641676

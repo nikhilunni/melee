@@ -29,6 +29,9 @@ pub struct KirbyAttributes {
     pub final_cutter: FinalCutterAttributes,
     /// +EC..+114: Stone.
     pub stone: StoneAttributes,
+    /// +384 (`specialn_mt_charge_time`): the copied Shadow Ball's full
+    /// charge; a hit keeps a full charge (ftKb_SpecialNMt_80107130).
+    pub mewtwo_charge_time: f32,
 }
 
 /// ftKb_DatAttrs +EC..+114 (`speciallw_*`). +10C and +110 (16 and 28 on
@@ -239,6 +242,7 @@ impl KirbyAttributes {
                 health: r.s32(0x108)?,
                 free_fall_lag: r.f32(0x114)?,
             },
+            mewtwo_charge_time: r.f32(0x384)?,
         })
     }
 }

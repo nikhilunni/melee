@@ -46,6 +46,8 @@ pub struct Kirby {
     /// take_dmg_cb = ftKb_Init_800EE7B8 and death2_cb = ftKb_Init_800EE74C
     /// (ftKb_SpecialN_set_cbs), until the next motion change.
     pub damage_callbacks: bool,
+    /// death1_cb and death3_cb, which the copied ability installs.
+    pub ability_callbacks: crate::damage_callbacks::AbilityCallbacks,
     /// What accessory4_cb does while it is installed.
     pub accessory: Accessory,
     /// Fighter +222C (u.kb.hat.x0): the hammer article is out.
@@ -80,6 +82,7 @@ impl Kirby {
             final_cutter: Default::default(),
             stone: Default::default(),
             damage_callbacks: false,
+            ability_callbacks: Default::default(),
             accessory: Accessory::None,
             hammer_out: false,
         }
@@ -130,16 +133,6 @@ fn swallowed_ability(state: &melee_ft::fighter::CharacterState) -> FighterKind {
         );
     }
     copied
-}
-
-/// ftKb_Init_800EE74C (800EE74C), the death callback: the specials'
-/// cleanup, then ftKb_SpecialN_800F5D04(gobj, false) takes the copied
-/// ability without its star.
-fn death_callback(f: &mut Fighter) {
-    if f.character.get::<Kirby>().damage_callbacks {
-        crate::ability::lose(f, false);
-    }
-    crate::special_hi::damage_callback(f);
 }
 
 fn cape_turn_blocked(f: &mut Fighter) -> bool {
@@ -243,12 +236,10 @@ impl CharacterCallbacks for Kirby {
             Accessory::None => {}
         }
     }
-    /// ftCommon_8007DB58: take_dmg_cb = ftKb_Init_800EE7B8 while a special
-    /// installed it.
-    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::special_hi::damage_callback);
-    /// ftCo_800D331C: death2_cb = ftKb_Init_800EE74C, which without a hat
-    /// does the same.
-    const DEATH: Option<fn(&mut Fighter)> = Some(death_callback);
+    /// ftCommon_8007DB58: take_dmg_cb, then death1_cb.
+    const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::damage_callbacks::take_damage);
+    /// ftCo_800D331C: death2_cb, death3_cb, then death1_cb.
+    const DEATH: Option<fn(&mut Fighter)> = Some(crate::damage_callbacks::death);
     /// ftCo_800C7CA0: ftKb_SpecialN_800F1F1C.
     const WALL_BOUNCE_EFFECT: Option<fn(&mut Fighter, hsd_types::Vec3)> =
         Some(crate::bump_star::spawn);
@@ -285,6 +276,8 @@ impl CharacterCallbacks for Kirby {
     /// (gobj, 1, 0); the hat and its ability go. The Stone form's draw is
     /// `RESET_DRAW`.
     fn on_reset(&mut self) {
+        // Fighter_UnkInitReset (fighter.c:467-468): death1_cb, death3_cb.
+        self.ability_callbacks = Default::default();
         self.model_groups = [0; 2];
         self.copied = FighterKind::Kirby;
         self.hammer_out = false;

@@ -1,0 +1,40 @@
+# KIRBY directed witness from start_fd_kirby_jigglypuff4 (Kirby runs to x=51 beside Jigglypuff at +60, inhales and swallows it: a hat grafted into his own parts): Jigglypuff jabs him, he full hops with two midair jumps, lands, dash attacks back and taunts the hat away.
+name = "kirby_hat_jigglypuff_fd_jigglypuff4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_jigglypuff4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 432, port = 1, buttons = {  }, raw = {  } },
+  { frame = 480, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 490, port = 0, buttons = {  }, raw = {  } },
+  { frame = 510, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 513, port = 0, buttons = {  }, raw = {  } },
+  { frame = 554, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 557, port = 0, buttons = {  }, raw = {  } },
+  { frame = 680, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 686, port = 0, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 690, port = 0, buttons = {  }, raw = {  } },
+  { frame = 760, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 762, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+controller = "scripted"

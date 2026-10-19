@@ -187,8 +187,15 @@ fails closed.
     model of their own, loaded by ftKb_LoadHat and drawn at Kirby's part 6
     matrix (ftKb_UnkMtxFunc0): nothing the simulation reads. Five kinds
     (Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game & Watch: the LOAD_HAT
-    loaders, with replacement models) graft parts into his skeleton and
-    fail closed at the swallow. With an ability, a hit draws
+    loaders) hang their DObjs on his thirteen empty parts instead, drawn
+    only as well (`crate::hat`). What the trace does see is the callbacks
+    the swallow installs: death1_cb / death3_cb (ftKb_Init_800EE7B8 /
+    800EE74C), which unlike the specials' take_dmg_cb / death2_cb survive
+    motion changes, so the first hit after a swallow destroys Kirby's
+    effects (and parks the particle insertion cursor), and the copied kind's
+    put-away arms (ftKb_SpecialN_800F19AC on a loss or death, 800F1A8C on
+    that hit): Donkey Kong, Samus and Mewtwo destroy Kirby's effects again,
+    Mewtwo also clears the secondary color slot. With an ability, a hit draws
     `HSD_Randi(32)` for its loss in Fighter_ProcessHit (fighter.c:2860 and
     2960, `CharacterCallbacks::DAMAGE_DRAW`): the draw is ported, taking the
     ability away is not. The midair jumps are the bare rows under every hat
@@ -489,7 +496,7 @@ fails closed.
   | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 13271 of 13271 | the end: every frame matches |
   | `Falco vs Kirby [YS]` | 2362 of 9109 | the Final Cutter beam ended by a wall |
   | `Game_20190824T180214` (Kirby against Kirby) | 13809 of 13809 (8704 before Hammer, 8847 before Stone) | the end: every frame matches |
-  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 5100 of 15399 (2674 before Stone) | Mr. Game & Watch's hat grafted into Kirby's parts |
+  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 5388 of 15399 (5100 before the grafted hats) | the copied Chef (ftKb_Init_803C9DD0) |
 
   The Kirby against Kirby game runs Stone 27 times (24 of them landing from
   the air), the Fountain of Dreams game three times before it stops. Neither
@@ -542,21 +549,22 @@ losing an ability by taunt, hit or death and its star.
 
 Slippi (`public-v3.7-b`): four of the five Kirby games match every frame
 (7001, 13271, 9109, 13809). `GAMEANDWATCH/18_09_37 Kirby + Mr. Game _ Watch
-(FoD)` stops at tick 5100 of 15399 when Kirby swallows Mr. Game & Watch
-(ftkirby.c:3578-3592).
+(FoD)` stops at tick 5388 of 15399 when Kirby uses the copied Chef
+(ftKb_Init_803C9DD0, ftkirby.c:3777); it stopped at the swallow (tick 5100)
+before the grafted hats.
 
 Remaining work, in the order to take it:
 
-1. **The five grafted hats** (Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game
-   & Watch; `LOAD_HAT`, ftkirby.c:3578-3592). Analysis so far: no bone table
-   of PlKb.dat names any of the thirteen empty parts, `LOAD_HAT` creates no
-   GObj and draws nothing, and hat dynamics move hat joints only, so these
-   hats look like drawn-only state. Unwitnessed: the one-line change is in
-   `target/kirby/wip_stage3.patch` (scratch, not in git: drop
-   `hat::require_supported` from `ability::take`); boundaries
-   `start_fd_kirby_{falco,jigglypuff,donkeykong,mewtwo,gameandwatch}4` are
-   recorded in the main checkout but not registered. This unblocks the fifth
-   replay.
+1. **The five grafted hats**: done (2026-10-18). Boundaries
+   `start_fd_kirby_{falco,jigglypuff,donkeykong,mewtwo,gameandwatch}4` and
+   the five `kirby_hat_*` witnesses are exact. The fifth replay now runs to
+   tick 5388, where Kirby uses the copied Chef (`ftKb_Init_803C9DD0`, item
+   2). Open: the Dark color animation's flame (0x416 at bone 6) on a
+   Kirby hit by Mewtwo's jab is placed about 2.4 behind his facing on the
+   hit tick (particle dump only; RNG sites and the base gate are exact):
+   `kirby_hat_mewtwo_fd_mewtwo4` tick 437 (port x 53.31, retail 50.93) and
+   the hatless scratch scene `kirby_nohat_mewtwo_jab_fd_mewtwo4`
+   (unregistered; port 48.61, retail 50.99). Not yet diagnosed.
 2. **The copied specials**, one kind at a time (`ftKb_Init_803C9DD0` /
    `803C9E54`, rows 399..543, `ftkirbyspecial<kind>.c`): Fox and Falco
    (Blaster, items `Kirby_FoxLaser` / `FalcoLaser` / `FoxBlaster` /

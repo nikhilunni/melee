@@ -1618,6 +1618,17 @@ fn start_kirby_falcon_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_kirby_captainfalcon4", 600, "ledger600");
 }
 
+/// Kirby vs the five fighters whose hats are grafted into his own parts,
+/// on Final Destination, warm and cold, with the particle draw order.
+#[test]
+fn start_fd_kirby_grafted_hat_boundaries_600() {
+    for kind in ["falco", "jigglypuff", "donkeykong", "mewtwo", "gameandwatch"] {
+        movement_gate_ticks(&format!("start_fd_kirby_{kind}4"), 600);
+        movement_gate_ticks(&format!("start_fd_kirby_{kind}4_cold"), 600);
+        particle_rng_sites_with_ledger(&format!("start_fd_kirby_{kind}4"), 600, "ledger600");
+    }
+}
+
 #[test]
 fn start_iceclimbers_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_iceclimbers_fox4", 600, "ledger600");

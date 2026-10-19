@@ -9,22 +9,24 @@
 //! and are skipped for a Kirby by every blend entry of ftCo_8009E7B4.
 //!
 //! Five kinds (Donkey Kong, Jigglypuff, Mewtwo, Falco, Mr. Game & Watch:
-//! the LOAD_HAT loaders 800F0FC0, 800F10D4, 800F11F0, 800F130C, 800F14B4)
-//! graft joints into Kirby's own empty parts and hang a replacement body
-//! model on his joints. They are not ported.
+//! the LOAD_HAT loaders 800F0FC0, 800F10D4, 800F11F0, 800F130C, 800F14B4,
+//! ftkirby.c:3578-3592) graft a model into Kirby's own parts instead. Each
+//! adds the hat's spring chains (ftKb_SpecialN_800EF040, ftParts_800753D4;
+//! Jigglypuff's and Mewtwo's also ftCo_8009D81C / 8009DB50), allocates two
+//! DObj tables, hangs the hat's DObjs on Kirby's thirteen empty parts
+//! (800EF0E4, 800EF438: parts flags b6 / b7; no joint is moved or added,
+//! and no bone table of PlKb.dat names one of those parts),
+//! adds their material animations (800EF35C) and builds the part
+//! visibility tables (ftParts_8007487C, ftAnim_80070200). Mr. Game &
+//! Watch's loader also selects his flat model group (ftParts_80074D7C,
+//! 800F1420: material colors), sets x610's second color and sets the root
+//! scale again from the unchanged model scale (Fighter_UpdateModelScale).
+//! The unloaders (ftKb_SpecialN_800EF69C, ftCo_UnloadDynamicBones) undo
+//! the same. None of it creates a GObj, draws a random number or moves a
+//! bone the simulation reads, so they are drawn only. What a copied ability does
+//! that the game sees lives in `crate::ability` and
+//! `crate::damage_callbacks`.
 use melee_types::FighterKind;
-
-/// The kinds whose hat is grafted into Kirby's own parts.
-fn replaces_parts(kind: FighterKind) -> bool {
-    matches!(
-        kind,
-        FighterKind::Donkey
-            | FighterKind::Purin
-            | FighterKind::Mewtwo
-            | FighterKind::Falco
-            | FighterKind::GameWatch
-    )
-}
 
 /// fn_800F1CA0 (800F1CA0): the hats that cover Kirby's face, under which
 /// his midair jumps play the helmeted animations.
@@ -37,14 +39,4 @@ pub fn is_helmet(kind: FighterKind) -> bool {
             | FighterKind::Nana
             | FighterKind::Samus
     )
-}
-
-/// ftKb_Init_803C9CC8[kind * 2]: refuse a hat the port cannot wear.
-pub fn require_supported(kind: FighterKind) {
-    if replaces_parts(kind) {
-        unimplemented!(
-            "ftKb_Init_803C9CC8[{kind:?}] (ftkirby.c:3578-3592, LOAD_HAT): a hat grafted into \
-             Kirby's parts with a replacement model"
-        );
-    }
 }
