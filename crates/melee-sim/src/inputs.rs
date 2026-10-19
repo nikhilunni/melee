@@ -25,6 +25,10 @@ pub struct PadScript {
     /// Each tick's external events. Empty: the port's default policies
     /// (schedules and Slippi replays); a retail trace fills every tick.
     events: Vec<ExternalEvents>,
+    /// Past the last recorded event: the port's default policies (a search
+    /// borrowing a recording's stage reads) rather than failing closed (a
+    /// gate, whose recording must cover every tick).
+    events_default_past_end: bool,
     /// Each tick's raw `PADStatus` sticks per port, when the source carries
     /// them (a tick-clock schedule, a Slippi replay's raw joysticks, a
     /// recording). Empty: the engine derives them from the normalized pads.
@@ -148,6 +152,7 @@ impl PadScript {
             ticks: vec![[PadSample::default(); PORTS]; ticks],
             display_clock: vec![None; ticks],
             events: Vec::new(),
+            events_default_past_end: false,
             raw_sticks: Vec::new(),
             pad_queue_x: Vec::new(),
         }
@@ -212,6 +217,7 @@ impl PadScript {
             ticks,
             display_clock,
             events,
+            events_default_past_end: false,
             pad_queue_x,
         })
     }
@@ -292,10 +298,47 @@ impl PadScript {
         self
     }
 
+    /// Take a recording's stage reads (Pokémon Stadium's form archive
+    /// completions) for the ticks it recorded, and the port's default policy
+    /// after them. A run from the same savestate whose inputs equal the
+    /// recording's until after a read polls the same read retail did; one
+    /// that left the recording earlier gets retail's timing as a plausible
+    /// sample, as the default policy is.
+    pub fn with_stage_reads_from(mut self, path: &Path) -> Result<Self> {
+        let reader =
+            melee_trace_io::open(path).with_context(|| format!("opening {}", path.display()))?;
+        let mut events = Vec::new();
+        for (index, line) in reader.lines().enumerate() {
+            let line = line?;
+            if line.trim().is_empty() {
+                continue;
+            }
+            let record: ScriptRecord = serde_json::from_str(&line)?;
+            events.push(
+                recorded_events(record.events.as_ref())
+                    .with_context(|| format!("{}: record {index} events", path.display()))?,
+            );
+        }
+        // A recording without stage reads leaves the default policy.
+        if events
+            .iter()
+            .any(|e| e.stage_read != StageRead::Unrecorded)
+        {
+            self.events = events;
+            self.events_default_past_end = true;
+        }
+        Ok(self)
+    }
+
     /// Share another script's display clock (read once with
-    /// [`Self::with_display_from`]) instead of re-reading its trace.
+    /// [`Self::with_display_from`]) and borrowed stage reads
+    /// ([`Self::with_stage_reads_from`]) instead of re-reading its trace.
     pub fn with_display_of(mut self, other: &Self) -> Self {
         self.display_clock.clone_from(&other.display_clock);
+        if other.events_default_past_end {
+            self.events.clone_from(&other.events);
+            self.events_default_past_end = true;
+        }
         self
     }
 
@@ -323,7 +366,11 @@ impl PadScript {
             .and_then(|t| self.events.get(t))
             .copied()
             .unwrap_or(ExternalEvents {
-                stage_read: StageRead::Unrecorded,
+                stage_read: if self.events_default_past_end {
+                    StageRead::Default
+                } else {
+                    StageRead::Unrecorded
+                },
             })
     }
 

@@ -33,6 +33,9 @@
 //! search simulates each shared prefix once and clones the match at every
 //! branch point, so candidates cost only the ticks after their first edit.
 //! The port is the oracle here: a found recipe still needs a retail recording.
+//! Stage reads (Pokémon Stadium's form archives) follow the `--state-from`
+//! recording while it lasts, so a search that edits a recorded game after a
+//! read sees retail's transformation timing; past it, the default policy.
 use crate::{
     frame::Simulation,
     initial_state::InitialState,
@@ -392,7 +395,9 @@ pub fn search(
         .chain(&avoid)
         .any(|c| c.key.starts_with("items."));
     let max_ticks = spec.max_ticks.unwrap_or(scenario.frames);
-    let display = PadScript::neutral(0).with_display_from(&reference.expected_path())?;
+    let display = PadScript::neutral(0)
+        .with_display_from(&reference.expected_path())?
+        .with_stage_reads_from(&reference.expected_path())?;
     let search = Search {
         spec,
         base: &scenario.inputs,

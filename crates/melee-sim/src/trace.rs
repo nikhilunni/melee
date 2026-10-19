@@ -217,7 +217,8 @@ pub fn write_dry_run(scenario: &Scenario, reference: &Scenario, mut out: impl Wr
         "the reference must start from the same savestate"
     );
     let pads = PadScript::from_tick_schedule(&scenario.inputs, scenario.frames as usize)?
-        .with_display_from(&reference.expected_path())?;
+        .with_display_from(&reference.expected_path())?
+        .with_stage_reads_from(&reference.expected_path())?;
     let mut simulation =
         Simulation::with_inputs(InitialState::from_savestate_traces(reference)?, pads);
     // The boundary is borrowed; the controller fixes are this scenario's.
