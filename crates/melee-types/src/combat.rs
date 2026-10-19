@@ -58,6 +58,12 @@ pub struct GraphicsCommand {
     /// queued request then, so a facing flip later in the same proc (a
     /// back throw's reversal) does not reach it. None until issued.
     pub issued_facing: Option<f32>,
+    /// Whether the owner stood on the ground when the command ran, after
+    /// the set-ground/air commands before it in the same script step.
+    /// ftCo_09F7.c reads `fp->ground_or_air` for the floor angle as the
+    /// command runs; the port applies those commands after the step.
+    /// None until issued.
+    pub issued_grounded: Option<bool>,
     /// The joint and its world matrix when the command ran in a proc at or
     /// past link 9, where efAsync_Spawn (0x800679B0) creates the effect at
     /// once and lb_8000B1CC reads the joint then: an animation step later

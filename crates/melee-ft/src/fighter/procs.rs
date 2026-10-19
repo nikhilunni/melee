@@ -379,6 +379,7 @@ impl FighterCore {
             assets,
             hand,
             self.physics.facing,
+            self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
         );
         self.apply_script_damage();
         self.apply_airborne_commands();
@@ -456,6 +457,7 @@ impl FighterCore {
                         offset: hsd_types::Vec3::ZERO,
                         range: hsd_types::Vec3::ZERO,
                         issued_facing: None,
+                        issued_grounded: None,
                         issued_joint: None,
                     },
                 );
@@ -540,7 +542,11 @@ impl FighterCore {
             &mut self.commands,
             &mut self.ground_pose,
             assets,
-            (hand, self.physics.facing),
+            (
+                hand,
+                self.physics.facing,
+                self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
+            ),
         );
         self.apply_dynamic_commands(assets);
         Ok(())
@@ -553,6 +559,7 @@ impl FighterCore {
     ) -> Result<Option<WaitChoice>> {
         let hand = self.held_item_hand(assets);
         let facing = self.physics.facing;
+        let grounded = self.physics.ground_or_air == melee_types::GroundOrAir::Ground;
         let commands = &mut self.commands;
         let ground_pose = &mut self.ground_pose;
         // ftCo_8008A7A8: holding an item, most kinds replay the current idle.
@@ -575,7 +582,7 @@ impl FighterCore {
                     commands,
                     ground_pose,
                     assets,
-                    (hand, facing),
+                    (hand, facing, grounded),
                 )
             },
         )?;
@@ -996,12 +1003,14 @@ fn restart_idle_step(
     commands: &mut super::commands::CommandState,
     ground_pose: &mut GroundPoseFlags,
     assets: &FighterAssets,
-    (hand, facing): (super::commands::HeldItemHand, f32),
+    (hand, facing, grounded): (super::commands::HeldItemHand, f32, bool),
 ) {
     commands.restart(assets.command_entries[&animation.motion_id]);
     animation.step_with_hooks::<RetailTrig>(
         tree,
-        |animation, tree| commands.step(animation, tree, ground_pose, assets, hand, facing),
+        |animation, tree| {
+            commands.step(animation, tree, ground_pose, assets, hand, facing, grounded)
+        },
         |_, _| {},
     );
 }

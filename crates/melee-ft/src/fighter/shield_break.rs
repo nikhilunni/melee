@@ -90,6 +90,7 @@ impl Fighter {
                 offset: Vec3::ZERO,
                 range: Vec3::ZERO,
                 issued_facing: None,
+                issued_grounded: None,
                 issued_joint: None,
             });
         Ok(())

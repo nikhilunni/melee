@@ -32,6 +32,7 @@ fn invisible_commands_do_not_advance_rng_or_the_rotating_bone_cursor() {
         offset: Vec3::ZERO,
         range: Vec3::ZERO,
         issued_facing: None,
+        issued_grounded: None,
         issued_joint: None,
     };
     let mut rng = HsdRng::new(1);

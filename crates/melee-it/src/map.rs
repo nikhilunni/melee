@@ -808,6 +808,7 @@ impl ItemCore {
                 offset,
                 range: hsd_types::Vec3::ZERO,
                 issued_facing: None,
+                issued_grounded: None,
                 issued_joint: None,
             },
         ));

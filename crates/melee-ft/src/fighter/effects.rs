@@ -159,8 +159,7 @@ impl super::FighterCore {
             // ftCo_09F7.c block_67: efAsync kind 3 with the floor angle.
             if matches!(id, 0x423 | 0x424 | 0x4C1 | 0x4C2 | 0x4C4 | 0x4C5) {
                 let normal = self.collision.data.floor.normal;
-                let floor_angle = if self.physics.ground_or_air == melee_types::GroundOrAir::Ground
-                {
+                let floor_angle = if self.issued_on_ground(&command) {
                     melee_lb::trigf::atan2f(-normal.x, normal.y)
                 } else {
                     0.0
@@ -342,7 +341,7 @@ impl super::FighterCore {
                 draws += 1;
             }
             let normal = self.collision.data.floor.normal;
-            let floor_angle = if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            let floor_angle = if self.issued_on_ground(&command) {
                 melee_lb::trigf::atan2f(-normal.x, normal.y)
             } else {
                 0.0
@@ -374,6 +373,14 @@ impl super::FighterCore {
         self.resolve_sound_draws(assets, rng);
         self.effects.finish_graphics();
         draws
+    }
+    /// ftCo_09F7.c's `fp->ground_or_air == GA_Ground` for the floor angle,
+    /// as the command found it (a set-air command later in the same step
+    /// does not reach it).
+    fn issued_on_ground(&self, command: &melee_types::combat::GraphicsCommand) -> bool {
+        command
+            .issued_grounded
+            .unwrap_or(self.physics.ground_or_air == melee_types::GroundOrAir::Ground)
     }
     /// One resolved command's request: pending, or sealed with the joint's
     /// matrix when a motion change's flush took it. A command that ran past

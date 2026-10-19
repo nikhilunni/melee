@@ -1742,6 +1742,7 @@ impl FighterCore {
                 assets,
                 hand,
                 self.physics.facing,
+                self.physics.ground_or_air == GroundOrAir::Ground,
             );
             self.apply_script_damage();
         }

@@ -268,7 +268,9 @@ impl CommandState {
     /// ftaction.c:1318-1348; retail --fused has no multiply-add sites.
     /// `held_item_hand` names what a held-item visibility command acts on
     /// (see [`HeldItemHand`]). `facing` is the fighter's facing while the
-    /// script runs, which graphics commands copy as they are issued.
+    /// script runs, which graphics commands copy as they are issued, and
+    /// `grounded` whether it stands on the ground as the step begins.
+    #[allow(clippy::too_many_arguments)]
     pub fn step(
         &mut self,
         animation: &mut FighterAnimation,
@@ -277,8 +279,9 @@ impl CommandState {
         assets: &FighterAssets,
         held_item_hand: HeldItemHand,
         facing: f32,
+        grounded: bool,
     ) {
-        self.step_inner(animation, tree, pose, assets, held_item_hand, Some(facing));
+        self.step_inner(animation, tree, pose, assets, held_item_hand, Some((facing, grounded)));
     }
 
     /// ftAction_80073354 (0x80073354): seek a newly installed script to a
@@ -301,10 +304,12 @@ impl CommandState {
         pose: &mut GroundPoseFlags,
         assets: &FighterAssets,
         held_item_hand: HeldItemHand,
+        // The facing and ground state graphics commands copy as they run;
         // None while seeking: transient commands (graphics) are skipped.
-        issuing_facing: Option<f32>,
+        issuing: Option<(f32, bool)>,
     ) {
-        let seeking = issuing_facing.is_none();
+        let seeking = issuing.is_none();
+        let mut grounded = issuing.map(|(_, grounded)| grounded);
         let borrowed_script = self.borrowed_script.clone();
         let script = borrowed_script.as_deref().unwrap_or(&assets.commands);
         self.script
@@ -493,7 +498,14 @@ impl CommandState {
                     self.set_held_item_visibility(*visible, animation, tree, assets, held_item_hand)
                 }
                 Command::SmashCharge(charge) => self.smash_charge = Some(*charge),
-                Command::SetAirborne(state) => self.airborne_changes.push(*state),
+                Command::SetAirborne(state) => {
+                    // Applied after the step (apply_airborne_commands); the
+                    // commands after it see the new ground state.
+                    if let Some(grounded) = &mut grounded {
+                        *grounded = *state == melee_cmd::AirborneMode::Ground;
+                    }
+                    self.airborne_changes.push(*state)
+                }
                 Command::ParasolAnimation { index, frames } => {
                     self.parasol_animations.push((*index, *frames))
                 }
@@ -508,11 +520,12 @@ impl CommandState {
                 }
                 Command::AllowInterrupt => self.allow_interrupt = true,
                 Command::Graphics(command) => {
-                    if let Some(facing) = issuing_facing {
+                    if let Some((facing, _)) = issuing {
                         // ftCo_09F7.c: efAsync_Spawn copies `fp->facing_dir`
                         // into the queued request as the command runs.
                         self.graphics.push(melee_types::combat::GraphicsCommand {
                             issued_facing: Some(facing),
+                            issued_grounded: grounded,
                             issued_joint: None,
                             ..command.clone()
                         });
