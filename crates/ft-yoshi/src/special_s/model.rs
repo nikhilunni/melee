@@ -158,6 +158,26 @@ pub(super) fn burst_shell(f: &mut Fighter) {
     });
 }
 
+/// ftYs_SpecialAirSEnd_Anim / ftYs_SpecialAirSLanding_Anim's
+/// efSync_Spawn(0x4CF, gobj, part 4's position, &co_attrs.xBC): the shell
+/// bursts inside the animation callback, reading part 4 and drawing its
+/// fragments' randoms there (before the next fighter's callbacks).
+pub(super) fn burst_shell_now(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
+    use melee_ef::request::EffectOwner;
+    let scale = f.attributes.yoshi_egg.size;
+    let matrix = f.core.effect_matrix(Some(part::SHELL));
+    f.effects.push_synchronous(
+        melee_ef::request::EffectRequest::EggShell {
+            bone: part::SHELL,
+            scale,
+            immediate: true,
+            seed: None,
+        },
+        matrix,
+        rng,
+    );
+}
+
 /// The loops' hitbox upkeep: every `group_toggle_frames` the live hitbox
 /// changes group (so it may hit again), and its damage follows the speed.
 pub(super) fn update_hitbox(f: &mut Fighter) {

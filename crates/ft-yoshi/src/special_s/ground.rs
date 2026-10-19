@@ -475,7 +475,7 @@ pub(super) fn turn_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Resu
 pub(super) fn end_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
     step(f, &p);
     roll(f).pending_facing = 0.0;
-    super::air::burst_on_script(f);
+    super::air::burst_on_script(f, p.rng);
     model::step_shell(f);
     model::squash(f);
     if !f.animation.frames_remaining(&f.skeleton) {

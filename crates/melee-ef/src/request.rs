@@ -278,6 +278,21 @@ impl EffectQueue {
     pub fn push(&mut self, request: EffectRequest) {
         self.push_with_matrix(request, None);
     }
+    /// efSync_Spawn inside a fighter callback before link 9 (the Egg Roll
+    /// end's shell burst): retail reads the joint (`matrix`) and draws the
+    /// creation randoms there, before the procs of the fighters after it.
+    /// The request carries the matrix, takes its draws out of the stream
+    /// now ([`Self::reserve_creation_draws`]) and is created by the proc's
+    /// immediate flush.
+    pub fn push_synchronous(
+        &mut self,
+        request: EffectRequest,
+        matrix: Mtx,
+        rng: &mut gekko_math::HsdRng,
+    ) {
+        self.push_with_matrix(request, Some(matrix));
+        self.reserve_creation_draws(rng);
+    }
     fn push_with_matrix(&mut self, request: EffectRequest, matrix: Option<Mtx>) {
         assert!(
             self.entries.len() < REQUEST_CAPACITY,

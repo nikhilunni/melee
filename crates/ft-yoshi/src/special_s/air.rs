@@ -298,10 +298,10 @@ pub(super) fn bounce_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Re
 
 /// The end states' shell burst, once the script counts a restart
 /// (cmd_vars[1] == 1).
-pub(super) fn burst_on_script(f: &mut Fighter) {
+pub(super) fn burst_on_script(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
     if f.commands.variables[1] == 1 {
         f.commands.variables[1] += 1;
-        model::burst_shell(f);
+        model::burst_shell_now(f, rng);
     }
 }
 
@@ -312,7 +312,7 @@ pub(super) fn end_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
     let scratch = roll(f);
     scratch.pending_facing = 0.0;
     scratch.ground_ticks = 0;
-    burst_on_script(f);
+    burst_on_script(f, p.rng);
     model::step_shell(f);
     model::squash(f);
     if !f.animation.frames_remaining(&f.skeleton) {
