@@ -110,6 +110,23 @@ impl FighterCore {
             ) | MotionData::Entry(_)
         ) || on_platform
     }
+
+    /// x221E_b2, which hides the fighter from the display pass
+    /// (ftLib_80086ED0): the death entries (ft_0D31.c:213, 319, 418, 517),
+    /// the star and screen KOs (ft_0D31.c:590, 742, 791), the respawn wait,
+    /// Rebirth and RebirthWait (ft_0D4D.c:79, 130, 261) set it after their
+    /// motion change, and every motion change clears it (fighter.c:1065).
+    /// The revival platform's scratch outlives the platform: a fighter that
+    /// leaves it by a special keeps `state_data`, so there the motion decides.
+    pub fn hidden_by_life_state(&self) -> bool {
+        match &self.state_data {
+            MotionData::Life(LifeState::Revival { .. } | LifeState::PlatformWait { .. }) => {
+                matches!(self.motion_state.id, S::Rebirth | S::RebirthWait)
+            }
+            MotionData::Life(_) => true,
+            _ => false,
+        }
+    }
 }
 impl LifeState {
     /// Between ftCo_800D34E0's stock loss and the respawn request: the HUD

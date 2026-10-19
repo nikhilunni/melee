@@ -3585,9 +3585,8 @@ fn render_cameras(state: &mut InitialState) {
     for fighter in &mut state.fighters {
         let f = &mut fighter.0;
         // ftLib_80086ED0: invisible, x221E_b2 (the dead, star, screen and
-        // revival states, all MotionData::Life) and x2220_b7 hide the fighter.
-        let drawn = !f.effect_state.invisible
-            && !matches!(f.state_data, melee_ft::fighter::MotionData::Life(_));
+        // revival states) and x2220_b7 hide the fighter.
+        let drawn = !f.effect_state.invisible && !f.hidden_by_life_state();
         f.offscreen.magnified = f.offscreen.outside_camera && drawn;
     }
     // fn_800301D0 -> Camera_8002A4AC, then each fighter's render callback
