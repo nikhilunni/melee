@@ -38,7 +38,7 @@ use hsd_particle::{
 use hsd_types::{Mtx, Vec3};
 use melee_types::fixed::FixedVec;
 use pool::{ModelPool, INSTANCE_CAPACITY};
-use request::{EffectOwner, EffectRequest};
+use request::{EffectOwner, EffectRequest, FighterJoints};
 use std::{collections::BTreeMap, sync::Arc};
 use tables::*;
 
@@ -125,6 +125,9 @@ struct Effect {
     lifetime: u16,
     indefinite: bool,
     attachment_bone: Option<usize>,
+    /// efLib_Create_AttachChild's orientation constraint (lb_8000C290): the
+    /// root takes the attachment bone's world axes.
+    oriented: bool,
     scale_attachment: bool,
     callback_rotation: Option<Vec3>,
     /// efLib_Cb_ftMr_SpecialLw (eflib.c:1279): root rotation Z from the
@@ -828,7 +831,7 @@ impl Effects {
                     // efsync.c:458-484: Zelda's models 0x4268..0x426B.
                     // 0x4F4/0x4F5 (efLib_Create_AttachChild, Nayru's Love)
                     // also take the fighter root's scale and the joint's
-                    // orientation (lb_8000C290), which only moves the model;
+                    // orientation (lb_8000C290);
                     // 0x4F6/0x4F7 (efLib_Create_Attach_Scale, Farore's Wind).
                     0x4F4..=0x4F7 => 0x4268 + u32::from(id - 0x4F4),
                     _ => unreachable!(),
@@ -896,6 +899,13 @@ impl Effects {
                     effect.root,
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
+                if matches!(id, 0x4F4..=0x4F5) {
+                    // efLib_Create_AttachChild (eflib.c:557-565): lb_8000C290
+                    // turns the root with the joint, and with it every
+                    // particle its DPtcl events spawn.
+                    effect.oriented = true;
+                    effect.orient::<T>(fighter.effect_orientation_target(bone));
+                }
                 if animated_at_creation {
                     effect.animate_banks::<T>(
                         resources::Banks {
@@ -1816,12 +1826,12 @@ impl Effects {
     /// efLib_Update (eflib.c:387-431), s_link 15/p_link 11/priority 0.
     pub fn tick<T: InverseTrig>(
         &mut self,
-        bone_matrix: impl FnMut(usize, Option<usize>) -> Mtx,
+        joints: &mut impl FighterJoints,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        self.tick_with_pause::<T>(false, bone_matrix, bank, particles, rng)
+        self.tick_with_pause::<T>(false, joints, bank, particles, rng)
     }
     /// efLib_PauseAll / ResumeAll: affect existing owned models only.
     pub fn set_owner_hitlag(&mut self, player: usize, paused: bool) {
@@ -1841,7 +1851,7 @@ impl Effects {
     pub fn tick_with_pause<T: InverseTrig>(
         &mut self,
         pause_async: bool,
-        mut bone_matrix: impl FnMut(usize, Option<usize>) -> Mtx,
+        joints: &mut impl FighterJoints,
         bank: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
@@ -1863,7 +1873,7 @@ impl Effects {
                 .iter()
                 .any(|g| g.attachment_id == Some(id));
             if *active {
-                let matrix = bone_matrix(
+                let matrix = joints.bone_matrix(
                     index / FIGHTER_JOINT_STRIDE,
                     Some(index % FIGHTER_JOINT_STRIDE),
                 );
@@ -1888,7 +1898,7 @@ impl Effects {
                 }
             }
             if let Some(player) = effect.attachment {
-                let matrix = bone_matrix(player, effect.attachment_bone);
+                let matrix = joints.bone_matrix(player, effect.attachment_bone);
                 if effect.attachment_bone.is_some() && effect.scale_attachment {
                     // efLib_Update (8005BC50), eflib.c:406-425: world Y scale,
                     // broadcast to all three axes. HSD_MtxGetScale is audited.
@@ -1904,6 +1914,10 @@ impl Effects {
                     effect.root,
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
+                if let (true, Some(bone)) = (effect.oriented, effect.attachment_bone) {
+                    let target = joints.orientation_target(player, bone);
+                    effect.orient::<T>(target);
+                }
             }
             effect.animate_banks::<T>(
                 resources::Banks {
@@ -1917,7 +1931,7 @@ impl Effects {
             )?;
             // efLib_Update invokes the effect callback after JObj animation.
             if let Some((player, bone, offset)) = effect.follow_bone {
-                let matrix = bone_matrix(player, Some(bone));
+                let matrix = joints.bone_matrix(player, Some(bone));
                 // lb_8000B1CC, then three separate fadds.
                 effect.tree.set_translate(
                     effect.root,
@@ -1929,7 +1943,7 @@ impl Effects {
                 );
             }
             if let Some((player, bone, height)) = effect.follow_bone_height {
-                let matrix = bone_matrix(player, Some(bone));
+                let matrix = joints.bone_matrix(player, Some(bone));
                 // lb_8000B1CC, then one fadds on Y.
                 effect.tree.set_translate(
                     effect.root,
@@ -2002,7 +2016,7 @@ impl Effects {
                     // hsd_8039EFAC(0, 0, 0x1AB, attach_jobj).
                     let joint_id = FIRST_FIGHTER_JOINT + player * FIGHTER_JOINT_STRIDE + bone;
                     let mut spawn = SpawnRequest::new(0, LIFETIME_END_GENERATOR, 0);
-                    spawn.joint = Some((joint_id, bone_matrix(player, Some(bone))));
+                    spawn.joint = Some((joint_id, joints.bone_matrix(player, Some(bone))));
                     self.events.spawn(&spawn, false, false);
                     spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                     self.fighter_joints[player * FIGHTER_JOINT_STRIDE + bone] = true;
@@ -2103,6 +2117,7 @@ impl Effect {
             lifetime: lifetime + 1,
             indefinite: lifetime == 0,
             attachment_bone: None,
+            oriented: false,
             scale_attachment: true,
             callback_rotation: None,
             callback_rotation_z: None,
@@ -2123,6 +2138,15 @@ impl Effect {
             joints: ids.into(),
             paths: Arc::new(paths),
         })
+    }
+    /// lb_8000C290: the root's orientation constraint, resolved against
+    /// `target` whenever its matrix is next set up (resolveCnsOrientation,
+    /// then HSD_MtxGetRotation recovers the local rotation).
+    fn orient<T: InverseTrig>(&mut self, target: hsd_anim::orientation::OrientationTarget) {
+        self.tree.set_orientation_constraint(
+            self.root,
+            Some((target, hsd_anim::mtx::hsd_mtx_get_rotation::<T>)),
+        );
     }
     fn matrix(&mut self, joint: JObjId) -> Mtx {
         self.tree.setup_matrix(joint);

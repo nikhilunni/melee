@@ -1,4 +1,5 @@
 //! efAsync/efSync caller requests and outgoing-pose flush storage.
+use hsd_anim::orientation::OrientationTarget;
 use hsd_types::{Mtx, Vec3};
 use melee_types::fixed::FixedVec;
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -579,6 +580,19 @@ impl EffectRequest {
 pub trait EffectOwner {
     fn effect_queue(&mut self) -> &mut EffectQueue;
     fn effect_matrix(&mut self, bone: Option<usize>) -> Mtx;
+    /// Bone `bone` as an orientation constraint's target (lb_8000C290,
+    /// resolveCnsOrientation).
+    fn effect_orientation_target(&mut self, bone: usize) -> OrientationTarget;
     fn effect_facing(&self) -> f32;
     fn effect_scale(&self) -> hsd_types::Vec3;
+}
+
+/// The fighters' joints as efLib_Update reads them: an attached model's
+/// position constraint (lb_8000C1C0) and orientation constraint
+/// (lb_8000C290) targets.
+pub trait FighterJoints {
+    /// Bone `bone` (`None`: the root) of `player`'s skeleton, set up.
+    fn bone_matrix(&mut self, player: usize, bone: Option<usize>) -> Mtx;
+    /// Bone `bone` of `player` as an orientation constraint's target.
+    fn orientation_target(&mut self, player: usize, bone: usize) -> OrientationTarget;
 }

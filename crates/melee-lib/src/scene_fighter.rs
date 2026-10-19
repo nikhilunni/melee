@@ -247,6 +247,23 @@ impl SceneFighter {
     }
 }
 
+/// The scene's fighters as efLib_Update reads their joints, indexed by
+/// player.
+pub(crate) struct FighterJointSource<'a>(pub &'a mut [SceneFighter]);
+
+impl melee_ef::request::FighterJoints for FighterJointSource<'_> {
+    fn bone_matrix(&mut self, player: usize, bone: Option<usize>) -> Mtx {
+        self.0[player].bone_matrix(bone)
+    }
+    fn orientation_target(
+        &mut self,
+        player: usize,
+        bone: usize,
+    ) -> hsd_anim::orientation::OrientationTarget {
+        self.0[player].orientation_target(bone)
+    }
+}
+
 impl std::ops::Deref for SceneFighter {
     type Target = Fighter;
     fn deref(&self) -> &Fighter {

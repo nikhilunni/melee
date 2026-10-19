@@ -2274,7 +2274,7 @@ impl Runtime {
                     .effects
                     .tick_with_pause::<melee_ft::fighter::RetailTrig>(
                         self.match_finished,
-                        |player, bone| state.fighters[player].bone_matrix(bone),
+                        &mut crate::scene_fighter::FighterJointSource(&mut state.fighters[..]),
                         &state.assets.common_particle_bank,
                         &mut state.particles,
                         &mut state.rng,

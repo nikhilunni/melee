@@ -20,6 +20,13 @@ impl EffectOwner for super::FighterCore {
         self.skeleton.setup_matrix(joint);
         self.skeleton.get(joint).mtx
     }
+    fn effect_orientation_target(
+        &mut self,
+        bone: usize,
+    ) -> hsd_anim::orientation::OrientationTarget {
+        self.skeleton
+            .orientation_target(self.animation.parts[bone].joint)
+    }
     fn effect_scale(&self) -> hsd_types::Vec3 {
         self.skeleton.scale(self.animation.root)
     }
