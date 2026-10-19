@@ -579,7 +579,10 @@ pub fn detect_hit(
     // ftcoll.c:1664-1676: a thrown attacker hits anyone but its grabber's
     // player (grabber_unk1, ftColl_8007B8CC); any other attacker hits only
     // other players, so Popo and Nana never hit each other.
-    let excluded_player = thrower.map_or(attacker.core.player.id, |t| t.player);
+    let excluded_player = match thrower {
+        Some(thrower) => thrower.player,
+        None => attacker.core.player.id,
+    };
     if victim.core.player.id == excluded_player {
         return;
     }
@@ -613,7 +616,10 @@ pub fn detect_hit(
             credit: HitCredit::Player(excluded_player),
             // ftColl_8007A06C: the knockback direction compares the victim
             // with the log entry's fighter, a thrown fighter's thrower.
-            position_x: thrower.map_or(attacker.core.physics.position.x, |t| t.position_x),
+            position_x: match thrower {
+                Some(thrower) => thrower.position_x,
+                None => attacker.core.physics.position.x,
+            },
         };
         detect_eligible_hit(&mut victim.core, &mut attacker.core, assets, id, origin);
     }

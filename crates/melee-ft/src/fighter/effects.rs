@@ -392,15 +392,21 @@ impl super::FighterCore {
         request: EffectRequest,
     ) {
         // Only the positional kinds (2/5/6) read the joint once, at creation.
-        let issued = issued.filter(
-            |issued| matches!(request, EffectRequest::Graphics { bone, .. } if bone == issued.bone),
-        );
+        // (Plain matches, not Option combinators: a closure here is emitted
+        // twice in melee-ft, which the perf gate's duplicate census counts.)
+        let issued = match (issued, &request) {
+            (Some(issued), EffectRequest::Graphics { bone, .. }) if *bone == issued.bone => {
+                Some(issued)
+            }
+            _ => None,
+        };
         if sealed {
             // Rare (two motion changes in one proc): the queue is moved
             // out for the joint lookup, as the flush itself does.
             let mut queue = std::mem::take(&mut self.effects);
-            queue.push_sealed_graphics(request, |bone| {
-                issued.map_or_else(|| self.effect_matrix(bone), |issued| issued.matrix)
+            queue.push_sealed_graphics(request, |bone| match issued {
+                Some(issued) => issued.matrix,
+                None => self.effect_matrix(bone),
             });
             self.effects = queue;
         } else if let Some(issued) = issued {
