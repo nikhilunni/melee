@@ -58,7 +58,8 @@ fn finish_ground(
         }
         WaitGroundResult::EnterFall => {
             let assets = assets.expect("ground departure needs proc_map_with_assets");
-            fighter.leave_ground();
+            // ftCo_Fall_Enter: the motion change (and its effect flush, which
+            // reads cur_pos.z) precedes ftCommon_8007D5D4.
             fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
         }
         WaitGroundResult::EnterTeeter => {
@@ -319,7 +320,7 @@ pub fn catch_startup(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result
             (tether.departed)(fighter);
         }
         let assets = assets.expect("ground departure needs proc_map_with_assets");
-        fighter.leave_ground();
+        // ftCo_Fall_Enter leaves the ground after the motion change.
         fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
     } else if collided == WaitGroundResult::EnterTeeter {
         let assets = assets.expect("teeter entry needs proc_map_with_assets");
@@ -362,7 +363,7 @@ pub fn guard(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
         if fighter.core.slipped_off_back_edge() {
             return fighter.enter_missed_footing(assets);
         }
-        fighter.leave_ground();
+        // ftCo_Fall_Enter leaves the ground after the motion change.
         fighter.change_motion_state(melee_types::CommonMotionState::Fall.into(), assets)?;
     }
     Ok(())
