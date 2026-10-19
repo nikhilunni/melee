@@ -119,16 +119,15 @@ enum Command {
         #[arg(long)]
         out: PathBuf,
     },
-    /// Run and compare every key against the scenario's canonical tick trace;
-    /// with `--particles`, also the particle system against its particle dump
-    /// where that dump is the tick trace's game.
+    /// Run and compare every key against the scenario's canonical tick trace,
+    /// and the particle system against its particle dump where that dump is
+    /// the tick trace's game (docs/ORACLE.md).
     Gate {
         scenario: PathBuf,
-        /// Also compare the particle system (docs/ORACLE.md). Off by default
-        /// until the known particle faults are fixed (TRACKER.md).
-        #[arg(long, conflicts_with = "no_particles")]
+        /// The default since 2026-10-19; accepted for older scripts.
+        #[arg(long, conflicts_with = "no_particles", hide = true)]
         particles: bool,
-        /// Compare fighters, items and the seed only (the default).
+        /// Compare fighters, items and the seed only.
         #[arg(long)]
         no_particles: bool,
     },
@@ -663,11 +662,11 @@ fn main() -> anyhow::Result<()> {
         ),
         Command::Gate {
             scenario,
-            particles,
-            no_particles: _,
+            particles: _,
+            no_particles,
         } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
-            let particles = if !particles {
+            let particles = if no_particles {
                 melee_sim::trace::gate_items(&scenario)?;
                 None
             } else {

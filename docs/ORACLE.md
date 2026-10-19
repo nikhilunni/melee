@@ -58,12 +58,14 @@ timing, and varies between recordings of the same match).
 `record.py` writes a particle dump beside the tick trace
 (`<name>.particles.jsonl`): the generator list and the sixteen particle
 lists in order with every field, the pending list, the counts, the family
-counter and the seed, at each tick's end. `melee-sim gate --particles` and `triage`
+counter and the seed, at each tick's end. `melee-sim gate`, `sweep`, `triage` and `m5_gate`
 compare the port's particle system with it on every tick and report a
 difference like any other key (`phase particles`, the key, both values, and
 the object's bank, program and family id; `triage` adds both sides' lists).
-Plain `gate` compares fighters, items and the seed only: the particle check is
-opt-in until the scenarios it fails are fixed (`TRACKER.md`). The code
+The check is on by default since 2026-10-19, when the last particle fault was
+fixed (user decision); `gate --no-particles` compares fighters, items and the
+seed only. A scenario without a dump, or whose dump is not the tick trace's
+game, reports why it was not compared and still passes. The code
 is `crates/melee-sim/src/particle_gate.rs`.
 
 - **What is compared.** Every key of the dump except the AppSRT display

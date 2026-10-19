@@ -139,11 +139,10 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
                 | "match2_fd_foxmarth"
                 | "slp_bf_fox_falco_phantasm_t300"
         );
-    if compare_items {
-        trace::gate_items(&scenario).unwrap();
-    } else {
-        trace::gate(&scenario).unwrap();
-    }
+    // Fighters, items and the seed, and the particle system against its dump
+    // where the dump is this trace's game (on by default since 2026-10-19).
+    let particles = trace::gate_items_and_particles(&scenario).unwrap();
+    eprintln!("{name}: {}", particles.summary());
     eprintln!(
         "{ticks} ticks, {} keys, 0 divergences",
         if compare_items {
