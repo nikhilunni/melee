@@ -506,7 +506,7 @@ fn wall_step<C: LinkFamily>(
             .attributes()
             .hookshot
             .wall_hang_frames;
-        *f.air_catch_hang_frames() = frames as f32;
+        f.set_air_catch_hang_frames(frames as f32);
         place_models::<C>(f);
         return Ok(());
     }
@@ -591,9 +591,8 @@ fn wall_hang_step<C: LinkFamily>(
         set_article_state::<C>(f, motion::WALL_CLIMB);
         return Ok(());
     }
-    let frames = f.air_catch_hang_frames();
-    let left = *frames;
-    *frames = left - 1.0;
+    let left = f.air_catch_hang_frames();
+    f.set_air_catch_hang_frames(left - 1.0);
     if left <= 0.0 {
         return let_go::<C>(f, assets);
     }

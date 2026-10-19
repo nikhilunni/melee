@@ -50,11 +50,30 @@ impl Fighter {
     }
 
     /// mv.co.aircatchhit.x4, the hang countdown the kinds' articles keep.
-    pub fn air_catch_hang_frames(&mut self) -> &mut f32 {
-        let MotionData::AirCatchHit(state) = &mut self.core.state_data else {
-            panic!("the tether's hang countdown outside AirCatchHit")
-        };
-        &mut state.hang_frames
+    /// The article reads mv+4 whatever the fighter's state: once it has
+    /// landed out of AirCatchHit, that is the new state's own word.
+    pub fn air_catch_hang_frames(&self) -> f32 {
+        match &self.core.state_data {
+            MotionData::AirCatchHit(state) => state.hang_frames,
+            _ => self.inherited_scratch_word().unwrap_or_else(|| {
+                unimplemented!(
+                    "the tether's hang countdown read during motion {:?}",
+                    self.core.motion_state.action
+                )
+            }),
+        }
+    }
+
+    /// The article's store to mv.co.aircatchhit.x4 (it_802A7A04,
+    /// it_802BABB8), made whatever the fighter's state. When the fighter
+    /// lands out of AirCatchHit while the chain still pays out from the wall
+    /// (it_802A3630, fn_802B895C test the ground only after paying out), the
+    /// store lands in Landing's retained word, as any outside write of mv+4.
+    pub fn set_air_catch_hang_frames(&mut self, frames: f32) {
+        match &mut self.core.state_data {
+            MotionData::AirCatchHit(state) => state.hang_frames = frames,
+            _ => self.overwrite_common_scratch_word(frames),
+        }
     }
 
     /// ftCo_800C3A14 (800C3A14): a ledge in front within a probe 5 higher

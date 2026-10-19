@@ -537,7 +537,7 @@ fn wall(
     }
     if grapple(f).chain.pay_out_from_wall(h, map, rng) {
         set_state(f, state::HANGING);
-        *f.air_catch_hang_frames() = samus(f).attributes.tether_hang_frames as f32;
+        f.set_air_catch_hang_frames(samus(f).attributes.tether_hang_frames as f32);
         return Ok(());
     }
     let tip = grapple(f).chain.tip_position();
@@ -606,7 +606,7 @@ fn hanging(f: &mut Fighter, assets: &FighterAssets, map: &mut melee_mp::CollMap)
     // The button code's beam (xDD4 x16) with L held adds a frame to the
     // countdown, which then stands still.
     if grapple(f).extended != Extended::No && f.input.current.held.intersects(Buttons::L) {
-        *f.air_catch_hang_frames() += 1.0;
+        f.set_air_catch_hang_frames(f.air_catch_hang_frames() + 1.0);
     }
     if f.physics.ground_or_air != GroundOrAir::Air {
         set_state(f, state::RETRACTING);
@@ -616,9 +616,8 @@ fn hanging(f: &mut Fighter, assets: &FighterAssets, map: &mut melee_mp::CollMap)
         set_state(f, state::CLIMBING);
         return Ok(());
     }
-    let frames = f.air_catch_hang_frames();
-    let left = *frames;
-    *frames = left - 1.0;
+    let left = f.air_catch_hang_frames();
+    f.set_air_catch_hang_frames(left - 1.0);
     if left <= 0.0 {
         return let_go(f, assets);
     }

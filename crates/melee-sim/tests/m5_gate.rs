@@ -4622,7 +4622,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 647] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 649] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5655,6 +5655,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 647] = [
     ("corpus_v3_ps_link_fox4_e276b41d4_p2", 4644),
     ("corpus_v3_ps_link_fox4_e5aef4dc4_p0", 4917),
     ("corpus_v3_ps_samus_fox4_ebe7703ed_p2", 5524),
+    // The tether lands before its chain reaches the wall: the hang countdown
+    // goes to Landing's mv+4 (it_802A7A04, it_802BABB8), Link and Samus.
+    ("corpus_v3_ps_link_fox4_e23bd2614_p2", 5239),
+    ("corpus_v3_ps_samus_fox4_e51dc0146_p0", 5640),
 ];
 
 #[test]
