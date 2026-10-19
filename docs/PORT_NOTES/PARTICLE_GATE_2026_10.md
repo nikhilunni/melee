@@ -188,3 +188,50 @@ fighter and item gate. Regenerate with a sweep of `gate --particles`.
          slp_ys_fox_falco_t1900: tick 353: -5.903419494628906 (0xC0BCE8D0) vs -5.9034199714660645 (0xC0BCE8D1)
 
 ```
+
+## Wave 10: the faults outside the item-teardown family (2026-10-18)
+
+Fixed (each now `particles: ... 0 divergences`):
+
+- program 8, `corpus_v3_ps_samus_fox4_e51dc0146_p0`: ftCo_Fall_Enter changes
+  motion before ftCommon_8007D5D4 clears cur_pos.z, so the flush of Fox's
+  blaster smoke (0x3F7) saw the player-nudge z of -0.1.
+- program 28, `mewtwo_ball_burst_fd_fox4`: the Shadow Ball's burst state
+  (Item_80268E5C's HSD_JObjAnimAll) replaces the flight's waver on the
+  grandchild before it_802C5E5C reads it.
+- program 266, `corpus_v3_ys_peach_yoshi4_e89a89d0e_p1`: a graphics
+  command's floor angle uses the ground state it was issued under
+  (`GraphicsCommand::issued_grounded`), not the one at resolution.
+- program 91, `peach_airdodge_turnip_catch_fd_fox4`: ftCo_800D71D8 runs after
+  ftAnim_8006EBA4, so a caught item's hand pose reaches the hand a step
+  later (bone dump ticks 265-278 shows the frame-of-catch hand).
+- program 107, `slp_fd_samus_pikachu_t4250` (+ cold): the captor's Grab proc
+  (s_link 12) creates the victim's capture sparks at once.
+- program 270, `corpus_v2_*` (3): not a port fault. Their dumps predate the
+  display clock and their tick traces came from runs with another display
+  cadence (Fox's tail dynamics read drawn matrices). Re-recorded in full,
+  all three are exact.
+- `sudden_death_start_fd_marth_cold`, `timeout_tie_fd_marth_cold`: a cold
+  scene carries the boundary's particle family counter (594 / 425).
+- `kirby_hat_mewtwo_fd_mewtwo4` and `kirby_nohat_mewtwo_jab_fd_mewtwo4` were
+  already exact on main.
+
+Open:
+
+- program 225 (`corpus_v3_s1_e37053c42_p0`, `slp_fd_captainfalcon_samus_t10400`
+  + cold) and program 19 (`slp_ys_fox_falco_t1900` + cold): a generator on a
+  fighter joint whose world matrix is a few ulps from retail at the end of
+  the tick, the first such joint being bone 7 (Falcon, Falco; the
+  `corpus_v3_s1` scene is not checked). Bone dumps
+  are recorded for both slp scenes (ticks 1845-1856 and 345-356): local SRT
+  matches everywhere; bones 0-6 match in mtx; bone 7's columns 0 and 1 (and
+  its descendants) differ by 1-8 ulps while column 2 is exact. Bone 7's
+  world rotation about its parent is not Rz(rotate.z) (cos -0.4225 against
+  cos(1.8657) = -0.2906), so something besides HSD_MtxSRT writes it (an RObj
+  constraint or IK the port does not model?). Not diagnosed.
+- program 74 (`corpus_v3_bf_yoshi_pikachu4_ec13743d5_p2` tick 918): the
+  Quick Attack trail reads XRotN from ftPk_SpecialAirHiStart1_Anim. Draws and
+  end-of-tick bones match retail; retail's XRotN at the callback is posed
+  differently on this tick only (offset from the root (4.61, 2.05) against
+  the port's (-0.95, 5.49)), as if the animation re-wrote the joint before
+  the callback. Not diagnosed.
