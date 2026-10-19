@@ -188,13 +188,15 @@ impl Effects {
     /// (eflib.c:857-990) with a generator id outside its special cases takes
     /// hsd_8039EFAC(0, bank, id, jobj), a generator that follows the item's
     /// root with no AppSRT (Mario's fireball trail, 1002; the PK Fire
-    /// pillar's flames, 291..294 of the common bank, `common`).
+    /// pillar's flames, 291..294 of the common bank, `common`), or the
+    /// model `bone` whose track fired (the PK Flash's burst, 451).
     #[allow(clippy::too_many_arguments)] // The item, its joint and the particle state stay separate.
     pub fn spawn_item_particle<T: InverseTrig>(
         &mut self,
         bank: u8,
         id: u32,
         item: u32,
+        bone: Option<usize>,
         matrix: Mtx,
         common: &ParticleBank,
         particles: &mut ParticleSystem,
@@ -205,7 +207,10 @@ impl Effects {
                 || (bank == 0 && id < 1000 && !COMMON_SPECIAL_PARTICLES.contains(&id)),
             "item joint particle {bank}/{id} outside the default hsd_8039EFAC path"
         );
-        let joint = item_joint(item);
+        let joint = match bone {
+            Some(bone) => item_bone_joint(item, bone),
+            None => item_joint(item),
+        };
         let mut spawn = SpawnRequest::new(bank, id, 0);
         spawn.joint = Some((joint, matrix));
         self.events.spawn(&spawn, false, false);
@@ -214,10 +219,14 @@ impl Effects {
         } else {
             resources::character_bank(&self.character_banks, i32::from(bank))?
         };
-        if spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?.is_some()
-            && !self.item_joints.contains(&item)
-        {
-            self.item_joints.push(item);
+        if spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?.is_some() {
+            match bone {
+                Some(bone) if !self.item_bones.contains(&(item, bone as u8)) => {
+                    self.item_bones.push((item, bone as u8));
+                }
+                None if !self.item_joints.contains(&item) => self.item_joints.push(item),
+                _ => {}
+            }
         }
         Ok(())
     }

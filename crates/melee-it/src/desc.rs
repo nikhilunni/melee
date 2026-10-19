@@ -540,10 +540,13 @@ impl ItemAssets {
         &mut self,
         archive: &Archive,
     ) -> std::result::Result<(), hsd_anim::load::LoadError> {
-        self.particle_tracks = Some(crate::particle_track::ParticleTracks::read(
-            archive,
-            &self.visual,
-        )?);
+        let tracks = crate::particle_track::ParticleTracks::read(archive, &self.visual)?;
+        // A key on a joint below the root attaches its generator to that
+        // joint, whose matrix the pose gives.
+        if tracks.below_root() && self.pose.is_none() {
+            self.read_pose(archive)?;
+        }
+        self.particle_tracks = Some(tracks);
         Ok(())
     }
 

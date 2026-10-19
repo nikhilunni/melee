@@ -115,11 +115,13 @@ pub enum ItemEvent {
     /// joint's depth-first index.
     BoneModel { id: u16, bone: usize },
     /// efLib_Cb_DPtcl from the item's joint animation: generator `id` of
-    /// `bank` attached to the model root, whose transform at the AnimAll
-    /// step is given.
+    /// `bank` attached to the joint whose track fired (`joint`, its
+    /// depth-first index; 0 is the model root), under the root transform
+    /// at the AnimAll step, which is given.
     JointParticle {
         bank: u8,
         id: u32,
+        joint: usize,
         position: Vec3,
         rotation: Vec3,
         scale: Vec3,
@@ -1396,6 +1398,7 @@ impl ItemCore {
             self.events.push(ItemEvent::JointParticle {
                 bank: key.bank as u8,
                 id: key.id as u32,
+                joint: key.joint,
                 position,
                 rotation: self.rotation,
                 scale: self.model_scale,

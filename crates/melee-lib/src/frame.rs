@@ -438,16 +438,50 @@ impl Runtime {
                     melee_it::ItemEvent::JointParticle {
                         bank,
                         id,
+                        joint,
                         position,
                         rotation,
                         scale,
                     } => {
-                        let mut matrix = hsd_types::Mtx::default();
-                        hsd_anim::mtx::hsd_mtx_srt(&mut matrix, &scale, &rotation, &position, None);
+                        let root = melee_it::pose::RootSrt {
+                            translate: position,
+                            rotate: rotation,
+                            scale,
+                        };
+                        let matrix = if joint == 0 {
+                            let mut matrix = hsd_types::Mtx::default();
+                            hsd_anim::mtx::hsd_mtx_srt(
+                                &mut matrix,
+                                &root.scale,
+                                &root.rotate,
+                                &root.translate,
+                                None,
+                            );
+                            matrix
+                        } else {
+                            // efLib_SpawnParticleEffect attaches the
+                            // generator to the joint whose track fired.
+                            anyhow::ensure!(
+                                !crate::article_pose::ArticlePoses::poses_kind(
+                                    &state.assets.items.article_skeletons,
+                                    item.kind
+                                ),
+                                "a held article's DPtcl key below its root"
+                            );
+                            state
+                                .assets
+                                .items
+                                .get(item.kind)
+                                .pose
+                                .as_ref()
+                                .expect("a DPtcl key below the root without a sampled pose")
+                                .bone_matrix(item.article_state, item.pose_steps, joint, root)
+                        };
                         state.effects.spawn_item_particle::<RetailTrig>(
                             bank,
                             id,
                             item.id,
+                            (joint != 0).then_some(joint),
                             matrix,
                             &state.assets.common_particle_bank,
                             &mut state.particles,

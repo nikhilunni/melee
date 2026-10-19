@@ -9,12 +9,14 @@
 use hsd_archive::{desc::item_visual::ItemVisual, Archive};
 
 /// One DPtcl key: the AnimAll step (0 is Item_80268E5C's own step after the
-/// request) and the track's bank and generator id.
+/// request), the track's bank and generator id, and the joint whose track
+/// fired it, by its depth-first index in the model (0 is the root).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct ParticleKey {
     pub step: u16,
     pub bank: i32,
     pub id: i32,
+    pub joint: usize,
 }
 
 /// One article state's keys, and how many steps were sampled.
@@ -45,6 +47,7 @@ impl ParticleTracks {
                 continue;
             };
             let (mut tree, root) = hsd_anim::load::load_joint_tree(archive, &visual.model)?;
+            let joints: Vec<_> = (0..).map_while(|i| tree.bone(root, i)).collect();
             hsd_anim::load::attach_anim_joint(&mut tree, root, anim, archive)?;
             tree.req_anim_all(root, 0.0);
             let mut keys = Vec::new();
@@ -52,11 +55,15 @@ impl ParticleTracks {
             while step < MAXIMUM_STEPS {
                 let ended = tree.anim_all::<RetailTrig>(root);
                 for event in tree.events.drain(..) {
-                    if let hsd_anim::jobj::JObjEvent::DPtcl { lo, hi, .. } = event {
+                    if let hsd_anim::jobj::JObjEvent::DPtcl { jobj, lo, hi } = event {
                         keys.push(ParticleKey {
                             step,
                             bank: lo,
                             id: hi,
+                            joint: joints
+                                .iter()
+                                .position(|&j| j == jobj)
+                                .expect("a DPtcl key on a model joint"),
                         });
                     }
                 }
@@ -71,6 +78,14 @@ impl ParticleTracks {
             }));
         }
         Ok(Self { states })
+    }
+
+    /// Whether a key fires on a joint below the root.
+    pub fn below_root(&self) -> bool {
+        self.states
+            .iter()
+            .flatten()
+            .any(|state| state.keys.iter().any(|key| key.joint != 0))
     }
 
     /// The keys that fire on AnimAll step `step` of article state `state`.
