@@ -498,6 +498,7 @@ dependencies = [
 name = "ft-gamewatch"
 version = "0.0.1"
 dependencies = [
+ "ft-gamewatch-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -509,6 +510,17 @@ dependencies = [
  "melee-lb",
  "melee-mp",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-gamewatch-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-ft",
+ "melee-it",
  "melee-types",
 ]
 
@@ -548,6 +560,7 @@ version = "0.0.1"
 dependencies = [
  "ft-captain-family",
  "ft-fox-family",
+ "ft-gamewatch-family",
  "ft-mars-family",
  "ft-purin-family",
  "gekko-math",

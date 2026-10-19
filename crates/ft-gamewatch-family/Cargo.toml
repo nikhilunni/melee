@@ -1,0 +1,12 @@
+[package]
+name = "ft-gamewatch-family"
+description = "Mr. Game & Watch's Chef, shared with Kirby's copy of it (retail ftGw_SpecialN, ftKb_SpecialNGw)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gekko-math = { path = "../gekko-math" }
+hsd-types = { path = "../hsd-types" }
+melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-types = { path = "../melee-types" }

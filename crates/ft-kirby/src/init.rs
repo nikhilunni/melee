@@ -59,6 +59,8 @@ pub struct Kirby {
     /// The copied Rollout: mv.pr.specialn, the model scale it squashes
     /// (u.kb.x8C) and deal_dmg_cb (fn_80100E0C).
     pub rollout: ft_purin_family::RolloutState,
+    /// The copied Chef: u.kb.xD4..xDC and mv.kb.specialn_gw.
+    pub chef: crate::copied::chef::KirbyChef,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -70,6 +72,10 @@ pub enum Accessory {
     CutterBeam,
     /// fn_800F53AC: the hammer article on the script's flags.
     Hammer,
+    /// fn_8010CFB0: the copied Chef's pan.
+    ChefPan,
+    /// fn_8010CE5C: the copied Chef's food on the script's flag.
+    ChefFood,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -95,6 +101,7 @@ impl Kirby {
             blaster: Default::default(),
             shield_breaker: Default::default(),
             rollout: crate::copied::rollout::at_rest(),
+            chef: Default::default(),
         }
     }
 }
@@ -232,7 +239,7 @@ impl CharacterCallbacks for Kirby {
     }
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.
-    fn accessory(f: &mut Fighter, assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
+    fn accessory(f: &mut Fighter, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
         crate::copied::accessory(f, assets);
         if !f.core.accessory4_armed {
             return;
@@ -240,6 +247,8 @@ impl CharacterCallbacks for Kirby {
         match f.character.get::<Kirby>().accessory {
             Accessory::CutterBeam => crate::special_hi::beam_accessory(f),
             Accessory::Hammer => crate::special_s::hammer_accessory(f),
+            Accessory::ChefPan => crate::copied::chef::pan_accessory(f, assets),
+            Accessory::ChefFood => crate::copied::chef::throw_accessory(f, assets, rng),
             Accessory::None => {}
         }
     }
@@ -262,9 +271,10 @@ impl CharacterCallbacks for Kirby {
         Some(crate::bump_star::spawn);
     /// Fighter_procMap (fighter.c:2494): ftKb_SpecialN_800F1D24.
     const AFTER_COLLISION: Option<fn(&mut Fighter)> = Some(crate::bump_star::after_collision);
-    /// itKirbyHammer_Logic8_Destroyed: ftKb_SpecialAirLw_800F539C.
+    /// itKirbyHammer_Logic8_Destroyed (ftKb_SpecialAirLw_800F539C) and the
+    /// copied specials' articles.
     const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) =
-        crate::special_s::article_destroyed;
+        crate::copied::article_destroyed;
 
     /// ftCo_Throw.c:145-157: the FTKIND_KIRBY arm is `THROW_TRAITS`.
     fn throw_variant(&self) {}

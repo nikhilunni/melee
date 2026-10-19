@@ -2715,6 +2715,17 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // whose draw takes it (the star); his next B is the Inhale.
     ("kirby_copy_rollout_jab_fd_jigglypuff4", 620),
     ("kirby_copy_rollout_lost_fd_jigglypuff4", 650),
+    // The copied Chef (ftkirbyspecialgamewatch.c over
+    // ft_gamewatch_family's states, with Kirby's pan article): the held
+    // loop with the first food on Mr. Game & Watch, an aerial Chef landing
+    // in the grounded row and a short-hop one landing and looping.
+    ("kirby_copy_chef_fd_gameandwatch4", 900),
+    // A jab mid-Chef puts the pan away (ftKb_SpecialNGw_8010D0A8); another's
+    // draw takes the ability there; a death in the aerial Chef past the
+    // blast zone takes both.
+    ("kirby_copy_chef_struck_fd_gameandwatch4", 600),
+    ("kirby_copy_chef_lost_fd_gameandwatch4", 640),
+    ("kirby_copy_chef_pit_fd_gameandwatch4", 700),
 ];
 
 #[test]

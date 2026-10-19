@@ -18,7 +18,7 @@ pub mod special;
 
 pub use attack::{Fire, Greenhouse, Manhole};
 pub use attack_air::{Breath, Parachute, Turtle};
-pub use chef::Chef;
+pub use chef::{Chef, KirbyChef};
 pub use special::{Judge, Panic, Rescue};
 
 /// ftGameWatch_MotionState ids the articles' owner checks read.

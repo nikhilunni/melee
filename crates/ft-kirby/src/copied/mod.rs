@@ -14,6 +14,7 @@ pub mod blaster;
 pub mod captain;
 pub mod shield_breaker;
 pub mod rollout;
+pub mod chef;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -85,7 +86,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Pichu: Pikachu's entries.
     unported("ftKb_SpecialNPk_800F9FD4", "ftKb_SpecialNPk_800FA064"),
     // Mr. Game & Watch
-    unported("ftKb_SpecialNGw_8010D188", "ftKb_SpecialNGw_8010D204"),
+    CopiedNeutral::Ported(chef::enter),
     // Ganondorf: Captain Falcon's entries.
     CopiedNeutral::Ported(captain::enter),
     // Roy: Marth's entries.
@@ -117,7 +118,7 @@ pub fn enter_neutral(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
 
 /// The copied specials' motion rows (ftKb_Init_MotionStateTable 399..543)
 /// that are ported: the Blaster's here, each other kind's in its module
-/// (`captain::rows`, `rollout::rows`).
+/// (`captain::rows`, `rollout::rows`, `chef::rows`).
 pub const fn rows() -> [MotionRow; 12] {
     blaster::rows()
 }
@@ -151,4 +152,11 @@ pub fn item_owner(f: &mut Fighter) -> melee_it::ItemOwner {
 /// The copied Blaster's flash point (ftKb_SpecialNFx_800FDC00 / 800FDC70).
 pub fn item_muzzle(f: &mut Fighter, assets: &FighterAssets) -> Option<(hsd_types::Vec3, f32)> {
     blaster::item_muzzle(f, assets)
+}
+
+/// The articles' Destroyed callbacks reaching Kirby: the hammer's
+/// (ftKb_SpecialAirLw_800F539C) and the copied specials'.
+pub fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
+    crate::special_s::article_destroyed(f, kind);
+    chef::article_destroyed(f, kind);
 }

@@ -7,6 +7,7 @@ edition.workspace = true
 [dependencies]
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
+ft-gamewatch-family = { path = "../ft-gamewatch-family" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 melee-coll = { path = "../melee-coll" }

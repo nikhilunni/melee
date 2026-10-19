@@ -42,6 +42,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Mars
                             | FighterKind::Emblem
                             | FighterKind::Purin
+                            | FighterKind::GameWatch
                     ),
                     "{kind:?}"
                 )

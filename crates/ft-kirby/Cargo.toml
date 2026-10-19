@@ -11,6 +11,7 @@ ft-fox-family = { path = "../ft-fox-family" }
 ft-captain-family = { path = "../ft-captain-family" }
 ft-mars-family = { path = "../ft-mars-family" }
 ft-purin-family = { path = "../ft-purin-family" }
+ft-gamewatch-family = { path = "../ft-gamewatch-family" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 melee-coll = { path = "../melee-coll" }

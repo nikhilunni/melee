@@ -312,6 +312,19 @@ impl ItemAssets {
         Self::from_article(archive, article, &rows, 10)
     }
 
+    /// [`Self::from_article_slot`] for an article whose motion states do not
+    /// map one to one onto article states, or with more special attribute
+    /// words, as for [`Self::from_fighter_states`].
+    pub fn from_article_slot_states(
+        archive: &Archive,
+        slot: u32,
+        article_states: &[i32],
+        special_attributes: u32,
+    ) -> hsd_archive::desc::Result<Self> {
+        let article = archive.reader().u32(slot)?;
+        Self::from_article(archive, article, article_states, special_attributes)
+    }
+
     /// ftData.x48_items[item_index] for an article whose motion states do
     /// not map one to one onto article states: `article_states` is the
     /// kind's ItemStateTable anim_id column, as for [`Self::from_common`].

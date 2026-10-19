@@ -51,6 +51,9 @@ pub struct KirbyAttributes {
     /// +384 (`specialn_mt_charge_time`): the copied Shadow Ball's full
     /// charge; a hit keeps a full charge (ftKb_SpecialNMt_80107130).
     pub mewtwo_charge_time: f32,
+    /// +3E4 / +3E8 (`specialn_gw_frame_on_repeat`,
+    /// `specialn_gw_max_sausages_per_use`): the copied Chef.
+    pub gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes,
 }
 
 /// ftKb_DatAttrs +EC..+114 (`speciallw_*`). +10C and +110 (16 and 28 on
@@ -268,6 +271,10 @@ impl KirbyAttributes {
             roy_flare_blade: ShieldBreakerAttributes::read(&r, 0x370)?,
             rollout: RolloutAttributes::read(&r, 0x2B4)?,
             mewtwo_charge_time: r.f32(0x384)?,
+            gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes {
+                loop_frame: r.f32(0x3E4)?,
+                max_sausages: r.f32(0x3E8)?,
+            },
         })
     }
 }

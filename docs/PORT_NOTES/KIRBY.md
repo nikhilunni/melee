@@ -496,7 +496,7 @@ fails closed.
   | `HNC 5 ... Captain Falcon vs LOVE Kirby` | 13271 of 13271 | the end: every frame matches |
   | `Falco vs Kirby [YS]` | 2362 of 9109 | the Final Cutter beam ended by a wall |
   | `Game_20190824T180214` (Kirby against Kirby) | 13809 of 13809 (8704 before Hammer, 8847 before Stone) | the end: every frame matches |
-  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 5388 of 15399 (5100 before the grafted hats) | the copied Chef (ftKb_Init_803C9DD0) |
+  | `18_09_37 Kirby + Mr. Game _ Watch (FoD)` | 9909 of 15399 (5388 before the copied Chef, 5100 before the grafted hats) | Mr. Game & Watch's x in his aerial Fire (374) at FoD's left edge, Kirby beside him |
 
   The Kirby against Kirby game runs Stone 27 times (24 of them landing from
   the air), the Fountain of Dreams game three times before it stops. Neither
@@ -611,9 +611,22 @@ fails closed.
   hitting Kirby in the charge, keeping and (by the draw) taking the ability.
   `corpus_v3_fd_kirby_jigglypuff4_e86fddb60_p2` (`CORPUS_V3_MATCHES`), which
   stopped at the aerial entry, is exact over its 3755 ticks.
+- **The copied Chef** (`ft-kirby` `copied/chef.rs`): Mr. Game & Watch's
+  states, moved into `ft-gamewatch-family` (`chef::ChefUser`), over Kirby's
+  rows 510/511 with his food kind (It_Kind_Kirby_GameWatchChef, the same
+  item logic) and attributes (+3E4/+3E8). Kirby needs a pan article
+  (It_Kind_Kirby_GameWatchChefPan, `it-kirby` `chef_pan.rs`): the entry's
+  accessory (fn_8010CFB0) hangs it on the left thumb with the damage
+  callbacks and a hitlag pair, then hands accessory4 to the thrower. It goes
+  when Kirby leaves the two rows (its own anim callback), on a hit or death
+  (8010D0A8, the put-away arm), or with the ability. Its motion-change flags
+  lack Mr. Game & Watch's SkipModel. Copy archive `PlKbCpGw.dat`,
+  hat_dynamics[5] (food) and [6] (pan); no effect bank. The pan's hitlag
+  pair is unreached (any hit on Kirby in Chef changes his motion first).
 - Not ported: the copied neutral specials other than the Blaster, the
-  Punch, the Shield Breaker and the Rollout (`ftKb_Init_803C9DD0`; each
-  kind's entry fails closed with its name), item pickup hand poses.
+  Punch, the Shield Breaker, the Rollout and the Chef
+  (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
+  item pickup hand poses.
 
 ## Where this stands and how to resume (2026-10-12)
 
@@ -629,9 +642,10 @@ losing an ability by taunt, hit or death and its star.
 
 Slippi (`public-v3.7-b`): four of the five Kirby games match every frame
 (7001, 13271, 9109, 13809). `GAMEANDWATCH/18_09_37 Kirby + Mr. Game _ Watch
-(FoD)` stops at tick 5388 of 15399 when Kirby uses the copied Chef
-(ftKb_Init_803C9DD0, ftkirby.c:3777); it stopped at the swallow (tick 5100)
-before the grafted hats.
+(FoD)` stops at tick 9909 of 15399 on Mr. Game & Watch's x in his aerial
+Fire beside Kirby at the stage's left edge (not yet diagnosed); it stopped at
+the copied Chef (5388) before it was ported and at the swallow (5100) before
+the grafted hats.
 
 Remaining work, in the order to take it:
 
@@ -654,7 +668,10 @@ Remaining work, in the order to take it:
    `start_fd_kirby_ganondorf4`); Marth's and Roy's Shield Breaker
    (`kirby_copy_shieldbreaker_*`, `kirby_copy_flareblade_*`, boundaries
    `start_fd_kirby_marth4` and `start_fd_kirby_roy4`); Jigglypuff's Rollout
-   (`kirby_copy_rollout_*`, `corpus_v3_fd_kirby_jigglypuff4_e86fddb60_p2`).
+   (`kirby_copy_rollout_*`, `corpus_v3_fd_kirby_jigglypuff4_e86fddb60_p2`);
+   Mr. Game & Watch's Chef (`kirby_copy_chef_*`: the held loop, aerial
+   landing in it, a jab putting the pan away, a jab's draw taking the
+   ability, a death in it).
    Next: Sheik, Peach, Samus, then the rest; each row's stale-move id
    exists already (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (the
    charge flashes of Donkey Kong, Samus, Mewtwo and Sheik) comes with those

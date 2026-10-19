@@ -26,14 +26,8 @@ pub struct GameWatchAttributes {
     pub panic: PanicAttributes,
 }
 
-/// Chef (ftgamewatchspecialn.c).
-#[derive(Clone, Debug, PartialEq)]
-pub struct ChefAttributes {
-    /// +0x18 x18_GAMEWATCH_CHEF_LOOPFRAME: the frame the loop restarts at.
-    pub loop_frame: f32,
-    /// +0x1C x1C_GAMEWATCH_CHEF_MAX: sausages per use, as a float.
-    pub max_sausages: f32,
-}
+/// Chef (ftgamewatchspecialn.c): +0x18 and +0x1C.
+pub use ft_gamewatch_family::chef::ChefAttributes;
 
 /// Judgment (ftgamewatchspecials.c).
 #[derive(Clone, Debug, PartialEq)]

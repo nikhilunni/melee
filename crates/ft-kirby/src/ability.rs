@@ -28,12 +28,13 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are xC4, xCC, xB0 and x8C.
+/// The ones with a reader so far are xC4, xCC, xB0, x8C and xD4..xDC.
 fn reset_copied_scratch(state: &mut Kirby) {
     state.ice_shot_lift_used = false;
     state.toad_lift_used = false;
     state.blaster = Default::default();
     state.rollout.scale = crate::copied::rollout::SCALE_AT_REST;
+    state.chef = crate::copied::chef::KirbyChef::AT_REST;
 }
 
 /// ftKb_SpecialN_800F1BAC (800F1BAC) with `arg2` true: a new kind replaces
@@ -96,14 +97,18 @@ fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
 
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
 /// the death callback and ftKb_SpecialN_800F5D04. Fox's and Falco's arm
-/// destroys the blaster. The other kinds whose arm only releases an article
-/// or a held fighter (Ice Climbers, Peach, Link, Young Link, Ness, Sheik,
-/// Yoshi, Mr. Game & Watch; the Yoshi arm's hat animation is drawn) do
-/// nothing while their copied special is not ported: their scratch is
-/// always at rest.
+/// destroys the blaster, Mr. Game & Watch's the pan. The other kinds whose
+/// arm only releases an article or a held fighter (Ice Climbers, Peach,
+/// Link, Young Link, Ness, Sheik, Yoshi; the Yoshi arm's hat animation is
+/// drawn) do nothing while their copied special is not ported: their
+/// scratch is always at rest.
 fn put_away(f: &mut Fighter) {
     let kind = f.character.get::<Kirby>().copied;
     crate::copied::blaster::put_away(f, kind);
+    if kind == FighterKind::GameWatch {
+        // ftKb_SpecialNGw_8010D0A8.
+        crate::copied::chef::put_away(f);
+    }
     if put_away_charge(f, kind) {
         return;
     }
@@ -123,6 +128,10 @@ pub fn put_away_on_hit(f: &mut Fighter) {
     let kind = state.copied;
     let full_charge = 0.0 == state.attributes.mewtwo_charge_time;
     crate::copied::blaster::put_away(f, kind);
+    if kind == FighterKind::GameWatch {
+        // ftKb_SpecialNGw_8010D0A8.
+        crate::copied::chef::put_away(f);
+    }
     if put_away_charge(f, kind) {
         return;
     }

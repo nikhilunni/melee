@@ -12,7 +12,11 @@ use melee_it::{
 };
 use melee_types::ItemKind;
 
+/// Mr. Game & Watch's food.
 pub struct Chef;
+/// Kirby's copied Chef's food (It_Kind_Kirby_GameWatchChef): it_3F2F.c's
+/// row for it is the same callbacks, it_803F79E0.
+pub struct KirbyChef;
 
 /// it_803F79E0's anim_id column.
 pub const ARTICLE_STATES: [i32; 2] = [0, 1];
@@ -94,80 +98,86 @@ fn set_lifetime(item: &mut ItemCore, lifetime: f32, half_life_scale: f32) {
     item.half_life = lifetime * half_life_scale;
 }
 
-/// it_3F2F.c's Logic112 row.
-impl ItemLogic for Chef {
-    const KIND: ItemKind = ItemKind::GameWatchChef;
-    const STATES: &'static [ItemStateRow] = &STATES;
-    /// The logic row has no pickup callback.
-    fn pickup_possible(_item: &ItemCore) -> bool {
-        false
-    }
-    /// it_802C84A0 (802C84A0), after Item_80268B18: the food
-    /// (`spawn_argument`), the flight's lifetime, xD5C cleared, the entry's
-    /// launch velocity (802C84F4: fmuls by the facing), not grabbable
-    /// (it_8026B3A8), motion 0.
-    fn launched(
-        item: &mut ItemCore,
-        assets: &ItemAssets,
-        common: &ItemCommonData,
-        spawn: &SpawnItem,
-        _rng: &mut gekko_math::HsdRng,
-    ) {
-        let a = Attributes(&assets.special_attributes);
-        let food = spawn.spawn_argument as usize;
-        item.scratch = ItemScratch::Chef(ChefState {
-            food,
-            half_life_scale: common.half_life_scale,
-        });
-        set_lifetime(item, a.lifetime(), common.half_life_scale);
-        item.slide_mode = 0;
-        let (x, y) = a.launch(food);
-        item.velocity.x = x * item.facing;
-        item.velocity.y = y;
-        item.grabbable = false;
-        item.change_motion_with(FLYING, ARTICLE_STATES[0], ANIM_UPDATE, assets);
-        // it_802C837C: it_8027CE64 after the launch runs it_80274594, whose
-        // it_80275534 gives the hitbox the flight's script has just made
-        // x3C, the command size, as its radius: the 1 / scl of the hitbox
-        // command is undone, so the food's capsule (scl 1.5) is 1.5 times
-        // the command's in contact tests.
-        let scale = item.scale;
-        item.rescale(scale);
-    }
-    /// itGameWatchChef_Logic112_DmgDealt (802C8474): spent, not removed.
-    fn damage_dealt(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        spend(item, ctx.assets, ctx.half_life_scale);
-        false
-    }
-    /// it_2725_Logic112_Clanked (802C88F0).
-    fn clanked(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        spend(item, ctx.assets, ctx.half_life_scale);
-        false
-    }
-    /// it_2725_Logic112_HitShield (802C8964).
-    fn hit_shield(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        spend(item, ctx.assets, ctx.half_life_scale);
-        false
-    }
-    /// it_2725_Logic112_Absorbed (802C89D8): spent with no lifetime left.
-    fn absorbed(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        spend(item, ctx.assets, ctx.half_life_scale);
-        item.life_timer = 0.0;
-        false
-    }
-    /// itGameWatchChef_Logic112_ShieldBounced -> itColl_BounceOffShield.
-    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        item.bounce_off_shield(ctx.shield_normal);
-        false
-    }
-    /// itGameWatchChef_Logic112_Reflected -> itReflectItemAndUpdateRotation:
-    /// it_80273030, then the model turns to the new facing.
-    fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        item.reverse_on_reflect(ctx.reflected_speed);
-        item.rotation.y = std::f32::consts::FRAC_PI_2 * item.facing;
-        false
-    }
+/// it_3F2F.c's Logic112 row, and Kirby's food's row.
+macro_rules! food_logic {
+    ($name:ident, $kind:ident) => {
+        impl ItemLogic for $name {
+            const KIND: ItemKind = ItemKind::$kind;
+            const STATES: &'static [ItemStateRow] = &STATES;
+            /// The logic row has no pickup callback.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
+            }
+            /// it_802C84A0 (802C84A0), after Item_80268B18: the food
+            /// (`spawn_argument`), the flight's lifetime, xD5C cleared, the entry's
+            /// launch velocity (802C84F4: fmuls by the facing), not grabbable
+            /// (it_8026B3A8), motion 0.
+            fn launched(
+                item: &mut ItemCore,
+                assets: &ItemAssets,
+                common: &ItemCommonData,
+                spawn: &SpawnItem,
+                _rng: &mut gekko_math::HsdRng,
+            ) {
+                let a = Attributes(&assets.special_attributes);
+                let food = spawn.spawn_argument as usize;
+                item.scratch = ItemScratch::Chef(ChefState {
+                    food,
+                    half_life_scale: common.half_life_scale,
+                });
+                set_lifetime(item, a.lifetime(), common.half_life_scale);
+                item.slide_mode = 0;
+                let (x, y) = a.launch(food);
+                item.velocity.x = x * item.facing;
+                item.velocity.y = y;
+                item.grabbable = false;
+                item.change_motion_with(FLYING, ARTICLE_STATES[0], ANIM_UPDATE, assets);
+                // it_802C837C: it_8027CE64 after the launch runs it_80274594, whose
+                // it_80275534 gives the hitbox the flight's script has just made
+                // x3C, the command size, as its radius: the 1 / scl of the hitbox
+                // command is undone, so the food's capsule (scl 1.5) is 1.5 times
+                // the command's in contact tests.
+                let scale = item.scale;
+                item.rescale(scale);
+            }
+            /// itGameWatchChef_Logic112_DmgDealt (802C8474): spent, not removed.
+            fn damage_dealt(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                spend(item, ctx.assets, ctx.half_life_scale);
+                false
+            }
+            /// it_2725_Logic112_Clanked (802C88F0).
+            fn clanked(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                spend(item, ctx.assets, ctx.half_life_scale);
+                false
+            }
+            /// it_2725_Logic112_HitShield (802C8964).
+            fn hit_shield(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                spend(item, ctx.assets, ctx.half_life_scale);
+                false
+            }
+            /// it_2725_Logic112_Absorbed (802C89D8): spent with no lifetime left.
+            fn absorbed(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                spend(item, ctx.assets, ctx.half_life_scale);
+                item.life_timer = 0.0;
+                false
+            }
+            /// itGameWatchChef_Logic112_ShieldBounced -> itColl_BounceOffShield.
+            fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                item.bounce_off_shield(ctx.shield_normal);
+                false
+            }
+            /// itGameWatchChef_Logic112_Reflected -> itReflectItemAndUpdateRotation:
+            /// it_80273030, then the model turns to the new facing.
+            fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                item.reverse_on_reflect(ctx.reflected_speed);
+                item.rotation.y = std::f32::consts::FRAC_PI_2 * item.facing;
+                false
+            }
+        }
+    };
 }
+food_logic!(Chef, GameWatchChef);
+food_logic!(KirbyChef, KirbyGameWatchChef);
 
 /// it_802C875C (802C875C): the food stops, takes the spent lifetime and
 /// lies in motion 1.

@@ -94,6 +94,8 @@ melee_it::item_kinds! {
         KirbyFalcoLaser: it_foxlaser::KirbyFalcoLaser,
         KirbyFoxBlaster: it_foxlaser::KirbyFoxBlaster,
         KirbyFalcoBlaster: it_foxlaser::KirbyFalcoBlaster,
+        KirbyGameWatchChef: it_gamewatch::KirbyChef,
+        KirbyGameWatchChefPan: it_kirby::ChefPan,
     }
 }
 
@@ -109,7 +111,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 2] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 3] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -130,7 +132,32 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 2] = [
             (ItemKind::KirbyFalcoBlaster, 4, 9),
         ],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::GameWatch,
+        file: "PlKbCpGw.dat",
+        symbol: "ftDataKirbyCopyGamewatch",
+        // hat_dynamics[0..5] are the grafted hat's; the food's two states
+        // as Mr. Game & Watch's own, and the pan's one.
+        articles: &[
+            (ItemKind::KirbyGameWatchChef, 5, 2),
+            (ItemKind::KirbyGameWatchChefPan, 6, 1),
+        ],
+    },
 ];
+
+/// A copy article whose ItemStateTable's anim_id column is not its motion
+/// states in order, or whose special attributes are more than ten words:
+/// that column and the word count.
+fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
+    match kind {
+        ItemKind::KirbyGameWatchChef => Some((
+            &it_gamewatch::chef::ARTICLE_STATES,
+            it_gamewatch::chef::SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbyGameWatchChefPan => Some((&it_kirby::chef_pan::ARTICLE_STATES, 10)),
+        _ => None,
+    }
+}
 
 /// ftKb_Init_UnkMotionStates5 -> Player_80031DC8(ftKb_SpecialN_800EED50):
 /// with a Kirby in the match, the copy archive of every kind in it.
@@ -714,10 +741,14 @@ impl Resources {
             let hat = a.public(copy.symbol).context("Kirby copy archive")?;
             for &(kind, slot, states) in copy.articles {
                 // KirbyHatStruct.hat_dynamics (+C).
-                kinds.push((
-                    kind,
-                    ItemAssets::from_article_slot(&a, hat + 0xC + slot * 4, states)?,
-                ));
+                let at = hat + 0xC + slot * 4;
+                let assets = match kirby_copy_article_layout(kind) {
+                    Some((article_states, attributes)) => {
+                        ItemAssets::from_article_slot_states(&a, at, article_states, attributes)?
+                    }
+                    None => ItemAssets::from_article_slot(&a, at, states)?,
+                };
+                kinds.push((kind, assets));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }
         }
