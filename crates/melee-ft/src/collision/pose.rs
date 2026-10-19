@@ -46,6 +46,14 @@ impl GroundPose<'_> {
         if state.ground_or_air != GroundOrAir::Ground {
             return;
         }
+        // ft_0899.c:95-97: one IKState serves both legs, its lengths set once
+        // (0x80089B68/0x80089B84: fmuls, then fadds and fmuls). A solve
+        // (lbBgFlash_80021410, 0x800217AC/0x80021840) overwrites them with the
+        // first leg's measured hip-knee and knee-extended-foot distances, so
+        // the second leg reaches out by the first leg's lower length.
+        let player_scale = self.player_scale;
+        let mut upper_length = bones.upper_length * player_scale;
+        let mut lower_length = player_scale * (bones.lower_length + bones.foot_extension);
         for (mask, leg) in [
             (GroundPoseFlags::RIGHT_LEG, bones.right_leg),
             (GroundPoseFlags::LEFT_LEG, bones.left_leg),
@@ -57,9 +65,7 @@ impl GroundPose<'_> {
                 .bones(root, leg.map(|index| Some(index as usize)))
                 .map(|id| id.expect("ground pose bone outside skeleton"));
             let [hip, knee, foot] = ids.map(|id| world_position(tree, id));
-            let player_scale = self.player_scale;
-            // ft_80089B08: 0x80089B80/84 fadds then fmuls; no contraction.
-            let length = player_scale * (bones.lower_length + bones.foot_extension);
+            let length = lower_length;
             let direction = normalize(Vec3::new(foot.x - knee.x, foot.y - knee.y, foot.z - knee.z));
             // lbVector_Normalize, separate scale, lbVector_Add calls: no FMA.
             let offset = Vec3::new(
@@ -75,8 +81,8 @@ impl GroundPose<'_> {
                 foot,
                 extended_foot: target,
                 target,
-                upper_length: bones.upper_length * player_scale,
-                lower_length: length,
+                upper_length,
+                lower_length,
             };
             let (correct, normal) = floor_target(
                 map,
@@ -86,6 +92,8 @@ impl GroundPose<'_> {
             );
             if correct {
                 ik.solve(tree, ids[0], ids[1]);
+                upper_length = ik.upper_length;
+                lower_length = ik.lower_length;
             }
             align_foot(tree, ids[2], normal);
             // ft_0899.c:139-141/174-176: raw restores do NOT mark matrices dirty.
