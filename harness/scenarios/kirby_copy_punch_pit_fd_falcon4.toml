@@ -1,0 +1,37 @@
+# KIRBY directed witness from start_fd_kirby_captainfalcon4 (Kirby swallows Captain Falcon): three grounded copied Falcon Punches to the right, the third stopping at the floor's edge; a full hop there and an aerial punch out over the pit that ends in Fall; Kirby falls through the blast zone with the ability and comes back on the revival platform.
+name = "kirby_copy_punch_pit_fd_falcon4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_captainfalcon4.sav"
+frames = 1150
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 542, port = 0, buttons = {  }, raw = {  } },
+  { frame = 660, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 662, port = 0, buttons = {  }, raw = {  } },
+  { frame = 780, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 790, port = 0, buttons = {  }, raw = {  } },
+  { frame = 796, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 798, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "CaptainFalcon"
+controller = "scripted"

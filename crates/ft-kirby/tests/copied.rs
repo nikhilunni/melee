@@ -12,7 +12,7 @@ use melee_types::FighterKind;
 use std::path::{Path, PathBuf};
 
 #[test]
-fn the_copied_neutral_table_ports_the_blasters_and_names_every_other_entry() {
+fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
     let inhale = [
         FighterKind::Kirby,
         FighterKind::Nana,
@@ -28,7 +28,13 @@ fn the_copied_neutral_table_ports_the_blasters_and_names_every_other_entry() {
             CopiedNeutral::Inhale => assert!(inhale.contains(&kind), "{kind:?}"),
             CopiedNeutral::Ported(_) => {
                 assert!(
-                    matches!(kind, FighterKind::Fox | FighterKind::Falco),
+                    matches!(
+                        kind,
+                        FighterKind::Fox
+                            | FighterKind::Falco
+                            | FighterKind::Captain
+                            | FighterKind::Ganon
+                    ),
                     "{kind:?}"
                 )
             }
@@ -47,6 +53,16 @@ fn the_blaster_rows_follow_kirbys_table() {
         assert_eq!(rows.first_animation, animation);
         assert_eq!(rows.index(start + 1), Some(1));
         assert_eq!(rows.index(start + 6), None);
+    }
+}
+
+#[test]
+fn the_punch_rows_follow_kirbys_table() {
+    let rows = ft_kirby::copied::captain::rows();
+    let expected = [(433, 368), (434, 369), (528, 463), (529, 464)];
+    for (row, (action, animation)) in rows.iter().zip(expected) {
+        assert_eq!(row.action.0, action);
+        assert_eq!(row.animation, animation);
     }
 }
 

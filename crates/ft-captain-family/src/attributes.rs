@@ -99,17 +99,24 @@ pub fn read(archive: &Archive, symbol: &str) -> Result<CaptainAttributes> {
     })?;
     CaptainAttributes::read(archive, special_attributes_offset(archive, root)?)
 }
+impl FalconPunchAttributes {
+    /// The five words at the reader's start: ftCaptain_DatAttrs +0..+14,
+    /// and Kirby's copy at ftKb_DatAttrs +1F8 (`specialn_ca_*`).
+    pub fn read(r: Reader<'_>) -> Result<Self> {
+        Ok(Self {
+            downward_stick_threshold: r.f32(0x0)?,
+            upward_stick_threshold: r.f32(0x4)?,
+            maximum_angle: r.f32(0x8)?,
+            aerial_speed: r.f32(0xC)?,
+            momentum_multiplier: r.f32(0x10)?,
+        })
+    }
+}
 impl CaptainAttributes {
     pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
         let r = Reader::new(archive.reader().slice(offset, CAPTAIN_ATTRIBUTES_SIZE)?);
         Ok(Self {
-            falcon_punch: FalconPunchAttributes {
-                downward_stick_threshold: r.f32(0x0)?,
-                upward_stick_threshold: r.f32(0x4)?,
-                maximum_angle: r.f32(0x8)?,
-                aerial_speed: r.f32(0xC)?,
-                momentum_multiplier: r.f32(0x10)?,
-            },
+            falcon_punch: FalconPunchAttributes::read(r)?,
             raptor_boost: RaptorBoostAttributes {
                 ground_hit_speed_multiplier: r.f32(0x14)?,
                 gravity: r.f32(0x18)?,

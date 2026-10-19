@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 21] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 23] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -176,6 +176,23 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 21] = [
         file: "EfKbFx.dat",
         table: "effKirbyFoxDataTable",
         models: 1,
+    },
+    // Kirby's copied Falcon Punch (efAsync_DatEntries[38],
+    // ftKb_Init_803CB46C for Captain Falcon): models 0x9470 and 0x9471, the
+    // punch's pair (efAlt 0x4AB).
+    CharacterEffectFile {
+        bank: 38,
+        file: "EfKbCa.dat",
+        table: "effKirbyCaptainDataTable",
+        models: 2,
+    },
+    // Kirby's copied Warlock Punch (efAsync_DatEntries[47], for Ganondorf):
+    // models 0xB798 and 0xB799 (efAlt 0x4B3).
+    CharacterEffectFile {
+        bank: 47,
+        file: "EfKbGn.dat",
+        table: "effKirbyGanonDataTable",
+        models: 2,
     },
     // Models 0xBF68..0xBF69 (efSync 0x510..0x512, efsync.c:642-652): Roy's
     // Counter flash and Flare Blade release.

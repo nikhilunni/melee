@@ -253,7 +253,7 @@ pub const fn special_rows<C: CaptainFamily>() -> [MotionRow; ROW_COUNT] {
             special_n::ground_anim::<C>,
             special_n::ground_input,
             special_n::ground_physics::<C>,
-            special_n::ground_collision,
+            special_n::ground_collision::<C>,
         ),
     );
     place(
@@ -263,7 +263,7 @@ pub const fn special_rows<C: CaptainFamily>() -> [MotionRow; ROW_COUNT] {
             special_n::air_anim::<C>,
             special_n::air_input::<C>,
             special_n::air_physics::<C>,
-            special_n::air_collision,
+            special_n::air_collision::<C>,
         ),
     );
     place(
@@ -368,7 +368,7 @@ pub fn enter_special<C: CaptainFamily>(
     a: &FighterAssets,
 ) {
     match slot {
-        SpecialSlot::Neutral => special_n::enter(f, air, a),
+        SpecialSlot::Neutral => special_n::enter::<C>(f, air, a),
         SpecialSlot::Side => special_s::enter::<C>(f, air, a),
         SpecialSlot::Up => special_hi::enter::<C>(f, air, a),
         SpecialSlot::Down => special_lw::enter::<C>(f, air, a),

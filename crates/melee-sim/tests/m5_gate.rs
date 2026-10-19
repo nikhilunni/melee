@@ -2663,6 +2663,21 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // rows (ftKb_SpecialN_800F5C34, ftkirbyspecialn.c:251-258): the flash,
     // the star and Wait.
     ("kirby_copy_blaster_lost_fd_fox4", 492),
+    // The copied Falcon and Warlock Punch (ftkirbyspecialcaptain.c over
+    // ft_captain_family's states; rows 433/434 and 528/529, efAlt 0x4AB /
+    // 0x4B3 from EfKbCa.dat / EfKbGn.dat, no wind): grounded to the right
+    // missing, turned round into the copied fighter, full-hop and short-hop
+    // aerial punches aimed up and down that land in the punch.
+    ("kirby_copy_punch_fd_falcon4", 1050),
+    ("kirby_copy_punch_fd_ganondorf4", 1050),
+    // Three grounded punches, the third stopped at the floor's edge; an
+    // aerial punch out over the pit ends in Fall, and Kirby dies with it.
+    ("kirby_copy_punch_pit_fd_falcon4", 1150),
+    // A hit in the punch wins the ability's draw: the star. Falcon's
+    // forward tilt; Ganondorf's own Warlock Punch, whose particles take
+    // the root's rot.y as Kirby's copy's do (eflib.c:866-878).
+    ("kirby_copy_punch_lost_fd_falcon4", 600),
+    ("kirby_copy_punch_lost_fd_ganondorf4", 600),
 ];
 
 #[test]

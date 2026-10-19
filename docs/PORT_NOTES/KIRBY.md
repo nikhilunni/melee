@@ -310,7 +310,7 @@ fails closed.
 | Hammer or Stone with an item in hand (ftCommon_8007F5CC) | `melee-ft` `require_held_item_state` refuses a special row with a held item; `special_lw` `show_held_item` asserts it |
 | Final Cutter's aerial start landing (ftkirbyspecialhi.c:447-453) and its aerial landing row landing (:526-536): neither row descends on its own | `air_start_collision`, `air_landing_collision` |
 | The beam on a slope (itkirbycutterbeam.c:93-97, the one `fmadds`), landing from the air (:128-133), ended by a wall (:137-151), clanked (:162), absorbed (:167), glancing off a shield (:205-243) | `it-kirby` `cutter_beam.rs` |
-| Every copied neutral special (ftkirbyspecial<kind>.c), the hat models, the helmeted multijumps | rows 399..543 (`enter_special` Neutral with an ability); `multi_jump_family` under the five helmets |
+| Every copied neutral special but the Blaster and the Falcon / Warlock Punch (ftkirbyspecial<kind>.c), the hat models, the helmeted multijumps | rows 399..543 (`enter_special` Neutral with an ability); `multi_jump_family` under the five helmets |
 | An airborne throw landing before its script's flag (fn_800DD5EC, ftCo_Throw.c:207-223: the animation run forward to the flag); the release or the throw's end inside the callback a landing runs (ftCo_Throw.c:196-198, 213-215) | `throw_flight` `land_throw_before_flag`, `run_throw_callback_in_landing` |
 | A throwing pair losing its floor (fn_800DD684, ftCo_Throw.c:225-234); a kept grab timer out of a state that is not a capture wait (ftCo_Thrown.c:36) | `callbacks::collision::grab_hold`, `ThrownHold::entering` |
 | Item pickup hand poses | `item_hand` |
@@ -530,8 +530,31 @@ fails closed.
 - **A wall ends the Cutter beam** (itkirbycutterbeam.c:144-151), witnessed on
   Yoshi's Story; the beam beside a wall with no horizontal speed (:138-143)
   fails closed.
-- Not ported: the copied neutral specials other than Fox's and Falco's
-  Blaster (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its
+- **The copied Falcon Punch and Warlock Punch** (ftkirbyspecialcaptain.c,
+  `ft-kirby/src/copied/captain.rs`): Captain Falcon's states
+  (`ft_captain_family::special_n`, generic over the `FalconPunch` trait
+  that every `CaptainFamily` gets by a blanket impl) over rows 433/434
+  (Falcon's hat) and 528/529 (any other, i.e. Ganondorf's), animations
+  368/369 and 463/464.
+  - One marker type (`KirbyPunch`): the entries and the two Coll callbacks
+    pick the rows by `hat.kind != FTKIND_CAPTAIN`, and Phys picks the
+    effect by the kind, so the trait's methods read Kirby's copied kind.
+  - Both kinds read `specialn_ca_*` (+1F8..+208); `specialn_gn_*`
+    (+20C..+21C) has no reader. Kirby's Anim callbacks push no wind
+    (800F9AEC), unlike Ganondorf's own.
+  - The punch's pair: efAlt 0x4AB (EfKbCa.dat, bank 38: model 0x9471 on
+    `parts[0]`, then 0x9470 on `parts[44]`) and 0x4B3 (EfKbGn.dat, bank
+    47: 0xB799, then 0xB798); both sync-loaded. The Warlock copy's
+    particles 0xB798..0xB79A are efLib_SpawnParticleEffect's special case
+    with Ganondorf's 0x4A38..0x4A3A (eflib.c:866-878: an AppSRT with the
+    root's rot.y).
+  - No articles, no scratch, no put-away arm (800F19AC / 800F1A8C have no
+    case for either kind).
+  - Not reached: the grounded punch losing its floor (ft_800827A0 stops it
+    at an edge, so it needs a floor that goes away); live, shared with the
+    originals' code.
+- Not ported: the copied neutral specials other than the Blaster and the
+  Punch (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its
   name), item pickup hand poses.
 
 ## Where this stands and how to resume (2026-10-12)
@@ -568,8 +591,10 @@ Remaining work, in the order to take it:
    `803C9E54`, rows 399..543, `ftkirbyspecial<kind>.c`). Done (wave 12):
    Fox's and Falco's Blaster and `ftKb_SpecialN_800F5C34`'s arm for a
    copied special's row (`kirby_copy_blaster_*`,
-   `corpus_v3_fd_kirby_falco4_ed4320157_p0`). Next: Marth, Sheik, Captain
-   Falcon, Peach, Jigglypuff, Samus, then the rest; each row's stale-move id
+   `corpus_v3_fd_kirby_falco4_ed4320157_p0`); Captain Falcon's and
+   Ganondorf's Punch (`kirby_copy_punch_*`, boundary
+   `start_fd_kirby_ganondorf4`). Next: Marth, Sheik, Peach, Jigglypuff,
+   Samus, then the rest; each row's stale-move id
    exists already (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (the
    charge flashes of Donkey Kong, Samus, Mewtwo and Sheik) comes with those
    kinds. The pattern, per kind:

@@ -1,0 +1,43 @@
+# KIRBY directed witness from start_fd_kirby_ganondorf4 (Kirby runs to x=51 beside Ganondorf at +60, inhales and swallows him): the copied Warlock Punch (rows 528, 529). A grounded punch to the right that misses; a tilt turns him round and a second punch strikes Ganondorf; a full hop and an aerial punch aimed up, landing in it; a short hop and one aimed down, landing in it.
+name = "kirby_copy_punch_fd_ganondorf4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_ganondorf4.sav"
+frames = 1050
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 543, port = 0, buttons = {  }, raw = {  } },
+  { frame = 552, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 554, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 710, port = 0, buttons = {  }, raw = {  } },
+  { frame = 714, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 716, port = 0, buttons = {  }, raw = { stickY = 70 } },
+  { frame = 760, port = 0, buttons = {  }, raw = {  } },
+  { frame = 850, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 851, port = 0, buttons = {  }, raw = {  } },
+  { frame = 856, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 858, port = 0, buttons = {  }, raw = { stickY = -70 } },
+  { frame = 900, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Ganondorf"
+controller = "scripted"

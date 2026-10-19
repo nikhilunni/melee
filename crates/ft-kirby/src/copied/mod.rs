@@ -11,6 +11,7 @@ use melee_ft::fighter::{assets::FighterAssets, Fighter, MotionRow};
 use melee_types::FighterKind;
 
 pub mod blaster;
+pub mod captain;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -38,7 +39,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Fox
     CopiedNeutral::Ported(blaster::enter::<blaster::KirbyFox>),
     // Captain Falcon
-    unported("ftKb_SpecialNCa_800F99BC", "ftKb_SpecialNCa_800F9A54"),
+    CopiedNeutral::Ported(captain::enter),
     // Donkey Kong
     unported("ftKb_SpecialNDk_800FF8EC", "ftKb_SpecialNDk_800FFA10"),
     // Kirby
@@ -84,7 +85,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Mr. Game & Watch
     unported("ftKb_SpecialNGw_8010D188", "ftKb_SpecialNGw_8010D204"),
     // Ganondorf: Captain Falcon's entries.
-    unported("ftKb_SpecialNCa_800F99BC", "ftKb_SpecialNCa_800F9A54"),
+    CopiedNeutral::Ported(captain::enter),
     // Roy: Marth's entries.
     unported("ftKb_SpecialNMs_8010B2FC", "ftKb_SpecialNMs_8010B4A0"),
     // Master Hand, Crazy Hand and the Wireframes: NULL.
@@ -113,7 +114,8 @@ pub fn enter_neutral(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
 }
 
 /// The copied specials' motion rows (ftKb_Init_MotionStateTable 399..543)
-/// that are ported.
+/// that are ported: the Blaster's here, each other kind's in its module
+/// (`captain::rows`).
 pub const fn rows() -> [MotionRow; 12] {
     blaster::rows()
 }

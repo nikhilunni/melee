@@ -2,6 +2,7 @@
 //! The first 0x34 bytes are the shared Fighter_x2D0_t multijump data
 //! (ft/types.h), read with its consumers' types: `lwz` for the turn count
 //! and action ids, `lfs` for the impulses (ftCo_800D74A4).
+use ft_captain_family::attributes::FalconPunchAttributes;
 use hsd_archive::{Archive, Reader};
 use hsd_types::Vec2;
 use melee_ft::desc::{
@@ -31,6 +32,10 @@ pub struct KirbyAttributes {
     pub final_cutter: FinalCutterAttributes,
     /// +EC..+114: Stone.
     pub stone: StoneAttributes,
+    /// +1F8..+20C (`specialn_ca_*`): the copied Falcon Punch, and the
+    /// Warlock Punch as well (ftKb_CaSpecialAirN_IASA reads these for both;
+    /// +20C..+220, `specialn_gn_*`, has no reader).
+    pub falcon_punch: FalconPunchAttributes,
     /// +220..+244 (`specialn_fx_*`): the copied Fox Blaster.
     pub fox_blaster: BlasterAttributes,
     /// +244..+268 (`specialn_fc_*`): the copied Falco Blaster.
@@ -248,6 +253,7 @@ impl KirbyAttributes {
                 health: r.s32(0x108)?,
                 free_fall_lag: r.f32(0x114)?,
             },
+            falcon_punch: FalconPunchAttributes::read(Reader::new(r.slice(0x1F8, 0x14)?))?,
             fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,
             falco_blaster: BlasterAttributes::read(Reader::new(r.slice(0x244, 0x24)?))?,
             mewtwo_charge_time: r.f32(0x384)?,

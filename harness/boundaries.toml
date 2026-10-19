@@ -812,6 +812,15 @@ stocks = 4
 seed = 63641676
 
 [[boundary]]
+name = "start_fd_kirby_ganondorf4"
+cold = "start_fd_kirby_ganondorf4_cold"
+savestate = "harness/roms/start_fd_kirby_ganondorf4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Ganondorf"]
+stocks = 4
+seed = 942304024
+
+[[boundary]]
 name = "start_fd_peach_captainfalcon4"
 cold = "start_fd_peach_captainfalcon4_cold"
 savestate = "harness/roms/start_fd_peach_captainfalcon4.sav"

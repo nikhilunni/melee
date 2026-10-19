@@ -712,17 +712,20 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttachedPair {
-                id: id @ (0x48F | 0x50B),
+                id: id @ (0x48F | 0x50B | 0x4AB | 0x4B3),
                 bones,
             } = request
             {
                 // efAlt_Spawn 0x48F (efalt.c:153-161) and efSync_Spawn 0x50B
                 // (efsync.c:594-602): two efLib_Create_Attach_Scale_FacingDir
-                // models, 0xFA0 then 0xFA1 / 0x4A38 then 0x4A39.
-                let models = if id == 0x48F {
-                    [0xFA0, 0xFA1]
-                } else {
-                    [0x4A38, 0x4A39]
+                // models, 0xFA0 then 0xFA1 / 0x4A38 then 0x4A39. Kirby's
+                // copies, efAlt_Spawn 0x4AB and 0x4B3 (efalt.c:431-439,
+                // 489-497), make the higher model first.
+                let models = match id {
+                    0x48F => [0xFA0, 0xFA1],
+                    0x50B => [0x4A38, 0x4A39],
+                    0x4AB => [0x9471, 0x9470],
+                    _ => [0xB799, 0xB798],
                 };
                 let mut pair = models.map(|model| {
                     let mut effect = self.acquire(model, particles);
@@ -2353,9 +2356,10 @@ impl Effect {
                                     ..Default::default()
                                 });
                         }
-                        if matches!(hi, 0x4A38..=0x4A3A) {
+                        if matches!(hi, 0x4A38..=0x4A3A | 0xB798..=0xB79A) {
                             // efLib_SpawnParticleEffect (8005D174), eflib.c:866-878:
-                            // Ganondorf's punch and kick particles, attached with
+                            // Ganondorf's punch and kick particles (and Kirby's copied
+                            // Warlock Punch's, 0xB798..0xB79A), attached with
                             // the root's rot.y.
                             let root = self.tree.get(self.root);
                             request.application_transform =
@@ -2377,7 +2381,8 @@ impl Effect {
                         }
                         sink.spawn(&request, false, false);
                         let id = spawn_particle::<T>(particles, bank, request, rng, draws)?;
-                        if matches!(hi, 2 | 6 | 0x127 | 306 | 307 | 0x4A38..=0x4A3A) {
+                        if matches!(hi, 2 | 6 | 0x127 | 306 | 307 | 0x4A38..=0x4A3A | 0xB798..=0xB79A)
+                        {
                             if let Some(id) = id {
                                 let generator = particles.generator_mut(id).unwrap();
                                 sink.flags(self.joint_base + jobj.0, 0x600, 0x800);

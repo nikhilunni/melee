@@ -8,6 +8,7 @@ edition.workspace = true
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
 ft-fox-family = { path = "../ft-fox-family" }
+ft-captain-family = { path = "../ft-captain-family" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 melee-coll = { path = "../melee-coll" }

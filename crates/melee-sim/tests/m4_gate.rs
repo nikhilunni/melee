@@ -1618,6 +1618,22 @@ fn start_kirby_falcon_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_kirby_captainfalcon4", 600, "ledger600");
 }
 
+/// Kirby vs Ganondorf on Final Destination, for the copied Warlock Punch.
+#[test]
+fn start_fd_kirby_ganondorf4_600() {
+    movement_gate_ticks("start_fd_kirby_ganondorf4", 600);
+}
+
+#[test]
+fn start_fd_kirby_ganondorf4_cold_600() {
+    movement_gate_ticks("start_fd_kirby_ganondorf4_cold", 600);
+}
+
+#[test]
+fn start_kirby_ganondorf_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_kirby_ganondorf4", 600, "ledger600");
+}
+
 /// Kirby vs the five fighters whose hats are grafted into his own parts,
 /// on Final Destination, warm and cold, with the particle draw order.
 #[test]
