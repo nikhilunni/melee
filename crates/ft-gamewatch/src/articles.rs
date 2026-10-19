@@ -360,15 +360,16 @@ pub fn destroyed(f: &mut Fighter, kind: ItemKind) {
 /// owner. A torch's (itGamewatchFire_Destroyed -> ftGw_AttackS4_ItemTorchSetFlag
 /// 8014A904) first runs ftGw_AttackS4_ItemTorchExitHitlag on whatever
 /// x2254_fireGObj names: a superseded torch ending while the newer one is
-/// frozen thaws the newer one at once (it_8026B73C).
+/// frozen thaws the newer one at once (it_8026B73C). Then x2254 is NULL
+/// whichever torch ended, so a newer torch still out hears nothing more
+/// from its owner (no freeze, thaw or removal).
 pub fn article_destroyed(f: &mut Fighter, kind: ItemKind) {
-    // A torch still named by x2254 while its owner is in hitlag: either
-    // the newer torch, frozen with its owner, or (when the ending torch is
-    // that one) no frozen torch at all. The port does not tell them apart.
-    if kind == ItemKind::GameWatchFire && articles(f).torch && f.in_hitlag() {
-        unimplemented!(
-            "ftGw_AttackS4_ItemTorchSetFlag (ftgamewatchattacks4.c:52): a superseded torch ends while x2254_fireGObj's torch may be in hitlag (ftGw_AttackS4_ItemTorchExitHitlag)"
-        );
+    if kind == ItemKind::GameWatchFire && articles(f).torch {
+        // The torch x2254 names: the newer one, or the ending torch itself
+        // (which these reach only on its way out). Only a torch no newer
+        // one superseded hears them (it-gamewatch `control`).
+        control(f, kind, ItemControl::OwnerHitlag(false));
+        control(f, kind, ItemControl::Superseded);
     }
     destroyed(f, kind);
 }
