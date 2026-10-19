@@ -25,6 +25,19 @@ fn fighter_count(record: &Record) -> usize {
 }
 
 pub fn check_schema(record: &Record) -> Result<()> {
+    // Every tick of a scene carries the same keys: check a key set once.
+    thread_local! {
+        static ACCEPTED: std::cell::RefCell<Vec<String>> = const { std::cell::RefCell::new(Vec::new()) };
+    }
+    if ACCEPTED.with_borrow(|keys| keys.iter().eq(record.state.keys())) {
+        return Ok(());
+    }
+    check_schema_keys(record)?;
+    ACCEPTED.with_borrow_mut(|keys| *keys = record.state.keys().cloned().collect());
+    Ok(())
+}
+
+fn check_schema_keys(record: &Record) -> Result<()> {
     let schema = Schema::fighter_hand();
     let coverage = SchemaCoverage::new(&schema, &[]);
     let mut required = BTreeSet::from(["rng.seed".to_string()]);
@@ -101,20 +114,66 @@ pub(crate) fn simulation_with(scenario: &Scenario, pads: PadScript) -> Result<Si
     simulation.capture_after_map(scenario.after_map);
     Ok(simulation)
 }
-/// Retail's after-map sample per tick (`trace_after_map`), for a scenario
-/// recorded with `after_map = true`; `None` rows otherwise.
-pub(crate) fn after_map_rows(scenario: &Scenario, ticks: usize) -> Result<Vec<Option<Record>>> {
-    if !scenario.after_map {
-        return Ok(vec![None; ticks]);
-    }
-    melee_trace_io::open(&scenario.expected_path())?
+/// A scenario's expected tick trace, read and parsed once: the fighter
+/// record of every tick, and beside it retail's item list and after-map
+/// sample where the gate compares them.
+pub struct ExpectedTrace {
+    pub records: Vec<Record>,
+    /// `trace_items` rows; all `None` unless items were asked for.
+    pub items: Vec<Option<Record>>,
+    /// `trace_after_map` rows; all `None` unless the scenario records them.
+    pub after_map: Vec<Option<Record>>,
+}
+
+/// One expected-trace line. Parsing it once is most of a gate's cost after
+/// the simulation itself: a corpus line carries every item's raw bytes.
+#[derive(serde::Deserialize)]
+struct ExpectedLine {
+    frame: u64,
+    phase: String,
+    state: std::collections::BTreeMap<String, melee_diff::Value>,
+    items: Option<serde_json::Value>,
+    after_map: Option<serde_json::Value>,
+}
+
+/// Read `scenario`'s expected trace in one pass; `items` also converts each
+/// tick's item list (`trace_items`).
+pub fn read_expected(scenario: &Scenario, items: bool) -> Result<ExpectedTrace> {
+    let mut trace = ExpectedTrace {
+        records: Vec::new(),
+        items: Vec::new(),
+        after_map: Vec::new(),
+    };
+    for (index, line) in melee_trace_io::open(&scenario.expected_path())?
         .lines()
         .enumerate()
-        .map(|(frame, line)| {
-            crate::trace_after_map::expected(&serde_json::from_str(&line?)?, frame as u64).map(Some)
-        })
-        .collect()
+    {
+        let line = line?;
+        if line.trim().is_empty() {
+            continue;
+        }
+        let line: ExpectedLine = serde_json::from_str(&line)
+            .map_err(|e| anyhow::anyhow!("line {}: {e}", index + 1))?;
+        let tick = trace.records.len() as u64;
+        trace.items.push(if items {
+            crate::trace_items::from_list(line.items.as_ref(), tick)?
+        } else {
+            None
+        });
+        trace.after_map.push(if scenario.after_map {
+            Some(crate::trace_after_map::from_sample(line.after_map, tick)?)
+        } else {
+            None
+        });
+        trace.records.push(Record {
+            frame: line.frame,
+            phase: line.phase,
+            state: line.state,
+        });
+    }
+    Ok(trace)
 }
+
 /// The port's after-map record of the tick that produced `end`, against
 /// retail's sample.
 pub(crate) fn after_map_divergence(
@@ -254,28 +313,17 @@ fn gate_with_recording(
     compare_items: bool,
     compare_particles: bool,
 ) -> Result<GateOutcome> {
-    let expected = read_trace(melee_trace_io::open(&scenario.expected_path())?)?;
-    let item_rows = if compare_items {
-        melee_trace_io::open(&scenario.expected_path())?
-            .lines()
-            .enumerate()
-            .map(|(frame, line)| {
-                crate::trace_items::expected(
-                    &serde_json::from_str::<serde_json::Value>(&line?)?,
-                    frame as u64,
-                )
-            })
-            .collect::<Result<Vec<_>>>()?
-    } else {
-        vec![None; expected.len()]
-    };
+    let ExpectedTrace {
+        records: expected,
+        items: item_rows,
+        after_map,
+    } = read_expected(scenario, compare_items)?;
     ensure!(
         expected.len() as u64 == scenario.frames,
         "expected trace length {} differs from scenario {}",
         expected.len(),
         scenario.frames
     );
-    let after_map = after_map_rows(scenario, expected.len())?;
     let pads = pad_script(scenario)?;
     let mut particles = if compare_particles {
         ParticleCheck::open(scenario, &pads, &recorded_seeds(&expected)?)?

@@ -76,9 +76,13 @@ fn ko_fd_marth_480_ticks_and_ordered_particle_draws() {
 /// Gate every listed scenario with `combat_gate_ticks`, across the
 /// machine's cores: the lists hold hundreds of recordings and one thread
 /// takes minutes. A failing scenario panics its worker with the usual
-/// message and fails the test once the others finish.
+/// message and fails the test once the others finish. The longest go first,
+/// so no long scenario starts while the other workers run out of work.
 fn gate_in_parallel(scenarios: &[(&str, usize)]) {
     use std::sync::atomic::{AtomicUsize, Ordering};
+    let mut scenarios = scenarios.to_vec();
+    scenarios.sort_by_key(|&(_, ticks)| std::cmp::Reverse(ticks));
+    let scenarios = &scenarios[..];
     let next = AtomicUsize::new(0);
     let workers = std::thread::available_parallelism().map_or(1, |n| n.get());
     std::thread::scope(|scope| {

@@ -20,7 +20,13 @@ pub const KEYS: [&str; 12] = [
 ];
 
 pub fn expected(json: &serde_json::Value, frame: u64) -> Result<Option<Record>> {
-    let Some(items) = json.get("items") else {
+    from_list(json.get("items"), frame)
+}
+
+/// [`expected`] from the line's `items` value alone (`trace::read_expected`
+/// parses each line once).
+pub fn from_list(items: Option<&serde_json::Value>, frame: u64) -> Result<Option<Record>> {
+    let Some(items) = items else {
         return Ok(None);
     };
     let items = items.as_array().context("items must be an array")?;

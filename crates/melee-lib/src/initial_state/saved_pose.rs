@@ -36,10 +36,7 @@ impl SavedPose {
         assert_eq!(cursor, file.len());
         // Locate MEM1 using the ledger's saved Fighter prefix, not an emulator
         // version-dependent serialization offset. Both players are checked.
-        let at = payload
-            .windows(256)
-            .position(|b| b == &fighter[..256])
-            .expect("savestate/ledger mismatch");
+        let at = memchr::memmem::find(&payload, &fighter[..256]).expect("savestate/ledger mismatch");
         let ram_offset = at.checked_sub((address - 0x8000_0000) as usize).unwrap();
         Self {
             payload,
@@ -56,10 +53,11 @@ impl SavedPose {
     /// as MEM1 is located by its Fighter prefix, instead of a version-specific
     /// offset into the emulator payload. Require one unique register record.
     pub(super) fn cpu_general_registers(&self) -> anyhow::Result<([u32; 32], u32)> {
-        let mut matches = self
-            .payload
-            .windows(48)
-            .enumerate()
+        // Candidates start with r2; memmem finds them without visiting every
+        // offset of the payload.
+        let r2 = 0x804D_F9E0_u32.to_le_bytes();
+        let mut matches = memchr::memmem::find_iter(&self.payload, &r2)
+            .filter_map(|offset| Some((offset, self.payload.get(offset..offset + 48)?)))
             .filter_map(|(offset, bytes)| {
                 // r2 = _SDA2_BASE_, r13 = _SDA_BASE_ in NTSC-U 1.02.
                 if bytes[..4] != 0x804D_F9E0_u32.to_le_bytes()
@@ -272,8 +270,56 @@ fn decode_block(input: &[u8], output: &mut Vec<u8>, limit: usize) {
         assert!(offset > 0 && offset <= output.len());
         let count = 4 + length(input, &mut cursor, token & 15);
         assert!(output.len() + count <= limit);
-        for _ in 0..count {
-            output.push(output[output.len() - offset]);
+        // An overlapping copy, output[i] = output[i - offset]: everything
+        // from `start` on has period `offset`, so a whole number of periods
+        // already written can be copied at once (offset 1 repeats one byte).
+        let start = output.len() - offset;
+        let end = output.len() + count;
+        while output.len() < end {
+            let written = output.len() - start;
+            let period = written - written % offset;
+            let chunk = (end - output.len()).min(period);
+            let from = output.len() - period;
+            output.extend_from_within(from..from + chunk);
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::decode_block;
+
+    /// One LZ4 sequence: `literals`, then a match of `count` bytes at
+    /// `offset` (count >= 4; no length extension needed below 19).
+    fn sequence(literals: &[u8], offset: u16, count: usize) -> Vec<u8> {
+        let mut block = vec![((literals.len() as u8) << 4) | (count - 4) as u8];
+        block.extend_from_slice(literals);
+        block.extend_from_slice(&offset.to_le_bytes());
+        block
+    }
+
+    /// The decoder's matches against the byte-at-a-time definition
+    /// `out[i] = out[i - offset]`, overlapping and not.
+    #[test]
+    fn overlapping_matches_copy_the_same_bytes_as_one_at_a_time() {
+        for (literals, offset, count) in [
+            (&b"a"[..], 1, 18),
+            (b"abc", 3, 17),
+            (b"abcde", 2, 9),
+            (b"abcdefgh", 8, 6),
+            (b"abcdefgh", 5, 18),
+        ] {
+            let mut block = sequence(literals, offset, count);
+            block.push(0x10);
+            block.push(b'z');
+            let mut expected = literals.to_vec();
+            for _ in 0..count {
+                expected.push(expected[expected.len() - offset as usize]);
+            }
+            expected.push(b'z');
+            let mut output = Vec::new();
+            decode_block(&block, &mut output, expected.len());
+            assert_eq!(output, expected, "literals {literals:?} offset {offset}");
         }
     }
 }

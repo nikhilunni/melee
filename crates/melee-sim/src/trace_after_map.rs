@@ -22,7 +22,13 @@ const PHASE: &str = "after_map";
 
 /// One tick's retail after-map sample from its expected-trace line.
 pub fn expected(json: &serde_json::Value, frame: u64) -> Result<Record> {
-    let state = json.get("after_map").with_context(|| {
+    from_sample(json.get("after_map").cloned(), frame)
+}
+
+/// [`expected`] from the line's `after_map` value alone
+/// (`trace::read_expected` parses each line once).
+pub fn from_sample(state: Option<serde_json::Value>, frame: u64) -> Result<Record> {
+    let state = state.with_context(|| {
         format!(
             "tick {frame} has no after-map sample: record the scenario again with \
              `after_map = true`"
@@ -31,7 +37,7 @@ pub fn expected(json: &serde_json::Value, frame: u64) -> Result<Record> {
     Ok(Record {
         frame,
         phase: PHASE.into(),
-        state: serde_json::from_value(state.clone()).context("after_map state")?,
+        state: serde_json::from_value(state).context("after_map state")?,
     })
 }
 

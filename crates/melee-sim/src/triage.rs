@@ -12,7 +12,7 @@ use crate::{
     trace,
 };
 use anyhow::Result;
-use melee_diff::{first_divergence, read_trace, Record, Value};
+use melee_diff::{first_divergence, Record, Value};
 use std::collections::VecDeque;
 use std::fmt::Write as _;
 
@@ -119,27 +119,17 @@ fn section(out: &mut String, title: &str) {
 /// divergence (fighter keys, then items, then the particle dump) or port
 /// error. A scenario that passes returns what was done with its dump.
 fn find_divergence(scenario: &Scenario) -> Result<Result<Divergence, DumpUse>> {
-    let expected = read_trace(melee_trace_io::open(&scenario.expected_path())?)?;
-    let expected_items: Vec<Option<Record>> = {
-        use std::io::BufRead as _;
-        melee_trace_io::open(&scenario.expected_path())?
-            .lines()
-            .enumerate()
-            .map(|(frame, line)| {
-                crate::trace_items::expected(
-                    &serde_json::from_str::<serde_json::Value>(&line?)?,
-                    frame as u64,
-                )
-            })
-            .collect::<Result<_>>()?
-    };
+    let trace::ExpectedTrace {
+        records: expected,
+        items: expected_items,
+        after_map,
+    } = trace::read_expected(scenario, true)?;
     let pads = trace::pad_script(scenario)?;
     let mut particles = ParticleCheck::open(scenario, &pads, &trace::recorded_seeds(&expected)?)?;
     let mut simulation = trace::simulation_with(scenario, pads)?;
     if !scenario.replay_inputs.is_empty() {
         simulation.tick()?;
     }
-    let after_map = trace::after_map_rows(scenario, expected.len())?;
     let mut history = VecDeque::with_capacity(HISTORY + 1);
     let rows = expected.into_iter().zip(expected_items).zip(after_map);
     for ((exp, exp_items), exp_after_map) in rows {

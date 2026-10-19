@@ -509,19 +509,36 @@ impl ParticleSystem {
             if mask & (1 << (link + 16)) != 0 {
                 continue;
             }
-            let mut index = 0;
-            while index < self.particles[link].len() {
-                let mut particle = self.particles[link].remove(index);
-                if self.update_particle::<T>(&mut particle, rng, draws)? {
-                    self.particles[link].insert(index, particle);
-                    index += 1;
-                } else {
-                    if let Some(generator) =
-                        particle.generator_id.and_then(|id| self.generator_mut(id))
-                    {
-                        generator.children -= 1;
+            // The list is detached for its pass: updating a particle reads
+            // generators and may spawn one, but never touches a particle list,
+            // so updating in place keeps retail's head-to-tail order without
+            // shifting the list around each particle.
+            let mut particles = std::mem::take(&mut self.particles[link]);
+            let mut failure = None;
+            particles.retain_mut(|particle| {
+                if failure.is_some() {
+                    return true;
+                }
+                match self.update_particle::<T>(particle, rng, draws) {
+                    Ok(true) => true,
+                    Ok(false) => {
+                        if let Some(generator) =
+                            particle.generator_id.and_then(|id| self.generator_mut(id))
+                        {
+                            generator.children -= 1;
+                        }
+                        false
+                    }
+                    Err(error) => {
+                        failure = Some(error);
+                        true
                     }
                 }
+            });
+            debug_assert!(self.particles[link].is_empty());
+            self.particles[link] = particles;
+            if let Some(error) = failure {
+                return Err(error);
             }
         }
         Ok(())

@@ -1685,6 +1685,7 @@ dependencies = [
  "melee-sim",
  "melee-test-support",
  "melee-types",
+ "memchr",
  "serde",
  "serde_json",
  "toml",
