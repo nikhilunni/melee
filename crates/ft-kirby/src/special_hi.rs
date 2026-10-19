@@ -337,15 +337,18 @@ fn start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
 }
 
 /// ftKb_SpecialAirHi1_Coll (800F2F70): the ordinary airborne pass
-/// (ft_80081D0C). The aerial start has no speed of its own (its TransN
-/// does not move), so on a still floor it cannot land; the landing into
-/// the grounded start is not ported.
+/// (ft_80081D0C); a floor met is ftCommon_AirToGroundStateChange into the
+/// grounded start at the current frame, with no vertical speed
+/// (ftkirbyspecialhi.c:447-453).
 fn air_start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if common::lands(f, &mut p) {
-        unimplemented!(
-            "ftKb_SpecialAirHi1_Coll (ftkirbyspecialhi.c:447-453): the aerial start landing \
-             into ftKb_MS_SpecialHi1 at the current frame"
-        );
+        let assets = p.assets.expect("Final Cutter collision assets");
+        f.land();
+        let frame = f.animation.frame;
+        f.change_motion_state_with_flags(START, assets, COLLISION_FLAGS, frame, 1.0)?;
+        install_damage_callbacks(f);
+        f.physics.self_velocity.z = 0.0;
+        f.physics.self_velocity.y = 0.0;
     }
     Ok(())
 }
@@ -425,10 +428,9 @@ fn landing_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }
 
-/// ftKb_SpecialAirHiEnd_Coll (800F3248): in the air the root is level. The
-/// row moves on its TransN alone, which does not descend, so on a still
-/// floor it cannot land; the landing back into the grounded row is not
-/// ported.
+/// ftKb_SpecialAirHiEnd_Coll (800F3248): in the air the root is level. A
+/// floor met is ftCommon_AirToGroundStateChange into the grounded landing
+/// at the current frame; no recorded scene has reached it.
 fn air_landing_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
     if common::lands(f, &mut p) {
         unimplemented!(

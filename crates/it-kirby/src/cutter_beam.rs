@@ -7,9 +7,10 @@
 //! Its lifetime, a wall in its way, a clank, a shield or an absorber end
 //! it; a hit does not. A reflector or a reflecting shield turns it round.
 //!
-//! Recorded on Final Destination and, for the wall, from Yoshi's Story's
-//! cloud. What those scenes do not reach fails closed: a slope, a landing
-//! from the air, a clank, an absorber and a glancing shield.
+//! Recorded on Final Destination and on Yoshi's Story (the wall from its
+//! cloud, the descent down its slopes). What those scenes do not reach
+//! fails closed: a landing from the air, a clank, an absorber and a
+//! glancing shield.
 use hsd_types::Vec3;
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
@@ -34,6 +35,8 @@ const MINIMUM_SPEED: f32 = 0.01;
 /// The model's child is hidden for the last frames of the lifetime
 /// (retail @192).
 const HIDDEN_FRAMES: f32 = 5.0;
+/// A descent along the floor gains this fraction of itself (retail @190).
+const DESCENT_BOOST: f32 = 0.05;
 /// Leaving the floor lifts the beam and its collision start by this much
 /// (retail @236).
 const LIFT_OFF: f32 = 0.001;
@@ -224,12 +227,10 @@ fn physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
     state(item).previous_position = position;
     slope_velocity(item);
     if item.ground_or_air == GroundOrAir::Ground && item.velocity.y < 0.0 {
-        // retail 0x8029BD54: fmadds(0.05, vel.y, vel.y). Every recorded
-        // floor is level, where the beam does not descend.
-        unimplemented!(
-            "itKirbycutterbeam_UnkMotion0_Phys (itkirbycutterbeam.c:93-97): the beam descending \
-             a sloped floor"
-        );
+        // retail 0x8029BD54: fmadds(@190, vel.y, vel.y), a descent sped up
+        // by a twentieth (itkirbycutterbeam.c:93-97).
+        item.velocity.y =
+            gekko_math::fma::fmadds(DESCENT_BOOST, item.velocity.y, item.velocity.y);
     }
     item.velocity.z = 0.0;
     let deceleration = Attributes(&ctx.assets.special_attributes).deceleration();
@@ -266,6 +267,8 @@ fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
                 .y += LIFT_OFF;
         }
     } else if item.air_pass(ctx.map) {
+        // it_802762B0, then the floor's angle. No recorded beam has left a
+        // floor's end and come down on another.
         unimplemented!(
             "itKirbycutterbeam_UnkMotion0_Coll (itkirbycutterbeam.c:128-133): the airborne beam \
              landing on a floor"

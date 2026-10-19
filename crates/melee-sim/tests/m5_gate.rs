@@ -4634,7 +4634,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 681] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 684] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5715,6 +5715,13 @@ const CORPUS_V3_MATCHES: [(&str, usize); 681] = [
     ("corpus_v3_fod_ganondorf_link4_e5909cbff_p2", 984),
     ("corpus_v3_fod_ganondorf_link4_e96382eb6_p0", 1305),
     ("corpus_v3_bf_mewtwo_peach4_e0a079375_p1", 2234),
+    // Final Cutter's beam running down Yoshi's Story's slopes, its descent a
+    // twentieth faster (itkirbycutterbeam.c:93-97).
+    ("corpus_v3_ys_kirby_fox4_e1ffd6e62_p0", 184),
+    ("corpus_v3_ys_kirby_fox4_e170dc03b_p0", 191),
+    // Kirby's aerial Final Cutter start lands into the grounded start
+    // (ftKb_SpecialAirHi1_Coll, ftkirbyspecialhi.c:447-453).
+    ("corpus_v3_ys_kirby_fox4_e119262ea_p1", 431),
 ];
 
 #[test]
