@@ -50,14 +50,22 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
             .filter(|f| with_fighter!(f, |f| !f.player.secondary && f.player.stocks > stocks))
             .count() as u8;
         let (attacker, victim) = pair(&mut state.fighters, player, other);
-        with_fighter!(attacker, |a| with_fighter!(victim, |v| grab::capture_pair(
-            v,
-            a,
-            &state.assets.fighters[other],
-            &state.assets.fighters[player],
-            &mut state.map,
-            rank
-        )))
+        with_fighter!(attacker, |a| with_fighter!(victim, |v| {
+            // The captor's Grab proc is past link 9: efAsync_Spawn creates
+            // what the victim's motion change issues at once, on the
+            // capture's first pose (its color program's sparks).
+            v.effect_state.dispatch_at_once = true;
+            let captured = grab::capture_pair(
+                v,
+                a,
+                &state.assets.fighters[other],
+                &state.assets.fighters[player],
+                &mut state.map,
+                rank,
+            );
+            v.effect_state.dispatch_at_once = false;
+            captured
+        }))
         .map_err(|error| anyhow::anyhow!(error.to_string()))?;
     }
     Ok(())
