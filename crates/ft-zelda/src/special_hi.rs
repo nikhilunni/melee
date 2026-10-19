@@ -91,6 +91,16 @@ pub struct FaroresWind {
     pub saved_ground_velocity: f32,
 }
 
+/// The second motion scratch word (mv+4) a later state inherits:
+/// mv.zd.specialhi.x4.x. Each travel writes the stick before entering
+/// (ftzeldaspecialhi.c:423, 508, 513), and the endings keep it (their saves
+/// go to mv+0x10..0x18, ftzeldaspecialhi.c:632-634, 656-658). The starts
+/// (349, 352) still hold the predecessor's word: `None`.
+pub fn retained_scratch_word(farores_wind: &FaroresWind, action: ActionId) -> Option<f32> {
+    matches!(action, GROUND_TRAVEL | GROUND_END | AIR_TRAVEL | AIR_END)
+        .then_some(farores_wind.stick.x)
+}
+
 fn attributes(f: &Fighter) -> &crate::attributes::FaroresWindAttributes {
     &f.character.get::<Zelda>().attributes.farores_wind
 }

@@ -73,6 +73,14 @@ impl CharacterCallbacks for Zelda {
     const KNOCKBACK_EXIT: fn(&mut Fighter, &FighterAssets) =
         |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    /// Farore's Wind's mv+4, which the special landing inherits out of 354
+    /// (ftCo_Landing.c:41-50).
+    const RETAINED_SCRATCH_WORD: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_ft::fighter::ActionId,
+    ) -> Option<f32> = |state, action| {
+        crate::special_hi::retained_scratch_word(&state.get::<Self>().farores_wind, action)
+    };
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
     /// ftData_SpecialN/S/Hi/Lw[Zelda] and the aerial tables.
     fn enter_special(
