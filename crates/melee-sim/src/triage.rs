@@ -100,9 +100,11 @@ pub fn triage(scenario: &Scenario) -> Result<String> {
     }
     section(&mut out, "Bones");
     match crate::bones::bones_diff(scenario, 12, Some(d.tick)) {
-        Ok(lines) if lines.is_empty() => writeln!(out, "identical at tick {}", d.tick)?,
-        Ok(lines) => {
-            for line in lines.iter().take(24) {
+        Ok(report) if report.mismatches.is_empty() => {
+            writeln!(out, "identical at tick {}", d.tick)?
+        }
+        Ok(report) => {
+            for line in report.mismatches.iter().take(24) {
                 writeln!(out, "{line}")?;
             }
         }

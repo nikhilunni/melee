@@ -2711,14 +2711,20 @@ impl Runtime {
 }
 /// Owns all mutable simulation state. Once constructed, tick has no trace,
 /// ledger, seed, or frame-specific argument: the input script is fixed up front.
-/// One joint's local transform, as the retail bone dump records it.
+/// One joint as the retail bone dump records it: the local transform and
+/// the cached world matrix.
 #[derive(Clone, Copy, Debug)]
-pub struct LocalSrt {
+pub struct JointPose {
     pub rotate: [f32; 4],
     pub scale: [f32; 3],
     pub translate: [f32; 3],
     /// JOBJ_USE_QUATERNION; otherwise `rotate[3]` is unused stack data.
     pub quaternion: bool,
+    /// `mtx`, row-major: the world matrix as last built, which HSD rebuilds
+    /// only on demand (`HSD_JObjSetupMatrix`).
+    pub world: [[f32; 4]; 3],
+    /// JOBJ_MTX_DIRTY: `world` is stale, waiting for the next demand.
+    pub world_dirty: bool,
 }
 
 #[derive(Clone)]
@@ -2942,8 +2948,8 @@ impl Simulation {
             sink,
         );
     }
-    /// Every fighter's local joint SRT in part order, for bone-dump oracles.
-    pub fn local_poses(&self) -> Vec<Vec<LocalSrt>> {
+    /// Every fighter's joints in part order, for bone-dump oracles.
+    pub fn joint_poses(&self) -> Vec<Vec<JointPose>> {
         self.runtime
             .state
             .fighters
@@ -2955,7 +2961,7 @@ impl Simulation {
                     .iter()
                     .map(|part| {
                         let joint = f.skeleton.get(part.joint);
-                        LocalSrt {
+                        JointPose {
                             rotate: [
                                 joint.rotate.x,
                                 joint.rotate.y,
@@ -2965,6 +2971,8 @@ impl Simulation {
                             scale: [joint.scale.x, joint.scale.y, joint.scale.z],
                             translate: [joint.translate.x, joint.translate.y, joint.translate.z],
                             quaternion: joint.flags & hsd_anim::jobj::JOBJ_USE_QUATERNION != 0,
+                            world: joint.mtx.0,
+                            world_dirty: joint.flags & hsd_anim::jobj::JOBJ_MTX_DIRTY != 0,
                         }
                     })
                     .collect())

@@ -3572,7 +3572,7 @@ fn slope_body_tilt_matches_retail_bones() {
             continue;
         }
         let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
-        assert!(report.is_empty(), "{name}: {report:#?}");
+        assert!(report.mismatches.is_empty(), "{name}: {report:#?}");
     }
 }
 
@@ -3597,7 +3597,7 @@ fn jigglypuff_hat_costumes_match_retail_bones() {
                 continue;
             }
             let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
-            assert!(report.is_empty(), "{name}: {report:#?}");
+            assert!(report.mismatches.is_empty(), "{name}: {report:#?}");
         }
     }
 }

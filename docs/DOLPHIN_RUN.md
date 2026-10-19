@@ -750,8 +750,18 @@ scenario's own schedule this way reproduces its trace exactly.
 ### Diagnostics for a diverging scenario (2026-09-26)
 
 - `melee-sim bones-diff <scenario> [--limit N] [--tick T]`: replays against
-  `<name>.bones.jsonl` and prints the first differing local SRT word per
-  fighter and tick (or every differing word of tick T). Record a window cheaply
+  `<name>.bones.jsonl` and prints the first differing local SRT word and the
+  first differing world-matrix word (`mtx[0..12]`, with its distance in ulps)
+  per fighter and tick, or every differing word of tick T, then how many words
+  it compared. HSD builds a world matrix only on demand, and the port draws
+  nothing, so a matrix is compared only where the port holds it clean (some
+  logic built it: IK, bone positions, hit and hurt volumes; a dirty one in
+  retail's cache is the last render) and, in dumps that list them
+  (`dirty_bones` beside each row, recorded since 2026-10-19), where retail's
+  is clean too. The world check catches what local SRT cannot: a solved IK
+  leg off by a few ulps (89c7cb48's parent shows Samus' `bone[6].mtx` 1-8
+  ulps off in `corpus_v3_fod_pichu_samus4_ef41f983a_p0` at ticks 905-913).
+  Record a window cheaply
   with `record.py <scenario> --no-ledger --no-particles --bones N --bones-from T`
   (the dump still runs from tick 0 but writes only ticks >= T).
 - `melee-sim particle-sites <scenario> --from A --to B`: ordered particle RNG

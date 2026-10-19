@@ -476,10 +476,14 @@ fn main() -> anyhow::Result<()> {
         } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
             let report = melee_sim::bones::bones_diff(&scenario, limit, tick)?;
-            for line in &report {
+            for line in &report.mismatches {
                 println!("{line}");
             }
-            anyhow::ensure!(report.is_empty(), "bone mismatches");
+            println!(
+                "compared {} local SRT words and {} world-matrix words; not compared: {} joint matrices dirty in the port, {} dirty only in retail",
+                report.local_words, report.world_words, report.dirty_in_port, report.dirty_in_retail
+            );
+            anyhow::ensure!(report.mismatches.is_empty(), "bone mismatches");
             println!("bones match");
             Ok(())
         }

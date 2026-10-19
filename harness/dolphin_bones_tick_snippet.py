@@ -39,12 +39,18 @@ class BonesTracer(TickTracer):
         if self.frame < self.first_tick:
             return diagnostic
         state = {}
+        # Beside the state, as dolphin_bones_snippet.py's metadata does: the
+        # joints whose cached mtx is stale (JOBJ_MTX_DIRTY), built by no one
+        # since their SRT changed. Outside `state`, so word counts stay.
+        dirty = {}
         for index, gobj in enumerate(walk.fighter_gobjs(mem, ENTITIES_ADDR)):
             root = jobjdump.fighter_root_jobj(mem, gobj)
-            for rec in jobjdump.records(self.frame, jobjdump.jobj_tree(mem, root)):
+            joints = jobjdump.jobj_tree(mem, root)
+            for rec in jobjdump.records(self.frame, joints):
                 for key, value in rec["state"].items():
                     state[f"p{index}." + key.split(".", 1)[1]] = value
-        line = {"frame": self.frame, "phase": "bones", "state": state}
+            dirty[f"p{index}"] = [i for i, j in enumerate(joints) if j.flags & jobjdump.JOBJ_MTX_DIRTY]
+        line = {"frame": self.frame, "phase": "bones", "state": state, "dirty_bones": dirty}
         self.bones_out.write(json.dumps(line, allow_nan=False) + "\n")
         self.bones_out.flush()
         return diagnostic

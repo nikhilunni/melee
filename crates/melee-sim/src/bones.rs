@@ -183,16 +183,43 @@ pub fn write_fox_wait1_bones(
     Ok(())
 }
 
+/// What [`bones_diff`] found and how much it compared.
+#[derive(Debug, Default)]
+pub struct BonesReport {
+    /// One line per differing word, `tick T: <key>: actual .., expected ..`.
+    pub mismatches: Vec<String>,
+    /// Local SRT words compared.
+    pub local_words: u64,
+    /// World-matrix words compared.
+    pub world_words: u64,
+    /// Joint-ticks whose world matrix was not compared because the port
+    /// held it dirty: no port logic had built it since its SRT changed.
+    pub dirty_in_port: u64,
+    /// Joint-ticks clean in the port but dirty in retail's cache (dumps with
+    /// `dirty_bones` only): the port built a matrix retail's logic did not.
+    pub dirty_in_retail: u64,
+}
+
 /// Replay `scenario` against its retail bone dump (`<name>.bones.jsonl`, any
-/// tick window from `record.py --bones N --bones-from T`) and report the first
-/// differing local SRT word of each fighter per tick, up to `limit` lines.
-/// With `only_tick`, report every differing word of that tick instead.
-/// Returns the report; empty when every compared word matches.
+/// tick window from `record.py --bones N --bones-from T`) and report, per
+/// fighter and tick, the first differing local SRT word and the first
+/// differing world-matrix word, up to `limit` lines. With `only_tick`, report
+/// every differing word of that tick instead.
+///
+/// The dump's `mtx` is each joint's cached world matrix, which HSD builds
+/// only on demand (`HSD_JObjSetupMatrix`): by game logic during the tick
+/// (IK, bone positions, hit and hurt volumes) or by the display pass after
+/// it. The port runs the logic but draws nothing, so only matrices the port
+/// holds clean are compared: those some logic built, the ones that can reach
+/// game state. A dump that lists retail's dirty joints (`dirty_bones`,
+/// written by dolphin_bones_tick_snippet.py since wave 12) also skips those:
+/// retail's cache there is the last render, or a build from before the
+/// tick's changes.
 pub fn bones_diff(
     scenario: &crate::scenario::Scenario,
     limit: usize,
     only_tick: Option<u64>,
-) -> Result<Vec<String>> {
+) -> Result<BonesReport> {
     let path = scenario.trace_path("bones.jsonl");
     let rows: Vec<serde_json::Value> = melee_trace_io::read_to_string(&path)
         .with_context(|| format!("reading {}", path.display()))?
@@ -205,7 +232,7 @@ pub fn bones_diff(
     // The bone dump's own run records its display clock beside it.
     let raw = scenario.trace_path("bones.raw.jsonl");
     let mut simulation = crate::trace::simulation_displayed_as(scenario, &raw)?;
-    let mut report = Vec::new();
+    let mut report = BonesReport::default();
     for (offset, row) in rows.iter().enumerate() {
         let tick = first + offset as u64;
         anyhow::ensure!(
@@ -218,46 +245,71 @@ pub fn bones_diff(
         if only_tick.is_some_and(|only| only != tick) {
             continue;
         }
-        for (player, bones) in simulation.local_poses().iter().enumerate() {
-            let all = only_tick.is_some();
-            for mismatch in bone_mismatches(bones, row, player, all) {
-                report.push(format!("tick {tick}: {mismatch}"));
-            }
+        let all = only_tick.is_some();
+        for (player, bones) in simulation.joint_poses().iter().enumerate() {
+            let mut found = local_mismatches(bones, row, player, all, &mut report);
+            let retail_dirty = retail_dirty_joints(row, player);
+            found.extend(world_mismatches(
+                bones,
+                retail_dirty.as_deref(),
+                row,
+                player,
+                all,
+                &mut report,
+            ));
+            report
+                .mismatches
+                .extend(found.into_iter().map(|line| format!("tick {tick}: {line}")));
         }
-        if report.len() >= limit {
+        if report.mismatches.len() >= limit {
             break;
         }
     }
     Ok(report)
 }
 
-/// The differing words of one fighter: the first only, or all of them.
-fn bone_mismatches(
-    bones: &[melee_lib::diagnostics::LocalSrt],
+/// The retail word at `key`, when the dump has it.
+fn expected_bits(expected: &serde_json::Value, key: &str) -> Option<u32> {
+    expected["state"][key]["v"]["bits"]
+        .as_u64()
+        .map(|bits| bits as u32)
+}
+
+fn mismatch_line(key: &str, value: f32, bits: u32) -> String {
+    format!(
+        "{key}: actual {value} ({:08X}), expected {} ({bits:08X})",
+        value.to_bits(),
+        f32::from_bits(bits)
+    )
+}
+
+/// The differing local SRT words of one fighter: the first only, or all.
+fn local_mismatches(
+    bones: &[melee_lib::diagnostics::JointPose],
     expected: &serde_json::Value,
     player: usize,
     all: bool,
+    report: &mut BonesReport,
 ) -> Vec<String> {
     let mut found = Vec::new();
-    for (bone, srt) in bones.iter().enumerate() {
+    for (bone, joint) in bones.iter().enumerate() {
         let fields: [(&str, &[f32]); 3] = [
-            ("rotate", &srt.rotate[..if srt.quaternion { 4 } else { 3 }]),
-            ("scale", &srt.scale),
-            ("translate", &srt.translate),
+            (
+                "rotate",
+                &joint.rotate[..if joint.quaternion { 4 } else { 3 }],
+            ),
+            ("scale", &joint.scale),
+            ("translate", &joint.translate),
         ];
         for (field, values) in fields {
             for (index, value) in values.iter().enumerate() {
                 let key = format!("p{player}.bone[{bone}].{field}[{index}]");
-                let Some(bits) = expected["state"][&key]["v"]["bits"].as_u64() else {
+                let Some(bits) = expected_bits(expected, &key) else {
                     continue;
                 };
-                let bits = bits as u32;
+                report.local_words += 1;
                 if value.to_bits() != bits {
-                    found.push(format!(
-                        "{key}: actual {value} ({:08X}), expected {} ({bits:08X})",
-                        value.to_bits(),
-                        f32::from_bits(bits)
-                    ));
+                    found.push(mismatch_line(&key, *value, bits));
                     if !all {
                         return found;
                     }
@@ -266,6 +318,77 @@ fn bone_mismatches(
         }
     }
     found
+}
+
+/// Retail's dirty joints of one fighter, when the dump lists them.
+fn retail_dirty_joints(row: &serde_json::Value, player: usize) -> Option<Vec<bool>> {
+    let listed = row["dirty_bones"][format!("p{player}")].as_array()?;
+    let mut dirty = Vec::new();
+    for bone in listed.iter().filter_map(serde_json::Value::as_u64) {
+        let bone = bone as usize;
+        if dirty.len() <= bone {
+            dirty.resize(bone + 1, false);
+        }
+        dirty[bone] = true;
+    }
+    Some(dirty)
+}
+
+/// The differing world-matrix words of one fighter's clean joints
+/// (`mtx[0..12]`, row-major as harness/jobjdump.py reads them): the first
+/// only, or all. Each line carries the distance in ulps, the usual size of a
+/// fused-or-not fault.
+fn world_mismatches(
+    bones: &[melee_lib::diagnostics::JointPose],
+    retail_dirty: Option<&[bool]>,
+    expected: &serde_json::Value,
+    player: usize,
+    all: bool,
+    report: &mut BonesReport,
+) -> Vec<String> {
+    let mut found = Vec::new();
+    for (bone, joint) in bones.iter().enumerate() {
+        if joint.world_dirty {
+            report.dirty_in_port += 1;
+            continue;
+        }
+        if retail_dirty.is_some_and(|dirty| dirty.get(bone).copied().unwrap_or(false)) {
+            report.dirty_in_retail += 1;
+            continue;
+        }
+        for (index, value) in joint.world.as_flattened().iter().enumerate() {
+            let key = format!("p{player}.bone[{bone}].mtx[{index}]");
+            let Some(bits) = expected_bits(expected, &key) else {
+                continue;
+            };
+            report.world_words += 1;
+            if value.to_bits() != bits {
+                let distance = ulps(*value, f32::from_bits(bits));
+                found.push(format!(
+                    "{}, {distance} ulps",
+                    mismatch_line(&key, *value, bits)
+                ));
+                if !all {
+                    return found;
+                }
+            }
+        }
+    }
+    found
+}
+
+/// Distance between two floats in units in the last place, across zero.
+fn ulps(a: f32, b: f32) -> u64 {
+    // Sign-magnitude bits onto a monotonic integer line.
+    fn ordered(x: f32) -> i64 {
+        let bits = i64::from(x.to_bits() as i32);
+        if bits < 0 {
+            i64::from(i32::MIN) - bits
+        } else {
+            bits
+        }
+    }
+    ordered(a).abs_diff(ordered(b))
 }
 
 #[cfg(test)]
