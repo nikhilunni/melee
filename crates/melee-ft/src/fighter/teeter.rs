@@ -154,6 +154,7 @@ pub(super) fn missed_footing_animation(
             last_bounce: None,
             bounce_lock: 0,
             meteor_cancel: None,
+            mv_word: 0,
         });
     }
     Ok(None)

@@ -182,7 +182,8 @@ impl FighterCore {
             // ftCo_800D5600: mv.common.x4 is the
             // platform target vector; an aerial entry retains its first word.
             MotionData::Life(super::life::LifeState::PlatformWait { target, .. }) => target.x,
-            MotionData::Damage(_) => 0.0, // ftCo_Damage.mv.x4: low-knockback collision flag.
+            // mv.co.damage.x4: the hit's collision flag (an int).
+            MotionData::Damage(damage) => f32::from_bits(damage.mv_word),
             MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
             MotionData::MultiJump(jump) => jump.retained_drop_timer,
             MotionData::CaptureJump(jump) => jump.retained_drop_timer,
@@ -305,7 +306,8 @@ impl Fighter {
     /// (ftCo_Squat.c:82-85) read it as their own. Walk's word is its base
     /// motion id (ftwalkcommon.c:115, 137): its IASA then re-enters Walk,
     /// and its animation callback fails closed on the uninitialised rate.
-    /// Unmodelled states fail closed.
+    /// Wait writes no scratch, so the word it holds is its predecessor's
+    /// (Damage's x4 is modelled). Unmodelled states fail closed.
     pub fn overwrite_common_scratch_word(&mut self, word: f32) {
         match &mut self.core.state_data {
             MotionData::Jump(jump) => jump.physics_started = word.to_bits(),
@@ -313,6 +315,15 @@ impl Fighter {
             MotionData::Run(run) => run.slippery_animation_velocity = word,
             MotionData::Squat(squat) => squat.platform_drop_timer = word,
             MotionData::Walk(walk) => walk.base_motion = word.to_bits() as i32,
+            // Wait writes no scratch (ft_8008A348), so out of Damage mv+4 is
+            // still mv.co.damage.x4. Damage's OnExitHitlag reads that word
+            // (ftCo_Damage.c:650), so a write while its hitlag callbacks
+            // are installed is not modelled.
+            MotionData::Damage(damage)
+                if self.core.combat.hitlag_callbacks != super::damage::HitlagCallbacks::Damage =>
+            {
+                damage.mv_word = word.to_bits()
+            }
             MotionData::Aerial {
                 retained_drop_timer,
             }

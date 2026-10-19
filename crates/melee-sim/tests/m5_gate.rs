@@ -4622,7 +4622,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 650] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 651] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5663,6 +5663,9 @@ const CORPUS_V3_MATCHES: [(&str, usize); 650] = [
     // which x2254_fireGObj no longer points at, misses ftGw_Init_OnDamage and
     // goes a tick later by itself (itGamewatchFire_Motion0_Anim).
     ("corpus_v3_fd_gameandwatch_samus4_ebe7703ed_p0", 6001),
+    // Thunder's lead bolt ends while Pikachu stands in Wait out of Damage:
+    // its mv+4 store lands in the kept mv.co.damage.x4.
+    ("corpus_v3_fod_pikachu_mario4_eac9514d6_p1", 1665),
 ];
 
 #[test]

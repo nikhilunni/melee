@@ -237,6 +237,12 @@ pub struct DamageState {
     /// mv.damage.x1A/x1B: a downward launch (a meteor) and the frames left
     /// before a jump or up special may cancel it.
     pub meteor_cancel: Option<u8>,
+    /// mv.co.damage.x4 (+2344, an int): the hit's knockback-over-threshold
+    /// flag (ftCo_Damage.c:462), which OnExitHitlag consumes and clears
+    /// (ftCo_Damage.c:650-651), so the port starts it at 0. The states that
+    /// write no scratch (Wait) keep it, and another object may store into
+    /// it there (ftPk_SpecialLw_SetState_Unk0); the next state inherits it.
+    pub mv_word: u32,
 }
 /// PlCo values retained by the damage state's status callback, which runs
 /// before input sampling and has no archive resource argument.
@@ -2666,6 +2672,7 @@ impl FighterCore {
                 .damage
                 .is_meteor(hit.descriptor.angle)
                 .then_some(assets.damage.meteor_cancel_frames as u8),
+            mv_word: 0,
         });
         self.status.in_hitstun = true;
         self.status.time_since_hit = 0;
