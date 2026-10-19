@@ -21,15 +21,18 @@ uploaded.
 
 ## Status
 
-- 25 of 26 characters (all but Kirby) and the six tournament stages
-  (Battlefield, Final Destination, Dream Land, Yoshi's Story, Fountain of
-  Dreams, Pokémon Stadium) match the original game on every recorded test
-  scenario.
-- 106 of 108 public Slippi replays in the test corpus replay to the end
+- All 26 characters and the six tournament stages (Battlefield, Final
+  Destination, Dream Land, Yoshi's Story, Fountain of Dreams, Pokémon
+  Stadium) match the original game in about 3,000 recorded test
+  scenarios, particle effects included. Kirby has 8 of his 25 copy
+  abilities so far.
+- All 108 public Slippi replays in the test corpus replay to the end
   without a single divergence from the recorded game, including the random
-  number stream.
-- Not implemented: Kirby, CPU opponents, random item spawns, single-player
-  modes. Unported branches fail loudly
+  number stream; in a second corpus of 502, 484 do, and the rest stop at
+  explained points or use setups not yet supported (doubles, CPU players,
+  other stages).
+- Not implemented: Kirby's other copy abilities, CPU opponents, random
+  item spawns, single-player modes, doubles. Unported branches fail loudly
   (`unimplemented!`) rather than diverging silently.
 - The renderer is a display approximation; only the simulation is exact.
 
@@ -44,41 +47,46 @@ matches:
 
 | Match | µs per tick | ticks/s, one core | × real time (60 fps) |
 |---|---:|---:|---:|
-| Samus vs Link, Yoshi's Story | 48 | 21,000 | 350× |
-| Fox vs Marth, Final Destination | 53 | 19,000 | 317× |
-| Fox vs Marth, Battlefield | 69 | 14,500 | 242× |
-| Fox vs Marth, Pokémon Stadium | 77 | 12,900 | 215× |
-| Zelda vs Pikachu, Fountain of Dreams | 97 | 10,400 | 173× |
-| Ice Climbers vs Peach, Pokémon Stadium | 118 | 8,500 | 142× |
+| Samus vs Link, Yoshi's Story | 49 | 20,500 | 342× |
+| Fox vs Marth, Final Destination | 53 | 18,700 | 312× |
+| Fox vs Marth, Battlefield | 54 | 18,500 | 309× |
+| Fox vs Marth, Pokémon Stadium | 57 | 17,400 | 291× |
+| Zelda vs Pikachu, Fountain of Dreams | 69 | 14,400 | 240× |
+| Ice Climbers vs Peach, Pokémon Stadium | 81 | 12,400 | 206× |
 
 Independent matches scale across cores: 12 Fox vs Marth matches on 12 threads
-run 142,000 ticks/s together, about 2,400× real time.
+run 140,000 ticks/s together, about 2,300× real time.
 
 Against Dolphin on the same machine (headless, Null video, no audio,
 unlimited speed, the same Fox vs Marth match from a savestate), the
-simulator is about 20× faster per core:
+simulator is about 25× faster per core:
 
 | | Battlefield | Pokémon Stadium |
 |---|---:|---:|
 | Dolphin | 750 fps (12.5×) | 660 fps (11×) |
-| This simulator | 14,500–17,100 ticks/s (242–285×) | 12,900–15,200 ticks/s (215–254×) |
+| This simulator | 18,500 ticks/s (309×) | 17,400 ticks/s (291×) |
 
 Sizes and costs:
 
 | | |
 |---|---:|
-| Minimal headless simulator binary, stripped | 4.5 MB (1.8 MB gzipped) |
-| Simulator compiled to WebAssembly | 4.0 MB (1.2 MB gzipped) |
-| Browser app, renderer included | 5.0 MB (1.6 MB gzipped) |
+| Minimal headless simulator binary, stripped | 4.4 MB (1.9 MB gzipped) |
+| Simulator compiled to WebAssembly (2026-10-04) | 4.0 MB (1.2 MB gzipped) |
+| Browser app, renderer included (2026-10-04) | 5.0 MB (1.6 MB gzipped) |
 | Disc files read for one match | 16–21 MB of the 1.4 GB image |
-| Memory per match | 96 MB |
-| Create, reset or clone a match | 8–10 ms |
+| Memory per match (Fox vs Marth, FD) | 22.5 MB, plus 21 MB of loaded data shared by every match |
+| Create a match | 2.0–3.5 ms |
+| Clone a match | 2.3–3.6 ms |
+| Reset a match | 2.2–4.2 ms |
 
-A match's state is large (it mirrors the game's memory pools), so cloning
-costs about as much as 180 ticks; plan tree search around that. The numbers
-were taken with other applications running and vary by about 3%. To
+Cloning costs about as much as 45 ticks; plan tree search around that. Most
+of a match's memory is ready-made effect models (64 per model, as the
+game's effect pools allow), and a match with Kirby holds more of them, since
+copying an ability can load any character's effects. The numbers were taken
+on 2026-10-19 with other applications running and vary by a few percent. To
 reproduce: `cargo run --release -p melee-lib --example sim_bench --
-throughput <disc files dir>` (also `parallel` and `lifecycle`).
+throughput <disc files dir>` (also `parallel` and `lifecycle`), and
+`--example match_memory <disc files dir>` for memory.
 
 ## What you need
 

@@ -68,10 +68,11 @@ do not keep a session log here.
   ceiling, and `ft-kirby`'s one duplicate label (the `CharacterTable::new`
   closure every character crate has) against a missing baseline entry.
   Baselines are the user's call (`docs/PERF.md`).
-- **`Match` is 19.3 MB (was 102.7) and clone takes 1.9 ms (was 7.8)** for
+- **`Match` is 22.5 MB (was 102.7) and clone takes 2.4 ms (was 7.8)** for
   FD Fox vs Marth (`cargo run --release -p melee-lib --example
-  match_memory`): effect models share one callback buffer and only the
-  banks a match can use are pooled (a Kirby match pools all, ~50 MB). No
+  match_memory`): effect models share one callback buffer, only the banks
+  a match can use are pooled (a Kirby match pools all), and a tree's
+  orientation constraints are a list (21bd6fd4). No
   heap allocation after `Match::new` on any stage or character
   (`melee-lib/tests/allocation.rs`, 13 matches x 3600 ticks).
 - **The particle check is on by default** in `melee-sim gate`, `sweep`
