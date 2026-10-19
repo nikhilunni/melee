@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 552] = [
+const MATRIX_WITNESSES: [(&str, usize); 554] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1895,6 +1895,11 @@ const MATRIX_WITNESSES: [(&str, usize); 552] = [
     // chains his own second sword swing (ftCo_800CD204 ->
     // ftCo_Attack_800CCF58(gobj, 3), ftCa_MS_SwordSwing4 341), hitting Peach.
     ("sword_swing42_fd_peach_captainfalcon", 520),
+    // Two Mr. Saturns meeting under 0.001 apart (it_80271D2C's straight-above
+    // branch): the first in the list goes against the other's last nudge
+    // (xDC8 x1B clear), the second draws its side (HSD_Randi(2)).
+    ("dosei_push_stacked_fd_peach", 1300),
+    ("dosei_push_stacked57_fd_peach", 1300),
 ];
 
 #[test]

@@ -1,0 +1,42 @@
+# ITEM PUSH directed witness: one grounded item straight above another
+# (it_80271D2C, retail 0x80271D2C; |dx| < 0.001). As `dosei_push_pair_fd_peach`
+# (Mr. Saturn pulled at 142 and thrown at 195, a second pulled at 783), but
+# Peach walks with the second (stick 44 for 5 ticks at 914) before dropping it
+# from a short hop (X 944, Z 954), so the two Saturns, walking into each
+# other at 0.05 a tick, meet 0.00024 apart at tick 1186 (`melee-sim search`
+# grid over stick 26..71 and holds 5 and 8 at 914: 92 walks, 3 under 0.001).
+# On the next tick the first in the item list finds the other not yet pushed
+# (xDC8 x1B clear) and goes against the other's last nudge; the second finds
+# the first pushed and draws its side with HSD_Randi(2).
+name = "dosei_push_stacked_fd_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 1300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 142, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 144, port = 0, buttons = {  }, raw = {  } },
+  { frame = 195, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 197, port = 0, buttons = {  }, raw = {  } },
+  { frame = 783, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 785, port = 0, buttons = {  }, raw = {  } },
+  { frame = 914, port = 0, buttons = {  }, raw = { stickX = 44 } },
+  { frame = 919, port = 0, buttons = {  }, raw = {  } },
+  { frame = 944, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 946, port = 0, buttons = {  }, raw = {  } },
+  { frame = 954, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 956, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"

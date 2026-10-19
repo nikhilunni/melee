@@ -26,6 +26,9 @@
 //! avoid = ["p1.motion_id == DeadDown"]
 //! ```
 //!
+//! A key written `|a-b|` compares the absolute difference of two keys
+//! (`"|items.0.pos.x-items.1.pos.x| < 0.001"`).
+//!
 //! Edits merge after the scenario's own inputs (a same-tick edit wins). The
 //! search simulates each shared prefix once and clones the match at every
 //! branch point, so candidates cost only the ticks after their first edit.
@@ -146,7 +149,18 @@ impl Condition {
         })
     }
     fn holds(&self, record: &Record) -> bool {
-        let Some(actual) = record.state.get(&self.key).and_then(number) else {
+        let value = |key: &str| record.state.get(key).and_then(number);
+        // `|a-b|`: the absolute difference of two keys.
+        let actual = match self
+            .key
+            .strip_prefix('|')
+            .and_then(|k| k.strip_suffix('|'))
+            .and_then(|k| k.split_once('-'))
+        {
+            Some((a, b)) => value(a).zip(value(b)).map(|(a, b)| (a - b).abs()),
+            None => value(&self.key),
+        };
+        let Some(actual) = actual else {
             return false;
         };
         match self.op {
