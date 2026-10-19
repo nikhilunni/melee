@@ -84,6 +84,10 @@ def test_scenario_uses_tick_clock_and_only_emits_changes(monkeypatch, tmp_path):
     port0 = [(s["frame"], s["raw"]) for s in scenario["inputs"] if s["port"] == 0]
     assert port0 == [(1, {}), (2, {"button": 0x100}), (4, {})]
     assert [f["kind"] for f in scenario["fighters"]] == ["Fox", "Marth"]
+    # The port's Match renders after every tick; --dolphin-cadence leaves the key out.
+    assert scenario["render_every_tick"] is True
+    dolphin = bridge.write_scenario(recording([NEUTRAL]), "dolphin", None, render_every_tick=False)
+    assert "render_every_tick" not in tomllib.loads(dolphin.read_text())
 
 
 def test_first_sample_drives_the_tick_after_the_boundary(monkeypatch, tmp_path):
