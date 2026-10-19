@@ -61,11 +61,10 @@ pub fn enter(
     // ftCommon_8007DB58.
     victim.interrupt_actions(victim_assets);
     // ftCo_8009750C drops a heavy item; ftCo_800DD168 releases the victim's
-    // own victim.
-    assert!(
-        victim.core.held_item.is_none(),
-        "ftCo_8009750C: a captured fighter holding an item"
-    );
+    // own victim. A light item stays in hand.
+    if victim.core.held_item.is_some_and(|held| held.heavy) {
+        unimplemented!("ftCo_8009750C (ftCo_Lift.c:201-211): caught by a dive with a heavy item");
+    }
     assert!(
         victim.core.combat.grab.is_none(),
         "ftCo_800DD168: a captured fighter holding another"

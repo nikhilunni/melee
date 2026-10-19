@@ -137,7 +137,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 152] = [
+const HELD_ITEM_STATES: [S; 157] = [
     S::LightGet,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
@@ -332,6 +332,15 @@ const HELD_ITEM_STATES: [S; 152] = [
     // (Yoshi's Egg Lay), the victim keeps its item; neither reads it.
     S::CaptureYoshi,
     S::YoshiEgg,
+    // ftCo_CaptureCaptain.c (ftCo_8009CA0C): ftCo_8009750C drops only a heavy
+    // item; a light one stays in hand and no callback reads it.
+    S::CaptureCaptain,
+    // ftCo_CaptureMewtwo.c / ftCo_ThrownMewtwo.c: Confusion's catch drops
+    // only a heavy item (ftCo_8009750C); neither state reads the item.
+    S::CaptureMewtwo,
+    S::CaptureMewtwoAir,
+    S::ThrownMewtwo,
+    S::ThrownMewtwoAir,
 ];
 
 /// ftCo_SM_Wait1_1, the idle animation while holding an item: ft_8008A348

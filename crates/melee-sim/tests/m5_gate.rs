@@ -4634,7 +4634,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 678] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 681] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5710,6 +5710,11 @@ const CORPUS_V3_MATCHES: [(&str, usize); 678] = [
     // Dr. Tornado's Coin hit on a Shy Guy: it_80270E30's coin generator (0x506).
     ("corpus_v3_ys_drmario_samus4_e052f4d33_p2", 563),
     ("corpus_v3_ys_drmario_samus4_e170dc03b_p1", 638),
+    // A captured fighter keeps a light item (ftCo_8009750C drops only a
+    // heavy one): Gerudo Dragon catches Link holding one; Confusion Peach.
+    ("corpus_v3_fod_ganondorf_link4_e5909cbff_p2", 984),
+    ("corpus_v3_fod_ganondorf_link4_e96382eb6_p0", 1305),
+    ("corpus_v3_bf_mewtwo_peach4_e0a079375_p1", 2234),
 ];
 
 #[test]
