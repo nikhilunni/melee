@@ -999,7 +999,10 @@ impl Fighter {
         if !keeps_jab.contains(&state) {
             self.core.jab_countdown = 0.0;
         }
-        let special = (usize::from(row.action.0) >= super::COMMON_COUNT)
+        // A character row with a common identity (Captain Falcon's Swing42
+        // rows run the common swing callbacks) takes that state's audit.
+        let special = (usize::from(row.action.0) >= super::COMMON_COUNT
+            && row.id == CommonMotionState::None)
             .then(|| self.character.table().specials_keep_held_item);
         let state = row.id;
         self.core.require_held_item_state(state, special);

@@ -1,0 +1,46 @@
+# SWORD-SWING42 directed witness. Captain Falcon side-smashes with the Beam
+# Sword and holds A: SwordSwing4's script raises throw flag b3 with A still
+# held, so ftCo_800CD204 (retail 0x800CD204) calls
+# ftCo_Attack_800CCF58(gobj, 3) and get_anim_id's FTKIND_CAPTAIN arm enters
+# ftCa_MS_SwordSwing4 (341), his own second swing, which hits Peach again.
+# From the start_fd_peach_captainfalcon4 boundary (P1 Peach at x=-60, P2
+# Falcon at x=60). Vegetable at tick 125 pulls a Beam Sword (`melee-sim
+# search` over pulls at 125..1440: 1316 candidates, 3 swords); Peach drops it
+# from a short hop (X 200, Z 210) and walks off; Falcon dashes over (240),
+# picks it up with A (320) and smashes left at 380, A held until 470.
+name = "sword_swing42_fd_peach_captainfalcon"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_captainfalcon4.sav"
+frames = 520
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 125, port = 0, buttons = {  }, raw = { button = 512, stickY = -128 } },
+  { frame = 127, port = 0, buttons = {  }, raw = {  } },
+  { frame = 200, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 210, port = 0, buttons = {  }, raw = { button = 16 } },
+  { frame = 212, port = 0, buttons = {  }, raw = {  } },
+  { frame = 240, port = 1, buttons = {  }, raw = { stickX = -128 } },
+  { frame = 250, port = 0, buttons = {  }, raw = { stickX = -90 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 280, port = 1, buttons = {  }, raw = {  } },
+  { frame = 320, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 322, port = 1, buttons = {  }, raw = {  } },
+  { frame = 380, port = 1, buttons = {  }, raw = { button = 256, stickX = -128 } },
+  { frame = 383, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 470, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "CaptainFalcon"
+controller = "scripted"

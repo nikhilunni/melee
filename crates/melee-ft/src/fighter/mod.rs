@@ -390,6 +390,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// for Link and Young Link); any other kind asserts "don't have smash42
     /// motion!!!".
     const FORWARD_SMASH_COMBO: Option<ActionId> = None;
+    /// get_anim_id (ftswing.c:89-99): the kind's first Swing42 row (the
+    /// sword's; the other swing items follow in fn_800CCEC4's order), only
+    /// FTKIND_CAPTAIN's ftCa_MS_SwordSwing4 (341); any other kind asserts
+    /// "don't have swing42 motion!!!".
+    const SWING42_FIRST_ROW: Option<ActionId> = None;
     /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): nonstandard entry.
     fn forward_smash_variant(&self) -> ForwardSmashVariant {
         if Self::descriptor().common_behavior.forward_smash_entry {

@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 551] = [
+const MATRIX_WITNESSES: [(&str, usize); 552] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1891,6 +1891,10 @@ const MATRIX_WITNESSES: [(&str, usize); 551] = [
     // the left blast zone: x2219_b1, not the revival scratch, skips
     // ftCo_800D3158's test.
     ("rebirth_rollout_blast_fd_jigglypuff", 620),
+    // Captain Falcon's Swing42: A held through SwordSwing4's throw flag b3
+    // chains his own second sword swing (ftCo_800CD204 ->
+    // ftCo_Attack_800CCF58(gobj, 3), ftCa_MS_SwordSwing4 341), hitting Peach.
+    ("sword_swing42_fd_peach_captainfalcon", 520),
 ];
 
 #[test]

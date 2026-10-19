@@ -810,3 +810,12 @@ stage = "FinalDestination"
 players = ["Kirby", "GameAndWatch"]
 stocks = 4
 seed = 63641676
+
+[[boundary]]
+name = "start_fd_peach_captainfalcon4"
+cold = "start_fd_peach_captainfalcon4_cold"
+savestate = "harness/roms/start_fd_peach_captainfalcon4.sav"
+stage = "FinalDestination"
+players = ["Peach", "CaptainFalcon"]
+stocks = 4
+seed = 4072912608

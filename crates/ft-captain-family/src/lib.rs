@@ -91,6 +91,9 @@ pub(crate) fn attributes<C: CaptainFamily>(f: &Fighter) -> &CaptainAttributes {
 /// ftCa_SM_SwordSwing4 (295).
 pub const ROW_COUNT: usize = 23;
 const FIRST_ACTION: u16 = 341;
+/// ftCa_MS_SwordSwing4: get_anim_id's Swing42 rows start here
+/// (ftswing.c:91, `swing_type + 341`).
+pub const SWORD_SWING42: ActionId = ActionId(FIRST_ACTION);
 const FIRST_ANIMATION: i32 = 295;
 
 /// ftCa_SM_* for a motion: the table's order, except that the animation
@@ -144,6 +147,20 @@ pub const fn special_rows<C: CaptainFamily>() -> [MotionRow; ROW_COUNT] {
         rows[i].animation = animation(rows[i].action);
         i += 1;
     }
+    // ftCa_MS_SwordSwing4 (341), the sword's Swing42: ft_0CD3.c's sword
+    // callbacks, under the common SwordSwing4 identity (the swing scratch
+    // and the held-item audit). The other items' Swing42 rows stay
+    // boundaries: their swings fail closed at entry.
+    rows[0] = MotionRow {
+        id: melee_types::CommonMotionState::SwordSwing4,
+        ..row(
+            SWORD_SWING42,
+            callbacks::animation::swing,
+            callbacks::input::swing,
+            callbacks::physics::swing,
+            callbacks::collision::swing,
+        )
+    };
     use special_hi as hi;
     use special_lw as lw;
     place(
@@ -322,11 +339,13 @@ pub const fn special_rows<C: CaptainFamily>() -> [MotionRow; ROW_COUNT] {
     rows
 }
 
-/// The motion tables' FtMoveId values. The item swings' move ids
-/// (FtMoveId_SwordSwing4..LipstickSwing4) have no StaleMove yet.
+/// The motion tables' FtMoveId values. The other items' swing move ids
+/// (FtMoveId_BatSwing4..LipstickSwing4) have no StaleMove yet.
 pub const fn special_moves() -> [Option<melee_types::combat::StaleMove>; ROW_COUNT] {
     use melee_types::combat::StaleMove as M;
     let mut moves = [None; ROW_COUNT];
+    // ftCa_MS_SwordSwing4: FtMoveId_SwordSwing4 << 24.
+    moves[0] = Some(M::SwordSwing4);
     let mut i = 6;
     while i < ROW_COUNT {
         moves[i] = Some(match i {

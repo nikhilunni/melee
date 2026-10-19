@@ -451,6 +451,7 @@ fails closed for anything else.
 | Down states while holding; tilts with an item; HeavyGet; unlit Bob-omb; a walking Bob-omb leaving the ground | HeavyGet, an unlit Bob-omb and a walking Bob-omb leaving the ground: audit, fail closed (unreachable or unwitnessed) | Down states: `sudden_death_hitholding_bomb_fd_fox` (4f7beb2); a tilt with a throwable item throws it (3a78890): `sudden_death_throw{b,hi,lw}_bomb_fd_fox`; the rest as Marth |
 | Item hitbox against an item hitbox (it_8026FE68) | Fails closed (audit) | same |
 | A grounded item pushed by another (it_80271D2C) | `dosei_push_pair_fd_peach`: two Mr. Saturns walking into each other (Peach's second pull found by `melee-sim search`, 839 candidates, 2 reached). The branch for one straight above the other (xDC8 x1B, HSD_Randi(2)) is ported and unwitnessed | same |
+| A held through SwordSwing4's throw flag b3 (ftCo_800CD204 -> ftCo_Attack_800CCF58(gobj, 3)): get_anim_id's only arm is Captain Falcon's ftCa_MS_SwordSwing4 (341); any other kind asserts | `sword_swing42_fd_peach_captainfalcon` (Peach's pull, picked up by Falcon; boundary `start_fd_peach_captainfalcon4`) | none: unreachable (ftswing.c:97) |
 | An inert item hitbox touching another item's (it_802706D0: xDCE b6 and the toucher) | Fails closed. Two attempts did not reach it: a second Link bomb dropped onto a rolling one hits it through the ordinary hitbox path (the first is knocked away, the second pops back), and two Mr. Saturns meeting on the ground have no live hitboxes | same |
 
 ### Items sliding down a floor (it_80277040)

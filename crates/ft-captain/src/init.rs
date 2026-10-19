@@ -65,6 +65,8 @@ impl CharacterCallbacks for CaptainFalcon {
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_captain_family::special_moves();
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;
+    /// get_anim_id's FTKIND_CAPTAIN arm (ftswing.c:91).
+    const SWING42_FIRST_ROW: Option<ActionId> = Some(ft_captain_family::SWORD_SWING42);
     fn enter_special(f: &mut Fighter, slot: SpecialSlot, air: bool, a: &FighterAssets) {
         ft_captain_family::enter_special::<Self>(f, slot, air, a);
     }

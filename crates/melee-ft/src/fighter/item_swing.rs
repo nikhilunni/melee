@@ -49,7 +49,8 @@ pub fn read_swing_rates(
     Ok(rates)
 }
 
-/// lbl_803C6D70's sword row: the motion state per [`SwingInput`].
+/// lbl_803C6D70's sword row: the motion state per [`SwingInput`]; Swing42
+/// (-1) is the kind's own row (`CharacterCallbacks::SWING42_FIRST_ROW`).
 const SWORD_SWINGS: [Option<S>; 5] = [
     Some(S::SwordSwing1),
     Some(S::SwordSwing3),
@@ -85,13 +86,23 @@ impl Fighter {
             ItemKind::Sword => (0, &SWORD_SWINGS),
             kind => unimplemented!("fn_800CCEC4: swinging {kind:?}"),
         };
-        let state = states[input as usize]
-            .unwrap_or_else(|| unimplemented!("get_anim_id: Swing42 ({:?})", held.kind));
+        let action = match states[input as usize] {
+            Some(state) => state.into(),
+            // get_anim_id's Swing42 arm: the kind's own row for the item.
+            None => {
+                let first = self
+                    .character
+                    .table()
+                    .swing42_first_row
+                    .unwrap_or_else(|| unimplemented!("ftswing.c:97: no swing42 motion"));
+                super::ActionId(first.0 + row as u16)
+            }
+        };
         let rate = assets.swing_rates[row][input as usize];
         // ftCo_800CD350 -> ftCo_800CD140 (800CD140): the sword's rows pass no
         // motion flags.
         self.core.commands.clear_throw_flags();
-        self.change_motion_state_with_rate(state.into(), assets, 0.0, rate)?;
+        self.change_motion_state_with_rate(action, assets, 0.0, rate)?;
         self.step_animation(assets);
         self.core.status.interaction = super::Interaction::Attack;
         self.core.state_data = MotionData::Swing(SwingState {
@@ -117,8 +128,9 @@ impl Fighter {
     }
 
     /// ftCo_800CD204 (800CD204): releasing A ends the hold; the script's
-    /// flag with A still held would chain the second smash swing.
-    pub(super) fn swing_input(&mut self) {
+    /// flag with A still held chains the second smash swing (Swing42,
+    /// ftCo_Attack_800CCF58(gobj, 3)).
+    pub(super) fn swing_input(&mut self, assets: &FighterAssets) -> Result<()> {
         use crate::input::Buttons;
         let held = self.core.input.current.held.intersects(Buttons::A);
         let MotionData::Swing(swing) = &mut self.core.state_data else {
@@ -129,8 +141,9 @@ impl Fighter {
         }
         let a_held = swing.a_held;
         if self.core.commands.take_throw_flag_b3() && a_held {
-            unimplemented!("ftCo_Attack_800CCF58(gobj, 3): Swing42 needs Captain Falcon");
+            self.enter_item_swing(SwingInput::SmashFollowUp, assets)?;
         }
+        Ok(())
     }
 
     /// ft_800CD31C (800CD31C), the swing's take_dmg_cb and its leaving the
