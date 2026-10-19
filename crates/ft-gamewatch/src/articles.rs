@@ -356,6 +356,23 @@ pub fn destroyed(f: &mut Fighter, kind: ItemKind) {
     }
 }
 
+/// The Destroyed callback of an article that ended by itself, reaching its
+/// owner. A torch's (itGamewatchFire_Destroyed -> ftGw_AttackS4_ItemTorchSetFlag
+/// 8014A904) first runs ftGw_AttackS4_ItemTorchExitHitlag on whatever
+/// x2254_fireGObj names: a superseded torch ending while the newer one is
+/// frozen thaws the newer one at once (it_8026B73C).
+pub fn article_destroyed(f: &mut Fighter, kind: ItemKind) {
+    // A torch still named by x2254 while its owner is in hitlag: either
+    // the newer torch, frozen with its owner, or (when the ending torch is
+    // that one) no frozen torch at all. The port does not tell them apart.
+    if kind == ItemKind::GameWatchFire && articles(f).torch && f.in_hitlag() {
+        unimplemented!(
+            "ftGw_AttackS4_ItemTorchSetFlag (ftgamewatchattacks4.c:52): a superseded torch ends while x2254_fireGObj's torch may be in hitlag (ftGw_AttackS4_ItemTorchExitHitlag)"
+        );
+    }
+    destroyed(f, kind);
+}
+
 /// ftGw_Init_OnDamage (8014A4CC): every article that is out is destroyed
 /// (Item_8026A8EC through the kind's remover) and lets go of its owner.
 pub fn on_damage(f: &mut Fighter) {

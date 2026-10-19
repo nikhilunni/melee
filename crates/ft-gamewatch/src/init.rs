@@ -133,7 +133,8 @@ impl CharacterCallbacks for GameWatch {
     /// ftCo_800D331C: death2_cb, the same callback.
     const DEATH: Option<fn(&mut Fighter)> = Some(crate::articles::damage_callback);
     /// The articles' Destroyed callbacks.
-    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) = crate::articles::destroyed;
+    const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) =
+        crate::articles::article_destroyed;
     /// ftGw_AttackAirN_EnterItemHitlag / ExitItemHitlag: every aerial
     /// article that is out.
     const ARTICLE_HITLAG_BEGIN: fn(&mut Fighter) = crate::articles::hitlag_begin;
