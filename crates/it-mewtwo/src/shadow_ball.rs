@@ -582,6 +582,11 @@ fn burst(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) {
     let state = ball_mut(item);
     clamp_level(state);
     let motion = FIRST_BURST + state.level as u16;
+    // Item_80268E5C's HSD_JObjAnimAll: the burst animation's first frame
+    // places the grandchild, so the flight's waver (it_802C4D10's
+    // HSD_JObjSetTranslate) no longer moves it; the burst effect below
+    // reads it at the item's position (mewtwo_ball_burst_fd_fox4 tick 202).
+    item.joint_translation = None;
     item.change_motion_with(
         motion,
         ARTICLE_STATES[motion as usize],
