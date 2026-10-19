@@ -548,6 +548,7 @@ version = "0.0.1"
 dependencies = [
  "ft-captain-family",
  "ft-fox-family",
+ "ft-mars-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",

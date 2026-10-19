@@ -12,6 +12,7 @@ use melee_types::FighterKind;
 
 pub mod blaster;
 pub mod captain;
+pub mod shield_breaker;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -71,7 +72,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Luigi
     unported("ftKb_SpecialNLg_800F9614", "ftKb_SpecialNLg_800F9684"),
     // Marth
-    unported("ftKb_SpecialNMs_8010B2FC", "ftKb_SpecialNMs_8010B4A0"),
+    CopiedNeutral::Ported(shield_breaker::enter::<shield_breaker::KirbyMarth>),
     // Zelda
     unported("ftKb_SpecialNZd_80105B2C", "ftKb_SpecialNZd_80105BA8"),
     // Young Link: Link's entries.
@@ -87,7 +88,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Ganondorf: Captain Falcon's entries.
     CopiedNeutral::Ported(captain::enter),
     // Roy: Marth's entries.
-    unported("ftKb_SpecialNMs_8010B2FC", "ftKb_SpecialNMs_8010B4A0"),
+    CopiedNeutral::Ported(shield_breaker::enter::<shield_breaker::KirbyRoy>),
     // Master Hand, Crazy Hand and the Wireframes: NULL.
     CopiedNeutral::Inhale,
     CopiedNeutral::Inhale,
@@ -123,6 +124,7 @@ pub const fn rows() -> [MotionRow; 12] {
 /// accessory4_cb of a copied special's row.
 pub fn accessory(f: &mut Fighter, assets: &FighterAssets) {
     blaster::accessory(f, assets);
+    shield_breaker::accessory(f, assets);
 }
 
 /// What an article reads of Kirby (the copied Blaster's

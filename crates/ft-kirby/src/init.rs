@@ -54,6 +54,8 @@ pub struct Kirby {
     pub hammer_out: bool,
     /// The copied Blaster: u.kb.xB0 (the gun is out) and mv.fx.SpecialN.
     pub blaster: ft_fox_family::SpecialNeutral,
+    /// The copied Shield Breaker / Flare Blade: mv.kb.specialn_ms.
+    pub shield_breaker: ft_mars_family::special_n::SpecialN,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -88,6 +90,7 @@ impl Kirby {
             accessory: Accessory::None,
             hammer_out: false,
             blaster: Default::default(),
+            shield_breaker: Default::default(),
         }
     }
 }

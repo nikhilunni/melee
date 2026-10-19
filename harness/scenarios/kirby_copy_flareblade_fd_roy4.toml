@@ -1,0 +1,51 @@
+# KIRBY directed witness from start_fd_kirby_roy4 (Kirby runs to x=51 beside Roy at +60 and swallows him; Roy comes out at x=39): the copied Flare Blade (ftkirbyspecialmars.c, Roy's arms). An uncharged grounded swing whiffed to the right; a walk left and an uncharged swing into Roy (6%); a full hop and a midair jump into an aerial swing that ends in the air (Fall); a short hop whose charge loop lands (AirLoop to Loop) and releases on the floor; a full-hop swing whose end lands (AirEnd0 to End0); a short hop whose start lands (AirStart to Start).
+name = "kirby_copy_flareblade_fd_roy4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_roy4.sav"
+frames = 980
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 402, port = 0, buttons = {  }, raw = {  } },
+  { frame = 460, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 463, port = 0, buttons = {  }, raw = {  } },
+  { frame = 488, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 490, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 568, port = 0, buttons = {  }, raw = {  } },
+  { frame = 578, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 580, port = 0, buttons = {  }, raw = {  } },
+  { frame = 582, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 584, port = 0, buttons = {  }, raw = {  } },
+  { frame = 680, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 681, port = 0, buttons = {  }, raw = {  } },
+  { frame = 684, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 734, port = 0, buttons = {  }, raw = {  } },
+  { frame = 790, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 798, port = 0, buttons = {  }, raw = {  } },
+  { frame = 804, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 806, port = 0, buttons = {  }, raw = {  } },
+  { frame = 880, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 881, port = 0, buttons = {  }, raw = {  } },
+  { frame = 921, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 923, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Roy"
+controller = "scripted"

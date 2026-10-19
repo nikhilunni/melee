@@ -3,10 +3,12 @@ use ft_kirby::{
     attributes::read_kirby_attributes,
     copied::{
         blaster::{KirbyFalco, KirbyFox},
+        shield_breaker::{KirbyMarth, KirbyRoy},
         CopiedNeutral, NEUTRAL,
     },
     hat,
 };
+use ft_mars_family::special_n::{ShieldBreaker, ShieldBreakerRow};
 use hsd_archive::Archive;
 use melee_types::FighterKind;
 use std::path::{Path, PathBuf};
@@ -34,6 +36,8 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Falco
                             | FighterKind::Captain
                             | FighterKind::Ganon
+                            | FighterKind::Mars
+                            | FighterKind::Emblem
                     ),
                     "{kind:?}"
                 )
@@ -63,6 +67,15 @@ fn the_punch_rows_follow_kirbys_table() {
     for (row, (action, animation)) in rows.iter().zip(expected) {
         assert_eq!(row.action.0, action);
         assert_eq!(row.animation, animation);
+    }
+}
+
+#[test]
+fn the_shield_breaker_rows_follow_kirbys_table() {
+    for (rows, start, animation) in [(KirbyMarth::ROWS, 492, 427), (KirbyRoy::ROWS, 530, 465)] {
+        assert_eq!(rows.first_action, start);
+        assert_eq!(rows.first_animation, animation);
+        assert_eq!(rows.action(ShieldBreakerRow::AirEnd1).0, start + 7);
     }
 }
 

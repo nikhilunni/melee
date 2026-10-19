@@ -3,6 +3,7 @@
 //! (ft/types.h), read with its consumers' types: `lwz` for the turn count
 //! and action ids, `lfs` for the impulses (ftCo_800D74A4).
 use ft_captain_family::attributes::FalconPunchAttributes;
+use ft_mars_family::attributes::ShieldBreakerAttributes;
 use hsd_archive::{Archive, Reader};
 use hsd_types::Vec2;
 use melee_ft::desc::{
@@ -40,6 +41,10 @@ pub struct KirbyAttributes {
     pub fox_blaster: BlasterAttributes,
     /// +244..+268 (`specialn_fc_*`): the copied Falco Blaster.
     pub falco_blaster: BlasterAttributes,
+    /// +35C..+370 (`ms`): the copied Shield Breaker.
+    pub marth_shield_breaker: ShieldBreakerAttributes,
+    /// +370..+384 (`fe`): the copied Flare Blade.
+    pub roy_flare_blade: ShieldBreakerAttributes,
     /// +384 (`specialn_mt_charge_time`): the copied Shadow Ball's full
     /// charge; a hit keeps a full charge (ftKb_SpecialNMt_80107130).
     pub mewtwo_charge_time: f32,
@@ -256,6 +261,8 @@ impl KirbyAttributes {
             falcon_punch: FalconPunchAttributes::read(Reader::new(r.slice(0x1F8, 0x14)?))?,
             fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,
             falco_blaster: BlasterAttributes::read(Reader::new(r.slice(0x244, 0x24)?))?,
+            marth_shield_breaker: ShieldBreakerAttributes::read(&r, 0x35C)?,
+            roy_flare_blade: ShieldBreakerAttributes::read(&r, 0x370)?,
             mewtwo_charge_time: r.f32(0x384)?,
         })
     }

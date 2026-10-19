@@ -64,7 +64,7 @@ impl Specials {
 /// Marth's and Roy's special actions, SpecialNStart (341) through
 /// SpecialAirLwHit (372).
 pub const SPECIAL_COUNT: usize = 32;
-const FIRST_SPECIAL: u16 = 341;
+pub(crate) const FIRST_SPECIAL: u16 = 341;
 const SPECIALS: std::ops::RangeInclusive<u16> = FIRST_SPECIAL..=FIRST_SPECIAL + 31;
 
 /// Called by each special's entry before it changes motion state: capture
@@ -137,32 +137,9 @@ pub const fn rows<C: MarsFamily>() -> [MotionRow; SPECIAL_COUNT] {
     let mut rows = [melee_ft::fighter::state::unimplemented_row(); SPECIAL_COUNT];
     let mut i = 0;
     // Shield Breaker: Start, Loop, End0, End1, then the aerial four.
+    let shield_breaker = special_n::rows::<C>();
     while i < 8 {
-        rows[i] = row(
-            i,
-            match i % 4 {
-                0 => special_n::start::<C>,
-                1 => special_n::hold::<C>,
-                _ => special_n::end::<C>,
-            },
-            if i % 4 == 1 {
-                special_n::input::<C>
-            } else {
-                no_input
-            },
-            if i >= 4 {
-                special_n::air_physics::<C>
-            } else if i == 0 {
-                special_n::startup_physics::<C>
-            } else {
-                callbacks::physics::guard_on
-            },
-            if i >= 4 {
-                special_n::air_collision
-            } else {
-                special_n::collision
-            },
-        );
+        rows[i] = shield_breaker[i];
         i += 1;
     }
     // Dancing Blade: S1, S2Hi/Lw, S3Hi/S/Lw, S4Hi/S/Lw, then the aerial nine.

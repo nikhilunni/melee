@@ -16,7 +16,9 @@ pub struct MarsAttributes {
     /// +0x78: SwordAttrs consumed by ftafterimage.c.
     pub sword: SwordTrailAttributes,
 }
-#[derive(Clone, Debug, PartialEq)]
+/// MarsAttributes +0..+14; Kirby's ftKb_SpecialNMs_DatAttrs (+35C for
+/// Marth's, +370 for Roy's) has the same layout.
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct ShieldBreakerAttributes {
     /// +0x00, ftMars/types.h; ftmarsspecialn.c:154 multiplies by 30 ticks.
     pub maximum_charge_levels: i32,
@@ -108,17 +110,23 @@ pub fn read(archive: &Archive, data_symbol: &str) -> Result<MarsAttributes> {
     })?;
     MarsAttributes::read(archive, special_attributes_offset(archive, root)?)
 }
+impl ShieldBreakerAttributes {
+    /// The five words at `offset` of `r`.
+    pub fn read(r: &Reader<'_>, offset: u32) -> Result<Self> {
+        Ok(Self {
+            maximum_charge_levels: r.s32(offset)?,
+            base_damage: r.s32(offset + 0x4)?,
+            damage_per_level: r.s32(offset + 0x8)?,
+            momentum_divisor: r.f32(offset + 0xC)?,
+            friction: r.f32(offset + 0x10)?,
+        })
+    }
+}
 impl MarsAttributes {
     pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
         let r = Reader::new(archive.reader().slice(offset, MARS_ATTRIBUTES_SIZE)?);
         Ok(Self {
-            shield_breaker: ShieldBreakerAttributes {
-                maximum_charge_levels: r.s32(0x0)?,
-                base_damage: r.s32(0x4)?,
-                damage_per_level: r.s32(0x8)?,
-                momentum_divisor: r.f32(0xC)?,
-                friction: r.f32(0x10)?,
-            },
+            shield_breaker: ShieldBreakerAttributes::read(&r, 0)?,
             dancing_blade: DancingBladeAttributes {
                 momentum_divisor: r.f32(0x14)?,
                 air_friction: r.f32(0x18)?,

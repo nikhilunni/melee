@@ -553,9 +553,26 @@ fails closed.
   - Not reached: the grounded punch losing its floor (ft_800827A0 stops it
     at an edge, so it needs a floor that goes away); live, shared with the
     originals' code.
-- Not ported: the copied neutral specials other than the Blaster and the
-  Punch (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its
-  name), item pickup hand poses.
+- **The copied Shield Breaker and Flare Blade** (ftkirbyspecialmars.c,
+  `ft-kirby` `copied/shield_breaker.rs`, rows 492..499 and 530..537): the
+  states are ft-mars-family's `special_n`, generic over a `ShieldBreaker`
+  trait (rows, attributes, release effect, charge flash, gusts) that every
+  `MarsFamily` gets by a blanket impl. Kirby's differ from Marth's and
+  Roy's in what the trait names: ftKb_DatAttrs +35C / +370 (the same five
+  words as MarsAttributes +0), efAlt 0x4B4 / 0x4B5 (models 0x4E20 / 0x4E21,
+  EfKbMs.dat, bank 20) and 0x4B8 / 0x4B9 (0xBB80 / 0xBB81, EfKbFe.dat, bank
+  48) at TopN, the same flashes (99, 100), and no lb_800119DC gusts at the
+  hips (retail 0x8010B958 has no call). No mv+4 word is retained (Kirby's
+  other specials model none either), no take_dmg_cb is armed, and neither
+  put-away nor 800F190C has a Marth or Roy arm. The entries also load the
+  copy's sword (ftCommon_SetAccessory, hat_dynamics[0] on the right thumb,
+  kept across the rows by Ft_MF_KeepAccessory 0x2000, which Kirby's motion
+  changes add to Marth's flags): a model only, not in the port.
+  `ftKb_Init_UnkMotionStates4` has no Marth or Roy arm. Witnesses: nine
+  `kirby_copy_{shieldbreaker,flareblade}_*` scenes (`KIRBY_WITNESSES`).
+- Not ported: the copied neutral specials other than the Blaster, the
+  Punch and the Shield Breaker (`ftKb_Init_803C9DD0`; each kind's entry
+  fails closed with its name), item pickup hand poses.
 
 ## Where this stands and how to resume (2026-10-12)
 
@@ -593,8 +610,10 @@ Remaining work, in the order to take it:
    copied special's row (`kirby_copy_blaster_*`,
    `corpus_v3_fd_kirby_falco4_ed4320157_p0`); Captain Falcon's and
    Ganondorf's Punch (`kirby_copy_punch_*`, boundary
-   `start_fd_kirby_ganondorf4`). Next: Marth, Sheik, Peach, Jigglypuff,
-   Samus, then the rest; each row's stale-move id
+   `start_fd_kirby_ganondorf4`); Marth's and Roy's Shield Breaker
+   (`kirby_copy_shieldbreaker_*`, `kirby_copy_flareblade_*`, boundaries
+   `start_fd_kirby_marth4` and `start_fd_kirby_roy4`). Next: Sheik, Peach,
+   Jigglypuff, Samus, then the rest; each row's stale-move id
    exists already (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (the
    charge flashes of Donkey Kong, Samus, Mewtwo and Sheik) comes with those
    kinds. The pattern, per kind:

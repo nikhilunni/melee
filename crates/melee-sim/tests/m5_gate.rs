@@ -2678,6 +2678,22 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // the root's rot.y as Kirby's copy's do (eflib.c:866-878).
     ("kirby_copy_punch_lost_fd_falcon4", 600),
     ("kirby_copy_punch_lost_fd_ganondorf4", 600),
+    // The copied Shield Breaker and Flare Blade (ftkirbyspecialmars.c over
+    // ft_mars_family's states; no gusts, efAlt 0x4B4/0x4B5 and 0x4B8/0x4B9
+    // from EfKbMs.dat / EfKbFe.dat), from boundaries `start_fd_kirby_marth4`
+    // and `start_fd_kirby_roy4`: grounded and aerial, uncharged and charged
+    // in full, on the copied fighter's body and shield (a full charge breaks
+    // it), every ground/air counterpart, and the ability lost in the loop to
+    // a hit's draw and to the blast zone.
+    ("kirby_copy_shieldbreaker_fd_marth4", 980),
+    ("kirby_copy_shieldbreaker_charged_fd_marth4", 800),
+    ("kirby_copy_shieldbreaker_lost_fd_marth4", 900),
+    ("kirby_copy_shieldbreaker_shield_fd_marth4", 760),
+    ("kirby_copy_shieldbreaker_struck_fd_marth4", 600),
+    ("kirby_copy_flareblade_fd_roy4", 980),
+    ("kirby_copy_flareblade_charged_fd_roy4", 950),
+    ("kirby_copy_flareblade_shield_fd_roy4", 840),
+    ("kirby_copy_flareblade_edge_fd_roy4", 760),
 ];
 
 #[test]

@@ -61,6 +61,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     place_all(&mut rows, special_lw::rows());
     place_all(&mut rows, copied::rows());
     place_all(&mut rows, copied::captain::rows());
+    place_all(&mut rows, copied::shield_breaker::rows());
     rows
 }
 

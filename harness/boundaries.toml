@@ -882,3 +882,21 @@ stage = "DreamLand"
 players = ["Pikachu", "DrMario"]
 stocks = 4
 seed = 3933258060
+
+[[boundary]]
+name = "start_fd_kirby_marth4"
+cold = "start_fd_kirby_marth4_cold"
+savestate = "harness/roms/start_fd_kirby_marth4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Marth"]
+stocks = 4
+seed = 2993900715
+
+[[boundary]]
+name = "start_fd_kirby_roy4"
+cold = "start_fd_kirby_roy4_cold"
+savestate = "harness/roms/start_fd_kirby_roy4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Roy"]
+stocks = 4
+seed = 4068591721

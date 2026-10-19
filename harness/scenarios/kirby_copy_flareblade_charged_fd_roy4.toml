@@ -1,0 +1,35 @@
+# KIRBY directed witness from start_fd_kirby_roy4 (Kirby swallows Roy): the copied Flare Blade charged in full (End1 after 211 ticks of the loop): Kirby takes 10% of recoil and Roy (36%) is knocked out off the left; then a short-hop swing whose end lands.
+name = "kirby_copy_flareblade_charged_fd_roy4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_roy4.sav"
+frames = 950
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { stickX = -80 } },
+  { frame = 403, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 830, port = 0, buttons = {  }, raw = {  } },
+  { frame = 860, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 861, port = 0, buttons = {  }, raw = {  } },
+  { frame = 864, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 866, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Roy"
+controller = "scripted"

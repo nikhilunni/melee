@@ -828,6 +828,8 @@ impl Effects {
                     | 0x491..=0x493
                     | 0x496..=0x497
                     | 0x4C6..=0x4CA
+                    | 0x4B4..=0x4B5
+                    | 0x4B8..=0x4B9
                     | 0x4D6
                     | 0x4EE..=0x4EF
                     | 0x4F2..=0x4F7
@@ -859,6 +861,10 @@ impl Effects {
                     // efsync.c:292-297: efLib_Create_Attach(0x2710 / 0x2711),
                     // PK Thunder's control and launch glows.
                     0x4EE..=0x4EF => 0x2710 + u32::from(id - 0x4EE),
+                    // efalt.c:499-506, 524-531: Kirby's copied Shield
+                    // Breaker and Flare Blade releases.
+                    0x4B4..=0x4B5 => 0x4E20 + u32::from(id - 0x4B4),
+                    0x4B8..=0x4B9 => 0xBB80 + u32::from(id - 0x4B8),
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
                     // efsync.c:645-652: Roy's Flare Blade release.
                     0x511..=0x512 => 0xBF68 + u32::from(id - 0x511),
@@ -871,12 +877,14 @@ impl Effects {
                     _ => unreachable!(),
                 };
                 // efLib_Create_Attach_Scale, and a root rotation Y from the
-                // fighter's facing at creation (efAlt 0x492/0x493, 0x4F2/0x4F3,
-                // efSync 0x50E/0x50F, 0x511/0x512).
+                // fighter's facing at creation (efAlt 0x492/0x493, 0x4B4/0x4B5,
+                // 0x4B8/0x4B9, efSync 0x4F2/0x4F3, 0x50E/0x50F, 0x511/0x512).
                 let scaled = matches!(
                     id,
                     0x488..=0x48A
                         | 0x492..=0x493
+                        | 0x4B4..=0x4B5
+                        | 0x4B8..=0x4B9
                         | 0x4C6..=0x4CA
                         | 0x4D6
                         | 0x4F2..=0x4F7
@@ -886,6 +894,8 @@ impl Effects {
                 let faces = matches!(
                     id,
                     0x492..=0x493
+                        | 0x4B4..=0x4B5
+                        | 0x4B8..=0x4B9
                         | 0x4C8..=0x4C9
                         | 0x4F2..=0x4F3
                         | 0x50E..=0x50F

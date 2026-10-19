@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 23] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 25] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -168,6 +168,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 23] = [
         table: "effGanonDataTable",
         models: 6,
     },
+    // Kirby's copied Shield Breaker (efAsync_DatEntries[20],
+    // ftKb_Init_803CB46C for Marth): models 0x4E20 / 0x4E21, the release's
+    // trail on the ground and in the air (efAlt 0x4B4 / 0x4B5).
+    CharacterEffectFile {
+        bank: 20,
+        file: "EfKbMs.dat",
+        table: "effKirbyMarsDataTable",
+        models: 2,
+    },
     // Kirby's copied Blasters (efAsync_DatEntries[33], ftKb_Init_803CB46C
     // for Fox and Falco, loaded with a Kirby facing either): model 0x80E8,
     // the shot's flash (efAlt 0x4AC).
@@ -192,6 +201,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 23] = [
         bank: 47,
         file: "EfKbGn.dat",
         table: "effKirbyGanonDataTable",
+        models: 2,
+    },
+    // Kirby's copied Flare Blade (efAsync_DatEntries[48],
+    // ftKb_Init_803CB46C for Roy): models 0xBB80 / 0xBB81, the release's
+    // flame on the ground and in the air (efAlt 0x4B8 / 0x4B9).
+    CharacterEffectFile {
+        bank: 48,
+        file: "EfKbFe.dat",
+        table: "effKirbyEmblemDataTable",
         models: 2,
     },
     // Models 0xBF68..0xBF69 (efSync 0x510..0x512, efsync.c:642-652): Roy's
