@@ -261,7 +261,19 @@ impl Resources {
         }
         self
     }
+    /// Whether the match can create a model of `bank`: the common bank, a
+    /// bank its fighters loaded (Fighter_Create, fighter.c:864), or any bank
+    /// once a Kirby is present, whose copy abilities load further rows
+    /// mid-match (ftKb_Init_803CB46C, ftkirby.c:2762/2796). A model of any
+    /// other bank needs no pooled slots.
+    pub(super) fn holds(&self, bank: u8) -> bool {
+        bank == 0
+            || self.loaded_banks & (1 << KIRBY_BANK) != 0
+            || self.loaded_banks & (1u64 << bank) != 0
+    }
 }
+/// Kirby's efAsync_DatEntries row (ftData_UnkBytePerCharacter[FTKIND_KIRBY]).
+const KIRBY_BANK: u8 = 5;
 pub(super) fn character(
     archive: &Archive,
     file: &CharacterEffectFile,

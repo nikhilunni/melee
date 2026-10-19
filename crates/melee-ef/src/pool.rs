@@ -78,9 +78,16 @@ impl Effects {
     pub fn load(archive: &Archive) -> Result<Self> {
         Ok(Self::from_models(ModelPool::load(archive)?))
     }
-    /// Allocate independent animation slots from shared immutable definitions.
+    /// Allocate independent animation slots from shared immutable definitions,
+    /// for the models of the banks the match holds (`Resources::holds`).
     pub fn from_resources(resources: &Resources) -> Self {
-        let mut effects = Self::from_models(ModelPool::from_definitions(&resources.models));
+        let held: Vec<_> = resources
+            .models
+            .iter()
+            .filter(|model| resources.holds(model.bank))
+            .cloned()
+            .collect();
+        let mut effects = Self::from_models(ModelPool::from_definitions(&held));
         effects.character_banks = resources.character_banks.clone();
         effects.loaded_banks = resources.loaded_banks;
         effects
