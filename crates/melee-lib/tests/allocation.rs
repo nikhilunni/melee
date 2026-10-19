@@ -494,3 +494,117 @@ fn stage_cycles_preserve_allocation_free_step_clone_and_capture() {
         diagnostics::inspect(&branch).unwrap()
     );
 }
+
+/// Caller-owned xorshift so the input script never touches the game's RNG.
+struct Choices(u32);
+impl Choices {
+    fn next(&mut self) -> u32 {
+        let mut x = self.0;
+        x ^= x << 13;
+        x ^= x >> 17;
+        x ^= x << 5;
+        self.0 = x;
+        x
+    }
+    fn stick(&mut self) -> Stick {
+        const DIRECTIONS: [(f32, f32); 9] = [
+            (0.0, 0.0),
+            (1.0, 0.0),
+            (-1.0, 0.0),
+            (0.0, 1.0),
+            (0.0, -1.0),
+            (0.7, 0.7),
+            (-0.7, 0.7),
+            (0.7, -0.7),
+            (-0.7, -0.7),
+        ];
+        let (x, y) = DIRECTIONS[(self.next() % 9) as usize];
+        Stick { x, y }
+    }
+    /// A held pad: attacks, specials, jumps, shields, grabs and movement.
+    fn pad(&mut self) -> (ControllerState, u32) {
+        let mut pad = ControllerState::default();
+        pad.stick = self.stick();
+        pad.buttons = match self.next() % 10 {
+            0 | 1 => Buttons::A,
+            2 | 3 => Buttons::B,
+            4 => Buttons::X,
+            5 => Buttons::L,
+            6 => Buttons::Z,
+            7 => {
+                pad.cstick = self.stick();
+                Buttons::default()
+            }
+            _ => Buttons::default(),
+        };
+        if pad.buttons.intersects(Buttons::L) {
+            pad.left_trigger = 1.0;
+        }
+        (pad, [1, 2, 3, 5, 8, 13, 21][(self.next() % 7) as usize])
+    }
+}
+
+/// Every stage, and every character at least once, steps without touching
+/// the heap once the match exists: stage animations, articles, effects and
+/// item pools are all prepared at load (CLAUDE.md, "no heap allocation after
+/// initialization"). Characters pair in select-screen order; the stages
+/// cycle so each hosts at least two matches.
+#[test]
+fn every_stage_and_character_steps_without_allocating() {
+    TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
+    // MELEE_DATA_ROOT: a checkout with harness data (for worktrees).
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    let files = root.join("harness/roms/files");
+    if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+        return;
+    }
+    const TICKS: usize = 3600;
+    let mut failures = Vec::new();
+    for (index, pair) in Character::ALL.chunks(2).enumerate() {
+        let stage = Stage::ALL[index % Stage::ALL.len()];
+        let config = MatchConfig::versus(
+            stage,
+            [
+                PlayerConfig::new(Port::P1, pair[0]),
+                PlayerConfig::new(Port::P2, pair[1]),
+            ],
+        )
+        .with_seed(Seed(0x5eed + index as u32));
+        let assets = GameAssets::load(&files, &config).unwrap();
+        let mut game = Match::new(&assets, config).unwrap();
+        let mut choices = Choices(0x9e37_79b9 ^ (index as u32 + 1));
+        let mut held = [(ControllerState::default(), 0); 2];
+        let mut allocating_ticks = 0;
+        let mut first = None;
+        for tick in 0..TICKS {
+            if !game.status().is_running() {
+                break;
+            }
+            let mut inputs = Inputs::default();
+            for (port, (pad, remaining)) in held.iter_mut().enumerate() {
+                if *remaining == 0 {
+                    (*pad, *remaining) = choices.pad();
+                }
+                *remaining -= 1;
+                inputs.0[port] = *pad;
+            }
+            let count = measure(&mut game, &inputs);
+            if count != 0 {
+                allocating_ticks += 1;
+                first.get_or_insert((tick, count));
+            }
+        }
+        if let Some((tick, count)) = first {
+            failures.push(format!(
+                "{} {:?} vs {:?}: {allocating_ticks} allocating ticks, first at tick {tick} ({count})",
+                stage.display_name(),
+                pair[0],
+                pair[1],
+            ));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}

@@ -251,26 +251,37 @@ pub struct ItemAssets {
     /// through by [`Self::from_stage_item`]: the integer at each.
     pub special_pointees: Vec<i32>,
 }
+/// The `target`-th joint in depth-first order (a joint, its children, then
+/// its next siblings), counting from `index`; no heap stack, as it runs in
+/// the tick.
+fn depth_first_joint<'a>(
+    mut joint: &'a hsd_archive::desc::jobj::JObjDesc,
+    target: usize,
+    index: &mut usize,
+) -> Option<&'a hsd_archive::desc::jobj::JObjDesc> {
+    loop {
+        if *index == target {
+            return Some(joint);
+        }
+        *index += 1;
+        if let Some(child) = joint.child.as_deref() {
+            if let Some(found) = depth_first_joint(child, target, index) {
+                return Some(found);
+            }
+        }
+        joint = joint.next.as_deref()?;
+    }
+}
+
 impl ItemAssets {
     /// it_80272C90 / it_2725_JObjGetTranslation: the local translation of
     /// the model's attach joint (ItemModelDesc x8), in depth-first order.
     pub fn attach_translation(&self) -> hsd_types::Vec3 {
-        let mut stack = vec![&self.visual.model];
         let mut index = 0;
-        while let Some(joint) = stack.pop() {
-            if index == self.visual.attachment_bone {
-                let p = joint.position;
-                return hsd_types::Vec3::new(p.x, p.y, p.z);
-            }
-            index += 1;
-            if let Some(next) = joint.next.as_deref() {
-                stack.push(next);
-            }
-            if let Some(child) = joint.child.as_deref() {
-                stack.push(child);
-            }
-        }
-        panic!("item attach joint {} missing", self.visual.attachment_bone)
+        let joint = depth_first_joint(&self.visual.model, self.visual.attachment_bone, &mut index)
+            .unwrap_or_else(|| panic!("item attach joint {} missing", self.visual.attachment_bone));
+        let p = joint.position;
+        hsd_types::Vec3::new(p.x, p.y, p.z)
     }
     /// ftData.x48_items -> Article, loaded once before any item exists. A
     /// character article's state rows are its motion states in order.

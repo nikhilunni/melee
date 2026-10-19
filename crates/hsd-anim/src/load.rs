@@ -289,6 +289,20 @@ pub fn attach_anim_joint(
     Ok(())
 }
 
+/// The joints [`attach_anim_joint`] replaces, in its order, each with its
+/// AnimJoint flags (bit 0 sets `JOBJ_CLASSICAL_SCALE`). Lets an owner
+/// prepare a switch at load and replay it without decoding in the tick.
+pub fn anim_joint_targets(
+    tree: &JObjTree,
+    root: JObjId,
+    anim: &desc::AnimJoint,
+) -> Result<Vec<(JObjId, u32)>, LoadError> {
+    Ok(prepare_animation(tree, root, anim)?
+        .into_iter()
+        .map(|(id, animation)| (id, animation.flags))
+        .collect())
+}
+
 /// `HSD_JObjAddAnimAll` (`jobj.c:335-346`): pair child/next links before attaching.
 fn prepare_animation(
     tree: &JObjTree,

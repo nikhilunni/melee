@@ -443,10 +443,11 @@ pub struct JObjTree {
     position_constraints: std::collections::BTreeMap<JObjId, Option<Vec3>>,
     /// REFTYPE_JOBJ subtype 4 (lb_8000C290): the target joint, and the
     /// retail rotation recovery (HSD_MtxGetRotation with the caller's
-    /// inverse trigonometry) JObjUpdateFunc type 0x37 runs.
+    /// inverse trigonometry) JObjUpdateFunc type 0x37 runs. `None` is an
+    /// inactive slot reserved before the tick loop.
     orientation_constraints: std::collections::BTreeMap<
         JObjId,
-        (crate::orientation::OrientationTarget, OrientationRecovery),
+        Option<(crate::orientation::OrientationTarget, OrientationRecovery)>,
     >,
     nodes: Vec<JObj>,
     /// Inactive joint track buffers, reserved once by fixed-skeleton owners.
@@ -526,6 +527,12 @@ impl JObjTree {
         self.set_mtx_dirty_sub(id);
     }
 
+    /// Prepare an inactive orientation slot before animation updates begin,
+    /// so setting the constraint in the tick does not allocate.
+    pub fn reserve_orientation_constraint(&mut self, id: JObjId) {
+        self.orientation_constraints.entry(id).or_insert(None);
+    }
+
     /// lb_8000C290 / resolveCnsOrientation: the target joint for this frame
     /// (`None` removes the constraint).
     pub fn set_orientation_constraint(
@@ -533,13 +540,10 @@ impl JObjTree {
         id: JObjId,
         target: Option<(crate::orientation::OrientationTarget, OrientationRecovery)>,
     ) {
-        match target {
-            Some(target) => {
-                self.orientation_constraints.insert(id, target);
-            }
-            None => {
-                self.orientation_constraints.remove(&id);
-            }
+        if let Some(slot) = self.orientation_constraints.get_mut(&id) {
+            *slot = target;
+        } else if target.is_some() {
+            self.orientation_constraints.insert(id, target);
         }
         self.set_mtx_dirty_sub(id);
     }
@@ -1156,7 +1160,9 @@ impl JObjTree {
                 }
                 self.nodes[id.0].translate = Vec3::new(local.0[0][3], local.0[1][3], local.0[2][3]);
             }
-            if let Some((target, recover)) = self.orientation_constraints.get(&id).copied() {
+            if let Some((target, recover)) =
+                self.orientation_constraints.get(&id).copied().flatten()
+            {
                 self.resolve_orientation(id, &target, recover);
             }
             self.nodes[id.0].flags &= !JOBJ_MTX_DIRTY;
@@ -1429,6 +1435,33 @@ impl JObjTree {
                 .get_mut(id.0)
                 .map(std::mem::take)
                 .unwrap_or_default()
+        }
+    }
+
+    /// `HSD_JObjAddAnim`'s AObj replacement (`jobj.c:303-305`) from a clock
+    /// prepared at load: the joint's recycled track storage takes copies of
+    /// the prepared tracks, so a reserved skeleton replaces without
+    /// allocating. `None` leaves the joint without an AObj, its storage spare.
+    pub fn replace_aobj_prepared(&mut self, id: JObjId, prepared: Option<&AObj>) {
+        let mut tracks = self.take_animation_tracks(id);
+        tracks.clear();
+        match prepared {
+            Some(source) => {
+                tracks.extend(source.fobj.iter().cloned());
+                self.nodes[id.0].aobj = Some(AObj {
+                    flags: source.flags,
+                    curr_frame: source.curr_frame,
+                    rewind_frame: source.rewind_frame,
+                    end_frame: source.end_frame,
+                    framerate: source.framerate,
+                    fobj: tracks,
+                });
+            }
+            None => {
+                if let Some(spare) = self.spare_tracks.get_mut(id.0) {
+                    *spare = tracks;
+                }
+            }
         }
     }
 

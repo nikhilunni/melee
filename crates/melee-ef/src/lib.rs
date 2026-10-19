@@ -2101,6 +2101,9 @@ impl Effect {
             .unwrap_or(0);
         tree.events.reserve_exact(event_capacity);
         tree.req_anim_all(root, 0.0);
+        // `orient` constrains the root in the tick; the inactive slot exists
+        // from load so it never grows the constraint map.
+        tree.reserve_orientation_constraint(root);
         Ok(Self {
             visual,
             descriptor: id,

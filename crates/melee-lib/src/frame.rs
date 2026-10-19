@@ -2976,7 +2976,11 @@ impl Simulation {
     pub fn with_inputs(mut state: InitialState, pads: [PadSample; 4]) -> Self {
         // Prepare ordinary combat storage before ticks. These reserve budgets
         // do not change retail allocation limits or particle failure behavior.
-        const GENERATOR_RESERVE: usize = 128;
+        // Sized from random two-player matches on every stage
+        // (tests/allocation.rs): link 0 carries most fighter and stage
+        // particles and passed 512 there; no other link passed 128.
+        const GENERATOR_RESERVE: usize = 256;
+        const PARTICLES_LINK_0_RESERVE: usize = 1024;
         const PARTICLES_PER_LINK_RESERVE: usize = 256;
         state
             .particles
@@ -2986,8 +2990,13 @@ impl Simulation {
             .particles
             .pending_generators
             .reserve(GENERATOR_RESERVE);
-        for link in &mut state.particles.particles {
-            link.reserve(PARTICLES_PER_LINK_RESERVE.saturating_sub(link.len()));
+        for (index, link) in state.particles.particles.iter_mut().enumerate() {
+            let reserve = if index == 0 {
+                PARTICLES_LINK_0_RESERVE
+            } else {
+                PARTICLES_PER_LINK_RESERVE
+            };
+            link.reserve(reserve.saturating_sub(link.len()));
         }
         let mut rows = registrations(&state.stage, state.fighters.len());
         if state.banner.is_some() {

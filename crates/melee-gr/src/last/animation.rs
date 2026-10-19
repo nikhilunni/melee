@@ -20,6 +20,8 @@ pub struct BackgroundAnimation {
     pub(super) prepared: Vec<Vec<Option<hsd_anim::aobj::AObj>>>,
     pub(super) prepared_materials: Vec<Vec<Vec<hsd_anim::material_playback::PreparedMaterial>>>,
     pub(super) subtree_ends: Vec<usize>,
+    /// Every model animation decoded at load for `select_animation`.
+    pub(super) selections: super::selection::PreparedSelections,
 }
 /// grLib_801C99C0 (grlib.c:151-158): DPtcl calls hsd_8039EFAC
 /// with link 0 and the animation's bank, kind and attachment joint.
@@ -65,6 +67,7 @@ impl BackgroundAnimation {
         tree.walk_tree(root, &mut |joint, _| joints.push(joint));
         // At most one callback per loaded FObj in one animation evaluation.
         let requests = Vec::with_capacity(tree.events.capacity());
+        let selections = super::selection::prepare(&rest, root, &joints, archive, model);
         let mut result = Self {
             rest,
             overlay: Default::default(),
@@ -76,7 +79,9 @@ impl BackgroundAnimation {
             prepared: Vec::new(),
             prepared_materials: Vec::new(),
             subtree_ends: Vec::new(),
+            selections,
         };
+        result.reserve_events(super::selection::maximum_tracks(&result.selections));
         result.prepare_material_switches(archive, model)?;
         result.play_materials(0, 0, result.joints.len());
         Ok(result)
@@ -93,12 +98,14 @@ impl BackgroundAnimation {
         index: usize,
     ) -> crate::desc::ReadResult<()> {
         self.clear_animation();
-        self.attach_subtree(
-            archive,
-            0,
-            &model.animations[index],
-            model.animation_loops[index],
-        )?;
+        if !self.attach_prepared(index) {
+            self.attach_subtree(
+                archive,
+                0,
+                &model.animations[index],
+                model.animation_loops[index],
+            )?;
+        }
         self.play_materials(index, 0, self.joints.len());
         // Replacement frame-zero particle requests read the outgoing pose's
         // matrix cache. Materialize those targets before evaluating new SRTs;
@@ -289,6 +296,9 @@ impl BackgroundAnimation {
             }
         }
         self.tree.req_anim_all(root, 0.0);
+        // A load-time attachment brings fresh track storage; keep it
+        // reserved for the prepared switches that later reuse it.
+        self.reserve_events(super::selection::maximum_tracks(&self.selections));
         Ok(())
     }
     /// Ground_801C2FE0 -> mpLib_80055E9C: bind each model's collision
@@ -373,6 +383,7 @@ impl Clone for BackgroundAnimation {
             subtree_ends: hsd_types::storage::clone_vec(&self.subtree_ends),
             prepared_materials: self.prepared_materials.clone(),
             rest: std::sync::Arc::clone(&self.rest),
+            selections: std::sync::Arc::clone(&self.selections),
             overlay: self.overlay,
             overlay_script: self.overlay_script,
         }
@@ -421,7 +432,9 @@ impl BackgroundAnimation {
     ) -> crate::desc::ReadResult<()> {
         self.reset_for_creation();
         if let Some(animation) = model.animations.first() {
-            self.attach_subtree(archive, 0, animation, model.animation_loops[0])?;
+            if !self.attach_prepared(0) {
+                self.attach_subtree(archive, 0, animation, model.animation_loops[0])?;
+            }
         }
         self.play_materials(0, 0, self.joints.len());
         Ok(())

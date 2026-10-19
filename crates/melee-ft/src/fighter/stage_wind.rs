@@ -61,12 +61,12 @@ impl FighterCore {
     fn restore_motion_dynamics(&mut self, assets: &FighterAssets) {
         let flags = self.animation.flags;
         let motion_id = self.animation.motion_id;
-        let starts: Option<Vec<u32>> = if flags.contains(MotionFlags::DYNAMICS_TABLE) {
+        let starts: Option<&[u32]> = if flags.contains(MotionFlags::DYNAMICS_TABLE) {
             let dynamics = &assets.dynamics_motion_starts[&motion_id];
             if !dynamics.table_row {
                 return;
             }
-            Some(dynamics.starts.clone())
+            Some(&dynamics.starts)
         } else if flags.contains(MotionFlags::DYNAMICS_OFF) {
             None
         } else {

@@ -42,6 +42,12 @@ impl ArticleSkeleton {
             hsd_anim::load::attach_anim_joint(&mut tree, root, anim, archive)
                 .map_err(|e| anyhow::anyhow!("article animation: {e}"))?;
         }
+        // Posing constrains the attach bone each tick; its slots exist
+        // from load so the tick never grows the constraint maps.
+        if let Some(attach) = tree.bone(root, visual.attachment_bone) {
+            tree.reserve_position_constraint(attach);
+            tree.reserve_orientation_constraint(attach);
+        }
         Ok(Self {
             kind,
             tree,
