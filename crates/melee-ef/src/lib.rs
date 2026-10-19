@@ -1336,13 +1336,7 @@ impl Effects {
                     melee_types::HitElement::Electric => Some(0x3E9),
                     melee_types::HitElement::Fire => Some(0x3EA),
                     melee_types::HitElement::Dark => Some(0x416),
-                    // efSync_Spawn 0x479: efAlt while Mario's bank is loaded,
-                    // else efsync.c:67-69's 0x506 (Luigi's bank).
-                    melee_types::HitElement::Coin => Some(if self.loaded_banks & (1 << 1) != 0 {
-                        0x479
-                    } else {
-                        0x506
-                    }),
+                    melee_types::HitElement::Coin => Some(self.coin_hit_request()),
                     _ => None,
                 };
                 if let Some(generator) = generator {

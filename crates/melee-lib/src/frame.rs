@@ -571,6 +571,15 @@ impl Runtime {
                             &mut state.rng,
                         )?;
                     }
+                    melee_it::ItemEvent::CoinSpark { position } => {
+                        state.effects.spawn_positional::<RetailTrig>(
+                            state.effects.coin_hit_request(),
+                            position,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::Effect { id, position } => {
                         state.effects.spawn_positional::<RetailTrig>(
                             id,

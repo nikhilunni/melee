@@ -87,6 +87,10 @@ pub enum ItemEvent {
     /// spark on a stage enemy or Pokemon (it_80270E30), turned by the
     /// facing the item had when the hit resolved.
     IceSpark { position: Vec3, facing: f32 },
+    /// efSync_Spawn(0x479, item, &pos, item): a Coin hit's positional
+    /// generator on a stage enemy or Pokemon (it_80270E30); the scene
+    /// picks efAlt's 0x479 or efsync.c:67-69's 0x506 by Mario's bank.
+    CoinSpark { position: Vec3 },
     /// Script opcode 10 (it_80278F2C): an effect at a joint whose offset gets
     /// a random spread (it_80278800) when the scene resolves it.
     ScriptEffect(melee_types::combat::GraphicsCommand),

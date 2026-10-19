@@ -262,11 +262,15 @@ fn element_spark(hit: &ItemHit, facing: f32) -> Option<ItemEvent> {
         Slash => Some(ItemEvent::SlashSpark { position }),
         // Ef_Id_Unk1005, the one row passed the item's facing.
         Ice => Some(ItemEvent::IceSpark { position, facing }),
-        // -1: no effect.
-        Nap | Sleep | Catch | Inert | Disable | ScrewAttack | Lipstick => None,
-        Coin | Dark | ReDead => {
-            unimplemented!("it_80270E30: {:?} hit effect on a stage enemy", hit.element)
-        }
+        // Ef_Id_Unk1145 (0x479): efAlt's coin generator, or 0x506.
+        Coin => Some(ItemEvent::CoinSpark { position }),
+        // Ef_Id_Unk1046: a positional generator.
+        Dark => Some(ItemEvent::Effect {
+            id: 0x416,
+            position,
+        }),
+        // -1, and ReDead's 0 (no switch case): no effect.
+        Nap | Sleep | Catch | Inert | Disable | ScrewAttack | Lipstick | ReDead => None,
     }
 }
 

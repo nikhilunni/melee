@@ -2,6 +2,17 @@
 use super::*;
 const REVERSE_BRAKE_DUST_REQUEST: u16 = 0x400;
 impl Effects {
+    /// efSync_Spawn's 0x479 (efsync.c:67-69): efAlt's coin generator while
+    /// Mario's bank (1) is loaded, else 0x506 (efLib_CreateGenerator 0x4658).
+    pub fn coin_hit_request(&self) -> u16 {
+        const MARIO_BANK: u32 = 1;
+        if self.loaded_banks & (1 << MARIO_BANK) != 0 {
+            0x479
+        } else {
+            0x506
+        }
+    }
+
     /// efSync_Spawn -> efAsync_Dispatch's positional generator rows for an
     /// owner without effect state (items): the generator starts at once.
     pub fn spawn_positional<T: InverseTrig>(
