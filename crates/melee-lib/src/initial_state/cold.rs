@@ -58,8 +58,42 @@ impl InitialState {
         let mut state = Self::from_assets(&setup, assets)?;
         if source.has_boundary_recording() {
             state.carry_stale_heap(&setup, source)?;
+            state.carry_particle_families(source)?;
         }
         Ok(state)
+    }
+    /// The particle family counter (lbl_804D6368, psGenerator idnum) only
+    /// counts up over the session, menus and earlier matches included, so no
+    /// scene parameter decides it either: take it from the boundary's initial
+    /// particle dump when the recording has one (a Sudden Death or timeout
+    /// boundary saved after a match starts above the power-on 0x100). The
+    /// families the stage's creation took are numbered from it as well.
+    fn carry_particle_families(
+        &mut self,
+        source: &dyn crate::diagnostics::ScenarioSource,
+    ) -> Result<()> {
+        let path = source.trace_path("particles.jsonl.initial.jsonl");
+        if source.open_trace(&path).is_err() {
+            return Ok(());
+        }
+        let record = super::first_json(source, &path)?;
+        let counter = record["state"]["particles.family_id_counter"]["v"]
+            .as_u64()
+            .context("missing particles.family_id_counter")?;
+        // The families the stage's creation already took shift with it.
+        let counter = u16::try_from(counter)?;
+        let shift = counter.wrapping_sub(self.particles.family_counter);
+        if shift == 0 {
+            return Ok(());
+        }
+        for generator in &mut self.particles.generators {
+            generator.family_id = generator.family_id.wrapping_add(shift);
+        }
+        for particle in self.particles.particles.iter_mut().flatten() {
+            particle.family_id = particle.family_id.wrapping_add(shift);
+        }
+        self.particles.family_counter = counter;
+        Ok(())
     }
     /// HSD_ObjAlloc (0x8037ABC8) returns a Fighter block uncleared and
     /// Fighter_Create (0x80068E98) writes only part of it, so some character
