@@ -132,6 +132,34 @@ enum Command {
         #[arg(long)]
         no_particles: bool,
     },
+    /// Gate every scenario (with particles) on all cores in one process and
+    /// write a TSV: name, PASS/FAIL, EXACT/FAULT/NOTCMP/-, detail. With
+    /// `--baseline`, list what got worse or better and fail on a regression.
+    Sweep {
+        #[arg(long, default_value = "harness/scenarios")]
+        scenarios: PathBuf,
+        #[arg(long)]
+        out: Option<PathBuf>,
+        /// An earlier sweep TSV (this tool's or `sweep.sh`'s) to compare with.
+        #[arg(long)]
+        baseline: Option<PathBuf>,
+        /// Only scenarios whose name contains this text; repeatable (any).
+        #[arg(long = "filter")]
+        filters: Vec<String>,
+        /// Worker threads (default: every core).
+        #[arg(long)]
+        jobs: Option<usize>,
+        /// Fighters, items and the seed only.
+        #[arg(long)]
+        no_particles: bool,
+        /// Wait for an exclusive lock on this file first, so concurrent
+        /// agents' sweeps run one at a time on every core instead of
+        /// together on a share of them.
+        #[arg(long)]
+        lock: Option<PathBuf>,
+    },
+    /// Compare two sweep TSVs: regressions, then fixes; fails on a regression.
+    SweepCompare { before: PathBuf, after: PathBuf },
     /// Gate a scenario and, at its first divergence, report every differing
     /// key, the motion history, items, RNG writers, particle call sites and
     /// generators, and bones where those captures exist.
@@ -581,6 +609,58 @@ fn main() -> anyhow::Result<()> {
             print!("{}", melee_sim::triage::triage(&scenario)?);
             Ok(())
         }
+        Command::Sweep {
+            scenarios,
+            out,
+            baseline,
+            filters,
+            jobs,
+            no_particles,
+            lock,
+        } => {
+            use melee_sim::sweep;
+            // Held until the sweep ends; the OS releases it if we die.
+            let _lock = match &lock {
+                Some(path) => {
+                    let file = std::fs::File::create(path)?;
+                    if file.try_lock().is_err() {
+                        eprintln!("waiting for the sweep lock {}", path.display());
+                        file.lock()?;
+                    }
+                    Some(file)
+                }
+                None => None,
+            };
+            let started = std::time::Instant::now();
+            let paths = sweep::scenarios(&scenarios, &filters)?;
+            let total = paths.len();
+            let jobs = jobs.unwrap_or_else(|| {
+                std::thread::available_parallelism().map_or(1, |n| n.get())
+            });
+            let rows = sweep::run(&paths, jobs, !no_particles, |done| {
+                if done % 100 == 0 || done == total {
+                    eprintln!("[{done}/{total}] {:.0} s", started.elapsed().as_secs_f64());
+                }
+            });
+            let tsv: String = rows.iter().map(|r| r.tsv() + "\n").collect();
+            match &out {
+                Some(out) => std::fs::write(out, &tsv)?,
+                None => print!("{tsv}"),
+            }
+            eprint!("{}", sweep::summary(&rows));
+            eprintln!(
+                "{total} scenarios in {:.0} s on {jobs} threads",
+                started.elapsed().as_secs_f64()
+            );
+            match baseline {
+                Some(baseline) => report_comparison(&sweep::read(&baseline)?, &rows),
+                None => Ok(()),
+            }
+        }
+        Command::SweepCompare { before, after } => report_comparison(
+            &melee_sim::sweep::read(&before)?,
+            &melee_sim::sweep::read(&after)?,
+        ),
         Command::Gate {
             scenario,
             particles,
@@ -619,6 +699,24 @@ fn main() -> anyhow::Result<()> {
             Ok(())
         }
     }
+}
+
+/// Print a sweep comparison (regressions first) and fail on a regression.
+fn report_comparison(
+    before: &[melee_sim::sweep::Row],
+    after: &[melee_sim::sweep::Row],
+) -> anyhow::Result<()> {
+    let comparison = melee_sim::sweep::compare(before, after);
+    for line in comparison.regressions.iter().chain(&comparison.fixed) {
+        println!("{line}");
+    }
+    eprintln!(
+        "{} regressions, {} fixed",
+        comparison.regressions.len(),
+        comparison.fixed.len()
+    );
+    anyhow::ensure!(comparison.regressions.is_empty(), "sweep regressed");
+    Ok(())
 }
 
 fn parse_vec3(text: &str) -> Result<hsd_types::Vec3, String> {

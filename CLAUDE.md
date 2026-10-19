@@ -56,6 +56,8 @@ cargo test --release -p melee-sim --test m5_gate corpus     # focused combat/cor
 # Oracle loop (all melee-sim commands: cargo run -q --release -p melee-sim -- ...)
 melee-sim gate harness/scenarios/<name>.toml          # compare every key against the retail trace
 melee-sim triage harness/scenarios/<name>.toml        # first divergence: keys, motions, items, RNG, particles, bones
+melee-sim sweep --out after.tsv [--baseline before.tsv] [--filter kirby] [--lock target/sweep.lock]   # every scenario, all cores
+melee-sim sweep-compare before.tsv after.tsv          # regressions and fixes between two sweeps
 melee-sim dry-run <new.toml> --state-from <recorded.toml> --out o.jsonl   # run the port alone
 melee-sim search <base.toml> --state-from <recorded.toml> --spec <spec.toml> [--out new.toml --name n]
 cd harness && uv run python record_many.py scenarios/a.toml ... [--jobs 8]   # record in parallel
@@ -166,8 +168,8 @@ Subagents are allowed and always run on **Opus 5.5** (user, 2026-09-28). No
 Codex. Use them for bounded work, as many in parallel as the work allows:
 - search-only agents (dry runs and scratch files, no repo edits);
 - worktree agents for one bug each, which commit on their own branch and sweep
-  every recorded scenario before and after the change. The coordinator reviews,
-  cherry-picks, gates and commits.
+  every recorded scenario after the change against the coordinator's baseline.
+  The coordinator reviews, cherry-picks, gates and commits.
 
 A worktree never symlinks or copies `harness/roms` or `harness/traces`: an
 agent reads the main checkout's data in place (`MELEE_DATA_ROOT` for changed
@@ -175,9 +177,15 @@ harness scripts). Brief every worktree agent with `docs/AGENT_BRIEF.md` plus
 its task; agents rebase onto `main` before reporting. Merge with
 `tools/agent-merge/pick.sh` (it refuses game data and decomp paths), gate the
 agent's scenarios and a cross-section after each merge, `m5_gate` every few
-merges, and a full checkpoint to close a wave. Agents sweep every scenario
-once before and once after their change, not per edit: eight concurrent
-sweeps saturate the machine. Remove finished agents'
+merges, and a full checkpoint to close a wave.
+
+Sweeps are the wave's main cost (about 17 CPU-minutes each). The coordinator
+sweeps each main commit agents start from into `target/sweeps/<commit>.tsv`;
+agents do not sweep "before". While working, an agent sweeps only what its
+change touches (`--filter <character or feature>`, seconds); once at the end
+it runs the full sweep against the baseline with
+`--lock /Users/nikhilunni/Projects/melee/target/sweep.lock`, so sweeps queue
+and each runs on every core. Remove finished agents'
 worktrees (`git worktree remove`) when a wave is merged: each keeps a full
 build directory.
 

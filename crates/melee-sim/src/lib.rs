@@ -27,6 +27,7 @@ pub mod replay_stage_codes;
 pub mod scenario;
 pub mod scratch;
 pub mod search;
+pub mod sweep;
 pub mod trace;
 pub mod trace_after_map;
 pub mod trace_items;

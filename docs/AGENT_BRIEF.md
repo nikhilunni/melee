@@ -31,8 +31,16 @@ You work in a git worktree of the main checkout
   checkout's data with `MELEE_DATA_ROOT=/Users/nikhilunni/Projects/melee`
   (also needed for `melee-sim replay`). Recording with Slippi Gecko codes
   needs `MELEE_GECKO_DIR=~/melee-data/gecko`.
-- Sweep every recorded scenario once before your change (pristine build) and
-  once after, not per edit: other agents share the machine.
+- Sweeps (`melee-sim sweep`, columns: scenario, PASS/FAIL, particle
+  EXACT/FAULT/NOTCMP/-, detail). The "before" is done for you: the
+  coordinator's sweep of the main commit you start from is
+  `/Users/nikhilunni/Projects/melee/target/sweeps/<commit>.tsv`. While
+  working, sweep only what you touch, against it:
+  `melee-sim sweep --scenarios /Users/nikhilunni/Projects/melee/harness/scenarios --filter <character> --baseline <that tsv>`.
+  Once, at the end, sweep everything:
+  `melee-sim sweep --scenarios /Users/nikhilunni/Projects/melee/harness/scenarios --out target/after.tsv --baseline <that tsv> --lock /Users/nikhilunni/Projects/melee/target/sweep.lock`.
+  The lock queues agents' sweeps so each runs on every core (about 2
+  minutes); wait for it in the background rather than polling.
 
 ## Slippi replay tasks
 
@@ -73,8 +81,9 @@ must stay exact.
 
 1. Your scenarios: `melee-sim gate` exact over their full `frames`, and
    `particle-sites` 0 differing ticks on what you register.
-2. No regressions: sweep every scenario with a retail trace before your
-   change (pristine build) and after; nothing that passed may fail.
+2. No regressions: the full sweep against the baseline prints no
+   REGRESSION line and exits 0 (base PASS stays PASS, particle EXACT stays
+   EXACT).
 3. `cargo clippy -p <crates> --all-targets -- -D warnings`; the crates' tests.
 4. Register exact scenarios (`CORPUS_V3_MATCHES` or `MATRIX_WITNESSES` in
    `crates/melee-sim/tests/m5_gate.rs`, one-line reason) and copy their TOMLs
