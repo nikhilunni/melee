@@ -4,6 +4,7 @@
 //! and action ids, `lfs` for the impulses (ftCo_800D74A4).
 use ft_captain_family::attributes::FalconPunchAttributes;
 use ft_mars_family::attributes::ShieldBreakerAttributes;
+use ft_purin_family::RolloutAttributes;
 use hsd_archive::{Archive, Reader};
 use hsd_types::Vec2;
 use melee_ft::desc::{
@@ -45,6 +46,8 @@ pub struct KirbyAttributes {
     pub marth_shield_breaker: ShieldBreakerAttributes,
     /// +370..+384 (`fe`): the copied Flare Blade.
     pub roy_flare_blade: ShieldBreakerAttributes,
+    /// +2B4..+358 (`specialn_pr_*`): the copied Rollout, Jigglypuff's block.
+    pub rollout: RolloutAttributes,
     /// +384 (`specialn_mt_charge_time`): the copied Shadow Ball's full
     /// charge; a hit keeps a full charge (ftKb_SpecialNMt_80107130).
     pub mewtwo_charge_time: f32,
@@ -263,6 +266,7 @@ impl KirbyAttributes {
             falco_blaster: BlasterAttributes::read(Reader::new(r.slice(0x244, 0x24)?))?,
             marth_shield_breaker: ShieldBreakerAttributes::read(&r, 0x35C)?,
             roy_flare_blade: ShieldBreakerAttributes::read(&r, 0x370)?,
+            rollout: RolloutAttributes::read(&r, 0x2B4)?,
             mewtwo_charge_time: r.f32(0x384)?,
         })
     }

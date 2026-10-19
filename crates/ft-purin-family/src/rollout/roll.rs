@@ -1,10 +1,10 @@
-//! The roll: Release (350, 358) and Turn (351, 359). Puff rolls at a
-//! speed the charge sets; the charge runs down, walls bounce her back, the
-//! stick against the roll turns her round.
+//! The roll: Release (Jigglypuff's rows 350, 358) and Turn (351, 359). The
+//! ball rolls at a speed the charge sets; the charge runs down, walls bounce
+//! it back, the stick against the roll turns it round.
 use super::{
     attributes, change,
     charge::{assets, fall, finish_ground, DEGREES_TO_RADIANS},
-    end, flags, model, scratch, AIR_RELEASE, AIR_TURN, RELEASE, ROLL_BOX, TURN,
+    end, flags, model, scratch, RolloutKind, RolloutRow, ROLL_BOX,
 };
 use gekko_math::{fma, msl::fabsf};
 use melee_ft::{
@@ -40,38 +40,38 @@ fn sign(value: f32) -> f32 {
 
 /// ftPr_SpecialNRelease_Anim (8013E410): squash, hitbox upkeep and roll;
 /// once the roll time is spent, stop when the ball turns face-down.
-pub(super) fn release_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
-    model::remember_hitbox(f);
+pub(super) fn release_anim<C: RolloutKind>(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
+    model::remember_hitbox::<C>(f);
     f.step_animation(p.assets);
-    model::roll_sound(f, false);
-    scratch(f).pending_facing = 0.0;
-    model::squash(f);
-    model::toggle_group(f);
-    model::update_hitbox(f, p.assets);
-    let a = attributes(f);
+    model::roll_sound::<C>(f, false);
+    scratch::<C>(f).pending_facing = 0.0;
+    model::squash::<C>(f);
+    model::toggle_group::<C>(f);
+    model::update_hitbox::<C>(f, p.assets);
+    let a = attributes::<C>(f);
     let rotation = a.release_rotation_speed;
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     let previous = rollout.roll_angle;
     // 8013E640 fmul, 8013E654 fmul (double), frsp; 8013E668 fmuls,
     // 8013E66C fmuls, 8013E670 fadds.
     let scale = (ROTATION_SCALE * f64::from(rotation) * f64::from(rollout.direction)) as f32;
     let delta = DEGREES_TO_RADIANS * rollout.charge as f32 * scale;
     rollout.roll_angle = previous + delta;
-    model::set_roll(f);
-    stop_face_down(f, previous, delta, false, p.assets)?;
+    model::set_roll::<C>(f);
+    stop_face_down::<C>(f, previous, delta, false, p.assets)?;
     Ok(None)
 }
 
 /// The shared tail of both release anims: count the roll down; once
 /// spent, when the angle crosses pi (the ball face-down) the roll ends.
-fn stop_face_down(
+fn stop_face_down<C: RolloutKind>(
     f: &mut Fighter,
     previous: f32,
     delta: f32,
     air: bool,
     assets: &FighterAssets,
 ) -> Result<()> {
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     rollout.remaining -= 1;
     if rollout.remaining <= 0 {
         let angle = f64::from(rollout.roll_angle);
@@ -83,7 +83,7 @@ fn stop_face_down(
             };
             if crossed {
                 rollout.remaining = 0;
-                return end(f, air, flags::START, 0.0, assets);
+                return end::<C>(f, air, flags::START, 0.0, assets);
             }
         }
     }
@@ -93,87 +93,90 @@ fn stop_face_down(
 
 /// ftPr_SpecialAirNChargeRelease_Anim (8013F1A4): as on the ground, the
 /// roll's angular speed scaled by the aerial multiplier.
-pub(super) fn air_release_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
-    model::remember_hitbox(f);
+pub(super) fn air_release_anim<C: RolloutKind>(
+    f: &mut Fighter,
+    p: AnimationPhase<'_>,
+) -> AnimResult {
+    model::remember_hitbox::<C>(f);
     f.step_animation(p.assets);
-    model::roll_sound(f, false);
-    scratch(f).pending_facing = 0.0;
-    model::squash(f);
-    model::toggle_group(f);
-    model::update_hitbox(f, p.assets);
-    let a = attributes(f);
+    model::roll_sound::<C>(f, false);
+    scratch::<C>(f).pending_facing = 0.0;
+    model::squash::<C>(f);
+    model::toggle_group::<C>(f);
+    model::update_hitbox::<C>(f, p.assets);
+    let a = attributes::<C>(f);
     let (rotation, aerial) = (a.release_rotation_speed, a.air_rotation_multiplier);
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     let previous = rollout.roll_angle;
     // 8013F3C8 fmul, 8013F3E4 fmul (double), frsp; 8013F3F0 fmuls,
     // 8013F3F8 fmuls, 8013F3FC fmuls, 8013F400 fadds.
     let scale = (ROTATION_SCALE * f64::from(rotation) * f64::from(rollout.direction)) as f32;
     let delta = scale * (DEGREES_TO_RADIANS * rollout.charge as f32 * aerial);
     rollout.roll_angle = previous + delta;
-    model::set_roll(f);
-    stop_face_down(f, previous, delta, true, p.assets)?;
+    model::set_roll::<C>(f);
+    stop_face_down::<C>(f, previous, delta, true, p.assets)?;
     Ok(None)
 }
 
 /// ftPr_SpecialNRelease_IASA (801401C4): the stick held against the roll
 /// turns it round.
-pub(super) fn release_input(f: &mut Fighter, p: InputPhase<'_>) {
+pub(super) fn release_input<C: RolloutKind>(f: &mut Fighter, p: InputPhase<'_>) {
     let stick = f.input.current.stick.x;
-    if fabsf(stick) <= attributes(f).reverse_stick_threshold {
+    if fabsf(stick) <= attributes::<C>(f).reverse_stick_threshold {
         return;
     }
     let direction = sign(stick);
-    if scratch(f).direction == direction {
+    if scratch::<C>(f).direction == direction {
         return;
     }
-    model::clear_hitboxes(f);
-    let rollout = scratch(f);
+    model::clear_hitboxes::<C>(f);
+    let rollout = scratch::<C>(f);
     rollout.pending_facing = direction;
     rollout.direction = -direction;
     let frame = f.animation.frame;
-    change(f, TURN, flags::HELD, frame, 0.0, p.assets).expect("Rollout turn");
+    change::<C>(f, RolloutRow::Turn, flags::HELD, frame, 0.0, p.assets).expect("Rollout turn");
     let speed = f.physics.ground_velocity;
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     rollout.turn_speed = speed;
     // 801402A0 fmuls.
     rollout.acceleration = TURN_DECELERATION * speed;
     rollout.dust_timer = 0;
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     model::sound(f, model::RELEASE_SOUND);
 }
 
 /// ftPr_SpecialNTurn_Anim (8013E7E0): spin backward (8013E9A8 fmul,
 /// 8013E9B4 fmadd, both double, frsp); the dust every few frames. If the
 /// roll time runs out mid-turn, the roll ends facing the other way.
-pub(super) fn turn_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
-    model::remember_hitbox(f);
+pub(super) fn turn_anim<C: RolloutKind>(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
+    model::remember_hitbox::<C>(f);
     f.step_animation(p.assets);
-    model::roll_sound(f, true);
-    model::squash(f);
-    let rotation = attributes(f).turn_rotation_speed;
-    let rollout = scratch(f);
+    model::roll_sound::<C>(f, true);
+    model::squash::<C>(f);
+    let rotation = attributes::<C>(f).turn_rotation_speed;
+    let rollout = scratch::<C>(f);
     rollout.roll_angle = fma::fmadd(
         ROTATION_SCALE * f64::from(rotation),
         f64::from(-rollout.direction),
         f64::from(rollout.roll_angle),
     ) as f32;
-    model::set_roll(f);
-    if run_out(f) {
-        end(f, false, flags::START, 0.0, p.assets)?;
+    model::set_roll::<C>(f);
+    if run_out::<C>(f) {
+        end::<C>(f, false, flags::START, 0.0, p.assets)?;
         return Ok(None);
     }
-    let interval = attributes(f).turn_effect_interval;
-    if scratch(f).dust_timer % interval == 0 {
+    let interval = attributes::<C>(f).turn_effect_interval;
+    if scratch::<C>(f).dust_timer % interval == 0 {
         model::dust(f);
     }
-    scratch(f).dust_timer += 1;
+    scratch::<C>(f).dust_timer += 1;
     model::face_forward(f);
     Ok(None)
 }
 
 /// A turn whose roll time is spent ends reversed.
-fn run_out(f: &mut Fighter) -> bool {
-    let rollout = scratch(f);
+fn run_out<C: RolloutKind>(f: &mut Fighter) -> bool {
+    let rollout = scratch::<C>(f);
     rollout.remaining -= 1;
     if rollout.remaining > 0 {
         return false;
@@ -186,22 +189,22 @@ fn run_out(f: &mut Fighter) -> bool {
 /// ftPr_SpecialAirNStartTurn_Anim (8013F708): as on the ground, scaled by
 /// the aerial multiplier (8013F8D0 fmul, 8013F8E0 fmul, frsp, 8013F8E8
 /// fmadds), without the dust; it ends on the ground's row.
-pub(super) fn air_turn_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
-    model::remember_hitbox(f);
+pub(super) fn air_turn_anim<C: RolloutKind>(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
+    model::remember_hitbox::<C>(f);
     f.step_animation(p.assets);
-    model::roll_sound(f, true);
-    model::squash(f);
-    let a = attributes(f);
+    model::roll_sound::<C>(f, true);
+    model::squash::<C>(f);
+    let a = attributes::<C>(f);
     let (rotation, aerial) = (a.turn_rotation_speed, a.air_rotation_multiplier);
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     let step = (ROTATION_SCALE * f64::from(rotation) * f64::from(-rollout.direction)) as f32;
     rollout.roll_angle = fma::fmadds(aerial, step, rollout.roll_angle);
-    model::set_roll(f);
-    if run_out(f) {
-        end(f, false, flags::START, 0.0, p.assets)?;
+    model::set_roll::<C>(f);
+    if run_out::<C>(f) {
+        end::<C>(f, false, flags::START, 0.0, p.assets)?;
         return Ok(None);
     }
-    scratch(f).dust_timer += 1;
+    scratch::<C>(f).dust_timer += 1;
     model::face_forward(f);
     Ok(None)
 }
@@ -231,8 +234,8 @@ fn clamp_speed(value: f32, limit: f32) -> f32 {
 
 /// ftPr_SpecialNRelease_Phys (801406B0): the charge sets the speed, the
 /// slope adds or takes some; the charge decays and, spent, ends the roll.
-pub(super) fn release_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    let a = attributes(f);
+pub(super) fn release_physics<C: RolloutKind>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    let a = attributes::<C>(f);
     let (multiplier, minimum, slope_influence, ground_limit, slope_limit, decay) = (
         a.charge_speed_multiplier,
         a.minimum_charge,
@@ -242,7 +245,7 @@ pub(super) fn release_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
         a.charge_decay,
     );
     let slope = f.collision.data.floor.normal.x;
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     // 8014070C fsubs, 80140710 fmuls, 80140714 fmuls.
     let base = rollout.direction * (multiplier * (rollout.charge as f32 - minimum));
     // 8014072C fmuls, 80140738 fmuls.
@@ -259,16 +262,16 @@ pub(super) fn release_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
     f.physics.animation_velocity.y = 0.0;
     f.physics.self_velocity.y = 0.0;
     apply_ground_movement(f, &p);
-    if decay_charge(f, decay, minimum) {
-        end(f, false, flags::START, 0.0, p.assets).expect("Rollout end");
+    if decay_charge::<C>(f, decay, minimum) {
+        end::<C>(f, false, flags::START, 0.0, p.assets).expect("Rollout end");
     }
     finish_ground(f, &p);
 }
 
 /// The charge runs down (80140848 fsubs, 80140850 fctiwz); true once it
 /// falls below the minimum.
-fn decay_charge(f: &mut Fighter, decay: f32, minimum: f32) -> bool {
-    let rollout = scratch(f);
+fn decay_charge<C: RolloutKind>(f: &mut Fighter, decay: f32, minimum: f32) -> bool {
+    let rollout = scratch::<C>(f);
     rollout.charge = gekko_math::msl::fctiwz(rollout.charge as f32 - decay);
     (rollout.charge as f32) < minimum
 }
@@ -277,8 +280,8 @@ fn decay_charge(f: &mut Fighter, decay: f32, minimum: f32) -> bool {
 /// the floor's friction and slope; once the speed reverses past a
 /// fraction of the entry speed, roll on (x21EC starts a new attack
 /// instance inside the state change).
-pub(super) fn turn_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    let a = attributes(f);
+pub(super) fn turn_physics<C: RolloutKind>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    let a = attributes::<C>(f);
     let (friction, slope_influence, ratio) = (
         a.ground_friction_multiplier,
         a.slope_influence,
@@ -286,7 +289,7 @@ pub(super) fn turn_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
     );
     let terrain = melee_mp::terrain_speed_scale(f.collision.data.floor.flags);
     let slope = f.collision.data.floor.normal.x;
-    let acceleration = scratch(f).acceleration;
+    let acceleration = scratch::<C>(f).acceleration;
     // 801408F4 fmuls, 80140910 fmuls, 8014091C fmuls.
     let scale = friction * terrain;
     let influence = slope_influence * (acceleration * fabsf(slope));
@@ -300,7 +303,7 @@ pub(super) fn turn_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
     f.physics.animation_velocity.y = 0.0;
     f.physics.self_velocity.y = 0.0;
     apply_ground_movement(f, &p);
-    let turn = scratch(f).turn_speed;
+    let turn = scratch::<C>(f).turn_speed;
     let velocity = f.physics.ground_velocity;
     let reversed = if turn > 0.0 {
         velocity < 0.0
@@ -314,15 +317,15 @@ pub(super) fn turn_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
         } else {
             flags::UNTURN_FROM_LEFT
         };
-        roll_on(f, flags, p.assets).expect("Rollout turn end");
+        roll_on::<C>(f, flags, p.assets).expect("Rollout turn end");
     }
     model::face_forward(f);
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     finish_ground(f, &p);
 }
 
 /// The turn's return to Release, facing the new way.
-fn roll_on(
+fn roll_on<C: RolloutKind>(
     f: &mut Fighter,
     flags: melee_ft::fighter::MotionEntryFlags,
     assets: &FighterAssets,
@@ -331,14 +334,14 @@ fn roll_on(
     // ft_800892A0.
     f.combat.stale.new_instance();
     let frame = f.animation.frame;
-    change(f, RELEASE, flags, frame, 0.0, assets)?;
-    let rollout = scratch(f);
+    change::<C>(f, RolloutRow::Release, flags, frame, 0.0, assets)?;
+    let rollout = scratch::<C>(f);
     let pending = rollout.pending_facing;
     if pending != 0.0 {
         rollout.direction = pending;
         f.physics.facing = pending;
     }
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     rollout.pending_facing = 0.0;
     rollout.group_timer = 0;
     Ok(())
@@ -346,27 +349,27 @@ fn roll_on(
 
 /// ftPr_SpecialAirNChargeRelease_Phys (80140C78): the charge sets the
 /// speed, less the air deceleration, at least the aerial minimum.
-pub(super) fn air_release_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    let a = attributes(f);
+pub(super) fn air_release_physics<C: RolloutKind>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    let a = attributes::<C>(f);
     let (multiplier, minimum, decay) =
         (a.charge_speed_multiplier, a.minimum_charge, a.charge_decay);
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     // 80140CC8 fsubs, 80140CCC fmuls, 80140CD0 fmuls.
     f.physics.self_velocity.x =
         rollout.direction * (multiplier * (rollout.charge as f32 - minimum));
-    air_decelerate(f);
+    air_decelerate::<C>(f);
     let speed = fabsf(f.physics.self_velocity.x);
-    scratch(f).speed = speed;
-    fall(f);
-    if decay_charge(f, decay, minimum) {
-        end(f, true, flags::START, 0.0, p.assets).expect("Rollout end");
+    scratch::<C>(f).speed = speed;
+    fall::<C>(f);
+    if decay_charge::<C>(f, decay, minimum) {
+        end::<C>(f, true, flags::START, 0.0, p.assets).expect("Rollout end");
     }
     f.core.finish_air_update(p.assets, p.wind);
 }
 
 /// The aerial deceleration toward zero, never below the aerial minimum.
-fn air_decelerate(f: &mut Fighter) {
-    let a = attributes(f);
+fn air_decelerate<C: RolloutKind>(f: &mut Fighter) {
+    let a = attributes::<C>(f);
     let (deceleration, minimum) = (a.air_deceleration, a.air_minimum_speed);
     let velocity = &mut f.physics.self_velocity.x;
     // 80140CFC fsubs.
@@ -381,11 +384,11 @@ fn air_decelerate(f: &mut Fighter) {
 }
 
 /// ftPr_SpecialAirNStartTurn_Phys (80140DF8).
-pub(super) fn air_turn_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    air_decelerate(f);
-    fall(f);
+pub(super) fn air_turn_physics<C: RolloutKind>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    air_decelerate::<C>(f);
+    fall::<C>(f);
     model::face_forward(f);
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     f.core.finish_air_update(p.assets, p.wind);
 }
 
@@ -412,9 +415,9 @@ fn collide_ground(f: &mut Fighter, p: &mut CollisionPhase<'_>, stop_at_edge: boo
 
 /// The wall on the rolling side (env_flags 0x3F rolling right, 0xFC0
 /// left), after its effect.
-fn touched_wall(f: &mut Fighter) -> bool {
+fn touched_wall<C: RolloutKind>(f: &mut Fighter) -> bool {
     use melee_types::mp::collide::{LEFT_WALL_MASK, RIGHT_WALL_MASK};
-    let direction = scratch(f).direction;
+    let direction = scratch::<C>(f).direction;
     let env = f.collision.data.env_flags as u32;
     let wall = if direction == 1.0 {
         env & LEFT_WALL_MASK != 0
@@ -429,9 +432,9 @@ fn touched_wall(f: &mut Fighter) -> bool {
 
 /// A wall takes the charge and speed down by the rebound multiplier
 /// (80141480 fmuls, fctiwz; separate fmuls for the rest).
-fn damp_on_wall(f: &mut Fighter) {
-    let rebound = attributes(f).wall_rebound_multiplier;
-    let rollout = scratch(f);
+fn damp_on_wall<C: RolloutKind>(f: &mut Fighter) {
+    let rebound = attributes::<C>(f).wall_rebound_multiplier;
+    let rollout = scratch::<C>(f);
     rollout.charge = gekko_math::msl::fctiwz(rollout.charge as f32 * rebound);
     if rollout.charge < 0 {
         rollout.charge = 0;
@@ -441,52 +444,69 @@ fn damp_on_wall(f: &mut Fighter) {
 
 /// ftPr_SpecialNRelease_Coll (80141254): walls bounce the roll back;
 /// rolling off the floor continues in the air.
-pub(super) fn release_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub(super) fn release_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
     let supported = collide_ground(f, &mut p, false);
-    if touched_wall(f) {
-        damp_on_wall(f);
-        let rebound = attributes(f).wall_rebound_multiplier;
+    if touched_wall::<C>(f) {
+        damp_on_wall::<C>(f);
+        let rebound = attributes::<C>(f).wall_rebound_multiplier;
         f.physics.ground_velocity = -f.physics.ground_velocity * rebound;
         f.physics.self_velocity.x = -f.physics.self_velocity.x * rebound;
         let direction = sign(f.physics.ground_velocity);
-        scratch(f).direction = direction;
+        scratch::<C>(f).direction = direction;
         model::face_forward(f);
     }
     if !supported {
         f.leave_ground();
         let frame = f.animation.frame;
-        change(
+        change::<C>(
             f,
-            AIR_RELEASE,
+            RolloutRow::AirRelease,
             flags::ROLLING_GROUND_AIR,
             frame,
             0.0,
             assets(&p),
         )?;
-        model::set_roll(f);
+        model::set_roll::<C>(f);
         model::face_forward(f);
-        let acceleration = attributes(f).air_acceleration;
-        scratch(f).acceleration = acceleration;
+        let acceleration = attributes::<C>(f).air_acceleration;
+        scratch::<C>(f).acceleration = acceleration;
     }
     Ok(())
 }
 
 /// ftPr_SpecialNTurn_Coll (801415F4): a fast turn ignores floor edges;
 /// rolling off the floor continues the turn in the air.
-pub(super) fn turn_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
-    let fast = fabsf(f.physics.ground_velocity) > attributes(f).landing_speed_threshold;
+pub(super) fn turn_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
+    let fast = fabsf(f.physics.ground_velocity) > attributes::<C>(f).landing_speed_threshold;
     if collide_ground(f, &mut p, !fast) {
         return Ok(());
     }
     f.leave_ground();
     let frame = f.animation.frame;
-    change(f, AIR_TURN, flags::GROUND_AIR, frame, 0.0, assets(&p))
+    change::<C>(
+        f,
+        RolloutRow::AirTurn,
+        flags::GROUND_AIR,
+        frame,
+        0.0,
+        assets(&p),
+    )
 }
 
 /// ft_8008239C (8008239C): an airborne pass with the roll's box, catching
 /// ledges on the rolling side while the ledge cooldown allows.
-fn collide_air(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
-    let direction = if scratch(f).direction == 1.0 { 1 } else { -1 };
+fn collide_air<C: RolloutKind>(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
+    let direction = if scratch::<C>(f).direction == 1.0 {
+        1
+    } else {
+        -1
+    };
     let c = &mut f.core;
     air::begin_map(
         &c.physics,
@@ -509,25 +529,28 @@ fn collide_air(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
 /// ftPr_SpecialAirNChargeRelease_Coll (801419E0): walls bounce the roll
 /// back; a slow floor bounce lands rolling, a fast one bounces (the stick
 /// may steer); a ledge is caught.
-pub(super) fn air_release_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
-    let floor = collide_air(f, &mut p);
-    if touched_wall(f) {
-        damp_on_wall(f);
-        let rebound = attributes(f).wall_rebound_multiplier;
+pub(super) fn air_release_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
+    let floor = collide_air::<C>(f, &mut p);
+    if touched_wall::<C>(f) {
+        damp_on_wall::<C>(f);
+        let rebound = attributes::<C>(f).wall_rebound_multiplier;
         f.physics.self_velocity.x = -f.physics.self_velocity.x * rebound;
-        let rollout = scratch(f);
+        let rollout = scratch::<C>(f);
         rollout.direction = -rollout.direction;
     }
     if floor {
-        bounce_or_land(f, assets(&p))?;
-        scratch(f).squash_step = 0;
+        bounce_or_land::<C>(f, assets(&p))?;
+        scratch::<C>(f).squash_step = 0;
         return Ok(());
     }
     let assets = assets(&p);
     if f.try_grab_ledge(assets, p.map)? {
         // ftPr_SpecialAirNChargeRelease_Coll_inline: the pose returns, then
         // ftCliffCommon_80081370 runs a second time.
-        model::restore(f);
+        model::restore::<C>(f);
         f.enter_cliff_catch(assets, p.map)?;
     }
     Ok(())
@@ -535,8 +558,8 @@ pub(super) fn air_release_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) 
 
 /// The floor under an aerial roll: the bounce keeps the vertical speed
 /// (80141CA8 fmuls, always upward); too slow a bounce lands rolling.
-fn bounce_or_land(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
-    let a = attributes(f);
+fn bounce_or_land<C: RolloutKind>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
+    let a = attributes::<C>(f);
     let (kept, minimum, threshold, ground_acceleration) = (
         a.bounce_vertical_multiplier,
         a.minimum_bounce_speed,
@@ -548,23 +571,30 @@ fn bounce_or_land(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     if vertical < minimum {
         f.land();
         let frame = f.animation.frame;
-        change(f, RELEASE, flags::ROLLING_GROUND_AIR, frame, 0.0, assets)?;
-        let rollout = scratch(f);
+        change::<C>(
+            f,
+            RolloutRow::Release,
+            flags::ROLLING_GROUND_AIR,
+            frame,
+            0.0,
+            assets,
+        )?;
+        let rollout = scratch::<C>(f);
         // 80141D28 fmuls.
         let velocity = rollout.speed * rollout.direction;
         f.physics.ground_velocity = velocity;
         f.physics.self_velocity.x = velocity;
         f.physics.self_velocity.z = 0.0;
         f.physics.self_velocity.y = 0.0;
-        model::set_roll(f);
+        model::set_roll::<C>(f);
         model::face_forward(f);
-        model::dust(f);
-        scratch(f).acceleration = ground_acceleration;
+        model::landing_dust::<C>(f);
+        scratch::<C>(f).acceleration = ground_acceleration;
         return Ok(());
     }
     let stick = f.input.current.stick.x;
     if fabsf(stick) > threshold {
-        let rollout = scratch(f);
+        let rollout = scratch::<C>(f);
         rollout.direction = sign(stick);
         // 80141E34 fmuls.
         let velocity = rollout.speed * rollout.direction;
@@ -572,18 +602,28 @@ fn bounce_or_land(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
         f.physics.self_velocity.x = velocity;
         model::face_forward(f);
     }
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     Ok(())
 }
 
 /// ftPr_SpecialAirNStartTurn_Coll (80141FB8): landing turns on the ground.
-pub(super) fn air_turn_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub(super) fn air_turn_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
     if !collide_air_box(f, &mut p) {
         return Ok(());
     }
     f.land();
     let frame = f.animation.frame;
-    change(f, TURN, flags::GROUND_AIR, frame, 0.0, assets(&p))?;
+    change::<C>(
+        f,
+        RolloutRow::Turn,
+        flags::GROUND_AIR,
+        frame,
+        0.0,
+        assets(&p),
+    )?;
     f.physics.ground_velocity = f.physics.self_velocity.x;
     f.physics.self_velocity.z = 0.0;
     f.physics.self_velocity.y = 0.0;

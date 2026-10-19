@@ -1,6 +1,5 @@
 //! Rollout's pose, sounds, effects and hitbox upkeep shared by its states.
-use super::{attributes, scratch};
-use crate::init::Jigglypuff;
+use super::{attributes, scratch, LandingDust, RolloutKind};
 use gekko_math::msl::fabsf;
 use hsd_types::Vec3;
 use melee_ft::fighter::{
@@ -53,8 +52,8 @@ pub fn sound(f: &mut Fighter, id: u32) {
 /// ftPr_SpecialS_8013DD54 (8013DD54): wrap the roll angle, then play the
 /// rolling sound (ft_80088510) each time it turns over; `turning` rolls
 /// backward.
-pub fn roll_sound(f: &mut Fighter, turning: bool) {
-    let rollout = scratch(f);
+pub fn roll_sound<C: RolloutKind>(f: &mut Fighter, turning: bool) {
+    let rollout = scratch::<C>(f);
     rollout.roll_angle = wrap(rollout.roll_angle);
     let angle = rollout.roll_angle;
     let previous = rollout.previous_angle;
@@ -96,8 +95,8 @@ pub fn wrap(mut angle: f32) -> f32 {
 
 /// normalizeAndSetRollAngle: the roll angle into [0, 2pi], then part 3's
 /// X rotation.
-pub fn set_roll(f: &mut Fighter) {
-    let rollout = scratch(f);
+pub fn set_roll<C: RolloutKind>(f: &mut Fighter) {
+    let rollout = scratch::<C>(f);
     rollout.roll_angle = wrap(rollout.roll_angle);
     let angle = rollout.roll_angle;
     f.core.set_part_rotation(part::ROLL, Axis::X, angle);
@@ -116,32 +115,32 @@ pub fn face(f: &mut Fighter) {
 }
 
 /// The saved model scale back on the root joint (HSD_JObjSetScale).
-fn restore_scale(f: &mut Fighter) {
-    let saved = f.character.get::<Jigglypuff>().rollout_scale;
+fn restore_scale<C: RolloutKind>(f: &mut Fighter) {
+    let saved = C::state_ref(f).scale;
     let root = f.animation.root;
     f.skeleton.set_scale(root, &saved);
 }
 
 /// ftPr_SpecialS_8013D658 (8013D658): the saved scale returns, the model
 /// faces the facing and a pending facing applies.
-pub fn restore(f: &mut Fighter) {
-    restore_scale(f);
+pub fn restore<C: RolloutKind>(f: &mut Fighter) {
+    restore_scale::<C>(f);
     face(f);
-    let pending = scratch(f).pending_facing;
+    let pending = scratch::<C>(f).pending_facing;
     if pending != 0.0 {
         f.physics.facing = pending;
     }
-    scratch(f).pending_facing = 0.0;
+    scratch::<C>(f).pending_facing = 0.0;
 }
 
 /// scaleAnimStep: the landing squash for four frames, else the saved scale.
-pub fn squash(f: &mut Fighter) {
-    let step = scratch(f).squash_step;
+pub fn squash<C: RolloutKind>(f: &mut Fighter) {
+    let step = scratch::<C>(f).squash_step;
     if !(0..4).contains(&step) {
-        restore_scale(f);
+        restore_scale::<C>(f);
         return;
     }
-    let saved = f.character.get::<Jigglypuff>().rollout_scale;
+    let saved = C::state_ref(f).scale;
     // 8013E48C / 8013E4A0: separate fmuls.
     let scale = Vec3::new(
         saved.x,
@@ -150,46 +149,49 @@ pub fn squash(f: &mut Fighter) {
     );
     let root = f.animation.root;
     f.skeleton.set_scale(root, &scale);
-    scratch(f).squash_step += 1;
+    scratch::<C>(f).squash_step += 1;
 }
 
 /// Retail keeps a disabled capsule's contents (lbColl_80008428 only sets
 /// its state); ftPr_SpecialS_8013D8E4 can enable it again. The port drops
 /// disabled capsules, so hitbox 0 is remembered before any change that
 /// would disable it and before each frame's script.
-pub fn remember_hitbox(f: &mut Fighter) {
+pub fn remember_hitbox<C: RolloutKind>(f: &mut Fighter) {
     if let Some(hit) = &f.commands.hitboxes[0] {
         let hit = hit.clone();
-        f.character.get_mut::<Jigglypuff>().rollout_hitbox = Some(hit);
+        C::state(f).hitbox = Some(hit);
     }
 }
 
 /// ftColl_8007AFF8 (8007AFF8): every hitbox off.
-pub fn clear_hitboxes(f: &mut Fighter) {
-    remember_hitbox(f);
+pub fn clear_hitboxes<C: RolloutKind>(f: &mut Fighter) {
+    remember_hitbox::<C>(f);
     f.commands.hitboxes.fill(None);
 }
 
 /// hitCapsuleToggle: every `hitbox_refresh_interval` frames the live
 /// hitbox changes group (x4 = (x4 + 1) & 1), so it may hit again.
-pub fn toggle_group(f: &mut Fighter) {
-    let interval = attributes(f).hitbox_refresh_interval;
-    let rollout = scratch(f);
+pub fn toggle_group<C: RolloutKind>(f: &mut Fighter) {
+    let interval = attributes::<C>(f).hitbox_refresh_interval;
+    let rollout = scratch::<C>(f);
     rollout.group_timer += 1;
     if rollout.group_timer < interval {
         return;
     }
     if let Some(hit) = &mut f.commands.hitboxes[0] {
         hit.descriptor.group = (hit.descriptor.group + 1) & 1;
-        scratch(f).group_timer = 0;
+        scratch::<C>(f).group_timer = 0;
     }
 }
 
 /// ftPr_SpecialS_8013D8E4 (8013D8E4): too slow a roll disables hitbox 0
 /// (and clears the secondary colour animation); fast enough enables it
 /// again; its damage follows the speed.
-pub fn update_hitbox(f: &mut Fighter, assets: &melee_ft::fighter::assets::FighterAssets) {
-    let a = attributes(f);
+pub fn update_hitbox<C: RolloutKind>(
+    f: &mut Fighter,
+    assets: &melee_ft::fighter::assets::FighterAssets,
+) {
+    let a = attributes::<C>(f);
     let (minimum, base, multiplier) = (
         a.minimum_hitbox_speed,
         a.damage_speed_offset,
@@ -202,11 +204,11 @@ pub fn update_hitbox(f: &mut Fighter, assets: &melee_ft::fighter::assets::Fighte
     };
     let enabled = f.commands.hitboxes[0].is_some();
     if speed < minimum {
-        clear_hitbox_zero(f);
+        clear_hitbox_zero::<C>(f);
         // ftCo_800BFFAC: lb_80014498(&fp->x488).
         f.core.clear_secondary_color_overlay(&assets.color_overlays);
     } else if !enabled {
-        enable_hitbox_zero(f);
+        enable_hitbox_zero::<C>(f);
     }
     if f.commands.hitboxes[0].is_none() {
         return;
@@ -217,15 +219,15 @@ pub fn update_hitbox(f: &mut Fighter, assets: &melee_ft::fighter::assets::Fighte
 }
 
 /// x914[0].state = HitCapsule_Disabled.
-fn clear_hitbox_zero(f: &mut Fighter) {
-    remember_hitbox(f);
+fn clear_hitbox_zero<C: RolloutKind>(f: &mut Fighter) {
+    remember_hitbox::<C>(f);
     f.commands.hitboxes[0] = None;
 }
 
 /// x914[0].state = HitCapsule_Enabled: the remembered capsule starts a new
 /// sweep.
-fn enable_hitbox_zero(f: &mut Fighter) {
-    let Some(mut hit) = f.character.get::<Jigglypuff>().rollout_hitbox.clone() else {
+fn enable_hitbox_zero<C: RolloutKind>(f: &mut Fighter) {
+    let Some(mut hit) = C::state_ref(f).hitbox.clone() else {
         unimplemented!("ftPr_SpecialS_8013D8E4: enabling a capsule this port never saw");
     };
     hit.phase = melee_coll::hitbox::CapsulePhase::Enabled;
@@ -263,6 +265,26 @@ pub fn dust(f: &mut Fighter) {
             facing,
             angle,
         });
+}
+
+/// The aerial roll's landing dust, by the kind's [`LandingDust`].
+pub fn landing_dust<C: RolloutKind>(f: &mut Fighter) {
+    match C::LANDING_DUST {
+        LandingDust::FacingAndFloor => dust(f),
+        LandingDust::DirectionAndRoll => {
+            // efSync_Spawn(0x3FF, gobj, &cur_pos, &x34, &x14).
+            let rollout = &C::state_ref(f).scratch;
+            let (facing, angle) = (rollout.direction, rollout.roll_angle);
+            let position = f.physics.position;
+            f.effects
+                .push(melee_ef::request::EffectRequest::PositionalGraphics {
+                    id: ROLL_DUST,
+                    position,
+                    facing,
+                    angle,
+                });
+        }
+    }
 }
 
 /// wallBounceEffect: the bounce spark on the wall at the ECB's side and

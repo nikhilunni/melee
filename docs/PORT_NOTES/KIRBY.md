@@ -570,9 +570,50 @@ fails closed.
   changes add to Marth's flags): a model only, not in the port.
   `ftKb_Init_UnkMotionStates4` has no Marth or Roy arm. Witnesses: nine
   `kirby_copy_{shieldbreaker,flareblade}_*` scenes (`KIRBY_WITNESSES`).
+- **The copied Rollout** (ftkirbyspecialpurin.c, rows 475..491, submotions
+  410..426; `copied/rollout.rs`). Jigglypuff's states moved into the family
+  crate `ft-purin-family`, generic over `RolloutKind`; Jigglypuff and
+  `KirbyPurin` implement it. The two files compile to the same code (the
+  same fused sites at the same offsets); what differs:
+  - the attribute block is Kirby's +2B4..+358, Jigglypuff's +34..+D8 byte
+    for byte but two words: the hitbox's minimum speed (+34C: 1.0 against
+    her 2.0) and the turn's end ratio (+350: 0.7 against 0.25);
+  - take_dmg_cb and death2_cb are Kirby's own (ftKb_PrSetCallbacks:
+    ftKb_Init_800EE7B8 / 800EE74C, `damage_callbacks`), not the pose's
+    restore, so a hit leaves the roll's scale and spin to the next motion;
+  - the saved scale is u.kb.x8C, which ftKb_SpecialN_800F190C sets to
+    (1, 1, 1) with every ability change;
+  - the aerial roll's landing dust (efSync 0x3FF) passes `&mv.x34` (the
+    direction) as its facing and `&mv.x14` (the roll angle) as its angle; the
+    floor's atan2f is computed and dropped (retail 0x801054F8..80105514).
+    With Jigglypuff's arguments `kirby_copy_rollout_air_fd_jigglypuff4`
+    diverges in the particle dump on the landing tick.
+  - deal_dmg_cb (fn_80100E0C) is `CharacterCallbacks::DEAL_DAMAGE` through
+    `copied::deal_damage`; x21F8 (fn_80105978, the reversal after a cape
+    turnaround) fails closed, as Jigglypuff's does.
+  No article and no effect bank: 0x3FF and 0x406 are common effects.
+  Unreachable, for both kinds (their attributes agree here): the aerial turn
+  (AirTurn, SpecialN0) is entered only by a turn leaving the floor at more
+  than +2F4 (6.5), and a turn starts at the roll's speed, which Release
+  clamps to +2CC (6.0) and the landing gives at most 0.03 x (180 - 40) =
+  4.2, then slows; and the aerial roll's floor bounce needs a vertical speed
+  of +2FC (0.8) out of 0.4 times its fall speed, which the roll's terminal
+  speed (+2C0, 1.3) caps at 0.52, so every landing rolls on.
+  Evidence: eleven `kirby_copy_rollout_*_fd_jigglypuff4` scenes in
+  `KIRBY_WITNESSES` (boundary `start_fd_kirby_jigglypuff4`, the swallow of
+  `kirby_hat_jigglypuff_fd_jigglypuff4` first), timed on the port's dry runs,
+  each recorded once and exact on its first gate with 0 differing
+  particle-site ticks: rolls into Jigglypuff on the floor and from the air;
+  a full charge, a turn, the roll off the edge and death in the aerial end;
+  a roll running out on the floor; aerial charges landing rolling and landing
+  charging; the aerial full charge; the stage's side bouncing an aerial roll
+  back (death in the roll); the aerial start catching the ledge; Jigglypuff
+  hitting Kirby in the charge, keeping and (by the draw) taking the ability.
+  `corpus_v3_fd_kirby_jigglypuff4_e86fddb60_p2` (`CORPUS_V3_MATCHES`), which
+  stopped at the aerial entry, is exact over its 3755 ticks.
 - Not ported: the copied neutral specials other than the Blaster, the
-  Punch and the Shield Breaker (`ftKb_Init_803C9DD0`; each kind's entry
-  fails closed with its name), item pickup hand poses.
+  Punch, the Shield Breaker and the Rollout (`ftKb_Init_803C9DD0`; each
+  kind's entry fails closed with its name), item pickup hand poses.
 
 ## Where this stands and how to resume (2026-10-12)
 
@@ -612,8 +653,9 @@ Remaining work, in the order to take it:
    Ganondorf's Punch (`kirby_copy_punch_*`, boundary
    `start_fd_kirby_ganondorf4`); Marth's and Roy's Shield Breaker
    (`kirby_copy_shieldbreaker_*`, `kirby_copy_flareblade_*`, boundaries
-   `start_fd_kirby_marth4` and `start_fd_kirby_roy4`). Next: Sheik, Peach,
-   Jigglypuff, Samus, then the rest; each row's stale-move id
+   `start_fd_kirby_marth4` and `start_fd_kirby_roy4`); Jigglypuff's Rollout
+   (`kirby_copy_rollout_*`, `corpus_v3_fd_kirby_jigglypuff4_e86fddb60_p2`).
+   Next: Sheik, Peach, Samus, then the rest; each row's stale-move id
    exists already (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (the
    charge flashes of Donkey Kong, Samus, Mewtwo and Sheik) comes with those
    kinds. The pattern, per kind:

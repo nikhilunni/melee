@@ -3,11 +3,11 @@
 //! ftkirbyspecialn.c:266) to a taunt, to a hit's draw, or to death.
 use crate::init::Kirby;
 use hsd_types::Vec3;
+use melee_ef::request::EffectRequest;
 use melee_ft::fighter::{
     commands::{FootstepSound, SoundChannel},
     Fighter,
 };
-use melee_ef::request::EffectRequest;
 use melee_it::{ItemRequest, SpawnItem};
 use melee_types::{FighterKind, ItemKind};
 
@@ -28,11 +28,12 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are xC4, xCC and xB0.
+/// The ones with a reader so far are xC4, xCC, xB0 and x8C.
 fn reset_copied_scratch(state: &mut Kirby) {
     state.ice_shot_lift_used = false;
     state.toad_lift_used = false;
     state.blaster = Default::default();
+    state.rollout.scale = crate::copied::rollout::SCALE_AT_REST;
 }
 
 /// ftKb_SpecialN_800F1BAC (800F1BAC) with `arg2` true: a new kind replaces

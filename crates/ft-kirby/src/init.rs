@@ -56,6 +56,9 @@ pub struct Kirby {
     pub blaster: ft_fox_family::SpecialNeutral,
     /// The copied Shield Breaker / Flare Blade: mv.kb.specialn_ms.
     pub shield_breaker: ft_mars_family::special_n::SpecialN,
+    /// The copied Rollout: mv.pr.specialn, the model scale it squashes
+    /// (u.kb.x8C) and deal_dmg_cb (fn_80100E0C).
+    pub rollout: ft_purin_family::RolloutState,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -91,6 +94,7 @@ impl Kirby {
             hammer_out: false,
             blaster: Default::default(),
             shield_breaker: Default::default(),
+            rollout: crate::copied::rollout::at_rest(),
         }
     }
 }
@@ -224,6 +228,7 @@ impl CharacterCallbacks for Kirby {
         self.cape_turn_blocked = false;
         self.damage_callbacks = false;
         self.accessory = Accessory::None;
+        self.rollout.bounce = false;
     }
     /// Fighter_8006C80C: the special's accessory4, installed until the next
     /// motion change.
@@ -244,6 +249,10 @@ impl CharacterCallbacks for Kirby {
     fn item_muzzle(f: &mut Fighter, assets: &FighterAssets) -> Option<(hsd_types::Vec3, f32)> {
         crate::copied::item_muzzle(f, assets)
     }
+    /// deal_dmg_cb of a copied special's rows.
+    const DEAL_DAMAGE: Option<fn(&mut Fighter, &FighterAssets)> = Some(crate::copied::deal_damage);
+    /// x21F8 of a copied special's rows, after a cape turnaround.
+    const CAPE_TURN_END: fn(&mut Fighter) = crate::copied::cape_turn_end;
     /// ftCommon_8007DB58: take_dmg_cb, then death1_cb.
     const TAKE_DAMAGE: Option<fn(&mut Fighter)> = Some(crate::damage_callbacks::take_damage);
     /// ftCo_800D331C: death2_cb, death3_cb, then death1_cb.

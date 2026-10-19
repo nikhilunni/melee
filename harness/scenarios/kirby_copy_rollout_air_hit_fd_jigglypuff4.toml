@@ -1,0 +1,33 @@
+# KIRBY directed witness from start_fd_kirby_jigglypuff4 (Kirby runs to x=51 beside Jigglypuff at +60 and swallows it): the copied Rollout. Kirby turns, full hops, charges in the air and releases into Jigglypuff below him (the aerial bounce).
+name = "kirby_copy_rollout_air_hit_fd_jigglypuff4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_jigglypuff4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 450, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 452, port = 0, buttons = {  }, raw = {  } },
+  { frame = 530, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 536, port = 0, buttons = {  }, raw = {  } },
+  { frame = 542, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 584, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+controller = "scripted"

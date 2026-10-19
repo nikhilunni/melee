@@ -549,6 +549,7 @@ dependencies = [
  "ft-captain-family",
  "ft-fox-family",
  "ft-mars-family",
+ "ft-purin-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -792,6 +793,7 @@ dependencies = [
 name = "ft-purin"
 version = "0.0.1"
 dependencies = [
+ "ft-purin-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -802,6 +804,22 @@ dependencies = [
  "melee-lb",
  "melee-mp",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-purin-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-cm",
+ "melee-coll",
+ "melee-ef",
+ "melee-ft",
+ "melee-lb",
+ "melee-mp",
  "melee-types",
 ]
 

@@ -1,16 +1,13 @@
-//! The charge: Start (346/347, 354/355), Loop (348, 356) and Full (349,
-//! 357). Puff winds up on the spot, spinning faster as the charge grows;
-//! letting go of B releases the roll.
-use super::{
-    attributes, change, flags, model, scratch, AIR_FULL, AIR_LOOP, AIR_RELEASE, AIR_START_LEFT,
-    AIR_START_RIGHT, FULL, LOOP, RELEASE, START_LEFT, START_RIGHT,
-};
+//! The charge: Start (Jigglypuff's rows 346/347, 354/355), Loop (348, 356)
+//! and Full (349, 357). The fighter winds up on the spot, spinning faster as
+//! the charge grows; letting go of B releases the roll.
+use super::{attributes, change, current, flags, model, scratch, RolloutKind, RolloutRow};
 use melee_ft::{
     anim::WaitChoice,
     fighter::{
         assets::{FighterAssets, Result},
         state::{AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
-        ActionId, Fighter,
+        Fighter,
     },
     input::Buttons,
     physics::grounded,
@@ -25,26 +22,36 @@ const CREEP: f32 = 0.0001;
 /// ftCo_800BFFD0(fp, 5, 0): the full-charge flash.
 const FULL_CHARGE_FLASH: u8 = 5;
 
-fn in_air(action: ActionId) -> bool {
+/// Whether `f` is in one of the aerial charge rows.
+fn in_air<C: RolloutKind>(f: &Fighter) -> bool {
     matches!(
-        action,
-        AIR_START_RIGHT | AIR_START_LEFT | AIR_LOOP | AIR_FULL
+        current::<C>(f),
+        Some(
+            RolloutRow::AirStartRight
+                | RolloutRow::AirStartLeft
+                | RolloutRow::AirLoop
+                | RolloutRow::AirFull
+        )
     )
 }
 
 /// ftPr_SpecialNStart_Anim (8013E014) / ftPr_SpecialAirNStart_Anim
 /// (8013EDB0): at the end, the charge loop with a frozen animation.
-pub(super) fn start_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
-    model::remember_hitbox(f);
+pub(super) fn start_anim<C: RolloutKind>(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
+    model::remember_hitbox::<C>(f);
     f.step_animation(p.assets);
-    scratch(f).pending_facing = 0.0;
+    scratch::<C>(f).pending_facing = 0.0;
     if f.animation.frames_remaining(&f.skeleton) {
         return Ok(None);
     }
-    let air = in_air(f.motion_state.action);
-    change(
+    let air = in_air::<C>(f);
+    change::<C>(
         f,
-        if air { AIR_LOOP } else { LOOP },
+        if air {
+            RolloutRow::AirLoop
+        } else {
+            RolloutRow::Loop
+        },
         flags::START,
         0.0,
         0.0,
@@ -67,47 +74,47 @@ pub(super) fn start_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
 
 /// ftPr_SpecialNLoop_Anim (8013E0F0) / ftPr_SpecialAirNChargeLoop_Anim:
 /// charge; once full, the Full row (flashing the first time).
-pub(super) fn loop_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
-    model::remember_hitbox(f);
+pub(super) fn loop_anim<C: RolloutKind>(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
+    model::remember_hitbox::<C>(f);
     f.step_animation(p.assets);
-    model::roll_sound(f, false);
-    scratch(f).pending_facing = 0.0;
-    if charge_up(f) {
-        if !std::mem::replace(&mut scratch(f).charged, true) {
+    model::roll_sound::<C>(f, false);
+    scratch::<C>(f).pending_facing = 0.0;
+    if charge_up::<C>(f) {
+        if !std::mem::replace(&mut scratch::<C>(f).charged, true) {
             f.core
                 .install_color_overlay_now(FULL_CHARGE_FLASH, p.assets);
         }
-        let full = if in_air(f.motion_state.action) {
-            AIR_FULL
+        let full = if in_air::<C>(f) {
+            RolloutRow::AirFull
         } else {
-            FULL
+            RolloutRow::Full
         };
         let frame = f.animation.frame;
-        change(f, full, flags::HELD, frame, 0.0, p.assets)?;
+        change::<C>(f, full, flags::HELD, frame, 0.0, p.assets)?;
     }
-    spin(f);
+    spin::<C>(f);
     Ok(None)
 }
 
 /// ftPr_SpecialNFull_Anim (8013E2A0) / ftPr_SpecialAirNChargeFull_Anim.
-pub(super) fn full_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
-    model::remember_hitbox(f);
+pub(super) fn full_anim<C: RolloutKind>(f: &mut Fighter, p: AnimationPhase<'_>) -> AnimResult {
+    model::remember_hitbox::<C>(f);
     f.step_animation(p.assets);
-    model::roll_sound(f, false);
-    scratch(f).pending_facing = 0.0;
-    if charge_up(f) {
-        scratch(f).charged = true;
+    model::roll_sound::<C>(f, false);
+    scratch::<C>(f).pending_facing = 0.0;
+    if charge_up::<C>(f) {
+        scratch::<C>(f).charged = true;
     }
-    spin(f);
+    spin::<C>(f);
     Ok(None)
 }
 
 /// The charge grows by `charge_per_tick` (an integer charge: 8013E148
 /// fadds, 8013E14C fctiwz) up to its maximum. True once full.
-fn charge_up(f: &mut Fighter) -> bool {
-    let a = attributes(f);
+fn charge_up<C: RolloutKind>(f: &mut Fighter) -> bool {
+    let a = attributes::<C>(f);
     let (step, maximum) = (a.charge_per_tick, a.maximum_charge);
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     rollout.charge = gekko_math::msl::fctiwz(rollout.charge as f32 + step);
     if rollout.charge as f32 >= maximum {
         rollout.charge = gekko_math::msl::fctiwz(maximum);
@@ -118,43 +125,47 @@ fn charge_up(f: &mut Fighter) -> bool {
 
 /// The spin in place: the roll angle advances with the charge (8013E1FC
 /// fmuls, 8013E210 fmuls, 8013E214 fmadds), then the pose.
-fn spin(f: &mut Fighter) {
-    let multiplier = attributes(f).charge_rotation_multiplier;
-    let rollout = scratch(f);
+fn spin<C: RolloutKind>(f: &mut Fighter) {
+    let multiplier = attributes::<C>(f).charge_rotation_multiplier;
+    let rollout = scratch::<C>(f);
     let step = rollout.charge as f32 * (DEGREES_TO_RADIANS * multiplier);
     rollout.roll_angle = gekko_math::fma::fmadds(rollout.direction, step, rollout.roll_angle);
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     model::face_forward(f);
 }
 
 /// ftPr_SpecialNLoop_IASA / ftPr_SpecialNFull_IASA (8013FF04 / 80140064):
 /// letting go of B releases the roll at the charge's speed.
-pub(super) fn charge_input(f: &mut Fighter, p: InputPhase<'_>) {
-    release(f, p.assets, false).expect("Rollout release");
+pub(super) fn charge_input<C: RolloutKind>(f: &mut Fighter, p: InputPhase<'_>) {
+    release::<C>(f, p.assets, false).expect("Rollout release");
 }
 
 /// ftPr_SpecialAirNChargeLoop_IASA / ChargeFull_IASA (80140350 / 801404B0).
-pub(super) fn air_charge_input(f: &mut Fighter, p: InputPhase<'_>) {
-    release(f, p.assets, true).expect("Rollout release");
+pub(super) fn air_charge_input<C: RolloutKind>(f: &mut Fighter, p: InputPhase<'_>) {
+    release::<C>(f, p.assets, true).expect("Rollout release");
 }
 
-fn release(f: &mut Fighter, assets: &FighterAssets, air: bool) -> Result<()> {
+fn release<C: RolloutKind>(f: &mut Fighter, assets: &FighterAssets, air: bool) -> Result<()> {
     if f.input.current.held.intersects(Buttons::B) {
         return Ok(());
     }
     let frame = f.animation.frame;
-    change(
+    change::<C>(
         f,
-        if air { AIR_RELEASE } else { RELEASE },
+        if air {
+            RolloutRow::AirRelease
+        } else {
+            RolloutRow::Release
+        },
         flags::CHARGE,
         frame,
         0.0,
         assets,
     )?;
     f.step_animation(assets);
-    let a = attributes(f);
+    let a = attributes::<C>(f);
     let (multiplier, initial) = (a.charge_speed_multiplier, a.initial_charge);
-    let rollout = scratch(f);
+    let rollout = scratch::<C>(f);
     // 8013FFBC..C8: fsubs, fsubs, fmuls, fmuls.
     let speed = rollout.direction * (multiplier * (rollout.charge as f32 - initial));
     if air {
@@ -163,7 +174,7 @@ fn release(f: &mut Fighter, assets: &FighterAssets, air: bool) -> Result<()> {
         f.physics.ground_velocity = speed;
     }
     model::face_forward(f);
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     model::sound(f, model::RELEASE_SOUND);
     Ok(())
 }
@@ -196,8 +207,8 @@ pub(super) fn finish_ground(f: &mut Fighter, p: &PhysicsPhase<'_>) {
 }
 
 /// ftCommon_Fall (8007D4B8) with the roll's gravity and terminal speed.
-pub(super) fn fall(f: &mut Fighter) {
-    let a = attributes(f);
+pub(super) fn fall<C: RolloutKind>(f: &mut Fighter) {
+    let a = attributes::<C>(f);
     let (gravity, terminal) = (a.gravity, a.terminal_velocity);
     let velocity = &mut f.physics.self_velocity.y;
     *velocity -= gravity;
@@ -208,8 +219,8 @@ pub(super) fn fall(f: &mut Fighter) {
 
 /// ftPr_SpecialAirNStart_Phys (80140BE8), and the aerial Loop, Full and
 /// End: the roll's own gravity.
-pub(super) fn air_fall_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    fall(f);
+pub(super) fn air_fall_physics<C: RolloutKind>(f: &mut Fighter, p: PhysicsPhase<'_>) {
+    fall::<C>(f);
     f.core.finish_air_update(p.assets, p.wind);
 }
 
@@ -232,38 +243,45 @@ pub(super) fn assets<'a>(p: &CollisionPhase<'a>) -> &'a FighterAssets {
 }
 
 /// ftPr_SpecialNStart_Coll (80140FA4): off an edge, the aerial start.
-pub(super) fn start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub(super) fn start_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
     if stays_grounded(f, &mut p) {
         return Ok(());
     }
     f.leave_ground();
-    let state = if scratch(f).direction == 1.0 {
-        AIR_START_RIGHT
+    let row = if scratch::<C>(f).direction == 1.0 {
+        RolloutRow::AirStartRight
     } else {
-        AIR_START_LEFT
+        RolloutRow::AirStartLeft
     };
     let frame = f.animation.frame;
-    change(f, state, flags::GROUND_AIR, frame, 1.0, assets(&p))
+    change::<C>(f, row, flags::GROUND_AIR, frame, 1.0, assets(&p))
 }
 
 /// ftPr_SpecialNLoop_Coll / ftPr_SpecialNFull_Coll: off an edge, the
 /// aerial counterpart.
-pub(super) fn loop_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    charge_off_edge(f, p, AIR_LOOP)
+pub(super) fn loop_collision<C: RolloutKind>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    charge_off_edge::<C>(f, p, RolloutRow::AirLoop)
 }
-pub(super) fn full_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    charge_off_edge(f, p, AIR_FULL)
+pub(super) fn full_collision<C: RolloutKind>(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
+    charge_off_edge::<C>(f, p, RolloutRow::AirFull)
 }
 
-fn charge_off_edge(f: &mut Fighter, mut p: CollisionPhase<'_>, state: ActionId) -> Result<()> {
+fn charge_off_edge<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+    row: RolloutRow,
+) -> Result<()> {
     if stays_grounded(f, &mut p) {
         return Ok(());
     }
     f.leave_ground();
     let frame = f.animation.frame;
-    change(f, state, flags::CHARGE, frame, 0.0, assets(&p))?;
+    change::<C>(f, row, flags::CHARGE, frame, 0.0, assets(&p))?;
     model::face_forward(f);
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     Ok(())
 }
 
@@ -287,37 +305,50 @@ pub(super) fn lands(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
 }
 
 /// ftPr_SpecialAirNStart_Coll (80141730): landing continues on the ground.
-pub(super) fn air_start_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
+pub(super) fn air_start_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+) -> Result<()> {
     if !lands(f, &mut p) {
         return Ok(());
     }
     f.land();
-    let state = if scratch(f).direction == 1.0 {
-        START_RIGHT
+    let row = if scratch::<C>(f).direction == 1.0 {
+        RolloutRow::StartRight
     } else {
-        START_LEFT
+        RolloutRow::StartLeft
     };
     let frame = f.animation.frame;
-    change(f, state, flags::GROUND_AIR, frame, 1.0, assets(&p))
+    change::<C>(f, row, flags::GROUND_AIR, frame, 1.0, assets(&p))
 }
 
 /// ftPr_SpecialAirNChargeLoop_Coll / ChargeFull_Coll: landing, the
 /// grounded counterpart.
-pub(super) fn air_loop_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    charge_landing(f, p, LOOP)
+pub(super) fn air_loop_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    p: CollisionPhase<'_>,
+) -> Result<()> {
+    charge_landing::<C>(f, p, RolloutRow::Loop)
 }
-pub(super) fn air_full_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
-    charge_landing(f, p, FULL)
+pub(super) fn air_full_collision<C: RolloutKind>(
+    f: &mut Fighter,
+    p: CollisionPhase<'_>,
+) -> Result<()> {
+    charge_landing::<C>(f, p, RolloutRow::Full)
 }
 
-fn charge_landing(f: &mut Fighter, mut p: CollisionPhase<'_>, state: ActionId) -> Result<()> {
+fn charge_landing<C: RolloutKind>(
+    f: &mut Fighter,
+    mut p: CollisionPhase<'_>,
+    row: RolloutRow,
+) -> Result<()> {
     if !lands(f, &mut p) {
         return Ok(());
     }
     f.land();
     let frame = f.animation.frame;
-    change(f, state, flags::CHARGE, frame, 0.0, assets(&p))?;
+    change::<C>(f, row, flags::CHARGE, frame, 0.0, assets(&p))?;
     model::face_forward(f);
-    model::set_roll(f);
+    model::set_roll::<C>(f);
     Ok(())
 }

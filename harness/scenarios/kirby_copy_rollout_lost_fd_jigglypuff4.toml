@@ -1,0 +1,33 @@
+# KIRBY directed witness from start_fd_kirby_jigglypuff4 (Kirby runs to x=51 beside Jigglypuff at +60 and swallows it): the copied Rollout. Kirby charges facing right; Jigglypuff's forward tilt hits him in the charge loop and the hit's draw takes the ability away (the star); Kirby's next B is the Inhale again, which catches Jigglypuff.
+name = "kirby_copy_rollout_lost_fd_jigglypuff4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_jigglypuff4.sav"
+frames = 650
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 450, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 462, port = 1, buttons = {  }, raw = { button = 256, stickX = 60 } },
+  { frame = 464, port = 1, buttons = {  }, raw = {  } },
+  { frame = 490, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 542, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Jigglypuff"
+controller = "scripted"

@@ -2694,6 +2694,27 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_flareblade_charged_fd_roy4", 950),
     ("kirby_copy_flareblade_shield_fd_roy4", 840),
     ("kirby_copy_flareblade_edge_fd_roy4", 760),
+    // The copied Rollout (ftkirbyspecialpurin.c over ft_purin_family's
+    // states): rolls into Jigglypuff on the floor and from the air (the
+    // bounce), a full charge with a turn rolling off the edge to die in the
+    // aerial end, a roll running out on the floor, aerial charges landing
+    // rolling (the landing dust takes the roll's direction and angle) and
+    // charging, the aerial full charge, the stage's side bouncing the roll
+    // back, and the aerial start catching the ledge.
+    ("kirby_copy_rollout_hit_fd_jigglypuff4", 650),
+    ("kirby_copy_rollout_turn_fd_jigglypuff4", 900),
+    ("kirby_copy_rollout_end_fd_jigglypuff4", 720),
+    ("kirby_copy_rollout_air_fd_jigglypuff4", 750),
+    ("kirby_copy_rollout_air_land_fd_jigglypuff4", 800),
+    ("kirby_copy_rollout_air_full_fd_jigglypuff4", 850),
+    ("kirby_copy_rollout_air_hit_fd_jigglypuff4", 700),
+    ("kirby_copy_rollout_wall_fd_jigglypuff4", 820),
+    ("kirby_copy_rollout_ledge_fd_jigglypuff4", 700),
+    // Jigglypuff hits Kirby in the charge (ftKb_Init_800EE7B8 as
+    // take_dmg_cb): a jab whose draw keeps the ability, and a forward tilt
+    // whose draw takes it (the star); his next B is the Inhale.
+    ("kirby_copy_rollout_jab_fd_jigglypuff4", 620),
+    ("kirby_copy_rollout_lost_fd_jigglypuff4", 650),
 ];
 
 #[test]
@@ -4704,7 +4725,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 716] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 717] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5774,6 +5795,8 @@ static CORPUS_V3_MATCHES: [(&str, usize); 716] = [
     // Kirby uses Falco's copied Blaster (ftKb_SpecialNFx_800FE100).
     ("corpus_v3_fd_kirby_falco4_ed4320157_p0", 1572),
     ("corpus_v3_fd_kirby_jigglypuff4_e7da23597_p0", 6001),
+    // Kirby uses Jigglypuff's copied Rollout (ftKb_SpecialNPr_80101618).
+    ("corpus_v3_fd_kirby_jigglypuff4_e86fddb60_p2", 3755),
     ("corpus_v3_fd_kirby_donkeykong4_e170dc03b_p2", 6001),
     ("corpus_v3_fd_kirby_mewtwo4_ef540a761_p2", 6001),
     ("corpus_v3_fd_kirby_gameandwatch4_ea56d29fc_p2", 6001),

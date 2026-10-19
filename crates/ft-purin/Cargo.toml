@@ -6,6 +6,7 @@ edition.workspace = true
 
 [dependencies]
 melee-coll = { path = "../melee-coll" }
+ft-purin-family = { path = "../ft-purin-family" }
 melee-ef = { path = "../melee-ef" }
 melee-lb = { path = "../melee-lb" }
 melee-types = { path = "../melee-types" }

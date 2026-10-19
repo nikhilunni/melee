@@ -1,0 +1,17 @@
+[package]
+name = "ft-purin-family"
+description = "Jigglypuff's Rollout, shared with Kirby's copy (retail ftPr_SpecialN, ftKb_SpecialNPr)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+melee-coll = { path = "../melee-coll" }
+melee-ef = { path = "../melee-ef" }
+melee-lb = { path = "../melee-lb" }
+melee-types = { path = "../melee-types" }
+melee-ft = { path = "../melee-ft" }
+melee-cm = { path = "../melee-cm" }
+melee-mp = { path = "../melee-mp" }
+hsd-types = { path = "../hsd-types" }
+hsd-archive = { path = "../hsd-archive" }
+gekko-math = { path = "../gekko-math" }

@@ -4,12 +4,15 @@ use ft_kirby::{
     copied::{
         blaster::{KirbyFalco, KirbyFox},
         shield_breaker::{KirbyMarth, KirbyRoy},
+        rollout::KirbyPurin,
         CopiedNeutral, NEUTRAL,
     },
     hat,
 };
 use ft_mars_family::special_n::{ShieldBreaker, ShieldBreakerRow};
+use ft_purin_family::{RolloutAttributes, RolloutKind, RolloutRow};
 use hsd_archive::Archive;
+use melee_ft::fighter::ActionId;
 use melee_types::FighterKind;
 use std::path::{Path, PathBuf};
 
@@ -38,6 +41,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Ganon
                             | FighterKind::Mars
                             | FighterKind::Emblem
+                            | FighterKind::Purin
                     ),
                     "{kind:?}"
                 )
@@ -77,6 +81,45 @@ fn the_shield_breaker_rows_follow_kirbys_table() {
         assert_eq!(rows.first_animation, animation);
         assert_eq!(rows.action(ShieldBreakerRow::AirEnd1).0, start + 7);
     }
+}
+
+#[test]
+fn the_rollout_rows_follow_kirbys_table() {
+    let rows = KirbyPurin::ROWS;
+    assert_eq!(rows.first_action, 475);
+    assert_eq!(rows.first_animation, 410);
+    assert_eq!(rows.row(ActionId(479)), Some(RolloutRow::Release));
+    assert_eq!(rows.row(ActionId(491)), Some(RolloutRow::Hit));
+    assert_eq!(rows.row(ActionId(492)), None);
+    assert_eq!(rows.row(ActionId(474)), None);
+}
+
+/// ftKb_DatAttrs +2B4..+358 is Jigglypuff's block but for two words.
+#[test]
+fn real_kirby_data_holds_jigglypuffs_rollout_but_two_words() {
+    let kirby = disc_file("PlKb.dat");
+    let puff = disc_file("PlPr.dat");
+    if !melee_test_support::require_files([&kirby, &puff]) {
+        return;
+    }
+    let kirby = Archive::parse(&std::fs::read(kirby).unwrap()).unwrap();
+    let puff = Archive::parse(&std::fs::read(puff).unwrap()).unwrap();
+    let kirby = read_kirby_attributes(&kirby).unwrap().rollout;
+    // ftDataPurin.ext_attr +34, read here without Jigglypuff's crate.
+    let root = puff.public("ftDataPurin").unwrap();
+    let offset = melee_ft::desc::special_attributes_offset(&puff, root).unwrap();
+    let block = puff.reader().slice(offset + 0x34, 0xA8).unwrap();
+    let puff = RolloutAttributes::read(&hsd_archive::Reader::new(block), 0).unwrap();
+    assert_eq!(kirby.minimum_hitbox_speed, 1.0);
+    assert_eq!(puff.minimum_hitbox_speed, 2.0);
+    assert_eq!(kirby.turn_speed_ratio, 0.7);
+    assert_eq!(puff.turn_speed_ratio, 0.25);
+    let same = RolloutAttributes {
+        minimum_hitbox_speed: puff.minimum_hitbox_speed,
+        turn_speed_ratio: puff.turn_speed_ratio,
+        ..kirby
+    };
+    assert_eq!(same, puff);
 }
 
 fn disc_file(name: &str) -> PathBuf {

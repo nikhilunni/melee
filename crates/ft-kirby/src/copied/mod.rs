@@ -13,6 +13,7 @@ use melee_types::FighterKind;
 pub mod blaster;
 pub mod captain;
 pub mod shield_breaker;
+pub mod rollout;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -66,7 +67,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Yoshi
     unported("ftKb_SpecialNYs_8010941C", "ftKb_SpecialNYs_801094FC"),
     // Jigglypuff
-    unported("ftKb_SpecialNPr_80101560", "ftKb_SpecialNPr_80101618"),
+    CopiedNeutral::Ported(rollout::enter),
     // Mewtwo
     unported("ftKb_SpecialNMt_80107568", "ftKb_SpecialNMt_80107638"),
     // Luigi
@@ -116,9 +117,23 @@ pub fn enter_neutral(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
 
 /// The copied specials' motion rows (ftKb_Init_MotionStateTable 399..543)
 /// that are ported: the Blaster's here, each other kind's in its module
-/// (`captain::rows`).
+/// (`captain::rows`, `rollout::rows`).
 pub const fn rows() -> [MotionRow; 12] {
     blaster::rows()
+}
+
+/// deal_dmg_cb of a copied special's row: the copied Rollout's
+/// fn_80100E0C, which does nothing unless one of its rows installed it.
+pub fn deal_damage(f: &mut Fighter, assets: &FighterAssets) {
+    rollout::deal_damage(f, assets);
+}
+
+/// x21F8 after a cape turnaround (ftCo_800C37A0): the copied Rollout's
+/// fn_80105978 is the only one a Kirby row installs.
+pub fn cape_turn_end(_: &mut Fighter) {
+    unimplemented!(
+        "fn_80105978 (ftkirbyspecialpurin.c:1368): the copied Rollout after a cape turnaround"
+    )
 }
 
 /// accessory4_cb of a copied special's row.

@@ -31,14 +31,12 @@ pub struct Jigglypuff {
     /// mv+4 as the state before a special left it: Pound, Sing and Rest
     /// never write it.
     pub retained_word: Option<f32>,
-    /// fp->mv.pr.specialn, Rollout's motion scratch.
-    pub rollout: crate::special_n::Rollout,
-    /// Fighter +2230 (u.pr.x2230): the model scale Rollout squashes.
-    pub rollout_scale: hsd_types::Vec3,
-    /// The callbacks the current Rollout motion installed.
-    pub rollout_callbacks: crate::special_n::Callbacks,
-    /// Hitbox 0's contents when it was last disabled (retail keeps them).
-    pub rollout_hitbox: Option<melee_coll::hitbox::HitCapsule>,
+    /// Rollout: fp->mv.pr.specialn, the model scale it squashes (Fighter
+    /// +2230, u.pr.x2230), deal_dmg_cb and the remembered hitbox.
+    pub rollout: ft_purin_family::RolloutState,
+    /// death2_cb and take_dmg_cb = ftPr_SpecialS_8013D658, installed by
+    /// Rollout until the next motion change.
+    pub rollout_restore: bool,
     /// fp->u.pr.x223C: the costume's hat, loaded once by OnLoad.
     pub hat: Option<crate::hat::CostumeHat>,
 }
@@ -52,9 +50,7 @@ impl Jigglypuff {
             accessory: Accessory::None,
             retained_word: None,
             rollout: Default::default(),
-            rollout_scale: hsd_types::Vec3::ZERO,
-            rollout_callbacks: Default::default(),
-            rollout_hitbox: None,
+            rollout_restore: false,
             hat: None,
         }
     }
@@ -147,7 +143,8 @@ impl CharacterCallbacks for Jigglypuff {
         Some(crate::special_n::restore_on_callback);
     /// Fighter_ChangeMotionState, fighter.c:1376-1389: the callbacks go.
     fn on_motion_change(&mut self) {
-        self.rollout_callbacks = Default::default();
+        self.rollout.bounce = false;
+        self.rollout_restore = false;
     }
 
     fn kind(&self) -> FighterKind {
@@ -164,7 +161,7 @@ impl CharacterCallbacks for Jigglypuff {
     fn restore_saved(&mut self, raw: &[u8]) {
         let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
         self.pound_count = word(0x222C);
-        self.rollout_scale = hsd_types::Vec3::new(
+        self.rollout.scale = hsd_types::Vec3::new(
             f32::from_bits(word(0x2230)),
             f32::from_bits(word(0x2234)),
             f32::from_bits(word(0x2238)),
