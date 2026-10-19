@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 550] = [
+const MATRIX_WITNESSES: [(&str, usize); 551] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1887,6 +1887,10 @@ const MATRIX_WITNESSES: [(&str, usize); 550] = [
     // walking into each other slow to 0.05 a tick, pass and are pushed
     // apart.
     ("dosei_push_pair_fd_peach", 1400),
+    // Jigglypuff leaves the revival platform by Rollout and rolls through
+    // the left blast zone: x2219_b1, not the revival scratch, skips
+    // ftCo_800D3158's test.
+    ("rebirth_rollout_blast_fd_jigglypuff", 620),
 ];
 
 #[test]

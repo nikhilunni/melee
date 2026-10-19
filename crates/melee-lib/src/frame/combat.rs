@@ -758,8 +758,13 @@ fn compare_capture_revival(f: &Fighter, bytes: &[u8], tick: usize) {
     vector(f.physics.self_velocity, bytes, 0x80);
     vector(f.physics.knockback_velocity, bytes, 0x8c);
     match &f.state_data {
+        // The platform's countdown is mv.co.common.x0 only on the platform: a
+        // special out of RebirthWait keeps the port's scratch but owns mv.
         MotionData::Life(
             LifeState::Revival { remaining, .. } | LifeState::PlatformWait { remaining, .. },
+        ) if matches!(
+            f.motion_state.id,
+            melee_types::CommonMotionState::Rebirth | melee_types::CommonMotionState::RebirthWait
         ) => {
             assert_eq!(
                 *remaining as u32,

@@ -316,14 +316,17 @@ impl Fighter {
         self.enter_revival(assets, target)
     }
     /// ftCo_800D3158 (800D3158), after Update: blast-zone exits in retail order
-    /// (right, left, top, bottom).
+    /// (right, left, top, bottom). x2219_b1 (`out_of_play`) skips the test,
+    /// not the revival scratch: a fighter that leaves the platform by a
+    /// special keeps that scratch but crosses the blast zone like any other
+    /// (ft_0D31.c:41, retail 0x800D31C0).
     pub fn check_blast_zone(
         &mut self,
         assets: &FighterAssets,
         arena: &Arena,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        if matches!(self.core.state_data, MotionData::Life(_))
+        if self.core.out_of_play()
             || self.core.status.disabled
             || self.core.status.ledge_grab_disabled
             || self.core.status.blast_zone_exempt

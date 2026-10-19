@@ -1,0 +1,31 @@
+# Jigglypuff runs off FD's left edge, revives at x = 16 and leaves the
+# revival platform by Rollout (neutral B at 400, charged in the air and on
+# the ground, released at 480 with the stick held left). The roll carries her
+# off the left edge (SpecialAirN) and through the left blast zone. Rebirth
+# and RebirthWait set x2219_b1 but the motion change into Rollout clears it
+# (fighter.c:1039), so ftCo_800D3158 tests her and she dies (DeadLeft)
+# mid-roll; the port's revival scratch, which no Rollout state replaces,
+# must not stand in for the flag.
+name = "rebirth_rollout_blast_fd_jigglypuff"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_jigglypuff_fox4.sav"
+frames = 620
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 230, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 402, port = 0, buttons = { B = true }, raw = { button = 512, stickX = -127 } },
+  { frame = 480, port = 0, buttons = {  }, raw = { stickX = -127 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Jigglypuff"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "idle"
