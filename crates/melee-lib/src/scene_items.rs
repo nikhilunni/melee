@@ -1661,6 +1661,31 @@ pub fn free_item_bone_matrix(
     pose.rest_bone_matrix(bone, root, scale)
 }
 
+/// A free item's model bone as a generator kept for its particles reads it
+/// after the item's tree is torn down
+/// ([`melee_it::pose::ItemPose::detached_bone_matrix`]): the bone's local
+/// SRT alone. `None` for a kind without a sampled pose.
+pub fn free_item_detached_bone_matrix(
+    resources: &Resources,
+    item: &melee_it::ItemCore,
+    bone: usize,
+) -> Option<hsd_types::Mtx> {
+    let pose = resources.get(item.kind).pose.as_ref()?;
+    let animated = SceneItems::logic(item.kind).states[usize::from(item.motion)].animation_id >= 0;
+    if animated {
+        return Some(pose.detached_bone_matrix(
+            Some((item.article_state, item.pose_steps)),
+            bone,
+            None,
+        ));
+    }
+    let scale = match &item.scratch {
+        melee_it::ItemScratch::ClimbersIce(ice) => Some((1, ice.scale)),
+        _ => None,
+    };
+    Some(pose.detached_bone_matrix(None, bone, scale))
+}
+
 /// The fighter-list index of the fighter owning an item: its player
 /// `owner`, and its second fighter when `secondary` (retail keeps the
 /// owner's GObj).

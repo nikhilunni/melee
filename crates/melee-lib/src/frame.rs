@@ -359,6 +359,12 @@ impl Runtime {
                         )?;
                     }
                     melee_it::ItemEvent::DestroyEffect { id, root } => {
+                        // it_80278800's lb_8000B1CC reads the root JObj's
+                        // world translation: its last HSD_JObjSetTranslate,
+                        // not item->pos (Link's arrow), or for a held item
+                        // not dirtied since the display pass, its holder's
+                        // part as drawn (Ness's yo-yo).
+                        let held_root = item.held.then_some(item.held_display_root).flatten();
                         // it_80278800: zero offset and range, but the three
                         // spread draws still happen.
                         for _ in 0..3 {
@@ -366,7 +372,7 @@ impl Runtime {
                         }
                         state.effects.spawn_positional::<RetailTrig>(
                             id,
-                            root.unwrap_or(item.position),
+                            root.or(held_root).unwrap_or(item.root_translation),
                             &state.assets.common_particle_bank,
                             &mut state.particles,
                             &mut state.rng,
@@ -2588,7 +2594,17 @@ impl Runtime {
                 };
                 let followed = state.effects.followed_item_bones().count();
                 if id == item.id {
-                    if let Some(matrix) = state.article_poses.detached_bone_matrix(id, bone) {
+                    let matrix = state
+                        .article_poses
+                        .detached_bone_matrix(id, bone)
+                        .or_else(|| {
+                            crate::scene_items::free_item_detached_bone_matrix(
+                                &state.assets.items,
+                                item,
+                                bone,
+                            )
+                        });
+                    if let Some(matrix) = matrix {
                         state
                             .effects
                             .update_item_bone(id, bone, matrix, &mut state.particles);
@@ -3093,6 +3109,7 @@ impl Simulation {
                     runtime.state.particles.sort_for_display(7);
                     render_cameras(&mut runtime.state);
                     display_posed_articles(&mut runtime.state, runtime.frame - 1);
+                    display_held_items(&mut runtime.state);
                 }
                 DisplayPass::RollbackLoop if runtime.frame != 0 => {
                     rollback_loop_cameras(&mut runtime.state);
@@ -3378,6 +3395,33 @@ fn article_bone_matrix(
     let hand = fighter.bone_matrix(Some(part));
     let orientation = fighter.orientation_target(part);
     poses.bone_matrix(item, templates, bone, tick, &hand, orientation)
+}
+
+/// A display pass draws each held item at its holder part's matrix (the
+/// hand constraint sets that part up), and the root's cached matrix keeps
+/// that translation until an HSD_JObjSetTranslate dirties it.
+fn display_held_items(state: &mut InitialState) {
+    for item in state.items.iter_mut() {
+        item.held_display_root = None;
+        if !item.held {
+            continue;
+        }
+        let Some(index) =
+            crate::scene_items::owner_index(&state.fighters, item.owner, item.owner_secondary)
+        else {
+            continue;
+        };
+        let matrix = state.fighters[index]
+            .0
+            .core
+            .item_holder(item.holder_part, &state.assets.fighters[index])
+            .part_matrix();
+        item.held_display_root = Some(hsd_types::Vec3::new(
+            matrix.0[0][3],
+            matrix.0[1][3],
+            matrix.0[2][3],
+        ));
+    }
 }
 
 /// A display pass draws each held posed article (its render callback's

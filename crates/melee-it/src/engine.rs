@@ -74,7 +74,8 @@ pub enum ItemEvent {
     /// destroy effect at the item's root, through it_80278800's zero-range
     /// offset spread (three HSD_Randf draws). `root` is the JObj translation
     /// when it trails the item's position (a collision destroy); otherwise
-    /// the item's position when the event is handled.
+    /// the root's translation (or a held item's display-pass root) when the
+    /// event is handled.
     DestroyEffect { id: u16, root: Option<Vec3> },
     /// efSync_Spawn(0x3E8, gobj, &pos, &damage): the spark of a hit landing
     /// on the item (it_80270E30).
@@ -909,6 +910,12 @@ pub struct ItemCore {
     /// xDC4: the holder's part it hangs from, a fp->parts index (the
     /// character's own joint numbering, as ftData x8 stores it).
     pub holder_part: u8,
+    /// A held item's root JObj world translation as the last display pass
+    /// left it, at its holder part's matrix (the hand constraint), while no
+    /// HSD_JObjSetTranslate has dirtied the root since (Item_80269978's, in
+    /// the collision proc, or Item_80268E5C's). it_80278800's lb_8000B1CC
+    /// reads that cached matrix for the destroy effect.
+    pub held_display_root: Option<Vec3>,
     /// xDCD b5 (it_80275444 / it_80275474): hitboxes may hit the owner.
     pub hits_owner: bool,
     /// xC44: the speed the item was thrown or dropped at (Item_8026AD20).
@@ -1112,6 +1119,7 @@ impl ItemCore {
         // hitbox the script makes at once (a laser's, after its initial
         // collision moved it) is placed from the resolved position.
         self.root_translation = self.position;
+        self.held_display_root = None;
         self.flush_queued_effects();
         self.article_state = usize::from(motion);
         self.animation_frame = 0.0;
@@ -1198,6 +1206,7 @@ impl ItemCore {
         self.motion = motion;
         // Item_80268E5C: HSD_JObjSetTranslate(jobj, &pos) first.
         self.root_translation = self.position;
+        self.held_display_root = None;
         // retail 0x80268F44: efAsync_QueueFlush(gobj, &ip->xBC0).
         self.flush_queued_effects();
         self.animation_frame = 0.0;
@@ -1774,6 +1783,7 @@ impl ItemPool {
             },
             held: false,
             holder_part: 0,
+            held_display_root: None,
             hits_owner: false,
             throw_speed: 1.0,
             hitbox_damage_scale: 1.0,
@@ -2123,8 +2133,11 @@ impl ItemPool {
             let root = item.root_translation;
             item.queue_destroy_effect(assets.event_destroy_effect, Some(root));
         } else {
-            // Item_80269978: HSD_JObjSetTranslate(jobj, &pos).
+            // Item_80269978: HSD_JObjSetTranslate(jobj, &pos). The root is
+            // dirty: its next setup builds it from `pos`, no longer at the
+            // hand the display left it at.
             item.root_translation = item.position;
+            item.held_display_root = None;
         }
     }
     /// Item_8026A8EC (8026A8EC) outside the item procs: remove `id` now and

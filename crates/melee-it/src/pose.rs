@@ -183,6 +183,53 @@ impl ItemPose {
         self.matrix_from_locals(&locals[..self.rest.len()], bone, root)
     }
 
+    /// `bone`'s matrix once the article's tree is torn down while a kept
+    /// generator still reads it (HSD_GObjPLink_80390228 -> JObjReleaseChild
+    /// clears its parent): HSD_JObjSetupMatrix finds the dirty joint without
+    /// a parent and builds its local SRT alone, so the generator's position
+    /// becomes the joint's own translation. `state` is the article state and
+    /// steps taken, or `None` for the rest pose with `scale` replacing one
+    /// joint's scale (it_80272F7C).
+    pub fn detached_bone_matrix(
+        &self,
+        state: Option<(usize, u32)>,
+        bone: usize,
+        scale: Option<(usize, f32)>,
+    ) -> Mtx {
+        let mut local = match state {
+            Some((state, steps)) => {
+                let samples = self.states[state]
+                    .as_ref()
+                    .expect("item pose: article state without a joint animation");
+                assert!(
+                    !self.looping.contains(&state) || (steps as usize) <= samples.len(),
+                    "item pose: a looping animation played past its samples"
+                );
+                samples[(steps.max(1) as usize - 1).min(samples.len() - 1)][bone]
+            }
+            None => self.rest[bone],
+        };
+        if let Some((joint, s)) = scale {
+            if joint == bone {
+                local.scale = Vec3::new(s, s, s);
+            }
+        }
+        let mut matrix = Mtx::default();
+        if local.flags & JOBJ_USE_QUATERNION != 0 {
+            hsd_anim::mtx::hsd_mtx_srt_quat(
+                &mut matrix,
+                &local.scale,
+                &local.rotate,
+                &local.translate,
+                None,
+            );
+        } else {
+            let euler = Vec3::new(local.rotate.x, local.rotate.y, local.rotate.z);
+            hsd_anim::mtx::hsd_mtx_srt(&mut matrix, &local.scale, &euler, &local.translate, None);
+        }
+        matrix
+    }
+
     /// HSD_JObjMakeMatrix down the path from the root to `bone`.
     fn matrix_from_locals(&self, locals: &[LocalSrt], bone: usize, root: RootSrt) -> Mtx {
         // The path from the root down to `bone`.
