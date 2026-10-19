@@ -914,7 +914,7 @@ impl ItemCore {
         }
         self.face_spin_axis();
         self.position = hsd_types::Vec3::new(position.x, position.y, 0.0);
-        self.root_translation = self.position;
+        self.set_root_translation(self.position);
     }
 
     /// it_80273748's release point for a throw from `position`: an article
@@ -984,7 +984,7 @@ impl ItemCore {
         self.stale_source = attack;
         self.enter_air();
         // it_80273F34: HSD_JObjSetTranslate(jobj, &pos) after the sweep.
-        self.root_translation = self.position;
+        self.set_root_translation(self.position);
     }
 
     /// xDC8 x19 (HSD_JObjSetRotationY): a facing-locked model turns to face

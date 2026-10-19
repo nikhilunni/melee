@@ -920,6 +920,14 @@ pub struct ItemCore {
     /// the collision proc, or Item_80268E5C's). it_80278800's lb_8000B1CC
     /// reads that cached matrix for the destroy effect.
     pub held_display_root: Option<Vec3>,
+    /// Whether HSD_JObjSetMtxDirty reached the model's joints since the
+    /// particle pass last set up the bones its generators follow
+    /// (hsd_8039D214's HSD_JObjSetupMatrix): an HSD_JObjSetTranslate on the
+    /// root (Item_80269978, Item_80268E5C, a release), an animation step
+    /// (Item_802694CC's HSD_JObjAnimAll) or a joint's scale. A generator
+    /// kept on a bone of an item torn down while clean reads the bone's
+    /// last world matrix; a dirty one is rebuilt from its local SRT alone.
+    pub joints_dirty: bool,
     /// xDCD b5 (it_80275444 / it_80275474): hitboxes may hit the owner.
     pub hits_owner: bool,
     /// xC44: the speed the item was thrown or dropped at (Item_8026AD20).
@@ -1122,7 +1130,7 @@ impl ItemCore {
         // Item_80268E5C: HSD_JObjSetTranslate(jobj, &pos) first, so a
         // hitbox the script makes at once (a laser's, after its initial
         // collision moved it) is placed from the resolved position.
-        self.root_translation = self.position;
+        self.set_root_translation(self.position);
         self.held_display_root = None;
         self.flush_queued_effects();
         self.article_state = usize::from(motion);
@@ -1209,7 +1217,7 @@ impl ItemCore {
     ) {
         self.motion = motion;
         // Item_80268E5C: HSD_JObjSetTranslate(jobj, &pos) first.
-        self.root_translation = self.position;
+        self.set_root_translation(self.position);
         self.held_display_root = None;
         // retail 0x80268F44: efAsync_QueueFlush(gobj, &ip->xBC0).
         self.flush_queued_effects();
@@ -1393,6 +1401,11 @@ impl ItemCore {
     }
     /// Item_802694CC (802694CC): the joint animation advances by the item's
     /// rate (HSD_JObjAnimAll, x5CC), then its script runs (it_802799E4).
+    /// HSD_JObjSetTranslate on the model root: the joints are dirty.
+    pub fn set_root_translation(&mut self, translation: Vec3) {
+        self.root_translation = translation;
+        self.joints_dirty = true;
+    }
     pub fn advance_animation(&mut self, assets: &ItemAssets) {
         // lbGetJObjCurrFrame: an article without a model (Item_80267978's
         // bare JObj) has no AObj, so x5CC stays zero.
@@ -1788,6 +1801,8 @@ impl ItemPool {
             held: false,
             holder_part: 0,
             held_display_root: None,
+            // Item_80268B18 builds a new JObj tree, dirty until set up.
+            joints_dirty: true,
             hits_owner: false,
             throw_speed: 1.0,
             hitbox_damage_scale: 1.0,
@@ -2017,6 +2032,9 @@ impl ItemPool {
         if !(item.frozen || item.in_hitlag) {
             item.advance_animation(assets);
             let row = D::logic(item.kind).states[item.motion as usize];
+            // Item_802694CC's HSD_JObjAnimAll dirties the joints it poses
+            // (a state without an animation of its own poses none).
+            item.joints_dirty |= row.animation_id >= 0;
             let ended = (row.animation)(
                 item,
                 &mut ItemAnimationContext {
@@ -2140,7 +2158,7 @@ impl ItemPool {
             // Item_80269978: HSD_JObjSetTranslate(jobj, &pos). The root is
             // dirty: its next setup builds it from `pos`, no longer at the
             // hand the display left it at.
-            item.root_translation = item.position;
+            item.set_root_translation(item.position);
             item.held_display_root = None;
         }
     }

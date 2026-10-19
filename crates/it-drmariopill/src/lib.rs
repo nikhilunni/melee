@@ -179,7 +179,7 @@ impl ItemLogic for DrMarioPill {
         }
         if let Some(owner) = owner {
             item.position = owner.position;
-            item.root_translation = owner.position;
+            item.set_root_translation(owner.position);
         }
         None
     }

@@ -278,7 +278,10 @@ fn melt(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
         return false;
     }
     state.scale *= rate;
-    state.scale < MELTED_SCALE
+    let melted = state.scale < MELTED_SCALE;
+    // it_80272F7C's HSD_JObjSetScale dirties the child.
+    item.joints_dirty = true;
+    melted
 }
 
 /// itClimbersice_UnkMotion1_Anim.

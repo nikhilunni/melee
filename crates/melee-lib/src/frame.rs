@@ -2332,6 +2332,11 @@ impl Runtime {
                     )?
             }
             Callback::ParticlesMain => {
+                // hsd_8039D214's HSD_JObjSetupMatrix leaves the followed
+                // bones (and the display pass every joint) clean.
+                for item in state.items.iter_mut() {
+                    item.joints_dirty = false;
+                }
                 // Generators on a posed article's bones read their matrices.
                 let mut index = 0;
                 loop {
@@ -2597,14 +2602,19 @@ impl Runtime {
                 .find(|item| item.id == destroyed)
                 .expect("a destroyed item");
             crate::scene_items::article_destroyed(&mut state.fighters, item);
-            // Generators kept on a torn-down article's bones.
+            // Generators kept on a torn-down article's bones. JObjReleaseChild
+            // leaves each bone without a parent: a dirty one is rebuilt from
+            // its local SRT alone at its next setup; a clean one (no proc
+            // touched the model since the particle pass set it up, as when
+            // its owner's KO tears it down at s_link 4) keeps its last world
+            // matrix.
             let mut index = 0;
             loop {
                 let Some((id, bone)) = state.effects.followed_item_bones().nth(index) else {
                     break;
                 };
                 let followed = state.effects.followed_item_bones().count();
-                if id == item.id {
+                if id == item.id && item.joints_dirty {
                     let matrix = state
                         .article_poses
                         .detached_bone_matrix(id, bone)

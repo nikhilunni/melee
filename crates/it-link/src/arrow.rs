@@ -260,7 +260,7 @@ impl<const YOUNG: bool> ItemLogic for Arrow<YOUNG> {
         }
         state(item).angle = angle;
         item.rotation.z = angle;
-        item.root_translation = item.position;
+        item.set_root_translation(item.position);
         false
     }
     /// itLinkArrow_Logic98_EvtUnk: it_8026B894.

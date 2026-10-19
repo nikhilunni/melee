@@ -166,7 +166,7 @@ pub fn launch(
     );
     // HSD_JObjSetTranslate(jobj, &pos): the capsules the refresh places
     // follow the nudged position.
-    item.root_translation = item.position;
+    item.set_root_translation(item.position);
     item.update_spin(launch.spin_degrees);
 }
 

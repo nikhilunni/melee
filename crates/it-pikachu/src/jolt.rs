@@ -377,7 +377,7 @@ impl<O: crate::Owner> ItemLogic for ThunderJoltCrawler<O> {
         let state = jolt(item);
         state.normal = normal;
         state.frames = 0;
-        item.root_translation = position;
+        item.set_root_translation(position);
         face_normal(item);
         item.change_motion_with(
             0,
@@ -432,7 +432,7 @@ impl<O: crate::Owner> ItemLogic for ThunderJoltCrawler<O> {
         let angle = wrap_angle((f64::from(root_angle) + (PI - f64::from(joint_angle))) as f32);
         item.rotation.x = angle;
         item.rotation.y = (HALF_PI * f64::from(item.facing)) as f32;
-        item.root_translation = item.position;
+        item.set_root_translation(item.position);
         let signed = if item.facing == 1.0 { angle } else { -angle };
         let state = jolt(item);
         state.normal = Vec3::new(sinf(signed), cosf(signed), 0.0);

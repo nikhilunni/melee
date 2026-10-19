@@ -4641,7 +4641,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 693] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 694] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5750,6 +5750,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 693] = [
     // leg's measured length (one IKState, ft_0899.c:95-97), and Samus's grab
     // stops at the floor's edge (ft_800841B8 -> ft_800827A0).
     ("corpus_v3_fod_pichu_samus4_ef41f983a_p0", 3976),
+    // Popo's KO (s_link 4) tears down the ice block he holds before its
+    // collision proc moves it: the kept generator keeps the bone's last matrix.
+    ("corpus_v3_dl_luigi_iceclimbers4_e86fddb60_p1", 4073),
 ];
 
 #[test]
