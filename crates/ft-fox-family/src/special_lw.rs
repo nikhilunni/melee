@@ -597,7 +597,7 @@ pub fn on_reflect<C: FoxFamily>(
         hsd_types::Vec3::ZERO,
     );
     core.commands
-        .radial_impulses
+        .gusts
         .push(melee_lb::radial_force::RadialImpulse {
             center,
             frames: reaction.impulse_ticks,

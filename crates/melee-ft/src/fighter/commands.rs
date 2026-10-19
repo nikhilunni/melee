@@ -23,6 +23,39 @@ const TEXTURE_SLOT_COUNT: usize = 128;
 /// Opcode 31 carries a signed seven-bit model group.
 const MODEL_GROUP_COUNT: usize = 128;
 const MODEL_GROUP_BIAS: i32 = 64;
+/// One lb_800119DC (0x800119DC) request from a fighter, in issue order.
+#[derive(Clone, Copy, Debug)]
+pub enum GustRequest {
+    /// ftAction_80073118's wind command, centred on its bone when drained
+    /// (ftCo_8009E714).
+    Wind(melee_cmd::WindEffect),
+    /// A special's own call (Counter, Shield Breaker, Reflector, ...).
+    Impulse(melee_lb::radial_force::RadialImpulse),
+}
+
+/// The fighter's lb_800119DC requests this tick. Retail inserts each into the
+/// force pool when it is made, and the pool's list order (newest first) is the
+/// order lb_800101C8 sums the fields in, so subaction winds and specials'
+/// impulses share one queue: Counter's hit impulse (lb_800119DC before
+/// Fighter_ChangeMotionState) precedes its SpecialAirLwHit script's wind.
+#[derive(Clone, Debug, Default)]
+pub struct GustRequests(FixedVec<GustRequest, DYNAMICS_REQUEST_CAPACITY>);
+
+impl GustRequests {
+    pub fn push(&mut self, impulse: melee_lb::radial_force::RadialImpulse) {
+        self.0.push(GustRequest::Impulse(impulse));
+    }
+    pub fn push_wind(&mut self, wind: melee_cmd::WindEffect) {
+        self.0.push(GustRequest::Wind(wind));
+    }
+    pub fn take_all(&mut self) -> impl Iterator<Item = GustRequest> {
+        self.0.take_all()
+    }
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
 /// ftAction_800728F8 (0x800728F8), forwarded to the controller-output owner.
 #[derive(Clone, Debug)]
 pub struct RumbleRequest {
@@ -172,9 +205,9 @@ pub struct CommandState {
     /// ftAction_80072E4C requests with the number of graphics commands queued
     /// before each one: both reach ftCo_8009F834 in script order.
     pub landing_effects: FixedVec<(u16, usize), COMMAND_REQUEST_CAPACITY>,
-    /// ftAction_80073118: radial dynamics requests, no RNG.
-    pub wind_effects: FixedVec<melee_cmd::WindEffect, DYNAMICS_REQUEST_CAPACITY>,
-    pub radial_impulses: FixedVec<melee_lb::radial_force::RadialImpulse, DYNAMICS_REQUEST_CAPACITY>,
+    /// lb_800119DC requests in issue order: ftAction_80073118 winds and
+    /// specials' radial impulses. No RNG.
+    pub gusts: GustRequests,
     /// ftAction_800728F8: controller-output requests, no RNG.
     pub rumble_requests: FixedVec<RumbleRequest, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80071B50 (0x80071B50) requests; audio is an output request.
@@ -547,7 +580,7 @@ impl CommandState {
                 }
                 Command::WindEffect(wind) => {
                     if !seeking {
-                        self.wind_effects.push(*wind);
+                        self.gusts.push_wind(*wind);
                     }
                 }
                 Command::DirectionalSound { id, .. } => {

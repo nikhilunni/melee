@@ -3898,33 +3898,39 @@ fn dispatch_fighter(
             f.article_hitlag_end();
         }
     }
-    // ftAction_80073118 / ftCo_8009E714: literal bone, rounded fixed-point
-    // operands; queue lifetime is owned by the scene's ground controller.
-    for wind in f.commands.wind_effects.take_all() {
-        let c = &mut f.core;
-        let center = melee_ft::fighter::caches::bone_position(
-            &mut c.skeleton,
-            c.animation.root,
-            usize::from(wind.bone),
-            Vec3::new(
-                0.003906 * f32::from(wind.x),
-                0.003906 * f32::from(wind.y),
-                0.0,
-            ),
-        );
-        radial_forces.insert(melee_lb::radial_force::RadialImpulse {
-            center,
-            frames: if wind.timer < 0 {
-                120
-            } else {
-                i32::from(wind.timer)
-            },
-            strength: 0.003906 * f32::from(wind.magnitude),
-            decay: 0.003906 * f32::from(wind.decay),
-            phase_step: 0.003906 * f32::from(wind.angle),
-        });
-    }
-    for impulse in f.commands.radial_impulses.take_all() {
+    // lb_800119DC requests in issue order: the pool prepends, and its list
+    // order is the order lb_800101C8 sums the fields in. Queue lifetime is
+    // owned by the scene's ground controller.
+    for gust in f.commands.gusts.take_all() {
+        let impulse = match gust {
+            melee_ft::fighter::commands::GustRequest::Impulse(impulse) => impulse,
+            // ftAction_80073118 / ftCo_8009E714: literal bone, rounded
+            // fixed-point operands.
+            melee_ft::fighter::commands::GustRequest::Wind(wind) => {
+                let c = &mut f.core;
+                let center = melee_ft::fighter::caches::bone_position(
+                    &mut c.skeleton,
+                    c.animation.root,
+                    usize::from(wind.bone),
+                    Vec3::new(
+                        0.003906 * f32::from(wind.x),
+                        0.003906 * f32::from(wind.y),
+                        0.0,
+                    ),
+                );
+                melee_lb::radial_force::RadialImpulse {
+                    center,
+                    frames: if wind.timer < 0 {
+                        120
+                    } else {
+                        i32::from(wind.timer)
+                    },
+                    strength: 0.003906 * f32::from(wind.magnitude),
+                    decay: 0.003906 * f32::from(wind.decay),
+                    phase_step: 0.003906 * f32::from(wind.angle),
+                }
+            }
+        };
         radial_forces.insert(impulse);
     }
     // Smash voices (opcode 18) and random sounds (opcode 38) issued before

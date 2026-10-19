@@ -27,6 +27,32 @@ from tick_trace import TickTracer, playback_toml  # noqa: E402
 from trace_common import ENTITIES_ADDR, event, run  # noqa: E402
 
 
+# MELEE_BONES_DYNAMICS=1: also dump each fighter's lb_8001044C chain nodes
+# (DynamicsData, lb/types.h lb_00F9_UnkDesc0) beside the row: per node its
+# joint index and the solver's own state, which no joint SRT carries:
+# +2C position, +38 velocity axis, +44 angular velocity (raw f32 bits).
+DYNAMICS = bool(os.environ.get("MELEE_BONES_DYNAMICS"))
+GOBJ_USER_DATA = 0x2C
+FIGHTER_DYNAMIC_SETS = 0x2F0  # BoneDynamicsDesc[10], 0x18 bytes each
+FIGHTER_DYNAMICS_NUM = 0x3E0
+DYNAMICS_NEXT = 0x90
+
+
+def dynamic_nodes(mem, gobj: int, joints) -> list:
+    index_of = {j.pointer: i for i, j in enumerate(joints)}
+    fp = mem.read_u32(gobj + GOBJ_USER_DATA)
+    sets = []
+    for s in range(min(mem.read_u32(fp + FIGHTER_DYNAMICS_NUM), 10)):
+        node = mem.read_u32(fp + FIGHTER_DYNAMIC_SETS + 0x18 * s + 4)
+        nodes = []
+        while node and len(nodes) < 32:
+            nodes.append({"bone": index_of.get(mem.read_u32(node), -1),
+                          "words": [f"{w:08X}" for w in jobjdump.float_bits(mem, node + 0x2C, 7)]})
+            node = mem.read_u32(node + DYNAMICS_NEXT)
+        sets.append(nodes)
+    return sets
+
+
 class BonesTracer(TickTracer):
     def __init__(self, *args, bones_out, first_tick=0, **kwargs):
         super().__init__(*args, **kwargs)
@@ -43,6 +69,7 @@ class BonesTracer(TickTracer):
         # joints whose cached mtx is stale (JOBJ_MTX_DIRTY), built by no one
         # since their SRT changed. Outside `state`, so word counts stay.
         dirty = {}
+        dynamics = {}
         for index, gobj in enumerate(walk.fighter_gobjs(mem, ENTITIES_ADDR)):
             root = jobjdump.fighter_root_jobj(mem, gobj)
             joints = jobjdump.jobj_tree(mem, root)
@@ -50,7 +77,11 @@ class BonesTracer(TickTracer):
                 for key, value in rec["state"].items():
                     state[f"p{index}." + key.split(".", 1)[1]] = value
             dirty[f"p{index}"] = [i for i, j in enumerate(joints) if j.flags & jobjdump.JOBJ_MTX_DIRTY]
+            if DYNAMICS:
+                dynamics[f"p{index}"] = dynamic_nodes(mem, gobj, joints)
         line = {"frame": self.frame, "phase": "bones", "state": state, "dirty_bones": dirty}
+        if DYNAMICS:
+            line["dynamics"] = dynamics
         self.bones_out.write(json.dumps(line, allow_nan=False) + "\n")
         self.bones_out.flush()
         return diagnostic

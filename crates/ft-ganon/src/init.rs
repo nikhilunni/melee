@@ -83,7 +83,7 @@ fn enter_taunt(f: &mut Fighter, assets: &FighterAssets) -> melee_ft::fighter::as
         hsd_types::Vec3::ZERO,
     );
     c.commands
-        .radial_impulses
+        .gusts
         .push(melee_lb::radial_force::RadialImpulse {
             center,
             frames: 80,

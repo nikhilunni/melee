@@ -77,7 +77,7 @@ pub fn enter(f: &mut Fighter, air: bool, a: &FighterAssets) {
     let center = common::joint_position(f, TOP_JOINT);
     f.core
         .commands
-        .radial_impulses
+        .gusts
         .push(melee_lb::radial_force::RadialImpulse {
             center,
             frames: GUST_FRAMES,

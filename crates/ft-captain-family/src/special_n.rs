@@ -146,7 +146,7 @@ fn wind<P: FalconPunch>(f: &mut Fighter) {
     };
     let center = f.physics.position;
     f.commands
-        .radial_impulses
+        .gusts
         .push(melee_lb::radial_force::RadialImpulse {
             center,
             frames: 2,

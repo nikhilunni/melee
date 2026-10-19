@@ -206,7 +206,7 @@ fn gust(f: &mut Fighter, assets: &FighterAssets, (strength, decay): (f32, f32)) 
     );
     center.x = gekko_math::fma::fmadds(GUST_FORWARD, c.physics.facing, center.x);
     c.commands
-        .radial_impulses
+        .gusts
         .push(melee_lb::radial_force::RadialImpulse {
             center,
             frames: GUST_FRAMES,

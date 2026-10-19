@@ -3669,6 +3669,30 @@ fn jigglypuff_hat_costumes_match_retail_bones() {
     }
 }
 
+/// Marth's aerial Counter, set off by a Bob-omb's blast: Counter's hit
+/// impulse (lb_800119DC before Fighter_ChangeMotionState) enters the force
+/// pool before SpecialAirLwHit's wind command, and the pool sums its fields
+/// newest first, so the cape's spring chains (bones 45-58) keep retail's pose
+/// only with both requests in issue order.
+#[test]
+fn counter_gusts_match_retail_bones() {
+    let name = "sudden_death_counterbomb_fd_marth";
+    if combat_gate_ticks(name, 1471).is_none() {
+        return;
+    }
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
+    let scenario = Scenario::load(&path).unwrap();
+    if !melee_test_support::require_files([
+        scenario.trace_path("bones.jsonl"),
+        scenario.trace_path("bones.raw.jsonl"),
+    ]) {
+        return;
+    }
+    let report = melee_sim::bones::bones_diff(&scenario, 12, None).unwrap();
+    assert!(report.mismatches.is_empty(), "{name}: {report:#?}");
+}
+
 /// Yoshi's forward smash from Wait (facing forward, turned by the stick or
 /// the C-stick) and turned out of a walk: frame 0's dust (0x3F3 on bone 57,
 /// ftCo_8009F834's three offset draws) precedes the smash voice's Randi

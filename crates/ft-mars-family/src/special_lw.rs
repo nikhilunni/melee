@@ -365,7 +365,7 @@ pub fn process_hit<C: MarsFamily>(f: &mut Fighter, a: &FighterAssets) {
         hsd_types::Vec3::ZERO,
     );
     c.commands
-        .radial_impulses
+        .gusts
         .push(melee_lb::radial_force::RadialImpulse {
             center,
             frames: 120,

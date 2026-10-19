@@ -219,7 +219,7 @@ fn gust(f: &mut Fighter, a: &FighterAssets, gust: Gust) {
         hsd_types::Vec3::ZERO,
     );
     c.commands
-        .radial_impulses
+        .gusts
         .push(melee_lb::radial_force::RadialImpulse {
             center,
             frames: gust.frames,

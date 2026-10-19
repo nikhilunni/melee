@@ -764,6 +764,11 @@ scenario's own schedule this way reproduces its trace exactly.
   Record a window cheaply
   with `record.py <scenario> --no-ledger --no-particles --bones N --bones-from T`
   (the dump still runs from tick 0 but writes only ticks >= T).
+  With `MELEE_BONES_DYNAMICS=1` in the environment each row also carries
+  `dynamics`: per fighter, per spring chain, each lb_8001044C node's joint
+  index and its solver state no SRT shows (`+2C` position, `+38` velocity
+  axis, `+44` angular velocity, raw f32 bits). Use it on a probe copy of the
+  scenario to find the tick a chain's hidden state first leaves retail's.
 - `melee-sim particle-sites <scenario> --from A --to B`: ordered particle RNG
   call sites per tick, port versus the retail ledger (the order the M5 gate
   checks).
