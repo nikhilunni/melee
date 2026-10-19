@@ -209,10 +209,18 @@ impl Effect {
         self.lifetime = initial.lifetime;
         self.indefinite = initial.indefinite;
         self.attachment_bone = None;
+        // efLib_Create (eflib.c:455-463) clears `update`, and HSD_JObjLoadJoint
+        // loads a JObj without constraints: no callback, its parameters or
+        // lb_8000C290's orientation outlives the model.
+        self.oriented = false;
+        self.tree.set_orientation_constraint(self.root, None);
         self.scale_attachment = true;
         self.callback_rotation = None;
+        self.callback_rotation_z = None;
         self.facing_rotation = None;
         self.follow_bone = None;
+        self.follow_bone_height = None;
+        self.lifetime_end_spawn = None;
         self.follow_item = None;
         self.item_bone = None;
         self.child_drift_z = None;

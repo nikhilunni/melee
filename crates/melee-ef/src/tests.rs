@@ -167,6 +167,30 @@ fn every_model_restarts_exactly_without_allocation() {
 }
 
 #[test]
+fn a_reused_slot_carries_no_callback_or_constraint_from_its_last_model() {
+    let Some(archive) = archive() else {
+        return;
+    };
+    // efLib_Create clears `update` and loads a fresh JObj: a recycled slot
+    // must equal a fresh one, whichever callback its last model ran.
+    let initial = Effect::load(&archive, 0x28).unwrap();
+    let mut effect = initial.clone();
+    effect.oriented = true;
+    effect.orient::<Trig>(hsd_anim::orientation::OrientationTarget::World(
+        Mtx::IDENTITY,
+    ));
+    effect.callback_rotation_z = Some(0.5);
+    effect.follow_bone_height = Some((1, 2, 3.0));
+    effect.lifetime_end_spawn = Some(85);
+    effect.reset(&initial);
+    assert!(!effect.oriented);
+    assert_eq!(effect.callback_rotation_z, None);
+    assert_eq!(effect.follow_bone_height, None);
+    assert_eq!(effect.lifetime_end_spawn, None);
+    assert_eq!(effect.tree, initial.tree);
+}
+
+#[test]
 fn full_pool_retires_oldest_and_reuses_slots_without_allocation() {
     let Some(archive) = archive() else {
         return;
