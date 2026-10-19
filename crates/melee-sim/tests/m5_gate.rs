@@ -4622,7 +4622,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 649] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 650] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5659,6 +5659,10 @@ const CORPUS_V3_MATCHES: [(&str, usize); 649] = [
     // goes to Landing's mv+4 (it_802A7A04, it_802BABB8), Link and Samus.
     ("corpus_v3_ps_link_fox4_e23bd2614_p2", 5239),
     ("corpus_v3_ps_samus_fox4_e51dc0146_p0", 5640),
+    // Mr. Game & Watch grabbed out of a second forward smash: the first torch,
+    // which x2254_fireGObj no longer points at, misses ftGw_Init_OnDamage and
+    // goes a tick later by itself (itGamewatchFire_Motion0_Anim).
+    ("corpus_v3_fd_gameandwatch_samus4_ebe7703ed_p0", 6001),
 ];
 
 #[test]

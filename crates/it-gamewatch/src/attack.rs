@@ -5,8 +5,8 @@
 //! left hand.
 use crate::{common_control, no_collision, no_physics, owner_motion as owner};
 use melee_it::{
-    desc::ItemAssets, state_change::ANIM_UPDATE, ItemAnimationContext, ItemControl, ItemCore,
-    ItemEvent, ItemLogic, ItemStateRow,
+    desc::ItemAssets, state_change::ANIM_UPDATE, GameWatchFireState, ItemAnimationContext,
+    ItemControl, ItemCore, ItemEvent, ItemLogic, ItemScratch, ItemStateRow,
 };
 use melee_types::ItemKind;
 
@@ -188,7 +188,24 @@ impl ItemLogic for Fire {
         item.change_motion_with(0, FIRE_STATES[0], ANIM_UPDATE, ctx.assets);
         item.advance_animation(ctx.assets);
     }
+    fn spawned(item: &mut ItemCore, _assets: &ItemAssets) {
+        item.scratch = ItemScratch::GameWatchFire(GameWatchFireState::default());
+    }
+    /// The owner calls the torch through fp->u.gw.x2254_fireGObj
+    /// (ftGw_AttackS4_ItemTorchOnDamage 8014A938, ItemTorchEnterHitlag
+    /// 8014A990, ItemTorchExitHitlag 8014A9C0): a torch the pointer left
+    /// for a newer one hears none of it.
     fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
+        let ItemScratch::GameWatchFire(state) = &mut item.scratch else {
+            unreachable!("a Fire torch without its state");
+        };
+        if matches!(control, ItemControl::Superseded) {
+            state.superseded = true;
+            return;
+        }
+        if state.superseded {
+            return;
+        }
         if !common_control(item, control) {
             unreachable!("{control:?} sent to the Fire torch");
         }

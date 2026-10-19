@@ -288,7 +288,8 @@ macro_rules! blaster {
                     | ItemControl::Strike
                     | ItemControl::Motion(_)
                     | ItemControl::Orphan
-                    | ItemControl::Aim { .. } => {
+                    | ItemControl::Aim { .. }
+                    | ItemControl::Superseded => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }

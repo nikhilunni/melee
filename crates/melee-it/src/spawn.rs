@@ -128,6 +128,9 @@ pub enum ItemControl {
     /// it_802A8398: a drawn arrow follows the hands (its position is the
     /// tip, its tail the bow hand).
     Aim { tip: Vec3, tail: Vec3 },
+    /// The owner's pointer to its article moves to a newer one of the same
+    /// kind (the old article is no longer reached by its owner's calls).
+    Superseded,
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {

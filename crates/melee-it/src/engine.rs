@@ -189,6 +189,7 @@ pub enum ItemScratch {
     Chef(ChefState),
     Rescue(RescueState),
     Judge(JudgeState),
+    GameWatchFire(GameWatchFireState),
     MewtwoDisable(DisableState),
     ShadowBall(ShadowBallState),
     CutterBeam(CutterBeamState),
@@ -231,6 +232,16 @@ pub struct KoopaFlameState {
 pub struct JudgeState {
     /// it_802C7774's arg4: the face drawn, 0..8 (the sign shows it plus 1).
     pub face: i32,
+}
+/// Mr. Game & Watch's Fire torch (itgamewatchfire.c).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct GameWatchFireState {
+    /// fp->u.gw.x2254_fireGObj points at a newer torch: a second forward
+    /// smash's ftGw_ItemTorchSetup (8014A848) overwrites the pointer
+    /// without removing this one, so its owner's removal and hitlag calls
+    /// no longer reach it. It still reads its owner's motion and goes by
+    /// itself (itGamewatchFire_Motion0_Anim).
+    pub superseded: bool,
 }
 /// Item.xDD4_itemVar.gamewatchchef (itgamewatchchef.c).
 #[derive(Clone, Copy, Debug, Default)]

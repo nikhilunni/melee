@@ -221,8 +221,13 @@ fn manhole_setup(f: &mut Fighter) {
     uninstall(f);
 }
 
-/// ftGw_ItemTorchSetup (8014A848): the torch on the left hand.
+/// ftGw_ItemTorchSetup (8014A848): the torch on the left hand. A torch
+/// still out from a forward smash this one interrupted stays, but
+/// x2254_fireGObj now points at the new one.
 fn torch_setup(f: &mut Fighter) {
+    if articles(f).torch {
+        control(f, ItemKind::GameWatchFire, ItemControl::Superseded);
+    }
     spawn(f, ItemKind::GameWatchFire, FtPart::LHandNb);
     articles(f).torch = true;
     install_callbacks(f, ItemKind::GameWatchFire);
