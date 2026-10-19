@@ -5,21 +5,22 @@ Legend: `[ ]` todo, `[~]` in progress (add date), `[x]` done, `[!]` blocked
 and what is next. Finished work lives in git history and `docs/PORT_NOTES/`;
 do not keep a session log here.
 
-## Current state (2026-10-18, after the tenth wave)
+## Current state (2026-10-19, after the twelfth wave)
 
 - **All 26 characters are registered and all six tournament stages run
   bit-exact.** Kirby (2026-10-12) has his movement, attacks, all four
   throws, Inhale (catch, mouthful, spit, swallow), Final Cutter, Hammer,
-  Stone, the helmeted jumps and losing an ability; no copied special is
-  ported (`docs/PORT_NOTES/KIRBY.md`, "Where this stands and how to
-  resume"). Each character has a start boundary vs Fox on FD (`m4_gate`),
+  Stone, the helmeted jumps and losing an ability, and 8 of the 25
+  copied neutral specials (Fox, Falco, Captain Falcon, Ganondorf, Marth,
+  Roy, Jigglypuff, Mr. Game & Watch; `docs/PORT_NOTES/KIRBY.md`, "Where
+  this stands and how to resume"). Each character has a start boundary vs Fox on FD (`m4_gate`),
   a witness list in `m5_gate` and, except Kirby, explorer matches.
 - **Slippi replays** (every tick's Pre Frame seed is checked, so a complete
   game has no random-stream drift):
   - `~/melee-data/replays/public-v3.7` (108 games): **108 complete**, every
     frame (one with an inferred lag frame);
   - `~/melee-data/replays/public-v3.7-b` (502 games, sampled 2026-10-03):
-    **484 complete**, 96.7% of frames (247 complete when sampled): 458
+    **484 complete**, 5,081,080 frames (2026-10-19) (247 complete when sampled): 458
     plain, 11 with one inferred lag frame, 15 Slippi Online; 5 stop, 13 are
     refused at setup (doubles, CPU players, other stages). Without lag
     frame inference 473 complete. The batch takes 2:15 on 10 cores.
@@ -55,28 +56,32 @@ do not keep a session log here.
   from 2020-03-04, level Fountain of Dreams platforms with entry by spawn
   order (both read from a replay's frames; code text constructed, not
   found).
-- Gates at the wave-10 checkpoint (2026-10-18): release workspace
-  1846/0 (324 test binaries), clippy clean, pytest 368, schema check
-  clean, `m4_gate` and `m5_gate` green, replay batches as above with no
-  game matching fewer frames (Kirby + Mr. Game & Watch moved 5100 to
-  5388). **The perf gate still fails on size and one label, not on time**
-  (19.6 ms per 600 ticks): stripped 7,079,088 bytes against the 6,876,693
-  ceiling, and `ft-kirby`'s one duplicate label against a missing baseline
-  of 0. Three `melee-ft` duplicate labels this wave added were removed
-  (ae614c2d). Baselines are the user's call (`docs/PERF.md`).
-- **`melee-sim gate --particles`** compares the whole particle system with
-  the retail dump each tick (`docs/ORACLE.md`). Of the 112 recorded
-  scenarios that passed the fighter and item gate but differed in a
-  particle at the start of wave 10, **2 remain** (sweep 2026-10-18: 2866
-  exact, 2 particle faults, 102 not compared, 14 base failures, all
-  unregistered local recordings or Kirby's copy abilities): Pikachu's
-  Quick Attack trail reading XRotN mid-tick (program 74,
-  `corpus_v3_bf_yoshi_pikachu4_ec13743d5_p2`) and one Ice Climbers
-  item-teardown generator (program 14000,
-  `corpus_v3_dl_luigi_iceclimbers4_e86fddb60_p1`). Causes and fixes:
-  `docs/PORT_NOTES/PARTICLE_GATE_2026_10.md`. Still opt-in (a user
-  decision, below). Item GObj identity equals retail's in all but one
-  unusable recording (`melee-sim gobj-diff`).
+- Gates at the wave-12 checkpoint (2026-10-19): release and debug
+  workspace 1864/0, clippy clean, pytest 368, wasm32 = native (6003
+  lines), `m4_gate` and `m5_gate` green, replay batches as above with no
+  game matching fewer frames (Kirby + Mr. Game & Watch 5388 to 9909).
+  Sweep (`melee-sim sweep`, every scenario with particles): 2954 exact,
+  101 not comparable, 12 failing (all unregistered local recordings with
+  data problems: missing traces, trace length, seed). **The perf gate
+  fails on size and one label, not on time** (19.9 ms per 600 ticks; load
+  58.5 ms, was 158): stripped 7,248,832 bytes against the 6,876,693
+  ceiling, and `ft-kirby`'s one duplicate label (the `CharacterTable::new`
+  closure every character crate has) against a missing baseline entry.
+  Baselines are the user's call (`docs/PERF.md`).
+- **`Match` is 19.3 MB (was 102.7) and clone takes 1.9 ms (was 7.8)** for
+  FD Fox vs Marth (`cargo run --release -p melee-lib --example
+  match_memory`): effect models share one callback buffer and only the
+  banks a match can use are pooled (a Kirby match pools all, ~50 MB). No
+  heap allocation after `Match::new` on any stage or character
+  (`melee-lib/tests/allocation.rs`, 13 matches x 3600 ticks).
+- **The particle check is on by default** in `melee-sim gate`, `sweep`
+  and `m5_gate` (user decision 2026-10-19): every recorded scenario is
+  particle-exact or says why its dump is not comparable
+  (`docs/PORT_NOTES/PARTICLE_GATE_2026_10.md`). `bones-diff` compares world
+  matrices where the port holds a joint clean and retail's dump does not
+  list it dirty (`dirty_bones`, recorded since 2026-10-19). Item GObj
+  identity equals retail's in all but one unusable recording
+  (`melee-sim gobj-diff`).
 - A bridge needs the replay's own boundary (`--game-start-seed`) wherever
   the stage draws at creation: Final Destination, Fountain of Dreams,
   a transforming Pokemon Stadium, Dream Land past tick 3000, and any Ice
@@ -93,6 +98,9 @@ do not keep a session log here.
   - `melee-sim replay`, `replay-batch` (`pN.input_seed` = RNG drift on the
     tick before), and the replay-to-retail bridge (`--retail-inputs`,
     `harness/slippi_to_scenario.py`), which follows a replay on every stage;
+  - `melee-sim sweep` (all scenarios on every core, `--baseline`,
+    `--filter`, `--lock`) and `sweep-compare`; the coordinator keeps the
+    baseline of the commit agents start from in `target/sweeps/`;
   - `MELEE_DATA_ROOT` for worktrees; `docs/AGENT_BRIEF.md`;
     `tools/agent-merge/pick.sh` (array lengths in `m5_gate` lists often
     need fixing after a merge: compile the tests).
@@ -100,8 +108,9 @@ do not keep a session log here.
 ## Next (recommended order)
 
 1. [~] **Slippi corpus.** 5 games stop in `public-v3.7-b`, each explained:
-   - Kirby + Mr. Game & Watch: the hats are done and it now stops at 5388
-     on a copied neutral special (`ftKb_Init_803C9DD0`, item 2);
+   - Kirby + Mr. Game & Watch: the copied Chef is done and it now stops at
+     9909: Mr. Game & Watch's x is ~0.008 off in his aerial Fire (374) at
+     FoD's left edge beside Kirby; not yet diagnosed;
    - two pad-queue games, proven on retail to be a console's unconsumed
      controller poll and not inferred (Falcon vs Pichu 2158, Falcon + Ice
      Climbers FoD 7022);
@@ -109,15 +118,10 @@ do not keep a session log here.
      port, not the console; seeds, pads and the frame before are equal.
      Unexplained.
    Next for the oracle, in order of value:
-   - **explorer**: both 2026-10 rounds' faults with retail witnesses are
-     fixed and registered (`EXPLORER_CAMPAIGN_2026_10.md`, `_10B.md`;
-     the second round ran every boundary without one, so every character
-     now has matches off Final Destination). Explorer bridges render after
-     every tick since 2026-10-18, so a bridged retail match follows the
-     explorer's game. Next: more seeds across the roster (FoD, PS and DL
-     are thin for most pairs);
-   - **the particle gate's 2 remaining scenarios** (above), then wire the
-     check into `m5_gate` and make it the default;
+   - **explorer**: three 2026-10 rounds, every fault with a retail witness
+     fixed and registered (`EXPLORER_CAMPAIGN_2026_10.md`, `_10B.md`,
+     `_10C.md`; 10C added FoD, PS and DL boundaries for the six characters
+     without one). Next: more seeds, and pairs still thin off FD;
    - a newer or wider replay corpus (none is on disk beyond the two);
    - a display pass also writes drawn joint matrices that dynamics, the
      Thrown hip test and tether links read; the port models only part;
@@ -127,37 +131,25 @@ do not keep a session log here.
      port has a table for 13 recorded setups, others fail closed;
    - unported and unreached: the captor that keeps its grab while in
      hitlag (`ftCo_8008EC90`, x1828 = 3), a frozen fighter leaving the top,
-     Mr. Saturn's stage-spawned states, the inert item hitbox, Bob-omb's
-     slide, a holding-an-item audit for DamageIce and FlyReflectWall,
-     article removers that do not queue the generator-cursor walk
-     (`docs/SLIPPI.md` audit; only Peach's parasol is witnessed);
-   - ported from retail's table but unwitnessed (2026-10-18): an item hit
-     by a Dark element (efSync 0x416) or a ReDead element (nothing
-     spawned), `melee-it` `hurt.rs`;
-   - a silent-divergence risk: `FighterCore::check_blast_zone` skips the
-     check whenever the scratch is `MotionData::Life`, which stays set
-     after a fighter leaves revival by a special (retail tests x2219_b1;
-     the magnifier had the same fault, fixed in 2301bf13);
-   - tooling: `bones-diff` compares local SRT only, so a world matrix off
-     by ulps (the second leg's IK, 89c7cb48) passes it.
-2. [~] **Kirby**: everything but the copy abilities. Done 2026-10-18: the
-   five grafted hats, the Cutter beam on slopes, the aerial Final Cutter
-   landing, the inhale's release and platform drop, and explorer rounds
-   from all eight Kirby boundaries. Next, in the order
-   `docs/PORT_NOTES/KIRBY.md` gives: copied specials one kind at a time
-   (Fox and Falco first; `ftKb_Init_803C9DD0` stops the last Kirby replay
-   and three explorer cases), inhaling items and pickup hand poses, the
-   remaining fail-closed branches.
-3. [ ] **Fail-closed branches left from wave D**: Captain Falcon's sword
-   Swing42, item-on-item push, Mr. Saturn's idle and slide states, UCF 0.84
-   branches without witnesses (KO totals, Nana's behaviours 5, 6 and 15,
-   DamageIce, the sword swings and Mr. Saturn knocked away are done).
-4. [~] **Particle positions in the gate.** 2 of 112 left (above); then
-   make it the default in `m5_gate` (user decision).
-5. [ ] **Tick-path allocations.** Dream Land re-decodes its background
-   AnimJoint on about 60% of ticks
-   (`BackgroundAnimation::select_animation`); extend the allocation test
-   to every stage and character, then prepare stage animations at load.
+     Mr. Saturn's stage-spawned states 7-10 (need a stage- or
+     random-spawned item), Bob-omb's slide, a holding-an-item audit for
+     DamageIce and FlyReflectWall, article removers that do not queue the
+     generator-cursor walk (`docs/SLIPPI.md` audit), Bowser's Klaw holder
+     losing its floor (`ftKp_SpecialS_801332C4`; likely reachable on the
+     Stadium windmill like the grab pair, 649b09c1), CatchPull losing its
+     floor (same code as CatchWait, unwitnessed);
+   - ported from retail's table but unwitnessed: an item hit by a Dark
+     element (efSync 0x416) or a ReDead element, `melee-it` `hurt.rs`.
+2. [~] **Kirby's copied specials**: 8 of 25 kinds done 2026-10-19 (Blaster
+   x2, Punch x2, Shield Breaker / Flare Blade, Rollout, Chef), each sharing
+   the original's states through a family-crate trait. The checklist per
+   kind is `docs/PORT_NOTES/KIRBY.md` item 2. Next: Sheik, Peach, Samus,
+   then the rest; charge kinds need `ftKb_Init_UnkMotionStates4`. Then
+   inhaling items and pickup hand poses.
+3. [ ] **Match clone below 1 ms**: the floor is the 64 ready slots per
+   effect model (~12 of 19 MB); shared slots need buffer-reusing copies in
+   hsd-anim, or per-model limits proven from retail. Fighter track
+   buffers are another 4 MB.
 
 For a new matchup or stage, reuse the Fox-Marth approach:
 - an exit-criteria table like `docs/MATCHUP_COMPLETENESS.md`;
@@ -170,7 +162,7 @@ For a new matchup or stage, reuse the Fox-Marth approach:
 **Characters** (`crates/ft-<name>`):
 - All 26 are registered; 25 have all their specials (Kirby: `Next` 2); fail-closed branches
   are listed in Next, items 2 and 4.
-- Family crates: fox, mars, mario, pikachu, captain, link.
+- Family crates: fox, mars, mario, pikachu, captain, link, purin, gamewatch.
 - Two-fighter players share one model: Ice Climbers, and Sheik/Zelda (the
   sleeping form).
 
@@ -242,18 +234,15 @@ stages render; the wasm32 sim is bit-identical to native (492 corpus gates,
       commits are on branch `worktree-agent-abfdfd481090df427`, held out.
 - [x] Untracked local scenarios: classified and registered 2026-10-12
       (`docs/PORT_NOTES/UNREGISTERED_SCENARIOS.md`).
-- [ ] **User decisions waiting** (2026-10-12, still open 2026-10-18):
-      perf baselines (size ceiling, `ft-kirby`'s label entry);
-      whether to re-record the particle, bone and camera dumps of 35
-      every-tick scenarios made at the wrong cadence, and what to do with
-      about 20 GB of uncompressed particle dumps from passes that timed
-      out (`find harness/traces -size +100M ! -name '*.zst'`);
-      whether to model Slippi Dolphin's unfused `fnmsub` for netplay;
-      whether lag-frame inference stays on by default and the particle
-      gate stays opt-in; whether to push (main is far ahead of origin and
-      the CI workflow has never run).
-- [ ] `Match` is 96 MB and clone/new/reset cost 8-10 ms; a smaller state
-      would make rollouts and tree search cheap.
+- [ ] **User decisions waiting** (2026-10-12, still open 2026-10-19):
+      perf baselines (size ceiling; `ft-kirby`'s label entry, recommended
+      2026-10-19); whether to re-record the particle, bone and camera
+      dumps of 35 every-tick scenarios made at the wrong cadence; whether
+      to model Slippi Dolphin's unfused `fnmsub` for netplay; whether
+      lag-frame inference stays on by default; whether to push (main is
+      far ahead of origin and the CI workflow has never run). Decided
+      2026-10-19: the particle check is the default; unreferenced orphan
+      traces deleted and large uncompressed traces compressed.
 
 - [x] CI workflow added 2026-10-11 (`.github/workflows/ci.yml`), not yet run.
 - [ ] About 300 `unimplemented!` call sites (308 lines by a raw grep on

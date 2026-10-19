@@ -62,5 +62,6 @@ Fix: `melee_ft::fighter::commands::GustRequests` keeps one queue of
 pool. The character crates push impulses as before (`commands.gusts.push`).
 `counter_gusts_match_retail_bones` (m5_gate) holds the scenario's bones exact.
 
-The probe's traces (`harness/traces/probe_w12_counterbomb_dyn.*`) are scratch
-diagnostics, not a registered scenario.
+The probe's traces (`harness/traces/probe_w12_counterbomb_dyn.*`) were scratch
+diagnostics, not a registered scenario, and were deleted on 2026-10-19;
+record the probe again with `MELEE_BONES_DYNAMICS=1` to reproduce them.
