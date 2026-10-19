@@ -1105,8 +1105,13 @@ impl ItemCore {
             self.half_life = lifetime * half_life_scale;
         }
     }
+    /// Item_80268E5C (80268E5C) for the kinds without an article row.
     pub fn change_motion(&mut self, motion: u16, assets: &ItemAssets) {
         self.motion = motion;
+        // Item_80268E5C: HSD_JObjSetTranslate(jobj, &pos) first, so a
+        // hitbox the script makes at once (a laser's, after its initial
+        // collision moved it) is placed from the resolved position.
+        self.root_translation = self.position;
         self.flush_queued_effects();
         self.article_state = usize::from(motion);
         self.animation_frame = 0.0;
