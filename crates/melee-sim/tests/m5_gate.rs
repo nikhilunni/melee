@@ -4634,7 +4634,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 651] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 676] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5678,6 +5678,35 @@ const CORPUS_V3_MATCHES: [(&str, usize); 651] = [
     // Thunder's lead bolt ends while Pikachu stands in Wait out of Damage:
     // its mv+4 store lands in the kept mv.co.damage.x4.
     ("corpus_v3_fod_pikachu_mario4_eac9514d6_p1", 1665),
+    // Clean explorer samples from the 24 unexplored boundaries
+    // (EXPLORER_CAMPAIGN_2026_10B.md); the two _ret twins are the first
+    // round's samples bridged at render_every_tick, retail now plays the
+    // explorer's whole game.
+    ("corpus_v3_ys_ness_marth4_e170dc03b_p1", 6001),
+    ("corpus_v3_ys_younglink_peach4_ed4320157_p1", 6001),
+    ("corpus_v3_dl_roy_link4_ea56d29fc_p0", 6001),
+    ("corpus_v3_bf_mewtwo_peach4_ea56d29fc_p0", 6001),
+    ("corpus_v3_bf_mewtwo_peach4_ea40991a0_p2", 6001),
+    ("corpus_v3_bf_sheik_iceclimbers4_ea40991a0_p0", 5072),
+    ("corpus_v3_bf_gameandwatch_link4_ee403ad76_p0", 6001),
+    ("corpus_v3_ys_samus_falco4_ef540a761_p1", 3570),
+    ("corpus_v3_dl_donkeykong_peach4_e0a079375_p1", 6001),
+    ("corpus_v3_dl_luigi_iceclimbers4_ea56d29fc_p1", 6001),
+    ("corpus_v3_dl_yoshi_sheik4_ee403ad76_p0", 4884),
+    ("corpus_v3_dl_link_roy4_ef41f983a_p0", 6001),
+    ("corpus_v3_dl_roy_link4_ea40991a0_p0", 6001),
+    ("corpus_v3_fod_ganondorf_link4_ef41f983a_p2", 6001),
+    ("corpus_v3_fod_zelda_marth4_e1ffd6e62_p0", 6001),
+    ("corpus_v3_fd_kirby_fox4_ea56d29fc_p0", 5629),
+    ("corpus_v3_fd_kirby_fox4_ef41f983a_p2", 4963),
+    ("corpus_v3_fd_kirby_captainfalcon4_ee42e8dad_p0", 6001),
+    ("corpus_v3_fd_kirby_falco4_e6eb56344_p2", 6001),
+    ("corpus_v3_fd_kirby_jigglypuff4_e7da23597_p0", 6001),
+    ("corpus_v3_fd_kirby_donkeykong4_e170dc03b_p2", 6001),
+    ("corpus_v3_fd_kirby_mewtwo4_ef540a761_p2", 6001),
+    ("corpus_v3_fd_kirby_gameandwatch4_ea56d29fc_p2", 6001),
+    ("corpus_v3_fod_fox_marth4_ebe7703ed_p0_ret", 4710),
+    ("corpus_v3_dl_captainfalcon_jigglypuff4_ebe7703ed_p0_ret", 5810),
 ];
 
 #[test]
