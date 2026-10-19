@@ -529,11 +529,19 @@ pub(super) fn accessory(state: &mut InitialState, player: usize) -> Result<Optio
                 melee_types::CommonMotionState::CatchPull
                     | melee_types::CommonMotionState::CatchDashPull
             );
-        if f.status.disabled
-            || f.in_hitlag()
-            || reeling
-            || !matches!(f.state_data, melee_ft::fighter::MotionData::Catch { .. })
-        {
+        // Only the entries of CatchPull (ftCo_CatchPull.c:66), CatchWait
+        // (ftCo_CatchWait.c:22, 38) and CatchAttack (ftCo_CatchAttack.c:17)
+        // install accessory1; Fighter_ChangeMotionState clears it
+        // (fighter.c:1376). The motion id, not the scratch: Kirby's inhale
+        // rows leave a whiffed Catch's scratch in place while holding.
+        let holding_state = matches!(
+            f.motion_state.id,
+            melee_types::CommonMotionState::CatchPull
+                | melee_types::CommonMotionState::CatchDashPull
+                | melee_types::CommonMotionState::CatchWait
+                | melee_types::CommonMotionState::CatchAttack
+        );
+        if f.status.disabled || f.in_hitlag() || reeling || !holding_state {
             None
         } else if let Some(GrabLink::Holding { victim, .. }) = f.combat.grab {
             Some(victim)

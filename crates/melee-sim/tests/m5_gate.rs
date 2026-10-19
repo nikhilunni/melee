@@ -2425,6 +2425,9 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // landing, then the spit toward the middle (the star hits nothing and
     // Fox lands out of it).
     ("kirby_mouthful_walk_fd_fox4", 800),
+    // Fox, held, taps down on a Yoshi's Story platform: Kirby drops through
+    // it (ftCo_800BD6EC's mpUpdateFloorSkip) and falls past the main floor.
+    ("kirby_capture_drop_ys_fox4", 760),
     // The jump out of the walk, a full hop with the stick held; Fox breaks
     // free as Kirby lands, and while Kirby is in the air.
     ("kirby_mouthful_walk_jump_fd_fox4", 800),
@@ -4634,7 +4637,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-const CORPUS_V3_MATCHES: [(&str, usize); 687] = [
+const CORPUS_V3_MATCHES: [(&str, usize); 691] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5728,6 +5731,13 @@ const CORPUS_V3_MATCHES: [(&str, usize); 687] = [
     ("corpus_v3_fod_captainfalcon_zelda4_e86fddb60_p1", 1955),
     // Disable binds Peach in Toad (365): her rows' motion flags (ftCo_800C44CC).
     ("corpus_v3_bf_mewtwo_peach4_e86fddb60_p2", 4402),
+    // Kirby inhales Mewtwo after whiffing a grab: the stale Catch scratch
+    // no longer runs the holding accessory (only CatchPull/Wait/Attack set it).
+    ("corpus_v3_fd_kirby_mewtwo4_ef540a761_p1", 526),
+    ("corpus_v3_fd_kirby_mewtwo4_e052f4d33_p2", 907),
+    // The inhaled Fox taps down on a Yoshi's Story platform (ftCo_800BD6EC).
+    ("corpus_v3_ys_kirby_fox4_e4e54007e_p2", 688),
+    ("corpus_v3_ys_kirby_fox4_ef41f983a_p1", 1624),
 ];
 
 #[test]

@@ -361,7 +361,7 @@ const PASSABLE_FLOOR: u32 = 0x100;
 
 /// ftCo_800BD6EC (800BD6EC): a tap up hops Kirby off the floor with the
 /// fighter inside (ftKb_SpecialN_800F598C); a tap down on a floor he can
-/// pass would drop him through it. The tap is spent (its tilt timer
+/// pass drops him through it. The tap is spent (its tilt timer
 /// becomes 254).
 fn steer_vertically(
     victim: &mut FighterCore,
@@ -391,10 +391,19 @@ fn steer_vertically(
         && f32::from(timer) < m.platform_drop_window
         && captor.collision.data.floor.flags & PASSABLE_FLOOR != 0
     {
-        unimplemented!(
-            "ftCo_800BD6EC (ftCo_CaptureWaitKirby.c:56-62): the held fighter drops Kirby \
-             through a platform (ftKb_SpecialN_800F598C(-1), ftKb_SpecialN_800F5954)"
-        );
+        // ftCo_CaptureWaitKirby.c:56-62: inlineA0(-1), then
+        // ftKb_SpecialN_800F5954's mpUpdateFloorSkip on Kirby's floor, which
+        // runs whether or not ftKb_SpecialN_800F598C found him grounded.
+        victim.input.vertical.tilt = STICK_TIMER_SPENT;
+        let speed = capture(victim).mouth.steer_speed;
+        let left_floor = captor.physics.ground_or_air == GroundOrAir::Ground;
+        if left_floor {
+            (hold.leave_floor)(captor, captor_assets)?;
+            // `specialn_stop_momentum * (f32)-1`: a sign flip, bit for bit.
+            captor.physics.self_velocity.y = -speed;
+        }
+        melee_mp::update_floor_skip(&mut captor.collision.data);
+        return Ok(left_floor);
     }
     Ok(false)
 }

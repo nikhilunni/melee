@@ -585,13 +585,17 @@ Remaining work, in the order to take it:
    airborne throw landing before its flag (`fn_800DD5EC`, ftCo_Throw.c:207-223)
    and a throwing pair losing its floor (`fn_800DD684`, :225-234); the victim
    side's rarer partings (ftCo_CaptureCut.c:29-30, 115-122, 137-189;
-   ftCo_CaptureWaitKirby.c:56-62; ftCo_Throw.c:534-538; ftCo_ThrownKirby.c:
+   ftCo_Throw.c:534-538; ftCo_ThrownKirby.c:
    63-69, 76-83, 340-343); the mouthful sliding off a floor's end
    (ftkirbyspecialn.c:565-571, 591-598); Stone's steeper slides
    (ftkirbyspeciallw.c:177-188, 273-285, 308-313, 338-352) and a phantom hit
    on the shell (ftcoll.c:3666-3676); the ability star against a wall or
    ceiling (itgroundcoll.c:381-382). The explorer from the three Kirby
    boundaries (not yet run) and `melee-sim search` are the way to reach them.
+   Done (wave 11): the held fighter's tap down through a platform
+   (ftCo_CaptureWaitKirby.c:56-62, `kirby_capture_drop_ys_fox4`), and the
+   holding accessory (fn_800DA190/DA4A0/DA678) keyed on the motion id, not
+   the scratch: an inhale after a whiffed grab keeps Catch's scratch.
 5. **No witness yet**: the wall-bounce star (`WALL_BOUNCE_EFFECT`), the
    bump-star cooldown in a state without a collision callback, the grounded
    Inhale rows leaving a floor, the spat star's hitbox on a third fighter.
