@@ -637,7 +637,7 @@ impl Fighter {
                 PickupWeights::LIGHT
             };
             if let Some(item) = self.core.find_pickup(&assets.pickup, weights) {
-                self.take_item(item, assets);
+                self.core.take_item(item, assets);
             }
         }
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
@@ -670,77 +670,10 @@ impl Fighter {
         let Some(item) = self.core.find_pickup(&assets.pickup, PickupWeights::LIGHT) else {
             return false;
         };
-        self.catch_item(item, assets);
+        self.core.catch_item(item, assets);
         true
     }
 
-    /// ftCo_800D71D8 (800D71D8), each unfrozen animation proc after
-    /// ftAnim_8006EBA4 (from EscapeAir's callback, the one state that opens
-    /// the window): while the window is open an empty hand catches a light
-    /// item in reach; the window's last frame sets the catch lock.
-    pub(crate) fn run_catch_window(&mut self, assets: &FighterAssets) {
-        if self.core.catch_window == 0 {
-            return;
-        }
-        let item = self.core.find_pickup(&assets.pickup, PickupWeights::LIGHT);
-        self.core.catch_window -= 1;
-        if self.core.catch_window == 0 {
-            self.core.item_catch_locked = true;
-        }
-        if let Some(item) = item {
-            self.catch_item(item, assets);
-            self.core.catch_window = 0;
-        }
-    }
-
-    /// fn_800D6F58 (800D6F58): the hand closes on `item` with no motion
-    /// change (ftpickupitem_800948A8's light path), then ftpickupitem_8009447C
-    /// (nothing for a thrown kind), the pickup sparkle (efAsync_Spawn 0x422
-    /// at the light item part) and x2224_b1.
-    fn catch_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
-        self.take_item(item, assets);
-        let part = usize::from(self.core.bones.model.animation_translation);
-        let joint = self.core.animation.parts[part].joint.0;
-        self.core
-            .effects
-            .push(melee_ef::request::EffectRequest::Attached {
-                id: ITEM_PICKUP_SPARKLE,
-                bone: joint,
-            });
-        self.core.item_catch_locked = true;
-    }
-
-    /// ftpickupitem_800948A8 (800948A8): the hand closes on `item`.
-    fn take_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
-        assert!(self.core.held_item.is_none(), "x1978: a second held item");
-        assert_ne!(item.use_kind, 5, "ftpickupitem_8009447C: consumable pickup");
-        self.core.held_item = Some(HeldItem {
-            item: item.item,
-            kind: item.kind,
-            heavy: item.heavy,
-            hand_hold_kind: item.hand_hold_kind,
-            use_kind: item.use_kind,
-            damage_multiplier: item.damage_multiplier,
-        });
-        // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
-        // Fighter_OnItemPickup (ft/inlines.h:143).
-        self.core.pose_hand_for_item(item.hand_hold_kind, assets);
-        let hand = assets
-            .item_hand
-            .expect("ftData_OnItemPickupExt for this kind");
-        // ftAnim_80070C48: apply the shown slot's selection.
-        super::commands::show_part_selection(
-            &mut self.core.animation,
-            &mut self.core.skeleton,
-            assets,
-            hand.shown,
-        );
-        // Item_8026AB54 at the light item part (ftData x8 +0x10).
-        self.core.item_requests.push(melee_it::ItemRequest::PickUp {
-            item: item.item,
-            part: self.core.bones.model.animation_translation,
-        });
-    }
 
     /// ftPe_SpecialHi_8011D424's stow: the held item is hidden and frozen
     /// in place (it_8026BB44, it_8026B724), then the hand lets it go as
@@ -836,5 +769,75 @@ impl Fighter {
         {
             unimplemented!("ftpickupitem_80094D90: LightGet leaving the ground");
         }
+    }
+}
+
+impl FighterCore {
+    /// ftCo_800D71D8 (800D71D8), each unfrozen animation proc after
+    /// ftAnim_8006EBA4 (the state's first [`Self::step_animation`], or after
+    /// its callback when it does not step): while the window is open an
+    /// empty hand catches a light item in reach; the window's last frame
+    /// sets the catch lock.
+    pub(crate) fn run_catch_window(&mut self, assets: &FighterAssets) {
+        if self.catch_window == 0 {
+            return;
+        }
+        let item = self.find_pickup(&assets.pickup, PickupWeights::LIGHT);
+        self.catch_window -= 1;
+        if self.catch_window == 0 {
+            self.item_catch_locked = true;
+        }
+        if let Some(item) = item {
+            self.catch_item(item, assets);
+            self.catch_window = 0;
+        }
+    }
+
+    /// fn_800D6F58 (800D6F58): the hand closes on `item` with no motion
+    /// change (ftpickupitem_800948A8's light path), then ftpickupitem_8009447C
+    /// (nothing for a thrown kind), the pickup sparkle (efAsync_Spawn 0x422
+    /// at the light item part) and x2224_b1.
+    fn catch_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
+        self.take_item(item, assets);
+        let part = usize::from(self.bones.model.animation_translation);
+        let joint = self.animation.parts[part].joint.0;
+        self.effects
+            .push(melee_ef::request::EffectRequest::Attached {
+                id: ITEM_PICKUP_SPARKLE,
+                bone: joint,
+            });
+        self.item_catch_locked = true;
+    }
+
+    /// ftpickupitem_800948A8 (800948A8): the hand closes on `item`.
+    fn take_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
+        assert!(self.held_item.is_none(), "x1978: a second held item");
+        assert_ne!(item.use_kind, 5, "ftpickupitem_8009447C: consumable pickup");
+        self.held_item = Some(HeldItem {
+            item: item.item,
+            kind: item.kind,
+            heavy: item.heavy,
+            hand_hold_kind: item.hand_hold_kind,
+            use_kind: item.use_kind,
+            damage_multiplier: item.damage_multiplier,
+        });
+        // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
+        // Fighter_OnItemPickup (ft/inlines.h:143).
+        self.pose_hand_for_item(item.hand_hold_kind, assets);
+        let hand = assets
+            .item_hand
+            .expect("ftData_OnItemPickupExt for this kind");
+        // ftAnim_80070C48: apply the shown slot's selection.
+        super::commands::show_part_selection(
+            &mut self.animation,
+            &mut self.skeleton,
+            assets,
+            hand.shown,
+        );
+        // Item_8026AB54 at the light item part (ftData x8 +0x10).
+        self.item_requests.push(melee_it::ItemRequest::PickUp {
+            item: item.item,
+            part: self.bones.model.animation_translation,
+        });
     }
 }

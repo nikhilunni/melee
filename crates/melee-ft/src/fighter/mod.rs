@@ -1278,6 +1278,9 @@ pub struct FighterCore {
     /// reach (armed by ftCo_800D705C, run by ftCo_800D71D8); every motion
     /// change closes it (fighter.c:1072).
     pub catch_window: u16,
+    /// Set by the animation proc: ftCo_800D71D8 runs the catch window at
+    /// the end of the state's next animation step (ftAnim_8006EBA4).
+    pub catch_after_step: bool,
     /// hitlag_mul (+196C): the jab combo window. Every motion change except
     /// into Wait or Walk closes it (fighter.c:1142-1144).
     pub jab_countdown: f32,

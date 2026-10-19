@@ -221,10 +221,6 @@ pub fn cliff_catch(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<O
 pub fn escape_air(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
-    // Fighter_8006A360 (fighter.c:1684-1685): ftCo_800D71D8's catch window
-    // after ftAnim_8006EBA4, so a caught item's hand pose waits for the
-    // next step's part blend (peach_airdodge_turnip_catch_fd_fox4 tick 274).
-    fighter.run_catch_window(assets);
     fighter.advance_smash_charge(assets);
     fighter.air_dodge_animation(assets)?;
     Ok(None)

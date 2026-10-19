@@ -1312,6 +1312,7 @@ impl FighterCore {
             accessory4_armed: false,
             item_catch_locked: false,
             catch_window: 0,
+            catch_after_step: false,
             jab_countdown: 0.0,
             last_jab: None,
             hurtboxes: assets.hurtboxes.clone(),

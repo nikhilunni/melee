@@ -32,16 +32,18 @@ impl Fighter {
             }
         }
         let choice = if self.core.begin_animation_phase(assets) {
-            // ftCo_800D71D8 follows ftAnim_8006EBA4, which the state's
-            // callback runs: only EscapeAir opens the catch window and any
-            // motion change closes it, so its callback runs the window.
+            // Fighter_8006A360 (fighter.c:1684-1685): ftCo_800D71D8 follows
+            // ftAnim_8006EBA4, which the state's callback runs, so the window
+            // runs at the end of its first step (a caught item's hand pose
+            // waits for the next step's part blend:
+            // peach_airdodge_turnip_catch_fd_fox4 tick 274).
+            self.core.catch_after_step = true;
             self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
             let choice = (self.motion_row.anim)(self, state::AnimationPhase { assets, map, rng })?;
-            debug_assert!(
-                self.core.catch_window == 0
-                    || self.core.motion_state.id == melee_types::CommonMotionState::EscapeAir,
-                "ftCo_800D71D8: a catch window outside EscapeAir"
-            );
+            // A callback that never stepped runs it now.
+            if std::mem::take(&mut self.core.catch_after_step) {
+                self.core.run_catch_window(assets);
+            }
             // ftAction_80072894 ran inside ftAnim_8006EBA4; its item work
             // needs the character.
             self.apply_parasol_commands();
@@ -413,6 +415,10 @@ impl FighterCore {
             if self.capabilities.compensates_root_motion {
                 self.follow_hip_while_pinned(assets);
             }
+        }
+        // ftCo_800D71D8 after ftAnim_8006EBA4 (Fighter_8006A360).
+        if std::mem::take(&mut self.catch_after_step) {
+            self.run_catch_window(assets);
         }
     }
     /// ftAction_80072CD8 (80072CD8): a footstep on the ground asks the
