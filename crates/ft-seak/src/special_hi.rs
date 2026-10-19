@@ -82,6 +82,15 @@ pub struct Vanish {
     pub saved_ground_velocity: f32,
 }
 
+/// The second motion scratch word (mv+4) a later state inherits:
+/// mv.sk.specialhi.vel.x. Every travel writes the stick before entering
+/// (ftseakspecialhi.c:436, 492, 497), and the endings keep it (their saves
+/// go to mv+0x10..0x18, ftseakspecialhi.c:600-602, 622-624). The starts
+/// (355, 358) still hold the predecessor's word: `None`.
+pub fn retained_scratch_word(vanish: &Vanish, action: ActionId) -> Option<f32> {
+    matches!(action, GROUND_TRAVEL | GROUND_END | AIR_TRAVEL | AIR_END).then_some(vanish.stick.x)
+}
+
 fn attributes(f: &Fighter) -> &crate::attributes::VanishAttributes {
     &f.character.get::<Sheik>().attributes.vanish
 }

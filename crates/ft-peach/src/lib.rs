@@ -202,6 +202,15 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT]
     rows
 }
 
+/// ftPe_Init_MotionStateTable[i].x4_flags (0x803CCCB8, read from the retail
+/// DOL): the x2070 word each row sets (ft_800895E0).
+pub static MOTION_FLAGS: [u32; SPECIAL_ROW_COUNT] = [
+    0x00000000, 0x00000000, 0x00000000, 0x0024040C, 0x0024040D, 0x0024040E, 0x0024040F, 0x00240410,
+    0x00240A09, 0x00240A09, 0x00240A09, 0x00340014, 0x00340014, 0x00340212, 0x00340212, 0x00340212,
+    0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340013, 0x00340013, 0x00340413, 0x00340413,
+    0x00340011, 0x00340011, 0x00340411, 0x00340411, 0x00440058, 0x004C0058,
+];
+
 /// ftPe_Init_MotionStateTable move IDs: Float and FloatFall are
 /// FtMoveId_Default; the float aerials keep their common aerial's move.
 pub const SPECIAL_MOVES: [Option<melee_types::combat::StaleMove>; SPECIAL_ROW_COUNT] = {

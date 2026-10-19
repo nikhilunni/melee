@@ -118,6 +118,7 @@ impl CharacterCallbacks for Peach {
     /// row leaves a held item in hand.
     const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] = &crate::SPECIAL_MOVES;
+    const MOTION_FLAGS: &'static [u32] = &crate::MOTION_FLAGS;
     /// ftCo_AttackS4.c decideFighter: ftPe_AttackS4_Enter.
     const FORWARD_SMASH: Option<melee_ft::fighter::RngEntry> = Some(crate::attack_s4::enter);
     /// ftData_SpecialN/S/Hi/Lw[Peach].
