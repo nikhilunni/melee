@@ -2819,7 +2819,7 @@ fn mewtwo_start_boundary_cold_construction_matches_retail() {
 /// slow turn where 0.74 and 0.8 flip the facing at tick 121); 0.84's pad
 /// buffer and 1.0 cardinals (0x8006B460), rim-count shield drop (0x8009A0B8),
 /// SDI (0x8008E54C), shield SDI (0x80093294) and squat release (0x800D65EC).
-const UCF_WITNESSES: [(&str, usize); 34] = [
+const UCF_WITNESSES: [(&str, usize); 36] = [
     ("ucf_dashback_fd_fox_off", 200),
     ("ucf_dashback_fd_fox_ucf073", 200),
     // A full stick back toward the old facing on the turn's second frame.
@@ -2852,6 +2852,12 @@ const UCF_WITNESSES: [(&str, usize); 34] = [
     ("ucf084_shieldsdi_pound_fd_fox_ucf084", 272),
     ("ucf084_squatrv_fd_fox_off", 200),
     ("ucf084_squatrv_fd_fox_ucf084", 200),
+    // 0.84's dashback finds any kind's second fighter: Popo's smash turn
+    // rewrites Nana's newest follow sample and she dashes after him.
+    ("ucf084_dashback_fd_iceclimbers_ucf084", 200),
+    // 0.84's cardinal snap skips Zelda in motion 349: Farore's Wind on the
+    // floor reads the unsnapped 0.9875 stick for its ground speed.
+    ("ucf084_farore_fd_zelda_ucf084", 300),
     // Dween's fix (the toggle set's "Arduino" code, 0x8006B028): a first tilt
     // out of neutral held at zero for a tick (dashback at 121/122), left
     // alone when it is under PlCo+0x8 from the last pad sample or A is fresh;

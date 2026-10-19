@@ -504,7 +504,8 @@ pad queue at one poll per tick and records `pad_queue_x` and
 `ucf_dashback_fd_fox_*`, `ucf_dashback_fd_iceclimbers_*`,
 `ucf_shielddrop_bf_fox_*`, `ucf_tumble_fd_fox_*` and the `ucf084_*` set
 (cardinal run, dashback, shield drop, rim-count drop, tumble, SDI, shield SDI,
-squat release).
+squat release, the Ice Climbers' dashback, and Zelda's Farore's Wind start
+exempt from the cardinal snap).
 
 `melee-sim replay` and `replay-batch` bound the UCF version by the replay's
 Slippi version, date it from the recording inside that bound
