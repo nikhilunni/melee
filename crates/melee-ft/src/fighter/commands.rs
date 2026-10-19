@@ -513,6 +513,7 @@ impl CommandState {
                         // into the queued request as the command runs.
                         self.graphics.push(melee_types::combat::GraphicsCommand {
                             issued_facing: Some(facing),
+                            issued_joint: None,
                             ..command.clone()
                         });
                     }

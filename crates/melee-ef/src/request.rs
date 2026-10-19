@@ -276,6 +276,9 @@ pub struct EffectQueue {
 }
 impl EffectQueue {
     pub fn push(&mut self, request: EffectRequest) {
+        self.push_with_matrix(request, None);
+    }
+    fn push_with_matrix(&mut self, request: EffectRequest, matrix: Option<Mtx>) {
         assert!(
             self.entries.len() < REQUEST_CAPACITY,
             "effect storage capacity {REQUEST_CAPACITY} exhausted"
@@ -289,7 +292,7 @@ impl EffectQueue {
             index,
             QueuedEffect {
                 request,
-                matrix: None,
+                matrix,
                 graphics_ahead: 0,
             },
         );
@@ -321,6 +324,13 @@ impl EffectQueue {
     /// requests pushed after it was issued.
     pub fn push_graphics(&mut self, request: EffectRequest) {
         self.push(request);
+        self.skip_graphics();
+    }
+    /// One resolved graphics command whose joint was read when it was issued
+    /// past link 9 (efAsync_Spawn creates it at once there). The fighter's
+    /// proc dispatches it with [`crate::EffectTiming::Immediate`].
+    pub fn push_graphics_at(&mut self, request: EffectRequest, matrix: Mtx) {
+        self.push_with_matrix(request, Some(matrix));
         self.skip_graphics();
     }
     /// One resolved graphics command that a motion change's efAsync flush

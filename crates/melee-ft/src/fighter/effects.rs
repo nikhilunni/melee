@@ -65,6 +65,9 @@ pub struct FighterEffects {
     pub article_hitlag: Option<melee_types::ItemKind>,
     pub rotating_bone_index: u8,
     pub invisible: bool,
+    /// Set while a proc at or past link 9 runs: efAsync_Spawn (0x800679B0)
+    /// creates effects at once there instead of queuing them for link 9.
+    pub dispatch_at_once: bool,
 }
 impl super::FighterCore {
     /// efAsync_Spawn from an entry callback, after its motion change: the
@@ -147,25 +150,11 @@ impl super::FighterCore {
                 continue;
             }
             self.effect_state.destroy_on_state_change |= command.destroy_on_state_change;
-            let bone = if command.item_bone {
-                usize::from(self.bones.model.held_item)
-            } else {
-                command.bone
-            };
-            let bone = match bone {
-                ROTATING_EFFECT_BONE => {
-                    let bone = assets.rotating_effect_bones
-                        [usize::from(self.effect_state.rotating_bone_index)];
-                    self.effect_state.rotating_bone_index =
-                        (self.effect_state.rotating_bone_index + 1) % 5;
-                    bone
-                }
-                TRANSLATION_EFFECT_BONE => usize::from(self.bones.model.animation_translation),
-                _ if command.common_bone => usize::from(
-                    assets.parts.part_to_joint[bone].expect("effect common bone missing"),
-                ),
-                _ => bone,
-            };
+            let mut rotating = self.effect_state.rotating_bone_index;
+            let bone = self.graphics_bone(&command, assets, &mut rotating);
+            self.effect_state.rotating_bone_index = rotating;
+            // The joint as the command found it, when it ran past link 9.
+            let issued = command.issued_joint.filter(|issued| issued.bone == bone);
             let id = command.id;
             // ftCo_09F7.c block_67: efAsync kind 3 with the floor angle.
             if matches!(id, 0x423 | 0x424 | 0x4C1 | 0x4C2 | 0x4C4 | 0x4C5) {
@@ -176,13 +165,17 @@ impl super::FighterCore {
                 } else {
                     0.0
                 };
-                self.push_graphics_request_with(sealed, EffectRequest::Graphics {
-                    id,
-                    bone,
-                    offset: hsd_types::Vec3::ZERO,
-                    facing: command.issued_facing.unwrap_or(self.physics.facing),
-                    floor_angle,
-                });
+                self.push_graphics_request_with(
+                    sealed,
+                    issued,
+                    EffectRequest::Graphics {
+                        id,
+                        bone,
+                        offset: hsd_types::Vec3::ZERO,
+                        facing: command.issued_facing.unwrap_or(self.physics.facing),
+                        floor_angle,
+                    },
+                );
                 continue;
             }
             if matches!(id, 0x428..=0x42A) {
@@ -190,15 +183,19 @@ impl super::FighterCore {
                 // effect scale (ftData x0 +168): the dizzy stars (0x429,
                 // generator 0xCE), the heal's sparkle (0x428, 0xCA) and
                 // 0x42A (0xCF).
-                self.push_graphics_request_with(sealed, EffectRequest::DizzyStars {
-                    generator: match id {
-                        0x428 => 0xCA,
-                        0x429 => 0xCE,
-                        _ => 0xCF,
+                self.push_graphics_request_with(
+                    sealed,
+                    issued,
+                    EffectRequest::DizzyStars {
+                        generator: match id {
+                            0x428 => 0xCA,
+                            0x429 => 0xCE,
+                            _ => 0xCF,
+                        },
+                        bone,
+                        scale: self.attributes.size.unknown_168,
                     },
-                    bone,
-                    scale: self.attributes.size.unknown_168,
-                });
+                );
                 continue;
             }
             if id == 0x49D {
@@ -206,34 +203,45 @@ impl super::FighterCore {
                 // offset as given, the facing, and the X range as an angle
                 // in 256ths of a degree (two fmuls; Kirby's rapid jab).
                 let angle = 0.017453292 * (256.0 * command.range.x);
-                self.effects.push_graphics(EffectRequest::Graphics {
-                    id,
-                    bone,
-                    offset: command.offset,
-                    facing: command.issued_facing.unwrap_or(self.physics.facing),
-                    floor_angle: angle,
-                });
+                self.push_graphics_request_with(
+                    false,
+                    issued,
+                    EffectRequest::Graphics {
+                        id,
+                        bone,
+                        offset: command.offset,
+                        facing: command.issued_facing.unwrap_or(self.physics.facing),
+                        floor_angle: angle,
+                    },
+                );
                 continue;
             }
             if id == 0x495 {
                 // ftCo_09F7.c block_64: efAsync kind 3 with the facing
                 // (Kirby's dash attack flame, efAlt 0x495).
-                self.effects
-                    .push_graphics(EffectRequest::AttachedParameter {
+                self.push_graphics_request_with(
+                    false,
+                    issued,
+                    EffectRequest::AttachedParameter {
                         id,
                         bone,
                         parameter: self.physics.facing,
-                    });
+                    },
+                );
                 continue;
             }
             if matches!(id, 0x446 | 0x4E1) {
                 // ftCo_09F7.c:136-142: efAsync kind 7 with the command's
                 // offset as given, before the randomized branches.
-                self.push_graphics_request_with(sealed, EffectRequest::FollowingGenerator {
+                self.push_graphics_request_with(
+                    sealed,
+                    issued,
+                    EffectRequest::FollowingGenerator {
                         id,
                         bone,
                         offset: command.offset,
-                    });
+                    },
+                );
                 continue;
             }
             if matches!(
@@ -262,7 +270,11 @@ impl super::FighterCore {
                 } else {
                     bone
                 };
-                self.push_graphics_request_with(sealed, EffectRequest::Attached { id, bone });
+                self.push_graphics_request_with(
+                    sealed,
+                    issued,
+                    EffectRequest::Attached { id, bone },
+                );
                 continue;
             }
             if !(id < 0x250
@@ -340,13 +352,17 @@ impl super::FighterCore {
                 // after the three draws.
                 continue;
             }
-            self.push_graphics_request_with(sealed, EffectRequest::Graphics {
-                id,
-                bone,
-                offset,
-                facing: command.issued_facing.unwrap_or(self.physics.facing),
-                floor_angle,
-            });
+            self.push_graphics_request_with(
+                sealed,
+                issued,
+                EffectRequest::Graphics {
+                    id,
+                    bone,
+                    offset,
+                    facing: command.issued_facing.unwrap_or(self.physics.facing),
+                    floor_angle,
+                },
+            );
         }
         if sealed {
             // The new script's commands and sounds follow the flush.
@@ -360,16 +376,84 @@ impl super::FighterCore {
         draws
     }
     /// One resolved command's request: pending, or sealed with the joint's
-    /// matrix when a motion change's flush took it.
-    fn push_graphics_request_with(&mut self, sealed: bool, request: EffectRequest) {
+    /// matrix when a motion change's flush took it. A command that ran past
+    /// link 9 carries the joint it read then ([`Self::capture_issued_joints`]).
+    fn push_graphics_request_with(
+        &mut self,
+        sealed: bool,
+        issued: Option<melee_types::combat::IssuedJoint>,
+        request: EffectRequest,
+    ) {
+        // Only the positional kinds (2/5/6) read the joint once, at creation.
+        let issued = issued.filter(
+            |issued| matches!(request, EffectRequest::Graphics { bone, .. } if bone == issued.bone),
+        );
         if sealed {
             // Rare (two motion changes in one proc): the queue is moved
             // out for the joint lookup, as the flush itself does.
             let mut queue = std::mem::take(&mut self.effects);
-            queue.push_sealed_graphics(request, |bone| self.effect_matrix(bone));
+            queue.push_sealed_graphics(request, |bone| {
+                issued.map_or_else(|| self.effect_matrix(bone), |issued| issued.matrix)
+            });
             self.effects = queue;
+        } else if let Some(issued) = issued {
+            self.effects.push_graphics_at(request, issued.matrix);
         } else {
             self.effects.push_graphics(request);
         }
+    }
+    /// The joint a graphics command's effect follows (ftCo_09F7.c:75-97):
+    /// the held item's, the next of the five rotating effect bones, the
+    /// animation's translation bone, a common part, or the command's own.
+    fn graphics_bone(
+        &self,
+        command: &melee_types::combat::GraphicsCommand,
+        assets: &super::assets::FighterAssets,
+        rotating: &mut u8,
+    ) -> usize {
+        let bone = if command.item_bone {
+            usize::from(self.bones.model.held_item)
+        } else {
+            command.bone
+        };
+        match bone {
+            ROTATING_EFFECT_BONE => {
+                let bone = assets.rotating_effect_bones[usize::from(*rotating)];
+                *rotating = (*rotating + 1) % 5;
+                bone
+            }
+            TRANSLATION_EFFECT_BONE => usize::from(self.bones.model.animation_translation),
+            _ if command.common_bone => {
+                usize::from(assets.parts.part_to_joint[bone].expect("effect common bone missing"))
+            }
+            _ => bone,
+        }
+    }
+    /// A proc at or past link 9 is about to move the skeleton (an animation
+    /// step) while graphics commands it issued are unresolved. Retail's
+    /// efAsync_Spawn (0x800679B0) created those effects when the commands
+    /// ran (lb_8000B1CC sets up the joint's matrix then), so each keeps the
+    /// joint it would have read: ftCo_8008DCE0's color program step inside
+    /// Fighter_ChangeMotionState (fighter.c:1346) reads the blended frame
+    /// zero, before its ftAnim_8006EBA4 (ftCo_Damage.c:447).
+    pub(super) fn capture_issued_joints(&mut self, assets: &super::assets::FighterAssets) {
+        if !self.effect_state.dispatch_at_once
+            || self.effect_state.invisible
+            || self.commands.graphics.is_empty()
+        {
+            return;
+        }
+        // The rotating bones advance in command order, as resolution will.
+        let mut rotating = self.effect_state.rotating_bone_index;
+        // Moved out for the joint lookups; rare (a hit's motion change).
+        let mut graphics = std::mem::take(&mut self.commands.graphics);
+        for command in graphics.iter_mut() {
+            let bone = self.graphics_bone(command, assets, &mut rotating);
+            if command.issued_joint.is_none() {
+                let matrix = self.effect_matrix(Some(bone));
+                command.issued_joint = Some(melee_types::combat::IssuedJoint { bone, matrix });
+            }
+        }
+        self.commands.graphics = graphics;
     }
 }

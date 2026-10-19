@@ -3671,6 +3671,9 @@ fn dispatch_fighter(
     wind: melee_gr::wind::Wind,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
+    // efAsync_Spawn (800679B0): from link 9 on, effects are created when
+    // their command runs, reading the joint then.
+    f.effect_state.dispatch_at_once = proc.s_link() >= 9;
     let was_in_hitlag = f.in_hitlag();
     let had_effect_callbacks = f.effect_state.hitlag_callbacks;
     let had_article_hitlag = f.effect_state.article_hitlag;
@@ -3838,6 +3841,17 @@ fn dispatch_fighter(
         for command in f.commands.graphics.take_all() {
             f.commands.graphics.push(command);
             f.resolve_graphics_commands(assets, rng);
+            // A command whose joint was read when it ran (it carries the
+            // matrix) is dispatched as created; the rest read it now.
+            effects.flush::<melee_ft::fighter::RetailTrig>(
+                melee_ef::EffectTiming::Immediate,
+                player,
+                &mut f.core,
+                &scene_assets.common_particle_bank,
+                &scene_assets.particle_bank,
+                particles,
+                rng,
+            )?;
             effects.flush::<melee_ft::fighter::RetailTrig>(
                 melee_ef::EffectTiming::Deferred,
                 player,
@@ -3864,6 +3878,7 @@ fn dispatch_fighter(
         particles,
         rng,
     )?;
+    f.effect_state.dispatch_at_once = false;
     Ok(())
 }
 

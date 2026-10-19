@@ -292,6 +292,7 @@ pub fn graphics(words: &[u32; 5]) -> melee_types::combat::GraphicsCommand {
         ]
         .into(),
         issued_facing: None,
+        issued_joint: None,
     }
 }
 

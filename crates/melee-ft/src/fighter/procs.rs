@@ -364,6 +364,9 @@ impl FighterCore {
         }
     }
     pub fn step_animation(&mut self, assets: &FighterAssets) {
+        // Past link 9 the graphics commands issued so far already created
+        // their effects on the pose before this step.
+        self.capture_issued_joints(assets);
         // ftAnim_8006EBA4: command-driven animation ownership changes must
         // finish before the independent part blends are evaluated.
         self.animation
@@ -453,6 +456,7 @@ impl FighterCore {
                         offset: hsd_types::Vec3::ZERO,
                         range: hsd_types::Vec3::ZERO,
                         issued_facing: None,
+                        issued_joint: None,
                     },
                 );
                 inserted += 1;
