@@ -457,8 +457,20 @@ impl FighterCore {
                 } else {
                     feet.left_foot
                 };
+                // `graphics_before` counts from the first command issued; a
+                // motion change's flush has already taken (and this proc
+                // resolved) the commands issued before it.
+                let Some(place) = step
+                    .graphics_before
+                    .checked_sub(self.commands.graphics_resolved)
+                else {
+                    unimplemented!(
+                        "ftaction.c:1164-1177: a terrain footstep effect issued before \
+                         its proc's motion change (taken by efAsync_QueueFlush, fighter.c:951)"
+                    );
+                };
                 self.commands.graphics.insert(
-                    step.graphics_before + inserted,
+                    place + inserted,
                     melee_types::combat::GraphicsCommand {
                         id: effect as u16,
                         bone: usize::from(foot),
