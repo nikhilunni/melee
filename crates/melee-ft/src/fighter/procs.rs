@@ -32,10 +32,16 @@ impl Fighter {
             }
         }
         let choice = if self.core.begin_animation_phase(assets) {
-            // ftCo_800D71D8 follows ftAnim_8006EBA4, before the state's callback.
-            self.run_catch_window(assets);
+            // ftCo_800D71D8 follows ftAnim_8006EBA4, which the state's
+            // callback runs: only EscapeAir opens the catch window and any
+            // motion change closes it, so its callback runs the window.
             self.core.combat.combo.grace = self.core.combat.combo.grace.saturating_sub(1);
             let choice = (self.motion_row.anim)(self, state::AnimationPhase { assets, map, rng })?;
+            debug_assert!(
+                self.core.catch_window == 0
+                    || self.core.motion_state.id == melee_types::CommonMotionState::EscapeAir,
+                "ftCo_800D71D8: a catch window outside EscapeAir"
+            );
             // ftAction_80072894 ran inside ftAnim_8006EBA4; its item work
             // needs the character.
             self.apply_parasol_commands();

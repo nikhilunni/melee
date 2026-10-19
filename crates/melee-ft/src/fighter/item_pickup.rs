@@ -674,10 +674,11 @@ impl Fighter {
         true
     }
 
-    /// ftCo_800D71D8 (800D71D8), each unfrozen animation proc before the
-    /// state's callback: while the window is open an empty hand catches a
-    /// light item in reach; the window's last frame sets the catch lock.
-    pub(super) fn run_catch_window(&mut self, assets: &FighterAssets) {
+    /// ftCo_800D71D8 (800D71D8), each unfrozen animation proc after
+    /// ftAnim_8006EBA4 (from EscapeAir's callback, the one state that opens
+    /// the window): while the window is open an empty hand catches a light
+    /// item in reach; the window's last frame sets the catch lock.
+    pub(crate) fn run_catch_window(&mut self, assets: &FighterAssets) {
         if self.core.catch_window == 0 {
             return;
         }
