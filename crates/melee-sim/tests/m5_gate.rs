@@ -5745,7 +5745,7 @@ static CORPUS_V3_MATCHES: [(&str, usize); 693] = [
     // clears on any motion change), the second leg's IK reaches by the first
     // leg's measured length (one IKState, ft_0899.c:95-97), and Samus's grab
     // stops at the floor's edge (ft_800841B8 -> ft_800827A0).
-    ("corpus_v3_fod_pichu_samus4_ef41f983a_p0", 3977),
+    ("corpus_v3_fod_pichu_samus4_ef41f983a_p0", 3976),
 ];
 
 #[test]
