@@ -350,6 +350,62 @@ pub(super) fn release_pair(
     captured.skeleton.set_translate(root, &position);
 }
 
+/// Which callback found a grounded hold's floor gone (`hold_floor_lost`):
+/// ft_800827A0 stops at the floor's edge, so the floor went from under the
+/// captor.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LostHold {
+    /// fn_800DA004 (800DA004, CatchPull) / fn_800DA440 (800DA440,
+    /// CatchWait): ftCo_800DC920, then ftCo_Fall_Enter on the captor, then
+    /// on the victim.
+    Catch,
+    /// fn_800DD684 (800DD684, the grounded throws): if the throw still
+    /// holds its victim, ftCo_800DC920 and ftCo_Fall_Enter on the victim;
+    /// then ftCo_Fall_Enter on the thrower.
+    Throw,
+}
+
+/// fn_800DA004 / fn_800DA440 / fn_800DD684 on the pair, `captured` the
+/// fighter the captor still holds. The thrown fighter's XRotN is first
+/// rebuilt from the thrower's TransN2 as it stands (lb_8000B1CC in
+/// ftCo_800DC920), as when it mashes out of a throw.
+pub fn part_on_lost_floor(
+    hold: LostHold,
+    captor: &mut Fighter,
+    captured: Option<(&mut Fighter, &FighterAssets)>,
+    captor_assets: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+) -> Result<()> {
+    use melee_types::CommonMotionState::Fall;
+    let Some((captured, captured_assets)) = captured else {
+        assert_eq!(
+            hold,
+            LostHold::Throw,
+            "fn_800DA004 / fn_800DA440 read victim_gobj without a NULL test"
+        );
+        return captor.change_motion_state(Fall.into(), captor_assets);
+    };
+    if captured.combat.thrown_pose.is_some() {
+        super::grab_throw::update_constraint(
+            &mut captured.core,
+            &mut captor.core,
+            captured_assets,
+            captor_assets,
+        );
+    }
+    release_pair(captor, captured, captured_assets, map);
+    match hold {
+        LostHold::Catch => {
+            captor.change_motion_state(Fall.into(), captor_assets)?;
+            captured.change_motion_state(Fall.into(), captured_assets)
+        }
+        LostHold::Throw => {
+            captured.change_motion_state(Fall.into(), captured_assets)?;
+            captor.change_motion_state(Fall.into(), captor_assets)
+        }
+    }
+}
+
 /// ftCo_800DC920's x2226_b2 path: the release point is XRotN plus the
 /// capture offset (retail 800DCA40 / 800DCA54: fmadds, as ftCo_800DE508),
 /// the constraint and saved translation are restored, and the fighter lands

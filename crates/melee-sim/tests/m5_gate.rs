@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 554] = [
+const MATRIX_WITNESSES: [(&str, usize); 557] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1900,6 +1900,14 @@ const MATRIX_WITNESSES: [(&str, usize); 554] = [
     // (xDC8 x1B clear), the second draws its side (HSD_Randi(2)).
     ("dosei_push_stacked_fd_peach", 1300),
     ("dosei_push_stacked57_fd_peach", 1300),
+    // A grounded hold losing its floor: on Stadium's water form a windmill
+    // blade passes 60 degrees under Mewtwo (mpJointUpdateDynamics: a wall,
+    // disabled). CatchWait: fn_800DA440 parts the pair and Mewtwo, then
+    // Young Link, falls; ThrowHi before its release: fn_800DD684, Young Link
+    // first; ThrowF after it: Mewtwo alone (all at 5260).
+    ("catchwait_windmill_wall_ps_mewtwo_younglink4", 5330),
+    ("throwhi_windmill_wall_ps_mewtwo_younglink4", 5330),
+    ("throwf_windmill_wall_ps_mewtwo_younglink4", 5330),
 ];
 
 #[test]

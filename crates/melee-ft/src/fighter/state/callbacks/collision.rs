@@ -163,9 +163,11 @@ pub fn throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 
 /// ftData_MotionStateList: ftCo_MS_CatchPull (213), ftCo_MS_CatchWait (216),
 /// ftCo_MS_ThrowF..ThrowLw (219..222) while grounded: ft_800841B8 -> ft_800827A0
-/// (mpColl_8004B2DC), which stops at the floor's edge. Losing the floor would
-/// separate the pair (fn_800DA004, fn_800DA440, fn_800DD684) and send both
-/// fighters to Fall.
+/// (mpColl_8004B2DC), which stops at the floor's edge, so the floor is lost
+/// only when it goes from under the captor (a windmill blade on Pokémon
+/// Stadium's water form turning into a wall, mpJointUpdateDynamics).
+/// Then the pair parts and both fall: the scene runs fn_800DA004 /
+/// fn_800DA440 / fn_800DD684 on the pair once this callback returns.
 pub fn grab_hold(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     assert_eq!(
         fighter.core.physics.ground_or_air,
@@ -181,10 +183,13 @@ pub fn grab_hold(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
         fighter.core.input.current.stick.x,
     ) == WaitGroundResult::EnterFall
     {
-        unimplemented!(
-            "fn_800DA004 / fn_800DA440 / fn_800DD684 (ftCo_Throw.c:225-234): a grab pair \
-             losing its floor (ftCo_800DC920, both to Fall)"
-        );
+        use crate::fighter::grab_damage::LostHold;
+        use melee_types::CommonMotionState as S;
+        let hold = match fighter.motion_state.id {
+            S::CatchPull | S::CatchDashPull | S::CatchWait => LostHold::Catch,
+            _ => LostHold::Throw,
+        };
+        fighter.core.combat.hold_floor_lost = Some(hold);
     }
     Ok(())
 }

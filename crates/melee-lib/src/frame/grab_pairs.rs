@@ -852,6 +852,50 @@ pub(super) fn koopa_captor_request(
     Ok(Some(other))
 }
 
+/// fn_800DA004 / fn_800DA440 / fn_800DD684: a grounded hold's captor lost
+/// its floor in its collision callback; the pair parts and both fall.
+/// Returns the fighters whose motion changed, in the order they changed.
+pub(super) fn hold_floor_lost(
+    state: &mut InitialState,
+    player: usize,
+) -> Result<Option<[Option<usize>; 2]>> {
+    use melee_ft::fighter::grab_damage::{part_on_lost_floor, LostHold};
+    let Some(hold) = with_fighter!(&mut state.fighters[player], |f| f
+        .combat
+        .hold_floor_lost
+        .take())
+    else {
+        return Ok(None);
+    };
+    let captor_assets = &state.assets.fighters[player];
+    let Some(other) = held_victim(state, player) else {
+        with_fighter!(&mut state.fighters[player], |c| part_on_lost_floor(
+            hold,
+            c,
+            None,
+            captor_assets,
+            &mut state.map,
+        ))
+        .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+        return Ok(Some([Some(player), None]));
+    };
+    let (captor, victim) = pair(&mut state.fighters, player, other);
+    with_fighter!(captor, |c| with_fighter!(victim, |v| {
+        part_on_lost_floor(
+            hold,
+            c,
+            Some((v, &state.assets.fighters[other])),
+            captor_assets,
+            &mut state.map,
+        )
+    }))
+    .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    Ok(Some(match hold {
+        LostHold::Catch => [Some(player), Some(other)],
+        LostHold::Throw => [Some(other), Some(player)],
+    }))
+}
+
 /// ftCo_CaptureDamageKoopa_Anim / ftCo_CaptureWaitKoopa_Anim found the hold
 /// timer spent: ftCo_800DA698 on the captor, ftCo_CaptureCut_Enter on the
 /// victim. Returns the captor's index.

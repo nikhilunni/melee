@@ -1851,6 +1851,14 @@ impl Runtime {
                     if let Some(victim) = grab_pairs::koopa_captor_request(state, player)? {
                         members = [Some(player), Some(victim)];
                     }
+                    // A grounded hold losing its floor (fn_800DA004 /
+                    // fn_800DA440 / fn_800DD684): both fall, in the order
+                    // the callback changes them.
+                    if proc == FighterProc::Map {
+                        if let Some(changed) = grab_pairs::hold_floor_lost(state, player)? {
+                            members = changed;
+                        }
+                    }
                     if proc == FighterProc::Animation {
                         if let Some(captor) = grab_pairs::koopa_escape(state, player)? {
                             members = [Some(captor), Some(player)];

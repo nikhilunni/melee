@@ -130,6 +130,9 @@ pub struct CombatState {
     /// What a Koopa Klaw captor's callback asked of the fighter it holds
     /// this proc; the scene runs it on the pair.
     pub koopa_request: Option<super::capture_koopa::CaptorRequest>,
+    /// A grounded hold's floor went from under the captor (fn_800DA004,
+    /// fn_800DA440, fn_800DD684); the scene parts the pair and both fall.
+    pub hold_floor_lost: Option<super::grab_damage::LostHold>,
     /// What an inhaling captor's callback asked of the fighter in its mouth
     /// this proc; the scene runs it on the pair.
     pub mouth_request: Option<super::capture_kirby::CaptorRequest>,

@@ -74,7 +74,7 @@ explorer's message at the explorer's fault tick (exact until then).
 | 2 | `efLib_Cb_AccumOffset_FromParams` "on a freed item JObj" | 5 | Mewtwo vs Young Link, Stadium: a stuck fire arrow leaves with its line | stops at 4374 | `corpus_v3_ps_mewtwo_younglink4_ef3cf9943_p0` (4375) | **Fixed** (`melee-ef`) |
 | 3 | `ftCo_Landing.c:41-50`: "scratch inheritance from unsupported source ActionId(354)" | 1 | Sheik vs Ness, FoD: Zelda lands out of Farore's Wind's air end | stops at 5032 | `corpus_v3_fod_sheik_ness4_ed7b67fb9_p0` (5034) | **Fixed** (`ft-zelda`) |
 | 4 | `ftGw_AttackS4_ItemTorchSetFlag` (ftgamewatchattacks4.c:52): "a superseded torch ends while x2254_fireGObj's torch may be in hitlag" | 1 | Mr. Game & Watch vs Mewtwo, DL | stops at 921 | `corpus_v3_dl_gameandwatch_mewtwo4_e1c18df30_p2` (923) | **Fixed** (`ft-gamewatch`) |
-| 5 | "fn_800DA004 / fn_800DA440 / fn_800DD684 (ftCo_Throw.c:225-234): a grab pair losing its floor (ftCo_800DC920, both to Fall)" | 1 | Mewtwo vs Young Link, Stadium, tick 5092 | **not reached**: `corpus_v3_ps_mewtwo_younglink4_e69d5406a_p1` gates exact over all 5094 retail ticks | none | **Open**, no retail witness |
+| 5 | "fn_800DA004 / fn_800DA440 / fn_800DD684 (ftCo_Throw.c:225-234): a grab pair losing its floor (ftCo_800DC920, both to Fall)" | 1 | Mewtwo vs Young Link, Stadium, tick 5092 | **not reached** by the bridge; directed witnesses reach it | `catchwait_windmill_wall_ps_mewtwo_younglink4`, `throwhi_…`, `throwf_…` (5330 each) | **Fixed** (`melee-ft`, `melee-lib`) |
 
 ### 1. A footstep's effect after a motion change's flush
 
@@ -117,16 +117,29 @@ ftGw_AttackS4_ItemTorchSetFlag (8014A904) thaws whatever x2254 names
 sends the thaw and `Superseded` to the torch no newer one replaced: the
 newer torch thaws at once and hears nothing more from its owner.
 
-### 5. Open: a grab pair losing its floor on Stadium
+### 5. A grab pair losing its floor on Stadium
 
-The explorer's Mewtwo/Young Link game reaches ftCo_800DC920's floor-loss
-branch at 5092, almost certainly under a transformation's moving or
-vanishing floor. Retail fed the same pads plays another game by then
-(Stadium transformations follow their disc reads; see
-`COVERAGE_AUDIT.md`), so the bridge is exact for all 5094 ticks and
-witnesses nothing. A witness needs a directed scenario (a grab held on a
-transformation floor as it leaves) recorded on retail. Owner: `melee-ft`
-throw states (fn_800DA004 / fn_800DA440 / fn_800DD684).
+The explorer's CatchWait stood on line 112, a dynamic line of the water
+form's windmill (joint 0). As the windmill turns, mpJointUpdateDynamics
+reclassifies a blade steeper than 60 degrees as a wall and clears its
+ENABLED flag, so ft_800827A0 finds no floor under the captor. Retail fed
+the same pads plays another game (its water form came 12 ticks earlier:
+the archive read), so the witnesses are directed: the explorer's pads to
+5005 (Mewtwo stands on a blade), then Young Link jumps up to him and is
+grabbed in the air. `melee-sim search` and `dry-run` now take the
+`--state-from` recording's stage reads while it lasts, so a search that
+edits a recorded game sees retail's transformation timing.
+
+- `catchwait_windmill_wall_ps_mewtwo_younglink4`: fn_800DA440,
+  ftCo_800DC920, then Mewtwo and Young Link to Fall (5260).
+- `throwhi_windmill_wall_ps_mewtwo_younglink4`: the up throw before its
+  release; fn_800DD684 sets Young Link down at XRotN and he falls first.
+- `throwf_windmill_wall_ps_mewtwo_younglink4`: the forward throw after its
+  release; fn_800DD684 holds no victim and Mewtwo falls alone.
+
+The callbacks set `hold_floor_lost`; the scene parts the pair after the
+captor's Map proc (`grab_pairs::hold_floor_lost`), as with the Koopa
+Klaw's requests.
 
 ## Clean samples
 
