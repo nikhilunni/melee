@@ -52,7 +52,14 @@ impl Effects {
             .tree
             .set_scale(effect.root, &Vec3::new(scale, scale, scale));
         effect.tree.set_translate(effect.root, &position);
-        effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+        effect.animate::<T>(
+            bank,
+            particles,
+            rng,
+            &mut self.draws,
+            &mut self.events,
+            &mut self.animation_events,
+        )?;
         self.instances.push(effect);
         Ok(())
     }
@@ -112,7 +119,14 @@ impl Effects {
             (std::f64::consts::TAU * f64::from(rng.randf())) as f32,
         );
         effect.tree.set_translate(effect.root, &position);
-        effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+        effect.animate::<T>(
+            bank,
+            particles,
+            rng,
+            &mut self.draws,
+            &mut self.events,
+            &mut self.animation_events,
+        )?;
         self.instances.push(effect);
         Ok(())
     }

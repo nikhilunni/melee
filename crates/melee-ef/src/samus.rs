@@ -52,6 +52,7 @@ impl Effects {
             rng,
             &mut self.draws,
             &mut self.events,
+            &mut self.animation_events,
         )?;
         self.instances.push(effect);
         Ok(())
@@ -98,6 +99,7 @@ impl Effects {
             rng,
             &mut self.draws,
             &mut self.events,
+            &mut self.animation_events,
         )?;
         self.instances.push(effect);
         Ok(())

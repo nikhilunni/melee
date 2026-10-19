@@ -65,6 +65,7 @@ pub struct Effects {
     /// one-shot Camera_RequestQuake creates one (grLib_801C9CEC).
     pub quake_models: bool,
     pub draws: DrawLog,
+    animation_events: AnimationEvents,
     /// Ordered direct efAsync/ftColl draws; diagnostics use fixed storage.
     pub direct_draws: FixedVec<u32, 64>,
     instances: FixedVec<Effect, INSTANCE_CAPACITY>,
@@ -167,6 +168,25 @@ struct Effect {
     /// The model's GObj (effect->gobj).
     gobj: hsd_gobj::GObjAddress,
     paths: Arc<BTreeMap<usize, (JObjId, spline::Spline)>>,
+    /// The most callbacks one joint's animation step can emit
+    /// (`AnimationEvents` is reserved for it).
+    event_capacity: usize,
+}
+/// The JObj callback buffer every effect model animates into, one per
+/// scene and reserved at load for the largest model, instead of one per
+/// pooled slot. Empty between animations.
+#[derive(Default)]
+struct AnimationEvents(Vec<JObjEvent>);
+impl Clone for AnimationEvents {
+    /// The reservation, not the (always empty) contents, is the state.
+    fn clone(&self) -> Self {
+        Self(Vec::with_capacity(self.0.capacity()))
+    }
+}
+impl AnimationEvents {
+    fn reserve_for(&mut self, model: &Effect) {
+        self.0.reserve_exact(model.event_capacity);
+    }
 }
 /// efLib state_flags: bit0x80 bypasses the pause states in efLib_Update.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -228,6 +248,7 @@ impl Effects {
             rng,
             &mut self.draws,
             &mut self.events,
+            &mut self.animation_events,
         )?;
         self.instances.push(effect);
         Ok(())
@@ -615,6 +636,7 @@ impl Effects {
                     rng,
                     &mut self.draws,
                     &mut self.events,
+                    &mut self.animation_events,
                 )?;
                 self.instances.push(effect);
                 continue;
@@ -674,6 +696,7 @@ impl Effects {
                         rng,
                         &mut self.draws,
                         &mut self.events,
+                        &mut self.animation_events,
                     )?;
                 }
                 for effect in pair {
@@ -735,6 +758,7 @@ impl Effects {
                         rng,
                         &mut self.draws,
                         &mut self.events,
+                        &mut self.animation_events,
                     )?;
                 }
                 for effect in pair {
@@ -916,6 +940,7 @@ impl Effects {
                         rng,
                         &mut self.draws,
                         &mut self.events,
+                        &mut self.animation_events,
                     )?;
                 }
                 effect.animate_banks::<T>(
@@ -927,6 +952,7 @@ impl Effects {
                     rng,
                     &mut self.draws,
                     &mut self.events,
+                    &mut self.animation_events,
                 )?;
                 self.instances.push(effect);
                 continue;
@@ -1104,6 +1130,7 @@ impl Effects {
                     rng,
                     &mut self.draws,
                     &mut self.events,
+                    &mut self.animation_events,
                 )?;
                 self.instances.push(effect);
                 continue;
@@ -1197,6 +1224,7 @@ impl Effects {
                     rng,
                     &mut self.draws,
                     &mut self.events,
+                    &mut self.animation_events,
                 )?;
                 self.instances.push(effect);
                 continue;
@@ -1252,7 +1280,14 @@ impl Effects {
                     effect.root,
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
-                effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+                effect.animate::<T>(
+                    bank,
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                    &mut self.animation_events,
+                )?;
                 self.instances.push(effect);
                 continue;
             }
@@ -1809,9 +1844,17 @@ impl Effects {
                     rng,
                     &mut self.draws,
                     &mut self.events,
+                    &mut self.animation_events,
                 )?;
             } else {
-                effect.animate::<T>(bank, particles, rng, &mut self.draws, &mut self.events)?;
+                effect.animate::<T>(
+                    bank,
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                    &mut self.animation_events,
+                )?;
             }
             self.instances.push(effect);
         }
@@ -1922,6 +1965,7 @@ impl Effects {
                 rng,
                 &mut self.draws,
                 &mut self.events,
+                &mut self.animation_events,
             )?;
             // efLib_Update invokes the effect callback after JObj animation.
             if let Some((player, bone, offset)) = effect.follow_bone {
@@ -1960,7 +2004,10 @@ impl Effects {
                 );
             }
             if let Some(step) = effect.child_drift_z {
-                let child = effect.tree.child(effect.root).expect("drifting effect child");
+                let child = effect
+                    .tree
+                    .child(effect.root)
+                    .expect("drifting effect child");
                 // eflib.c:1138: one fadds.
                 let z = step + effect.tree.translation(child).z;
                 effect.tree.set_translate_z(child, z);
@@ -1999,10 +2046,14 @@ impl Effects {
                     effect.lifetime = kirby::BLADE_END_FRAMES;
                     effect.blade_transition = false;
                     effect.facing_rotation = None;
-                    effect.tree.req_anim_all(effect.root, kirby::BLADE_END_START);
+                    effect
+                        .tree
+                        .req_anim_all(effect.root, kirby::BLADE_END_START);
                 } else if effect.lifetime == 1 {
                     effect.lifetime = kirby::BLADE_LOOP_FRAMES;
-                    effect.tree.req_anim_all(effect.root, kirby::BLADE_LOOP_START);
+                    effect
+                        .tree
+                        .req_anim_all(effect.root, kirby::BLADE_LOOP_START);
                 }
             }
             if let (Some(bone), Some(player)) = (effect.lifetime_end_spawn, effect.attachment) {
@@ -2099,11 +2150,14 @@ impl Effect {
             })
             .max()
             .unwrap_or(0);
-        tree.events.reserve_exact(event_capacity);
         tree.req_anim_all(root, 0.0);
         // `orient` constrains the root in the tick; the inactive slot exists
         // from load so it never grows the constraint map.
         tree.reserve_orientation_constraint(root);
+        // The model animates into the scene's `AnimationEvents`; the
+        // tree's own buffer, reserved as animations attached, stays unused.
+        debug_assert!(tree.events.is_empty());
+        tree.events = Vec::new();
         Ok(Self {
             visual,
             descriptor: id,
@@ -2134,6 +2188,7 @@ impl Effect {
             gobj: Default::default(),
             joints: ids.into(),
             paths: Arc::new(paths),
+            event_capacity,
         })
     }
     /// lb_8000C290: the root's orientation constraint, resolved against
@@ -2171,6 +2226,7 @@ impl Effect {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
         sink: &mut crate::fixture_spawns::EventSink,
+        events: &mut AnimationEvents,
     ) -> Result<()> {
         const NO_CHARACTER_BANKS: resources::CharacterBanks =
             [const { None }; resources::CHARACTER_EFFECT_FILES.len()];
@@ -2178,9 +2234,28 @@ impl Effect {
             common: bank,
             characters: &NO_CHARACTER_BANKS,
         };
-        self.animate_banks::<T>(banks, particles, rng, draws, sink)
+        self.animate_banks::<T>(banks, particles, rng, draws, sink, events)
     }
+    /// Pooled models keep no callback buffer of their own: the joints'
+    /// callbacks go to the scene's one buffer, lent to the tree while it
+    /// animates and drained after each joint.
     fn animate_banks<T: InverseTrig>(
+        &mut self,
+        banks: resources::Banks<'_>,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+        draws: &mut DrawLog,
+        sink: &mut crate::fixture_spawns::EventSink,
+        events: &mut AnimationEvents,
+    ) -> Result<()> {
+        debug_assert!(self.tree.events.is_empty() && events.0.is_empty());
+        std::mem::swap(&mut self.tree.events, &mut events.0);
+        let result = self.animate_joints::<T>(banks, particles, rng, draws, sink);
+        std::mem::swap(&mut self.tree.events, &mut events.0);
+        events.0.clear();
+        result
+    }
+    fn animate_joints<T: InverseTrig>(
         &mut self,
         banks: resources::Banks<'_>,
         particles: &mut ParticleSystem,

@@ -142,10 +142,7 @@ fn every_model_restarts_exactly_without_allocation() {
     ] {
         let initial = Effect::load(&archive, id).unwrap();
         let mut effect = initial.clone();
-        effect
-            .tree
-            .events
-            .reserve_exact(initial.tree.events.capacity());
+        effect.tree.events.reserve_exact(initial.event_capacity);
         let allocations = count_allocations(|| {
             for _ in 0..3 {
                 effect

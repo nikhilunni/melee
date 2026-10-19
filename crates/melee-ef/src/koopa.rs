@@ -59,6 +59,7 @@ impl Effects {
                 rng,
                 &mut self.draws,
                 &mut self.events,
+                &mut self.animation_events,
             )?;
         }
         for effect in pair {

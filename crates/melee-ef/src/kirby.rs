@@ -93,6 +93,7 @@ impl Effects {
             rng,
             &mut self.draws,
             &mut self.events,
+            &mut self.animation_events,
         )?;
         self.instances.push(effect);
         Ok(())
@@ -128,7 +129,10 @@ impl Effects {
         effect
             .tree
             .set_scale(effect.root, &Vec3::new(scale, scale, scale));
-        let child = effect.tree.child(effect.root).expect("rapid jab fist joint");
+        let child = effect
+            .tree
+            .child(effect.root)
+            .expect("rapid jab fist joint");
         effect
             .tree
             .set_translate_z(child, position.z - RAPID_JAB_CHILD_START);
@@ -149,6 +153,7 @@ impl Effects {
             rng,
             &mut self.draws,
             &mut self.events,
+            &mut self.animation_events,
         )?;
         self.instances.push(effect);
         Ok(())
@@ -209,6 +214,7 @@ impl Effects {
                 rng,
                 &mut self.draws,
                 &mut self.events,
+                &mut self.animation_events,
             )?;
         }
         for effect in blade {
@@ -256,6 +262,7 @@ impl Effects {
             rng,
             &mut self.draws,
             &mut self.events,
+            &mut self.animation_events,
         )?;
         self.instances.push(effect);
         Ok(())

@@ -86,11 +86,16 @@ impl Effects {
         effects
     }
     fn from_models(models: ModelPool) -> Self {
+        let mut animation_events = AnimationEvents::default();
+        for model in &models.models {
+            animation_events.reserve_for(&model.initial);
+        }
         Self {
             events: Default::default(),
             camera_quakes: Default::default(),
             quake_models: false,
             draws: DrawLog(Vec::with_capacity(DRAW_CAPACITY)),
+            animation_events,
             direct_draws: Default::default(),
             instances: Default::default(),
             models,
