@@ -320,6 +320,10 @@ impl Effects {
         effect.lifetime = lifetime;
         effect.indefinite = false;
         effect.follow_item = Some((item, offset));
+        // efLib_CreateGenerator_AppSRT_SetPos(0x92, gobj, ...): the arrow's
+        // gobj is the model's parent, so the arrow's Item_8026A8EC
+        // (efLib_DestroyAll) takes the flame with it.
+        effect.owner = Some(ModelOwner::Item(item));
         let joint = effect.joint_base + effect.root.0;
         let mut spawn = SpawnRequest::new(0, generator, 0);
         spawn.joint = Some((joint, effect.matrix(effect.root)));
