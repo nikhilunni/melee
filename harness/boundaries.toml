@@ -819,3 +819,57 @@ stage = "FinalDestination"
 players = ["Peach", "CaptainFalcon"]
 stocks = 4
 seed = 4072912608
+
+[[boundary]]
+name = "start_ps_bowser_ness4"
+cold = "start_ps_bowser_ness4_cold"
+savestate = "harness/roms/start_ps_bowser_ness4.sav"
+stage = "PokemonStadium"
+players = ["Bowser", "Ness"]
+stocks = 4
+seed = 512840711
+
+[[boundary]]
+name = "start_ps_mewtwo_younglink4"
+cold = "start_ps_mewtwo_younglink4_cold"
+savestate = "harness/roms/start_ps_mewtwo_younglink4.sav"
+stage = "PokemonStadium"
+players = ["Mewtwo", "YoungLink"]
+stocks = 4
+seed = 512840711
+
+[[boundary]]
+name = "start_fod_drmario_gameandwatch4"
+cold = "start_fod_drmario_gameandwatch4_cold"
+savestate = "harness/roms/start_fod_drmario_gameandwatch4.sav"
+stage = "FountainOfDreams"
+players = ["DrMario", "GameAndWatch"]
+stocks = 4
+seed = 1899183411
+
+[[boundary]]
+name = "start_fod_sheik_ness4"
+cold = "start_fod_sheik_ness4_cold"
+savestate = "harness/roms/start_fod_sheik_ness4.sav"
+stage = "FountainOfDreams"
+players = ["Sheik", "Ness"]
+stocks = 4
+seed = 1801721350
+
+[[boundary]]
+name = "start_dl_gameandwatch_mewtwo4"
+cold = "start_dl_gameandwatch_mewtwo4_cold"
+savestate = "harness/roms/start_dl_gameandwatch_mewtwo4.sav"
+stage = "DreamLand"
+players = ["GameAndWatch", "Mewtwo"]
+stocks = 4
+seed = 1032949840
+
+[[boundary]]
+name = "start_dl_pikachu_drmario4"
+cold = "start_dl_pikachu_drmario4_cold"
+savestate = "harness/roms/start_dl_pikachu_drmario4.sav"
+stage = "DreamLand"
+players = ["Pikachu", "DrMario"]
+stocks = 4
+seed = 3933258060

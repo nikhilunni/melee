@@ -4673,7 +4673,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 695] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 716] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -5787,6 +5787,40 @@ static CORPUS_V3_MATCHES: [(&str, usize); 695] = [
     // Popo's KO (s_link 4) tears down the ice block he holds before its
     // collision proc moves it: the kept generator keeps the bone's last matrix.
     ("corpus_v3_dl_luigi_iceclimbers4_e86fddb60_p1", 4073),
+    // Explorer campaign 2026-10C (FoD, Stadium, Dream Land): clean samples
+    // from fresh seeds on older boundaries and the six new ones. Stadium
+    // samples end where retail's transformations leave the explorer's game.
+    ("corpus_v3_fod_pikachu_mario4_e51868d7e_p0", 6001),
+    ("corpus_v3_fod_fox_marth4_ebbc08847_p0", 4956),
+    ("corpus_v3_ps_iceclimbers_peach4_e51868d7e_p0", 5461),
+    ("corpus_v3_dl_mario_falco4_ebbc08847_p0", 6001),
+    ("corpus_v3_ps_bowser_ness4_e51868d7e_p0", 6001),
+    ("corpus_v3_ps_bowser_ness4_e404fe6bc_p0", 6001),
+    ("corpus_v3_ps_mewtwo_younglink4_e69d5406a_p1", 5094),
+    ("corpus_v3_ps_mewtwo_younglink4_efbfb6a67_p0", 4370),
+    ("corpus_v3_fod_drmario_gameandwatch4_e51868d7e_p0", 5346),
+    ("corpus_v3_fod_sheik_ness4_e8508a02a_p2", 6001),
+    ("corpus_v3_dl_gameandwatch_mewtwo4_e8508a02a_p0", 6001),
+    ("corpus_v3_dl_pikachu_drmario4_e51868d7e_p1", 6001),
+    // A terrain footstep's effect after a motion change took the earlier
+    // graphics commands: its place counts from the commands left (Mr. Game
+    // & Watch's TurnRun into Run on Fountain of Dreams, ftaction.c:1164-1177).
+    ("corpus_v3_fod_drmario_gameandwatch4_eb0b8bd2c_p1", 474),
+    ("corpus_v3_fod_drmario_gameandwatch4_efbfb6a67_p0", 654),
+    ("corpus_v3_fod_drmario_gameandwatch4_eb0b8bd2c_p1_full", 6001),
+    // Zelda (as Sheik's partner form) lands out of Farore's Wind's air end
+    // (354): the special landing inherits mv+4, the travel's stick x.
+    ("corpus_v3_fod_sheik_ness4_ed7b67fb9_p0", 5034),
+    ("corpus_v3_fod_sheik_ness4_ed7b67fb9_p0_full", 6001),
+    // A superseded torch ends while Mr. Game & Watch is in hitlag:
+    // ftGw_AttackS4_ItemTorchSetFlag thaws x2254's torch, then clears x2254.
+    ("corpus_v3_dl_gameandwatch_mewtwo4_e1c18df30_p2", 923),
+    ("corpus_v3_dl_gameandwatch_mewtwo4_e1c18df30_p2_full", 6001),
+    // Young Link's stuck fire arrow leaves with its line (a Stadium
+    // transformation); its flame is the arrow's model (efSync 0x448 with
+    // the arrow's gobj), so efLib_DestroyAll takes it too.
+    ("corpus_v3_ps_mewtwo_younglink4_ef3cf9943_p0", 4375),
+    ("corpus_v3_ps_mewtwo_younglink4_ef3cf9943_p0_ext", 4700),
 ];
 
 #[test]

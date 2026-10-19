@@ -1,0 +1,23 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fod_sheik_ness4_cold"
+expected = "start_fod_sheik_ness4"
+frames = 600
+seed = 1801721350
+stage = "FountainOfDreams"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Ness"
+costume = 0
+stocks = 4
+controller = "idle"
