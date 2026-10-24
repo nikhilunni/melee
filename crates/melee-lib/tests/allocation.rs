@@ -165,7 +165,9 @@ fn dropping_matches_and_assets_releases_every_owned_allocation() {
     let tracking = Tracking;
     {
         let assets = GameAssets::load(&files, &config).unwrap();
-        let mut game = Match::new(&assets, config).unwrap();
+        // Pair the owned roster's allocation and free inside tracking;
+        // the original config was allocated before tracking began.
+        let mut game = Match::new(&assets, config.clone()).unwrap();
         let mut branch = game.clone();
         branch.reset(Seed(67)).unwrap();
         branch.clone_from(&game);
