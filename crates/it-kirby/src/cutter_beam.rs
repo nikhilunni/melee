@@ -9,8 +9,8 @@
 //!
 //! Recorded on Final Destination and on Yoshi's Story (the wall from its
 //! cloud, the descent down its slopes, a shield it glances off past a
-//! floor's end). What those scenes do not reach fails closed: a landing
-//! from the air, a clank and an absorber.
+//! floor's end, a landing on a lower floor). What those scenes do not reach
+//! fails closed: a clank and an absorber.
 use hsd_types::Vec3;
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
@@ -271,12 +271,10 @@ fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
                 .y += LIFT_OFF;
         }
     } else if item.air_pass(ctx.map) {
-        // it_802762B0, then the floor's angle. No recorded beam has left a
-        // floor's end and come down on another.
-        unimplemented!(
-            "itKirbycutterbeam_UnkMotion0_Coll (itkirbycutterbeam.c:128-133): the airborne beam \
-             landing on a floor"
-        );
+        // it_802762B0, then the floor's angle (itkirbycutterbeam.c:128-133).
+        item.land_on_floor();
+        let angle = floor_angle(item);
+        state(item).angle = angle;
     }
     item.rotation.x = state(item).angle;
     let env = item

@@ -5954,6 +5954,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 717] = [
     // the floor (ftCo_800BDA74, ftCo_ThrownKirby.c:76-77).
     ("corpus_v3_ys_kirby_fox4_e05625e18_p2", 3454),
     ("corpus_v3_ys_kirby_fox4_ea4d5d9ec_p1", 5542),
+    // Final Cutter's beam leaves a floor's end and lands on a lower floor,
+    // taking its angle (itkirbycutterbeam.c:128-133).
+    ("corpus_v3_ys_kirby_fox4_ed922eba2_p2", 4443),
     // Landing out of Sheik's Vanish air end (360) inherits mv+4, the travel's
     // stick x (ftCo_Landing.c:41-50), Zelda-as-Sheik.
     ("corpus_v3_fod_captainfalcon_zelda4_e5909cbff_p1", 1672),
