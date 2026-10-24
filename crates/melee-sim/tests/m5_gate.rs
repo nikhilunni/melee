@@ -2400,6 +2400,12 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // a landing during the start (fn_800F6638, fn_800F6798); its wind is
     // efAlt 0x49A.
     ("kirby_inhale_whiff_fd_fox4", 900),
+    // On Randall as it runs into Yoshi's Story's side wall, each grounded
+    // row loses its floor into its aerial twin (ftKb_SpecialNStart_Coll,
+    // ftKb_SpecialNLoop_Coll, ftKb_SpecialNEnd_Coll).
+    ("kirby_inhale_randall_start_ys_fox4", 1400),
+    ("kirby_inhale_randall_loop_ys_fox4", 1400),
+    ("kirby_inhale_randall_end_ys_fox4", 1400),
     // Final Cutter (ftkirbyspecialhi.c) and its beam (itkirbycutterbeam.c),
     // items compared. From the ground, twice: start, rise, landing, the
     // blade (efAlt 0x494) and the beam running until its lifetime ends.

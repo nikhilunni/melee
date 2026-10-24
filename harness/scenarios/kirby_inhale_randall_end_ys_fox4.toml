@@ -1,0 +1,27 @@
+# KIRBY directed witness from start_ys_kirby_fox4 (Yoshi's Story): Kirby drops to the floor, runs off the left ledge onto Randall low beside the stage and taps B; the Inhale's grounded end is playing when Randall carries him into the stage's side wall: it loses its floor into the aerial end (ftKb_SpecialNEnd_Coll), and he falls to the blast zone. (melee-sim search: 355 at 1324, 373 at 1328.)
+name = "kirby_inhale_randall_end_ys_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_kirby_fox4.sav"
+frames = 1400
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 100, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 103, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1205, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1232, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1265, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 1266, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"
