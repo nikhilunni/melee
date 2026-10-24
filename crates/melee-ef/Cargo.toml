@@ -17,3 +17,4 @@ serde_json.workspace = true
 
 [dev-dependencies]
 melee-lb = { path = "../melee-lb" }
+melee-test-support = { path = "../melee-test-support" }

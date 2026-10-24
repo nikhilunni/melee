@@ -1560,7 +1560,12 @@ impl Effects {
                         .with_context(|| format!("unsupported model effect {id:#x}"))?;
                     (row.model, row.attached.then_some(player))
                 }
-                _ => anyhow::bail!("unsupported fighter effect {request:?}"),
+                // Every request a fighter queues is taken above: the
+                // id-guarded rows (SyncAttached, SyncAttachedPair,
+                // AttachedParameter, FollowingGenerator, BoneModel) cover
+                // each id their constructors pass (docs/COVERAGE_AUDIT.md,
+                // "Wave 13: effects"), and the rest have unguarded arms.
+                _ => unreachable!("unsupported fighter effect {request:?}"),
             };
             let mut effect = self.acquire(id, particles);
             // Reserve disjoint owned joint identities; stage IDs occupy 0..65536.
@@ -2016,8 +2021,14 @@ impl Effects {
                     .iter()
                     .find(|(id, _)| *id == item)
                     .map(|(_, p)| *p)
+                    // The model's parent is the item (efLib_Create(0, gobj),
+                    // eflib.c:1517), and Item_8026A8EC calls
+                    // efLib_DestroyAll(gobj) before it frees the item
+                    // (item.c:1991): the callback never outlives the JObj.
+                    // The port's two teardown paths (ItemEvent::DestroyEffects,
+                    // and the destroyed-item sweep) remove ModelOwner::Item.
                     .unwrap_or_else(|| {
-                        unimplemented!("efLib_Cb_AccumOffset_FromParams on a freed item JObj")
+                        unreachable!("efLib_Cb_AccumOffset_FromParams on a freed item JObj")
                     });
                 // lb_8000B1CC, then three separate fadds.
                 effect.tree.set_translate(
@@ -2155,8 +2166,11 @@ impl Effect {
                 .iter()
                 .position(|d| d.offset == reference)
                 .context("unresolved spline joint")?;
+            // Only HSD_A_J_PATH reads the AObj's object, and the disc's one
+            // path-animated effect (effCommonDataTable row 36) names a
+            // spline joint (tests/disc_effect_tables.rs).
             let desc::JObjUnion::Spline(Some(offset)) = descs[index].u else {
-                anyhow::bail!("animation reference is not a spline");
+                unreachable!("animation reference is not a spline");
             };
             paths.insert(id.0, (ids[index], spline::Spline::read(archive, offset)?));
         }
@@ -2411,7 +2425,13 @@ impl Effect {
                         }
                     }
                     JObjEvent::JSound(_) => {} // Audio has no simulation output.
-                    _ => anyhow::bail!("unsupported ef animation event {event:?}"),
+                    // No effect animation on the disc has a SETBYTE, SETFLOAT
+                    // or PTCLTGT track (tests/disc_effect_tables.rs).
+                    JObjEvent::SetByte { .. }
+                    | JObjEvent::SetFloat { .. }
+                    | JObjEvent::PtclTgt { .. } => {
+                        unreachable!("ef animation event {event:?}")
+                    }
                 }
             }
             self.tree.events = events;

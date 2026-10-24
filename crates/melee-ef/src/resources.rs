@@ -357,7 +357,10 @@ pub(super) fn character(
             descriptors: Arc::new([]),
             textures: Arc::new([]),
         },
-        _ => anyhow::bail!("{symbol}: particle commands without textures"),
+        // efAsync_OnLoad (efasync.c:1281) would hand psInitDataBankLocate a
+        // lone link, but no effect table on the disc has one: all 36 pair
+        // them (tests/disc_effect_tables.rs, docs/COVERAGE_AUDIT.md).
+        _ => unreachable!("{symbol}: particle commands without textures"),
     };
     // A row without a model (EF_EffectDesc.model NULL) names no model id;
     // effZeldaDataTable has one.

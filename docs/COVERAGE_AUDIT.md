@@ -349,3 +349,49 @@ tracks).
   reads, and it ports the overrides and the LObj animation. A stage
   bring-up that loads its lights through
   `read_static_lights` must port these with it.
+
+## Wave 13: effects (PARITY item 28)
+
+Audited 2026-10-24 from main `1d722e33`. Two scans of the disc, read in
+place: every effect table (`Ef*.dat`, 36 files) and every fighter script
+(`ftData` `xC` motion table of all 33 `PlXx.dat`, decoded with
+`ftAction_803C0870`'s lengths and followed through Command_05/07, plus the
+color programs of `PlCo.dat`'s table at `ftLoadCommonData` +0x18).
+
+**Closed as invariants** (`unreachable!`, not counted as fail-closed):
+
+| site (line at `1d722e33`) | evidence |
+|---|---|
+| `melee-ef/src/resources.rs:341` particle commands without textures | All 36 effect tables link both particle commands and textures or neither (`efAsync_OnLoad`, efasync.c:1281). `crates/melee-ef/tests/disc_effect_tables.rs` checks it. |
+| `melee-ef/src/lib.rs:2157` animation reference is not a spline | Of 138 effect models in 36 tables, one AObj names an object: effCommonDataTable row 36's PATH track, whose object is a spline joint. Same test. |
+| `melee-ef/src/lib.rs:2412` unsupported ef animation event | The effect models' joint tracks are types 1-10, 12, PATH (4) and DPTCL (0x28): no SETBYTE/SETFLOAT (20-39) or PTCLTGT (0x2A) track, the only events without an arm. Same test. |
+| `melee-ef/src/lib.rs:2018` AccumOffset on a freed item JObj | Retail call graph: efLib_CreateGenerator_AppSRT_SetPos parents the model to the item (`efLib_Create(0, gobj)`, eflib.c:1517) and Item_8026A8EC always runs `efLib_DestroyAll(gobj)` (item.c:1991) before the item is freed, so efLib_Cb_AccumOffset_FromParams never reads a freed JObj. The port's model has `ModelOwner::Item`, removed by `ItemEvent::DestroyEffects` and by the destroyed-item sweep in `frame.rs`. |
+| `melee-ef/src/lib.rs:1561` unsupported fighter effect | A port dispatch default with no retail counterpart. Every `EffectRequest` constructor in the workspace was enumerated; the id-guarded rows cover each id passed: SyncAttached 0x47A 0x47C 0x482 0x488-0x48D 0x491-0x493 0x496 0x497 0x49B 0x49C 0x4B4 0x4B5 0x4B8 0x4B9 0x4BE 0x4BF 0x4C6-0x4CA 0x4D6 0x4DA 0x4DF 0x4EC 0x4EE 0x4EF 0x4F1-0x4F7 0x4FB-0x4FD 0x507 0x509 0x50A 0x50D-0x50F 0x510-0x512; SyncAttachedPair 0x48F 0x494 0x4AB 0x4B3 0x4BB 0x4BC 0x50B; AttachedParameter 0x490 0x495 0x49A 0x50C; FollowingGenerator 0x446 0x4E1; BoneModel 0x4CC. HitSpark reaches the switch only as Normal or Slash (`hit_log.rs` maps Ground/Cape to Normal and drops the no-effect elements). |
+
+**Graphics ids a fighter can issue.** The scripts and color programs hand
+ftCo_8009F834 these ids (opcode 10, the landing opcode 55, color opcode 21;
+the terrain opcodes 54/55 and ftCo_DownBound add only stage-bank 30xxx ids
+and 0x407): below 0x250, and 0x3E9, 0x3EF-0x407, 0x40C-0x413, 0x416,
+0x41C, 0x41D, 0x422-0x424, 0x426, 0x428-0x42A, 0x438, 0x43A, 0x446,
+0x44B, 0x487, 0x495, 0x49D, 0x4C1, 0x4C2, 0x4C4, 0x4C5, 0x4D1, 0x4D9,
+0x4E1-0x4E6, 0x4FE, 0x500-0x502, 0x513-0x515. Every one has an arm in
+`resolve_graphics_while` except two, so the dispatch site stays open for
+them:
+
+- `melee-ft/src/fighter/effects.rs:328`, 0x438 (block_66: efAsync kind 3,
+  `efLib_Create_Attach(0x22)` with SetScale_FromParamX): issued only by the
+  Screw Attack item's motions (ItemScrew, ItemScrewAir, ItemScrewDamage,
+  in 27 playable fighters' data and the wireframes' and Giga Bowser's). Retail reaches it in any item match;
+  the port has no Screw Attack item, so it waits for that item.
+- 0x410 (efLib_CreateGenerator 0x22A): only Giga Bowser's SpecialLwLanding
+  (PlGk.dat motion 315), a single-player fighter outside the port.
+
+**Still open, with what reaches them.**
+
+| site | why it stays |
+|---|---|
+| `melee-ft/src/fighter/procs.rs:467` terrain footstep before the proc's motion change | Needs a footstep (opcode 54) followed by a graphics command in the same script step, a terrain with a footstep effect (the port loads two: Fountain of Dreams' and Pokemon Stadium's water, material 10), and a motion change later in the same proc. The scripts that pair opcode 54 with a graphics command in one step are Bowser's walks (motions 7-9) and the heavy-item walks (motions 90/91 of 20 playable fighters' data). Walk's anim callback only sets the rate; the one proc-internal motion change found is ftCo_LiftWalk_Anim -> ftCo_80096F48 (ftCo_Lift.c:93-98, 78-91), which starts the next LiftWalk step at the end of each step: crate and barrel carrying, not ported. ftCo_800D71D8's item catch (an item caught while walking) also changes motion there but was not attempted. |
+| `melee-ef/src/dust.rs:149` efAsync_Dispatch unsupported dust | The default of efAsync_Dispatch's positional rows. Every id the port's callers pass is in `DUST_SPAWNS` or below 0x250 or 30xxx: the graphics ids above that are not model rows, the `PositionalGenerator` constants of the character crates, and the item rows (`spawn_positional`). Retail reaches the other efasync.c rows (0x3ED, 0x40A, 0x41F, 0x425, 0x444, 0x445, ...) through callers the port has not ported (items, stages); each closes with its caller. |
+| `melee-ef/src/egg_shell.rs:137` item root effect | efAsync kinds 1/4 on an item root: only the Egg Throw burst and the fireball's bounce are ported; other items' requests arrive with their items. |
+| `melee-ef/src/item_generators.rs:41` and `:133` | efSync_Spawn rows on item JObjs and bones: the ported items' ids are all rows; other items' rows arrive with them. |
+| `melee-ef/src/lib.rs:314` item-following generator | efLib_CreateGenerator_AppSRT_SetPos on an item: 0x448 (Link's stuck fire arrow, itlinkarrow.c:643) is ported. it_80278800 (iteffect.c:94-104) also sends 0x446 to an item when an item's animation list asks for it; no scan of item scripts was made, and the port's item-script graphics stop first at `frame.rs` "it_80278800: item effect". |
