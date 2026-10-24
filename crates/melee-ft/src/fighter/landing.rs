@@ -315,68 +315,30 @@ impl Fighter {
 
     /// Another object's write of the second motion scratch word (mv+4)
     /// while a common state owns it (ftPk_SpecialLw_SetState_Unk0 from a
-    /// Thunder bolt's end, which ftPk_SpecialLw_CheckProperty allows only
-    /// in the states of property 0: Wait, the walks, turns, dash and run,
-    /// knee bend, jumps, falls, squats, landings, AppealS, BuryJump and
-    /// DamageIceJump). The state then runs on with that word: Jump's flag
-    /// (ftCo_Jump.c:185-197), Fall's blend (ftCo_Fall.c:186), Run's slippery
-    /// velocity (ftCo_Run.c:84) and Squat's drop timer (ftCo_Squat.c:82-85)
-    /// read it as their own. Walk's word is its base motion id
-    /// (ftwalkcommon.c:115, 137): its IASA then re-enters Walk, and its
-    /// animation callback fails closed on the uninitialised rate.
+    /// Thunder bolt's end). The state then runs on with that word: Jump's
+    /// flag (ftCo_Jump.c:185-197), Fall's blend (ftCo_Fall.c:186), Run's
+    /// slippery velocity (ftCo_Run.c:84) and Squat's drop timer
+    /// (ftCo_Squat.c:82-85) read it as their own. Walk's word is its base
+    /// motion id (ftwalkcommon.c:115, 137): its IASA then re-enters Walk,
+    /// and its animation callback fails closed on the uninitialised rate.
+    /// Unmodelled states fail closed.
     pub fn overwrite_common_scratch_word(&mut self, word: f32) {
-        use melee_types::CommonMotionState as S;
-        if self.write_scratch_word(word) {
-            return;
-        }
-        // Wait (ft_8008A348) and AppealS write no scratch: they hold only the
-        // word, whatever typed data their predecessor left.
-        if matches!(
-            self.core.motion_state.id,
-            S::Wait | S::AppealSR | S::AppealSL
-        ) {
-            self.core.state_data = MotionData::Inherited(word);
-            return;
-        }
-        // Every other property-0 motion keeps its word in the typed scratch
-        // written above.
-        unreachable!(
-            "mv+4 written from outside during motion {:?}",
-            self.core.motion_state.action
-        )
-    }
-
-    /// mv+4 written into the typed scratch that holds it, where that is
-    /// exact; false for scratch whose word the port holds in another form.
-    fn write_scratch_word(&mut self, word: f32) -> bool {
-        let bits = word.to_bits();
         match &mut self.core.state_data {
+            // Wait holding only its predecessor's word.
             MotionData::Inherited(inherited) => *inherited = word,
-            MotionData::Jump(jump) => jump.physics_started = bits,
+            MotionData::Jump(jump) => jump.physics_started = word.to_bits(),
             MotionData::Fall(fall) => fall.blend = word,
-            MotionData::FallSpecial(fall) => fall.animation.blend = word,
             MotionData::Run(run) => run.slippery_animation_velocity = word,
-            MotionData::RunBrake(brake) => brake.remaining_frames = word,
             MotionData::Squat(squat) => squat.platform_drop_timer = word,
-            MotionData::Walk(walk) => walk.base_motion = bits as i32,
-            MotionData::Turn(turn) => turn.facing_after = word,
-            MotionData::Dash(dash) => dash.early_interrupts = bits,
-            // mv.co.kneebend.jump_input: ftCo_JumpInput (1, 2 or 3).
-            MotionData::KneeBend(knee_bend) => {
-                knee_bend.input = match bits {
-                    1 => super::jump::JumpInput::Stick,
-                    2 => super::jump::JumpInput::CStick,
-                    3 => super::jump::JumpInput::Buttons,
-                    _ => return false,
-                }
-            }
-            // Out of Damage, mv+4 is still mv.co.damage.x4. Damage's
-            // OnExitHitlag reads that word (ftCo_Damage.c:650), so a write
-            // while its hitlag callbacks are installed is not modelled.
+            MotionData::Walk(walk) => walk.base_motion = word.to_bits() as i32,
+            // Wait writes no scratch (ft_8008A348), so out of Damage mv+4 is
+            // still mv.co.damage.x4. Damage's OnExitHitlag reads that word
+            // (ftCo_Damage.c:650), so a write while its hitlag callbacks
+            // are installed is not modelled.
             MotionData::Damage(damage)
                 if self.core.combat.hitlag_callbacks != super::damage::HitlagCallbacks::Damage =>
             {
-                damage.mv_word = bits
+                damage.mv_word = word.to_bits()
             }
             MotionData::Aerial {
                 retained_drop_timer,
@@ -391,12 +353,9 @@ impl Fighter {
                 retained_drop_timer,
                 ..
             } => *retained_drop_timer = word,
-            MotionData::BuryJump { retained_word, .. }
-            | MotionData::FrozenJump { retained_word, .. } => *retained_word = word,
             MotionData::Smash { retained_word }
             | MotionData::Tilt { retained_word }
             | MotionData::Catch { retained_word }
-            | MotionData::ShieldBreak { retained_word }
             | MotionData::DownTilt { retained_word, .. }
             | MotionData::DashAttack { retained_word, .. }
             | MotionData::ItemGet { retained_word, .. }
@@ -404,15 +363,13 @@ impl Fighter {
             | MotionData::Jab(super::attack::JabState { retained_word, .. }) => {
                 *retained_word = Some(word)
             }
-            MotionData::TurnRun(turn) => turn.retained_word = Some(word),
-            _ => return false,
+            _ => unimplemented!(
+                "mv+4 written from outside during motion {:?}",
+                self.core.motion_state.action
+            ),
         }
-        true
     }
 
-    /// Fox JumpAerial and Landing leave the second motion scratch word untouched.
-    /// Direct SquatWait entry inherits it as the inactive platform-drop timer
-    /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
     /// The port models mv+4 in every state a fighter acts from except
     /// Zelda's and Sheik's Transform arrival (the arriving form's word is
     /// its own from before it slept, a stale heap word in a cold scene).

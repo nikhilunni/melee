@@ -44,12 +44,6 @@ struct MotionChange<'a> {
     /// Ft_MF_Unk06 (bit6): the entry does not start the KO credit's
     /// countdown (fighter.c:1184).
     skip_ko_credit_countdown: bool,
-    /// Ft_MF_SkipThrowException (bit8): x1064_thrownHitbox.owner (the
-    /// thrower, `thrown_by`) survives the entry (fighter.c:962-964).
-    keep_thrown_by: bool,
-    /// Ft_MF_KeepSwordTrail (bit17): x2100 (`sword_trail`) survives the
-    /// entry (fighter.c:1152-1154).
-    keep_sword_trail: bool,
 }
 
 /// Fighter_ChangeMotionState's `flags` argument; bit names from ft/forward.h.
@@ -870,11 +864,14 @@ impl Fighter {
         // (ftCo_CaptureDamageKoopa.c:20, 62, ftCo_ThrownMewtwo.c:23,
         // ftCo_Shouldered.c:35), which no Vs fighter sets (fighter.c:785
         // clears it; no OnLoad of a registered kind sets it).
-        if flags.contains(F::FREEZE_STATE) {
-            unimplemented!(
-                "Fighter_ChangeMotionState flags {:#X}: fighter.c:1239 Ft_MF_FreezeState",
-                flags.0
-            );
+        for (flag, line) in [
+            (F::SKIP_THROW_EXCEPTION, "fighter.c:962"),
+            (F::KEEP_SWORD_TRAIL, "fighter.c:1152"),
+            (F::FREEZE_STATE, "fighter.c:1239"),
+        ] {
+            if flags.contains(flag) {
+                unimplemented!("Fighter_ChangeMotionState flags {:#X}: {line}", flags.0);
+            }
         }
         // Ft_MF_KeepAccessory (fighter.c:1113-1117) keeps fp->x20A0_accessory,
         // a model JObj nothing simulated reads. Ft_MF_KeepColAnimPartHitStatus
@@ -903,8 +900,6 @@ impl Fighter {
                 keep_secondary_color: flags.contains(F::SKIP_COL_ANIM),
                 skip_parasol: flags.contains(F::SKIP_PARASOL),
                 skip_ko_credit_countdown: flags.contains(F::UNK06),
-                keep_thrown_by: flags.contains(F::SKIP_THROW_EXCEPTION),
-                keep_sword_trail: flags.contains(F::KEEP_SWORD_TRAIL),
                 preserve: MotionPreservation {
                     hit_status: flags.contains(F::KEEP_COL_ANIM_HIT_STATUS),
                     hitboxes: flags.contains(F::SKIP_HIT),
@@ -1040,7 +1035,7 @@ impl Fighter {
             self.parasol_motion_change();
         }
         self.character.on_motion_change();
-        self.core.begin_motion_change(source, change.keep_thrown_by);
+        self.core.begin_motion_change(source);
         // The port's attack-proc guard belongs to the state that set it (an
         // attack entry, or hitlag ending during an attack); attack entries
         // set it again after this change.
@@ -1359,19 +1354,15 @@ impl FighterCore {
         }
     }
     /// Fighter_ChangeMotionState (fighter.c:933-949), before OnGroundedMotion.
-    fn begin_motion_change(
-        &mut self,
-        source: Option<super::grab_throw::ThrowSource<'_>>,
-        keep_thrown_by: bool,
-    ) {
+    fn begin_motion_change(&mut self, source: Option<super::grab_throw::ThrowSource<'_>>) {
         // fighter.c:948.
         self.physics.entry_facing = self.physics.facing;
         self.commands.smash_charge = None;
         self.commands.borrowed_script = source.map(|source| source.assets.commands.clone());
         // Fighter_ChangeMotionState (800693AC): clear the throw exception on
-        // ordinary entry (fighter.c:962-964, unless Ft_MF_SkipThrowException).
-        // Borrowed thrown scripts still need their source owner.
-        if source.is_none() && !keep_thrown_by {
+        // ordinary entry (fighter.c:962-964). Borrowed thrown scripts still
+        // need their source owner.
+        if source.is_none() {
             self.commands.thrown_by = None;
         }
         self.status.interaction = Interaction::Idle;
@@ -1579,10 +1570,7 @@ impl FighterCore {
             }
         }
         self.ground_pose = GroundPoseFlags::default();
-        // fighter.c:1152-1154.
-        if !change.keep_sword_trail {
-            self.status.sword_trail = -1;
-        }
+        self.status.sword_trail = -1;
         self.status.camera_shift = Vec2::ZERO;
         self.collision.data.floor_skip = -1;
         let root = self.animation.root;

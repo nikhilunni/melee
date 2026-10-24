@@ -320,9 +320,10 @@ Fighter_ChangeMotionState call in the decomp that evaluates its flag
 argument finds Ft_MF_SkipThrowException (ThrownKirby), Ft_MF_KeepAccessory
 (EntryEnd, RebirthWait, Kirby's copied Marth), Ft_MF_KeepColAnimPartHitStatus
 (DownBound, DamageFall, FlyReflect, ftCo_800C7CA0) and Ft_MF_FreezeState only
-under x2222_b6 (CaptureDamageKoopa, ThrownMewtwo, Shouldered). The first is
-now `thrown_by` kept (fighter.c:962), Ft_MF_KeepSwordTrail keeps x2100
-(fighter.c:1152); KeepAccessory keeps a model JObj nothing simulated reads,
+under x2222_b6 (CaptureDamageKoopa, ThrownMewtwo, Shouldered).
+Ft_MF_SkipThrowException and Ft_MF_KeepSwordTrail stay fail-closed (no
+ported caller passes them, so nothing witnesses fighter.c:962 or 1152);
+KeepAccessory keeps a model JObj nothing simulated reads,
 and the part hurt status of x2221_b1 is set only under gm_8016B014 (no player
 in slots 2-6), never in a Vs match. Ft_MF_FreezeState stays fail-closed:
 fighter.c:785 clears x2222_b6 and no registered kind's OnLoad sets it. The
@@ -349,11 +350,11 @@ sources and they are modelled:
   cargo throw (no write: the word before the carry);
 - Wait out of a character special holds the special's word, not the typed
   scratch of the common state before it;
-- ftPk_SpecialLw_SetState_Unk0 (the Thunder lead ending) during Thunder Jolt
-  or Skull Bash replaces the word those specials kept; during Wait or AppealS
-  it replaces whatever typed scratch was stale; every other motion of
-  property 0 (the only ones ftPk_SpecialLw_CheckProperty lets through) holds
-  the word in typed scratch (Dash's x4 is now the int retail stores).
+- ftPk_SpecialLw_SetState_Unk0 (the Thunder lead ending) writing mv+4
+  from outside stays fail-closed for the states it was before (Thunder
+  Jolt, Skull Bash, and the property-0 common states without a typed
+  arm): no recording reaches those writes (Dash's x4 is now the int retail
+  stores, ready for it).
 
 After this the tally over every recording has no unmodelled tick for any
 kind outside the death and revival states (0-13, from which no state
