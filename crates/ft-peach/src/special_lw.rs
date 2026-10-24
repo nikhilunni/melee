@@ -92,7 +92,9 @@ pub fn pull(f: &mut Fighter, rng: &mut gekko_math::HsdRng) {
             hold_kind: COMMON_HOLD_KIND,
             ..attached
         },
-        _ => unimplemented!("it_802BD4AC: Peach pulled a {kind:?}"),
+        // PlPe.dat's attributes x10..x2C name only these three rare kinds
+        // (docs/PEACH_DATA.md), and the disc is fixed.
+        _ => unreachable!("it_802BD4AC: Peach pulled a {kind:?}"),
     };
     let part = f.core.bones.model.animation_translation;
     f.core.item_requests.push(ItemRequest::SpawnInHand {

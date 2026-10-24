@@ -191,7 +191,10 @@ impl<const YOUNG: bool> ItemLogic for Arrow<YOUNG> {
                 state(item).tail = tail;
             }
             ItemControl::Remove => item.destroyed = true,
-            _ => unimplemented!("arrow item control {control:?}"),
+            // The retail archers (ftlinkspecialn.c, ftkirbyspeciallink.c)
+            // reach a nocked arrow only through it_802A8398 (the aim) and
+            // it_802A8A7C (its removal); see docs/COVERAGE_AUDIT.md.
+            _ => unreachable!("{control:?} sent to an arrow"),
         }
     }
     /// itLinkArrow_Logic98_DmgDealt (802A9A38): the horizontal speed drops to
@@ -336,7 +339,11 @@ fn shoot<const YOUNG: bool>(
     state(item).charge = shot.charge;
     let archer = state(item).archer;
     if archer.is_none() || item.owner != archer {
-        unimplemented!("itLinkArrow_802A850C: an arrow no longer its archer's");
+        // Retail falls off the end of the function here (no return value).
+        // Only the archer's own release reaches this, with its xE0 still
+        // set, and a nocked arrow has no hitbox to be reflected or
+        // absorbed by, so its owner is still the archer.
+        unreachable!("itLinkArrow_802A850C: an arrow no longer its archer's");
     }
     // it_802A8C7C: the flight's lifetime, state 1.
     set_lifetime(item, a.lifetime(), half_life_scale);

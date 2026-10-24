@@ -241,6 +241,51 @@ directed `melee-sim search` runs (`goal.fault` aims a search at an
 | `melee-ft/fighter/capture_kirby.rs` (ftCo_CaptureCut.c:115-122), (ftCo_Throw.c:534-538) | A pair parted while the Inhale still pulls; an invincible fighter leaving the mouth | Not reached by the explorer's 6,264 cases or the Randall searches (a pull lasts a few ticks) |
 | `ft-kirby/mouthful.rs` fn_800F697C / fn_800F6AC8 (ftkirbyspecialn.c:565-571, 591-598) | The pull and the gulp losing their floor | 1,260 candidates with Kirby and Fox on Randall as it runs into Yoshi's Story's side wall (Kirby's turn 1286..1300, B 4..45 ticks later) found none: Randall leaves Kirby before Fox, so the inhale starts in the air |
 
+## Article control messages, Peach's pulls and the item engine (2026-10-24)
+
+`docs/PARITY.md` work items 16-18. Each fail-closed site was read against
+its retail callers; the ported ones are gated, the rest are either out of a
+match's reach (evidence below) or left to the random-item work.
+
+Ported and witnessed:
+
+| Site | Witness |
+| --- | --- |
+| Toad's owner hitlag (onEnterHitlag / onExitHitlag -> it_802BDFA0 / it_802BDFC0 -> it_8026B724 / it_8026B73C): the counter's hitlag freezes Toad | `peach2_toad_counter_laser`, `peach2_toad_counter_melee` (the retail trace's Toad holds xDC8 x7 for the counter hitlag) |
+| The parasol's owner hitlag (ftPe_SpecialHi_8011D620 / 8011D650 -> it_802BDBF8 / it_802BDC18) | `peach_upb_parasol_hitlag_hit_fd_fox`, `peach_upb_parasol_hitlag_shield_fd_fox` |
+| A walking Bob-omb whose timer runs out unlit lights itself (it_8027F8E0 with xDE0 == 0: blink, the common item lifetime it_804D6D28->x30, the fuse) | `peach_pull_bombhei_walk_ps_peach` (Peach's pull dropped onto a Stadium platform: walk, edge turns, light, burn, blast) |
+| A stage enemy struck by a Dark hitbox shows hit_effect_ids[Dark] (it_80270E30, efSync 0x416) | `corpus_v3_ys_ganondorf_fox4_e1c91f9f7_p0` (new boundary `start_ys_ganondorf_fox4`; Ganondorf hits a Shy Guy) |
+| Toad's spores bounce off a shield (itPeachToadSpore_Logic68_ShieldBounced -> itColl_BounceOffShield) | `peach_toad_spore_shield_bounce_fd_fox` (without the bounce the port leaves retail at tick 230) |
+
+Unreachable, by the retail call graph (the arm is now `unreachable!` with
+the reason):
+
+| Site | Evidence |
+| --- | --- |
+| The `_` arms of the article control callbacks: arrow, bow, boomerang, hookshot, milk (`it-link`), Disable, Shadow Ball (`it-mewtwo`), charge shot, grapple beam (`it-samus`), Yoshi's egg, Pikachu's Thunder bolt | The only callers of these kinds' functions outside their own files are their owners: itlinkarrow (it_802A8398, it_802A83E0, itLinkArrow_802A850C, it_802A8A7C from ftlinkspecialn.c, ftkirbyspeciallink.c), itlinkbow (it_802AF1A4, it_802AF304), itlinkboomerang (it_8029FDBC, it_802A013C, it_802A0534, it_802A07B4 from ftlinkspecials.c), itlinkhookshot and itsamusgrapple (state changes and removal from ftCo_0D8E/0D95.c, ftCo_AirCatch.c, ftCo_CatchWait.c, ftCo_CaptureWait.c, ftCo_CatchPull.c), itclinkmilk (it_802C8B28 from ftclinkappeals.c), itmewtwodisable (spawn and Logic67_Destroy from ftmewtwospeciallw.c), itmewtwoshadowball (it_802C5000, it_802C519C, it_802C53F0, it_802C573C), itsamuschargeshot (it_802B55C8, it_802B56E4, it_802B5974), ityoshieggthrow (it_802B2890, it_802B28C8, it_802B2A10 from ftyoshispecialhi.c), itpikachuthunder (it_802B1DEC, it_802B1DF8, it_802B1FC8, it_802B1FE8 from ftpikachuspeciallw.c). Every one maps to a handled `ItemControl` (or a launch or spawn request); no other variant is sent to these kinds |
+| The Thunder bolt's and the Thunder Jolt crawler's `_` link-message arms | A bolt hears only its spawner's chain setup (it_802B1DF8) and the next bolt's arrival (it_802B22B8); the crawler hears only the ball's contact (it_802B3F88); `Unlinked` is handled by the scene |
+| itLinkArrow_802A850C with the arrow no longer its archer's | The archer's release is the only caller, with xE0 set; a nocked arrow has no hitbox, so nothing reflects or absorbs it to change its owner (retail falls off the function's end there, returning garbage) |
+| `melee-it` `engine.rs` item command `_` | `desc::read_block` decodes only the item opcodes handled; Command_00..09 stay in the shared script machine |
+| `ft-peach` `special_lw.rs` pull of another kind | PlPe.dat's attributes x10..x2C list three rare kinds only: Bob-omb, Mr. Saturn, Beam Sword |
+| fn_8027FCA8 / fn_8028007C with an unlit Bob-omb | States 5 and 6 are entered only by it_8027F8E0, fn_8028007C and fn_8027FCA8, each of which lights the fuse (xDE0 = 1) first; only itBombhei_Logic6_Spawned clears it |
+
+Left fail-closed, outside character articles and Peach's pulls:
+
+| Site | Why |
+| --- | --- |
+| `it-bombhei` EnteredAir (it_3F14_Logic6_EnteredAir), walk and turn leaving the ground, states 0, 1 (its physics and collision), 3 and 12 | A pulled Bob-omb reaches them only when its floor moves or vanishes under it (it_8026D8A4 stops a walker at edges); a randomly spawned Bob-omb runs them from its spawn (it_8027DE18 -> state 1 -> fn_8027DAC8 -> state 0 -> it_8027E978 -> state 3) |
+| `it-dosei` itDosei_Logic7_EnteredAir's unheld branch and states 7-10 | A pulled Mr. Saturn is picked up at its spawn (itDosei_Logic7_PickedUp sets xDC8 x19, which nothing clears), so its EnteredAir always takes state 6; states 7-10 belong to a stage- or randomly-spawned one |
+| `it-drmariopill` motion 4-6 (itDrMarioPill_802C09C4's held poses) | Its only callers are ft_0BEC.c / ft_0BF0.c (ftCo_800BED88, ftCo_800BF108), reached through ftdemo.c's cutscene table, not a match |
+| `melee-it` `desc.rs` item opcodes 20, 22, 24, 25 | A scan of the scripts of every kind the 99 boundary scenes register (all characters' articles, Peach's pulls, the Shy Guys) finds no such opcode; scripts decode at load, so a supported kind with one would fail every scene |
+| `melee-lib` `frame.rs` it_80278800 item effect ids other than 0x405 and 0x513-0x515 | The same scan finds item-script effects 0x513 (Yoshi's egg) and 0x514 (Bob-omb) only |
+| `melee-it` `hurt.rs` it_8027B798's grounded launch | Its callers are the walking stage enemies (itzako.c and kin); the supported one, the Shy Guy, is never grounded |
+| `melee-it` `map.rs` it_80275E98 other hold kinds; `logic.rs` trait defaults (launch, dropped, thrown, control, link, logic) | Kinds the port does not register (random items, Pokemon) |
+| `melee-lib` `frame.rs` it_802706D0 inert hitbox | `INTERACTION_MATRIX.md`: no supported kind has an inert hitbox |
+| `melee-it` `hurt.rs` an item struck by a ReDead (Leadead) element | Unreachable in the supported scenes: a scan of every fighter and item script the 99 boundary scenes load finds the elements Normal, Fire, Electric, Slash, Coin, Ice, Nap, Catch, Ground, Cape, Inert, Dark, Disable and Lipstick, never Leadead (the ReDead enemy's grab, itleadead.c, not a versus item) |
+| `melee-lib` `frame.rs` it_802B4224 with no room | Item_80268B18 failing needs the item heap full |
+| `melee-it` `map.rs` it_80276D9C wall pinch | Investigate: an item touching both walls in one pass (a narrow gap); not met in the searches above |
+| Yoshi's stars bouncing off a shield (it_802B312C -> itColl_BounceOffShield) | Reachable but not reached: grids of Yoshi's down special landing beside Fox's shield (Fox shielding from 104, 160, 200 or 240; 2,000 landings) met the shield only head-on, the least incidence 2.91 rad against the 2.36 limit (90 + it_804D6D28 +E0 degrees) |
+
 ## Exit status
 
 Remaining reachable boundaries: the Sudden Death item gaps in the table

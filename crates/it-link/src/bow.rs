@@ -119,7 +119,9 @@ impl<const YOUNG: bool> ItemLogic for Bow<YOUNG> {
     fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
         match control {
             ItemControl::Remove => item.destroyed = true,
-            _ => unimplemented!("bow item control {control:?}"),
+            // The archers reach the bow only through it_802AF304
+            // (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to a bow"),
         }
     }
     /// itLinkBow_Logic100_EvtUnk: it_8026B894.

@@ -167,7 +167,10 @@ impl<O: ChargeOwner> ItemLogic for SamusCharge<O> {
                 shot_mut(item).glowing = false;
                 item.destroyed = true;
             }
-            _ => unimplemented!("charge shot item control {control:?}"),
+            // The chargers (ftsamusspecialn.c, ftkirbyspecialsamus.c) reach
+            // the shot through its spawn, it_802B56E4 (the launch) and
+            // it_802B5974 (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to a charge shot"),
         }
     }
     /// it_2725_Logic108_Destroyed: a shot still in hand lets its owner go

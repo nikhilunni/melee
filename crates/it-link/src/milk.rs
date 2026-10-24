@@ -77,7 +77,9 @@ impl ItemLogic for Milk {
                 item.owner = None;
                 item.destroyed = true;
             }
-            _ => unimplemented!("milk item control {control:?}"),
+            // ftclinkappeals.c only spawns the milk (it_802C8B28); its
+            // removal is the one request (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to the milk"),
         }
     }
     /// itCLinkMilk_NotifyParent: its fighter hears of it only while he

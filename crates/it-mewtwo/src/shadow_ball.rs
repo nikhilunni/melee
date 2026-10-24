@@ -233,7 +233,10 @@ impl<O: BallOwner> ItemLogic for MewtwoShadowBall<O> {
                 item.effects_destroyed = true;
                 item.destroyed = true;
             }
-            _ => unimplemented!("Shadow Ball item control {control:?}"),
+            // The chargers (ftmewtwospecialn.c, ftkirbyspecialmewtwo.c)
+            // reach the ball through its spawn, it_802C519C, it_802C53F0
+            // (the launch) and it_802C573C (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to a Shadow Ball"),
         }
     }
     /// it_2725_Logic101_Destroyed (802C56C4): a ball still in hand lets its

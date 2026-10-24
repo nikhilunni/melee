@@ -94,7 +94,9 @@ impl ItemLogic for MewtwoDisable {
                 item.effects_destroyed = true;
                 item.destroyed = true;
             }
-            _ => unimplemented!("Disable item control {control:?}"),
+            // ftmewtwospeciallw.c reaches Disable only through its spawn and
+            // itMewtwoDisable_Logic67_Destroy (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to Disable"),
         }
     }
     /// itMewtwoDisable_Logic67_Destroyed (802C4A00): the creator, while it

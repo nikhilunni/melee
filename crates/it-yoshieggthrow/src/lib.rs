@@ -121,7 +121,10 @@ impl ItemLogic for YoshiEggThrow {
                 item.destroyed = true;
             }
             ItemControl::Remove => {}
-            _ => unimplemented!("Yoshi egg item control {control:?}"),
+            // ftyoshispecialhi.c reaches the egg through its spawn,
+            // it_802B28C8 (the launch) and it_802B2890
+            // (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to a Yoshi egg"),
         }
     }
 }

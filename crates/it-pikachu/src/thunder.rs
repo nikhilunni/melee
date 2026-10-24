@@ -149,7 +149,10 @@ impl<O: crate::ThunderOwner> ItemLogic for ThunderBolt<O> {
                 state.reached = position;
                 state.struck = true;
             }
-            _ => unimplemented!("Thunder bolt message {message:?}"),
+            // A bolt hears only its spawner's chain setup (it_802B1DF8) and
+            // the next bolt's arrival (it_802B22B8); the scene handles
+            // Unlinked (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{message:?} sent to a Thunder bolt"),
         }
         false
     }
@@ -198,7 +201,10 @@ impl<O: crate::ThunderOwner> ItemLogic for ThunderBolt<O> {
         match control {
             ItemControl::Strike if thunder_ref(item).index == 0 => strike(item, assets),
             ItemControl::Strike => {}
-            _ => unimplemented!("Thunder bolt control {control:?}"),
+            // ftpikachuspeciallw.c reaches the bolts through it_802B1DEC,
+            // it_802B1DF8, it_802B1FC8 (the strike) and it_802B1FE8 (a
+            // read); docs/COVERAGE_AUDIT.md.
+            _ => unreachable!("{control:?} sent to a Thunder bolt"),
         }
     }
     /// itPikachuThunder_Logic39_DmgDealt: the bolt keeps going.

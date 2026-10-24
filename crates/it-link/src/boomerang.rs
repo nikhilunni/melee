@@ -252,7 +252,9 @@ impl<const YOUNG: bool> ItemLogic for Boomerang<YOUNG> {
     fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
         match control {
             ItemControl::Remove => item.destroyed = true,
-            _ => unimplemented!("boomerang item control {control:?}"),
+            // ftlinkspecials.c reaches a thrown boomerang only through
+            // it_802A07B4 (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to a boomerang"),
         }
     }
     /// remove_boomerang (802A07B4, Logic18_Destroyed): the thrower's

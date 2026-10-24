@@ -1549,7 +1549,10 @@ impl ItemCore {
                         self.sound_requests.push(*id);
                     }
                 }
-                _ => unimplemented!("item command {command:?}"),
+                // `desc::read_block` decodes only the opcodes above; the
+                // shared flow commands (Command_00..09) stay in the script
+                // state machine.
+                _ => unreachable!("item command {command:?} was never decoded"),
             }
         }
     }

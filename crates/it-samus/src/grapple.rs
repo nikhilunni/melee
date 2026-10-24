@@ -50,7 +50,11 @@ impl ItemLogic for SamusGrapple {
         match control {
             ItemControl::Motion(state) => item.change_motion_with(state, -1, ANIM_UPDATE, assets),
             ItemControl::Remove => item.destroyed = true,
-            _ => unimplemented!("grapple beam item control {control:?}"),
+            // The grab states (ftCo_0D95.c, ftCo_AirCatch.c, ftCo_CatchWait.c,
+            // ftCo_CaptureWait.c, ftCo_CatchPull.c) reach the beam only
+            // through its state changes and its removal
+            // (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to a grapple beam"),
         }
     }
     /// itSamusGrapple_Logic53_EvtUnk: it_8026B894, and the beam's owner

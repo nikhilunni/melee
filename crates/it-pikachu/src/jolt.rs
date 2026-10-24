@@ -369,7 +369,9 @@ impl<O: crate::Owner> ItemLogic for ThunderJoltCrawler<O> {
     /// and takes a step.
     fn link_received(item: &mut ItemCore, message: LinkMessage, assets: &ItemAssets) -> bool {
         let LinkMessage::Settle { position, normal } = message else {
-            unimplemented!("Thunder Jolt crawler message {message:?}");
+            // The ball sends its crawler only the contact (it_802B3F88);
+            // the scene handles Unlinked (docs/COVERAGE_AUDIT.md).
+            unreachable!("{message:?} sent to a Thunder Jolt crawler");
         };
         item.position = position;
         let state = jolt(item);

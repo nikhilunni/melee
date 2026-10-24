@@ -108,7 +108,10 @@ impl<const YOUNG: bool> ItemLogic for Hookshot<YOUNG> {
                 item.change_motion_with(state, -1, ANIM_UPDATE, assets);
             }
             ItemControl::Remove => item.destroyed = true,
-            _ => unimplemented!("hookshot item control {control:?}"),
+            // The grab states (ftCo_0D8E.c, ftCo_AirCatch.c, ftCo_CatchWait.c)
+            // reach the hookshot only through its state changes and its
+            // removal (docs/COVERAGE_AUDIT.md).
+            _ => unreachable!("{control:?} sent to a hookshot"),
         }
     }
     /// it_802A7D40 (802A7D40): it_8026B894, then the thrower is gone.
