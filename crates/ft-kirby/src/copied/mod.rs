@@ -22,6 +22,7 @@ pub mod samus;
 pub mod thunder_jolt;
 pub mod toad;
 pub mod pk_flash;
+pub mod egg_lay;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -73,7 +74,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Samus
     CopiedNeutral::Ported(samus::enter),
     // Yoshi
-    unported("ftKb_SpecialNYs_8010941C", "ftKb_SpecialNYs_801094FC"),
+    CopiedNeutral::Ported(egg_lay::enter),
     // Jigglypuff
     CopiedNeutral::Ported(rollout::enter),
     // Mewtwo

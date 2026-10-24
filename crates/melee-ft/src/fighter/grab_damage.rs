@@ -35,7 +35,7 @@ pub fn resolve_linked_hit(
     }
     if [&fighter.motion_state, &partner.motion_state]
         .iter()
-        .any(|state| state.id == melee_types::CommonMotionState::CaptureYoshi)
+        .any(|state| super::capture_yoshi::on_tongue(state.id))
     {
         // Yoshi's tongue leaves x221B_b5 clear on both members.
         unimplemented!("ftCo_8008EC90: a launch through Egg Lay's catch");

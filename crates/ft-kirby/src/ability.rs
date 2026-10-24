@@ -113,9 +113,10 @@ fn put_away_article(f: &mut Fighter, kind: FighterKind) {
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
 /// the death callback and ftKb_SpecialN_800F5D04 (`put_away_article`).
 /// The other kinds whose arm only releases an article or a held fighter
-/// (Ice Climbers, Link, Young Link, Sheik, Yoshi; the Yoshi arm's hat
-/// animation is drawn) do nothing while their copied special is not
-/// ported: their scratch is always at rest.
+/// (Ice Climbers, Link, Young Link, Sheik) do nothing while their copied
+/// special is not ported: their scratch is always at rest. Yoshi's
+/// (801093B4: the hat's animation, drawn only; 8010A8BC: an item on the
+/// tongue, which the port never catches) has nothing to do.
 fn put_away(f: &mut Fighter) {
     let kind = f.character.get::<Kirby>().copied;
     put_away_article(f, kind);

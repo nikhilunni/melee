@@ -193,6 +193,20 @@ fn swallowed_ability(state: &melee_ft::fighter::CharacterState) -> FighterKind {
     copied
 }
 
+/// grab_cb, as the row that armed the catch installed it.
+fn special_grab(
+    kirby: &mut Fighter,
+    victim: &mut Fighter,
+    kirby_assets: &FighterAssets,
+    victim_assets: &FighterAssets,
+) -> melee_ft::fighter::assets::Result<()> {
+    if crate::copied::egg_lay::tongue_out(kirby) {
+        crate::copied::egg_lay::grab(kirby, victim, kirby_assets, victim_assets)
+    } else {
+        crate::mouthful::grab(kirby, victim, kirby_assets, victim_assets)
+    }
+}
+
 fn cape_turn_blocked(f: &mut Fighter) -> bool {
     f.character.get::<Kirby>().cape_turn_blocked
 }
@@ -231,8 +245,9 @@ impl CharacterCallbacks for Kirby {
     const THROW_TRAITS: fn(melee_types::CommonMotionState) -> ThrowTraits = throw_traits;
     /// ftCo_800C3538's x2222_b2.
     const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool = cape_turn_blocked;
-    /// fn_800F6210 / fn_800F6318 and ftCo_800BD1DC: the Inhale's catch.
-    const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = crate::mouthful::grab;
+    /// fn_800F6210 / fn_800F6318 and ftCo_800BD1DC: the Inhale's catch;
+    /// the copied Egg Lay's tongue (fn_80109680 / fn_801097B8, fn_8010A930).
+    const SPECIAL_GRAB: melee_ft::fighter::SpecialGrab = special_grab;
     /// ftKb_SpecialN_800F5A38 and ftKb_SpecialS_800F6BB0, for the fighter
     /// in his mouth.
     const MOUTH_HOLD: Option<melee_ft::fighter::MouthHold> = Some(melee_ft::fighter::MouthHold {

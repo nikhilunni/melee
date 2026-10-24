@@ -32,35 +32,8 @@ pub struct DoubleJumpAttributes {
     /// +0x08, ftYoshi/types.h; ftCo_JumpAerial.c.
     pub armor: f32,
 }
-#[derive(Clone, Debug, PartialEq)]
-pub struct EggLayAttributes {
-    /// +0x10, ftYoshi/types.h; ftyoshispecialn.c.
-    pub horizontal_speed: f32,
-    /// +0x14, ftYoshi/types.h; ftyoshispecialn.c.
-    pub vertical_speed: f32,
-    /// +0x18, ftYoshi/types.h; ftyoshispecialn.c.
-    pub damage_behavior: f32,
-    /// +0x1C, ftYoshi/types.h; ftyoshispecialn.c.
-    pub wobble_parameter: f32,
-    /// +0x20, ftYoshi/types.h; ftyoshispecialn.c.
-    pub capture_parameter: f32,
-    /// +0x24, ftYoshi/types.h; ftyoshispecialn.c.
-    pub duration: f32,
-    /// +0x28, ftYoshi/types.h; ftyoshispecialn.c.
-    pub escape_frames_per_tick: f32,
-    /// +0x2C, ftYoshi/types.h; ftyoshispecialn.c.
-    pub mash_frame_reduction: f32,
-    /// +0x30, ftYoshi/types.h; ftyoshispecialn.c.
-    pub mash_animation_duration: f32,
-    /// +0x34, ftYoshi/types.h; ftyoshispecialn.c.
-    pub mash_animation_rate: f32,
-    /// +0x38, ftYoshi/types.h; ftyoshispecialn.c.
-    pub exit_intangibility_frames: i32,
-    /// +0x3C, ftYoshi/types.h; ftyoshispecialn.c.
-    pub release_velocity: Vec2,
-    /// +0x44, ftYoshi/types.h; ftyoshispecialn.c.
-    pub damage_frame_reduction: f32,
-}
+/// +0x10..+0x44: Egg Lay, shared with Kirby's copy.
+pub use ft_yoshi_family::egg_lay::EggLayAttributes;
 #[derive(Clone, Debug, PartialEq)]
 pub struct EggRollAttributes {
     /// +0x48, ftYoshi/types.h; ftyoshispecials.c.
@@ -193,21 +166,7 @@ impl YoshiAttributes {
                 reverse_threshold: r.f32(0x4)?,
                 armor: r.f32(0x8)?,
             },
-            egg_lay: EggLayAttributes {
-                horizontal_speed: r.f32(0x10)?,
-                vertical_speed: r.f32(0x14)?,
-                damage_behavior: r.f32(0x18)?,
-                wobble_parameter: r.f32(0x1C)?,
-                capture_parameter: r.f32(0x20)?,
-                duration: r.f32(0x24)?,
-                escape_frames_per_tick: r.f32(0x28)?,
-                mash_frame_reduction: r.f32(0x2C)?,
-                mash_animation_duration: r.f32(0x30)?,
-                mash_animation_rate: r.f32(0x34)?,
-                exit_intangibility_frames: r.s32(0x38)?,
-                release_velocity: Vec2::new(r.f32(0x3C)?, r.f32(0x40)?),
-                damage_frame_reduction: r.f32(0x44)?,
-            },
+            egg_lay: EggLayAttributes::read(&r, 0x10)?,
             egg_roll: EggRollAttributes {
                 duration: r.s32(0x48)?,
                 minimum_duration: r.s32(0x4C)?,

@@ -9,6 +9,7 @@ melee-coll = { path = "../melee-coll" }
 melee-ef = { path = "../melee-ef" }
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
+ft-yoshi-family = { path = "../ft-yoshi-family" }
 melee-it = { path = "../melee-it" }
 melee-lb = { path = "../melee-lb" }
 melee-cm = { path = "../melee-cm" }

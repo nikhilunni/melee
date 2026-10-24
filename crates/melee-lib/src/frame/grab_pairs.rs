@@ -84,6 +84,7 @@ pub(super) fn align(state: &mut InitialState, player: usize) -> Result<()> {
                 | melee_types::CommonMotionState::ThrownHi
                 | melee_types::CommonMotionState::ThrownLw
                 | melee_types::CommonMotionState::CaptureYoshi
+                | melee_types::CommonMotionState::CaptureKirbyYoshi
                 | melee_types::CommonMotionState::CaptureCaptain
                 // ftCo_Shouldered_Phys and the cargo throws' victims: empty.
                 | melee_types::CommonMotionState::ShoulderedWait

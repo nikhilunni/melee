@@ -508,14 +508,16 @@ impl Fighter {
 
     /// ftCo_800BBED4's Fighter_ChangeMotionState(YoshiEgg, Ft_MF_Unk06, 0,
     /// 1, 0, yoshi): the egg plays Yoshi's animation and script, remapped
-    /// like a thrown fighter's, with Yoshi as the throw owner.
+    /// like a thrown fighter's, with Yoshi as the throw owner (Kirby's copy:
+    /// KirbyYoshiEgg, ftCo_SM_KirbyYoshiEgg from Kirby).
     pub(super) fn enter_borrowed_egg_motion(
         &mut self,
         yoshi: u32,
+        layer: super::capture_yoshi::EggLayer,
         assets: &FighterAssets,
         yoshi_assets: &FighterAssets,
     ) -> Result<()> {
-        let motion = &yoshi_assets.motions[&super::capture_yoshi::EGG_MOTION];
+        let motion = &yoshi_assets.motions[&layer.egg_motion()];
         let remap = motion.remap.as_ref().expect("prepared egg skeleton");
         let source = super::grab_throw::ThrowSource {
             assets: yoshi_assets,
@@ -532,7 +534,7 @@ impl Fighter {
         };
         self.commands.thrown_by = Some(yoshi);
         self.change_motion_state_with_source(
-            CommonMotionState::YoshiEgg.into(),
+            layer.egg_state().into(),
             assets,
             0.0,
             1.0,

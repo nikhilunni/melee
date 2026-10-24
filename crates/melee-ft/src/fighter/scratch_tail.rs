@@ -159,7 +159,7 @@ impl FighterCore {
             ],
             // mv.co.yoshiegg.x14, x18.x: the growth frames left and the
             // root's scale at the swallow (ftCo_YoshiEgg.c:123-126).
-            (MotionData::YoshiEgg(egg), S::YoshiEgg) => [
+            (MotionData::YoshiEgg(egg), S::YoshiEgg | S::KirbyYoshiEgg) => [
                 Written::float(egg.growth_remaining),
                 Written::float(egg.root_scale.x),
             ],

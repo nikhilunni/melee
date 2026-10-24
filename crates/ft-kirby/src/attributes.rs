@@ -69,6 +69,8 @@ pub struct KirbyAttributes {
     /// +384..+39C (`specialn_mt_*`): the copied Shadow Ball, Mewtwo's
     /// +0..+18 word for word.
     pub shadow_ball: ft_mewtwo_family::shadow_ball::ShadowBallAttributes,
+    /// +3AC..+3E0 (`specialn_ys_*`): the copied Egg Lay, Yoshi's block.
+    pub yoshi_egg_lay: ft_yoshi_family::egg_lay::EggLayAttributes,
     /// +3E4 / +3E8 (`specialn_gw_frame_on_repeat`,
     /// `specialn_gw_max_sausages_per_use`): the copied Chef.
     pub gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes,
@@ -313,6 +315,7 @@ impl KirbyAttributes {
                 release_lag: r.s32(0x394)?,
                 landing_lag: r.f32(0x398)?,
             },
+            yoshi_egg_lay: ft_yoshi_family::egg_lay::EggLayAttributes::read(&r, 0x3AC)?,
             gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes {
                 loop_frame: r.f32(0x3E4)?,
                 max_sausages: r.f32(0x3E8)?,

@@ -618,6 +618,7 @@ impl FighterAssets {
                     .map(|throw| throw.victim_motion)
                     .chain([
                         super::capture_yoshi::EGG_MOTION,
+                        super::capture_yoshi::KIRBY_EGG_MOTION,
                         super::capture_captain::VICTIM_MOTION,
                         super::capture_mewtwo::VICTIM_MOTION,
                         super::capture_mewtwo::AIR_VICTIM_MOTION,

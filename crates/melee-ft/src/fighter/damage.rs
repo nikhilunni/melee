@@ -1046,7 +1046,7 @@ impl Fighter {
         let pair_order = self.core.combat.pair_order.take();
         let light_capture_hit = std::mem::take(&mut self.core.combat.light_capture_hit);
         if let Some(hit) = self.core.combat.pending.take() {
-            if self.core.motion_state.id == S::CaptureYoshi {
+            if super::capture_yoshi::on_tongue(self.core.motion_state.id) {
                 unimplemented!("ftCo_8008EC90: a hit on Egg Lay's catch");
             }
             // ftColl_8007A06C: only the electric-hit victim gets x1960 = PlCo +1A4.
@@ -1070,7 +1070,7 @@ impl Fighter {
                 // ftCo_800BE7C0, a Kirby star's.
                 self.core.star_hit_taken();
             }
-            if self.core.motion_state.id == S::YoshiEgg && hit.knockback != 0.0 {
+            if super::capture_yoshi::in_egg(self.core.motion_state.id) && hit.knockback != 0.0 {
                 // take_dmg_2_cb = ftCo_800BC3D0 sets x1828 = 4, which no
                 // reaction case takes: the egg keeps rolling into hitlag.
                 super::capture_yoshi::egg_hit(&mut self.core, &hit);

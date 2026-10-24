@@ -2859,6 +2859,19 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // A flash started at the floor's edge slides off into the aerial rows;
     // Kirby falls to his death with the ability, then B is the Inhale.
     ("kirby_copy_pkflash_edge_fd_ness4", 900),
+    // The copied Egg Lay (ftkirbyspecialyoshi.c over ft_yoshi_family's
+    // states, rows 413..422; the victim's ftCo_MS_CaptureKirbyYoshi and
+    // ftCo_MS_KirbyYoshiEgg), from boundary `start_fd_kirby_yoshi4`: the
+    // tongue catches Yoshi, the swallow lays him as an egg he mashes and
+    // breaks out of; a grounded and a short-hop aerial whiff.
+    ("kirby_copy_egglay_fd_yoshi4", 900),
+    // The aerial catch, swallowed as Kirby lands in the grounded rows.
+    ("kirby_copy_egglay_air_fd_yoshi4", 800),
+    // Yoshi jabs Kirby in the tongue's start; a taunt's star.
+    ("kirby_copy_egglay_struck_fd_yoshi4", 700),
+    // The tongue at the floor's edge slides off into the aerial row and
+    // Fall; death with the ability, then B is the Inhale.
+    ("kirby_copy_egglay_edge_fd_yoshi4", 780),
 ];
 
 #[test]

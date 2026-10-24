@@ -1,0 +1,37 @@
+# KIRBY directed witness from start_fd_kirby_yoshi4 (Kirby runs to x=51 beside Yoshi at +60 and swallows him): the copied Egg Lay from the air. Kirby turns to Yoshi, short-hops and catches him with the aerial tongue (419), swallows him (421, landing in the grounded rows as he comes down) and lays him as an egg; Yoshi waits out the timer.
+name = "kirby_copy_egglay_air_fd_yoshi4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_yoshi4.sav"
+frames = 800
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 427, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 429, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 702, port = 0, buttons = {  }, raw = {  } },
+  { frame = 712, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 714, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Yoshi"
+controller = "scripted"

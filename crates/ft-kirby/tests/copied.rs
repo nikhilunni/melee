@@ -53,6 +53,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Pichu
                             | FighterKind::Peach
                             | FighterKind::Ness
+                            | FighterKind::Yoshi
                     ),
                     "{kind:?}"
                 )
@@ -82,6 +83,32 @@ fn the_punch_rows_follow_kirbys_table() {
     for (row, (action, animation)) in rows.iter().zip(expected) {
         assert_eq!(row.action.0, action);
         assert_eq!(row.animation, animation);
+    }
+}
+
+#[test]
+fn the_egg_lay_rows_follow_kirbys_table() {
+    // ftKb_Init_MotionStateTable 413..422: the item rows (415, 417, 420,
+    // 422) fail closed; the others play ftKb_SM_YsSpecialN1 and on.
+    let rows = ft_kirby::copied::egg_lay::rows();
+    let expected = [
+        (413, Some(352)),
+        (414, Some(353)),
+        (415, None),
+        (416, Some(354)),
+        (417, None),
+        (418, Some(355)),
+        (419, Some(356)),
+        (420, None),
+        (421, Some(357)),
+        (422, None),
+    ];
+    for (row, (action, animation)) in rows.iter().zip(expected) {
+        assert_eq!(row.action.0, action);
+        assert_eq!(row.implemented, animation.is_some());
+        if let Some(animation) = animation {
+            assert_eq!(row.animation, animation);
+        }
     }
 }
 

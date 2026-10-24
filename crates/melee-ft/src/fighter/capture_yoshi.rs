@@ -1,6 +1,8 @@
 //! The captured side of Yoshi's Egg Lay: ftCo_CaptureYoshi.c (on the
-//! tongue) and ftCo_YoshiEgg.c (laid as an egg). Yoshi's own states live in
-//! ft-yoshi; it hands the egg its attributes through `EggParameters`.
+//! tongue) and ftCo_YoshiEgg.c (laid as an egg), and of Kirby's copy of it:
+//! ftkirbycaptureyoshi.c and ftkirbyyoshiegg.c, the same code over the
+//! common rows 331 and 332. The captor's states live in ft-yoshi-family; it
+//! hands the egg its attributes through `EggParameters`.
 use super::{
     assets::{FighterAssets, Result},
     grab::GrabLink,
@@ -15,6 +17,50 @@ use melee_types::{combat::HurtStatus, CommonMotionState as S, FtPart, GroundOrAi
 /// Yoshi's submotion for the egg (ftCo_SM_YoshiEgg): the victim borrows the
 /// captor's animation and script (Fighter_ChangeMotionState's `arg3`).
 pub const EGG_MOTION: i32 = 277;
+/// ftCo_SM_KirbyYoshiEgg: the same, borrowed from a Kirby with Yoshi's
+/// ability.
+pub const KIRBY_EGG_MOTION: i32 = 294;
+
+/// Whose Egg Lay caught the fighter: Yoshi's own, or Kirby's copy
+/// (ftkirbyspecialyoshi.c), whose victim runs ftCo_MS_CaptureKirbyYoshi and
+/// ftCo_MS_KirbyYoshiEgg.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum EggLayer {
+    Yoshi,
+    Kirby,
+}
+impl EggLayer {
+    /// On the tongue (ftCo_800BBB8C / fn_8010A930).
+    pub const fn capture_state(self) -> S {
+        match self {
+            Self::Yoshi => S::CaptureYoshi,
+            Self::Kirby => S::CaptureKirbyYoshi,
+        }
+    }
+    /// In the egg (ftCo_800BBED4 / ftKb_SpecialNYs_8010AC78).
+    pub const fn egg_state(self) -> S {
+        match self {
+            Self::Yoshi => S::YoshiEgg,
+            Self::Kirby => S::KirbyYoshiEgg,
+        }
+    }
+    /// The captor's animation the egg borrows.
+    pub const fn egg_motion(self) -> i32 {
+        match self {
+            Self::Yoshi => EGG_MOTION,
+            Self::Kirby => KIRBY_EGG_MOTION,
+        }
+    }
+}
+
+/// Whether `state` is one of the two tongue rows (276, 331).
+pub fn on_tongue(state: S) -> bool {
+    matches!(state, S::CaptureYoshi | S::CaptureKirbyYoshi)
+}
+/// Whether `state` is one of the two egg rows (277, 332).
+pub fn in_egg(state: S) -> bool {
+    matches!(state, S::YoshiEgg | S::KirbyYoshiEgg)
+}
 /// ftCo_YoshiEgg_Anim: ft_PlaySFX(fp, 280088, 127, 64) as the shell breaks.
 const EGG_BREAK_SOUND: u32 = 280088;
 /// ftCo_800BBC88 / ftCo_800DDDE4: ftColl_8007B62C's colour animations for
@@ -30,6 +76,9 @@ const INTANGIBILITY_FLASH: u8 = 9;
 /// block for every Yoshi) each frame after.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct EggParameters {
+    /// Whose egg: the victim's rows, the borrowed animation and the
+    /// break-out's model scale.
+    pub layer: EggLayer,
     /// ftYs_SpecialN_SetupItemVel (8012CC94): -facing * +10, +14, 0.
     pub launch_velocity: Vec3,
     /// ftYs_SpecialN_GetFacingDir: the captor's facing.
@@ -127,14 +176,16 @@ pub(super) fn grab_mash(
 }
 
 impl Fighter {
-    /// ftCo_800BBB8C (800BBB8C): the tongue's grabbed_cb. The captured
-    /// fighter hangs from Yoshi's TransN2 like a thrown fighter (the XRotN
-    /// constraint of ftCo_800DB368, accessory1 ftCo_800DB464).
+    /// ftCo_800BBB8C (800BBB8C) / fn_8010A930 (8010A930): the tongue's
+    /// grabbed_cb. The captured fighter hangs from the captor's TransN2 like
+    /// a thrown fighter (the XRotN constraint of ftCo_800DB368, accessory1
+    /// ftCo_800DB464).
     pub fn enter_capture_yoshi(
         &mut self,
         captor: &mut FighterCore,
         assets: &FighterAssets,
         captor_assets: &FighterAssets,
+        layer: EggLayer,
     ) -> Result<()> {
         self.interrupt_actions(assets);
         // ftCo_8009750C drops a heavy item; ftCo_800DD168 releases this
@@ -148,7 +199,7 @@ impl Fighter {
         });
         self.physics.facing = -captor.physics.facing;
         super::grab_throw::constrain_to_captor(&mut self.core, captor, assets, captor_assets);
-        self.change_motion_state(S::CaptureYoshi.into(), assets)?;
+        self.change_motion_state(layer.capture_state().into(), assets)?;
         self.leave_ground();
         self.status.grab_exclusions = GrabExclusions::ALL;
         self.step_animation(assets);
@@ -232,7 +283,7 @@ pub fn lay_egg(
     enter_egg(victim, yoshi, victim_assets, yoshi_assets, parameters)
 }
 
-/// ftCo_800BBED4 (800BBED4).
+/// ftCo_800BBED4 (800BBED4) / ftKb_SpecialNYs_8010AC78 (8010AC78).
 fn enter_egg(
     victim: &mut Fighter,
     yoshi: &Fighter,
@@ -243,7 +294,7 @@ fn enter_egg(
     if victim.physics.ground_or_air == GroundOrAir::Ground {
         victim.leave_ground();
     }
-    victim.enter_borrowed_egg_motion(yoshi.spawn_number, assets, yoshi_assets)?;
+    victim.enter_borrowed_egg_motion(yoshi.spawn_number, parameters.layer, assets, yoshi_assets)?;
     victim.status.grab_exclusions = GrabExclusions::ALL;
     victim.effect_state.invisible = true;
     egg_hurt_capsule(&mut victim.core, assets);
@@ -290,7 +341,7 @@ fn egg(fighter: &mut FighterCore) -> &mut YoshiEggState {
     egg
 }
 
-/// ftCo_YoshiEgg_Anim (800BC1B0).
+/// ftCo_YoshiEgg_Anim (800BC1B0) / ftCo_KirbyYoshiEgg_Anim (8010AF54).
 pub fn egg_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(phase.assets);
     let threshold = phase.assets.grab_escape.stick_threshold;
@@ -328,6 +379,9 @@ pub fn egg_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Optio
 }
 
 /// ftCo_YoshiEgg_Anim's escape: the shell bursts and the fighter falls out.
+/// Kirby's egg (8010AFA4..B008) leaves the model scale as it is: no
+/// Fighter_UpdateModelScale between ftCommon_8007D5D4 and ftColl_8007B760;
+/// ftCo_Fall_Enter_YoshiEgg_Kirby is ftCo_Fall_Enter_YoshiEgg.
 fn break_out(f: &mut Fighter, assets: &FighterAssets, p: EggParameters) -> Result<()> {
     f.core
         .commands
@@ -350,7 +404,9 @@ fn break_out(f: &mut Fighter, assets: &FighterAssets, p: EggParameters) -> Resul
         });
     f.physics.self_velocity = Vec3::new(p.release_velocity.x, p.release_velocity.y, 0.0);
     f.leave_ground();
-    f.core.update_model_scale();
+    if p.layer == EggLayer::Yoshi {
+        f.core.update_model_scale();
+    }
     // ftColl_8007B760: x1990 = max(x1990, frames), then the flash.
     f.status.ledge_intangibility = f.status.ledge_intangibility.max(p.exit_intangibility);
     f.core
@@ -363,7 +419,8 @@ fn break_out(f: &mut Fighter, assets: &FighterAssets, p: EggParameters) -> Resul
     f.enter_fall_from_egg(assets)
 }
 
-/// ftCo_YoshiEgg_Phys (800BC308): ft_80084F3C on the ground, ft_80084DB0 in the air.
+/// ftCo_YoshiEgg_Phys (800BC308) / ftCo_KirbyYoshiEgg_Phys: ft_80084F3C on
+/// the ground, ft_80084DB0 in the air.
 pub fn egg_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
     if f.physics.ground_or_air == GroundOrAir::Ground {
         super::state::callbacks::physics::guard_on(f, phase);
@@ -372,7 +429,8 @@ pub fn egg_physics(f: &mut Fighter, phase: PhysicsPhase<'_>) {
     }
 }
 
-/// ftCo_YoshiEgg_Coll (800BC340): ft_8008403C / ft_80082C74 whose callbacks
+/// ftCo_YoshiEgg_Coll (800BC340) / ftCo_KirbyYoshiEgg_Coll: ft_8008403C /
+/// ft_80082C74 whose callbacks
 /// only change ground state (ftCo_800BC3AC, ftCo_800BC388): the egg rolls
 /// on in the same motion.
 pub fn egg_collision(f: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
@@ -412,7 +470,8 @@ pub fn egg_collision(f: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 
 /// Fighter_ProcessHit's knockback branch for the egg: the frame's damage
 /// reaches percent (Fighter_UnkTakeDamage_8006CC30), then take_dmg_2_cb
-/// ftCo_800BC3D0 (800BC3D0) takes it, scaled, off the escape timer.
+/// ftCo_800BC3D0 (800BC3D0) / fn_8010B16C (8010B16C, the same fnmsubs at
+/// 8010B18C) takes it, scaled, off the escape timer.
 pub(super) fn egg_hit(fighter: &mut FighterCore, hit: &melee_coll::damage::ReceivedHit) {
     fighter.physics.percent += hit.percent_damage;
     let state = egg(fighter);

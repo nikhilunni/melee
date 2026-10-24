@@ -1,0 +1,11 @@
+[package]
+name = "ft-yoshi-family"
+description = "Yoshi's Egg Lay, shared with Kirby's copy of it (retail ftYs_SpecialN, ftKb_SpecialNYs)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+melee-ft = { path = "../melee-ft" }
+melee-types = { path = "../melee-types" }

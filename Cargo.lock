@@ -582,6 +582,7 @@ dependencies = [
  "ft-pikachu-family",
  "ft-purin-family",
  "ft-samus-family",
+ "ft-yoshi-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -963,6 +964,7 @@ dependencies = [
 name = "ft-yoshi"
 version = "0.0.1"
 dependencies = [
+ "ft-yoshi-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -974,6 +976,16 @@ dependencies = [
  "melee-lb",
  "melee-mp",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-yoshi-family"
+version = "0.0.1"
+dependencies = [
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
  "melee-types",
 ]
 

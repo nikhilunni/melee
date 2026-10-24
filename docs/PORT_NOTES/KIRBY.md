@@ -772,10 +772,33 @@ fails closed.
   aerial release and end rows, landing in the grounded end; Ness jabbing Kirby as he holds
   the flash (it flies on) and a taunt's star; a flash started at the edge
   sliding off into the aerial rows and death with the ability.
+- **The copied Egg Lay** (`ft-kirby` `copied/egg_lay.rs`;
+  ftkirbyspecialyoshi.c, ftkirbycaptureyoshi.c, ftkirbyyoshiegg.c):
+  Yoshi's states, moved into the new `ft-yoshi-family`
+  (`egg_lay::EggLayUser`), over rows 413..422 (Yoshi's ten in the same
+  order; the item rows 415, 417, 420, 422 fail closed as Yoshi's do) with
+  Kirby's block of attributes (+3AC..+3E0, Yoshi's +10..+44 layout). Every
+  row change of Kirby's installs take_dmg_cb / death2_cb; the hat's
+  animations (hat_dynamics[1..4]) only draw. Kirby's grab_cb is the
+  tongue's in these rows (fn_80109680 / fn_801097B8), the Inhale's
+  otherwise. The victim runs the common rows 331 (CaptureKirbyYoshi) and
+  332 (KirbyYoshiEgg, ftCo_SM_KirbyYoshiEgg = 294 borrowed from Kirby):
+  `melee_ft::fighter::capture_yoshi` with an `EggLayer`; Kirby's egg
+  breaks out without Fighter_UpdateModelScale (8010AFA4..B008), its other
+  arithmetic (the timer's fnmsubs at 8010B18C, the fall) is Yoshi's.
+  No copy-archive articles are reached: hats[13]'s It_Kind_Kirby_YoshiEggLay
+  is the item egg (it_802F2F34), which needs an item on the tongue.
+  Evidence: boundary `start_fd_kirby_yoshi4` and four
+  `kirby_copy_egglay_*` scenes in `KIRBY_WITNESSES`, exact on their first
+  gate with 0 differing particle-site ticks: a grounded catch, swallow and
+  egg Yoshi mashes and breaks out of, a grounded and an aerial whiff; the
+  aerial catch swallowed as Kirby lands; Yoshi's jab in the tongue's start
+  and a taunt's star; the tongue sliding off the edge into Fall, death
+  with the ability.
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
   Megavitamin, the green Fireball, the Charge Shot, the Giant Punch, the
-  Shadow Ball, the Thunder Jolt, the Toad and PK Flash
+  Shadow Ball, the Thunder Jolt, the Toad, PK Flash and Egg Lay
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -835,7 +858,8 @@ Remaining work, in the order to take it:
    `kirby_copy_pichujolt_*`, boundaries `start_fd_kirby_pikachu4`,
    `start_fd_kirby_pichu4`); Peach's Toad (`kirby_copy_toad_*`, boundary
    `start_fd_kirby_peach4`, the new `ft-peach-family`); Ness's PK Flash
-   (`kirby_copy_pkflash_*`, boundary `start_fd_kirby_ness4`).
+   (`kirby_copy_pkflash_*`, boundary `start_fd_kirby_ness4`); Yoshi's Egg
+   Lay (`kirby_copy_egglay_*`, boundary `start_fd_kirby_yoshi4`).
    Next: Sheik, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,
