@@ -5,7 +5,19 @@ Legend: `[ ]` todo, `[~]` in progress (add date), `[x]` done, `[!]` blocked
 and what is next. Finished work lives in git history and `docs/PORT_NOTES/`;
 do not keep a session log here.
 
-## Current state (2026-10-24, wave 13 closing)
+## Current state (2026-10-24, wave 14 integrating)
+
+- **Wave 14 startup:** the release workspace checkpoint exposed a dormant
+  invalid palette in retail's `EfKbSs.dat`; presentation now retains its
+  decode error until a live particle selects that image, as retail defers
+  the palette read until display. The strict archive reader still rejects
+  it. All presentation tests pass. The N64 stage icon test now uses the
+  disc's 48x48 dimensions for all three Past Stages. Release workspace
+  checks completed (the corrected icon target rerun: 3/3), release clippy
+  is clean, harness pytest 401, and both replay corpora retain 108/108 and
+  484/502 complete. The fresh sweep has 0 regressions: 3075 particle-exact,
+  102 not comparable, 307 existing local failures and one existing particle
+  fault. The six handoff branches below are being integrated in order.
 
 - **Wave 13 chased breadth** (user, 2026-10-24: completeness is the only
   goal; close fail-closed sites and unported code before chasing single

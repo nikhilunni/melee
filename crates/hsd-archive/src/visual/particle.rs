@@ -11,14 +11,49 @@ pub struct ParticleTexture {
     pub indexed: bool,
     pub texture: Arc<Texture>,
 }
+/// One prepared image/palette pair. Invalid dormant pixels retain their error
+/// until display selects the pair; malformed bank structure still fails preload.
+pub struct PreparedParticleTexture {
+    pub group: u16,
+    pub image: u16,
+    pub palette: u16,
+    pub indexed: bool,
+    pub texture: Result<Arc<Texture>>,
+}
+
 pub fn read_particle_textures(archive: &Archive, offset: u32) -> Result<Vec<ParticleTexture>> {
+    strict_textures(prepare_particle_textures(archive, offset)?)
+}
+
+/// Prepare every pair without dereferencing an invalid dormant palette at
+/// scene construction. psInitDataBankLocate relocates palette words unread;
+/// psdisp.c:2105-2123 reads only the pair a displayed particle selects.
+/// EfKbSs.dat group 0 contains image data in its unused palette slot.
+pub fn prepare_particle_textures(
+    archive: &Archive,
+    offset: u32,
+) -> Result<Vec<PreparedParticleTexture>> {
     let data = archive
         .data()
         .get(offset as usize..)
         .ok_or_else(|| invalid(offset, "particle bank out of bounds"))?;
-    read_bank(data)
+    prepare_bank(data)
 }
-fn read_bank(data: &[u8]) -> Result<Vec<ParticleTexture>> {
+fn strict_textures(prepared: Vec<PreparedParticleTexture>) -> Result<Vec<ParticleTexture>> {
+    prepared
+        .into_iter()
+        .map(|entry| {
+            Ok(ParticleTexture {
+                group: entry.group,
+                image: entry.image,
+                palette: entry.palette,
+                indexed: entry.indexed,
+                texture: entry.texture?,
+            })
+        })
+        .collect()
+}
+fn prepare_bank(data: &[u8]) -> Result<Vec<PreparedParticleTexture>> {
     let r = Reader::new(data);
     let count = r.u32(0)?;
     r.slice(
@@ -80,27 +115,29 @@ fn read_bank(data: &[u8]) -> Result<Vec<ParticleTexture>> {
                 }
                 let key = (pixels, colors, format, width, height, palette_format);
                 let texture = if let Some(texture) = cache.get(&key) {
-                    Arc::clone(texture)
+                    Ok(Arc::clone(texture))
                 } else {
-                    let palette_data = if palettes == 0 {
-                        None
-                    } else {
-                        let entries = match format {
-                            8 => 16,
-                            9 => 256,
-                            _ => 16384,
+                    (|| {
+                        let palette_data = if palettes == 0 {
+                            None
+                        } else {
+                            let entries = match format {
+                                8 => 16,
+                                9 => 256,
+                                _ => 16384,
+                            };
+                            Some((r.slice(colors, entries * 2)?, palette_format))
                         };
-                        Some((r.slice(colors, entries * 2)?, palette_format))
-                    };
-                    let bytes = data
-                        .get(pixels as usize..)
-                        .ok_or_else(|| invalid(pixels, "particle image out of bounds"))?;
-                    let texture =
-                        Arc::new(decode_pixels(bytes, width, height, format, palette_data)?);
-                    cache.insert(key, Arc::clone(&texture));
-                    texture
+                        let bytes = data
+                            .get(pixels as usize..)
+                            .ok_or_else(|| invalid(pixels, "particle image out of bounds"))?;
+                        let texture =
+                            Arc::new(decode_pixels(bytes, width, height, format, palette_data)?);
+                        cache.insert(key, Arc::clone(&texture));
+                        Ok(texture)
+                    })()
                 };
-                textures.push(ParticleTexture {
+                textures.push(PreparedParticleTexture {
                     group: u16::try_from(group)
                         .map_err(|_| invalid(base, "particle group overflow"))?,
                     image: u16::try_from(image)
@@ -133,13 +170,13 @@ mod tests {
             bytes[at..at + 4].copy_from_slice(&value.to_be_bytes());
         }
         bytes[48..].fill(0xf0);
-        let textures = read_bank(&bytes).unwrap();
+        let textures = strict_textures(prepare_bank(&bytes).unwrap()).unwrap();
         assert_eq!(textures.len(), 2);
         assert!(Arc::ptr_eq(&textures[0].texture, &textures[1].texture));
         assert_eq!(
             &textures[0].texture.rgba[..8],
             &[255, 255, 255, 255, 0, 0, 0, 0]
         );
-        assert!(read_bank(&bytes[..79]).is_err());
+        assert!(strict_textures(prepare_bank(&bytes[..79]).unwrap()).is_err());
     }
 }

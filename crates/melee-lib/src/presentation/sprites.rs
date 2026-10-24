@@ -30,7 +30,7 @@ pub(super) struct Sprites {
     pub textures: Vec<Arc<Texture>>,
     pub live: Vec<Sprite>,
     indexed: BTreeSet<(u8, u16)>,
-    lookup: BTreeMap<(u8, u16, u16, u16), usize>,
+    lookup: BTreeMap<(u8, u16, u16, u16), Result<usize, String>>,
 }
 impl Sprites {
     pub fn new(game: &Match) -> Result<Self, PresentationError> {
@@ -90,16 +90,31 @@ impl Sprites {
         archive: &hsd_archive::Archive,
         offset: u32,
     ) -> Result<(), PresentationError> {
-        for image in hsd_archive::visual::read_particle_textures(archive, offset).map_err(error)? {
+        for image in
+            hsd_archive::visual::prepare_particle_textures(archive, offset).map_err(error)?
+        {
             if image.indexed {
                 self.indexed.insert((bank, image.group));
             }
-            let index = self.textures.len();
-            self.textures.push(image.texture);
+            let index = image
+                .texture
+                .map(|texture| {
+                    let index = self.textures.len();
+                    self.textures.push(texture);
+                    index
+                })
+                .map_err(|cause| cause.to_string());
             self.lookup
                 .insert((bank, image.group, image.image, image.palette), index);
         }
         Ok(())
+    }
+    fn texture_index(&self, key: (u8, u16, u16, u16)) -> Result<usize, PresentationError> {
+        match self.lookup.get(&key) {
+            Some(Ok(index)) => Ok(*index),
+            Some(Err(cause)) => Err(error(format!("particle image {key:?}: {cause}"))),
+            None => Err(error(format!("missing particle image {key:?}"))),
+        }
     }
     pub fn capture(&mut self, game: &Match) -> Result<(), PresentationError> {
         self.live.clear();
@@ -125,10 +140,7 @@ impl Sprites {
                     u16::from(p.pose),
                     palette,
                 );
-                let Some(&index) = self.lookup.get(&key) else {
-                    return Err(error(format!("missing particle image {key:?}")));
-                };
-                index
+                self.texture_index(key)?
             } else {
                 0
             };
@@ -200,5 +212,56 @@ impl Sprites {
         }
         self.live.push(sprite);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn dormant_bad_palette_and_pixels_fail_only_when_selected() {
+        // One CI4 group, two images and two palettes: pair (0, 0) is valid,
+        // image 1 and palette 1 point beyond the bank. Retail's locate pass
+        // does not read these bytes; display reads only the selected pair.
+        let mut bytes = vec![0u8; 32 + 128];
+        for (at, value) in [
+            (0, 160u32),
+            (4, 128),
+            (32, 1),
+            (36, 8),
+            (40, 2),
+            (44, 8),
+            (48, 2),
+            (52, 8),
+            (56, 8),
+            (60, 2 << 16),
+            (64, 64),
+            (68, 0x1000),
+            (72, 96),
+            (76, 0x2000),
+        ] {
+            bytes[at..at + 4].copy_from_slice(&value.to_be_bytes());
+        }
+        // RGB5A3 palette entry zero is opaque white.
+        bytes[32 + 96..32 + 98].copy_from_slice(&0xffffu16.to_be_bytes());
+        let archive = hsd_archive::Archive::parse(&bytes).unwrap();
+        assert!(hsd_archive::visual::read_particle_textures(&archive, 0).is_err());
+        let mut sprites = Sprites {
+            textures: Vec::new(),
+            live: Vec::new(),
+            indexed: BTreeSet::new(),
+            lookup: BTreeMap::new(),
+        };
+        sprites.add_bank(7, &archive, 0).unwrap();
+        let index = sprites.texture_index((7, 0, 0, 0)).unwrap();
+        assert_eq!(&sprites.textures[index].rgba[..4], &[255; 4]);
+        assert!(sprites.indexed.contains(&(7, 0)));
+        let palette_error = sprites.texture_index((7, 0, 0, 1)).unwrap_err().to_string();
+        assert!(palette_error.contains("particle image (7, 0, 0, 1)"));
+        assert!(palette_error.contains("0x2000"));
+        let pixel_error = sprites.texture_index((7, 0, 1, 0)).unwrap_err().to_string();
+        assert!(pixel_error.contains("particle image (7, 0, 1, 0)"));
+        assert!(pixel_error.contains("particle image out of bounds"));
     }
 }
