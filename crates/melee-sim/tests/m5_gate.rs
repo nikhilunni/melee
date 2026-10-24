@@ -4922,7 +4922,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 725] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 745] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6114,6 +6114,12 @@ static CORPUS_V3_MATCHES: [(&str, usize); 725] = [
     ("corpus_v3_kj64_fox_marth4_edb2b114a_p0", 3428),
     ("corpus_v3_kj64_fox_marth4_e4213e6a5_p1", 3537),
     ("corpus_v3_kj64_fox_marth4_ee133b82f_p0", 3608),
+    ("corpus_v3_kj64_fox_marth4_edb4b01fd_p0", 5309),
+    ("corpus_v3_kj64_fox_marth4_e3e98e6dc_p0", 5423),
+    ("corpus_v3_kj64_fox_marth4_e7f8dc4fa_p0", 6001),
+    ("corpus_v3_kj64_fox_marth4_ea5bcaeb6_p0", 4746),
+    ("corpus_v3_kj64_fox_marth4_e6df66885_p0", 6001),
+    ("corpus_v3_kj64_fox_marth4_e52b08364_p0", 6001),
 ];
 
 #[test]
