@@ -617,10 +617,15 @@ impl Fighter {
 }
 
 /// fn_800DB6C8 -> fn_800DBAE4 (800DBAE4), before victim's own Anim proc.
+/// Its kind switch (it_802A7840, it_802BAA94) is on the captor's tether
+/// (`victim_fp` there is the captured fighter's `victim_gobj`, the captor):
+/// the captured fighter's own went with its capture entry
+/// (ftCo_CapturePulled.c:45, ftCommon_8007DB58's death1_cb).
 pub fn capture_wait(victim: &mut Fighter, assets: &FighterAssets) -> Result<()> {
-    if victim.core.tether_article {
-        unimplemented!("fn_800DB6C8: a captured Link's hookshot reels in (it_802A7840)");
-    }
+    assert!(
+        !victim.core.tether_article,
+        "fn_800DB6C8: a captured fighter kept its tether past ftCommon_8007DB58"
+    );
     let state = if matches!(
         victim.motion_state.id,
         S::CapturePulledHi | S::CaptureDamageHi

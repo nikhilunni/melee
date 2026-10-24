@@ -59,7 +59,12 @@ impl Fighter {
         self.change_motion_state(CommonMotionState::KneeBend.into(), assets)?;
         Ok(true)
     }
-    /// ftCo_KneeBend_Enter (800CB4E0), ftCo_Jump_GetInput (800CAE80).
+    /// ftCo_Jump_CheckInput (800CAED0): ftCo_KneeBend_Enter (800CB4E0) with
+    /// the source ftCo_Jump_GetInput (800CAE80) returned. Callers enter only
+    /// after `human::jump_input`, the same predicate, so GetInput's
+    /// JumpInput_None is never passed on (retail's CheckInput returns false
+    /// there); the relaxed and C-stick entries are `try_running_jump` and
+    /// `enter_knee_bend_with_input`.
     pub fn enter_knee_bend(&mut self, assets: &FighterAssets) -> Result<()> {
         let input = if self.core.input.current.stick.y >= assets.input.thresholds.tap_jump_threshold
             && i32::from(self.core.input.vertical.tilt) < assets.input.thresholds.tap_jump_window
@@ -68,7 +73,7 @@ impl Fighter {
         } else if self.core.input.pressed.intersects(Buttons::XY) {
             JumpInput::Buttons
         } else {
-            unimplemented!("ftCo_Jump.c:69-98: relaxed/C-stick jump entry")
+            unreachable!("ftCo_Jump_CheckInput: KneeBend entered without a jump input")
         };
         self.enter_knee_bend_with_input(assets, input)
     }

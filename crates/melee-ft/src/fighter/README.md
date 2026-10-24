@@ -218,7 +218,7 @@ The ledge ledger's dust calls at 246 and 283 are the launch and the landing.
 No supplied scene enters FallSpecial (35), so that animation-completion branch
 remains explicit. CliffAttack and Slow climb/escape, timeout into DamageFall, occupied
 ledge arbitration, items/tethers and ceiling interactions remain unsupported.
-`CharacterCallbacks::on_landing` and `air_dodge_tether` own character branches.
+`CharacterCallbacks::on_landing` and `air_tether` own character branches.
 No new RNG site or particle arithmetic was needed; particle field dumps for
 these three scenes have not been supplied.
 

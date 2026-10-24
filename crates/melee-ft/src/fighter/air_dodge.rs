@@ -123,20 +123,17 @@ impl Fighter {
         if self.core.status.used_tether {
             return false;
         }
-        let table = self.character.table();
-        let hook = table.air_tether;
-        if hook.is_none() && !(table.descriptor)().common_behavior.air_dodge_tether {
+        // The kind test: only Link, Young Link and Samus pass it, and each
+        // installs the hook.
+        let Some(hook) = self.character.table().air_tether else {
             return false;
-        }
+        };
         if self.core.held_item.is_some()
             || !self.core.input.current.held.intersects(Buttons::SHIELD)
             || !self.core.input.pressed.intersects(Buttons::A)
         {
             return false;
         }
-        let Some(hook) = hook else {
-            unimplemented!("ftCo_AirCatch.c:54-79: {:?}'s tether", self.core.kind);
-        };
         if !hook(self, assets) {
             return false;
         }

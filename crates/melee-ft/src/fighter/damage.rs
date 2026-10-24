@@ -1575,7 +1575,8 @@ impl Fighter {
                 self.enter_buffered_special(assets, true);
                 Ok(())
             }
-            transition => unimplemented!("ftCo_Damage_IASA: airborne {transition:?}"),
+            // fall::iasa_with_jump yields only the arms above.
+            transition => unreachable!("ftCo_Damage_IASA: airborne {transition:?}"),
         }
     }
     /// ftCo_DamageFall_IASA: Cliff timeout retains Cliff scratch; ordinary

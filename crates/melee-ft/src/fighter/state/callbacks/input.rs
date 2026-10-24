@@ -297,7 +297,8 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
         WaitTransition::Float => {
             (fighter.character.table().enter_float)(fighter, assets).expect("float entry")
         }
-        _ => unimplemented!("ftCo_Fall.c:132-149 / ftCo_Jump.c:173-189: aerial {transition:?}"),
+        // fall::iasa_with_jump yields only the arms above.
+        _ => unreachable!("ftCo_Fall_IASA_Inner: aerial {transition:?}"),
     }
 }
 
@@ -310,15 +311,23 @@ pub fn revival(fighter: &mut Fighter, phase: InputPhase<'_>) {
 }
 
 /// ftData_MotionStateList: ftCo_MS_FallSpecial (35).
-pub fn fall_special(fighter: &mut Fighter, _phase: InputPhase<'_>) {
-    // ftCo_FallSpecial_IASA (80096AF4): the parasol comes first.
+pub fn fall_special(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    // ftCo_FallSpecial_IASA (80096AF4): the parasol (ftCo_800CEE70), the
+    // catch window (ftCo_800D705C), then the aerial jump (ftCo_800CB870).
+    // Most entries use every jump (ftCo_80096900); Ness's PK Thunder ends
+    // through ftCo_800969D8, which keeps them.
     if fighter
-        .try_reopen_parasol(_phase.assets)
+        .try_reopen_parasol(phase.assets)
         .expect("parasol reopen")
     {
         return;
     }
-    fighter.core.input_fall_special(_phase)
+    if fighter.core.try_open_catch_window(phase.assets) {
+        return;
+    }
+    fighter
+        .try_aerial_jump(phase.assets)
+        .expect("special fall aerial jump");
 }
 
 /// ftData_MotionStateList: ftCo_MS_Entry (322), ftCo_MS_EntryStart (323), ftCo_MS_EntryEnd
@@ -374,17 +383,6 @@ impl FighterCore {
             if escape.interrupt_frames != 0 {
                 escape.interrupt_frames -= 1;
             }
-        }
-    }
-    fn input_fall_special(&mut self, phase: InputPhase<'_>) {
-        // ftCo_FallSpecial_IASA (80096AF4), after the parasol
-        // (ftCo_800CEE70): ftCo_800D705C's catch window, then the aerial
-        // jump (air-dodge entry consumed all jumps).
-        if self.try_open_catch_window(phase.assets) {
-            return;
-        }
-        if i32::from(self.physics.jumps_used) < self.attributes.jumping.max_jumps {
-            unimplemented!("ftCo_FallSpecial.c:96-100: special fall with remaining aerial jumps");
         }
     }
 }

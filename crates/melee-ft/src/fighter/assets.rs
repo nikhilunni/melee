@@ -42,8 +42,6 @@ pub struct CharacterDescriptor {
 /// A ported character overrides the corresponding CharacterCallbacks hook.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct CommonBehavior {
-    /// ftCo_AirCatch.c:54-79, ftCo_800C3B10 (800C3B10).
-    pub air_dodge_tether: bool,
     /// ftCo_ShieldBreakFly.c:30: Jigglypuff can KO above the top boundary.
     pub shield_break_top_exit: bool,
     /// ftCo_8008A7A8 (ftwaitanim.c:67): Fox and Mewtwo keep choosing idle
@@ -80,10 +78,6 @@ impl CommonBehavior {
     pub const fn for_kind(kind: melee_types::FighterKind) -> Self {
         use melee_types::FighterKind;
         Self {
-            air_dodge_tether: matches!(
-                kind,
-                FighterKind::Link | FighterKind::CLink | FighterKind::Samus
-            ),
             shield_break_top_exit: matches!(kind, FighterKind::Purin),
             idle_variants_while_holding: matches!(kind, FighterKind::Fox | FighterKind::Mewtwo),
             stage_wind_dynamics: matches!(kind, FighterKind::Mars | FighterKind::Emblem),
