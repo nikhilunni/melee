@@ -160,6 +160,11 @@ For a new matchup or stage, reuse the Fox-Marth approach:
 
 ## Status by area
 
+**Parity inventory** (`docs/PARITY.md`, `harness/parity_inventory.py`,
+2026-10-24): by retail code bytes, in-game logic is 41.8% ported or partial
+(52.2% counting callees ported inline and implemented motion rows); all of
+retail 27.6% (34.8%). 331 fail-closed sites, clustered into 32 work items.
+
 **Characters** (`crates/ft-<name>`):
 - All 26 are registered; 25 have all their specials (Kirby: `Next` 2); fail-closed branches
   are listed in Next, items 2 and 4.
