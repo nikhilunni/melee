@@ -395,3 +395,73 @@ them:
 | `melee-ef/src/egg_shell.rs:137` item root effect | efAsync kinds 1/4 on an item root: only the Egg Throw burst and the fireball's bounce are ported; other items' requests arrive with their items. |
 | `melee-ef/src/item_generators.rs:41` and `:133` | efSync_Spawn rows on item JObjs and bones: the ported items' ids are all rows; other items' rows arrive with them. |
 | `melee-ef/src/lib.rs:314` item-following generator | efLib_CreateGenerator_AppSRT_SetPos on an item: 0x448 (Link's stuck fire arrow, itlinkarrow.c:643) is ported. it_80278800 (iteffect.c:94-104) also sends 0x446 to an item when an item's animation list asks for it; no scan of item scripts was made, and the port's item-script graphics stop first at `frame.rs` "it_80278800: item effect". |
+
+## Wave 13: subaction, capsule and part-tree sites (PARITY items 29-30)
+
+The evidence for the fail-closed sites of `docs/PARITY.md` items 29 and 30
+that no data or caller reaches. Scans read the disc's files in place
+(`harness/roms/files`) with a scratch scanner over `hsd-archive` and the
+port's decoders.
+
+**Subaction opcodes (ftAction_80073240).** Every motion-table row of the 33
+fighter data files (`Pl??.dat`: the 26 playable kinds, Nana, the Master and
+Crazy Hands, Giga Bowser, the wireframes and Sandbag; 10014 rows with a
+script, row counts equal to the descriptors' `animation_count`) and the 23
+Kirby copy files, following Call (5) and Goto (7), decoded with retail's
+lengths (`ftAction_803C0870` for 10..=58, lbcommand for 0..=9): no script
+holds opcode 9 (lbBgFlash), 22, 32, 33, 44, 47, 48, 57 or anything above
+58. The counts of the others run from 4 (opcodes 39, 53, 58) to 10334
+(opcode 2). Fighter scripts come only from these tables
+(`ftData_80085CD8`), so `melee_cmd::decode` now refuses those opcodes and a
+file holding one would fail its load; `Command::Unported` is gone.
+
+**Sound behaviors (ftAction_80071B50, ftAction_80071FC8).** Opcode 17
+uses behaviors 0 (1337 commands), 1 (1031), 2 (341), 3 (83), 6 (57) and 11
+(5); opcode 54 only 0 (300); opcode 38 behaviors 0 (5) and 2 (38). The port
+now maps every behavior retail plays or stops (0..=6, 10..=15) and plays
+nothing for 38's 7..=15 (retail 0x800721E8, `bgt`). Opcode 17's other
+behaviors leave the stream after two words (ftaction.c:653), which the
+three-word decoder cannot follow; none occurs, and the decoder refuses one.
+
+**Colour animations.** All entries of PlCo.dat's colour table
+(`ftLoadCommonData` +0x18, ids below 0x7B) decode with
+`smash::read_overlay`; the table now fails its load on one that does not,
+instead of keeping an undecodable program for run time. The scripts
+request ids 1, 6, 13, 14, 39-41, 44-46, 48-52, 55, 56, 59, 63-76, 78-85,
+88-91, 94-98, 100-102, 104, 108-116 and (smash charge) 119.
+
+**Hit capsules.**
+- `ftColl_80078C70` site (`melee_coll::detection::first_contact`): its one
+  game caller is the grab test `ftColl_80078A2C`, whose catch box contacts
+  only an enabled capsule (`lbColl_80007ECC`; `first_hurt_contact` already
+  skips any other for a Catch hitbox), so an invincible capsule cannot
+  come back. The function now drops the state.
+- `ft_8007C224` (thrown-victim capsule): its `default: break` is ported;
+  only `ft_8007C17C` (state 1) and the switch itself (2, 3) write the
+  state.
+- `lbColl_80008434` on a capsule never made: the only caller is Ness's
+  yo-yo rehit (`ftNs_AttackHi4_YoyoCheckTimedRehit`, 0x80114F0C), whose
+  timer starts in `deal_dmg_cb` (0x80115C74) when the yo-yo rows'
+  capsule hits; those rows (0x127..0x12A of PlNs.dat) make capsule 0 only,
+  and their entry clears the timer, so capsule 0 was made in this life.
+  The site is now an invariant `expect`.
+
+**Part trees (ftParts_800753D4, ftParts_80075304).** `Fighter_804D6540`
+(PlCo.dat `ftLoadCommonData` +0x14) has entries for three kinds only:
+Link (part 68 under 67, type 0, the joint's root), Young Link (72 under 71,
+type 0, root) and Kirby (thirteen: types 0-3, source indices 7-28). The
+port's `graft_conditional_joint` serves Link's and Young Link's OnLoad
+(`ftLk_Init_OnLoad`, `ftCl_Init_OnLoad`), and in all ten of their costumes
+(PlLk{Nr,Re,Bu,Bk,Wh}, PlCl{Nr,Re,Bu,Wh,Bk}) the parent part is
+uninstanced and childless and the graft succeeds. Kirby's entries are
+used only by `ftKb_SpecialN_800EF040`, which the port models in
+`ft_kirby::hat` without moving a joint (no bone table names those parts).
+The five sites are now assertions of the OnLoad layout.
+
+Still open: a scaled fighter's hurt matrix (`lbColl_80008248` with
+`ftCommon_8007F804`) needs a fighter scale other than 1 (the Super and
+Poison Mushrooms, not ported); two efAsync flushes in one proc with a sound
+draw between them (fighter.c:951) needs a second motion change in the proc
+that entered a motion whose frame-0 commands draw a sound: 283 rows do
+(opcode 18 or 38 before the first timer), mostly the damage motions
+(0x6E..0x83) and 0xF7..0xFA; no witness is recorded.
