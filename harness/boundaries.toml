@@ -981,3 +981,12 @@ stage = "FinalDestination"
 players = ["Kirby", "Peach"]
 stocks = 4
 seed = 2873549982
+
+[[boundary]]
+name = "start_ys_ganondorf_fox4"
+cold = "start_ys_ganondorf_fox4_cold"
+savestate = "harness/roms/start_ys_ganondorf_fox4.sav"
+stage = "YoshisStory"
+players = ["Ganondorf", "Fox"]
+stocks = 4
+seed = 3998583921

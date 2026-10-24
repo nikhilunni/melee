@@ -4878,7 +4878,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 724] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 725] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6045,6 +6045,10 @@ static CORPUS_V3_MATCHES: [(&str, usize); 724] = [
     // the arrow's gobj), so efLib_DestroyAll takes it too.
     ("corpus_v3_ps_mewtwo_younglink4_ef3cf9943_p0", 4375),
     ("corpus_v3_ps_mewtwo_younglink4_ef3cf9943_p0_ext", 4700),
+    // A Dark hitbox of Ganondorf strikes a Shy Guy at tick 882: a stage
+    // enemy (hold kind 4) shows its element's effect (it_80270E30,
+    // hit_effect_ids[Dark], efSync 0x416) instead of the plain spark.
+    ("corpus_v3_ys_ganondorf_fox4_e1c91f9f7_p0", 1000),
 ];
 
 #[test]
