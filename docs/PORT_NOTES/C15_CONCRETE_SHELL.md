@@ -328,7 +328,7 @@ parameter changed. The decomp type-change in Git status predates this task.
 
 Changed files (the existing decomp symlink is excluded):
 
-- `CLAUDE.md`
+- `AGENTS.md`
 - `TRACKER.md`
 - `crates/ft-captain/src/init.rs`
 - `crates/ft-falco/src/init.rs`

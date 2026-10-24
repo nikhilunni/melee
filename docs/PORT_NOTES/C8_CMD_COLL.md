@@ -426,7 +426,7 @@ fixtures changed only for imports, ownership access, and fixed-vector constructi
 `alloc_gate` also lowers its five ceilings.
 
 ```text
-CLAUDE.md
+AGENTS.md
 Cargo.lock
 Cargo.toml
 TRACKER.md

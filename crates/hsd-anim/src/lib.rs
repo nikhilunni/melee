@@ -1,6 +1,6 @@
 //! HSD scene graph and animation: JObj/DObj/AObj/FObj matrix and keyframe evaluation, no rendering.
 //!
-//! See CLAUDE.md for the porting rules that apply to every crate.
+//! See AGENTS.md for the porting rules that apply to every crate.
 //! Module ownership during parallel work: `mtx` and `quat` are one unit,
 //! `aobj` and `fobj` are another, `jobj` comes after both.
 

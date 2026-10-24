@@ -1,7 +1,7 @@
 //! HSD GObj scheduler: object lists, per-frame proc ordering, link/priority
 //! queues. Port of `src/sysdolphin/baselib/gobj*.c` from the decomp.
 //!
-//! See CLAUDE.md for the porting rules that apply to every crate. This crate
+//! See AGENTS.md for the porting rules that apply to every crate. This crate
 //! has no float math; what it must reproduce exactly is *ordering*: which
 //! GObj sits where in each `p_link` list, and in which order proc callbacks
 //! run within a frame. Those orders decide the frame-phase sequence the

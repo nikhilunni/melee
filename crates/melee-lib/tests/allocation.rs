@@ -546,7 +546,7 @@ impl Choices {
 
 /// Every stage, and every character at least once, steps without touching
 /// the heap once the match exists: stage animations, articles, effects and
-/// item pools are all prepared at load (CLAUDE.md, "no heap allocation after
+/// item pools are all prepared at load (AGENTS.md, "no heap allocation after
 /// initialization"). Characters pair in select-screen order; the stages
 /// cycle so each hosts at least two matches.
 #[test]

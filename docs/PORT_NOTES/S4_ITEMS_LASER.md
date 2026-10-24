@@ -58,7 +58,7 @@ The unchanged ignores are two pre-existing raw throw/tech scratch tests (`back_t
 
 The allocation ceilings remain 17/1/12/690/17 for start FD/idle FD/Marth jab/Marth KO/start BF. Laser measures 32 across 299 counted ticks in both profiles (peak 4, 19 allocating ticks). Its fixed item and scheduler storage is reserved during initialization. The allocation test reports the existing fighter snapshot overhead separately; strict item comparison is also diagnostic work outside the simulate-only count.
 
-`tools/check-release-math.sh` passes the native math suites in both profiles and all three fused tests at each of optimization levels 0, 1, 2, 3, s and z. `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all` and `cargo fmt --all --check` pass. The three requested crates are listed in CLAUDE.md's repository map.
+`tools/check-release-math.sh` passes the native math suites in both profiles and all three fused tests at each of optimization levels 0, 1, 2, 3, s and z. `cargo clippy --workspace --all-targets -- -D warnings`, `cargo fmt --all` and `cargo fmt --all --check` pass. The three requested crates are listed in AGENTS.md's repository map.
 
 ### Exact command output
 
@@ -174,7 +174,7 @@ The replay retains the existing AppSRT display-cache exclusions (812 fields); ev
 ## Changed files
 
 ```text
-CLAUDE.md
+AGENTS.md
 Cargo.lock
 Cargo.toml
 TRACKER.md

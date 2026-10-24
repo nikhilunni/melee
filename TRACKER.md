@@ -89,7 +89,7 @@ do not keep a session log here.
   Climbers game. The recorder's particle, bone and camera passes ran at
   the wrong cadence for every-tick scenarios until 2026-10-12: existing
   dumps of such scenarios are not re-recorded (`docs/SLIPPI.md`).
-- Tooling (`CLAUDE.md` "Slippi replays", `docs/SLIPPI.md`):
+- Tooling (`AGENTS.md` "Slippi replays", `docs/SLIPPI.md`):
   - `make_boundary.py`: any stage, characters, costumes; with
     `--no-register`, ports, Gecko codes, spawn rule, timer, and
     `--game-start-seed` (a per-replay boundary, needed on FD and FoD);
@@ -272,10 +272,10 @@ None.
 | 2026-09-08 | The empirically captured `frsqrte`/`fres` tables are committed (user decision). |
 | 2026-09-08 | Melee-specific on-disc structs (`coll_data`, `ftData`, `map_head`) are read by the owning game crate in a `desc` module; `hsd-archive` stays HSD-only. |
 | 2026-09-09 | Scripted scenarios drive Dolphin with a TOML input schedule; the port replays the pads recorded at each tick boundary (`melee-sim/src/inputs.rs`). |
-| 2026-09-09 | Motion-state tables, static character tables, family crates, concrete core and shell, no per-tick allocation (architecture rules in `CLAUDE.md`). |
+| 2026-09-09 | Motion-state tables, static character tables, family crates, concrete core and shell, no per-tick allocation (architecture rules in `AGENTS.md`). |
 | 2026-09-26 | Record with headless Dolphin by default; windowed only for human play and menu driving. |
 | 2026-09-26 | The explorer corpus starts from registered retail boundaries, so every case is replayable in Dolphin. |
-| 2026-09-28 | Subagents allowed on Opus 5.5 only, run widely in parallel; no Codex. |
+| 2026-10-24 | Subagents on any model, run widely in parallel (supersedes the 2026-09-28 Opus-only rule). `AGENTS.md` is the single instructions file for every agent. |
 | 2026-09-28 | Perf size baseline raised to 6,444,304 stripped bytes after wave C (user). |
 | 2026-09-28 | Slippi replays run with the Slippi codes they were recorded with, ported from slippi-ssbm-asm and cited; codes a replay does not name are inferred only between discrete known versions, and frame zero checks the choice. |
 | 2026-10-04 | Perf size floor raised to 6,549,232 stripped bytes for five new characters; each new character crate accepted at one duplicate label (the shared `CharacterTable` closure), as every older one is (user). |

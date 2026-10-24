@@ -33,7 +33,7 @@ C5 is not reduced to zero or to the deferred fighter effect vectors alone.
   invalid evidence and failed measurements fail closed. Incomplete/regressed
   runs never ratchet the baseline upward. Analysis-tool output remains unverified
   on this machine because those executables could not be installed.
-- `tools/merge-check.sh`, `CLAUDE.md`: ancestry and checked-out revision checks,
+- `tools/merge-check.sh`, `AGENTS.md`: ancestry and checked-out revision checks,
   strict build/gate/M4/M5/particle/clippy/fmt chain, failure-marker scanning,
   one result line per step and immediate termination on failure. Cargo validation
   uses `--locked` to prevent lockfile writes. Release perf

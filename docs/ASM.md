@@ -1,6 +1,6 @@
 # Retail assembly lookup
 
-The retail assembly is the first source of truth (`CLAUDE.md`): it is the
+The retail assembly is the first source of truth (`AGENTS.md`): it is the
 only record of which multiply-adds MWCC fused and how it ordered float
 operations. This document says how to get per-function disassembly of the
 retail `main.dol` and how to read it for a port.

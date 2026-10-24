@@ -135,5 +135,5 @@ T7 changes:
 - crates/melee-ft/tests/ref/animation/{aobj.c.inc,ftanim.c.inc,driver.c,NOTICE}
 - crates/melee-ft/Cargo.toml and Cargo.lock (serde_json dev dependency)
 
-No commits. No changes to lib.rs, input/, TRACKER.md, CLAUDE.md, root
+No commits. No changes to lib.rs, input/, TRACKER.md, AGENTS.md, root
 Cargo.toml, third_party/ or harness/. No game data added.

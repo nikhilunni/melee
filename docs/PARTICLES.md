@@ -265,7 +265,7 @@ inside a writable directory. No test expectations were loosened. Source
 changes are confined to hsd-particle, the two harness scripts and their
 tests, and these two documentation files. Cargo also updates its lockfile
 for hsd-particle's hsd-anim dependency and melee-lb test dependency. Root
-Cargo.toml, hsd-anim, TRACKER.md, CLAUDE.md, third_party and harness/dolphin
+Cargo.toml, hsd-anim, TRACKER.md, AGENTS.md, third_party and harness/dolphin
 are unchanged; nothing was committed.
 
 Final verification: `cargo gate` passed (including all 35 hsd-particle tests with the disc present); workspace clippy passed with warnings denied; harness pytest passed, 181 tests.

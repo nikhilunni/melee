@@ -1,5 +1,5 @@
 # Std float methods whose result depends on the target, its libm or an
-# unspecified choice. Game code goes through gekko-math instead (CLAUDE.md,
+# unspecified choice. Game code goes through gekko-math instead (AGENTS.md,
 # "Exactness rules"): gekko_math::fma, gekko_math::cmp, gekko_math::msl.
 # Only gekko-math itself and tests comparing against std may #[allow] these.
 disallowed-methods = [

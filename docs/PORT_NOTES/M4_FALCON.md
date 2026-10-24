@@ -189,5 +189,5 @@ Clippy's final line:
 
 No harness code changed, so harness Python tests were not run. Traces, ROMs,
 scenarios and the decomp submodule were not modified. The worktree's existing
-asset symlinks still appear in Git status as described in CLAUDE.md.
+asset symlinks still appear in Git status as described in AGENTS.md.
 No Dolphin invocation, game-data additions, commits or pushes.

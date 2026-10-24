@@ -10,7 +10,7 @@
 //! the shared AI it reaches; every other branch fails closed with its
 //! retail name.
 //!
-//! See CLAUDE.md for the porting rules that apply to every crate.
+//! See AGENTS.md for the porting rules that apply to every crate.
 mod arrived;
 mod attack;
 mod awareness;

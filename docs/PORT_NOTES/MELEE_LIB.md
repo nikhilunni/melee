@@ -82,7 +82,7 @@ editing. The graphical application is a later milestone.
 Production modules moved from `melee-sim` to `melee-lib` appear as removed and
 added paths in this uncommitted checkout. No game data or decomp paths changed.
 
-- `CLAUDE.md`
+- `AGENTS.md`
 - `Cargo.lock`
 - `Cargo.toml`
 - `TRACKER.md`

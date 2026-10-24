@@ -370,7 +370,7 @@ checks that the stored verbatim C excerpts still match the pinned decomp.
 - `cargo clippy --workspace --all-targets -- -D warnings`: **clean**.
 
 No commits, game-data writes, harness edits, other-crate changes or changes
-to TRACKER.md, CLAUDE.md, root Cargo.toml or third_party.
+to TRACKER.md, AGENTS.md, root Cargo.toml or third_party.
 
 Changed files, relative to crates/:
 

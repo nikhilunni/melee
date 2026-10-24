@@ -486,7 +486,7 @@ Exit 0; wall time 2.37s.
 Protected data/decomp paths and `crates/melee-ft/src` were not edited. The decomp symlink type-change was already present at the start and is excluded from this change list.
 
 ```text
-CLAUDE.md
+AGENTS.md
 Cargo.lock
 Cargo.toml
 TRACKER.md

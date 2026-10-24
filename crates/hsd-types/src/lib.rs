@@ -1,6 +1,6 @@
 //! Plain shared data types for the HSD port: Vec3, Mtx, ids, flags. Leaf crate: keep tiny and stable so nothing rebuilds when logic changes
 //!
-//! See CLAUDE.md for the porting rules that apply to every crate.
+//! See AGENTS.md for the porting rules that apply to every crate.
 //!
 //! These are data-only transcriptions of the Dolphin SDK vector and matrix
 //! typedefs. They carry no arithmetic: every float operation on them must go

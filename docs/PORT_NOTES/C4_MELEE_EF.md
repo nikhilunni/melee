@@ -154,7 +154,7 @@ account for the additional implementation. No sim facade was left behind.
   initialization and scheduler wiring.
 - `crates/melee-sim/tests/{alloc_gate,fixture_spawns}.rs`: tighter allocation
   ceilings and direct use of the moved fixture recorder.
-- `CLAUDE.md`, `TRACKER.md`, this report: crate map, task/session status and evidence.
+- `AGENTS.md`, `TRACKER.md`, this report: crate map, task/session status and evidence.
 
 ## Stop condition: shared M2 recording changed during validation
 

@@ -306,5 +306,5 @@ on the concurrent melee-gr work. No expected values were loosened.
 - `crates/melee-types/src/ft_part.rs` added and exported from `src/lib.rs`.
 - `crates/{melee-ft,ft-fox}/Cargo.toml` and corresponding `Cargo.lock`
   dependency entries updated; no new external dependency.
-- `docs/FOX_DATA.md` added. TRACKER.md, CLAUDE.md, root Cargo.toml,
+- `docs/FOX_DATA.md` added. TRACKER.md, AGENTS.md, root Cargo.toml,
   third_party and harness were not edited. No commit was created.

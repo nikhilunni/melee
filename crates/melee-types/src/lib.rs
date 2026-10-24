@@ -1,6 +1,6 @@
 //! Shared Melee state types and enums: Fighter/Item/Stage structs, motion state ids, kinds. Leaf crate, no logic
 //!
-//! See CLAUDE.md for the porting rules that apply to every crate.
+//! See AGENTS.md for the porting rules that apply to every crate.
 //!
 //! Every enum here is a transcription of a C enum in the decomp. Each type's
 //! doc comment cites the header it came from, and each variant's doc comment

@@ -432,7 +432,7 @@ Final timing log: `/tmp/s2-followup-perf-after-control.log`. Control log:
 
 ## Changed files
 
-- `CLAUDE.md`
+- `AGENTS.md`
 - `Cargo.lock`
 - `TRACKER.md`
 - `crates/hsd-anim/src/mtx.rs`

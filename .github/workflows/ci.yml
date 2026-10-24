@@ -2,7 +2,7 @@
 # the harness tests and schema check, the tool tests and the wasm32 checks.
 #
 # CI has no disc image, savestates, recorded traces or replay corpus and never
-# obtains them (CLAUDE.md "Hard boundaries", docs/ISO.md). Oracle tests run
+# obtains them (AGENTS.md "Hard boundaries", docs/ISO.md). Oracle tests run
 # with MELEE_ALLOW_MISSING_DATA=1, so they return early and report as passed:
 # a green run here is NOT oracle evidence. `tools/merge-check.sh` (which
 # rejects the variable) and the local gates remain the merge criterion.

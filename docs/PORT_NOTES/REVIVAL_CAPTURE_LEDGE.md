@@ -37,7 +37,7 @@ inactive union words are not values of the typed CliffState placeholders.
 
 The corrected test always checks the ledge ID and begins checking the timer and
 latch after CliffCatch. It retains all valid checks through later ledge states
-and timeout. No recorded expectations were changed. AGENTS.md and CLAUDE.md
+and timeout. No recorded expectations were changed. AGENTS.md and AGENTS.md
 now explicitly require immediate evidence-backed repair of implementation or
 test defects without a confirmation pause.
 

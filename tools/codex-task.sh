@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Delegate a bounded implementation task to Codex (OpenAI) with the repo's
-# rules (AGENTS.md -> CLAUDE.md) and mechanical acceptance criteria.
+# rules (AGENTS.md) and mechanical acceptance criteria.
 #
 # Usage:
 #   tools/codex-task.sh <name> <prompt-file> [extra codex exec args...]

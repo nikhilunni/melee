@@ -65,7 +65,7 @@ of a rewritten executable; the build script renames into place.)
 Every coverage run's raw tick trace is compared record by record with the
 scenario's own recording in `harness/traces` (made by the recording build,
 without debug mode or Branch Watch). Only `vi_frame` is excluded (host timing,
-CLAUDE.md), and keys only one side has (a recording older than the
+AGENTS.md), and keys only one side has (a recording older than the
 `pad_queue_*` fields). The raw records hold every fighter's and item's full
 struct bytes, the seed, the pads and `ps_frame`, so equality there is stronger
 than a `melee-sim gate` of the decoded trace (which is derived from them; a

@@ -207,6 +207,6 @@ Changed files (all under `crates/hsd-particle`):
 - `START_FD.md`.
 
 No commits; no edits to root configuration, harness/oracle data, third_party,
-CLAUDE.md, TRACKER.md or other crates. The only updated existing test coverage
+AGENTS.md, TRACKER.md or other crates. The only updated existing test coverage
 list adds the newly supported opcodes; no golden values or comparisons were
 weakened.

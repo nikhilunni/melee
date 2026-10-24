@@ -1,6 +1,6 @@
 //! Stage collision map: floors, walls, ledges, line queries (decomp src/melee/mp)
 //!
-//! See CLAUDE.md for the porting rules that apply to every crate.
+//! See AGENTS.md for the porting rules that apply to every crate.
 //!
 //! The decomp keeps the map in file-scope statics (`groundCollVtx`,
 //! `groundCollLine`, `groundCollJoint`, `jointListStart`, `didCheckBounding`,

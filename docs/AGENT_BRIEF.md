@@ -1,7 +1,7 @@
 # Brief for a worktree agent
 
 The coordinator points each worktree agent at this file, then states the
-agent's task (a fault tag, its scenarios, what to port). Follow `CLAUDE.md`
+agent's task (a fault tag, its scenarios, what to port). Follow `AGENTS.md`
 and `AGENTS.md` in full as well.
 
 ## Data
@@ -63,7 +63,7 @@ game_start_seed> --name <new name> --no-register`.
 ## Task
 
 Make the named scenarios gate exact by porting what retail does, from the asm
-and decomp, into the owning crate (architecture rules in `CLAUDE.md`). Keep
+and decomp, into the owning crate (architecture rules in `AGENTS.md`). Keep
 going while the next divergence is the same feature; if a scenario then stops
 at an unrelated unported boundary, stop and report it. Leave unported
 branches as `unimplemented!` with the C line.

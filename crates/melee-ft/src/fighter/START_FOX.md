@@ -151,7 +151,7 @@ Final checks on this checkout:
 ## Changed files
 
 All task changes are under `crates/melee-ft`; concurrent hsd-particle edits
-were left untouched. No changes to TRACKER.md, CLAUDE.md, root Cargo.toml,
+were left untouched. No changes to TRACKER.md, AGENTS.md, root Cargo.toml,
 third_party, harness, melee-sim or traces; no commits.
 
 - `src/fighter/entry.rs`, `fall.rs`, `landing.rs`, `effects.rs`: state logic,

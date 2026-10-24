@@ -118,7 +118,7 @@ memory every tick. The port plays the same inputs and the two traces are
 compared field by field, floats by bit pattern. Floating-point code follows
 the original PowerPC instruction sequence, including fused multiply-adds,
 through `crates/gekko-math`. `docs/ORACLE.md` describes the setup and
-`CLAUDE.md` the working rules.
+`AGENTS.md` the working rules.
 
 ## Layout
 

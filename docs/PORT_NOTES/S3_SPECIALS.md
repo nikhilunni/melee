@@ -289,7 +289,7 @@ not hidden or promoted into a higher budget.
 
 ## Changed files
 
-- `CLAUDE.md`
+- `AGENTS.md`
 - `Cargo.lock`
 - `Cargo.toml`
 - `TRACKER.md`
@@ -448,7 +448,7 @@ retains the existing particle display-cache exclusions.
 - `melee-sim/tests/{m5_gate,alloc_gate}.rs`,
   `hsd-particle/tests/{live_firefox_fd_fox,support/dust_replay}.rs`,
   Fire Fox spawn fixture and its README: scene, allocation and particle proof.
-- `Cargo.lock`, `CLAUDE.md`, this report and `TRACKER.md`: dependencies and
+- `Cargo.lock`, `AGENTS.md`, this report and `TRACKER.md`: dependencies and
   progress. No protected game-data or decomp files were edited.
 
 ## Part 2 final validation and required stop

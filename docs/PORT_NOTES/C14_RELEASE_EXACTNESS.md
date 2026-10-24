@@ -155,7 +155,7 @@ measurement scopes.
 
 ## Gates added
 
-- `CLAUDE.md` lists `cargo gate --release` next to `cargo gate` and removes the
+- `AGENTS.md` lists `cargo gate --release` next to `cargo gate` and removes the
   blanket claim that optimized FMA negation is automatically safe.
 - `tools/check-release-math.sh` runs `cargo test -p gekko-math` in debug and
   release, then compiles/runs the actual FMA module's tests at all six opt
@@ -249,7 +249,7 @@ assertions and unsupported 0/6 effect are outside this task's requested fixes.
 - `crates/melee-sim/Cargo.toml` and `benches/ticks.rs`: reproducible local release
   benchmark for this branch's existing tick API, without new dependencies.
 - `tools/check-release-math.sh`: CI-sized debug/release/all-opt-level check.
-- `CLAUDE.md`, `TRACKER.md`, and this report: gates, status, evidence and limits.
+- `AGENTS.md`, `TRACKER.md`, and this report: gates, status, evidence and limits.
 
 Local evidence: `/private/tmp/c14-release-before.log`,
 `c14-release-final.log`, `c14-debug-gate.log`, `c14-debug-full.log`,
