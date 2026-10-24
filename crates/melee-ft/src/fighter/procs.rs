@@ -99,7 +99,6 @@ impl Fighter {
         if self.core.status.disabled {
             return;
         }
-        self.core.status.require_supported();
         (self.motion_row.collision)(self, state::CollisionPhase { assets: None, map })
             .expect("grounded map callback");
         if let Some(after) = self.character.table().after_collision {
@@ -121,7 +120,6 @@ impl Fighter {
         if self.core.status.disabled {
             return Ok(());
         }
-        self.core.status.require_supported();
         (self.motion_row.collision)(
             self,
             state::CollisionPhase {
@@ -158,7 +156,6 @@ impl Fighter {
         if self.core.status.disabled {
             return;
         }
-        self.core.status.require_supported();
         if let Some(callback) = self.character.table().process_defense_hit {
             callback(self, assets);
         }
@@ -210,7 +207,6 @@ impl Fighter {
         if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
-        self.core.status.require_supported();
         self.core.update_dynamic_colliders();
         self.solve_dynamics(None, &[]);
     }
@@ -219,7 +215,6 @@ impl Fighter {
         if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
-        self.core.status.require_supported();
         self.core.update_dynamic_colliders();
         self.solve_dynamics(Some(map), &[]);
     }
@@ -234,7 +229,6 @@ impl Fighter {
         if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
-        self.core.status.require_supported();
         self.core.update_dynamic_colliders();
         self.core.respond_to_stage_wind(assets);
         self.solve_dynamics(Some(map), forces);
@@ -280,7 +274,6 @@ impl Fighter {
         if self.core.status.disabled {
             return;
         }
-        self.core.status.require_supported();
         self.core.status.camera_shift = Vec2::ZERO;
         (self.motion_row.camera)(self, state::CameraPhase { assets, stage, map });
     }
@@ -324,7 +317,6 @@ impl FighterCore {
         if self.status.disabled {
             return false;
         }
-        self.status.require_supported();
         match self.status.interaction {
             super::Interaction::Hitlag => assert!(
                 self.in_hitlag(),
@@ -657,18 +649,15 @@ impl FighterCore {
         );
     }
     /// Fighter_CallAcessoryCallbacks_8006C624 (0x8006C624), s_link 8.
-    /// Reset and Wait entry leave accessory1/2/3 NULL (fighter.c:456,1373).
-    pub fn proc_accessories(&mut self) {
-        if !self.status.disabled {
-            self.status.require_supported();
-        }
-    }
+    /// Reset and Wait entry leave accessory1/2/3 NULL (fighter.c:456,1373);
+    /// a character's accessory callbacks run through
+    /// `Fighter::character_proc_accessories`, which the scene calls.
+    pub fn proc_accessories(&mut self) {}
     /// Fighter_8006C80C (0x8006C80C), s_link 9, fighter.c:2555-2596.
     /// Active attacks update their swept capsules after animation and map collision.
     /// The always-enabled thrown capsule still updates (ft_07C1.c:52-73).
     pub fn proc_hitbox_positions(&mut self) {
         if !self.status.disabled {
-            self.status.require_supported();
             for hit in self.commands.hitboxes.iter_mut().flatten() {
                 super::hitbox::update(
                     hit,
@@ -683,19 +672,12 @@ impl FighterCore {
         }
     }
     /// Fighter_UnkProcessGrab_8006CA5C (0x8006CA5C), s_link 12.
-    /// Catch startup is ported; selecting/linking a victim is still a boundary.
-    pub fn proc_grab(&mut self) {
-        if !self.status.disabled {
-            self.status.require_supported();
-        }
-    }
+    /// The pairwise grab (fighter.c:2602-2626) runs in the scene, which
+    /// sees both fighters (`melee_lib::frame::grab_pairs`); nothing is local.
+    pub fn proc_grab(&mut self) {}
     /// Fighter_8006CB94 (0x8006CB94), s_link 13, fighter.c:2621-2642.
-    /// The scene visits fighter pairs in entity order before this local proc.
-    pub fn proc_hit_detection(&mut self) {
-        if !self.status.disabled {
-            self.status.require_supported();
-        }
-    }
+    /// The scene visits fighter pairs in entity order; nothing is local.
+    pub fn proc_hit_detection(&mut self) {}
     /// Fighter_8006DA4C (0x8006DA4C), s_link 22, fighter.c:3073-3083.
     pub fn proc_player_mirror(&mut self) {
         if self.status.disabled {
@@ -712,7 +694,6 @@ impl FighterCore {
         if self.status.disabled {
             return false;
         }
-        self.status.require_supported();
         self.physics.begin_tick();
         // fighter.c:1455-1462: the KO credit's countdown.
         self.combat.ko_source.tick();
@@ -751,7 +732,6 @@ impl FighterCore {
         if self.status.disabled {
             return false;
         }
-        self.status.require_supported();
         let hitlag = self.in_hitlag();
         // Fighter_Spaghetti_8006AD10 (fighter.c:1802-1869): ftCo_800A2040
         // selects the CPU's getters over HSD_PadGameStatus.
@@ -794,7 +774,6 @@ impl FighterCore {
         if self.status.disabled {
             return false;
         }
-        self.status.require_supported();
         if self.in_hitlag() {
             return false;
         }

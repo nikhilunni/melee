@@ -44,6 +44,12 @@ struct MotionChange<'a> {
     /// Ft_MF_Unk06 (bit6): the entry does not start the KO credit's
     /// countdown (fighter.c:1184).
     skip_ko_credit_countdown: bool,
+    /// Ft_MF_SkipThrowException (bit8): x1064_thrownHitbox.owner (the
+    /// thrower, `thrown_by`) survives the entry (fighter.c:962-964).
+    keep_thrown_by: bool,
+    /// Ft_MF_KeepSwordTrail (bit17): x2100 (`sword_trail`) survives the
+    /// entry (fighter.c:1152-1154).
+    keep_sword_trail: bool,
 }
 
 /// Fighter_ChangeMotionState's `flags` argument; bit names from ft/forward.h.
@@ -858,17 +864,24 @@ impl Fighter {
         rate: f32,
     ) -> Result<()> {
         use MotionEntryFlags as F;
-        for (flag, line) in [
-            (F::SKIP_THROW_EXCEPTION, "fighter.c:962"),
-            (F::KEEP_ACCESSORY, "fighter.c:1113"),
-            (F::KEEP_COL_ANIM_PART_HIT_STATUS, "fighter.c:1007"),
-            (F::KEEP_SWORD_TRAIL, "fighter.c:1152"),
-            (F::FREEZE_STATE, "fighter.c:1239"),
-        ] {
-            if flags.contains(flag) {
-                unimplemented!("Fighter_ChangeMotionState flags {:#X}: {line}", flags.0);
-            }
+        // fighter.c:1239-1244: Ft_MF_FreezeState starts the slowed animation
+        // (x2223_b0, x104 = 20, a zero rate that Fighter_8006A360 ramps back
+        // up). Its only callers pass it under x2222_b6
+        // (ftCo_CaptureDamageKoopa.c:20, 62, ftCo_ThrownMewtwo.c:23,
+        // ftCo_Shouldered.c:35), which no Vs fighter sets (fighter.c:785
+        // clears it; no OnLoad of a registered kind sets it).
+        if flags.contains(F::FREEZE_STATE) {
+            unimplemented!(
+                "Fighter_ChangeMotionState flags {:#X}: fighter.c:1239 Ft_MF_FreezeState",
+                flags.0
+            );
         }
+        // Ft_MF_KeepAccessory (fighter.c:1113-1117) keeps fp->x20A0_accessory,
+        // a model JObj nothing simulated reads. Ft_MF_KeepColAnimPartHitStatus
+        // (fighter.c:1007-1013) keeps the per-part hurt status of x2221_b1,
+        // which only ftCo_Damage.c:452 sets and only under gm_8016B014 (a
+        // match with no player in slots 2-6): never in a Vs match, so the
+        // bit has nothing to keep (as in `change_fly_reflect_motion`).
         // fighter.c:1087-1095: item and article visibility are separate bits.
         let item = flags.contains(F::SKIP_ITEM_VIS);
         self.change_motion_state_with_options(
@@ -890,6 +903,8 @@ impl Fighter {
                 keep_secondary_color: flags.contains(F::SKIP_COL_ANIM),
                 skip_parasol: flags.contains(F::SKIP_PARASOL),
                 skip_ko_credit_countdown: flags.contains(F::UNK06),
+                keep_thrown_by: flags.contains(F::SKIP_THROW_EXCEPTION),
+                keep_sword_trail: flags.contains(F::KEEP_SWORD_TRAIL),
                 preserve: MotionPreservation {
                     hit_status: flags.contains(F::KEEP_COL_ANIM_HIT_STATUS),
                     hitboxes: flags.contains(F::SKIP_HIT),
@@ -1012,7 +1027,7 @@ impl Fighter {
             self.parasol_motion_change();
         }
         self.character.on_motion_change();
-        self.core.begin_motion_change(source);
+        self.core.begin_motion_change(source, change.keep_thrown_by);
         // The port's attack-proc guard belongs to the state that set it (an
         // attack entry, or hitlag ending during an attack); attack entries
         // set it again after this change.
@@ -1331,15 +1346,19 @@ impl FighterCore {
         }
     }
     /// Fighter_ChangeMotionState (fighter.c:933-949), before OnGroundedMotion.
-    fn begin_motion_change(&mut self, source: Option<super::grab_throw::ThrowSource<'_>>) {
-        self.status.require_supported();
+    fn begin_motion_change(
+        &mut self,
+        source: Option<super::grab_throw::ThrowSource<'_>>,
+        keep_thrown_by: bool,
+    ) {
         // fighter.c:948.
         self.physics.entry_facing = self.physics.facing;
         self.commands.smash_charge = None;
         self.commands.borrowed_script = source.map(|source| source.assets.commands.clone());
         // Fighter_ChangeMotionState (800693AC): clear the throw exception on
-        // ordinary entry. Borrowed thrown scripts still need their source owner.
-        if source.is_none() {
+        // ordinary entry (fighter.c:962-964, unless Ft_MF_SkipThrowException).
+        // Borrowed thrown scripts still need their source owner.
+        if source.is_none() && !keep_thrown_by {
             self.commands.thrown_by = None;
         }
         self.status.interaction = Interaction::Idle;
@@ -1517,9 +1536,6 @@ impl FighterCore {
         if !row.implemented {
             state::unsupported_action(row.action);
         }
-        if state == CommonMotionState::Wait && self.physics.ground_or_air != GroundOrAir::Ground {
-            unimplemented!("fighter.c:1190-1194: unsupported motion entry {state:?}");
-        }
         let animation_id = row.animation;
         self.motion_state = row;
         if self.status.frozen {
@@ -1550,7 +1566,10 @@ impl FighterCore {
             }
         }
         self.ground_pose = GroundPoseFlags::default();
-        self.status.sword_trail = -1;
+        // fighter.c:1152-1154.
+        if !change.keep_sword_trail {
+            self.status.sword_trail = -1;
+        }
         self.status.camera_shift = Vec2::ZERO;
         self.collision.data.floor_skip = -1;
         let root = self.animation.root;

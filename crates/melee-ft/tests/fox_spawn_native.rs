@@ -190,27 +190,16 @@ fn spawn_counter_skips_zero_after_wrapping() {
 }
 
 #[test]
-fn unsupported_interactions_and_installed_callbacks_fail_loudly() {
+fn unbacked_interactions_and_installed_callbacks_fail_loudly() {
     use melee_ft::fighter::state::unimplemented_anim;
     use std::panic::{catch_unwind, AssertUnwindSafe};
     let Some(mut fixture) = Fixture::load() else {
         return;
     };
     let mut fighter = fixture.prepared(Fixture::player(0));
-    for interaction in [
-        Interaction::Hitlag,
-        Interaction::HeldItem,
-        Interaction::Grab,
-        Interaction::Damage,
-        Interaction::Death,
-        Interaction::StatusEffect,
-        Interaction::Accessory,
-        Interaction::Attack,
-        Interaction::AsyncEffect,
-        Interaction::StageHazard,
-        Interaction::FighterOverlap,
-        Interaction::CoinMatch,
-    ] {
+    // A proc guard without the state it guards (no hitlag countdown, no
+    // damage or attack state) fails loudly.
+    for interaction in [Interaction::Hitlag, Interaction::Damage, Interaction::Attack] {
         fighter.status.interaction = interaction;
         assert!(catch_unwind(AssertUnwindSafe(|| fighter.proc_status())).is_err());
     }

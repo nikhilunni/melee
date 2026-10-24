@@ -315,12 +315,14 @@ impl CharacterTable {
     }
 }
 
-/// A kind without a second form never takes over from one.
+/// A kind without a second form never takes over from one:
+/// ftCommon_8007EFC8's only callers are Zelda's and Sheik's Transform
+/// (ftZd_SpecialLw, ftSk_SpecialLw), whose crates supply the arrival.
 pub(super) fn no_transformation(
     fighter: &mut Fighter,
     _assets: &assets::FighterAssets,
 ) -> assets::Result<()> {
-    unimplemented!(
+    unreachable!(
         "ftCommon_8007EFC8: {:?} has no transformation",
         fighter.core.kind
     )
@@ -544,42 +546,49 @@ pub(super) fn unsupported_parasol_animation(_fighter: &mut Fighter, index: usize
 }
 #[inline(never)]
 pub(super) fn no_article(_fighter: &mut Fighter, _kind: melee_types::ItemKind) {}
+/// Only Samus's bomb offers its owner a blast (it_802B5478 ->
+/// ftSs_Init_80128A1C), and only Samus's down special makes one.
 pub(super) fn unsupported_owner_blast(
     fighter: &mut Fighter,
     _blast: &melee_it::OwnerBlast,
     _assets: &assets::FighterAssets,
 ) {
-    unimplemented!(
+    unreachable!(
         "{:?}: an article's blast offered to its owner",
         fighter.character.kind()
     )
 }
+/// Only the Ice Climbers' string and Sheik's chain leave their accessory
+/// to their owner (`OWNER_ACCESSORY`); both owners supply the hook.
 pub(super) fn no_article_accessory(
     fighter: &mut Fighter,
     _assets: &assets::FighterAssets,
     _map: &mut melee_mp::CollMap,
 ) -> Option<u16> {
-    unimplemented!("{:?} owns no owner-driven article", fighter.core.kind)
+    unreachable!("{:?} owns no owner-driven article", fighter.core.kind)
 }
+/// Only Ness's yo-yo leaves its physics to its owner (`OWNER_PHYSICS`).
 pub(super) fn no_article_physics(
     fighter: &mut Fighter,
     _assets: &assets::FighterAssets,
     _map: &mut melee_mp::CollMap,
 ) {
-    unimplemented!("{:?} owns no owner-driven article physics", fighter.core.kind)
+    unreachable!("{:?} owns no owner-driven article physics", fighter.core.kind)
 }
 #[inline(never)]
 pub(super) fn no_article_hitlag_end(_fighter: &mut Fighter) {}
 pub(super) fn no_color_fallback(_state: &CharacterState) -> Option<u8> {
     None
 }
+/// Only Link's and Young Link's boomerang and hookshot ask anything of
+/// their owner (`ItemCore::owner_request`); both kinds supply the hook.
 pub(super) fn unsupported_article_request(
     fighter: &mut Fighter,
     _assets: &assets::FighterAssets,
     kind: melee_types::ItemKind,
     request: melee_it::OwnerRequest,
 ) -> Option<u8> {
-    unimplemented!(
+    unreachable!(
         "{:?}'s {kind:?} asked {request:?} of its owner",
         fighter.core.kind
     );
@@ -641,15 +650,25 @@ pub(super) fn unsupported_float(
     unreachable!("float entry for a character whose float predicate never matches");
 }
 
+/// Fighter_UnkProcessGrab_8006CA5C runs a special's grab_cb only for a
+/// grab armed by ftCommon_8007E2D0 (`Status::special_grab`). Its callers
+/// are Falcon Dive (Falcon and Ganondorf), Kirby's Inhale (and his copied
+/// Egg Lay), Yoshi's Egg Lay, Bowser's Koopa Klaw and Mewtwo's Confusion
+/// (and Master Hand's and Crazy Hand's, unregistered kinds): each of those
+/// crates supplies the hook, and no other sets `special_grab`.
 pub(super) fn unsupported_special_grab(
     _captor: &mut Fighter,
     _victim: &mut Fighter,
     _captor_assets: &assets::FighterAssets,
     _victim_assets: &assets::FighterAssets,
 ) -> assets::Result<()> {
-    unimplemented!("fighter.c:2602-2603: special grab_cb / grabbed_cb");
+    unreachable!("fighter.c:2602-2603: special grab_cb / grabbed_cb without a special grab");
 }
 
+/// A special's release of its caught fighter: asked for only by the
+/// specials whose captor holds the victim itself (Falcon Dive's
+/// ftCo_800DDDE4, Koopa Klaw, Confusion's ftCo_800DE2A8), whose crates
+/// supply the hook (`special_throw_release`).
 pub(super) fn unsupported_special_release(
     _victim: &mut Fighter,
     _captor: &mut Fighter,
@@ -658,12 +677,5 @@ pub(super) fn unsupported_special_release(
     _map: &mut melee_mp::CollMap,
     _rng: &mut gekko_math::HsdRng,
 ) -> assets::Result<()> {
-    unimplemented!("a special's release of its caught fighter");
-}
-
-pub(super) fn unsupported_taunt(
-    _fighter: &mut Fighter,
-    _assets: &assets::FighterAssets,
-) -> assets::Result<()> {
-    unimplemented!("ftCo_800DEA28: character taunt entry");
+    unreachable!("a special's release of its caught fighter without a releasing special");
 }

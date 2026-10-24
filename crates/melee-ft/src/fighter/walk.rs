@@ -67,8 +67,7 @@ impl Fighter {
 
     /// ftCo_Walk_Enter (0x800C9528) -> ftWalkCommon_800DFCA4 (0x800DFCA4).
     pub(super) fn enter_walk(&mut self, assets: &FighterAssets, frame: f32) -> Result<()> {
-        // Metal/status interactions are rejected by Status::require_supported;
-        // scaled-player modifiers are rejected during Fighter::prepare.
+        // Scaled-player modifiers are rejected during Fighter::prepare.
         let multiplier = 1.0;
         let state = walk_state(
             self.core.physics.ground_velocity,

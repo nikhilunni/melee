@@ -42,18 +42,8 @@ pub struct CharacterDescriptor {
 /// A ported character overrides the corresponding CharacterCallbacks hook.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct CommonBehavior {
-    /// ftCo_AttackS4.c:145-166, decideFighter (8008C348).
-    pub forward_smash_entry: bool,
-    /// ftCo_Throw.c:145-157,346-353, per-character capture/laser callbacks.
-    pub throw_callback: bool,
-    /// ftCo_Attack1.c:89-110, decideAttack11 / getMotionFlags.
-    pub jab_entry: bool,
     /// ftCo_AirCatch.c:54-79, ftCo_800C3B10 (800C3B10).
     pub air_dodge_tether: bool,
-    /// ftCo_Landing.c:51-83, ftCo_Landing_Enter (800D5AEC).
-    pub landing_reset: bool,
-    /// ftCo_Escape.c:83-85, rolling-only morph-ball setup.
-    pub morph_ball_roll: bool,
     /// ftCo_ShieldBreakFly.c:30: Jigglypuff can KO above the top boundary.
     pub shield_break_top_exit: bool,
     /// ftCo_8008A7A8 (ftwaitanim.c:67): Fox and Mewtwo keep choosing idle
@@ -90,39 +80,10 @@ impl CommonBehavior {
     pub const fn for_kind(kind: melee_types::FighterKind) -> Self {
         use melee_types::FighterKind;
         Self {
-            forward_smash_entry: matches!(
-                kind,
-                FighterKind::Ness
-                    | FighterKind::Peach
-                    | FighterKind::GameWatch
-                    | FighterKind::Pikachu
-                    | FighterKind::Pichu
-            ),
-            throw_callback: matches!(
-                kind,
-                FighterKind::Fox | FighterKind::Samus | FighterKind::Kirby | FighterKind::Yoshi
-            ),
-            jab_entry: matches!(
-                kind,
-                FighterKind::GameWatch | FighterKind::Pikachu | FighterKind::Pichu
-            ),
             air_dodge_tether: matches!(
                 kind,
                 FighterKind::Link | FighterKind::CLink | FighterKind::Samus
             ),
-            landing_reset: matches!(
-                kind,
-                FighterKind::Mario
-                    | FighterKind::DrMario
-                    | FighterKind::Peach
-                    | FighterKind::Emblem
-                    | FighterKind::GameWatch
-                    | FighterKind::Popo
-                    | FighterKind::Nana
-                    | FighterKind::Kirby
-                    | FighterKind::Mewtwo
-            ),
-            morph_ball_roll: matches!(kind, FighterKind::Samus),
             shield_break_top_exit: matches!(kind, FighterKind::Purin),
             idle_variants_while_holding: matches!(kind, FighterKind::Fox | FighterKind::Mewtwo),
             stage_wind_dynamics: matches!(kind, FighterKind::Mars | FighterKind::Emblem),

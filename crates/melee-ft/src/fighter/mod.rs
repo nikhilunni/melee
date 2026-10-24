@@ -206,20 +206,15 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         Self::SPECIAL_ROWS
     }
 
-    /// ftData_SpecialN/S/Hi/Lw[kind] (and the Air tables): a kind that has
-    /// not ported its specials fails closed so the explorer names it,
-    /// rather than ignoring the B press.
+    /// ftData_SpecialN/S/Hi/Lw[kind] (and the Air tables). Every kind has
+    /// its own row in each table, so every character supplies its entry
+    /// (a special it has not ported fails closed in its own crate).
     fn enter_special(
         fighter: &mut Fighter,
         slot: SpecialSlot,
         airborne: bool,
-        _assets: &assets::FighterAssets,
-    ) {
-        unimplemented!(
-            "ftData_Special{slot:?}[{:?}] (airborne: {airborne}): character special entry",
-            fighter.core.kind
-        );
-    }
+        assets: &assets::FighterAssets,
+    );
 
     /// Fighter_UnkProcessGrab (8006CA5C) for a special armed by
     /// ftCommon_8007E2D0: the character's grab_cb on `captor`, then the
@@ -396,11 +391,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// FTKIND_CAPTAIN's ftCa_MS_SwordSwing4 (341); any other kind asserts
     /// "don't have swing42 motion!!!".
     const SWING42_FIRST_ROW: Option<ActionId> = None;
-    /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): nonstandard entry.
+    /// ftCo_AttackS4.c:145-166, decideFighter (8008C348): the default arm.
+    /// Ness, Peach and Mr. Game & Watch take their own entries
+    /// (`FORWARD_SMASH`); Pikachu and Pichu override this to install the
+    /// effect hitlag callbacks.
     fn forward_smash_variant(&self) -> ForwardSmashVariant {
-        if Self::descriptor().common_behavior.forward_smash_entry {
-            unimplemented!("ftCo_AttackS4: character entry hook");
-        }
         ForwardSmashVariant::Standard
     }
     /// ftCo_Catch.c / CatchPull.c: ordinary body grab by default. Tether and
@@ -412,12 +407,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// constant, so characters without one share one concrete default.
     const MOUTH_CAPTURE_SCALE: fn(&CharacterState) -> Option<f32> =
         character::no_mouth_capture;
-    /// ftCo_Throw.c:145-157,346-353: special capture and Fox laser callbacks.
-    fn throw_variant(&self) {
-        if Self::descriptor().common_behavior.throw_callback {
-            unimplemented!("ftCo_Throw.c: character throw callback hook");
-        }
-    }
+    /// ftCo_Throw.c:145-157,346-353: the kind switch's default arm (no
+    /// callback). Its arms are Fox's and Falco's laser, Samus's grapple
+    /// model, Kirby's and Yoshi's: each of those crates overrides this.
+    fn throw_variant(&self) {}
 
     /// ftCo_800DD398's kind switch (ftCo_Throw.c:145-157), ftCo_800DD724's
     /// and ftCo_ThrowHi_Cam's kind tests (ftCo_Throw.c:287, 441) and
@@ -452,10 +445,9 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
 
     /// ftCo_Attack1.c:89-110 and 202-213: decideAttack11, getMotionFlags
     /// (8008AB84 / 8008ABC0) and doAttack12's kind switch.
+    /// The default arm; Pikachu and Pichu override it (Repeating), and
+    /// Mr. Game & Watch's first jab is his own (`ENTER_JAB`).
     fn jab_variant(&self) -> JabVariant {
-        if Self::descriptor().common_behavior.jab_entry {
-            unimplemented!("ftCo_Attack1.c:89-110: character jab entry hook");
-        }
         JabVariant::Standard
     }
     /// decideAttack11 and doAttack12Rapid's kind arm (ftCo_Attack1.c:89-98,
@@ -507,9 +499,8 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// ftKb_SpecialN_800F5D04 for Kirby (Peach/Zelda arms need DbLevel >= 3,
     /// never true in retail). Characters on the default arm bind
     /// `Fighter::enter_common_taunt`; the pl_80040120 taunt stat is not
-    /// modelled. Unaudited kinds keep the panic.
-    const ENTER_TAUNT: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
-        character::unsupported_taunt;
+    /// modelled. Every kind names its arm.
+    const ENTER_TAUNT: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>;
     fn on_load(&mut self, capabilities: &mut Capabilities);
     fn on_reset(&mut self);
     /// The random draws of the kind's OnDeath, after `on_reset` (Kirby's
@@ -577,13 +568,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const SCRATCH_TAIL: fn(&CharacterState, ActionId) -> [Option<u32>; 2] =
         character::no_scratch_tail;
 
-    /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:51-83.
-    /// Character crates reset their airborne special resources here.
-    fn on_landing(&mut self, _allow_interrupt: bool) {
-        if Self::descriptor().common_behavior.landing_reset {
-            unimplemented!("ftCo_Landing.c:51-83: character landing reset hook");
-        }
-    }
+    /// ftCo_Landing_Enter (800D5AEC), ftCo_Landing.c:51-83: the kind
+    /// switch's default arm resets nothing. Its arms (Mario, Dr. Mario,
+    /// Peach, Roy, Mr. Game & Watch, Popo, Nana, Kirby, Mewtwo) reset their
+    /// airborne special resources in their own crates.
+    fn on_landing(&mut self, _allow_interrupt: bool) {}
 
     /// ftCo_Guard.c:335-350, 917-934: egg shield and sword model hooks.
     fn guard_variant(&self, _commands: &mut commands::CommandState) {}
@@ -612,17 +601,16 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// after each proc with both fighters.
     const ACT_ON_PARTNER: Option<PartnerAction> = None;
     /// ftCo_Escape.c: per-character setup at its retail motion-entry boundary.
+    /// The default arm; Samus's morph-ball roll (ftCo_Escape.c:83-85) and
+    /// Yoshi's egg-shield escapes are their crates' overrides.
     fn escape_variant(
         _fighter: &mut Fighter,
         _assets: &assets::FighterAssets,
-        rolling: bool,
+        _rolling: bool,
     ) -> assets::Result<()>
     where
         Self: Sized,
     {
-        if rolling && Self::descriptor().common_behavior.morph_ball_roll {
-            unimplemented!("ftCo_Escape.c:83-85: Samus morph-ball roll");
-        }
         Ok(())
     }
     /// ftPe_8011BA54 / ftPe_8011BAD8: float selection surrounding the
@@ -657,8 +645,11 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     fn multi_jump_family(&self) -> usize {
         0
     }
+    /// The multijump's animation for `jump`. Read only for a kind whose
+    /// `multi_jump_attributes` is `Some` (Kirby and Jigglypuff, the kinds
+    /// with can_multijump, x2222_b1), and each of those overrides it.
     fn multi_jump_animation(&self, _jump: usize) -> i32 {
-        unimplemented!("ftCo_JumpAerialF1.c: character multijump animation table")
+        unreachable!("ftCo_JumpAerialF1.c: multijump animation without multijump attributes")
     }
     /// Character-owned setup after the common aerial-jump entry and Anim.
     fn aerial_jump_entered(_fighter: &mut Fighter)
@@ -871,25 +862,19 @@ pub struct Capabilities {
     pub captured_dynamics_meet_floor: bool,
 }
 
-/// Unsupported interactions are represented explicitly, never inferred from
-/// zero controller samples. These gates correspond to fighter.c's proc arms.
+/// Which proc guard the current state asked for: `proc_status` checks that
+/// a hitlag, damage or attack state still holds the data it needs. Held
+/// items, grabs, death, status effects, accessory callbacks, the effect
+/// queue, stage collision lists and the overlap nudge each live in their own
+/// owner now, not behind an interaction gate (docs/COVERAGE_AUDIT.md).
 #[derive(Clone, Debug, Default, PartialEq)]
 pub enum Interaction {
     #[default]
     Idle,
     Hitlag,
-    HeldItem,
-    Grab,
     Shield,
     Damage,
-    Death,
-    StatusEffect,
-    Accessory,
     Attack,
-    AsyncEffect,
-    StageHazard,
-    FighterOverlap,
-    CoinMatch,
 }
 
 /// A parts slot an article's model fills (see `FighterCore::grafted_part`).
@@ -998,32 +983,6 @@ impl Status {
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,
             barrel_cooldown: 0,
-        }
-    }
-    fn require_supported(&self) {
-        match self.interaction {
-            Interaction::Idle
-            | Interaction::Shield
-            | Interaction::Hitlag
-            | Interaction::Damage
-            | Interaction::Attack => {}
-            Interaction::HeldItem => unimplemented!("fighter.c:1523-1532: held-item lifetime"),
-            Interaction::Grab => unimplemented!("fighter.c:1560-1578,2602-2626: capture/grab"),
-            Interaction::Death => unimplemented!("fighter.c:914-929: death/entry states"),
-            Interaction::StatusEffect => unimplemented!("fighter.c:1463-1641: status/item effects"),
-            Interaction::Accessory => {
-                unimplemented!("fighter.c:2533-2576: accessory callbacks/model")
-            }
-            Interaction::AsyncEffect => unimplemented!("fighter.c:2560: nonempty efAsync queue"),
-            Interaction::StageHazard => {
-                unimplemented!("fighter.c:2604,2631: stage collision lists")
-            }
-            Interaction::FighterOverlap => {
-                unimplemented!("ftcommon.c:827-888: fighter overlap nudge")
-            }
-            Interaction::CoinMatch => {
-                unimplemented!("ft_07C6.c:39: coin-match attachment collision")
-            }
         }
     }
 }

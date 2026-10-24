@@ -285,6 +285,49 @@ Left fail-closed, outside character articles and Peach's pulls:
 | `melee-lib` `frame.rs` it_802B4224 with no room | Item_80268B18 failing needs the item heap full |
 | `melee-it` `map.rs` it_80276D9C wall pinch | Investigate: an item touching both walls in one pass (a narrow gap); not met in the searches above |
 | Yoshi's stars bouncing off a shield (it_802B312C -> itColl_BounceOffShield) | Reachable but not reached: grids of Yoshi's down special landing beside Fox's shield (Fox shielding from 104, 160, 200 or 240; 2,000 landings) met the shield only head-on, the least incidence 2.91 rad against the 2.36 limit (90 + it_804D6D28 +E0 degrees) |
+## Character hook defaults and fighter proc gates (2026-10-24)
+
+With all 26 kinds registered, every default that failed closed in
+`melee-ft/src/fighter/{mod,character}.rs` was audited against retail's kind
+switches. Each is now either the switch's default arm (retail's code for
+every kind not named) or unreachable, with the evidence:
+
+| Default | Retail arms | Verdict |
+| --- | --- | --- |
+| `enter_special` | ftData_Special*[kind]: one row per kind | Required trait item: every kind supplies its entry |
+| `ENTER_TAUNT` (ftCo_800DEA28) | Young Link, Dr. Mario, Ganondorf; default ftCo_800DEBD0 | Required trait item: every kind names its arm |
+| `forward_smash_variant` (decideFighter, ftCo_AttackS4.c:145-166) | Ness, Peach, G&W (own entries: `FORWARD_SMASH`), Pikachu/Pichu (override) | Default arm `Standard` |
+| `throw_variant` (ftCo_Throw.c:145-157) | Fox, Falco, Samus, Kirby, Yoshi (all override) | Default arm: no callback |
+| `jab_variant` (decideAttack11, getMotionFlags) | G&W (`ENTER_JAB`), Pikachu/Pichu (override) | Default arm `Standard` |
+| `on_landing` (ftCo_Landing.c:51-83) | Mario, Dr. Mario, Peach, Roy, G&W, Popo, Nana, Kirby, Mewtwo (all override) | Default arm: nothing reset |
+| `escape_variant` (ftCo_Escape.c:83-85) | Samus's morph-ball roll (override) | Default arm |
+| `multi_jump_animation` | read only when `multi_jump_attributes` is `Some`: Kirby, Jigglypuff (both override) | `unreachable!` |
+| `SPECIAL_GRAB` (fighter.c:2602-2603) | ftCommon_8007E2D0's callers: Falcon Dive (Falcon, Ganondorf), Inhale and Kirby's copied Egg Lay, Yoshi's Egg Lay, Koopa Klaw, Confusion, Master/Crazy Hand (unregistered) | `unreachable!`: only those crates set `special_grab`, and each supplies the hook |
+| `SPECIAL_RELEASE` | Falcon Dive, Koopa Klaw, Confusion (`special_throw_release`) | `unreachable!` |
+| `TRANSFORMATION_ARRIVAL` (ftCommon_8007EFC8) | called only by Zelda's and Sheik's Transform | `unreachable!` |
+| `OWNER_BLAST` | only Samus's bomb (it_802B5478) returns an `OwnerBlast` | `unreachable!` |
+| `ARTICLE_ACCESSORY` / `ARTICLE_PHYSICS` / `ARTICLE_REQUEST` | only `OWNER_ACCESSORY` items (Ice Climbers' string, Sheik's chain), `OWNER_PHYSICS` (Ness's yo-yo) and `owner_request` writers (Link's and Young Link's boomerang and hookshot) | `unreachable!`: each owner overrides |
+| `SET_PARASOL_ANIMATION` (ftCommon_8007E83C) | Peach's parasol (override); any other kind only while holding the Parasol item (ftcommon.c:1069 asserts otherwise) | Still `unimplemented!`: needs random items |
+
+`Interaction` (fighter/mod.rs) kept nine gates (held items, grabs, death,
+status effects, accessories, the effect queue, stage collision lists, the
+overlap nudge, coin-match attachment) that nothing ever set: those features
+live in their own owners (item, grab and life modules, the scene's pairwise
+procs). The gates and `Status::require_supported` are gone.
+
+`Fighter_ChangeMotionState` flags (`spawn.rs`): a scan of every
+Fighter_ChangeMotionState call in the decomp that evaluates its flag
+argument finds Ft_MF_SkipThrowException (ThrownKirby), Ft_MF_KeepAccessory
+(EntryEnd, RebirthWait, Kirby's copied Marth), Ft_MF_KeepColAnimPartHitStatus
+(DownBound, DamageFall, FlyReflect, ftCo_800C7CA0) and Ft_MF_FreezeState only
+under x2222_b6 (CaptureDamageKoopa, ThrownMewtwo, Shouldered). The first is
+now `thrown_by` kept (fighter.c:962), Ft_MF_KeepSwordTrail keeps x2100
+(fighter.c:1152); KeepAccessory keeps a model JObj nothing simulated reads,
+and the part hurt status of x2221_b1 is set only under gm_8016B014 (no player
+in slots 2-6), never in a Vs match. Ft_MF_FreezeState stays fail-closed:
+fighter.c:785 clears x2222_b6 and no registered kind's OnLoad sets it. The
+`Wait`-while-airborne guard had no retail counterpart (fighter.c has no such
+test) and is gone.
 
 ## Exit status
 

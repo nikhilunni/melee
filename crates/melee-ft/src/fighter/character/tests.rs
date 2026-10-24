@@ -30,6 +30,11 @@ impl CharacterCallbacks for Probe {
     fn on_reset(&mut self) {
         self.value += 1;
     }
+    fn enter_special(_: &mut Fighter, _: SpecialSlot, _: bool, _: &assets::FighterAssets) {
+        panic!("no specials in ownership test")
+    }
+    const ENTER_TAUNT: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
+        |_, _| panic!("no taunt in ownership test");
 }
 
 #[derive(Clone)]
@@ -54,6 +59,11 @@ macro_rules! inert_character {
         }
         fn on_load(&mut self, _: &mut Capabilities) {}
         fn on_reset(&mut self) {}
+        fn enter_special(_: &mut Fighter, _: SpecialSlot, _: bool, _: &assets::FighterAssets) {
+            panic!("no specials in ownership test")
+        }
+        const ENTER_TAUNT: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
+            |_, _| panic!("no taunt in ownership test");
     };
 }
 impl CharacterCallbacks for Other {
