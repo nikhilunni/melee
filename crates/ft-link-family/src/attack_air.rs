@@ -108,10 +108,14 @@ fn rearm<C: LinkFamily>(f: &mut Fighter) {
     );
     let damages = f.character.get::<C>().attributes().down_air.hitbox_flags;
     for (i, damage) in damages.into_iter().enumerate() {
-        let hit = f.character.get_mut::<C>().specials().down_air.hits[i].take();
-        let Some(mut hit) = hit else {
-            unimplemented!("lwOnAnim: re-enabling hitbox {i}, off before the bounce");
-        };
+        // lwOnHit always kept all three: deal_dmg_cb runs only for damage
+        // an enabled x914 capsule dealt (fighter.c:2928; x1914 is written
+        // at ftcoll.c:655 and itcoll.c:459 alone), and both scripts switch
+        // 0..2 on, re-damage and clear them together (PlLk.dat and PlCl.dat
+        // AttackAirLw: on at 13, damage at 16, off at 65). docs/COVERAGE_AUDIT.md.
+        let mut hit = f.character.get_mut::<C>().specials().down_air.hits[i]
+            .take()
+            .expect("lwOnAnim: capsules 0..2 were all on at the bounce");
         hit.phase = CapsulePhase::Enabled;
         hit.victims = Default::default();
         hit.phantom_victims = Default::default();

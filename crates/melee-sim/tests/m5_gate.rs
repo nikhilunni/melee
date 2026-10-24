@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 559] = [
+const MATRIX_WITNESSES: [(&str, usize); 560] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1628,6 +1628,9 @@ const MATRIX_WITNESSES: [(&str, usize); 559] = [
     ("links_yl_grab_fd_fox4", 560),
     ("links_yl_zair_fd_fox4", 520),
     ("links_dair_fd_fox4", 480),
+    // LINKS: Young Link's down aerial bouncing twice off Fox, the second hit
+    // from the capsules lwOnAnim switched back on (PlCl.dat's own damages).
+    ("links_yl_dair_fd_fox4", 480),
     // LINKS: the Hylian shield (Wait/SquatWait's kind switch, ftColl_8007B1B8
     // with x221B_b2/b3/b4) against Fox's lasers, far and close, facing and turned
     // away, for Link and Young Link.

@@ -225,3 +225,43 @@ above. Ported from the retail branch order but unwitnessed: an airborne
 DownDamage fighter reaching a wall, and the shield-impact combinations. The shield-impact combinations are ported from the retail branch
 order but unwitnessed. `INTERACTION_MATRIX.md` lists the reachable
 transitions no gated trace covers yet.
+
+## Link's down aerial, Link's bow and Yoshi's Egg Lay on items (2026-10-24)
+
+- **`ft-link-family/attack_air.rs` lwOnAnim (800EB528), re-enabling a
+  capsule that was off before the bounce: unreachable, now an `expect`.**
+  lwOnHit is the down aerial's deal_dmg_cb, which fighter.c:2928 runs only
+  when `dmg.x1914` is set, and x1914 is written only where an enabled x914
+  capsule deals damage (ftcoll.c:655 on a fighter, itcoll.c:459 on an item).
+  Both down-aerial scripts switch capsules 0, 1 and 2 on together, re-damage
+  them together and clear them together (PlLk.dat AttackAirLw: on at frame
+  13, SetHitboxDamage on all three at 16, clear-all at 65; PlCl.dat the same
+  frames with Young Link's damages), so at any hit all three are on and
+  lwOnHit keeps all three. Witnesses: `links_dair_fd_fox4` (Link) and
+  `links_yl_dair_fd_fox4` (Young Link, two bounces, the second from the
+  re-enabled capsules).
+- **`ft-link-family/special_n.rs` ftLk_SpecialNStart_Anim, the arrow not
+  made: needs an exhausted object heap; stays `unimplemented!`.**
+  it_802A83E0 returns NULL only if Item_8026862C does. The arrow is hold kind
+  8 (Item_802674AC: Mario_Fire <= kind < Unk4), which Item_8026784C never
+  refuses; the remaining failures are GObj_Create and
+  `HSD_ObjAlloc(&item_alloc_data)`, and item_alloc_data has no number limit
+  (item.c:113; only db/dballoc.c sets limits, on other pools), so they fail
+  only when HSD_ObjAllocAddFree finds the object heap full. The port's nock
+  queues the arrow and never takes the branch.
+- **`ft-yoshi/special_n.rs` rows 348, 350, 353, 355 (SpecialN1_1,
+  SpecialN2_1, SpecialAirN1_2, SpecialAirN2_1): reachable in retail, blocked
+  in the port by unported items.** The tongue takes an item only through
+  ftColl_8007BC90, which skips items without `xDD0_flag.b4`; only
+  it_80275270 sets it, called by monster and enemy kinds alone
+  (itoldkuri.c, itleadead.c, itoctarock.c, itoldottosea.c, itnokonoko.c,
+  itpatapata.c, itlikelike.c, itwhitebea.c, itzako.c). In versus Goomba,
+  ReDead, Octorok and Ottosea come out of an opened Crate, Barrel or Party
+  Ball (it_8026F6BC, from itbox.c, ittaru.c, itkusudama.c): one chance in
+  `itPublicData +124` = 128, weighted 2:3:1:1 by +128..+134 (ItCo.usd),
+  under its own cap (Item_804A0C64 +2C < +30). The rest belong to 1P
+  stages. A witness therefore needs items switched on, a
+  container spawn and opening, and the monster kinds, none of which the port
+  has (its items are fighter articles, Shy Guys and Sudden Death's
+  Bob-ombs, none catchable). The earlier note above that only stage enemies
+  set `xDD0 b4` misses the container monsters.
