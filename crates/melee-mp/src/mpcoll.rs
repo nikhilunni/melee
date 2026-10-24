@@ -949,9 +949,10 @@ impl CollMap {
     pub fn notify_floor_joint(&mut self, cd: &mut CollData, line_id: i32, arg2: bool, dy: f32) {
         let joint_id = self.joint_from_line(line_id);
         if joint_id != NO_ID {
-            let (cb, user_data) = self.joint_get_cb1(joint_id);
+            let (cb, _) = self.joint_get_cb1(joint_id);
             if let Some(cb) = cb {
                 let thing = if !arg2 { 2 } else { 1 };
+                let user_data = &mut self.joint_cbs[joint_id as usize].cb_data_0;
                 cb(user_data, joint_id, cd, cd.x50 as i32, thing, dy);
             }
         }
@@ -962,9 +963,9 @@ impl CollMap {
     fn notify_ceiling_joint(&mut self, cd: &mut CollData, line_id: i32, dy: f32) {
         let joint_id = self.joint_from_line(line_id);
         if joint_id != NO_ID {
-            let (cb, user_data) = self.joint_get_cb2(joint_id);
+            let (cb, _) = self.joint_get_cb2(joint_id);
             if let Some(cb) = cb {
-                cb(user_data, joint_id, cd, cd.x50 as i32, 0, dy);
+                cb(&mut self.joint_cbs[joint_id as usize].cb_data_1, joint_id, cd, cd.x50 as i32, 0, dy);
             }
         }
     }
@@ -1008,17 +1009,17 @@ impl CollMap {
         if kind == line_kind::FLOOR {
             let joint_id = self.joint_from_line(line_id);
             if joint_id != NO_ID {
-                let (cb, user_data) = self.joint_get_cb1(joint_id);
+                let (cb, _) = self.joint_get_cb1(joint_id);
                 if let Some(cb) = cb {
-                    cb(user_data, joint_id, cd, cd.x50 as i32, 2, 0.0);
+                    cb(&mut self.joint_cbs[joint_id as usize].cb_data_0, joint_id, cd, cd.x50 as i32, 2, 0.0);
                 }
             }
         } else if kind == line_kind::CEILING {
             let joint_id = self.joint_from_line(line_id);
             if joint_id != NO_ID {
-                let (cb, user_data) = self.joint_get_cb2(joint_id);
+                let (cb, _) = self.joint_get_cb2(joint_id);
                 if let Some(cb) = cb {
-                    cb(user_data, joint_id, cd, cd.x50 as i32, 0, 0.0);
+                    cb(&mut self.joint_cbs[joint_id as usize].cb_data_1, joint_id, cd, cd.x50 as i32, 0, 0.0);
                 }
             }
         }

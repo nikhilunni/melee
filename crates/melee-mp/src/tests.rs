@@ -933,8 +933,8 @@ fn joint_callbacks_and_ledge_notification() {
     use melee_types::mp::CollData;
     use std::sync::atomic::{AtomicI32, Ordering};
     static CALLS: AtomicI32 = AtomicI32::new(0);
-    fn cb(user_data: u32, joint_id: i32, coll: &mut CollData, x50: i32, kind: i32, dy: f32) {
-        assert_eq!(user_data, 77);
+    fn cb(user_data: &mut u32, joint_id: i32, coll: &mut CollData, x50: i32, kind: i32, dy: f32) {
+        assert_eq!(*user_data, 77);
         assert_eq!(joint_id, 0);
         assert_eq!(x50, 3);
         assert_eq!(kind, 3);
@@ -1422,7 +1422,7 @@ mod mpcoll {
         assert_eq!(cd.env_flags as u32 & collide::LEDGE_GRAB_MASK, 0);
         // The ledge grab fires the joint's cb_0 with ground kind 3.
         static KINDS: std::sync::Mutex<Vec<i32>> = std::sync::Mutex::new(Vec::new());
-        fn cb(_u: u32, _j: i32, _c: &mut CollData, _x: i32, kind: i32, _dy: f32) {
+        fn cb(_u: &mut u32, _j: i32, _c: &mut CollData, _x: i32, kind: i32, _dy: f32) {
             KINDS.lock().unwrap().push(kind);
         }
         m.joint_set_cb1(0, 1, cb);

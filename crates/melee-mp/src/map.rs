@@ -17,11 +17,13 @@ use melee_types::mp::{
 };
 use melee_types::GrKind;
 
-/// Retail moving-joint collision typedef (`mp/forward.h:37`). `user_data` is the
-/// `Ground*` the stage registered, kept as an opaque id; `coll_x50` is
-/// `CollData::x50` converted to `int` at the call site as the C does.
+/// Retail moving-joint collision typedef (`mp/forward.h:37`). `user_data`
+/// stands for the `Ground*` the stage registered: a word the joint's slot
+/// owns, which the handler may write (a stage reads it back with
+/// [`CollMap::joint_cb1_data`]); `coll_x50` is `CollData::x50` converted to
+/// `int` at the call site as the C does.
 pub type JointCollisionHandler = fn(
-    user_data: u32,
+    user_data: &mut u32,
     joint_id: i32,
     coll: &mut CollData,
     coll_x50: i32,
@@ -990,6 +992,14 @@ impl CollMap {
         (c.cb_0, c.cb_data_0)
     }
 
+    /// The word a joint's `cb_0` handler writes (its `Ground*` user data).
+    pub fn joint_cb1_data(&self, joint_id: i32) -> u32 {
+        self.joint_cbs[joint_id as usize].cb_data_0
+    }
+    pub fn set_joint_cb1_data(&mut self, joint_id: i32, value: u32) {
+        self.joint_cbs[joint_id as usize].cb_data_0 = value;
+    }
+
     /// `mpJointSetCb2` (retail `0x800581A4`).
     pub fn joint_set_cb2(&mut self, joint_id: i32, user_data: u32, cb: JointCollisionHandler) {
         let c = &mut self.joint_cbs[joint_id as usize];
@@ -1010,10 +1020,10 @@ impl CollMap {
         if ledge_id != NO_ID {
             let joint_id = self.joint_from_line(ledge_id);
             if joint_id != NO_ID {
-                let c = self.joint_cbs[joint_id as usize];
+                let c = &mut self.joint_cbs[joint_id as usize];
                 if let Some(cb) = c.cb_0 {
                     cb(
-                        c.cb_data_0,
+                        &mut c.cb_data_0,
                         joint_id,
                         coll,
                         coll.x50 as i32,
