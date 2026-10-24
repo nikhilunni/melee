@@ -208,6 +208,16 @@ are transcribed (`state::empty_row`); the others stay fail-closed.
 | `ft-donkey/special_n.rs` Giant Punch hitbox 1 without hitbox 0 | PlDk.dat SpecialN/SpecialAirN (submotions 322, 323, 327, 328): hitboxes 0 and 1 are always made together and only op 16 (clear all) removes them; no op 15. Now `unreachable!` |
 | `ft-iceclimbers` ftNn_Init_8012300C / ftNn_Init_80123954, Nana's class | The port's `x4_flags` column covers every row a climber can be in (the common table and the 26 `SPECIAL_MOTION_FLAGS`); the Option is gone |
 
+## Rolling specials after a cape, and Jigglypuff edges (2026-10-24)
+
+| Site | Verdict |
+| --- | --- |
+| `ft-purin` x21F8 `ftPr_SpecialN_8014222C` (ftpurinspecialn.c:1447) | Ported (`ft_purin_family::rollout::cape_turn_end`) and witnessed exact: `puff_rollout_cape_turn_fd_mario4` (Mario capes a grounded Rollout; the turn ends in SpecialNRelease and the ball rolls back), boundary `start_fd_mario_jigglypuff4` |
+| `ft-yoshi` x21F8 `fn_8013295C` (ftyoshispecials.c:1363) | Ported (`special_s::cape_turn_end`) and witnessed exact: `yoshi_eggroll_cape_turn_fd_mario4` (the turn ends in SpecialSLoop), boundary `start_fd_mario_yoshi4` |
+| `ft-kirby` x21F8 `fn_80105978` (ftkirbyspecialpurin.c:1368) | Ported, unwitnessed: the same generic as Jigglypuff's (the asm of 80105978 and 8014222C differ only in the pi/2 literal's address: part 0, the same three fighter speeds and the same seven `mv.pr.specialn` words). A witness needs Kirby holding Jigglypuff's ability and a Mario or Dr. Mario cape (the only HitElement_Cape hitboxes), so three fighters; `make_boundary.py --players Mario Kirby Jigglypuff` saved `start_fd_mario_kirby_jigglypuff4` but its cold twin fails with "requires two fighters" (the scenario runner builds two) |
+| `ft-purin-family` `ftPr_SpecialS_8013D8E4` enabling a capsule never seen | Unreachable as a retail state: it is the port's own condition (retail re-enables whatever x914[0] holds; the port remembers hitbox 0 from the roll's scripts). Both release scripts create hitbox 0 before the first `update_hitbox` of a roll, so the remembered capsule is always the roll's: with a probe, all 6,334 `update_hitbox` calls in the 201 `puff` scenarios and all 5,945 in the 168 `jigglypuff` ones (every Rollout and copied-Rollout witness and the corpus) found it remembered, the 6 re-enables in each included. The guard stays as an assertion |
+| `ft-purin` `ftPr_SpecialHi_Anim` Pokémon Stadium sleep element | Out of the VS scope: `mv.pr.specialhi.x0` needs `gm_8016B1D8` (StartMeleeRules x5_3), which only event matches write (gmevent.c:403, from the event's x1_4 bit), and `grStadium_801D4FF8` (Pokémon Stadium's display in mode 8 on this player). Stays fail-closed for event mode |
+
 ## Exit status
 
 Remaining reachable boundaries: the Sudden Death item gaps in the table

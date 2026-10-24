@@ -225,10 +225,11 @@ fn clear_hitbox_zero<C: RolloutKind>(f: &mut Fighter) {
 }
 
 /// x914[0].state = HitCapsule_Enabled: the remembered capsule starts a new
-/// sweep.
+/// sweep. Both release scripts create hitbox 0 before a roll's first
+/// [`update_hitbox`], so it is always remembered (docs/COVERAGE_AUDIT.md).
 fn enable_hitbox_zero<C: RolloutKind>(f: &mut Fighter) {
     let Some(mut hit) = C::state_ref(f).hitbox.clone() else {
-        unimplemented!("ftPr_SpecialS_8013D8E4: enabling a capsule this port never saw");
+        unreachable!("ftPr_SpecialS_8013D8E4: the release script always sets hitbox 0 first");
     };
     hit.phase = melee_coll::hitbox::CapsulePhase::Enabled;
     f.commands.hitboxes[0] = Some(hit);
