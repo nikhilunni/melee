@@ -6170,3 +6170,52 @@ fn capture_and_throw_on_a_moving_platform_match_retail() {
     );
     combat_gate_ticks(name, 740);
 }
+
+/// mv+4 (fp+0x2344), the word a state that writes none inherits, as the
+/// port models it (`Fighter::inherited_scratch_word`) against each tick's
+/// fighter memory (`melee-sim scratch-diff --word`): the specials that keep
+/// their predecessor's word (Reflector, Illusion, Dancing Blade and Counter,
+/// Raptor Boost, Thunder Jolt/Thunder, Pound/Sing) entered from a
+/// savestate's Wait, the capture states (Klaw, Inhale and its star, the
+/// carry, the egg), CliffCatch and Wait out of a special.
+#[test]
+fn inherited_scratch_word_matches_retail_on_every_tick() {
+    const SCENARIOS: &[&str] = &[
+        "reflector_fd_fox",
+        "reflectorturn_fd_fox",
+        "illusion_fd_fox",
+        "airillusion_fd_fox",
+        "dancingblade_fd_marth",
+        "counter_fd_marth",
+        "marth_special_branches_fd_marth",
+        "falcon_specials_boost_hit",
+        "pikachu_thunder_fd_fox4",
+        "pichu_thunder_fd_fox4",
+        "pikachu_jolt_air_fd_fox4",
+        "puff_sing_sleep_fd_fox4",
+        "puff_pound_shield_fd_fox4",
+        "bowser_klaw_mash_fd_fox4",
+        "bowser_klaw_hold_fd_fox4",
+        "kirby_inhale_mash_fd_fox4",
+        "kirby_inhale_spit_fd_fox4",
+        "donkey_cargo_walk_fd_fox4",
+        "donkey_cargo_throw_lw_fd_fox4",
+        "yoshi_egg_fd_fox4_e1502cb40_p2",
+        "gamewatch_cliff_climb_fd_fox4",
+    ];
+    for name in SCENARIOS {
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        if !melee_test_support::require_files(scenario.required_files()) {
+            continue;
+        }
+        let report = melee_sim::scratch::diff_word(&scenario, None).unwrap();
+        assert!(
+            report.differences.is_empty(),
+            "{name}: {}\n{}",
+            report.differences.join("\n"),
+            report.summary
+        );
+    }
+}

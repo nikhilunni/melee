@@ -393,9 +393,10 @@ pub fn lead_gone<C: PikachuFamily>(f: &mut Fighter) {
         // at mv+4 (an int, read back as the float word).
         f.overwrite_common_scratch_word(f32::from_bits(LEAD_GONE as u32));
     } else {
-        unimplemented!(
-            "ftPk_SpecialLw_SetState_Unk0: mv+4 written during special {:?}",
-            action
-        );
+        // Thunder Jolt and Skull Bash write only mv+0 (mv.pk.unk2.x0,
+        // mv.pk.unk3.x0): the 3 replaces the word they kept from the state
+        // before them, which a later state inherits.
+        f.character.get_mut::<C>().specials().retained_word =
+            Some(f32::from_bits(LEAD_GONE as u32));
     }
 }

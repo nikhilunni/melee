@@ -329,6 +329,50 @@ fighter.c:785 clears x2222_b6 and no registered kind's OnLoad sets it. The
 `Wait`-while-airborne guard had no retail counterpart (fighter.c has no such
 test) and is gone.
 
+### The inherited scratch word mv+4 (2026-10-24)
+
+Retail's motion variables are one union a motion change does not clear; a
+state that writes no mv+4 (fp+0x2344) runs on, and passes on, the word its
+predecessor left. The port reads it through `Fighter::inherited_scratch_word`
+and failed closed wherever that was `None`. `melee-sim scratch-diff --word`
+now compares that word with each tick's fighter memory in a recording; run
+over every recorded scenario (2,848 with tick traces) it found the `None`
+sources and they are modelled:
+
+- a savestate's fighter in Wait (the start of most directed scenes) had no
+  typed scratch: it is imported as `MotionData::Inherited(fp+0x2344)`;
+- CliffCatch writes only the ledge id (`CliffState::caught_word`);
+- the capture states: CaptureKirby's pos_offset.y, the star's deceleration
+  (ftCo_ThrownKirby.c:109), the Klaw's untouched +2344 (kept from the
+  victim's state before the catch), the shouldered and egg mash bools
+  (ftCo_Shouldered.c:51/97, ftCo_YoshiEgg.c:136), Donkey Kong's carry and
+  cargo throw (no write: the word before the carry);
+- Wait out of a character special holds the special's word, not the typed
+  scratch of the common state before it;
+- ftPk_SpecialLw_SetState_Unk0 (the Thunder lead ending) during Thunder Jolt
+  or Skull Bash replaces the word those specials kept; during Wait or AppealS
+  it replaces whatever typed scratch was stale; every other motion of
+  property 0 (the only ones ftPk_SpecialLw_CheckProperty lets through) holds
+  the word in typed scratch (Dash's x4 is now the int retail stores).
+
+After this the tally over every recording has no unmodelled tick for any
+kind outside the death and revival states (0-13, from which no state
+inherits: Rebirth leads to RebirthWait, which writes its platform target)
+and Zelda's and Sheik's Transform arrival (356/358, 361-364), whose word is
+the arriving form's own from before it slept (a stale heap word in a cold
+scene). The fail-closed guards of Raptor Boost, Reflector, Illusion, the
+Link, Marth, Peach, Pikachu and Jigglypuff specials are therefore
+`unreachable!`; `retained_drop_timer` (landing.rs) stays `unimplemented!`
+for the Transform arrival. `m5_gate`'s
+`inherited_scratch_word_matches_retail_on_every_tick` keeps 21 recordings
+exact on every tick.
+
+The tally still lists value differences (port `Some`, retail another
+word) where a character's special row has no `RETAINED_SCRATCH_WORD` arm
+and falls back to the common scratch (Fox's Fire Fox 353-356, whose angle
+then reaches CliffCatch; Squat 39 out of some predecessors). No gated
+trace reads them; they are follow-up work, not fail-closed sites.
+
 ## Exit status
 
 Remaining reachable boundaries: the Sudden Death item gaps in the table

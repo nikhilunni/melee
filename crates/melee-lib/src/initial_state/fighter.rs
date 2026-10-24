@@ -207,6 +207,11 @@ pub(crate) fn import(
         f.core.effect_state.invisible = true;
         f.core.status.disabled = raw[0x221F] & 0x10 != 0;
     }
+    // A savestate's fighter in a state that writes no scratch (Wait) holds
+    // the mv+4 its predecessor left, which a later state may inherit.
+    if matches!(f.state_data, melee_ft::fighter::MotionData::None) {
+        f.state_data = melee_ft::fighter::MotionData::Inherited(float(raw, 0x2344));
+    }
 
     f
 }

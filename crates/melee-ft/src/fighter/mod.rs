@@ -1365,6 +1365,12 @@ pub enum MotionData {
     CaptureJump(grab_escape::CaptureJumpState),
     #[default]
     None,
+    /// A state that writes no scratch of its own holds only the second word
+    /// (mv+4) its predecessor left, where the port has no typed predecessor
+    /// to keep: a savestate's fighter in Wait (fp+0x2344 imported), or a
+    /// write from outside while such a state is current
+    /// (`Fighter::overwrite_common_scratch_word`).
+    Inherited(f32),
     Entry(entry::EntryState),
     Jab(attack::JabState),
     RapidJab(attack::RapidJabState),

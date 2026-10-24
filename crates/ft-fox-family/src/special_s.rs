@@ -57,7 +57,7 @@ pub fn retained_scratch_word(
         return Some(scratch.ghost_positions[0].x);
     }
     Some(scratch.inherited_word.unwrap_or_else(|| {
-        unimplemented!("ftFx_SpecialS: mv+4 inherited from an unmodelled scratch word")
+        unreachable!("ftFx_SpecialS: mv+4 inherited from an unmodelled scratch word")
     }))
 }
 

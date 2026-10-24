@@ -179,6 +179,7 @@ impl FighterCore {
     /// `None` when the state's scratch there is not modelled.
     fn common_scratch_word(&self) -> Option<f32> {
         Some(match &self.state_data {
+            MotionData::Inherited(word) => *word,
             // ftCo_800D5600: mv.common.x4 is the
             // platform target vector; an aerial entry retains its first word.
             MotionData::Life(super::life::LifeState::PlatformWait { target, .. }) => target.x,
@@ -191,6 +192,15 @@ impl FighterCore {
             // countdown. The capture's entry zeroes it (fn_800DA8E4,
             // 0x800DA9FC) and CaptureCut leaves it for Wait or Fall.
             MotionData::Capture(capture) => capture.fast_remaining(),
+            // mv.co.capturekirby.pos_offset.y (ftCo_CaptureKirby.c:33, 110).
+            MotionData::CaptureKirby(capture) => capture.offset.y,
+            // mv.co.thrownkirby.x4: the star's deceleration
+            // (ftCo_ThrownKirby.c:109).
+            MotionData::KirbyStar(star) => star.parameters.deceleration,
+            MotionData::CaptureKoopa(capture) => capture.retained_word?,
+            // mv.co.shouldered.x4 and mv.co.yoshiegg.x4: the mash (a bool).
+            MotionData::Shouldered(shouldered) => f32::from_bits(u32::from(shouldered.mashed)),
+            MotionData::YoshiEgg(egg) => f32::from_bits(u32::from(egg.mashed)),
             MotionData::CliffJump(jump) => jump.retained_wait_frames,
             // mv.co.aircatchhit.x4: the tether's hang countdown.
             MotionData::AirCatchHit(hit) => hit.hang_frames,
@@ -230,6 +240,10 @@ impl FighterCore {
             }) => f32::from_bits(u32::from(*physics_started)),
             // The carry landing's frames left (mv+4, ftCo_8009BD4C).
             MotionData::Cargo(super::cargo::CargoState::Landing { frames }) => *frames,
+            MotionData::Cargo(
+                super::cargo::CargoState::Carry { retained_word }
+                | super::cargo::CargoState::Throw { retained_word, .. },
+            ) => (*retained_word)?,
             // mv.co.itemthrow4.anim_spd (ftCo_800957F4 writes it first).
             MotionData::ItemThrow(throw) => throw.rate,
             // mv.co.swing.x4: the swing's input (an int).
@@ -249,12 +263,13 @@ impl FighterCore {
             MotionData::Rebound(rebound) => rebound.animation_rate,
             // mv.co.cliff.x4: CliffWait's countdown (ftCo_8009A804), which
             // the climb, roll, attack and jump states leave in place.
-            // CliffCatch writes only the ledge id and keeps an unmodelled word.
+            // CliffCatch writes only the ledge id and keeps its predecessor's.
             MotionData::Cliff(cliff)
-                if self.motion_state.id != melee_types::CommonMotionState::CliffCatch =>
+                if self.motion_state.id == melee_types::CommonMotionState::CliffCatch =>
             {
-                cliff.wait_frames
+                cliff.caught_word?
             }
+            MotionData::Cliff(cliff) => cliff.wait_frames,
             // mv.co.attack100.x4: the A-edge latch (ftCo_800D6B00 clears it).
             MotionData::RapidJab(rapid) => f32::from_bits(u32::from(rapid.edge_pressed)),
             MotionData::Parasol(parasol) => parasol.retained_word?,
@@ -265,7 +280,7 @@ impl FighterCore {
             MotionData::Turn(turn) => turn.facing_after,
             // mv.co.walk.msid: ftCo_Walk_Enter passes the base walk state.
             MotionData::Walk(walk) => f32::from_bits(walk.base_motion as u32),
-            MotionData::Dash(dash) => f32::from_bits(u32::from(dash.early_interrupts)),
+            MotionData::Dash(dash) => f32::from_bits(dash.early_interrupts),
             MotionData::Run(run) => run.slippery_animation_velocity,
             MotionData::RunBrake(brake) => brake.remaining_frames,
             // TurnRun writes only +234C and +2354 (ftCo_TurnRun.c:48-51).
@@ -300,29 +315,68 @@ impl Fighter {
 
     /// Another object's write of the second motion scratch word (mv+4)
     /// while a common state owns it (ftPk_SpecialLw_SetState_Unk0 from a
-    /// Thunder bolt's end). The state then runs on with that word: Jump's
-    /// flag (ftCo_Jump.c:185-197), Fall's blend (ftCo_Fall.c:186), Run's
-    /// slippery velocity (ftCo_Run.c:84) and Squat's drop timer
-    /// (ftCo_Squat.c:82-85) read it as their own. Walk's word is its base
-    /// motion id (ftwalkcommon.c:115, 137): its IASA then re-enters Walk,
-    /// and its animation callback fails closed on the uninitialised rate.
-    /// Wait writes no scratch, so the word it holds is its predecessor's
-    /// (Damage's x4 is modelled). Unmodelled states fail closed.
+    /// Thunder bolt's end, which ftPk_SpecialLw_CheckProperty allows only
+    /// in the states of property 0: Wait, the walks, turns, dash and run,
+    /// knee bend, jumps, falls, squats, landings, AppealS, BuryJump and
+    /// DamageIceJump). The state then runs on with that word: Jump's flag
+    /// (ftCo_Jump.c:185-197), Fall's blend (ftCo_Fall.c:186), Run's slippery
+    /// velocity (ftCo_Run.c:84) and Squat's drop timer (ftCo_Squat.c:82-85)
+    /// read it as their own. Walk's word is its base motion id
+    /// (ftwalkcommon.c:115, 137): its IASA then re-enters Walk, and its
+    /// animation callback fails closed on the uninitialised rate.
     pub fn overwrite_common_scratch_word(&mut self, word: f32) {
+        use melee_types::CommonMotionState as S;
+        if self.write_scratch_word(word) {
+            return;
+        }
+        // Wait (ft_8008A348) and AppealS write no scratch: they hold only the
+        // word, whatever typed data their predecessor left.
+        if matches!(
+            self.core.motion_state.id,
+            S::Wait | S::AppealSR | S::AppealSL
+        ) {
+            self.core.state_data = MotionData::Inherited(word);
+            return;
+        }
+        // Every other property-0 motion keeps its word in the typed scratch
+        // written above.
+        unreachable!(
+            "mv+4 written from outside during motion {:?}",
+            self.core.motion_state.action
+        )
+    }
+
+    /// mv+4 written into the typed scratch that holds it, where that is
+    /// exact; false for scratch whose word the port holds in another form.
+    fn write_scratch_word(&mut self, word: f32) -> bool {
+        let bits = word.to_bits();
         match &mut self.core.state_data {
-            MotionData::Jump(jump) => jump.physics_started = word.to_bits(),
+            MotionData::Inherited(inherited) => *inherited = word,
+            MotionData::Jump(jump) => jump.physics_started = bits,
             MotionData::Fall(fall) => fall.blend = word,
+            MotionData::FallSpecial(fall) => fall.animation.blend = word,
             MotionData::Run(run) => run.slippery_animation_velocity = word,
+            MotionData::RunBrake(brake) => brake.remaining_frames = word,
             MotionData::Squat(squat) => squat.platform_drop_timer = word,
-            MotionData::Walk(walk) => walk.base_motion = word.to_bits() as i32,
-            // Wait writes no scratch (ft_8008A348), so out of Damage mv+4 is
-            // still mv.co.damage.x4. Damage's OnExitHitlag reads that word
-            // (ftCo_Damage.c:650), so a write while its hitlag callbacks
-            // are installed is not modelled.
+            MotionData::Walk(walk) => walk.base_motion = bits as i32,
+            MotionData::Turn(turn) => turn.facing_after = word,
+            MotionData::Dash(dash) => dash.early_interrupts = bits,
+            // mv.co.kneebend.jump_input: ftCo_JumpInput (1, 2 or 3).
+            MotionData::KneeBend(knee_bend) => {
+                knee_bend.input = match bits {
+                    1 => super::jump::JumpInput::Stick,
+                    2 => super::jump::JumpInput::CStick,
+                    3 => super::jump::JumpInput::Buttons,
+                    _ => return false,
+                }
+            }
+            // Out of Damage, mv+4 is still mv.co.damage.x4. Damage's
+            // OnExitHitlag reads that word (ftCo_Damage.c:650), so a write
+            // while its hitlag callbacks are installed is not modelled.
             MotionData::Damage(damage)
                 if self.core.combat.hitlag_callbacks != super::damage::HitlagCallbacks::Damage =>
             {
-                damage.mv_word = word.to_bits()
+                damage.mv_word = bits
             }
             MotionData::Aerial {
                 retained_drop_timer,
@@ -337,9 +391,12 @@ impl Fighter {
                 retained_drop_timer,
                 ..
             } => *retained_drop_timer = word,
+            MotionData::BuryJump { retained_word, .. }
+            | MotionData::FrozenJump { retained_word, .. } => *retained_word = word,
             MotionData::Smash { retained_word }
             | MotionData::Tilt { retained_word }
             | MotionData::Catch { retained_word }
+            | MotionData::ShieldBreak { retained_word }
             | MotionData::DownTilt { retained_word, .. }
             | MotionData::DashAttack { retained_word, .. }
             | MotionData::ItemGet { retained_word, .. }
@@ -347,16 +404,18 @@ impl Fighter {
             | MotionData::Jab(super::attack::JabState { retained_word, .. }) => {
                 *retained_word = Some(word)
             }
-            _ => unimplemented!(
-                "mv+4 written from outside during motion {:?}",
-                self.core.motion_state.action
-            ),
+            MotionData::TurnRun(turn) => turn.retained_word = Some(word),
+            _ => return false,
         }
+        true
     }
 
     /// Fox JumpAerial and Landing leave the second motion scratch word untouched.
     /// Direct SquatWait entry inherits it as the inactive platform-drop timer
     /// (ftCo_JumpAerial.c:147-182, ftCo_Landing.c:41-50, SquatWait.c:55-88).
+    /// The port models mv+4 in every state a fighter acts from except
+    /// Zelda's and Sheik's Transform arrival (the arriving form's word is
+    /// its own from before it slept, a stale heap word in a cold scene).
     pub(super) fn retained_drop_timer(&self) -> f32 {
         self.inherited_scratch_word().unwrap_or_else(|| {
             unimplemented!(

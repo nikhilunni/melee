@@ -172,7 +172,7 @@ impl CharacterCallbacks for Peach {
     ) -> Option<f32> = |state, action| {
         (361..=368).contains(&action.0).then(|| {
             state.get::<Self>().retained_word.unwrap_or_else(|| {
-                unimplemented!("ftPe specials: mv+4 inherited from an unmodelled scratch word")
+                unreachable!("ftPe specials: mv+4 inherited from an unmodelled scratch word")
             })
         })
     };

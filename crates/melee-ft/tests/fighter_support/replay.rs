@@ -741,7 +741,7 @@ fn compare_movement_internals(fighter: &FoxFighter, bytes: &[u8], tick: usize, p
                 0x2340,
             );
             assert_eq!(
-                u32::from(dash.early_interrupts),
+                dash.early_interrupts,
                 word(bytes, 0x2344),
                 "dash interrupts tick {tick}"
             );

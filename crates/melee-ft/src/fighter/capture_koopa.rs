@@ -73,6 +73,10 @@ pub struct CaptureKoopaState {
     /// The hold timer ran out in this frame's animation callback; the scene
     /// separates the pair (ftCo_800DA698, ftCo_CaptureCut_Enter).
     pub release_requested: bool,
+    /// mv +4 (fp+2344), which the Klaw's states never write: the word the
+    /// victim's state before the catch left (`None` where the port does not
+    /// model it). CaptureCut keeps it for Wait or Fall.
+    pub retained_word: Option<f32>,
 }
 
 /// What a captor's callback asks of the fighter it holds; the scene runs it
@@ -130,6 +134,7 @@ pub fn capture(
     hold: Hold,
     air: bool,
 ) -> Result<()> {
+    let retained_word = victim.inherited_scratch_word();
     // ftCommon_8007DB58.
     victim.interrupt_actions(victim_assets);
     // ftCo_8009750C drops a heavy item; ftCo_800DD168 releases the victim's
@@ -150,6 +155,7 @@ pub fn capture(
     let scratch = CaptureKoopaState {
         hold,
         timer: hold.time,
+        retained_word,
         ..Default::default()
     };
     // ftCo_800DB368(captor, victim).

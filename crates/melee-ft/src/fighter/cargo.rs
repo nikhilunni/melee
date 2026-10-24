@@ -64,8 +64,9 @@ pub mod row {
 /// walks use `MotionData::Walk`, the turn `MotionData::Turn`).
 #[derive(Clone, Debug)]
 pub enum CargoState {
-    /// CargoWait and CargoFall write nothing.
-    Carry,
+    /// CargoWait and CargoFall write nothing: mv+4 is the word the state
+    /// before the carry left (`None` where the port does not model it).
+    Carry { retained_word: Option<f32> },
     /// mv.co.cargokneebend: the hop decision, the jump's input and the
     /// frames left.
     KneeBend {
@@ -81,8 +82,12 @@ pub enum CargoState {
     },
     /// The landing's frames left.
     Landing { frames: f32 },
-    /// A cargo throw: facing_dir1, the facing the row was entered with.
-    Throw { entry_facing: f32 },
+    /// A cargo throw: facing_dir1, the facing the row was entered with. The
+    /// throw writes no scratch, so mv+4 is still the carry's.
+    Throw {
+        entry_facing: f32,
+        retained_word: Option<f32>,
+    },
 }
 
 /// What a carrier's state change does to the fighter it carries; the scene
@@ -106,6 +111,9 @@ pub struct ShoulderedState {
     pub timer: f32,
     /// mv.co.shouldered.x0: frames left of the struggling animation rate.
     pub fast_remaining: f32,
+    /// mv.co.shouldered.x4: this frame's ftCommon_GrabMash result
+    /// (ftCo_Shouldered.c:51, 97).
+    pub mashed: bool,
     stick_directions: [i8; 2],
 }
 
@@ -178,8 +186,9 @@ impl Fighter {
     /// the victim in ShoulderedWait; `begin` starts its mash timer.
     pub(super) fn enter_cargo_wait(&mut self, assets: &FighterAssets, begin: bool) -> Result<()> {
         let state = cargo_row(self, row::WAIT);
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state_with_flags(state, assets, MotionEntryFlags(0), 0.0, 1.0)?;
-        self.core.state_data = MotionData::Cargo(CargoState::Carry);
+        self.core.state_data = MotionData::Cargo(CargoState::Carry { retained_word });
         request(
             self,
             CargoRequest::Shoulder {
@@ -308,6 +317,7 @@ impl Fighter {
     /// at frame 0; a grounded carrier leaves the floor after the change.
     fn enter_cargo_fall(&mut self, assets: &FighterAssets) -> Result<()> {
         let state = cargo_row(self, row::FALL);
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state_with_flags(
             state,
             assets,
@@ -319,7 +329,7 @@ impl Fighter {
         if self.core.physics.ground_or_air == GroundOrAir::Ground {
             self.leave_ground();
         }
-        self.core.state_data = MotionData::Cargo(CargoState::Carry);
+        self.core.state_data = MotionData::Cargo(CargoState::Carry { retained_word });
         shoulder(self, S::ShoulderedWait);
         Ok(())
     }
@@ -333,11 +343,12 @@ impl Fighter {
             self.core.physics.self_velocity.x.clamp(-maximum, maximum);
         self.core.physics.self_velocity.y = assets.movement.platform_drop_velocity;
         let state = cargo_row(self, row::FALL);
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state_with_flags(state, assets, MotionEntryFlags(0), 0.0, 1.0)?;
         melee_mp::update_floor_skip(&mut self.core.collision.data);
         self.core.input.vertical.tilt = 0xFE;
         self.hold_animation();
-        self.core.state_data = MotionData::Cargo(CargoState::Carry);
+        self.core.state_data = MotionData::Cargo(CargoState::Carry { retained_word });
         shoulder(self, S::ShoulderedWait);
         Ok(())
     }
@@ -408,11 +419,13 @@ impl Fighter {
             (0, MotionEntryFlags(0))
         };
         let state = cargo_row(self, row::THROW + direction + offset);
+        let retained_word = self.inherited_scratch_word();
         self.change_motion_state_with_flags(state, assets, flags, 0.0, 1.0)?;
         self.step_animation(assets);
         self.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
         self.core.state_data = MotionData::Cargo(CargoState::Throw {
             entry_facing: self.core.physics.facing,
+            retained_word,
         });
         request(self, CargoRequest::Throw { direction });
         Ok(())
@@ -740,7 +753,11 @@ pub fn throw_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitC
 /// the throw began with (facing_dir1), and every grab category excluded
 /// again.
 fn change_throw_row(f: &mut Fighter, assets: &FighterAssets, state: ActionId) -> Result<()> {
-    let MotionData::Cargo(CargoState::Throw { entry_facing }) = f.core.state_data.clone() else {
+    let MotionData::Cargo(CargoState::Throw {
+        entry_facing,
+        retained_word,
+    }) = f.core.state_data.clone()
+    else {
         panic!("cargo throw data missing")
     };
     let facing = f.core.physics.facing;
@@ -749,7 +766,10 @@ fn change_throw_row(f: &mut Fighter, assets: &FighterAssets, state: ActionId) ->
     f.change_motion_state_with_flags(state, assets, GROUND_AIR, frame, 1.0)?;
     f.core.physics.facing = facing;
     f.core.status.grab_exclusions = super::ledge::GrabExclusions::ALL;
-    f.core.state_data = MotionData::Cargo(CargoState::Throw { entry_facing });
+    f.core.state_data = MotionData::Cargo(CargoState::Throw {
+        entry_facing,
+        retained_word,
+    });
     Ok(())
 }
 
@@ -839,6 +859,7 @@ fn begin_carry(victim: &mut Fighter, va: &FighterAssets) {
     victim.core.state_data = MotionData::Shouldered(ShoulderedState {
         timer,
         fast_remaining: 0.0,
+        mashed: false,
         stick_directions: [0; 2],
     });
 }
@@ -897,6 +918,7 @@ pub fn shouldered_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<
         escape.stick_threshold,
         decrement,
     );
+    state.mashed = mashed;
     if state.timer <= 0.0 {
         f.core.combat.shoulder_escape = true;
         return Ok(None);

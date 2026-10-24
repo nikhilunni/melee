@@ -37,8 +37,10 @@ pub struct RunningParameters {
 pub struct DashState {
     /// mv.co.dash.x0 (+2340): one-shot initial acceleration marker.
     pub initial_acceleration: f32,
-    /// mv.co.dash.x4 (+2344): enable initial attack/escape window.
-    pub early_interrupts: bool,
+    /// mv.co.dash.x4 (+2344): nonzero enables the initial attack/escape
+    /// window (ftCo_Dash.c:85). An int: another object may write any value
+    /// there (`overwrite_common_scratch_word`).
+    pub early_interrupts: u32,
 }
 impl Fighter {
     /// ftCo_Dash_Enter (0x800CA120), ftCommon_800804A0 (0x800804A0).
@@ -69,7 +71,7 @@ impl Fighter {
         };
         self.core.state_data = MotionData::Dash(DashState {
             initial_acceleration: acceleration,
-            early_interrupts,
+            early_interrupts: u32::from(early_interrupts),
         });
         Ok(())
     }
@@ -91,7 +93,7 @@ impl Fighter {
         };
         let frame = self.core.animation.frame;
         let common = &assets.running;
-        if ((dash.early_interrupts && frame <= common.early_interrupt_frames)
+        if ((dash.early_interrupts != 0 && frame <= common.early_interrupt_frames)
             || frame <= common.redash_frames)
             && self.first_ground_transition(assets, context, &[P::SpecialSide])
                 == T::Special(super::SpecialSlot::Side)
@@ -100,7 +102,7 @@ impl Fighter {
             self.apply_dash_interrupt_friction(assets);
             return Ok(());
         }
-        if dash.early_interrupts && frame <= common.early_interrupt_frames {
+        if dash.early_interrupts != 0 && frame <= common.early_interrupt_frames {
             // ftCo_Dash_IASA: an item thrown this early is a smash throw. It
             // leaves through the interrupt friction like the smash and the
             // roll (retail 0x800CA2AC: b .L_800CA500), unlike the dash grab.

@@ -43,7 +43,7 @@ pub fn retained_scratch_word(scratch: &SpecialLw, action: ActionId) -> Option<f3
         return None;
     }
     let word = scratch.turn_frames.unwrap_or_else(|| {
-        unimplemented!("ftFx_SpecialLw: turnFrames inherited from an unmodelled scratch word")
+        unreachable!("ftFx_SpecialLw: turnFrames inherited from an unmodelled scratch word")
     });
     Some(f32::from_bits(word as u32))
 }

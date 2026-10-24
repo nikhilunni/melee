@@ -89,7 +89,7 @@ pub fn retained_scratch_word<C: MarsFamily>(
             .specials_ref()
             .retained_scratch_word
             .unwrap_or_else(|| {
-                unimplemented!("ftMs specials: mv+4 inherited from an unmodelled scratch word")
+                unreachable!("ftMs specials: mv+4 inherited from an unmodelled scratch word")
             }),
     )
 }

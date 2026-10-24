@@ -471,7 +471,7 @@ pub fn retained_scratch_word<C: LinkFamily>(
             .specials_ref()
             .retained_word
             .unwrap_or_else(|| {
-                unimplemented!("ftLk specials: mv+4 inherited from an unmodelled scratch word")
+                unreachable!("ftLk specials: mv+4 inherited from an unmodelled scratch word")
             }),
     )
 }

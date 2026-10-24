@@ -125,7 +125,7 @@ impl CharacterCallbacks for Jigglypuff {
     ) -> Option<f32> = |state, action| match action.0 {
         346..=362 => Some(f32::from_bits(u32::MAX)),
         363..=372 => Some(state.get::<Self>().retained_word.unwrap_or_else(|| {
-            unimplemented!("ftPr specials: mv+4 inherited from an unmodelled scratch word")
+            unreachable!("ftPr specials: mv+4 inherited from an unmodelled scratch word")
         })),
         _ => None,
     };

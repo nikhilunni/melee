@@ -62,7 +62,7 @@ pub fn retained_scratch_word(specials: &Specials, action: ActionId) -> Option<f3
         return None;
     }
     Some(specials.boost.inherited_word.unwrap_or_else(|| {
-        unimplemented!("ftCa_SpecialS: mv+4 inherited from an unmodelled scratch word")
+        unreachable!("ftCa_SpecialS: mv+4 inherited from an unmodelled scratch word")
     }))
 }
 

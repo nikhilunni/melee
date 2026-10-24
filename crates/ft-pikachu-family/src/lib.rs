@@ -320,7 +320,7 @@ pub fn retained_scratch_word<C: PikachuFamily>(
         return Some(f32::from_bits(frames as u32));
     }
     Some(specials.retained_word.unwrap_or_else(|| {
-        unimplemented!("ftPk specials: mv+4 inherited from an unmodelled scratch word")
+        unreachable!("ftPk specials: mv+4 inherited from an unmodelled scratch word")
     }))
 }
 

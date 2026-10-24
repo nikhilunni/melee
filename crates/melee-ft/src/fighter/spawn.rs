@@ -1005,6 +1005,19 @@ impl Fighter {
         let source = change.source;
         self.keep_scratch_tail();
         let row = self.row(state);
+        // Wait writes no scratch (ft_8008A348): out of a character's special
+        // it holds the word that special left at mv+4, not the typed
+        // scratch of the common state before the special.
+        if row.id == CommonMotionState::Wait
+            && usize::from(self.core.motion_state.action.0) >= super::COMMON_COUNT
+        {
+            if let Some(word) = self
+                .character
+                .retained_scratch_word(self.core.motion_state.action)
+            {
+                self.core.state_data = MotionData::Inherited(word);
+            }
+        }
         // fighter.c:1142-1144: only Wait and the walks keep the jab window.
         use CommonMotionState as C;
         let keeps_jab: [ActionId; 4] = [

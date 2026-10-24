@@ -59,6 +59,9 @@ pub struct CliffState {
     pub ledge_id: i32,
     pub wait_frames: f32,
     pub neutral_seen: bool,
+    /// mv+4 during CliffCatch, which writes only the ledge id: the word
+    /// the state before it left (`None` where the port does not model it).
+    pub caught_word: Option<f32>,
 }
 /// mv.co.cliffjump: first-physics latch plus the retained inactive wait word.
 #[derive(Clone, Debug)]
@@ -163,6 +166,7 @@ impl Fighter {
         } else {
             self.core.collision.data.ledge_id_right
         };
+        let caught_word = self.inherited_scratch_word();
         self.leave_ground();
         self.change_motion_state(S::CliffCatch.into(), assets)?;
         self.step_animation(assets);
@@ -172,11 +176,13 @@ impl Fighter {
         self.core.status.grab_exclusions = GrabExclusions::ALL;
         self.core.status.on_ledge = true;
         // Only ledge_id is written by catch. The other scratch words are
-        // initialized by CliffWait before they are read.
+        // initialized by CliffWait before they are read; mv+4 until then is
+        // the predecessor's.
         self.core.state_data = MotionData::Cliff(CliffState {
             ledge_id,
             wait_frames: 0.0,
             neutral_seen: false,
+            caught_word,
         });
         self.ledge_physics(assets, map)?;
         // efAsync_Spawn after the entry's frame-0 commands queued their
