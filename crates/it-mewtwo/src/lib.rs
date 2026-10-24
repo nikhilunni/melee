@@ -4,4 +4,4 @@ pub mod disable;
 pub mod shadow_ball;
 
 pub use disable::MewtwoDisable;
-pub use shadow_ball::MewtwoShadowBall;
+pub use shadow_ball::{KirbyMewtwoShadowBall, MewtwoShadowBall};

@@ -72,6 +72,11 @@ pub struct Kirby {
     /// mv.dk.specialn.
     pub giant_punch_swings: i32,
     pub giant_punch: ft_donkey_family::giant_punch::GiantPunch,
+    /// The copied Shadow Ball: u.kb.x98 (the ball in hand), x9C (the
+    /// stored charge) and mv.kb.specialhi.
+    pub shadow_ball_held: bool,
+    pub shadow_ball_charge: i32,
+    pub shadow_ball: ft_mewtwo_family::shadow_ball::ShadowBall,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -124,6 +129,9 @@ impl Kirby {
             charge_shot: Default::default(),
             giant_punch_swings: 0,
             giant_punch: Default::default(),
+            shadow_ball_held: false,
+            shadow_ball_charge: 0,
+            shadow_ball: Default::default(),
         }
     }
 }

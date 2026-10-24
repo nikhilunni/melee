@@ -1,0 +1,40 @@
+# KIRBY directed witness from start_fd_kirby_mewtwo4 (Kirby swallows Mewtwo; he lands behind him): Mewtwo's jab strikes Kirby in the copied Shadow Ball's loop, the first hit since the swallow: take_dmg_cb and death1_cb (ftKb_SpecialNMt_80107130) destroy the ball and drop the partial charge; a new charge runs to full and a shield cancel stores it; a second jab, with no callback left, keeps it; B releases the stored ball at once.
+# melee-sim search: reached [p0.motion_id == 501; p0.percent > 0] at ticks [430, 437].
+name = "kirby_copy_shadowball_hit_fd_mewtwo4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_mewtwo4.sav"
+frames = 1000
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 410, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 412, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 432, port = 1, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 522, port = 0, buttons = {  }, raw = {  } },
+  { frame = 660, port = 0, buttons = {  }, raw = { button = 32 } },
+  { frame = 662, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 702, port = 1, buttons = {  }, raw = {  } },
+  { frame = 800, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 802, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Mewtwo"
+controller = "scripted"

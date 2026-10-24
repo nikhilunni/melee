@@ -17,6 +17,7 @@ ft-luigi-family = { path = "../ft-luigi-family" }
 it-drmariopill = { path = "../it-drmariopill" }
 ft-samus-family = { path = "../ft-samus-family" }
 ft-donkey-family = { path = "../ft-donkey-family" }
+ft-mewtwo-family = { path = "../ft-mewtwo-family" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 melee-coll = { path = "../melee-coll" }

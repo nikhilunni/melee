@@ -2788,6 +2788,19 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // The first hit after the swallow drops a stored full charge; a roll
     // out of the loop.
     ("kirby_copy_giantpunch_hit_fd_donkeykong4", 900),
+    // The copied Shadow Ball (ftkirbyspecialmewtwo.c over
+    // ft_mewtwo_family's states; rows 500..509,
+    // It_Kind_Kirby_MewtwoShadowBall at the right hand, efLib_DestroyAll
+    // with every removal and release): a shield cancel keeping the level,
+    // a back roll out of the loop, a release into Mewtwo, a full charge
+    // stored (colour 93) and released at once in the air with recoil (a KO),
+    // an aerial charge with the release lag landing in the grounded loop.
+    ("kirby_copy_shadowball_fd_mewtwo4", 1280),
+    // The first hit after the swallow in the loop drops a partial charge
+    // (ftKb_SpecialNMt_80107130); a later hit keeps a stored full one.
+    ("kirby_copy_shadowball_hit_fd_mewtwo4", 1000),
+    // A jab in the loop whose draw takes the ability.
+    ("kirby_copy_shadowball_lost_fd_mewtwo4", 620),
 ];
 
 #[test]

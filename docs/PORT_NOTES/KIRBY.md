@@ -692,9 +692,29 @@ fails closed.
   charge. No article. Witnesses: `kirby_copy_giantpunch_fd_donkeykong4`
   and `kirby_copy_giantpunch_{lost,hit}_fd_donkeykong4` (boundary
   `start_fd_kirby_donkeykong4`, the hat's).
+- **The copied Shadow Ball** (`copied/mewtwo.rs`): Mewtwo's states moved
+  into the family crate `ft-mewtwo-family` (`shadow_ball`, generic over
+  `ShadowBallUser`), over Kirby's rows 500..509 (anim ids 435..444) with
+  his mt attributes (+384..+39C, Mewtwo's +0..+18 word for word), the
+  ball at parts[39] (RHandN, retail 0x8010775C; Mewtwo's is his right
+  shoulder), colour 0x5D at full, the full flash (efSync 27) four units
+  above TopN (Mewtwo's seven), the charge in u.kb.x9C and the ball in x98.
+  Unlike Mewtwo's file, every removal of the ball (cancel, roll, shield,
+  put-away) and its release also run efLib_DestroyAll on Kirby
+  (ftKb_SpecialNMt_80107040 and its inlined twins), the release's after
+  the ball's launch. The put-away arms: 8010709C (death, taunt) drops the
+  ball and the charge, clears the secondary colour slot (ftCo_800BFFAC);
+  80107130 (a hit) keeps a full charge. The article is
+  It_Kind_Kirby_MewtwoShadowBall (it-mewtwo `MewtwoShadowBall<Kirby>`: the
+  same item code; owner rows 500..509 without the cancels; copy archive
+  PlKbCpMt.dat, hat_dynamics[3], its pose and particle tracks as
+  Mewtwo's). Witnesses: `kirby_copy_shadowball_fd_mewtwo4` and
+  `kirby_copy_shadowball_{hit,lost}_fd_mewtwo4` (boundary
+  `start_fd_kirby_mewtwo4`, the hat's).
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
-  Megavitamin, the green Fireball, the Charge Shot and the Giant Punch
+  Megavitamin, the green Fireball, the Charge Shot, the Giant Punch and
+  the Shadow Ball
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -746,8 +766,10 @@ Remaining work, in the order to take it:
    (`kirby_copy_{fireball,pill,greenfireball}_*`, boundaries
    `start_fd_kirby_{mario,drmario,luigi}4`);
    `ftKb_Init_UnkMotionStates4` (`charge_flash.rs`), Samus's Charge Shot
-   (`kirby_copy_chargeshot_*`, boundary `start_fd_kirby_samus4`) and
-   Donkey Kong's Giant Punch (`kirby_copy_giantpunch_*`).
+   (`kirby_copy_chargeshot_*`, boundary `start_fd_kirby_samus4`),
+   Donkey Kong's Giant Punch (`kirby_copy_giantpunch_*`) and Mewtwo's
+   Shadow Ball (`kirby_copy_shadowball_*`). The charge flash's Sheik arm
+   (xB4 == 6, colour 87) waits for the copied Needle Storm.
    Next: Sheik, Peach, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,

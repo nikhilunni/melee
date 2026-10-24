@@ -100,6 +100,7 @@ melee_it::item_kinds! {
         KirbyDrMarioVitamin: it_drmariopill::KirbyDrMarioPill,
         KirbyLuigiFire: it_luigifire::KirbyLuigiFire,
         KirbySamusCharge: it_samus::KirbySamusCharge,
+        KirbyMewtwoShadowBall: it_mewtwo::KirbyMewtwoShadowBall,
     }
 }
 
@@ -115,7 +116,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 7] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 8] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -175,6 +176,14 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 7] = [
         // The charge shot's nine states, as Samus's own.
         articles: &[(ItemKind::KirbySamusCharge, 0, 9)],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Mewtwo,
+        file: "PlKbCpMt.dat",
+        symbol: "ftDataKirbyCopyMewtwo",
+        // hat_dynamics[0..3] are the grafted hat's; the ball's eighteen
+        // states, as Mewtwo's own.
+        articles: &[(ItemKind::KirbyMewtwoShadowBall, 3, 18)],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -203,6 +212,10 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
             &it_samus::charge::ARTICLE_STATES,
             it_samus::charge::SPECIAL_ATTRIBUTES,
         )),
+        ItemKind::KirbyMewtwoShadowBall => Some((
+            &it_mewtwo::shadow_ball::ARTICLE_STATES,
+            it_mewtwo::shadow_ball::SPECIAL_ATTRIBUTES,
+        )),
         _ => None,
     }
 }
@@ -224,6 +237,16 @@ fn kirby_copy_article_finish(
                 .map_err(|e| anyhow::anyhow!("Kirby's copied fireball particle track: {e}"))?;
         }
         ItemKind::KirbyDrMarioVitamin => assets.fall_spin_degrees = common.fall_spin_degrees,
+        // As Mewtwo's own: the hitbox rides the model's grandchild, and the
+        // joint animations carry DPtcl keys.
+        ItemKind::KirbyMewtwoShadowBall => {
+            assets
+                .read_pose(archive)
+                .map_err(|e| anyhow::anyhow!("Kirby's Shadow Ball pose: {e}"))?;
+            assets
+                .read_particle_tracks(archive)
+                .map_err(|e| anyhow::anyhow!("Kirby's Shadow Ball particle track: {e}"))?;
+        }
         _ => {}
     }
     Ok(())

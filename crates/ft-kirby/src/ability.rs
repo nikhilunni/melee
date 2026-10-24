@@ -3,7 +3,6 @@
 //! ftkirbyspecialn.c:266) to a taunt, to a hit's draw, or to death.
 use crate::init::Kirby;
 use hsd_types::Vec3;
-use melee_ef::request::EffectRequest;
 use melee_ft::fighter::{
     commands::{FootstepSound, SoundChannel},
     Fighter,
@@ -44,6 +43,8 @@ fn reset_copied_scratch(f: &mut Fighter) {
     state.vitamin_previous = 9;
     state.charge_shot = Default::default();
     state.giant_punch_swings = 0;
+    state.shadow_ball_held = false;
+    state.shadow_ball_charge = 0;
     crate::charge_flash::refresh(f);
 }
 
@@ -68,26 +69,6 @@ pub fn take(f: &mut Fighter, kind: FighterKind) {
         death: true,
     };
     play(f, sound);
-}
-
-/// efLib_DestroyAll(gobj): Kirby's effects go.
-fn destroy_effects(f: &mut Fighter) {
-    f.effects.push(EffectRequest::DestroyOwned);
-}
-
-/// ftKb_SpecialNMt_8010709C's and ftKb_SpecialNMt_80107130's first half:
-/// the Shadow Ball article (u.kb.x98, it_802C573C) and its charge effect
-/// (u.kb.xA0). No copied special is ported, so neither is ever out; the
-/// effects go regardless.
-fn put_away_shadow_ball(f: &mut Fighter) {
-    destroy_effects(f);
-}
-
-/// The copied Shadow Ball's charge (u.kb.x9C) is dropped: its flash
-/// (ftCo_800BFFAC clears the secondary color slot) and effects go.
-fn drop_shadow_ball_charge(f: &mut Fighter) {
-    f.core.clear_secondary_color_slot();
-    destroy_effects(f);
 }
 
 /// The arms of ftKb_SpecialN_800F19AC / 800F1A8C that are the same in
@@ -127,20 +108,15 @@ fn put_away(f: &mut Fighter) {
         return;
     }
     if kind == FighterKind::Mewtwo {
-        // ftKb_SpecialNMt_8010709C (8010709C).
-        put_away_shadow_ball(f);
-        drop_shadow_ball_charge(f);
+        crate::copied::mewtwo::put_away(f);
     }
 }
 
 /// ftKb_SpecialN_800F1A8C (800F1A8C): the same from the take-damage
 /// callback, except that a fully charged Shadow Ball keeps its charge
-/// (ftKb_SpecialNMt_80107130: `(float) x9C == specialn_mt_charge_time`,
-/// with x9C at rest 0).
+/// (ftKb_SpecialNMt_80107130).
 pub fn put_away_on_hit(f: &mut Fighter) {
-    let state = f.character.get::<Kirby>();
-    let kind = state.copied;
-    let full_charge = 0.0 == state.attributes.mewtwo_charge_time;
+    let kind = f.character.get::<Kirby>().copied;
     crate::copied::blaster::put_away(f, kind);
     if kind == FighterKind::GameWatch {
         // ftKb_SpecialNGw_8010D0A8.
@@ -150,10 +126,7 @@ pub fn put_away_on_hit(f: &mut Fighter) {
         return;
     }
     if kind == FighterKind::Mewtwo {
-        put_away_shadow_ball(f);
-        if !full_charge {
-            drop_shadow_ball_charge(f);
-        }
+        crate::copied::mewtwo::put_away_on_hit(f);
     }
 }
 

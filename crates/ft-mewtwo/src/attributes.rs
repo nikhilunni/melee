@@ -20,24 +20,9 @@ pub struct MewtwoAttributes {
     pub disable: DisableAttributes,
 }
 
-/// Shadow Ball (ftmewtwospecialn.c).
-#[derive(Clone, Debug, PartialEq)]
-pub struct ShadowBallAttributes {
-    /// +0x00 x0_MEWTWO_SHADOWBALL_CHARGE_CYCLES: the stored charge at which
-    /// the ball is full (compared with x2234 as a float).
-    pub full_charge: f32,
-    /// +0x04 x4_MEWTWO_SHADOWBALL_GROUND_RECOIL_X.
-    pub ground_recoil: f32,
-    /// +0x08 x8_MEWTWO_SHADOWBALL_AIR_RECOIL_X.
-    pub air_recoil: f32,
-    /// +0x0C xC_MEWTWO_SHADOWBALL_CHARGE_ITERATIONS: loop frames per charge
-    /// step.
-    pub frames_per_charge: i32,
-    /// +0x10 x10_MEWTWO_SHADOWBALL_RELEASE_LAG.
-    pub release_lag: i32,
-    /// +0x14 x14_MEWTWO_SHADOWBALL_LANDING_LAG (0: plain fall).
-    pub landing_lag: f32,
-}
+/// Shadow Ball (ftmewtwospecialn.c): +0x00..+0x18, shared with Kirby's
+/// copy.
+pub use ft_mewtwo_family::shadow_ball::ShadowBallAttributes;
 
 /// Confusion (ftmewtwospecials.c).
 #[derive(Clone, Debug, PartialEq)]

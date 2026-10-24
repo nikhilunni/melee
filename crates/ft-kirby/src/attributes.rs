@@ -54,9 +54,9 @@ pub struct KirbyAttributes {
     pub roy_flare_blade: ShieldBreakerAttributes,
     /// +2B4..+358 (`specialn_pr_*`): the copied Rollout, Jigglypuff's block.
     pub rollout: RolloutAttributes,
-    /// +384 (`specialn_mt_charge_time`): the copied Shadow Ball's full
-    /// charge; a hit keeps a full charge (ftKb_SpecialNMt_80107130).
-    pub mewtwo_charge_time: f32,
+    /// +384..+39C (`specialn_mt_*`): the copied Shadow Ball, Mewtwo's
+    /// +0..+18 word for word.
+    pub shadow_ball: ft_mewtwo_family::shadow_ball::ShadowBallAttributes,
     /// +3E4 / +3E8 (`specialn_gw_frame_on_repeat`,
     /// `specialn_gw_max_sausages_per_use`): the copied Chef.
     pub gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes,
@@ -288,7 +288,14 @@ impl KirbyAttributes {
             marth_shield_breaker: ShieldBreakerAttributes::read(&r, 0x35C)?,
             roy_flare_blade: ShieldBreakerAttributes::read(&r, 0x370)?,
             rollout: RolloutAttributes::read(&r, 0x2B4)?,
-            mewtwo_charge_time: r.f32(0x384)?,
+            shadow_ball: ft_mewtwo_family::shadow_ball::ShadowBallAttributes {
+                full_charge: r.f32(0x384)?,
+                ground_recoil: r.f32(0x388)?,
+                air_recoil: r.f32(0x38C)?,
+                frames_per_charge: r.s32(0x390)?,
+                release_lag: r.s32(0x394)?,
+                landing_lag: r.f32(0x398)?,
+            },
             gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes {
                 loop_frame: r.f32(0x3E4)?,
                 max_sausages: r.f32(0x3E8)?,

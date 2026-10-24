@@ -10,6 +10,10 @@
 //! (HSD_Randi). The stage in the direction it flies bursts it
 //! (it_802C5E5C): a few frames of a larger hitbox in states 10..17. The
 //! forward throw's ball (it_802C519C) starts in state 9 and flies straight.
+//!
+//! Kirby's copy (It_Kind_Kirby_MewtwoShadowBall, from
+//! ftkirbyspecialmewtwo.c) runs the same code: its kind picks the owner's
+//! charge rows (ftKb_SpecialNMt_80106F9C / 80106FEC).
 use hsd_types::Vec3;
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
@@ -20,7 +24,25 @@ use melee_it::{
 };
 use melee_types::ItemKind;
 
-pub struct MewtwoShadowBall;
+/// The Shadow Ball of `O` (Mewtwo's, or Kirby's copy).
+pub struct MewtwoShadowBall<O = Mewtwo>(std::marker::PhantomData<O>);
+/// Kirby's copy of the Shadow Ball.
+pub type KirbyMewtwoShadowBall = MewtwoShadowBall<Kirby>;
+
+/// The item kind of each owner's ball.
+pub trait BallOwner: 'static {
+    const KIND: ItemKind;
+}
+/// It_Kind_Mewtwo_ShadowBall.
+pub struct Mewtwo;
+impl BallOwner for Mewtwo {
+    const KIND: ItemKind = ItemKind::MewtwoShadowBall;
+}
+/// It_Kind_Kirby_MewtwoShadowBall.
+pub struct Kirby;
+impl BallOwner for Kirby {
+    const KIND: ItemKind = ItemKind::KirbyMewtwoShadowBall;
+}
 
 /// it_803F7760's anim_id column: in hand, one flight per charge, the thrown
 /// ball, then one burst per charge playing the flights' article states.
@@ -37,6 +59,9 @@ const FIRST_BURST: u16 = 10;
 /// the owner's states in which the held ball stays
 /// (ftMt_SpecialN_CheckShadowBallRemove / CheckShadowBallCancel).
 const OWNER_CHARGE_STATES: [u16; 8] = [341, 342, 343, 345, 346, 347, 348, 350];
+/// ftKb_MS_MtSpecialNStart .. MtSpecialAirNEnd without the cancels (503,
+/// 508) for Kirby's copy (ftKb_SpecialNMt_80106F9C / 80106FEC).
+const KIRBY_OWNER_CHARGE_STATES: [u16; 8] = [500, 501, 502, 504, 505, 506, 507, 509];
 /// Fighter.x2070's x2071_b6, which also ends the held ball.
 const OWNER_FLAG_2071_B6: u32 = 1 << 17;
 /// itGetJObjGrandchild: the model's third joint, which wavers and carries
@@ -145,8 +170,8 @@ fn kept_by_creator(item: &ItemCore) -> bool {
 }
 
 /// it_3F2F.c's Logic101 row.
-impl ItemLogic for MewtwoShadowBall {
-    const KIND: ItemKind = ItemKind::MewtwoShadowBall;
+impl<O: BallOwner> ItemLogic for MewtwoShadowBall<O> {
+    const KIND: ItemKind = O::KIND;
     const STATES: &'static [ItemStateRow] = &STATES;
     fn pickup_possible(_item: &ItemCore) -> bool {
         false
@@ -438,7 +463,12 @@ fn take_flight_state(
 /// are drawn only: the held ball has no hitbox.
 fn hand_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     if let (Some(owner), true) = (ctx.owner, kept_by_creator(item)) {
-        if !OWNER_CHARGE_STATES.contains(&owner.motion) {
+        let charge_states = if item.kind == ItemKind::KirbyMewtwoShadowBall {
+            &KIRBY_OWNER_CHARGE_STATES
+        } else {
+            &OWNER_CHARGE_STATES
+        };
+        if !charge_states.contains(&owner.motion) {
             return true;
         }
         if owner

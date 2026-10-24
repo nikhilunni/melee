@@ -1,0 +1,53 @@
+# KIRBY directed witness from start_fd_kirby_mewtwo4 (Kirby runs to x=51 beside Mewtwo at +60, inhales and swallows him; Mewtwo lands behind him): the copied Shadow Ball (rows 500..509). A charge that a shield press cancels, keeping its level; a resumed charge left by a back roll (the ball goes, the level stays), resumed again and released with B into Mewtwo; a charge to full (the flash, colour 93) stored by a shield cancel (ftKb_Init_UnkMotionStates4 keeps the glow); a full hop and B release the stored ball at once with recoil; a short hop and B charge in the air from nothing (the release lag), land in the grounded loop, and A releases.
+name = "kirby_copy_shadowball_fd_mewtwo4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_mewtwo4.sav"
+frames = 1280
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 480, port = 0, buttons = {  }, raw = { button = 32 } },
+  { frame = 482, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+  { frame = 590, port = 0, buttons = {  }, raw = { button = 32, stickX = -127 } },
+  { frame = 594, port = 0, buttons = {  }, raw = {  } },
+  { frame = 660, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 662, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 702, port = 0, buttons = {  }, raw = {  } },
+  { frame = 780, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 782, port = 0, buttons = {  }, raw = {  } },
+  { frame = 940, port = 0, buttons = {  }, raw = { button = 32 } },
+  { frame = 942, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1000, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 1010, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1014, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 1016, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1120, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 1121, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1124, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 1126, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1190, port = 0, buttons = {  }, raw = { button = 256 } },
+  { frame = 1192, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Mewtwo"
+controller = "scripted"

@@ -27,9 +27,10 @@ pub fn color(kirby: &Kirby) -> Option<u8> {
         FighterKind::Samus => {
             (kirby.charge_shot.level as f32 == a.charge_shot.max_charge).then_some(SAMUS_FULL)
         }
-        // `x9C == specialn_mt_charge_time`: no copied Shadow Ball is
-        // ported, so x9C is 0.
-        FighterKind::Mewtwo => (0.0 == a.mewtwo_charge_time).then_some(MEWTWO_FULL),
+        // `x9C == specialn_mt_charge_time`, the integer converted.
+        FighterKind::Mewtwo => {
+            (kirby.shadow_ball_charge as f32 == a.shadow_ball.full_charge).then_some(MEWTWO_FULL)
+        }
         // `xB4 == 6` (colour 87): no copied Needle Storm is ported, so
         // xB4 is 0.
         FighterKind::Seak => None,

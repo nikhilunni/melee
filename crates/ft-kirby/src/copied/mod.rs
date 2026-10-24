@@ -17,6 +17,7 @@ pub mod rollout;
 pub mod chef;
 pub mod fireball;
 pub mod donkey;
+pub mod mewtwo;
 pub mod samus;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
@@ -73,7 +74,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Jigglypuff
     CopiedNeutral::Ported(rollout::enter),
     // Mewtwo
-    unported("ftKb_SpecialNMt_80107568", "ftKb_SpecialNMt_80107638"),
+    CopiedNeutral::Ported(mewtwo::enter),
     // Luigi
     CopiedNeutral::Ported(fireball::enter_luigi),
     // Marth
@@ -122,7 +123,7 @@ pub fn enter_neutral(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
 /// The copied specials' motion rows (ftKb_Init_MotionStateTable 399..543)
 /// that are ported: the Blaster's here, each other kind's in its module
 /// (`captain::rows`, `rollout::rows`, `chef::rows`, `samus::rows`,
-/// `donkey::rows`).
+/// `donkey::rows`, `mewtwo::rows`).
 pub const fn rows() -> [MotionRow; 12] {
     blaster::rows()
 }
@@ -155,6 +156,7 @@ pub fn accessory(f: &mut Fighter, assets: &FighterAssets) {
 pub fn item_owner(f: &mut Fighter) -> melee_it::ItemOwner {
     blaster::item_owner(f)
         .or_else(|| samus::item_owner(f))
+        .or_else(|| mewtwo::item_owner(f))
         .unwrap_or_else(|| melee_ft::fighter::default_item_owner(f))
 }
 
@@ -169,4 +171,5 @@ pub fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     crate::special_s::article_destroyed(f, kind);
     chef::article_destroyed(f, kind);
     samus::article_destroyed(f, kind);
+    mewtwo::article_destroyed(f, kind);
 }
