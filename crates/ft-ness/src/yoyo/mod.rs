@@ -421,6 +421,7 @@ fn step_article(f: &mut Fighter, map: &CollMap) -> bool {
     let frame = yoyo(f).scratch.frame;
     if frame > SPAWN_FRAME && frame <= end {
         if !yoyo(f).out {
+            // Unreachable by retail's call graph (docs/COVERAGE_AUDIT.md).
             unimplemented!(
                 "ftnessattackhi4.c:460: ftNs_AttackHi4_YoyoThink_IsRemove reads the article of a NULL yoyo_gobj"
             );
@@ -702,6 +703,7 @@ pub fn article_physics(f: &mut Fighter, _assets: &FighterAssets, map: &mut CollM
             y.string.swing(&y.attributes, hand, scale, map);
             y.point = y.string.yoyo().position;
         }
+        // Motion 3 ends with the article in the same call (docs/COVERAGE_AUDIT.md).
         _ => unimplemented!(
             "itnessyoyo.c:255: itNessyoyo_UnkMotion3_Phys (the yo-yo reeled in, it_802BF800)"
         ),

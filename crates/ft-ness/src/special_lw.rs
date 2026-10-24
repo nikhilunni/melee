@@ -3,8 +3,9 @@
 //! DecideAction) and plays the hit rows; in the air the move stalls, then
 //! falls at its own rate.
 //!
-//! The turn rows (371, 376) have callbacks but no entry in retail: nothing
-//! changes to them, so they stay unported.
+//! The turn rows (371, 376) have callbacks but no entry in retail: only
+//! their own Coll changes to them (8011AA84, 8011AAE4) and their counter
+//! (mv+4) is never set, so they stay unported (docs/COVERAGE_AUDIT.md).
 use crate::{
     attributes::MagnetAttributes,
     common::{self, row},
