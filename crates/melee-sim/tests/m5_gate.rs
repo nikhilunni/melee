@@ -4929,7 +4929,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 745] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 746] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6071,6 +6071,10 @@ static CORPUS_V3_MATCHES: [(&str, usize); 745] = [
     ("corpus_v3_dl_mario_falco4_ebbc08847_p0", 6001),
     ("corpus_v3_ps_bowser_ness4_e51868d7e_p0", 6001),
     ("corpus_v3_ps_bowser_ness4_e404fe6bc_p0", 6001),
+    // Bowser in DownDamageD hugs a Stadium transformation's wall at 4771:
+    // ftCo_DownDamage_Coll's grounded arm runs ftCo_800C7CA0, which does not
+    // bounce him (the explorer's game had failed closed there).
+    ("corpus_v3_ps_bowser_ness4_e317915a4_p1", 4900),
     ("corpus_v3_ps_mewtwo_younglink4_e69d5406a_p1", 5094),
     ("corpus_v3_ps_mewtwo_younglink4_efbfb6a67_p0", 4370),
     ("corpus_v3_fod_drmario_gameandwatch4_e51868d7e_p0", 5346),

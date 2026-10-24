@@ -366,8 +366,9 @@ impl Fighter {
             );
             if result == crate::collision::ground::WaitGroundResult::EnterFall {
                 self.leave_ground();
-            } else if walls(self) {
-                unimplemented!("ftCo_800C7CA0: DownReflect wall bounce");
+            } else {
+                // ftCo_DownDamage_Coll's grounded arm: ftCo_800C7CA0.
+                self.try_down_reflect(assets, map)?;
             }
             return Ok(());
         }
@@ -501,10 +502,16 @@ impl super::FighterCore {
 }
 
 impl FighterCore {
-    /// mv.co.downreflect.x4: the wall of the last DownReflect.
+    /// mv.co.downreflect.x4: the wall of the last DownReflect. In
+    /// DownDamage the byte at +2344 is the top byte of mv.co.damage.x4.
     fn last_down_reflect(&self) -> Option<BounceSurface> {
         match &self.state_data {
             MotionData::Down { last_reflect, .. } => *last_reflect,
+            MotionData::Damage(damage) => match damage.mv_word >> 24 {
+                1 => Some(BounceSurface::LeftWall),
+                2 => Some(BounceSurface::RightWall),
+                _ => None,
+            },
             _ => None,
         }
     }
@@ -572,7 +579,10 @@ impl Fighter {
             ..
         } = self.core.state_data
         else {
-            panic!("down scratch");
+            unimplemented!(
+                "fn_800C7DC4 (ftCo_800C7CA0.c:60-110): DownReflect out of DownDamage \
+                 (its mv.co.damage words carried)"
+            );
         };
         self.leave_ground();
         let p = self.core.physics.position;
