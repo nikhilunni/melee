@@ -8,7 +8,23 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
     // HSD_GObj_Entities->items in list order, as the CPU's item scans walk it.
     let mut items = [melee_cpu::ItemView::NONE; melee_it::ITEM_CAPACITY];
     let mut item_count = 0;
+    let thinker = state.fighters[index].spawn_number;
     for item in state.items.iter().filter(|item| !item.destroyed) {
+        let mut hitboxes = [None; 4];
+        for (view, (hit, flags)) in hitboxes
+            .iter_mut()
+            .zip(item.hitboxes.iter().zip(&item.hit_flags))
+        {
+            *view = hit.as_ref().map(|hit| melee_cpu::ItemHitView {
+                placed: hit.phase != melee_coll::hitbox::CapsulePhase::Enabled,
+                element: hit.descriptor.element,
+                position: hit.position,
+                previous_position: hit.previous_position,
+                radius: hit.descriptor.radius,
+                absorbable: flags.absorbable,
+                struck_thinker: hit.victims.contains(&thinker),
+            });
+        }
         items[item_count] = melee_cpu::ItemView {
             id: item.id,
             kind: item.kind,
@@ -18,6 +34,10 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
             grabbable: item.grabbable,
             hitbox_active: item.hitboxes.iter().any(Option::is_some),
             floor_line: item.collision.as_ref().map_or(-1, |c| c.floor.index),
+            owner: item.owner,
+            hitboxes,
+            motion: item.motion,
+            life_timer: item.life_timer,
         };
         item_count += 1;
     }
@@ -48,10 +68,12 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         own: index,
         map: &mut state.map,
         arena: &state.assets.arena,
+        camera: &state.assets.stage_camera,
         items: &items[..item_count],
         data: &state.assets.cpu,
         player_kills,
         horizontal_deadzone: deadzone,
+        stale: Default::default(),
     };
     melee_cpu::think(&mut own.0, &mut scene, &mut state.rng);
     // ftCo_800B0AF4's last act: the partner joins the Blizzard

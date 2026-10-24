@@ -389,6 +389,7 @@ mod tests {
                 mode: 6,
                 level: 0,
                 partner: true,
+                initial_reach: melee_ft::fighter::cpu_profile::CpuProfile::DEFAULT.initial_reach,
                 position: Vec3::ZERO,
                 gravity: 0.1,
                 jump_velocity: 2.0,

@@ -40,8 +40,13 @@ fn should_jump_back(fp: &mut Fighter, scene: &mut Scene) -> bool {
     if fp.core.motion_state.action.0 == 0xF4 {
         return false;
     }
-    if fp.core.kind == melee_types::FighterKind::Yoshi {
-        unimplemented!("ftCo_800A3234: Yoshi's scaled early-match branch");
+    // A grown Yoshi does not jump back in the match's first 900 ticks
+    // (800A32D4: x34_scale.y > 1.0f).
+    if fp.character.table().cpu_profile.scaled_jump
+        && fp.core.player.scale > 1.0
+        && cpu.reaction_timer < 900
+    {
+        return false;
     }
     let position = fp.core.physics.position;
     let angle = melee_lb::trigf::stick_angle(
@@ -79,7 +84,11 @@ fn should_jump_back(fp: &mut Fighter, scene: &mut Scene) -> bool {
 /// ftCo_800A9CB4 (0x800A9CB4): airborne movement toward the destination:
 /// jump back when falling short, else drift, steering by where the fall
 /// will pass the destination's x.
-pub fn toward_destination_in_air(fp: &mut Fighter, scene: &mut Scene) {
+pub fn toward_destination_in_air(
+    fp: &mut Fighter,
+    scene: &mut Scene,
+    rng: &mut gekko_math::HsdRng,
+) {
     // ftCo_800A1CA8: the hammer (x2168), which only its item sets.
     if should_jump_back(fp, scene) {
         let attributes = &fp.core.attributes;
@@ -97,7 +106,8 @@ pub fn toward_destination_in_air(fp: &mut Fighter, scene: &mut Scene) {
         // (x34_scale.y < 1), or on Icicle Mountain or Rainbow Cruise.
         if !fp.core.cpu.xfa_b6 {
             if fp.core.player.scale < 1.0 {
-                unimplemented!("ftCo_800A96B8: recovery special");
+                crate::up_special::up_special(fp, rng);
+                return;
             }
             if matches!(scene.stage(), GrKind::Icemt | GrKind::RCruise) {
                 unimplemented!("ftCo_800A9CB4: Icicle Mountain and Rainbow Cruise recovery");
@@ -173,8 +183,12 @@ fn use_available_jump(fp: &mut Fighter) {
         let cpu = &mut fp.core.cpu;
         script::command1(cpu, C::SetLstickY, 0);
         script::command1(cpu, C::LstickXForward, 0x7F);
-    } else if fp.core.kind == melee_types::FighterKind::Yoshi {
-        unimplemented!("ftCo_CpuUseAvailableJump: Yoshi's scaled branch (ftCo_800A0508)");
+    } else if fp.character.table().cpu_profile.scaled_jump
+        // 800A9DB0: x34_scale.y < 1.0 in double; 800A9DE0: |dx| < 20.0f.
+        && f64::from(fp.core.player.scale) < 1.0
+        && fabsf(fp.core.cpu.destination.x - fp.core.physics.position.x) < 20.0
+    {
+        unimplemented!("ftCo_800A0508: a shrunk Yoshi's jump (ftCo_0A01.c:4637)");
     } else {
         script::command1(&mut fp.core.cpu, C::LstickTowardDestination, 0x7F);
     }

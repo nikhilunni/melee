@@ -1,4 +1,7 @@
 //! Zelda load/reset hooks, ft/kinds/ftZelda/ftzelda.c.
+use melee_ft::fighter::cpu_profile::{
+    CpuProfile, FollowUpAction, FollowUpRule, MotionRange, Recovery,
+};
 use crate::attributes::{read_zelda_attributes, ZeldaAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -59,6 +62,18 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Zelda>();
 
 impl CharacterCallbacks for Zelda {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        transform_on_request: true,
+        recovery: Recovery::Unwitnessed,
+        follow_ups: &[FollowUpRule {
+            motions: MotionRange(0x158, 0x15C),
+            action: FollowUpAction::SteerOwnedProjectile,
+            ranged: true,
+        }],
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

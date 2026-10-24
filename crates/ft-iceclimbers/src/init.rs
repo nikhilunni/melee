@@ -1,4 +1,5 @@
 //! Popo and Nana load/reset hooks: ftpopo.c and ftnana.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, Finisher};
 use crate::attributes::{self, IceClimberAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -161,6 +162,15 @@ impl CharacterCallbacks for IceClimber {
     /// Popo's copied ability; Nana has no separate Kirby copy.
     const SWALLOWED_ABILITY: Option<fn(&melee_ft::fighter::CharacterState) -> FighterKind> =
         Some(|_| FighterKind::Popo);
+    /// ftCo_800B683C: the leader's scripted throw (Nana follows independently).
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        finisher: Some(Finisher {
+            high_level: true,
+            script: 0x3B,
+            at_high_percent: None,
+        }),
+        ..CpuProfile::DEFAULT
+    };
 
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &POPO_TABLE

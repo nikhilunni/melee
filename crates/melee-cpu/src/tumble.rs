@@ -82,14 +82,25 @@ fn away_from_knockback(fp: &Fighter, scene: &Scene) -> (i8, i8) {
 /// x = 0 (Popo's motion, 80, forbids nothing; her hands are empty).
 fn unset_registers(fp: &Fighter, scene: &Scene) -> (i8, i8) {
     let cpu = &fp.core.cpu;
-    if cpu.mode != melee_ft::fighter::cpu::PARTNER_MODE || cpu.following {
+    if cpu.mode != melee_ft::fighter::cpu::PARTNER_MODE || scene.partner_of(fp).is_none() {
+        // The Versus think (ftCo_800B24B8) ends in ftCo_800ADE48, which
+        // leaves r5 as `StaleStack::r5` tracks it.
+        let Some(r5) = scene.stale.r5.get() else {
+            unimplemented!("ftCo_800AC5A0: r5 with no knockback, unknown after ftCo_800ADE48");
+        };
+        let Some(address) = cpu.fighter_address else {
+            unimplemented!(
+                "ftCo_800AC5A0: r30 with no knockback is the Fighter's address, unknown for this scene"
+            );
+        };
+        return (r5 as u8 as i8, address as u8 as i8);
+    }
+    if cpu.following {
         unimplemented!(
             "ftCo_800AC5A0: r5 with no knockback after another think than the partner's seek"
         );
     }
-    let Some((_, own)) = scene.partner_of(fp) else {
-        unimplemented!("ftCo_800AEFB8: a partner whose player's fighter is gone");
-    };
+    let (_, own) = scene.partner_of(fp).expect("the partner's player's fighter");
     let x = match crate::partner::step_scratch(fp, own) {
         StepScratch::Word(word) => word as u8,
         StepScratch::HeldItemAddress => unimplemented!(

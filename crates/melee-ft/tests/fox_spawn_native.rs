@@ -161,6 +161,7 @@ fn setup(mode: i32, level: i32) -> melee_ft::fighter::cpu::CpuSetup {
         mode,
         level,
         partner: false,
+        initial_reach: melee_ft::fighter::cpu_profile::CpuProfile::DEFAULT.initial_reach,
         position: hsd_types::Vec3::ZERO,
         gravity: 0.0,
         jump_velocity: 0.0,

@@ -1217,3 +1217,357 @@ stage = "KongoJungle"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2146705218
+
+[[boundary]]
+name = "start_fd_fox_cpu9fox4"
+cold = "start_fd_fox_cpu9fox4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9fox4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 737983840
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9marth4"
+cold = "start_fd_fox_cpu9marth4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2002380826
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_bf_fox_cpu9fox4"
+cold = "start_bf_fox_cpu9fox4_cold"
+savestate = "harness/roms/start_bf_fox_cpu9fox4.sav"
+stage = "Battlefield"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 1116639073
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu1fox4"
+cold = "start_fd_fox_cpu1fox4_cold"
+savestate = "harness/roms/start_fd_fox_cpu1fox4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 2002380826
+costumes = [0, 1]
+cpu_levels = [0, 1]
+
+[[boundary]]
+name = "start_fd_fox_cpu5fox4"
+cold = "start_fd_fox_cpu5fox4_cold"
+savestate = "harness/roms/start_fd_fox_cpu5fox4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 2002380826
+costumes = [0, 1]
+cpu_levels = [0, 5]
+
+[[boundary]]
+name = "start_fd_fox_cpu9falco4"
+cold = "start_fd_fox_cpu9falco4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9falco4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Falco"]
+stocks = 4
+seed = 3570373311
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9peach4"
+cold = "start_fd_fox_cpu9peach4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9peach4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Peach"]
+stocks = 4
+seed = 1612685094
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9captainfalcon4"
+cold = "start_fd_fox_cpu9captainfalcon4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9captainfalcon4.sav"
+stage = "FinalDestination"
+players = ["Fox", "CaptainFalcon"]
+stocks = 4
+seed = 1612685094
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9jigglypuff4"
+cold = "start_fd_fox_cpu9jigglypuff4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9jigglypuff4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Jigglypuff"]
+stocks = 4
+seed = 3570373311
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9pikachu4"
+cold = "start_fd_fox_cpu9pikachu4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9pikachu4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Pikachu"]
+stocks = 4
+seed = 1612685094
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9samus4"
+cold = "start_fd_fox_cpu9samus4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9samus4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Samus"]
+stocks = 4
+seed = 3570373311
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9donkeykong4"
+cold = "start_fd_fox_cpu9donkeykong4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9donkeykong4.sav"
+stage = "FinalDestination"
+players = ["Fox", "DonkeyKong"]
+stocks = 4
+seed = 2698198149
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9ness4"
+cold = "start_fd_fox_cpu9ness4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9ness4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Ness"]
+stocks = 4
+seed = 3715683982
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9yoshi4"
+cold = "start_fd_fox_cpu9yoshi4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9yoshi4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Yoshi"]
+stocks = 4
+seed = 3715683982
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9link4"
+cold = "start_fd_fox_cpu9link4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9link4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Link"]
+stocks = 4
+seed = 37081401
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9mario4"
+cold = "start_fd_fox_cpu9mario4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9mario4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Mario"]
+stocks = 4
+seed = 2351690765
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9luigi4"
+cold = "start_fd_fox_cpu9luigi4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9luigi4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Luigi"]
+stocks = 4
+seed = 2167264440
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9ganondorf4"
+cold = "start_fd_fox_cpu9ganondorf4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9ganondorf4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Ganondorf"]
+stocks = 4
+seed = 482451785
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9kirby4"
+cold = "start_fd_fox_cpu9kirby4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9kirby4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Kirby"]
+stocks = 4
+seed = 316475385
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9mewtwo4"
+cold = "start_fd_fox_cpu9mewtwo4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9mewtwo4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Mewtwo"]
+stocks = 4
+seed = 4148737360
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9gameandwatch4"
+cold = "start_fd_fox_cpu9gameandwatch4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9gameandwatch4.sav"
+stage = "FinalDestination"
+players = ["Fox", "GameAndWatch"]
+stocks = 4
+seed = 764662939
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9zelda4"
+cold = "start_fd_fox_cpu9zelda4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9zelda4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Zelda"]
+stocks = 4
+seed = 2448148736
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9bowser4"
+cold = "start_fd_fox_cpu9bowser4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9bowser4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Bowser"]
+stocks = 4
+seed = 3704894092
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9roy4"
+cold = "start_fd_fox_cpu9roy4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9roy4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Roy"]
+stocks = 4
+seed = 910884199
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9younglink4"
+cold = "start_fd_fox_cpu9younglink4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9younglink4.sav"
+stage = "FinalDestination"
+players = ["Fox", "YoungLink"]
+stocks = 4
+seed = 1565982167
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9pichu4"
+cold = "start_fd_fox_cpu9pichu4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9pichu4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Pichu"]
+stocks = 4
+seed = 278649591
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9drmario4"
+cold = "start_fd_fox_cpu9drmario4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9drmario4.sav"
+stage = "FinalDestination"
+players = ["Fox", "DrMario"]
+stocks = 4
+seed = 1843071999
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu9iceclimbers4"
+cold = "start_fd_fox_cpu9iceclimbers4_cold"
+savestate = "harness/roms/start_fd_fox_cpu9iceclimbers4.sav"
+stage = "FinalDestination"
+players = ["Fox", "IceClimbers"]
+stocks = 4
+seed = 3469061808
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_cpu9marth_fox4"
+cold = "start_fd_cpu9marth_fox4_cold"
+savestate = "harness/roms/start_fd_cpu9marth_fox4.sav"
+stage = "FinalDestination"
+players = ["Marth", "Fox"]
+stocks = 4
+seed = 846494141
+cpu_levels = [9, 0]
+
+[[boundary]]
+name = "start_fd_cpu9fox_cpu9marth4"
+cold = "start_fd_cpu9fox_cpu9marth4_cold"
+savestate = "harness/roms/start_fd_cpu9fox_cpu9marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2337946018
+cpu_levels = [9, 9]
+
+[[boundary]]
+name = "start_bf_fox_cpu9marth4"
+cold = "start_bf_fox_cpu9marth4_cold"
+savestate = "harness/roms/start_bf_fox_cpu9marth4.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 524309065
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_fd_fox_cpu5marth4"
+cold = "start_fd_fox_cpu5marth4_cold"
+savestate = "harness/roms/start_fd_fox_cpu5marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2337946018
+cpu_levels = [0, 5]
+
+[[boundary]]
+name = "start_bf_cpu7falco_cpu3peach4"
+cold = "start_bf_cpu7falco_cpu3peach4_cold"
+savestate = "harness/roms/start_bf_cpu7falco_cpu3peach4.sav"
+stage = "Battlefield"
+players = ["Falco", "Peach"]
+stocks = 4
+seed = 524309065
+cpu_levels = [7, 3]
+
+[[boundary]]
+name = "start_fd_iceclimbers_cpu9fox4"
+cold = "start_fd_iceclimbers_cpu9fox4_cold"
+savestate = "harness/roms/start_fd_iceclimbers_cpu9fox4.sav"
+stage = "FinalDestination"
+players = ["IceClimbers", "Fox"]
+stocks = 4
+seed = 3269633353
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_bf_sheik_cpu9fox4"
+cold = "start_bf_sheik_cpu9fox4_cold"
+savestate = "harness/roms/start_bf_sheik_cpu9fox4.sav"
+stage = "Battlefield"
+players = ["Sheik", "Fox"]
+stocks = 4
+seed = 1272007396
+cpu_levels = [0, 9]

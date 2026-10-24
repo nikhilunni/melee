@@ -180,13 +180,11 @@ const DRIFT_BASE: f32 = 80.0;
 /// (0x81 = -127 as the command's signed byte).
 const AWAY: u8 = 0x81;
 const FULL: u8 = 0x7F;
-/// ftCo_CpuRecoverDiagonally: the up-special's stick.
-const DIAGONAL: u8 = 0x58;
 
 /// ftCo_800B2790's case 4 (recovery): pick an island end once
 /// (ftCo_800A8DE4); on the ground, back to the previous behaviour, else
 /// head for it (ftCo_800A9904).
-pub fn recover(fp: &mut Fighter, scene: &mut Scene) {
+pub fn recover(fp: &mut Fighter, scene: &mut Scene, rng: &mut gekko_math::HsdRng) {
     belay_recovery(fp, scene);
     if fp.core.physics.ground_or_air == GroundOrAir::Ground {
         if matches!(
@@ -198,7 +196,7 @@ pub fn recover(fp: &mut Fighter, scene: &mut Scene) {
         script::return_to_previous(&mut fp.core.cpu);
         fp.core.cpu.xfa_b2 = false;
     } else {
-        steer(fp, scene);
+        steer(fp, scene, rng);
     }
 }
 
@@ -228,7 +226,7 @@ fn below_destination(fp: &Fighter) -> bool {
 /// while one is left, else the up special (ftCo_800A96B8); over the stage,
 /// drift in while the fall would land short of it; otherwise full drift
 /// toward it, or away under a ceiling.
-fn steer(fp: &mut Fighter, scene: &mut Scene) {
+fn steer(fp: &mut Fighter, scene: &mut Scene, rng: &mut gekko_math::HsdRng) {
     if below_destination(fp) {
         if fp.core.attributes.jumping.max_jumps > i32::from(fp.core.physics.jumps_used) {
             let cpu = &mut fp.core.cpu;
@@ -238,7 +236,7 @@ fn steer(fp: &mut Fighter, scene: &mut Scene) {
             script::command(cpu, C::ReleaseY);
             script::command(cpu, C::Done);
         } else {
-            up_special(fp);
+            crate::up_special::up_special(fp, rng);
         }
         return;
     }
@@ -309,32 +307,4 @@ fn lands_short(fp: &Fighter) -> bool {
         (f64::from(y) + (fnmsub(0.5, f64::from(fall), f64::from(rise)) - f64::from(drop))) as f32
     };
     f64::from(x_time) < 0.0 || height < c.cpu.destination.y
-}
-
-/// ftCo_800A96B8 (0x800A96B8): the kind's up special toward the stage.
-/// The climbers take the default, diagonal (ftCo_CpuRecoverDiagonally);
-/// the special-cased kinds are unported.
-fn up_special(fp: &mut Fighter) {
-    use melee_types::FighterKind as K;
-    if matches!(
-        fp.core.kind,
-        K::Pikachu
-            | K::Pichu
-            | K::Fox
-            | K::Falco
-            | K::Yoshi
-            | K::Ness
-            | K::Luigi
-            | K::Zelda
-            | K::Samus
-    ) {
-        unimplemented!("ftCo_800A96B8: {:?}'s recovery", fp.core.kind);
-    }
-    let cpu = &mut fp.core.cpu;
-    script::command1(cpu, C::SetLstickY, DIAGONAL);
-    script::command1(cpu, C::LstickXTowardDestination, DIAGONAL);
-    script::command1(cpu, C::PressBFor, 1);
-    script::command(cpu, C::ReleaseB);
-    script::command1(cpu, C::LstickXTowardDestination, FULL);
-    script::command(cpu, C::Done);
 }

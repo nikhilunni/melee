@@ -1,4 +1,5 @@
 //! Bowser load/reset hooks, ft/kinds/ftKoopa/ftkoopa.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule};
 use crate::attributes::{read_koopa_attributes, KoopaAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -59,6 +60,22 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Koopa>();
 
 impl CharacterCallbacks for Koopa {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[ExclusionRule {
+            range: 27.0,
+            scripts: &[0x26],
+            require_ground_or_stage: true,
+        }],
+        // retail 800A1774..: initial x56C reach for this character.
+        initial_reach: 8.5,
+        reach_reroll_scale: 9.0,
+        plunge_threat_motions: &[0x169, 0x16A],
+        column_threat: Some((0x3F, 35.0)),
+        klaw_motion: Some(0x15E),
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

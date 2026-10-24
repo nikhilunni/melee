@@ -5,51 +5,13 @@ use crate::{
     world::Scene,
 };
 use gekko_math::HsdRng;
+use melee_ft::fighter::cpu_profile::Finisher;
 use melee_ft::fighter::{grab::GrabLink, Fighter};
-use melee_types::FighterKind as K;
 
 /// PlCo stored script 2: a pummel.
 const SCRIPT_PUMMEL: usize = 2;
 /// PlCo stored script 0x11: Bowser's Koopa Klaw pummel.
 const SCRIPT_KLAW_PUMMEL: usize = 0x11;
-
-/// A kind's chance of a scripted throw instead (x94 == 0, level in range,
-/// Randf() < 0.05 * level).
-struct Finisher {
-    kind: K,
-    /// Whether the roll needs level > 4 (else level < 5).
-    high_level: bool,
-    /// The script, and Captain Falcon's alternative at 100% or more.
-    script: usize,
-    at_high_percent: Option<usize>,
-}
-
-const FINISHERS: [Finisher; 4] = [
-    Finisher {
-        kind: K::Popo,
-        high_level: true,
-        script: 0x3B,
-        at_high_percent: None,
-    },
-    Finisher {
-        kind: K::Mario,
-        high_level: false,
-        script: 0x35,
-        at_high_percent: None,
-    },
-    Finisher {
-        kind: K::Fox,
-        high_level: true,
-        script: 0x3D,
-        at_high_percent: None,
-    },
-    Finisher {
-        kind: K::Captain,
-        high_level: true,
-        script: 0x39,
-        at_high_percent: Some(0x3A),
-    },
-];
 
 /// ftCo_800B683C (0x800B683C).
 pub fn hold(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
@@ -61,17 +23,25 @@ pub fn hold(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         script::command(cpu, C::Done);
         return;
     };
-    let kind = fp.core.kind;
+    let profile = fp.character.table().cpu_profile;
     let motion = fp.core.motion_state.action.0;
-    if (kind == K::Donkey && (0x15F..=0x164).contains(&motion))
-        || (kind == K::Kirby && (0x164..=0x17E).contains(&motion))
+    if profile
+        .cargo_motions
+        .is_some_and(|rows| rows.contains(motion))
     {
-        unimplemented!("ftCo_800B683C: {kind:?}'s carry (ftcpuattack.c:1041)");
+        carry_to_edge(fp, scene);
+        return;
     }
-    let klaw = matches!(kind, K::Koopa | K::GKoops) && motion == 0x15E;
-    if !klaw {
-        if let Some(finisher) = FINISHERS.iter().find(|f| f.kind == kind) {
-            if finish(fp, scene, rng, finisher, victim as usize) {
+    if profile
+        .mouthful_motions
+        .is_some_and(|rows| rows.contains(motion))
+    {
+        unimplemented!("ftCo_800B683C: Kirby's mouthful (ftcpuattack.c:1073)");
+    }
+    let klaw = profile.klaw_motion == Some(motion);
+    if !klaw && !fp.core.capabilities.cpu_partner {
+        if let Some(finisher) = profile.finisher {
+            if finish(fp, scene, rng, &finisher, victim) {
                 return;
             }
         }
@@ -105,7 +75,7 @@ fn finish(
     scene: &mut Scene,
     rng: &mut HsdRng,
     finisher: &Finisher,
-    victim: usize,
+    victim: u32,
 ) -> bool {
     let cpu = &fp.core.cpu;
     let level_ok = if finisher.high_level {
@@ -120,8 +90,14 @@ fn finish(
     if roll >= 0.05f32 * cpu.level as f32 {
         return false;
     }
+    // The held fighter, by its spawn number (GrabLink's victim).
+    let victim_percent = scene
+        .others()
+        .find(|(_, f)| f.core.spawn_number == victim)
+        .map(|(_, f)| f.core.physics.percent)
+        .expect("the held fighter");
     let script = match finisher.at_high_percent {
-        Some(high) if scene.fighter(victim).core.physics.percent >= 100.0 => high,
+        Some(high) if victim_percent >= 100.0 => high,
         _ => finisher.script,
     };
     script::stored(&mut fp.core.cpu, scene.data, script);
@@ -160,6 +136,44 @@ fn walk_to_edge(fp: &mut Fighter, scene: &mut Scene) -> bool {
     script::command1(cpu, C::SetLstickX, 0);
     script::command(cpu, C::Done);
     true
+}
+
+/// Donkey Kong's cargo walk (motions 0x15F..0x164): toward the nearer end
+/// of the island 10 below him, throwing (A with the stick that way) within
+/// 10 of it (double compares).
+fn carry_to_edge(fp: &mut Fighter, scene: &mut Scene) {
+    let position = fp.core.physics.position;
+    let Some(island) = scene.map.island_below(position, -10.0) else {
+        script::command(&mut fp.core.cpu, C::Done);
+        return;
+    };
+    let (left, right) = scene.map.island_ends(island);
+    let to_right = abs(position.x - right.x);
+    let to_left = abs(position.x - left.x);
+    let (distance, stick) = if to_right < to_left {
+        (to_right, 0x7F_u8)
+    } else {
+        (to_left, 0x81)
+    };
+    let cpu = &mut fp.core.cpu;
+    if f64::from(distance) > 10.0 {
+        script::command1(cpu, C::SetLstickY, 0);
+        script::command1(cpu, C::SetLstickX, stick);
+        script::command(cpu, C::Done);
+        return;
+    }
+    // ftCo_CpuPressAWithLstickX.
+    script::command1(cpu, C::SetLstickY, 0);
+    script::command1(cpu, C::SetLstickX, 0);
+    script::command1(cpu, C::WaitFor, 1);
+    script::command1(cpu, C::SetLstickY, 0);
+    script::command1(cpu, C::SetLstickX, stick);
+    script::command(cpu, C::PressA);
+    script::command1(cpu, C::WaitFor, 1);
+    script::command1(cpu, C::SetLstickX, 0);
+    script::command1(cpu, C::SetLstickY, 0);
+    script::command(cpu, C::ReleaseA);
+    script::command(cpu, C::Done);
 }
 
 /// A throw in one of four directions by a Randf() quarter (double

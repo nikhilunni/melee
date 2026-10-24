@@ -1,4 +1,5 @@
 //! Kirby load/reset hooks, ft/kinds/ftKirby/ftkirby.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, MotionRange};
 use crate::attributes::{read_kirby_attributes, KirbyAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -254,6 +255,27 @@ fn throw_traits(throw: melee_types::CommonMotionState) -> ThrowTraits {
 }
 
 impl CharacterCallbacks for Kirby {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        copy_exclusions: true,
+        attacking_from: 0x161,
+        mouthful_motions: Some(MotionRange(0x164, 0x17E)),
+        ..CpuProfile::DEFAULT
+    };
+    const CPU_COPIED_CHARGE: fn(&melee_ft::fighter::CharacterState) -> bool = |state| {
+        matches!(
+            state.get::<Self>().copied,
+            FighterKind::Donkey | FighterKind::Samus | FighterKind::Mewtwo
+        )
+    };
+
+    /// u.kb.hat.kind (Fighter +2238), Kirby himself without an ability.
+    const COPIED_ABILITY: fn(&melee_ft::fighter::CharacterState) -> Option<FighterKind> =
+        |state| Some(state.get::<Self>().copied);
+    /// A CPU Kirby with a copied charge (u.kb.xBC, xA8, x9C) is not yet
+    /// witnessed (ftCo_800ADC28 fails closed before this is read).
+    const NEUTRAL_CHARGE: fn(&melee_ft::fighter::CharacterState) -> melee_ft::fighter::NeutralCharge =
+        |_| unimplemented!("ftCo_800ACD5C: a CPU Kirby's copied charge (u.kb.xBC, xA8, x9C)");
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

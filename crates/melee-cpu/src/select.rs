@@ -38,10 +38,11 @@ pub mod behavior {
 
 /// ftCo_800ADE48 (0x800ADE48). True when it set (or kept) a behaviour.
 pub fn choose_behavior(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bool {
-    validate_destination(fp, scene);
+    let probe_hit = validate_destination(fp, scene);
+    scene.stale.after_floor_probe(scene.stage(), probe_hit);
     note_destination_distance(fp);
     note_kills(fp, scene);
-    roll_xf8_b5(fp, rng);
+    roll_xf8_b5(fp, scene, rng);
     if !crate::facts::holding_victim(fp) {
         fp.core.cpu.x94 = 0;
     }
@@ -50,7 +51,7 @@ pub fn choose_behavior(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) ->
     if cpu.behavior == B::TUMBLE {
         return true;
     }
-    if tumble(fp, rng) {
+    if tumble(fp, scene, rng) {
         return switch(fp, B::TUMBLE);
     }
     let current = fp.core.cpu.behavior;
@@ -101,10 +102,14 @@ pub fn choose_behavior(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) ->
         return switch(fp, B::CAPTURED);
     }
     if current == B::DEFEND {
-        unimplemented!("ftCo_800BB9B4: the defence behaviour's check");
+        crate::defend::check(fp, scene, rng);
+        return true;
     }
     if ranged_ready(fp) {
-        unimplemented!("ftCo_800BB9B4 (ftcpuattack.c:2891)");
+        crate::defend::check(fp, scene, rng);
+        if fp.core.cpu.xf8_b12 != 0 {
+            return switch(fp, B::DEFEND);
+        }
     }
     if fp.core.cpu.behavior == B::RANGED {
         return true;
@@ -161,26 +166,31 @@ fn switch(fp: &mut Fighter, behavior: i32) -> bool {
 /// ftCo_800ADE48's head: a destination without a floor under it (5 above
 /// to 5 below, in bounds) falls back to the floor under an airborne
 /// fighter, or to the fighter itself. That also clears xFA_b2.
-fn validate_destination(fp: &mut Fighter, scene: &mut Scene) {
+///
+/// Returns whether its last mpCheckFloor found a floor (`StaleStack`).
+fn validate_destination(fp: &mut Fighter, scene: &mut Scene) -> bool {
     let destination = fp.core.cpu.destination;
     // 800ADE9C..800ADEB4: y -/+ 5.0 in double, rounded.
     let below = (f64::from(destination.y) - 5.0) as f32;
     let above = (5.0 + f64::from(destination.y)) as f32;
     let floor = scene.check_usable_floor(destination.x, above, destination.x, below);
     if floor.is_some() && !scene.outside(destination.x, destination.y, fp.core.cpu.half_size) {
-        return;
+        return true;
     }
     fp.core.cpu.xfa_b2 = false;
     let position = fp.core.physics.position;
-    fp.core.cpu.destination = if fp.core.physics.ground_or_air == GroundOrAir::Air {
+    if fp.core.physics.ground_or_air == GroundOrAir::Air {
         // 800ADF90: fsubs y - 1000.0f.
-        match scene.check_usable_floor(position.x, position.y, position.x, position.y - 1000.0) {
+        let below = scene.check_usable_floor(position.x, position.y, position.x, position.y - 1000.0);
+        fp.core.cpu.destination = match below {
             Some(hit) => Vec2::new(hit.pos.x, hit.pos.y),
             None => Vec2::new(position.x, position.y),
-        }
+        };
+        below.is_some()
     } else {
-        Vec2::new(position.x, position.y)
-    };
+        fp.core.cpu.destination = Vec2::new(position.x, position.y);
+        floor.is_some()
+    }
 }
 
 /// x5C: the distance to the destination (800AE040: fmadds, inline sqrtf;
@@ -209,11 +219,12 @@ fn note_kills(fp: &mut Fighter, scene: &Scene) {
 
 /// xF8_b5: rerolled every 120 ticks for CPU mode 14, every 400 otherwise
 /// (Randf() > 0.5, a double compare).
-fn roll_xf8_b5(fp: &mut Fighter, rng: &mut HsdRng) {
+fn roll_xf8_b5(fp: &mut Fighter, scene: &Scene, rng: &mut HsdRng) {
     let cpu = &mut fp.core.cpu;
     let period = if cpu.mode == 14 { 120 } else { 400 };
     if cpu.reaction_timer % period == 0 {
         cpu.xf8_b5 = f64::from(rng.randf()) > 0.5;
+        scene.stale.r5.set(Some(crate::world::SEED_POINTER));
     }
 }
 
@@ -225,7 +236,7 @@ fn roll_xf8_b5(fp: &mut Fighter, rng: &mut HsdRng) {
 /// which 800ADE48 saved but never set, so it holds the caller's r31. The
 /// only caller the port reaches, ftCo_800B0760 (the partner's decision),
 /// keeps `fp + 0x1A88` there (800B0778), so the switch always happens.
-fn tumble(fp: &mut Fighter, rng: &mut HsdRng) -> bool {
+fn tumble(fp: &mut Fighter, scene: &Scene, rng: &mut HsdRng) -> bool {
     let cpu = &fp.core.cpu;
     if fp.core.kind == melee_types::FighterKind::GKoops
         || cpu.mode == 15
@@ -238,6 +249,8 @@ fn tumble(fp: &mut Fighter, rng: &mut HsdRng) -> bool {
     cpu.target_locked = false;
     let threshold = 0.1f32 * cpu.level as f32;
     cpu.xfa_b1 = threshold > rng.randf();
+    // HSD_Randf (800AE21C) leaves seed_ptr in r5.
+    scene.stale.r5.set(Some(crate::world::SEED_POINTER));
     true
 }
 
@@ -361,10 +374,15 @@ fn holding_usable_item(fp: &Fighter) -> bool {
         return true;
     }
     let kind = i32::from(kind);
-    matches!(kind, 0..=6 | 0x22 | 0x2A)
-        || (0x2B..0x2F).contains(&kind)
-        || (0xD3..=0xD5).contains(&kind)
-        || kind == 0xD9
+    matches!(kind, 0..=6 | 0x22 | 0x2A) || read_as_motion(kind)
+}
+
+/// ftCo_800A5980 (0x800A5980) handed an Item: it reads the kind (Item
+/// +0x10) as a fighter's motion id, so kinds 0x2B..0x2E, 0xD3..0xD5 and
+/// 0xD9 pass its LandingFallSpecial..Attack13, Furafura and
+/// Catch..CatchAttack tests.
+pub(crate) fn read_as_motion(kind: i32) -> bool {
+    (0x2B..0x2F).contains(&kind) || (0xD3..=0xD5).contains(&kind) || kind == 0xD9
 }
 
 /// ftCo_800A3554 (0x800A3554): on the destination's island and within

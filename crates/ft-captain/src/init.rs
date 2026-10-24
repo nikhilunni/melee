@@ -1,4 +1,5 @@
 //! Captain Falcon load/reset hooks, ft/kinds/ftCaptain/ftcaptain.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule, Finisher};
 use crate::attributes::CaptainAttributes;
 use ft_captain_family::{
     special_hi_catch, special_lw, special_s, CaptainFamily, FamilyEffects, Specials,
@@ -62,6 +63,28 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<CaptainFalcon>();
 
 impl CharacterCallbacks for CaptainFalcon {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[
+            ExclusionRule {
+                range: 102.0,
+                scripts: &[0x26],
+                require_ground_or_stage: false,
+            },
+            ExclusionRule {
+                range: 58.0,
+                scripts: &[0x1B, 0x37, 0x38],
+                require_ground_or_stage: false,
+            },
+        ],
+        finisher: Some(Finisher {
+            high_level: true,
+            script: 0x39,
+            at_high_percent: Some(0x3A),
+        }),
+        ..CpuProfile::DEFAULT
+    };
+
     const SPECIAL_MOVES: &'static [Option<melee_types::combat::StaleMove>] =
         &ft_captain_family::special_moves();
     const SPECIAL_ROWS: &'static [MotionRow] = &SPECIAL_ROWS;

@@ -1,6 +1,7 @@
 //! Ganondorf load/reset hooks, ft/kinds/ftGanon/ftganon.c. His motion
 //! table is Captain Falcon's callbacks (ftGn_Init_MotionStateTable), with
 //! his own effects in their kind switches.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule};
 use crate::attributes::{read_ganon_attributes, CaptainAttributes};
 use ft_captain_family::{
     special_hi_catch, special_lw, special_s, CaptainFamily, FamilyEffects, Specials,
@@ -97,6 +98,23 @@ fn enter_taunt(f: &mut Fighter, assets: &FighterAssets) -> melee_ft::fighter::as
 }
 
 impl CharacterCallbacks for Ganondorf {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[
+            ExclusionRule {
+                range: 102.0,
+                scripts: &[0x26],
+                require_ground_or_stage: false,
+            },
+            ExclusionRule {
+                range: 58.0,
+                scripts: &[0x1B, 0x37, 0x38],
+                require_ground_or_stage: false,
+            },
+        ],
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

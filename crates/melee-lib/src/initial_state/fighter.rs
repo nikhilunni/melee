@@ -47,6 +47,7 @@ pub(crate) fn import(
     let root = f.core.animation.root;
     f.core.skeleton.set_translate(root, &position);
     f.spawn_number = word(raw, 0x8);
+    f.rapid_jab_edges = word(raw, 0x1A54) as i32;
     f.combat.capture_geometry = melee_ft::fighter::grab_throw::CaptureGeometry {
         hip_scale: float(raw, 0x1A6C),
         root_offset: vector(raw, 0x1A70),

@@ -1,4 +1,7 @@
 //! Donkey Kong load/reset hooks, ft/kinds/ftDonkey/ftdonkey.c.
+use melee_ft::fighter::cpu_profile::{
+    Charge, CpuProfile, FollowUpAction, FollowUpRule, MotionRange,
+};
 use crate::attributes::{read_donkey_attributes, DonkeyAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -64,9 +67,35 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<DonkeyKong>();
 
 impl CharacterCallbacks for DonkeyKong {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        attacking_from: 0x171,
+        // retail 800A1774..: initial x56C reach for this character.
+        initial_reach: 8.5,
+        reach_reroll_scale: 9.0,
+        cargo_motions: Some(MotionRange(0x15F, 0x164)),
+        charge: Some(Charge {
+            loops: [0x172; 2],
+            release_wait: false,
+            store_full: false,
+        }),
+        follow_ups: &[FollowUpRule {
+            motions: MotionRange(0x172, 0x172),
+            action: FollowUpAction::TapShield,
+            ranged: false,
+        }],
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
+    /// u.dk.x222C: Giant Punch's stored swings.
+    const NEUTRAL_CHARGE: fn(&melee_ft::fighter::CharacterState) -> melee_ft::fighter::NeutralCharge =
+        |state| melee_ft::fighter::NeutralCharge {
+            stored: state.get::<Self>().punch_swings,
+            full: 0.0,
+        };
     /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         Fighter::enter_common_taunt;

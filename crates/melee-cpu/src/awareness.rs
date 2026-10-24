@@ -146,12 +146,14 @@ fn roll_reach(fp: &mut Fighter, rng: &mut HsdRng) {
     if cpu.reaction_timer % REACH_PERIOD == 0 {
         let r = rng.randf();
         let rand = 1.0 - r * (r * r);
-        // Donkey Kong and Bowser 9.0, Giga Bowser 18.0: unported kinds.
-        cpu.x56c = if partner {
-            rand
+        // Donkey Kong and Bowser 9.0, Giga Bowser 18.0, Nana 1.0, the rest
+        // 4.0, each a double product.
+        let scale = if partner {
+            1.0
         } else {
-            (4.0 * f64::from(rand)) as f32
+            fp.character.table().cpu_profile.reach_reroll_scale
         };
+        cpu.x56c = (scale * f64::from(rand)) as f32;
     }
 }
 

@@ -25,7 +25,7 @@ def test_boundary_command_keeps_item_rules_teams_and_extra_in_their_own_argument
     with pytest.raises(RuntimeError, match="before Dolphin"):
         mb.main(["--stage", "FinalDestination", "--players", "Fox", "Marth", "--name", "args",
                  "--teams", "0", "1", "--friendly-fire", "--item-frequency", "very-high",
-                 "--items", "Sword", "--no-containers"])
+                 "--items", "Sword", "--no-containers", "--cpu-levels", "0", "9"])
     arguments = signature.bind(*capture.call_args.args, **capture.call_args.kwargs)
     arguments.apply_defaults()
     assert arguments.arguments["teams"] == [0, 1]
@@ -34,6 +34,8 @@ def test_boundary_command_keeps_item_rules_teams_and_extra_in_their_own_argument
     assert arguments.arguments["item_switch"] == [mb.SWITCHABLE["Sword"]]
     assert arguments.arguments["rules_item_mask"] & 0xF == 0
     assert arguments.arguments["extra"] is None
+    assert arguments.arguments["cpu_levels"] == [0, 9]
+    assert "cpu_levels" in capture.call_args.kwargs
 
 
 class Memory:
@@ -430,3 +432,20 @@ def test_si_flags_plug_the_named_ports(monkeypatch):
     monkeypatch.setenv(dolphin_config.SI_PORTS_ENV, "1,3")
     assert dolphin_config.si_flags(2)[1::2] == [f"Dolphin.Core.SIDevice{i}={6 if i in (1, 3) else 0}"
                                                 for i in range(4)]
+
+
+def test_team_boundary_preserves_each_cpu_level():
+    players = ["Fox", "Marth", "Falco", "Peach"]
+    levels = [0, 9, 4, 0]
+    teams = [0, 1, 0, 1]
+    cold = tomllib.loads(mb.cold_scenario(
+        "mixed", "Battlefield", players, 4, 7, [0] * 4,
+        teams=teams, friendly_fire=True, cpu_levels=levels))
+    assert cold["friendly_fire"]
+    assert [f["team"] for f in cold["fighters"]] == teams
+    assert [f.get("cpu_level", 0) for f in cold["fighters"]] == levels
+    assert [f["controller"] for f in cold["fighters"]] == ["idle", "cpu", "cpu", "idle"]
+    entry = tomllib.loads(mb.boundary_entry(
+        "mixed", "Battlefield", players, 4, 7,
+        teams=teams, friendly_fire=True, cpu_levels=levels))["boundary"][0]
+    assert entry["teams"] == teams and entry["cpu_levels"] == levels and entry["friendly_fire"]

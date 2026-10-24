@@ -79,6 +79,9 @@ fn ko_fd_marth_480_ticks_and_ordered_particle_draws() {
 /// message and fails the test once the others finish. The longest go first,
 /// so no long scenario starts while the other workers run out of work.
 fn gate_in_parallel(scenarios: &[(&str, usize)]) {
+    gate_in_parallel_using(scenarios, combat_gate_ticks);
+}
+fn gate_in_parallel_using(scenarios: &[(&str, usize)], gate: fn(&str, usize) -> Option<usize>) {
     use std::sync::atomic::{AtomicUsize, Ordering};
     let mut scenarios = scenarios.to_vec();
     scenarios.sort_by_key(|&(_, ticks)| std::cmp::Reverse(ticks));
@@ -90,7 +93,7 @@ fn gate_in_parallel(scenarios: &[(&str, usize)]) {
             scope.spawn(|| {
                 while let Some(&(name, ticks)) = scenarios.get(next.fetch_add(1, Ordering::Relaxed))
                 {
-                    combat_gate_ticks(name, ticks);
+                    gate(name, ticks);
                 }
             });
         }
@@ -1951,6 +1954,136 @@ const MATRIX_WITNESSES: [(&str, usize); 567] = [
 #[test]
 fn matrix_witnesses_match_retail() {
     gate_in_parallel(&MATRIX_WITNESSES);
+}
+
+/// CPU players (melee-cpu's Versus think, ftCo_800B24B8;
+/// docs/PORT_NOTES/CPU_PLAYERS.md): `make_boundary.py --cpu-levels` start
+/// boundaries (a person's Fox against every kind's level-9 CPU, Fox at
+/// levels 1 and 5, CPUs on port 1 and on both ports), their cold twins, and
+/// explorer cases from them (random inputs against the CPU; the bridged
+/// faults end at the tick the port first met an unported CPU branch).
+const CPU_WITNESSES: &[(&str, usize)] = &[
+    // Fighter+x1A54 survives Dash into jab2; rapidjab starts at tick 2931.
+    ("corpus_v3_fd_fox_cpu9falco4_edb2b114a_p0", 5070),
+    ("corpus_v3_bf_fox_cpu9fox4_e75fb4a9a_p0", 4556),
+    ("corpus_v3_bf_fox_cpu9fox4_e75fb4a9a_p2", 1885),
+    ("corpus_v3_bf_fox_cpu9fox4_e89a89d0e_p1", 253),
+    ("corpus_v3_bf_fox_cpu9fox4_e9943b4ab_p0", 6001),
+    ("corpus_v3_bf_fox_cpu9fox4_ef89b3e70_p1", 4743),
+    ("corpus_v3_fd_fox_cpu1fox4_e89a89d0e_p0", 6001),
+    ("corpus_v3_fd_fox_cpu1fox4_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_fox_cpu5fox4_ef89b3e70_p0", 431),
+    ("corpus_v3_fd_fox_cpu5fox4_ef89b3e70_p1", 228),
+    ("corpus_v3_fd_fox_cpu5fox4_ef89b3e70_p2", 4636),
+    ("corpus_v3_fd_fox_cpu9captainfalcon4_e9943b4ab_p1", 6001),
+    ("corpus_v3_fd_fox_cpu9donkeykong4_e9943b4ab_p2", 2744),
+    ("corpus_v3_fd_fox_cpu9donkeykong4_edb2b114a_p2", 2362),
+    ("corpus_v3_fd_fox_cpu9fox4_e89a89d0e_p0", 554),
+    ("corpus_v3_fd_fox_cpu9fox4_edb2b114a_p0", 6001),
+    ("corpus_v3_fd_fox_cpu9gameandwatch4_e9943b4ab_p0", 209),
+    ("corpus_v3_fd_fox_cpu9ganondorf4_edb2b114a_p0", 5614),
+    ("corpus_v3_fd_fox_cpu9mewtwo4_e9943b4ab_p2", 3027),
+    ("corpus_v3_fd_fox_cpu9peach4_e9943b4ab_p2", 1049),
+    ("corpus_v3_fd_fox_cpu9peach4_edb2b114a_p1", 483),
+    ("corpus_v3_fd_fox_cpu9pichu4_e9943b4ab_p0", 6001),
+    ("corpus_v3_fd_fox_cpu9roy4_e9943b4ab_p0", 209),
+    ("corpus_v3_fd_fox_cpu9roy4_edb2b114a_p1", 6001),
+    ("corpus_v3_fd_fox_cpu9samus4_e9943b4ab_p0", 6001),
+    ("corpus_v3_fd_fox_cpu9yoshi4_e9943b4ab_p2", 5118),
+    ("start_bf_cpu7falco_cpu3peach4", 600),
+    ("start_bf_cpu7falco_cpu3peach4_cold", 600),
+    ("start_bf_fox_cpu9fox4", 600),
+    ("start_bf_fox_cpu9fox4_cold", 600),
+    ("start_bf_fox_cpu9marth4", 600),
+    ("start_bf_fox_cpu9marth4_cold", 600),
+    ("start_bf_sheik_cpu9fox4", 600),
+    ("start_bf_sheik_cpu9fox4_cold", 600),
+    ("start_fd_cpu9fox_cpu9marth4", 600),
+    ("start_fd_cpu9fox_cpu9marth4_cold", 600),
+    ("start_fd_cpu9marth_fox4", 600),
+    ("start_fd_cpu9marth_fox4_cold", 600),
+    ("start_fd_fox_cpu1fox4", 600),
+    ("start_fd_fox_cpu1fox4_cold", 600),
+    ("start_fd_fox_cpu5fox4", 600),
+    ("start_fd_fox_cpu5fox4_cold", 600),
+    ("start_fd_fox_cpu5marth4", 600),
+    ("start_fd_fox_cpu5marth4_cold", 600),
+    ("start_fd_fox_cpu9bowser4", 600),
+    ("start_fd_fox_cpu9bowser4_cold", 600),
+    ("start_fd_fox_cpu9captainfalcon4", 600),
+    ("start_fd_fox_cpu9captainfalcon4_cold", 600),
+    ("start_fd_fox_cpu9donkeykong4", 600),
+    ("start_fd_fox_cpu9donkeykong4_cold", 600),
+    ("start_fd_fox_cpu9drmario4", 600),
+    ("start_fd_fox_cpu9drmario4_cold", 600),
+    ("start_fd_fox_cpu9falco4", 600),
+    ("start_fd_fox_cpu9falco4_cold", 600),
+    ("start_fd_fox_cpu9fox4", 600),
+    ("start_fd_fox_cpu9fox4_cold", 600),
+    ("start_fd_fox_cpu9gameandwatch4", 600),
+    ("start_fd_fox_cpu9gameandwatch4_cold", 600),
+    ("start_fd_fox_cpu9ganondorf4", 600),
+    ("start_fd_fox_cpu9ganondorf4_cold", 600),
+    ("start_fd_fox_cpu9iceclimbers4", 600),
+    ("start_fd_fox_cpu9iceclimbers4_cold", 600),
+    ("start_fd_fox_cpu9jigglypuff4", 600),
+    ("start_fd_fox_cpu9jigglypuff4_cold", 600),
+    ("start_fd_fox_cpu9kirby4", 600),
+    ("start_fd_fox_cpu9kirby4_cold", 600),
+    ("start_fd_fox_cpu9link4", 600),
+    ("start_fd_fox_cpu9link4_cold", 600),
+    ("start_fd_fox_cpu9luigi4", 600),
+    ("start_fd_fox_cpu9luigi4_cold", 600),
+    ("start_fd_fox_cpu9mario4", 600),
+    ("start_fd_fox_cpu9mario4_cold", 600),
+    ("start_fd_fox_cpu9marth4", 600),
+    ("start_fd_fox_cpu9marth4_cold", 600),
+    ("start_fd_fox_cpu9mewtwo4", 600),
+    ("start_fd_fox_cpu9mewtwo4_cold", 600),
+    ("start_fd_fox_cpu9ness4", 600),
+    ("start_fd_fox_cpu9ness4_cold", 600),
+    ("start_fd_fox_cpu9peach4", 600),
+    ("start_fd_fox_cpu9peach4_cold", 600),
+    ("start_fd_fox_cpu9pichu4", 600),
+    ("start_fd_fox_cpu9pichu4_cold", 600),
+    ("start_fd_fox_cpu9pikachu4", 600),
+    ("start_fd_fox_cpu9pikachu4_cold", 600),
+    ("start_fd_fox_cpu9roy4", 600),
+    ("start_fd_fox_cpu9roy4_cold", 600),
+    ("start_fd_fox_cpu9samus4", 600),
+    ("start_fd_fox_cpu9samus4_cold", 600),
+    ("start_fd_fox_cpu9yoshi4", 600),
+    ("start_fd_fox_cpu9yoshi4_cold", 600),
+    ("start_fd_fox_cpu9younglink4", 600),
+    ("start_fd_fox_cpu9younglink4_cold", 600),
+    ("start_fd_fox_cpu9zelda4", 600),
+    ("start_fd_fox_cpu9zelda4_cold", 600),
+    ("start_fd_iceclimbers_cpu9fox4_cold", 600),
+];
+
+#[test]
+fn cpu_unfinished_primary_creation_requires_cold_construction() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../harness/scenarios/start_fd_iceclimbers_cpu9fox4.toml");
+    let scenario = Scenario::load(&path).unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    let error = InitialState::from_savestate_traces(&scenario)
+        .err().expect("unfinished saved Fox must be rejected before script lookup");
+    let message = error.to_string();
+    assert!(message.contains("unfinished saved fighter creation at slot 1"), "{message}");
+    assert!(message.contains("0x5ACB5ACB") && message.contains("cold scenario"), "{message}");
+}
+
+#[test]
+fn cpu_players_match_retail() {
+    gate_in_parallel_using(CPU_WITNESSES, |name, ticks| {
+        // Boundary captures record precisely 600 ticks in ledger600; the
+        // explorer recordings use their full-length ledger instead.
+        let suffix = if name.starts_with("start_") { "ledger600" } else { "ledger" };
+        combat_gate_ticks_with_ledger(name, ticks, suffix)
+    });
 }
 
 /// Directed witnesses for branches tournament replays reach

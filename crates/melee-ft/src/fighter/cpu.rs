@@ -154,7 +154,8 @@ pub struct CpuState {
     pub excluded_attacks: AttackList,
     /// xF8 bit 0.
     pub xf8_b0: bool,
-    /// xF8 bits 1-2.
+    /// xF8 bits 1-2: the threat ftCo_800BB9B4 found (1 a fighter's
+    /// hitbox or move, 2 an item's hitbox, 3 an absorbable one Ness meets).
     pub xf8_b12: u8,
     /// xF8 bits 3-4: the edge-guard style ftCo_800B732C chose.
     pub xf8_b34: u8,
@@ -192,6 +193,10 @@ pub struct CpuState {
     /// match gives (docs/PORT_NOTES/STALE_HEAP.md). Not CpuFighter state;
     /// ftCo_800AC5A0 passes its low byte as a stick value.
     pub fighter_address: Option<u32>,
+    /// xF0: the fighter whose hitbox or move ftCo_800BB9B4 found.
+    pub threat_fighter: Option<usize>,
+    /// xF4: the item whose hitbox ftCo_800BB9B4 found (Item*).
+    pub threat_item: Option<u32>,
     /// xFC..x448: the partner's input ring.
     pub follow: FollowRing,
     pub script: CommandScript,
@@ -242,6 +247,8 @@ pub struct CpuSetup {
     pub level: i32,
     /// FTKIND_NANA: follow the player's own fighter.
     pub partner: bool,
+    /// CharacterTable CPU profile: initial extra reach (x56C).
+    pub initial_reach: f32,
     pub position: Vec3,
     /// co_attrs.gravity, jump_v_initial_velocity and air_jump_v_multiplier.
     pub gravity: f32,
@@ -260,7 +267,7 @@ impl CpuState {
         // asm.py ftCo_800A101C --fused: no multiply-add sites.
         let reaction_timer = (10.0_f64 * f64::from(rng.randf())) as i32;
         let mut cpu = Self::with_draws(setup, reaction_timer, 0);
-        cpu.attack_delay = Self::initial_attack_delay(cpu.mode, setup.level, rng);
+        cpu.attack_delay = Self::roll_attack_delay(cpu.mode, setup.level, rng);
         cpu
     }
 
@@ -272,6 +279,7 @@ impl CpuState {
                 mode,
                 level,
                 partner: false,
+                initial_reach: super::cpu_profile::CpuProfile::DEFAULT.initial_reach,
                 position: Vec3::ZERO,
                 gravity: 0.0,
                 jump_velocity: 0.0,
@@ -376,6 +384,8 @@ impl CpuState {
             joins_blizzard: false,
             xfb_b0: false,
             fighter_address: None,
+            threat_fighter: None,
+            threat_item: None,
             follow: FollowRing {
                 entries: [FollowSample {
                     facing: 1.0,
@@ -387,9 +397,13 @@ impl CpuState {
             script: CommandScript::default(),
             jump_height,
             hurtbox_extents: [extents[0], extents[1], middle, 2.0],
-            // x56C: Donkey Kong and Bowser 8.5, Giga Bowser 17 (unported
-            // kinds), Nana 1, everyone else 3.5.
-            x56c: if setup.partner { 1.0 } else { 3.5 },
+            // x56C (800A1774..): character-owned numeric reach; Nana's
+            // existing partner mode has a fixed one-unit reach.
+            x56c: if setup.partner {
+                1.0
+            } else {
+                setup.initial_reach
+            },
             x570: 1.0,
             half_size: [10.0, 10.0],
         }
@@ -425,8 +439,10 @@ impl CpuState {
         }
     }
 
-    /// ftCo_800B9704 (ftcpuattack.c:2098-2106), called at 0x800A1744.
-    fn initial_attack_delay(mode: i32, level: i32, rng: &mut HsdRng) -> i32 {
+    /// ftCo_800B9704 (ftcpuattack.c:2098-2106), called at 0x800A1744 and by
+    /// the ranged attack choice (ftCo_800B9CBC, where it is inlined with the
+    /// same fused sites, 800B9D4C/800B9D64).
+    pub fn roll_attack_delay(mode: i32, level: i32, rng: &mut HsdRng) -> i32 {
         // Retail 0x800B9718 draws even for humans. 0x800B9734/0x800B974C
         // are fmadds; 0x800B9750 truncates with fctiwz before mode-7 halving.
         let random_delay = gekko_math::fma::fmadds(15.0, rng.randf(), 15.0);

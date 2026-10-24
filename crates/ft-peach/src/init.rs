@@ -1,4 +1,5 @@
 //! Peach load/reset hooks, ft/kinds/ftPeach/ftpeach.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule};
 use crate::attributes::PeachAttributes;
 use melee_ft::fighter::assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets};
 use melee_ft::fighter::{AerialJumpStyle, Capabilities, CharacterCallbacks, PlayerSlot};
@@ -93,6 +94,17 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Peach>();
 
 impl CharacterCallbacks for Peach {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[ExclusionRule {
+            range: 32.0,
+            scripts: &[0x26],
+            require_ground_or_stage: false,
+        }],
+        attacking_from: 0x158,
+        ..CpuProfile::DEFAULT
+    };
+
     /// ftPe_Init_OnKnockbackEnter/Exit: Fighter_OnKnockbackEnter/Exit(gobj, 1), the damage
     /// texture frames only.
     const KNOCKBACK_ENTER: fn(

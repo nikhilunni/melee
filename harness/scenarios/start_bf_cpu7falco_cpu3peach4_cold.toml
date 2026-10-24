@@ -1,0 +1,25 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, CPU ports at their levels, neutral pads.
+name = "start_bf_cpu7falco_cpu3peach4_cold"
+expected = "start_bf_cpu7falco_cpu3peach4"
+frames = 600
+seed = 524309065
+stage = "Battlefield"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Falco"
+costume = 0
+stocks = 4
+controller = "cpu"
+cpu_level = 7
+
+[[fighters]]
+slot = 1
+kind = "Peach"
+costume = 0
+stocks = 4
+controller = "cpu"
+cpu_level = 3

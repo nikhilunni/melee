@@ -6,6 +6,7 @@ fn setup(mode: i32, level: i32) -> melee_ft::fighter::cpu::CpuSetup {
         mode,
         level,
         partner: false,
+        initial_reach: melee_ft::fighter::cpu_profile::CpuProfile::DEFAULT.initial_reach,
         position: hsd_types::Vec3::ZERO,
         gravity: 0.0,
         jump_velocity: 0.0,
@@ -24,5 +25,21 @@ fn attack_delay_truncates_before_mode_seven_halving() {
         assert_eq!(cpu.reaction_timer, 7);
         assert_eq!(cpu.attack_delay, delay, "mode {mode}, level {level}");
         assert_eq!(rng.seed, 0x5B3F_58B2);
+    }
+}
+
+#[test]
+fn initial_reach_uses_character_data_and_partner_mode_keeps_its_own_reach() {
+    for (reach, partner, expected) in [
+        (3.5, false, 3.5),
+        (8.5, false, 8.5),
+        (17.0, false, 17.0),
+        (8.5, true, 1.0),
+    ] {
+        let mut setup = setup(4, 9);
+        setup.initial_reach = reach;
+        setup.partner = partner;
+        let cpu = CpuState::initialize(&setup, &mut HsdRng::new(1));
+        assert_eq!(cpu.x56c, expected);
     }
 }

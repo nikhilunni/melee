@@ -24,7 +24,10 @@ pub(crate) struct Bounds {
 
 /// Camera_80029124's result bits (CAM_BOUNDS_OUTSIDE_*).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-struct OutsideBounds(u8);
+pub(crate) struct OutsideBounds(u8);
+
+/// CAM_BOUNDS_INSIDE.
+pub(crate) const INSIDE: OutsideBounds = OutsideBounds(0);
 
 impl OutsideBounds {
     const TOP: Self = Self(1);
@@ -66,7 +69,7 @@ const CORNER_MIN_DOWNWARD: f32 = -0.001;
 
 /// Camera_80029124 (0x80029124) with a distance of 0: which bounds the point
 /// is outside of. The bottom bound is raised to the stage floor.
-fn outside_bounds(position: Vec3, stage: &StageCamera) -> OutsideBounds {
+pub(crate) fn outside_bounds(position: Vec3, stage: &StageCamera) -> OutsideBounds {
     let mut flags = OutsideBounds::empty();
     let bottom = stage.framing_floor();
     if position.x < stage.left() {

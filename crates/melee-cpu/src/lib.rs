@@ -16,25 +16,34 @@ mod attack;
 mod awareness;
 mod behave;
 mod captured;
+mod charge;
 mod damage_fall;
+mod danger;
+mod defend;
 pub mod desc;
 mod edge_guard;
+mod exclusions;
 mod facts;
+mod follow_up;
 mod get_up;
 mod hold;
 mod island_route;
 mod movement;
 mod partner;
+mod ranged;
 mod recover;
+mod roll;
 mod route;
 pub mod script;
 mod select;
 mod targets;
 mod tumble;
+mod up_special;
+mod versus;
 mod world;
 
 pub use targets::{nearest_fighter, FighterView};
-pub use world::{distance, ItemView, Scene};
+pub use world::{distance, ItemHitView, ItemView, Scene};
 
 use gekko_math::HsdRng;
 use melee_ft::fighter::{cpu::CpuState, Fighter};
@@ -53,6 +62,11 @@ pub fn think(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
 fn decide(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
     match fp.core.cpu.mode {
         melee_ft::fighter::cpu::PARTNER_MODE => partner::decide(fp, scene, rng),
+        // The Versus CPU, and every mode the switch does not list.
+        4 | 11 | 12 | 5 | 16 | 30.. | ..=-1 => {
+            versus::decide(fp, scene, rng, world::VERSUS_THINK_FRAME)
+        }
+        15 => fp.core.cpu.behavior = select::behavior::STAND_BY,
         mode => unimplemented!("ftCo_800B2AFC: CPU mode {mode}"),
     }
 }

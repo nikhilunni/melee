@@ -1,4 +1,5 @@
 //! Falco's load/reset hooks, ft/kinds/ftFalco/ftfalco.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule, Recovery};
 use melee_ft::desc::fox_attributes::FoxAttributes;
 use melee_ft::fighter::{Capabilities, CharacterCallbacks};
 use melee_types::{FighterKind, ItemKind};
@@ -32,6 +33,18 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Falco>();
 
 impl CharacterCallbacks for Falco {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[ExclusionRule {
+            range: 62.0,
+            scripts: &[0x1B],
+            require_ground_or_stage: false,
+        }],
+        recovery: Recovery::TimedSpecial(40),
+        blaster_defence: true,
+        ..CpuProfile::DEFAULT
+    };
+
     /// No special reads fp->item_gobj; a held item stays in hand.
     const SPECIALS_KEEP_HELD_ITEM: bool = true;
     const KNOCKBACK_ENTER: fn(

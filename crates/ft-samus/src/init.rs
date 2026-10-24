@@ -1,4 +1,7 @@
 //! Samus load/reset hooks, ft/kinds/ftSamus/ftsamus.c.
+use melee_ft::fighter::cpu_profile::{
+    Charge, CpuProfile, FollowUpAction, FollowUpRule, MotionRange, Ranged, Recovery,
+};
 use crate::attributes::{read_samus_attributes, SamusAttributes};
 use melee_ef::request::EffectRequest;
 use melee_ft::fighter::{
@@ -99,9 +102,33 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Samus>();
 
 impl CharacterCallbacks for Samus {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        recovery: Recovery::Unwitnessed,
+        rising_threat: Some((0x161, 30.0)),
+        ranged: Ranged::DownwardProjectile(0x26),
+        charge: Some(Charge {
+            loops: [0x158; 2],
+            release_wait: true,
+            store_full: false,
+        }),
+        follow_ups: &[FollowUpRule {
+            motions: MotionRange(0x158, 0x158),
+            action: FollowUpAction::TapShield,
+            ranged: false,
+        }],
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
+    /// u.ss.x2230: the Charge Shot level kept between shots.
+    const NEUTRAL_CHARGE: fn(&melee_ft::fighter::CharacterState) -> melee_ft::fighter::NeutralCharge =
+        |state| melee_ft::fighter::NeutralCharge {
+            stored: state.get::<Self>().charge.level,
+            full: 0.0,
+        };
     /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         Fighter::enter_common_taunt;

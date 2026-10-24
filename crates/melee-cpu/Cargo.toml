@@ -12,3 +12,5 @@ gekko-math = { path = "../gekko-math" }
 hsd-types = { path = "../hsd-types" }
 hsd-archive = { path = "../hsd-archive" }
 melee-lb = { path = "../melee-lb" }
+melee-cm = { path = "../melee-cm" }
+melee-coll = { path = "../melee-coll" }

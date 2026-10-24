@@ -52,6 +52,8 @@ pub struct CpuData {
     pub ground: Vec<Option<Vec<AttackEntry>>>,
     /// +08: air attacks per kind.
     pub air: Vec<Option<Vec<AttackEntry>>>,
+    /// +0C: ranged attacks per kind (ftCo_800B9CBC picks one by weight).
+    pub ranged: Vec<Option<Vec<AttackEntry>>>,
     /// +10: attacks against a target in the ledge states.
     pub smash: Vec<Option<Vec<AttackEntry>>>,
     /// +14: attacks against stage enemies.
@@ -122,6 +124,7 @@ impl CpuData {
             scripts,
             ground: table(0x04)?,
             air: table(0x08)?,
+            ranged: table(0x0C)?,
             smash: table(0x10)?,
             special: table(0x14)?,
             weapon: table(0x18)?,

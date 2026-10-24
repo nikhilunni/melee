@@ -1,4 +1,5 @@
 //! Mario load/reset hooks, ft/kinds/ftMario/ftmario.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule, Finisher};
 use ft_mario_family::{
     attributes::{read_mario_attributes, MarioAttributes},
     MarioFamily, Specials,
@@ -65,6 +66,21 @@ impl MarioFamily for Mario {
 }
 
 impl CharacterCallbacks for Mario {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[ExclusionRule {
+            range: 22.0,
+            scripts: &[0x1F],
+            require_ground_or_stage: false,
+        }],
+        finisher: Some(Finisher {
+            high_level: false,
+            script: 0x35,
+            at_high_percent: None,
+        }),
+        ..CpuProfile::DEFAULT
+    };
+
     /// ftMr_Init_OnKnockbackEnter/Exit: Fighter_OnKnockbackEnter/Exit(gobj, 1), the damage
     /// texture frames only.
     const KNOCKBACK_ENTER: fn(

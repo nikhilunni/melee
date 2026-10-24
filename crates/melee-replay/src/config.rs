@@ -110,8 +110,17 @@ impl From<&MatchConfig> for Config {
                 .items
                 .enabled()
                 .then_some((config.rules.items.frequency, config.rules.items.mask)),
-            cpu_levels: config.players.iter().any(|p| p.cpu_level.is_some())
-                .then(|| config.players.iter().map(|p| p.cpu_level.unwrap_or(0)).collect()),
+            cpu_levels: config
+                .players
+                .iter()
+                .any(|p| p.cpu_level.is_some())
+                .then(|| {
+                    config
+                        .players
+                        .iter()
+                        .map(|p| p.cpu_level.unwrap_or(0))
+                        .collect()
+                }),
         }
     }
 }
@@ -190,5 +199,25 @@ mod tests {
         let text = serde_json::to_string(&ucf).unwrap();
         let read: Config = serde_json::from_str(&text).unwrap();
         assert_eq!(read.decode().unwrap(), config(ControllerFix::Ucf080));
+    }
+    #[test]
+    fn mixed_cpu_team_config_round_trips_all_four_players() {
+        let mut config = MatchConfig::versus(
+            Stage::Battlefield,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox).with_team(0),
+                PlayerConfig::new(Port::P2, Character::Marth)
+                    .with_team(1)
+                    .with_cpu_level(9),
+                PlayerConfig::new(Port::P3, Character::Falco)
+                    .with_team(0)
+                    .with_cpu_level(4),
+                PlayerConfig::new(Port::P4, Character::Peach).with_team(1),
+            ],
+        );
+        config.rules.friendly_fire = true;
+        let text = serde_json::to_string(&Config::from(&config)).unwrap();
+        let decoded: Config = serde_json::from_str(&text).unwrap();
+        assert_eq!(decoded.decode().unwrap(), config);
     }
 }

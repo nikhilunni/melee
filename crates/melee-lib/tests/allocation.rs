@@ -237,6 +237,41 @@ fn cold_match_step_and_observe_allocate_nothing() {
     }
 }
 
+/// A retail-witnessed level-9 opponent exercises mode 4, attacks and aerial
+/// Firefox recovery, rather than only Nana's partner mode or human inputs.
+#[test]
+fn versus_cpu_think_attack_and_recovery_allocate_nothing() {
+    use ft_fox_family::FamilyState as FoxState;
+    use melee_diff::Value;
+    use melee_types::CommonMotionState as Common;
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    let scenario = melee_sim::scenario::Scenario::load(
+        &root.join("harness/scenarios/corpus_v3_fd_fox_cpu9fox4_edb2b114a_p0.toml"),
+    ).unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) { return; }
+    let mut game = diagnostics::import_match(&scenario).unwrap();
+    let initial = diagnostics::inspect(&game).unwrap();
+    assert_eq!(initial.fighters.state.get("p1.cpu.type"), Some(&Value::Int(4)));
+    assert_eq!(initial.fighters.state.get("p1.cpu.level"), Some(&Value::Int(9)));
+    let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+    let (mut attacked, mut recovered) = (false, false);
+    for frame in 0..scenario.frames {
+        let inputs = Inputs(std::array::from_fn(|port| pads.sample(frame, port)));
+        assert_eq!(measure(&mut game, &inputs), 0, "mode-4 CPU tick {frame}");
+        let view = game.observe().unwrap();
+        let action = view.fighter(Port::P2).unwrap().action().0;
+        attacked |= (Common::Attack11 as u16..=Common::AttackAirLw as u16).contains(&action);
+        recovered |= action == FoxState::SpecialHiHoldAir as u16
+            || action == FoxState::SpecialAirHi as u16
+            || action == FoxState::SpecialHiFall as u16;
+    }
+    assert!(attacked, "the measured CPU never attacked");
+    assert!(recovered, "the measured CPU never used aerial Firefox recovery");
+}
+
 #[test]
 fn dropping_matches_and_assets_releases_every_owned_allocation() {
     let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");

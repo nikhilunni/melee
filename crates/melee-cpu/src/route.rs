@@ -1,6 +1,7 @@
 //! Where the CPU heads (CpuFighter.x54): ftCo_800A1F3C and the choices
 //! that call it.
 use crate::world::Scene;
+use gekko_math::fma::fmadds;
 use hsd_types::{Vec2, Vec3};
 use melee_ft::fighter::Fighter;
 use melee_types::{GrKind, GroundOrAir};
@@ -146,6 +147,130 @@ pub fn toward_partner(fp: &mut Fighter, scene: &mut Scene) {
             }
         }
     }
+}
+
+/// ftCo_800A75DC (0x800A75DC): head for the fighter `target`, or where it
+/// will land, avoiding unsafe islands; airborne, stopping short of the
+/// landing island's ends, grounded on another island, aiming at the near
+/// end of the target's island when it is higher up. The arrival radius is
+/// x56C plus the target's x564.
+pub fn toward_fighter(fp: &mut Fighter, scene: &mut Scene, target: usize) {
+    let other = scene.fighter(target);
+    let target_position = other.core.physics.position;
+    let target_ground = other.core.physics.ground_or_air;
+    let target_floor = other.core.collision.data.floor.index;
+    // 800A76EC: fadds.
+    let radius = fp.core.cpu.x56c + other.core.cpu.hurtbox_extents[2];
+    if target_ground == GroundOrAir::Air {
+        // 800A7628/800A762C: fsubs y - 1000, fadds 10 + y.
+        let below = target_position.y - 1000.0;
+        let above = 10.0 + target_position.y;
+        let Some(hit) =
+            scene.check_usable_floor(target_position.x, above, target_position.x, below)
+        else {
+            let landing = landing_beside_island(scene.fighter(target), scene);
+            set_destination(fp, scene, landing.x, landing.y, radius);
+            return;
+        };
+        let island = scene.map.island_of_line(hit.line_id);
+        if island_unsafe(scene, island) {
+            return;
+        }
+        set_destination(fp, scene, hit.pos.x, hit.pos.y, radius);
+        let Some(island) = island else {
+            return;
+        };
+        let island = *scene.map.island(island);
+        stop_short_of_ends(fp, scene, island.left, island.right, radius);
+        return;
+    }
+    let island = scene.map.island_of_line(target_floor);
+    if island_unsafe(scene, island) {
+        return;
+    }
+    set_destination(fp, scene, target_position.x, target_position.y, radius);
+    if same_island(scene, fp, scene.fighter(target)) {
+        return;
+    }
+    let Some(island) = island else {
+        return;
+    };
+    let island = *scene.map.island(island);
+    let cpu = &fp.core.cpu;
+    let position = fp.core.physics.position;
+    // 800A799C..800A79B8: fsubs, double compares with 0.
+    if f64::from(cpu.destination.y - position.y) <= 0.0 {
+        return;
+    }
+    if f64::from(cpu.destination.x - position.x) > 0.0 {
+        if position.x < island.left.x {
+            let x = (5.0 + f64::from(island.left.x)) as f32;
+            set_destination(fp, scene, x, island.left.y, radius);
+        }
+    } else if position.x > island.right.x {
+        let x = (f64::from(island.right.x) - 5.0) as f32;
+        set_destination(fp, scene, x, island.right.y, radius);
+    }
+}
+
+/// ftCo_800A4768 (0x800A4768): for an airborne fighter over no floor, the
+/// nearest island end it is beyond, 5 inside it: a right end to its left,
+/// a left end to its right. An end outside the blast zones (shrunk by the
+/// fighter's own CPU half size) is skipped, but retail tests the right end
+/// in place of the left one too (800A4898..800A48EC reread 0x14(r1)). The
+/// squared distance fuses its x term (800A486C, 800A4944: fmadds).
+fn landing_beside_island(fp: &Fighter, scene: &Scene) -> Vec3 {
+    let position = fp.core.physics.position;
+    let half_size = fp.core.cpu.half_size;
+    let mut best = -1.0f32;
+    let mut landing = None;
+    for node in scene.map.floor_islands() {
+        let island = *scene.map.island(node);
+        let right = island.right;
+        let right_outside = scene.outside(right.x, right.y, half_size);
+        if !right_outside {
+            let dx = position.x - right.x;
+            if dx > 0.0 {
+                let dy = position.y - right.y;
+                let d = fmadds(dx, dx, dy * dy);
+                if f64::from(best) < 0.0 || best > d {
+                    best = d;
+                    // 800A487C: fsub in double, frsp.
+                    let x = (f64::from(right.x) - 5.0) as f32;
+                    landing = Some(Vec3::new(x, right.y, right.z));
+                }
+            }
+        }
+        if right_outside {
+            continue;
+        }
+        let left = island.left;
+        let dx = position.x - left.x;
+        if dx < 0.0 {
+            let dy = position.y - left.y;
+            let d = fmadds(dx, dx, dy * dy);
+            if f64::from(best) < 0.0 || best > d {
+                best = d;
+                // 800A4954: fadd in double, frsp.
+                let x = (5.0 + f64::from(left.x)) as f32;
+                landing = Some(Vec3::new(x, left.y, left.z));
+            }
+        }
+    }
+    // No end qualifies (a target under the stage): ftCo_800A75DC's sp18 is
+    // left as ftCo_800B24B8's callees wrote it, its only caller here.
+    landing.unwrap_or_else(|| {
+        let (Some(slot), Some(frame)) =
+            (scene.stale.frame_lr_slot.get(), scene.stale.think_frame.get())
+        else {
+            unimplemented!("ftCo_800A4768: no island end qualifies and r1 - 0x5C is unknown");
+        };
+        Vec3::new(
+            f32::from_bits(frame),
+            f32::from_bits(slot),
+            0.0,
+        )
+    })
 }
 
 /// ftCo_800A7AAC's airborne tail: a destination within 5 of the island's

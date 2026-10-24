@@ -27,6 +27,8 @@ pub type VerticalSmash = fn(&mut Fighter, bool, &assets::FighterAssets) -> asset
 
 /// One immutable table per character crate. Common motion rows never belong here.
 pub struct CharacterTable {
+    pub cpu_profile: super::cpu_profile::CpuProfile,
+    pub cpu_copied_charge: fn(&CharacterState) -> bool,
     clone_payload: fn(&CharacterState) -> CharacterState,
     type_id: fn() -> TypeId,
     pub kind: fn(&CharacterState) -> FighterKind,
@@ -69,6 +71,8 @@ pub struct CharacterTable {
     pub motion_flags: &'static [u32],
     pub catch_variant: fn(&mut CharacterState),
     pub mouth_capture_scale: fn(&CharacterState) -> Option<f32>,
+    pub copied_ability: fn(&CharacterState) -> Option<melee_types::FighterKind>,
+    pub neutral_charge: fn(&CharacterState) -> super::NeutralCharge,
     pub throw_variant: fn(&CharacterState),
     pub throw_traits: fn(melee_types::CommonMotionState) -> super::throw_flight::ThrowTraits,
     pub knockback_enter: fn(&mut Fighter, &assets::FighterAssets),
@@ -214,6 +218,10 @@ impl CharacterTable {
             motion_flags: C::MOTION_FLAGS,
             catch_variant: |state| state.get_mut::<C>().catch_variant(),
             mouth_capture_scale: C::MOUTH_CAPTURE_SCALE,
+            cpu_profile: C::CPU_PROFILE,
+            cpu_copied_charge: C::CPU_COPIED_CHARGE,
+            copied_ability: C::COPIED_ABILITY,
+            neutral_charge: C::NEUTRAL_CHARGE,
             throw_variant: |state| state.get::<C>().throw_variant(),
             throw_traits: C::THROW_TRAITS,
             knockback_enter: C::KNOCKBACK_ENTER,
@@ -431,6 +439,14 @@ impl CharacterState {
     pub fn mouth_capture_scale(&self) -> Option<f32> {
         (self.table.mouth_capture_scale)(self)
     }
+    /// [`super::CharacterCallbacks::COPIED_ABILITY`].
+    pub fn copied_ability(&self) -> Option<melee_types::FighterKind> {
+        (self.table.copied_ability)(self)
+    }
+    /// [`super::CharacterCallbacks::NEUTRAL_CHARGE`].
+    pub fn neutral_charge(&self) -> super::NeutralCharge {
+        (self.table.neutral_charge)(self)
+    }
     pub fn jab_variant(&self) -> JabVariant {
         (self.table.jab_variant)(self)
     }
@@ -616,6 +632,16 @@ pub(super) fn catch_frame(
 
 #[inline(never)]
 pub(super) fn no_special_parasol(_state: &CharacterState) -> Option<parasol::SpecialParasol> {
+    None
+}
+
+#[inline(never)]
+pub(super) fn no_neutral_charge(_state: &CharacterState) -> super::NeutralCharge {
+    super::NeutralCharge::default()
+}
+
+#[inline(never)]
+pub(super) fn no_copied_ability(_state: &CharacterState) -> Option<melee_types::FighterKind> {
     None
 }
 

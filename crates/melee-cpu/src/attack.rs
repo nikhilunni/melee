@@ -8,15 +8,7 @@ use gekko_math::{
 use melee_ft::fighter::Fighter;
 use melee_types::{CommonMotionState as S, FighterKind as K, GroundOrAir};
 
-/// ftCo_800B9CBC (0x800B9CBC): a ranged attack now (x18 3).
-pub fn ranged_attack(fp: &mut Fighter, _scene: &mut Scene, _rng: &mut HsdRng) -> bool {
-    let cpu = &mut fp.core.cpu;
-    cpu.xa4 = 0;
-    if cpu.target.is_none() || !cpu.xf9_b5 {
-        return false;
-    }
-    unimplemented!("ftCo_800B9CBC: ranged attack choice (ftcpuattack.c:2286)");
-}
+pub use crate::ranged::ranged_attack;
 
 /// ftCo_800B885C (0x800B885C): by level, whether the CPU holds back from
 /// attacking during this part of its x80 cycle.
@@ -46,8 +38,6 @@ mod scripts {
     pub const GRAB_RUN: i32 = 0x29;
     /// Kirby's inhale, excluded against a bigger target.
     pub const INHALE: i32 = 0x11;
-    /// Excluded for CPU mode 7 or an untouchable CPU.
-    pub const MODE_7: i32 = 0x34;
     /// The only ones allowed against a downed or ledge-hanging target.
     pub const DOWN_A: i32 = 0xA;
     pub const DOWN_B: i32 = 0xE;
@@ -84,7 +74,7 @@ pub fn close_attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bo
             cpu.excluded_attacks.push(scripts::INHALE);
         }
     }
-    exclude_for_kind(fp, scene);
+    crate::exclusions::exclude_for_kind(fp, scene);
     let kind = usize::from(fp.core.kind as u8);
     let data = scene.data;
     if fp.core.physics.ground_or_air == GroundOrAir::Air {
@@ -105,8 +95,9 @@ pub fn close_attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bo
         fp.core.cpu.xa4 = chosen.unwrap_or(0);
         return chosen.is_some();
     }
-    if crate::facts::has_item(fp) {
-        unimplemented!("ftCo_800B8A9C: a CPU holding an item (ftCo_800A59E4, ftCo_800B52AC)");
+    let holding = crate::facts::held_kind(fp);
+    if holding.is_some_and(swing_weapon) {
+        unimplemented!("ftCo_800B52AC: a swing weapon's attacks (ftcpuattack.c:1844)");
     }
     let target = scene.fighter(target_index);
     if fp.core.cpu.level > 5 && shielding(target) {
@@ -115,7 +106,8 @@ pub fn close_attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bo
             return true;
         }
     }
-    if target_over_no_floor(scene, target_index) {
+    // Holding anything (an article too), the CPU does not edge guard.
+    if holding.is_none() && target_over_no_floor(scene, target_index) {
         if let Some(script) = choose(
             fp,
             scene,
@@ -137,6 +129,16 @@ pub fn close_attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bo
     }
     fp.core.cpu.xa4 = 0;
     false
+}
+
+/// ftCo_800A59E4 (0x800A59E4): the fan, the Star Rod, the Lip's Stick, the
+/// bat, the Beam Sword or the parasol.
+fn swing_weapon(kind: melee_types::ItemKind) -> bool {
+    use melee_types::ItemKind as I;
+    matches!(
+        kind,
+        I::Harisen | I::StarRod | I::LipStick | I::Bat | I::Sword | I::Parasol
+    )
 }
 
 /// ftCo_800A3200 (0x800A3200): 1 in CliffCatch, 2 in CliffWait.
@@ -186,32 +188,6 @@ fn air_attack_ready(fp: &Fighter, scene: &Scene) -> bool {
         return false;
     }
     cpu.level >= 4
-}
-
-/// ftCo_800B77E8 (0x800B77E8): scripts CPU mode 7 and an untouchable CPU
-/// skip, then the kind's own (ranged specials out of range, Peach's turnip
-/// without a floor ahead). The climbers have none.
-fn exclude_for_kind(fp: &mut Fighter, _scene: &Scene) {
-    if fp.core.cpu.mode == 7 || untouchable(fp) {
-        fp.core.cpu.excluded_attacks.push(scripts::MODE_7);
-    }
-    match fp.core.kind {
-        K::Popo | K::Nana => {}
-        kind @ (K::Mario
-        | K::Fox
-        | K::Falco
-        | K::Captain
-        | K::Ganon
-        | K::Pikachu
-        | K::Pichu
-        | K::Koopa
-        | K::GKoops
-        | K::Yoshi
-        | K::Luigi
-        | K::Peach
-        | K::Kirby) => unimplemented!("ftCo_800B77E8: {kind:?}'s exclusions"),
-        _ => {}
-    }
 }
 
 /// ftCo_800B4AB0 (0x800B4AB0): the attacks of `list` whose hit box, scaled
@@ -433,41 +409,71 @@ fn attack_delay(fp: &mut Fighter, rng: &mut HsdRng) {
     );
 }
 
-/// ftCo_800B630C (0x800B630C): mid-attack (Attack11..AttackAirLw), or in
-/// a character's own motion.
-fn attacking(fp: &Fighter) -> bool {
+/// ftCo_800B630C (0x800B630C): mid-attack (Attack11..AttackAirLw, 0x2C..
+/// 0x45), swinging or shooting an item (ftCo_800A5A90), or in one of the
+/// kind's own motions: past Donkey Kong's cargo throws (ftDk_MS_ThrowAirFLw,
+/// 0x170), Kirby's aerial dash attack (ftKb_MS_AttackDashAir, 0x160),
+/// Peach's float falls (ftPe_MS_FloatFallB, 0x157), or anyone else's
+/// common motions (ftCo_MS_Count, 0x155).
+pub(crate) fn attacking(fp: &Fighter) -> bool {
     let m = fp.core.motion_state.action.0;
-    if (S::Attack11 as u16..=S::AttackAirLw as u16).contains(&m) {
+    if (S::Attack11 as u16..=S::AttackAirLw as u16).contains(&m) || item_attacking(m) {
         return true;
     }
-    if crate::facts::has_item(fp) {
-        unimplemented!("ftCo_800A5A90: swinging or shooting an item");
+    m >= fp.character.table().cpu_profile.attacking_from
+}
+
+/// ftCo_800A5A90 (0x800A5A90): a motion of swinging an item (0x78..=0x8B)
+/// or shooting one (0x94..=0xAD); only an item puts a fighter there.
+pub(crate) fn item_attacking(motion: u16) -> bool {
+    (0x78..=0x8B).contains(&motion) || (0x94..=0xAD).contains(&motion)
+}
+
+/// ftCo_800BA2E8 (0x800BA2E8): roll away from the fighter `from` when the
+/// island's end that way (ftCo_800A2A70) is farther than the kind's reach
+/// (Fighter_804D64FC x20, a single compare), else toward it when that end
+/// is; true when it rolled. The side is an fsubs against 0 in double.
+pub(crate) fn roll_away(fp: &mut Fighter, scene: &Scene, from: usize) -> bool {
+    let reach = scene.data.reach[usize::from(fp.core.kind as u8)];
+    let dx = fp.core.physics.position.x - scene.fighter(from).core.physics.position.x;
+    // Right of `from`: the right end (x14, ftCo_800BA160) first.
+    let order = if f64::from(dx) > 0.0 {
+        [false, true]
+    } else {
+        [true, false]
+    };
+    for left in order {
+        if crate::roll::island_end_distance(fp, scene, left) > reach {
+            if left {
+                crate::roll::roll_left(fp);
+            } else {
+                crate::roll::roll_right(fp);
+            }
+            return true;
+        }
     }
-    if matches!(fp.core.kind, K::Donkey | K::Kirby | K::Peach) {
-        unimplemented!("ftCo_800B630C: {:?}'s motion ranges", fp.core.kind);
-    }
-    // ftCo_MS_Count: the first character-owned motion.
-    m >= 341
+    false
 }
 
 /// ftCo_800B658C (0x800B658C): behaviour 2, the close attack's script.
 pub fn attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
-    if fp.core.cpu.target.is_none() {
+    let Some(target) = fp.core.cpu.target else {
         clear_target_and_finish(fp);
         return;
-    }
-    let cpu = &fp.core.cpu;
-    if cpu.xf8_b6 && fp.core.physics.ground_or_air == GroundOrAir::Ground {
-        let threshold = 0.05f32 * cpu.level as f32;
+    };
+    if fp.core.cpu.xf8_b6 && fp.core.physics.ground_or_air == GroundOrAir::Ground {
+        // 800B6614/800B6618: the level as single (fsubs), fmuls; the
+        // Randf is drawn only here.
+        let threshold = 0.05f32 * fp.core.cpu.level as f32;
         if rng.randf() < threshold {
-            unimplemented!("ftCo_800BA2E8: a roll before attacking");
+            fp.core.cpu.xf8_b6 = false;
+            if roll_away(fp, scene, target) {
+                return;
+            }
         }
     }
-    if matches!(
-        fp.core.kind,
-        K::Ness | K::Yoshi | K::Samus | K::Donkey | K::Zelda
-    ) {
-        unimplemented!("ftCo_800B658C: {:?}'s special follow-ups", fp.core.kind);
+    if let crate::follow_up::FollowUp::Done = crate::follow_up::follow_up(fp, scene) {
+        return;
     }
     if attacking(fp) {
         crate::script::command(&mut fp.core.cpu, crate::script::Command::Done);
@@ -534,7 +540,7 @@ const LEDGE_GUARD_BEARING: f32 = 1.308_996_9;
 
 /// ftCo_800B732C (0x800B732C): whether to guard the ledge the target
 /// hangs from (1) or jump at it (2); 0 otherwise.
-pub fn edge_guard_style(fp: &mut Fighter, scene: &mut Scene, _rng: &mut HsdRng) -> u8 {
+pub fn edge_guard_style(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> u8 {
     let Some(target) = fp.core.cpu.target.map(|index| scene.fighter(index)) else {
         return 0;
     };
@@ -571,5 +577,110 @@ pub fn edge_guard_style(fp: &mut Fighter, scene: &mut Scene, _rng: &mut HsdRng) 
     if !fp.core.cpu.xf9_b3 {
         return 0;
     }
-    unimplemented!("ftCo_800B732C: edge guarding (ftcpuattack.c:1278)");
+    if fp.core.cpu.mode == EDGE_GUARD_MODE {
+        return jump_at_target(fp, scene);
+    }
+    if !crate::island_route::facing_destination(fp) || fp.core.cpu.level < 4 {
+        return 0;
+    }
+    // 800B7488: ftCo_800A28D0 with 4.0.
+    if crate::island_route::near_island_end(fp, scene, 4.0) {
+        return 0;
+    }
+    let target = scene.fighter(fp.core.cpu.target.expect("checked above"));
+    let (own, theirs) = (fp.core.physics.position, target.core.physics.position);
+    if target.core.physics.ground_or_air == GroundOrAir::Air {
+        // 800B74B4: fcmpo, bge.
+        if theirs.y < own.y {
+            return 0;
+        }
+        if scene
+            .map
+            .check_ceiling(own.x, own.y, theirs.x, theirs.y, -1, -1)
+            .is_some()
+        {
+            return 0;
+        }
+        let (distance, bearing) = distance_and_bearing(own, theirs);
+        return u8::from(bearing > DIAGONAL_BEARING && distance < JUMP_RANGE_NEAR);
+    }
+    // 800B7554: every 60th tick of x7C, at one chance in ten (Randf > 0.1
+    // in double gives up).
+    if fp.core.cpu.reaction_timer % 60 != 0 {
+        return 0;
+    }
+    if f64::from(rng.randf()) > 0.1 {
+        return 0;
+    }
+    level_with_target(own, theirs)
+}
+
+/// The CPU mode whose edge guard is ftCo_800B7638 alone (800B7444).
+const EDGE_GUARD_MODE: i32 = 0x10;
+/// 0.7853981573134661 rad (45 degrees, a double literal).
+const DIAGONAL_BEARING: f64 = 0.785_398_157_313_466_1;
+/// Edge-guard jump distances (doubles): within 30 airborne, 30..40 level.
+const JUMP_RANGE_NEAR: f64 = 30.0;
+const JUMP_RANGE_FAR: f64 = 40.0;
+/// 0.08726646192371845 rad (5 degrees, a double literal).
+const LEVEL_BEARING: f64 = 0.087_266_461_923_718_45;
+
+/// ftCo_800A1AB4's distance (as a double) and lb_8000D008's bearing of
+/// `theirs` from `own` (dy, |dx|: two fsubs, fneg below zero).
+fn distance_and_bearing(own: hsd_types::Vec3, theirs: hsd_types::Vec3) -> (f64, f64) {
+    let distance = crate::world::distance(own, theirs);
+    let mut across = theirs.x - own.x;
+    if across < 0.0 {
+        across = -across;
+    }
+    let bearing = melee_lb::trigf::stick_angle(theirs.y - own.y, across);
+    (f64::from(distance), f64::from(bearing))
+}
+
+/// 2 when a grounded target stands 30 to 40 away within 5 degrees of
+/// level (800B75DC..800B7614); else 0.
+fn level_with_target(own: hsd_types::Vec3, theirs: hsd_types::Vec3) -> u8 {
+    let (distance, bearing) = distance_and_bearing(own, theirs);
+    u8::from(
+        distance > JUMP_RANGE_NEAR
+            && distance < JUMP_RANGE_FAR
+            && bearing > -LEVEL_BEARING
+            && bearing < LEVEL_BEARING,
+    ) * 2
+}
+
+/// ftCo_800B7638 (0x800B7638): CPU mode 16's edge guard. Airborne the CPU
+/// needs a jump left and to be falling (pos_delta.y > 0 in double gives
+/// up); the target must be no lower (fsubs against 0 in double). An
+/// airborne target steeper than 45 degrees with no ceiling between them
+/// is jumped at (1); a grounded one 30 to 40 away and level (2).
+fn jump_at_target(fp: &Fighter, scene: &mut Scene) -> u8 {
+    let Some(target) = fp.core.cpu.target else {
+        return 0;
+    };
+    if fp.core.physics.ground_or_air == GroundOrAir::Air {
+        if fp.core.attributes.jumping.max_jumps <= i32::from(fp.core.physics.jumps_used) {
+            return 0;
+        }
+        if f64::from(fp.core.physics.position_delta.y) > 0.0 {
+            return 0;
+        }
+    }
+    let target = scene.fighter(target);
+    let (own, theirs) = (fp.core.physics.position, target.core.physics.position);
+    if f64::from(theirs.y - own.y) < 0.0 {
+        return 0;
+    }
+    if target.core.physics.ground_or_air == GroundOrAir::Air {
+        if scene
+            .map
+            .check_ceiling(own.x, own.y, theirs.x, theirs.y, -1, -1)
+            .is_some()
+        {
+            return 0;
+        }
+        let (_, bearing) = distance_and_bearing(own, theirs);
+        return u8::from(bearing > DIAGONAL_BEARING);
+    }
+    level_with_target(own, theirs)
 }

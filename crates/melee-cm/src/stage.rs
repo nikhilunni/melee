@@ -113,6 +113,11 @@ impl StageCamera {
     pub fn pan_radians(&self) -> f32 {
         DEGREES_TO_RADIANS * self.pan_degrees
     }
+    /// Camera_8003118C (0x8003118C) with a distance of 0: `position` lies
+    /// inside the camera bounds (Camera_80029124 returns no outside bit).
+    pub fn contains(&self, position: hsd_types::Vec3) -> bool {
+        crate::standard::outside_bounds(position, self) == crate::standard::INSIDE
+    }
     /// Ground_801C4368 + 1.0 in double, then the higher of it and the
     /// bottom bound: the lowest point a subject may frame.
     pub(crate) fn framing_floor(&self) -> f32 {

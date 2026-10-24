@@ -1,4 +1,5 @@
 //! Mewtwo load/reset hooks, ft/kinds/ftMewtwo/ftmewtwo.c.
+use melee_ft::fighter::cpu_profile::{Charge, CpuProfile};
 use crate::attributes::{read_mewtwo_attributes, MewtwoAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -127,9 +128,29 @@ fn death_callback(f: &mut Fighter) {
 }
 
 impl CharacterCallbacks for Mewtwo {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        charge: Some(Charge {
+            loops: [0x156, 0x157],
+            release_wait: true,
+            store_full: true,
+        }),
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
+    /// u.mt.x2234_shadowBallCharge and the full charge
+    /// (x0_MEWTWO_SHADOWBALL_CHARGE_CYCLES).
+    const NEUTRAL_CHARGE: fn(&melee_ft::fighter::CharacterState) -> melee_ft::fighter::NeutralCharge =
+        |state| {
+            let mewtwo = state.get::<Self>();
+            melee_ft::fighter::NeutralCharge {
+                stored: mewtwo.shadow_ball_charge,
+                full: mewtwo.attributes.shadow_ball.full_charge,
+            }
+        };
     /// ftCo_800DEA28 default arm (`ftCo_800DEBD0`): the common AppealS entry.
     const ENTER_TAUNT: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         Fighter::enter_common_taunt;

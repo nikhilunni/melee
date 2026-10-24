@@ -82,6 +82,12 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Sheik>();
 
 impl CharacterCallbacks for Sheik {
+    /// ftCo_800ABA34 / ftCo_800ACD5C: the queued transformation input.
+    const CPU_PROFILE: melee_ft::fighter::cpu_profile::CpuProfile =
+        melee_ft::fighter::cpu_profile::CpuProfile {
+            transform_on_request: true,
+            ..melee_ft::fighter::cpu_profile::CpuProfile::DEFAULT
+        };
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

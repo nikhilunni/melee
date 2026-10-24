@@ -1,0 +1,24 @@
+# Sheik vs Fox on Battlefield, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+# Sheik is Zelda's CSS icon with A held on port 1 while the match loads
+# (fn_8016D8AC); Zelda sleeps beside Sheik as the transformation partner.
+name = "start_bf_sheik_cpu9fox4"
+savestate = "harness/roms/start_bf_sheik_cpu9fox4.sav"
+frames = 600
+seed = 1
+stage = "Battlefield"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Sheik"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "cpu"
+cpu_level = 9

@@ -1,4 +1,5 @@
 //! Pikachu load/reset hooks, ft/kinds/ftPikachu/ftpikachu.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule, Recovery};
 use crate::attributes::{read_pikachu_attributes, PikachuAttributes};
 use ft_pikachu_family::{PikachuFamily, Specials};
 use melee_ft::fighter::{
@@ -45,6 +46,17 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Pikachu>();
 
 impl CharacterCallbacks for Pikachu {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[ExclusionRule {
+            range: 57.0,
+            scripts: &[0x1B],
+            require_ground_or_stage: false,
+        }],
+        recovery: Recovery::Unwitnessed,
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

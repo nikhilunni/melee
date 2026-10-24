@@ -314,6 +314,19 @@ impl InitialState {
             .collect::<Vec<_>>();
         let bytes = saved_bytes;
         for (index, raw) in bytes.iter().enumerate() {
+            // A primary may already name Entry while Fighter_Create has not
+            // initialized its command state or callbacks. No later trace row
+            // may complete that saved construction on the port's behalf.
+            let script = word(raw, 0x3EC);
+            ensure!(
+                !(match_start
+                    && word(raw, 0x10) == 322
+                    && word(raw, 0x14) == u32::MAX
+                    && script != 0
+                    && !(0x8000_0000..0x8180_0000).contains(&script)),
+                "unfinished saved fighter creation at slot {} (script {script:#010X}); use the cold scenario",
+                ports[index]
+            );
             let unfinished = match_start && word(raw, 0x10) == 0 && word(raw, 0x2C) == 0;
             ensure!(
                 unfinished

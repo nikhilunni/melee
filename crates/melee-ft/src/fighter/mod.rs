@@ -22,6 +22,7 @@ pub mod clank;
 pub mod color_overlay;
 pub mod commands;
 pub mod cpu;
+pub mod cpu_profile;
 pub mod damage;
 mod damage_bind;
 mod damage_song;
@@ -172,7 +173,22 @@ pub struct MouthHold {
     pub leave_floor: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()>,
 }
 
+/// What the CPU reads of a chargeable neutral special.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct NeutralCharge {
+    /// u.dk.x222C, u.ss.x2230, u.mt.x2234; Kirby's u.kb.xBC, xA8, x9C.
+    pub stored: i32,
+    /// Mewtwo's full Shadow Ball (attributes +0, compared with the stored
+    /// charge as a float; Kirby's specialn_mt_charge_time).
+    pub full: f32,
+}
+
 pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
+    /// Character choices in ftCo_0A01.c / ftcpuattack.c, consumed as static data.
+    const CPU_PROFILE: cpu_profile::CpuProfile = cpu_profile::CpuProfile::DEFAULT;
+    /// A copied charged special whose CPU branch still needs a retail witness.
+    const CPU_COPIED_CHARGE: fn(&CharacterState) -> bool = |_| false;
+
     const TABLE: CharacterTable = CharacterTable::new::<Self>();
 
     #[inline(always)]
@@ -407,6 +423,16 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// constant, so characters without one share one concrete default.
     const MOUTH_CAPTURE_SCALE: fn(&CharacterState) -> Option<f32> =
         character::no_mouth_capture;
+    /// Kirby's copied fighter (u.kb.hat.kind, Fighter +2238), which the
+    /// CPU's attack choice reads (ftCo_800B77E8's FTKIND_KIRBY arm); None
+    /// for every other kind.
+    const COPIED_ABILITY: fn(&CharacterState) -> Option<melee_types::FighterKind> =
+        character::no_copied_ability;
+    /// The stored charge of a neutral special the CPU charges and releases
+    /// (ftCo_800ADC28, ftCo_800ACD5C): Donkey Kong's swings, Samus's shot,
+    /// Mewtwo's Shadow Ball, Kirby's copies of them. Zero for every other
+    /// kind.
+    const NEUTRAL_CHARGE: fn(&CharacterState) -> NeutralCharge = character::no_neutral_charge;
     /// ftCo_Throw.c:145-157,346-353: the kind switch's default arm (no
     /// callback). Its arms are Fox's and Falco's laser, Samus's grapple
     /// model, Kirby's and Yoshi's: each of those crates overrides this.
@@ -1235,6 +1261,9 @@ pub struct FighterCore {
     /// hitlag_mul (+196C): the jab combo window. Every motion change except
     /// into Wait or Walk closes it (fighter.c:1142-1144).
     pub jab_countdown: f32,
+    /// Fighter+x1A54: A edges counted by ftCo_Attack_800D6A50, surviving
+    /// intervening motions until checkAttack11 starts a fresh jab.
+    pub rapid_jab_edges: i32,
     /// unk_msid: the jab a combo continues from (Attack11 or Attack12).
     pub last_jab: Option<melee_types::CommonMotionState>,
     pub hurtboxes: Vec<melee_coll::hurtbox::HurtCapsule>,

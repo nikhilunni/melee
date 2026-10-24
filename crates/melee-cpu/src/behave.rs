@@ -19,7 +19,7 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
     cpu.x80 += 1;
     cpu.xf8_b7 = false;
     script::restart(cpu);
-    character_script(fp);
+    crate::charge::release(fp);
     match fp.core.cpu.behavior {
         B::IDLE => idle(fp, scene, rng),
         B::STAND_BY => {
@@ -27,6 +27,7 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
             script::command(&mut fp.core.cpu, C::Done);
         }
         B::ATTACK => crate::attack::attack(fp, scene, rng),
+        B::RANGED => crate::ranged::ranged(fp, scene, rng),
         B::DOWN => crate::get_up::down(fp, scene, rng),
         B::LEDGE => crate::get_up::ledge(fp, scene, rng),
         B::HOLD => crate::hold::hold(fp, scene, rng),
@@ -34,8 +35,9 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         B::CAPTURED => crate::captured::mash(fp, rng),
         B::DAMAGE_FALL => crate::damage_fall::steer(fp, scene, rng),
         B::TUMBLE => crate::tumble::steer(fp, scene),
-        B::RECOVER => crate::recover::recover(fp, scene),
+        B::RECOVER => crate::recover::recover(fp, scene, rng),
         B::EDGE_GUARD => crate::edge_guard::run(fp, scene),
+        B::DEFEND => crate::defend::defend(fp, scene, rng),
         behavior @ (2..=19) => {
             unimplemented!("ftCo_800B2790: behaviour {behavior}")
         }
@@ -44,27 +46,17 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
     script::start(&mut fp.core.cpu);
 }
 
-/// ftCo_800ADC28 (0x800ADC28): charge-release taps for Donkey Kong,
-/// Samus, Mewtwo and Kirby's copies; nothing for the ported kinds.
-fn character_script(fp: &mut Fighter) {
-    use melee_types::FighterKind as K;
-    if fp.core.cpu.behavior == B::ARRIVED {
-        return;
-    }
-    if matches!(fp.core.kind, K::Donkey | K::Samus | K::Mewtwo | K::Kirby) {
-        unimplemented!("ftCo_800ADC28: {:?}'s charge release", fp.core.kind);
-    }
-}
-
 /// ftCo_800ABA34 (0x800ABA34): behaviour 1 for the ported CPU modes.
 fn idle(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
     let mode = fp.core.cpu.mode;
     if matches!(mode, 11 | 12 | 16) {
         unimplemented!("ftCo_800ABA34: CPU mode {mode}");
     }
-    use melee_types::FighterKind as K;
-    if matches!(fp.core.kind, K::Zelda | K::Seak) && fp.core.cpu.xf8_b5 {
-        unimplemented!("ftCo_800ABA34: Zelda's transformation");
+    if fp.character.table().cpu_profile.transform_on_request && fp.core.cpu.xf8_b5 {
+        // PlCo's stored script 38: the transformation (down B).
+        script::stored(&mut fp.core.cpu, scene.data, crate::arrived::SCRIPT_TRANSFORM);
+        fp.core.cpu.xf8_b5 = false;
+        return;
     }
     if fp.core.motion_state.action.0 == S::RebirthWait as u16 {
         // ftCo_800A5CE0: no one carries the star or the hammer.
@@ -72,15 +64,16 @@ fn idle(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         return;
     }
     if fp.core.physics.ground_or_air == GroundOrAir::Air {
-        movement::toward_destination_in_air(fp, scene);
+        movement::toward_destination_in_air(fp, scene, rng);
     } else {
         toward_destination_on_ground(fp, scene, rng);
     }
 }
 
-/// ftCo_800A08F0 (0x800A08F0): step off the revival platform. Nana
-/// (FTKIND_NANA) holds the stick down for five frames; a crouching CPU
-/// only waits.
+/// ftCo_800A08F0 (0x800A08F0): step off the revival platform: after a
+/// wait (a tick for Nana, FTKIND_NANA; 45 ticks at level 0 down to one
+/// at 9 for the others) hold the stick down for five ticks. A crouching
+/// CPU only waits.
 pub(crate) fn leave_revival_platform(fp: &mut Fighter) {
     let crouching = matches!(
         fp.core.motion_state.id,
@@ -94,10 +87,23 @@ pub(crate) fn leave_revival_platform(fp: &mut Fighter) {
         script::command(cpu, C::Done);
         return;
     }
-    if !nana {
-        unimplemented!("ftCo_800A08F0: a CPU's level-scaled wait on its platform");
+    // Nana waits a tick; every other CPU longer the lower its level.
+    let wait = if nana {
+        Some(1)
+    } else {
+        match cpu.level {
+            0 => Some(45),
+            1 | 2 => Some(30),
+            3 | 4 => Some(15),
+            5 | 6 => Some(10),
+            7 | 8 => Some(5),
+            9 => Some(1),
+            _ => None,
+        }
+    };
+    if let Some(wait) = wait {
+        script::command1(cpu, C::WaitFor, wait);
     }
-    script::command1(cpu, C::WaitFor, 1);
     // -0x7F as the command's byte.
     script::command1(cpu, C::SetLstickY, (-0x7F_i8) as u8);
     script::command1(cpu, C::WaitFor, 5);

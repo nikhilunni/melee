@@ -1,4 +1,5 @@
 //! Luigi load/reset hooks, ft/kinds/ftLuigi/ftluigi.c.
+use melee_ft::fighter::cpu_profile::{CpuProfile, ExclusionRule, Recovery};
 use crate::attributes::{read_luigi_attributes, LuigiAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -62,6 +63,17 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Luigi>();
 
 impl CharacterCallbacks for Luigi {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[ExclusionRule {
+            range: 60.0,
+            scripts: &[0x26],
+            require_ground_or_stage: false,
+        }],
+        recovery: Recovery::Unwitnessed,
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

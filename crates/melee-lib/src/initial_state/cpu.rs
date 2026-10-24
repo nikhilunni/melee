@@ -155,6 +155,10 @@ pub(super) fn restore(raw: &[u8], base: u32, fighters: &[u32], items: &[u32]) ->
         joins_blizzard: false,
         xfb_b0: bit(0xFB, 0x80),
         fighter_address: Some(base),
+        // xF0/xF4: ftCo_800BB9B4 clears both before every read, so a
+        // CPU that never ran it keeps HSD_ObjAlloc's stale words there.
+        threat_fighter: fighters.iter().position(|&b| b == w(0xF0)),
+        threat_item: None,
         follow: FollowRing {
             entries,
             write: ring_index(0x444),

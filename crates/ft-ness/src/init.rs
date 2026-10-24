@@ -1,4 +1,7 @@
 //! Ness load/reset hooks, ft/kinds/ftNess/ftness.c.
+use melee_ft::fighter::cpu_profile::{
+    CpuProfile, FollowUpAction, FollowUpRule, MotionRange, Ranged, Recovery,
+};
 use crate::attributes::{read_ness_attributes, NessAttributes};
 use melee_ft::fighter::{
     assets::{CharacterDescriptor, CostumeDescriptor, FighterAssets},
@@ -99,6 +102,26 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Ness>();
 
 impl CharacterCallbacks for Ness {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        recovery: Recovery::Unwitnessed,
+        absorb_item_threats: true,
+        ranged: Ranged::RemoteProjectile,
+        follow_ups: &[
+            FollowUpRule {
+                motions: MotionRange(0x15C, 0x15F),
+                action: FollowUpAction::ReleaseAtTargetHeight,
+                ranged: true,
+            },
+            FollowUpRule {
+                motions: MotionRange(0x166, 0x16E),
+                action: FollowUpAction::SteerStickTowardTarget,
+                ranged: true,
+            },
+        ],
+        ..CpuProfile::DEFAULT
+    };
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

@@ -1,4 +1,7 @@
 //! ftYs_Init_OnLoad / OnDeath, ft/kinds/ftYoshi/ftyoshi.c.
+use melee_ft::fighter::cpu_profile::{
+    CpuProfile, ExclusionRule, FollowUpAction, FollowUpRule, MotionRange, Ranged, Recovery,
+};
 use crate::attributes::YoshiAttributes;
 use hsd_types::Vec3;
 use melee_ft::fighter::assets::{
@@ -76,6 +79,25 @@ fn knockback_exit(fighter: &mut Fighter, assets: &FighterAssets) {
 }
 
 impl CharacterCallbacks for Yoshi {
+    /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
+    const CPU_PROFILE: CpuProfile = CpuProfile {
+        exclusions: &[ExclusionRule {
+            range: 16.0,
+            scripts: &[0x26],
+            require_ground_or_stage: true,
+        }],
+        recovery: Recovery::Unwitnessed,
+        plunge_threat_motions: &[0x16E, 0x170],
+        scaled_jump: true,
+        ranged: Ranged::RollingAttack,
+        follow_ups: &[FollowUpRule {
+            motions: MotionRange(0x164, 0x167),
+            action: FollowUpAction::RollAcrossSharedIsland,
+            ranged: true,
+        }],
+        ..CpuProfile::DEFAULT
+    };
+
     /// fn_8013295C, the egg roll's x21F8 after a cape turnaround.
     const CAPE_TURN_END: fn(&mut Fighter) = crate::special_s::cape_turn_end;
     fn table() -> &'static melee_ft::fighter::CharacterTable {

@@ -77,7 +77,7 @@ pub(crate) fn toward_other_island(fp: &mut Fighter, scene: &mut Scene) {
 
 /// ftCo_800A2BD4 (0x800A2BD4): the destination is not behind the CPU
 /// (fmuls, a double compare with >=).
-fn facing_destination(fp: &Fighter) -> bool {
+pub(crate) fn facing_destination(fp: &Fighter) -> bool {
     let dx = fp.core.cpu.destination.x - fp.core.physics.position.x;
     f64::from(fp.core.physics.facing * dx) >= 0.0
 }
@@ -85,7 +85,7 @@ fn facing_destination(fp: &Fighter) -> bool {
 /// ftCo_800A28D0 (0x800A28D0): the island's end ahead of the CPU is within
 /// `5.0 * scale` (fmul in double, 800A2968). The ends are the island's
 /// stored ones (mp_UnkStruct0 x8 / x14), not refreshed.
-fn near_island_end(fp: &Fighter, scene: &Scene, scale: f32) -> bool {
+pub(crate) fn near_island_end(fp: &Fighter, scene: &Scene, scale: f32) -> bool {
     if fp.core.physics.ground_or_air == GroundOrAir::Air {
         return false;
     }

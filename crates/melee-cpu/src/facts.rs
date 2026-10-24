@@ -18,3 +18,12 @@ pub fn holding_victim(fp: &Fighter) -> bool {
 pub fn has_item(fp: &Fighter) -> bool {
     fp.core.held_item.is_some() || fp.core.article_in_hand.is_some()
 }
+
+/// The kind of fp->item_gobj: a held item, or the fighter's own article.
+pub fn held_kind(fp: &Fighter) -> Option<melee_types::ItemKind> {
+    match (&fp.core.held_item, &fp.core.article_in_hand) {
+        (Some(item), _) => Some(item.kind),
+        (None, Some(article)) => Some(article.kind),
+        (None, None) => None,
+    }
+}

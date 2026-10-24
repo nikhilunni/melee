@@ -76,10 +76,26 @@ pub fn nearest_opponent(fp: &mut Fighter, scene: &Scene, rng: &mut HsdRng) -> Op
     let mut closest: Option<(usize, f32)> = None;
     for (index, other) in scene.others() {
         let p = other.core.physics.position;
-        if scene.outside(p.x, p.y, half_size) || ally(fp, other) {
+        if scene.outside(p.x, p.y, half_size) {
             continue;
         }
-        if unavailable(other) || not_targetable(other) {
+        scene
+            .stale
+            .frame_lr_slot
+            .set(Some(crate::world::return_address::AFTER_IS_ALLY));
+        if ally(fp, other) {
+            continue;
+        }
+        // 800A1C44 inlined, then x221F_b3 and x2224_b2 before
+        // ftCo_800A0F00 (800A4D44).
+        if unavailable(other) {
+            continue;
+        }
+        scene
+            .stale
+            .frame_lr_slot
+            .set(Some(crate::world::return_address::AFTER_CLOAK_TEST));
+        if not_targetable(other) {
             continue;
         }
         if fp.core.cpu.target_locked {
@@ -174,6 +190,11 @@ fn common_item(fp: &Fighter, scene: &Scene, kind: Option<ItemKind>) -> Option<u3
             continue;
         }
         let d = item_distance(fp, item);
+        // 800A6184: the inlined sqrtf of a positive square stores through
+        // sp1C, ftCo_800B24B8's r1 - 0x5C.
+        if d > 0.0 {
+            scene.stale.frame_lr_slot.set(Some(d.to_bits()));
+        }
         if best > d {
             closest = Some((*item, d));
         }
@@ -204,4 +225,90 @@ pub fn update_special_item(fp: &mut Fighter, scene: &Scene) {
         }
     }
     fp.core.cpu.x50 = closest.map_or(0, |(id, _)| id);
+}
+
+/// ftCo_800A5CE0 (0x800A5CE0): the nearest opponent powered by the Starman
+/// (x221D_b6) or swinging the Hammer (x2168), whom the CPU flees; none for
+/// an untouchable CPU. Only those items power a fighter so, and no item the
+/// port runs is one.
+pub fn star_carrier(_fp: &Fighter, _scene: &Scene) -> Option<usize> {
+    None
+}
+
+/// ftCo_800A53DC (0x800A53DC): the opponent the CPU goes after: of those in
+/// bounds, available and targetable, the best placed in the standings
+/// (gm_8016C6C0), then the nearest. With xFA_b34 set it first looks among
+/// the players a person controls (not ftCo_800A2040), then among all.
+pub fn attack_target(fp: &Fighter, scene: &Scene) -> Option<usize> {
+    let candidates = |humans_only: bool| {
+        let mut best: Option<(usize, u8, f32)> = None;
+        for (index, other) in scene.others() {
+            let p = other.core.physics.position;
+            if scene.outside(p.x, p.y, fp.core.cpu.half_size)
+                || ally(fp, other)
+                || unavailable(other)
+                || not_targetable(other)
+                || (humans_only
+                    && other.input_source() == melee_ft::input::human::InputSource::Cpu)
+            {
+                continue;
+            }
+            // 800A55E4: ftCo_800A1AB4.
+            let d = distance(fp.core.physics.position, p);
+            let player = other.core.player.id;
+            match best {
+                None => best = Some((index, player, d)),
+                // gm_8016C6C0 ranks a player's slot (ftLib_80086BE0): one
+                // player's two fighters (Popo and Nana) rank alike, and the
+                // strictly nearer wins.
+                Some((_, best_player, best_d)) if best_player == player => {
+                    if best_d > d {
+                        best = Some((index, player, d));
+                    }
+                }
+                Some(_) => unimplemented!(
+                    "ftCo_800A53DC: two players' opponents ranked by gm_8016C6C0's standings"
+                ),
+            }
+        }
+        best.map(|(index, _, _)| index)
+    };
+    if fp.core.cpu.xfa_b34 != 0 {
+        if let Some(index) = candidates(true) {
+            return Some(index);
+        }
+    }
+    candidates(false)
+}
+
+/// ftCo_800A4E8C (0x800A4E8C): the opponent nearest `point` in three
+/// dimensions, of those in bounds, available and targetable. The square
+/// sum fuses x and z onto y's square (800A504C/800A5050: fmadds), then
+/// sqrtf__Ff.
+pub fn nearest_opponent_to(fp: &Fighter, scene: &Scene, point: hsd_types::Vec3) -> Option<usize> {
+    let half_size = fp.core.cpu.half_size;
+    let mut closest: Option<(usize, f32)> = None;
+    for (index, other) in scene.others() {
+        let p = other.core.physics.position;
+        if scene.outside(p.x, p.y, half_size)
+            || ally(fp, other)
+            || unavailable(other)
+            || not_targetable(other)
+        {
+            continue;
+        }
+        let dy = p.y - point.y;
+        let dx = p.x - point.x;
+        let dz = p.z - point.z;
+        let d = gekko_math::msl::sqrtf(gekko_math::fma::fmadds(
+            dz,
+            dz,
+            gekko_math::fma::fmadds(dx, dx, dy * dy),
+        ));
+        match closest {
+            Some((_, best)) if best.partial_cmp(&d) != Some(core::cmp::Ordering::Greater) => {}
+            _ => closest = Some((index, d)),
+        }
+    }
+    closest.map(|(index, _)| index)
 }

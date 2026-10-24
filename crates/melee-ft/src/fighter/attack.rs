@@ -11,12 +11,11 @@ use crate::input::{pad::Buttons, WaitContext, WaitPredicate as P, WaitTransition
 use melee_gr::wind::Wind;
 use melee_types::CommonMotionState as S;
 
-/// mv.co.attack1: the combo input was pressed (x0) and the rapid-jab A
-/// edges counted so far. The window itself is FighterCore::jab_countdown.
+/// mv.co.attack1: the combo input was pressed (x0). The combo window
+/// and rapid-jab A edges live independently in FighterCore.
 #[derive(Clone, Debug)]
 pub struct JabState {
     pub followup_pressed: bool,
-    pub rapid_edges: i32,
     /// The jabs write only mv.co.attack1.x0 (ftCo_Attack1.c:126, 194), so
     /// mv+4 is the predecessor's word (`None` where the port does not model it).
     pub retained_word: Option<f32>,
@@ -219,10 +218,11 @@ impl Fighter {
         self.step_animation(assets);
         self.core.jab_countdown = self.core.attributes.combat.jab_2_input_window;
         self.core.last_jab = Some(S::Attack11);
+        // retail 8008AC80: Fighter+x1A54, independent of mv.co.attack1.
+        self.core.rapid_jab_edges = 0;
         self.core.status.interaction = super::Interaction::Attack;
         self.core.state_data = MotionData::Jab(JabState {
             followup_pressed: false,
-            rapid_edges: 0,
             retained_word,
         });
         Ok(true)
@@ -261,11 +261,6 @@ impl Fighter {
         if self.try_item_pickup(assets)? {
             return Ok(());
         }
-        // mv.co.attack1 keeps the rapid-jab edges the union still holds.
-        let edges = match &self.core.state_data {
-            MotionData::Jab(jab) => jab.rapid_edges,
-            _ => 0,
-        };
         let retained_word = self.inherited_scratch_word();
         self.core.commands.jab_followup = false;
         self.change_motion_state(state.into(), assets)?;
@@ -275,7 +270,6 @@ impl Fighter {
         }
         self.core.state_data = MotionData::Jab(JabState {
             followup_pressed: false,
-            rapid_edges: edges,
             retained_word,
         });
         Ok(())
@@ -594,14 +588,12 @@ impl Fighter {
     /// Attack100Start (fn_800D6AC4 -> ftCo_800D6B00). True when the check
     /// consumed the tick, including an item picked up instead.
     fn try_rapid_jab(&mut self, assets: &FighterAssets) -> Result<bool> {
-        let MotionData::Jab(jab) = &mut self.core.state_data else {
-            panic!("jab scratch missing")
-        };
         if (self.core.input.pressed | self.core.input.released).intersects(Buttons::A) {
-            jab.rapid_edges += 1;
+            // retail 800D6A80: addi, retained across non-jab states.
+            self.core.rapid_jab_edges = self.core.rapid_jab_edges.wrapping_add(1);
         }
         if !self.core.commands.rapid_jab
-            || jab.rapid_edges < self.core.attributes.combat.rapid_jab_window
+            || self.core.rapid_jab_edges < self.core.attributes.combat.rapid_jab_window
         {
             return Ok(false);
         }
