@@ -4,6 +4,8 @@
 //! running dust also uses kinds 5/6 for facing and floor-angle parameters.
 //! The warp additionally needs the HSD spline/reference evaluator in `spline`.
 //! No spawn schedules or captured matrices are runtime inputs.
+mod box_fragments;
+pub use box_fragments::BOX_FRAGMENTS_REQUEST;
 mod dust;
 mod egg_shell;
 pub mod fixture_spawns;
@@ -158,6 +160,10 @@ struct Effect {
     /// efLib_Cb_SetJObjOffsetZ (eflib.c:1126): after each update's
     /// animation, the root's first child moves this far along its own Z.
     child_drift_z: Option<f32>,
+    /// efLib_Cb_Fall_FromParamY (eflib.c:1176): params.y, the rise that
+    /// each update lowers by 0.2 and adds to the root's height while the
+    /// root steps along its heading and tumbles about X.
+    fall_from_param_y: Option<f32>,
     /// efLib_Cb_SetRotYAndTransition (eflib.c:1095) is the update callback:
     /// Final Cutter's blade, which loops its last frames until it expires.
     blade_transition: bool,
@@ -2114,6 +2120,24 @@ impl Effects {
                     effect.lifetime = LIFETIME_END_FRAMES;
                 }
             }
+            if let Some(rise) = &mut effect.fall_from_param_y {
+                // efLib_Cb_Fall_FromParamY (8005E660): one fsubs, then
+                // separate fadds per axis.
+                *rise -= 0.2;
+                let rise = *rise;
+                let position = effect.tree.translation(effect.root);
+                let rotation = effect.tree.rotation(effect.root);
+                use gekko_math::msl::{cosf, sinf};
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(
+                        position.x + sinf(rotation.y),
+                        position.y + rise,
+                        position.z + cosf(rotation.y),
+                    ),
+                );
+                effect.tree.set_rotation_x(effect.root, 0.5 + rotation.x);
+            }
             if let Some(velocity) = &mut effect.velocity {
                 // efLib_Cb_SetOffset_FromParams (8005E950): separate fsubs/fadds.
                 velocity.y -= 0.1;
@@ -2227,6 +2251,7 @@ impl Effect {
             follow_item: None,
             item_bone: None,
             child_drift_z: None,
+            fall_from_param_y: None,
             blade_transition: false,
             expiring: false,
             hitlag_pause: HitlagPause::Ignore,

@@ -1147,3 +1147,55 @@ players = ["Fox", "Marth", "Falco", "Peach"]
 stocks = 2
 seed = 1413659151
 teams = [0, 0, 1, 1]
+# Items on (make_boundary.py --item-frequency very-high --items Sword
+# --no-containers): the random item spawner drops Beam Swords alone.
+[[boundary]]
+name = "start_fd_items_sword_nocont"
+cold = "start_fd_items_sword_nocont_cold"
+savestate = "harness/roms/start_fd_items_sword_nocont.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4067602209
+item_frequency = 4
+item_mask = "0xfffffff800001000"
+
+# Items on as the menus make them (make_boundary.py --item-frequency
+# very-high --items Sword): Beam Swords and the containers, which the VS
+# rules always spawn.
+[[boundary]]
+name = "start_fd_items_sword"
+cold = "start_fd_items_sword_cold"
+savestate = "harness/roms/start_fd_items_sword.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4067602209
+item_frequency = 4
+item_mask = "0xfffffff80000100f"
+
+# Items on, the Beam Sword and Barrels alone (make_boundary.py
+# --item-frequency very-high --items Sword --containers Taru).
+[[boundary]]
+name = "start_fd_items_taru"
+cold = "start_fd_items_taru_cold"
+savestate = "harness/roms/start_fd_items_taru.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2394518020
+item_frequency = 4
+item_mask = "0xfffffff800001004"
+
+# Items on as the menus make them on Battlefield (the spawner's first draw
+# before the stage's own, as on Final Destination).
+[[boundary]]
+name = "start_bf_items_sword"
+cold = "start_bf_items_sword_cold"
+savestate = "harness/roms/start_bf_items_sword.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 656512273
+item_frequency = 4
+item_mask = "0xfffffff80000100f"

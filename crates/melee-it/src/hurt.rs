@@ -202,6 +202,7 @@ impl ItemCore {
             ),
         };
         self.hit_by = hit_by;
+        self.struck_by_item = matches!(hit.source, ItemHitSource::Item { .. });
         self.hit_direction = direction;
         self.knockback_angle = hit.angle;
         self.pending_knockback = strongest_knockback;

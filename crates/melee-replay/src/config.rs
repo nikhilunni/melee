@@ -25,6 +25,10 @@ pub struct Config {
     /// Friendly fire in a team battle.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) friendly_fire: bool,
+    /// The Item Switch (`MatchRules::items`) as frequency and mask; absent
+    /// in older recordings and when items are off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) items: Option<(i8, u64)>,
 }
 
 const CHARACTERS: [(Character, &str); 26] = [
@@ -98,6 +102,11 @@ impl From<&MatchConfig> for Config {
                     .collect()
             }),
             friendly_fire: config.rules.friendly_fire,
+            items: config
+                .rules
+                .items
+                .enabled()
+                .then_some((config.rules.items.frequency, config.rules.items.mask)),
         }
     }
 }
@@ -138,6 +147,9 @@ impl Config {
         config.rules.all_characters_unlocked = self.all_characters_unlocked;
         config.rules.sudden_death = self.sudden_death;
         config.rules.friendly_fire = self.friendly_fire;
+        if let Some((frequency, mask)) = self.items {
+            config.rules.items = ItemRules { frequency, mask };
+        }
         Ok(config)
     }
 }

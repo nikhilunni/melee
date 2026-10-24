@@ -101,10 +101,13 @@ fn combat_gate(name: &str) -> Option<usize> {
     combat_gate_ticks(name, 300)
 }
 fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
+    combat_gate_ticks_with_ledger(name, ticks, "ledger")
+}
+fn combat_gate_ticks_with_ledger(name: &str, ticks: usize, ledger_suffix: &str) -> Option<usize> {
     let path =
         Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml"));
     let scenario = Scenario::load(&path).unwrap();
-    let ledger_path = scenario.trace_path("ledger.raw.jsonl");
+    let ledger_path = scenario.trace_path(&format!("{ledger_suffix}.raw.jsonl"));
     if !melee_test_support::require_files(
         scenario
             .required_files()
@@ -154,8 +157,13 @@ fn combat_gate_ticks(name: &str, ticks: usize) -> Option<usize> {
     // The ledger run's own display clock, as `melee-sim particle-sites`
     // reads it: each Dolphin run renders on its own ticks (host timing), and
     // the particle order the ledger's draws follow is re-sorted only then.
+    let initial = if scenario.is_cold() {
+        InitialState::from_parameters(&scenario).unwrap()
+    } else {
+        InitialState::from_savestate_traces(&scenario).unwrap()
+    };
     let mut simulation = Simulation::with_inputs(
-        InitialState::from_savestate_traces(&scenario).unwrap(),
+        initial,
         trace::pad_script(&scenario)
             .unwrap()
             .with_display_from(&ledger_path)
@@ -6300,4 +6308,72 @@ fn inherited_scratch_word_matches_retail_on_every_tick() {
             report.summary
         );
     }
+}
+
+/// Random items (itspawn.c): matches made with the Item Switch on
+/// (`make_boundary.py --item-frequency`), the spawner's countdown, pick and
+/// drop-in (fn_8026C88C) and what each kind does after.
+const RANDOM_ITEM_WITNESSES: &[(&str, usize)] = &[
+    // Very High, the Beam Sword alone and containers cleared from the
+    // mask: two swords drop in and lie on Final Destination.
+    ("start_fd_items_sword_nocont", 600),
+    ("start_fd_items_sword_nocont_cold", 600),
+    // Explorer matches from the Sword boundary: swords drop in, are
+    // picked up, carried, thrown and dropped by Fox and Marth, and lie
+    // until their lifetime ends.
+    ("corpus_v3_fd_items_sword_nocont_ef89b3e70_p0", 4363),
+    ("corpus_v3_fd_items_sword_nocont_e005a4f43_p2", 3069),
+    ("corpus_v3_fd_items_sword_nocont_e266e1150_p0", 2670),
+    ("corpus_v3_fd_items_sword_nocont_eecfcf1ea_p0", 3164),
+    // The menus' mask: a Capsule and a Box drop in and rest.
+    ("start_fd_items_sword", 600),
+    ("start_fd_items_sword_cold", 600),
+    // Barrels alone among the containers: two drop onto one spot and
+    // push each other apart (it_80271F78).
+    ("start_fd_items_taru", 600),
+    ("start_fd_items_taru_cold", 600),
+    // Battlefield: the spawner's first interval comes before the stage's
+    // creation draws there too.
+    ("start_bf_items_sword", 600),
+    ("start_bf_items_sword_cold", 600),
+    // Explorer matches with containers: Boxes break into one to three
+    // items (efAsync 0x427's boards, it_80286248), Capsules are carried,
+    // thrown and open or explode, Barrels roll when struck or dropped off
+    // a roll and break open (it_802886C4).
+    ("corpus_v3_bf_items_sword_e32b8fdc4_p1", 3950),
+    ("corpus_v3_bf_items_sword_e7d19908f_p1", 2858),
+    ("corpus_v3_bf_items_sword_e58dc731e_p2", 5181),
+    ("corpus_v3_fd_items_sword_ee8d2a62f_p0", 3407),
+    ("corpus_v3_fd_items_sword_e9af22990_p0", 6001),
+    ("corpus_v3_fd_items_sword_efc83a559_p1", 2472),
+    ("corpus_v3_fd_items_taru_ece1e43b7_p2", 243),
+    // Additional recorded explorer cases fixed by the same container paths;
+    // the full sweep verifies every tick and particle field exactly.
+    ("corpus_v3_bf_items_sword_e49783a03_p1", 5715),
+    ("corpus_v3_bf_items_sword_eee14f173_p1", 3969),
+    ("corpus_v3_fd_items_sword_e6df66885_p2", 1859),
+    ("corpus_v3_fd_items_sword_e75fb4a9a_p0", 213),
+    ("corpus_v3_fd_items_sword_e75fb4a9a_p2", 213),
+    ("corpus_v3_fd_items_sword_e98e8f6a6_p0", 3780),
+    ("corpus_v3_fd_items_sword_e9e9fbd4d_p2", 3267),
+    ("corpus_v3_fd_items_sword_ebac668de_p2", 3205),
+
+];
+
+#[test]
+fn random_item_witnesses_match_retail() {
+    // Start boundaries are recorded with the 600-tick ledger pass, just
+    // as m4_gate's boundary checks are. Use that recorded pass explicitly;
+    // retain its complete tick count and per-tick RNG-site assertions.
+    for &(name, ticks) in RANDOM_ITEM_WITNESSES {
+        if name.starts_with("start_") {
+            combat_gate_ticks_with_ledger(name, ticks, "ledger600");
+        }
+    }
+    let matches: Vec<_> = RANDOM_ITEM_WITNESSES
+        .iter()
+        .copied()
+        .filter(|(name, _)| !name.starts_with("start_"))
+        .collect();
+    gate_in_parallel(&matches);
 }

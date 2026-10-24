@@ -102,6 +102,10 @@ pub struct InitialState {
     pub(crate) stage_gobjs: crate::scene_stage::StageGObjs,
     pub(crate) clock: crate::match_clock::MatchClock,
     pub(crate) bomb_rain: melee_gr::bomb_rain::BombRain,
+    /// it_804A0E30: the random item spawner, when items are on.
+    pub(crate) item_spawner: Option<melee_it::random_spawn::RandomItemSpawner>,
+    /// Actual match rules, retained even when the pick table is empty.
+    pub(crate) item_rules: melee_it::random_spawn::ItemRules,
     /// FighterMatchInfo[].x8, fn_80167638 / fn_8016758C.
     pub(crate) revival_offsets: melee_ft::fighter::life::RevivalOffsets,
     pub(crate) resume: scheduler_resume::SchedulerResume,
@@ -125,6 +129,35 @@ pub struct InitialState {
     /// `SlippiCodes::offscreen_damage_by_camera_limits` (match setup, not
     /// saved state).
     pub(crate) offscreen_damage_by_camera_limits: bool,
+}
+/// gm_8016AE94 for a Versus match (lbl_8046B6A0.unk_34, gm_16AE.c
+/// get_unk_float): the random items' weight scale by player count
+/// (gm_8016B558).
+pub(crate) fn item_weight_scale(players: usize) -> f32 {
+    match players {
+        3 => 1.1,
+        4 => 1.2,
+        _ => 1.0,
+    }
+}
+
+/// Item Switch witnesses cover two-player FD and Battlefield. Check the
+/// actual saved rules on warm import as well as the requested cold setup.
+fn require_item_witness(
+    rules: melee_it::random_spawn::ItemRules,
+    sudden_death: bool,
+    stage: melee_types::GrKind,
+    players: usize,
+) {
+    if rules.enabled()
+        && !sudden_death
+        && (players != 2
+            || !matches!(stage, melee_types::GrKind::Last | melee_types::GrKind::Battle))
+    {
+        unimplemented!(
+            "it_8026D018: random items on {stage:?} with {players} players need a retail witness"
+        );
+    }
 }
 /// ftCo_MS_Sleep: a transformation partner's motion at a boundary.
 const SLEEP_MOTION: u32 = melee_types::CommonMotionState::Sleep as u32;
@@ -593,6 +626,8 @@ impl InitialState {
             )?),
             clock,
             bomb_rain,
+            item_spawner: scene_flow::restore_item_spawner(&saved, &setup, &assets)?,
+            item_rules: scene_flow::restore_item_rules(&saved),
             revival_offsets: scene_flow::restore_revival_offsets(&saved),
             pending_music,
             selected_music: None,

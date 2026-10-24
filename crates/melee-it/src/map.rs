@@ -456,6 +456,30 @@ impl ItemCore {
         self.rest_normal = hsd_types::Vec3::new(0.0, 1.0, 0.0);
     }
 
+    /// The last map pass's wall contact, either side (env_flags & 0x3F or
+    /// 0xFC0), read without it_80276308's write of xC30.
+    pub fn touches_wall(&self) -> bool {
+        let collision = self.collision.as_ref().expect("item map collision");
+        collision.env_flags as u32 & collide::WALL_MASK != 0
+    }
+
+    /// it_8027649C (8027649C): the floor's lean, the angle between its
+    /// normal and up signed by the normal's X and the facing.
+    pub fn floor_lean(&self) -> f32 {
+        let collision = self.collision.as_ref().expect("item map collision");
+        let normal = collision.floor.normal;
+        let angle = melee_lb::vector::angle(normal, hsd_types::Vec3::new(0.0, 1.0, 0.0));
+        let direction = if normal.x < 0.0 { -1.0 } else { 1.0 };
+        self.facing * (angle * direction)
+    }
+
+    /// it_80276408's surface when the map pass touched a floor (the floor
+    /// wins over every other contact): its normal.
+    pub fn floor_contact_normal(&self) -> Option<hsd_types::Vec3> {
+        let collision = self.collision.as_ref().expect("item map collision");
+        (collision.env_flags as u32 & collide::FLOOR_MASK != 0).then_some(collision.floor.normal)
+    }
+
     /// it_80276408 (80276408): the normal and line of the surface in
     /// contact; a floor wins over a ceiling, a right wall and a left wall.
     /// None where retail leaves its out-parameter unwritten.

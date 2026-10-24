@@ -150,6 +150,31 @@ pub enum ItemEvent {
         decay: f32,
         phase_step: f32,
     },
+    /// it_8026F3D4 (itdrop.c): a container lets out up to `count` items
+    /// drawn from the random item spawner's contents table (it_804A0E50),
+    /// each at `position` (it_8026BB88: the container's ECB centre) with
+    /// `previous_position` its position on the stage plane, and a random
+    /// sideways launch (it_8026F53C).
+    Release {
+        count: u8,
+        /// it_8026F3D4's arg3 bit 0: every item is the first's kind.
+        same_kind: bool,
+        position: Vec3,
+        previous_position: Vec3,
+    },
+    /// A crate's or barrel's contents (it_80286248, it_802886C4). A coin
+    /// match's coins aside, a monster may come out instead (it_8026F6BC:
+    /// ItCo +124 odds, under its hold-kind 6 limit); otherwise the Box's
+    /// roll picks how many ([`CrateRoll`]), a barrel lets out one, as a
+    /// [`Self::Release`].
+    CrateContents {
+        roll: Option<CrateRoll>,
+        position: Vec3,
+        previous_position: Vec3,
+    },
+    /// The rest of the item's callback, which the scene runs through
+    /// `ItemLogic::resumed` once the effects before it are made.
+    Resume(u8),
 }
 
 /// The model root's first child in depth-first order, the joint
@@ -203,7 +228,43 @@ pub enum ItemScratch {
     ShadowBall(ShadowBallState),
     CutterBeam(CutterBeamState),
     KirbyHammer(KirbyHammerState),
+    Container(ContainerState),
+    Barrel(BarrelState),
     None,
+}
+/// itTaru_ItemVars (ittaru.c): a barrel.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct BarrelState {
+    /// xDD4: broken.
+    pub opened: bool,
+    /// xDD8: ticks left once broken open.
+    pub despawn_timer: i32,
+    /// xDDC: the staves' tilt about X, drawn at the spawn.
+    pub tilt: f32,
+    /// xDE0: the roll's angle (the model root's rotation Z).
+    pub roll_angle: f32,
+    /// xDE4: the roll's signed speed.
+    pub roll_speed: f32,
+    /// xDE8: the normal of the floor it rolls on.
+    pub floor_normal: Vec3,
+}
+/// it_80286248's roll: one in `same_kind_odds` lets out one kind only,
+/// and the weights pick one, two or three items.
+#[derive(Clone, Copy, Debug)]
+pub struct CrateRoll {
+    pub weights: [i32; 3],
+    pub same_kind_odds: i32,
+}
+/// A random item container's flags (itCapsule_ItemVars, itBox_ItemVars,
+/// ...).
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ContainerState {
+    /// x0: it let out its contents, so it goes.
+    pub opened: bool,
+    /// x4: it exploded instead.
+    pub exploded: bool,
+    /// The Box's despawn_timer: ticks left once opened.
+    pub despawn_timer: i32,
 }
 /// Item.xDD4_itemVar.kirbyhammer (itkirbyhammer.c).
 #[derive(Clone, Copy, Debug, Default)]
@@ -762,6 +823,9 @@ pub struct ItemCore {
     pub nudge: Vec3,
     /// xDC8 x1A (ItemAttr x1_4): grounded, it can be pushed.
     pub pushable: bool,
+    /// itIsHeavy: a crate or barrel (ItemAttr x0 b?), which it_80271F78 pushes
+    /// off other heavy items.
+    pub heavy: bool,
     /// xDC8 x1C / x1D / x1E: fighters and other items push it, and a hold
     /// kind 3 item may push it; all set at creation.
     pub pushed_by_fighters: bool,
@@ -967,6 +1031,8 @@ pub struct ItemCore {
     pub knockback_angle: u16,
     pub hit_direction: f32,
     pub hit_by: Option<u8>,
+    /// The strongest hit this frame came from an item (xCF0, not xCEC).
+    pub struck_by_item: bool,
     /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
     pub queued_events: melee_types::fixed::FixedVec<ItemEvent, 4>,
     /// A fighter proc at s_link 9 or later drives this item (an owner's
@@ -996,6 +1062,12 @@ pub struct ItemCore {
     /// previous, current), which a cleared slot keeps in retail until a
     /// new capsule there is first placed.
     pub hitbox_trace: [(Vec3, Vec3); 4],
+}
+impl ItemCore {
+    /// lb_8000B804 on the model: back to its authored rotation.
+    pub fn reset_model_rotation(&mut self, assets: &ItemAssets) {
+        self.rotation = rest_rotation(assets);
+    }
 }
 /// lb_8000B804: the model root's authored rotation.
 pub(crate) fn rest_rotation(assets: &ItemAssets) -> Vec3 {
@@ -1717,6 +1789,7 @@ impl ItemPool {
             velocity: spawn.velocity,
             nudge: Vec3::ZERO,
             pushable: assets.pushable,
+            heavy: assets.heavy,
             pushed_by_fighters: true,
             pushed_by_items: true,
             pushed_by_open_palm: true,
@@ -1791,7 +1864,8 @@ impl ItemPool {
             spin_speed: 0.0,
             spin_ignores_facing: assets.rotate_to_facing,
             ecb_follows_rotation: true,
-            grabbable: false,
+            // Item_80267130 (item.c:233): it_8026B390.
+            grabbable: true,
             grab_offset: assets.grab_offset,
             grab_range: assets.grab_range,
             hitbox_size: 0.0,
@@ -1825,6 +1899,7 @@ impl ItemPool {
             knockback_angle: 0,
             hit_direction: 0.0,
             hit_by: None,
+            struck_by_item: false,
             queued_events: Default::default(),
             efasync_immediate: false,
             events: Default::default(),
@@ -2376,6 +2451,7 @@ mod tests {
         hold_limits[8] = Some(2);
         let mut gobjs = hsd_gobj::GObjAddresses::default();
         let mut pool = ItemPool::new(ItemCommonData {
+            random_items: Default::default(),
             hold_limits,
             lifetime: 1.0,
             spawn_intangible_frames: 0.0,
@@ -2423,6 +2499,7 @@ mod tests {
     fn physics_keeps_retail_rounding_boundary_between_nudge_and_position() {
         let mut gobjs = hsd_gobj::GObjAddresses::default();
         let mut pool = ItemPool::new(ItemCommonData {
+            random_items: Default::default(),
             hold_limits: [None; 13],
             lifetime: 1.0,
             spawn_intangible_frames: 0.0,

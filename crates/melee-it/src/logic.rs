@@ -151,6 +151,12 @@ pub trait ItemLogic {
         unimplemented!("held article launch for this kind")
     }
     fn destroyed(_item: &mut ItemCore) {}
+    /// The rest of a callback that drew an effect before it went on
+    /// ([`crate::ItemEvent::Resume`]): the scene made the effect, whose
+    /// draws come first, and calls this at once with the stream.
+    fn resumed(item: &mut ItemCore, step: u8, _assets: &ItemAssets, _rng: &mut gekko_math::HsdRng) {
+        unreachable!("{:?} has no resumed step {step}", item.kind)
+    }
     fn picked_up(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {}
     /// The pickup callback of an article created in its owner's hand reads
     /// the owner (itGamewatchGreenhouse_PickedUp tests the owner's motion):
@@ -270,6 +276,7 @@ pub trait ItemLogic {
         notice_precedes_teardown: Self::notice_precedes_teardown,
         launch: Self::launch,
         destroyed: Self::destroyed,
+        resumed: Self::resumed,
         picked_up: Self::picked_up,
         dropped: Self::dropped,
         thrown: Self::thrown,
@@ -332,6 +339,7 @@ pub struct ItemLogicRow {
         &ItemAssets,
     ),
     pub destroyed: fn(&mut ItemCore),
+    pub resumed: fn(&mut ItemCore, u8, &ItemAssets, &mut gekko_math::HsdRng),
     pub picked_up: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub dropped: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub thrown: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),

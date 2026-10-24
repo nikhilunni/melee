@@ -32,6 +32,8 @@ pub struct Setup {
     pub sudden_death: bool,
     /// StartMeleeRules friendly_fire: teammates' attacks land.
     pub friendly_fire: bool,
+    /// The Item Switch: frequency and the kinds that spawn.
+    pub items: crate::ItemRules,
     /// Slippi codes the recording ran (all off in retail).
     pub slippi: crate::slippi::SlippiCodes,
 }

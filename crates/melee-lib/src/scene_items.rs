@@ -18,6 +18,9 @@ melee_it::item_kinds! {
         FoxBlaster: it_foxlaser::FoxBlaster,
         FalcoBlaster: it_foxlaser::FalcoBlaster,
         BombHei: it_bombhei::BombHei,
+        Capsule: it_container::Capsule,
+        Box: it_container::Box,
+        Taru: it_container::Barrel,
         Sword: it_sword::Sword,
         Dosei: it_dosei::Dosei,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
@@ -474,6 +477,37 @@ impl Resources {
                     ItemKind::BombHei,
                     &it_bombhei::ARTICLE_STATES,
                     it_bombhei::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            // Random items' containers.
+            (
+                ItemKind::Capsule,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Capsule,
+                    &it_container::capsule_assets::ARTICLE_STATES,
+                    it_container::capsule_assets::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Taru,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Taru,
+                    &it_container::barrel_assets::ARTICLE_STATES,
+                    it_container::barrel_assets::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Box,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Box,
+                    &it_container::box_assets::ARTICLE_STATES,
+                    it_container::box_assets::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             // Peach's rare pulls.
@@ -1987,6 +2021,150 @@ pub fn spawn_rain_bomb(
         let item = pool.iter_mut().last().expect("spawned Bob-omb");
         it_bombhei::light(item, resources.get(ItemKind::BombHei));
     }
+}
+
+/// fn_8026C88C's spawn (8026C8FC..8026C96C): a common item of `kind` from
+/// thin air at `position`, falling (Item_80268B18) with its first collision
+/// (x44_flag.b0). Returns the new item, if the pool admitted it.
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_random_item(
+    pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    kind: ItemKind,
+    position: hsd_types::Vec3,
+    facing: f32,
+    rng: &mut gekko_math::HsdRng,
+) -> Option<u32> {
+    if resources.try_get(kind).is_none() {
+        // The kind's it/kinds/*.c file: each unported random item fails
+        // closed here, named, rather than inside its first callback.
+        unimplemented!("random item {kind:?}: its it/kinds file is not ported");
+    }
+    let spawn = melee_it::SpawnItem {
+        owner: None,
+        stale_source: None,
+        attack_from_spawner: false,
+        link_gobjs: 0,
+        secondary_owner: None,
+        kind,
+        // Item_802674AC: common items below It_Kind_L_Gun_Ray.
+        hold_kind: 0,
+        spawn_variant: 0,
+        position,
+        previous_position: position,
+        velocity: hsd_types::Vec3::ZERO,
+        facing,
+        damage: 0,
+        auxiliary_damage: 0,
+        spawn_argument: 0,
+        initial_collision: true,
+        auxiliary_flags: [0; 3],
+        ground_or_air: melee_types::GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
+    };
+    request(
+        pool,
+        gobjs,
+        resources,
+        map,
+        world,
+        objects,
+        ItemRequest::Spawn(spawn),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        rng,
+    )
+}
+
+/// What it_8026F5C8 gives an item a container lets out.
+pub struct Released {
+    pub kind: ItemKind,
+    /// it_8026BB88: the container's ECB centre.
+    pub position: hsd_types::Vec3,
+    /// The container's position on the stage plane.
+    pub previous_position: hsd_types::Vec3,
+    pub facing: f32,
+    /// The container as SpawnItem.x4_parent_gobj2: its attack (it_8027B0C4,
+    /// 0x8027B164). SpawnItem.x0_parent_gobj is NULL: a thrown container's
+    /// thrower does not own what it lets out.
+    pub attack: Option<melee_types::combat::AttackInstance>,
+}
+
+/// it_8026F5C8 (8026F5C8): a released item, falling (Item_80268B18) with
+/// its first collision, then spinning at ItCo +70 (it_80274658).
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_released_item(
+    pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    released: Released,
+    rng: &mut gekko_math::HsdRng,
+) -> Option<u32> {
+    if resources.try_get(released.kind).is_none() {
+        unimplemented!(
+            "item {:?} released from a container: its it/kinds file is not ported",
+            released.kind
+        );
+    }
+    let spawn = melee_it::SpawnItem {
+        owner: None,
+        stale_source: released.attack,
+        attack_from_spawner: true,
+        link_gobjs: 0,
+        secondary_owner: None,
+        kind: released.kind,
+        hold_kind: 0,
+        spawn_variant: 0,
+        position: released.position,
+        previous_position: released.previous_position,
+        velocity: hsd_types::Vec3::ZERO,
+        facing: released.facing,
+        damage: 0,
+        auxiliary_damage: 0,
+        spawn_argument: 0,
+        initial_collision: true,
+        auxiliary_flags: [0; 3],
+        ground_or_air: melee_types::GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
+    };
+    let id = request(
+        pool,
+        gobjs,
+        resources,
+        map,
+        world,
+        objects,
+        ItemRequest::Spawn(spawn),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        rng,
+    )?;
+    let spin = pool.common().random_items.release_spin_degrees;
+    pool.get_mut(id).expect("the released item").update_spin(spin);
+    Some(id)
 }
 
 /// The world matrix of a free item's model bone: its sampled pose under the

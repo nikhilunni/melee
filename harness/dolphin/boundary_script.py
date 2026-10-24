@@ -25,8 +25,18 @@ API has memory breakpoints only, so the hook is the first store after that
 address: gm_801A4B08 (called at 0x8016E75C) stores
 gm_AnyControllerPressedStart at gm_80479D58 +0x14, and nothing between the
 two addresses draws.
-`item_frequency` (optional, coverage runs only) replaces the items-off rule
-(gmm_x1CB0.item_freq: 0 very low .. 4 very high). `cpu_players` (optional,
+`item_frequency` (optional, default -1: items off) is the Item Switch
+screen's frequency, written to save data (gmm_x1CB0.item_freq: -1 off,
+0 Very Low .. 4 Very High); `item_switch` (optional, default every item) lists
+the Item Switch screen's entries that are on, as save-data mask bits
+(gmm_x1CB0.item_mask; gm_1601.c:3648 maps bit i to item kind
+lbl_803B7844[i] when the menus build the match rules). Containers (Capsule,
+Box, Barrel, Egg) have no entry: the VS rules start with every bit set
+(gm_1601.c:3534), so they spawn whenever items are on. `rules_item_mask`
+(optional, a u64) replaces the match's item mask at the creation hook below
+(StartMeleeRules.x20 of gmVsMelee_StartData, which fn_8016DCC0 copies into
+the match's rules afterwards), for a match no menu makes (no containers).
+`cpu_players` (optional,
 coverage runs only) lists players that the match makes CPUs at `cpu_level`:
 written at the creation hook into the start data's PlayerInitData (slot_type
 +1 = Gm_PKind_Cpu, cpu_level +0xF); the CSS still picks them as humans.
@@ -105,6 +115,12 @@ RULES_MODE, RULES_STOCKS, RULES_STOCK_TIME = 0x2, 0x4, 0x8
 MODE_STOCK = 1
 ITEM_FREQUENCY = 0x8045C370            # gmm_x1CB0.item_freq (0x1CB0 into save data)
 ITEMS_OFF = 0xFF                       # (s8) -1
+ITEM_SWITCH = 0x8045C378               # gmm_x1CB0.item_mask (u64, bit i: lbl_803B7844[i])
+ITEM_SWITCH_ALL = (1 << 32) - 1
+# gmVsMelee_StartData.rules (StartMeleeRules): xB item frequency, x20 item mask.
+RULES_ITEM_FREQUENCY, RULES_ITEM_MASK = 0xB, 0x20
+# The match's own rules (gm_GetRules: lbl_8046B6A0.x24C8).
+MATCH_RULES = 0x8046B6A0 + 0x24C8
 
 # mncharsel.c: CSSData* mnCharSel_804D6CB0; cursors mnCharSel_804A0BC0[4]
 # (CSSCursorData: x5 state, xC/x10 position); held tokens mnCharSel_804A0BD0[4]
@@ -144,7 +160,8 @@ MATCH_START_TEST = symbols.addr("gm_80479D58") + 0x14
 MATCH_START_TEST_FN = symbols.addr("gm_AnyControllerPressedStart")
 # gmVsMelee_StartData (StartMeleeData): rules (0x60), then one PlayerInitData
 # (0x24) per port; +0 is the character kind, +5 the spawn point.
-VS_START_PLAYERS = symbols.addr("gmVsMelee_StartData") + 0x60
+VS_START_RULES = symbols.addr("gmVsMelee_StartData")
+VS_START_PLAYERS = VS_START_RULES + 0x60
 START_PLAYER_SIZE = 0x24
 START_PLAYER_SPAWN = 5
 START_PLAYER_SLOT_TYPE, START_PLAYER_CPU_LEVEL = 1, 0xF
@@ -215,6 +232,9 @@ class BoundaryDriver:
         self.spawn_points: list[int] | None = config.get("spawn_points")
         self.spawn_points_replaced: list[int] | None = None
         self.cpu_players: list[int] = list(config.get("cpu_players") or [])
+        # The match's item mask, replaced at the same hook.
+        self.rules_item_mask: int | None = config.get("rules_item_mask")
+        self.rules_item_mask_replaced: int | None = None
         self.creation_hooked = False
         self.watching_creation = False
 
@@ -306,7 +326,8 @@ class BoundaryDriver:
                 if self.hooks_creation() and not self.creation_hooked:
                     missed = " and ".join(
                         what for what, named in (("the Game Start seed was", self.game_start_seed),
-                                                 ("the spawn points were", self.spawn_points))
+                                                 ("the spawn points were", self.spawn_points),
+                                                 ("the item mask was", self.rules_item_mask))
                         if named is not None)
                     raise BoundaryError("the match was created without passing fn_8016E730's "
                                         f"gm_801A4B08 call: {missed} not written")
@@ -341,9 +362,15 @@ class BoundaryDriver:
             base = VS_START_PLAYERS + self.ports[player] * START_PLAYER_SIZE
             self.mem.write_u8(base + START_PLAYER_SLOT_TYPE, PKIND_CPU)
             self.mem.write_u8(base + START_PLAYER_CPU_LEVEL, int(self.config.get("cpu_level", 9)))
+        if self.rules_item_mask is not None:
+            at = VS_START_RULES + RULES_ITEM_MASK
+            self.rules_item_mask_replaced = (self.mem.read_u32(at) << 32) | self.mem.read_u32(at + 4)
+            self.mem.write_u32(at, self.rules_item_mask >> 32)
+            self.mem.write_u32(at + 4, self.rules_item_mask & 0xFFFFFFFF)
 
     def hooks_creation(self) -> bool:
-        return self.game_start_seed is not None or self.spawn_points is not None or bool(self.cpu_players)
+        return (self.game_start_seed is not None or self.spawn_points is not None
+                or bool(self.cpu_players) or self.rules_item_mask is not None)
 
     def poke_save_data(self) -> None:
         mem = self.mem
@@ -356,6 +383,10 @@ class BoundaryDriver:
             # GameRules +9 friendly_fire: the match's rules take it from here.
             mem.write_u8(GAME_RULES + 9, 1 if self.config.get("friendly_fire") else 0)
         mem.write_u8(ITEM_FREQUENCY, self.config.get("item_frequency", ITEMS_OFF) & 0xFF)
+        switch = self.config.get("item_switch")
+        mask = ITEM_SWITCH_ALL if switch is None else sum(1 << bit for bit in set(switch))
+        mem.write_u32(ITEM_SWITCH, 0)
+        mem.write_u32(ITEM_SWITCH + 4, mask)
 
     def navigate_menu(self) -> dict:
         if self.frame < self.wait_until or self.frame - self.phase_frame < SETTLE_FRAMES:
@@ -487,7 +518,15 @@ class BoundaryDriver:
                 "item_frequency": self.mem.read_s8(ITEM_FREQUENCY),
                 "is_teams": self.mem.read_u8(MATCH_RULES + RULES_IS_TEAMS),
                 "friendly_fire": self.mem.read_u8(MATCH_RULES + RULES_FRIENDLY_FIRE) & 1,
-                **self.creation_seed()}
+                **self.match_items(), **self.creation_seed()}
+
+    def match_items(self) -> dict:
+        """The item rules the match runs: frequency and mask (gm_8016AE80,
+        gm_8016AEA4)."""
+        mask = (self.mem.read_u32(MATCH_RULES + RULES_ITEM_MASK) << 32) | self.mem.read_u32(
+            MATCH_RULES + RULES_ITEM_MASK + 4)
+        return {"rules_item_frequency": self.mem.read_s8(MATCH_RULES + RULES_ITEM_FREQUENCY),
+                "rules_item_mask": mask}
 
     def creation_seed(self) -> dict:
         """The seed the match was created from and the spawn points it was
@@ -498,6 +537,8 @@ class BoundaryDriver:
         if self.spawn_points is not None:
             out |= {"spawn_points": self.spawn_points,
                     "spawn_points_replaced": self.spawn_points_replaced}
+        if self.rules_item_mask is not None:
+            out |= {"rules_item_mask_replaced": self.rules_item_mask_replaced}
         return out
 
 
@@ -510,7 +551,8 @@ def main() -> None:
         savestate.save_to_file(path)
         sidecar = {"savestate": path, "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                    "frame": driver.frame, "seed": memory.read_u32(SEED_ADDR),
-                   "fighters": driver.read_fighters(), **driver.creation_seed()}
+                   "fighters": driver.read_fighters(), **driver.match_items(),
+                   **driver.creation_seed()}
         proto.write_json_atomic(Path(path + ".json"), sidecar)
 
     driver = BoundaryDriver(config, memory, save)

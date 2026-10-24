@@ -74,6 +74,14 @@ pub struct Scenario {
     /// A cold match's counting-down timer, in seconds.
     #[serde(default)]
     pub time_limit: Option<u32>,
+    /// The Item Switch frequency the match runs (StartMeleeRules xB): 0
+    /// Very Low .. 4 Very High; absent means items off.
+    #[serde(default)]
+    pub item_frequency: Option<i8>,
+    /// The match's item mask (StartMeleeRules x20), hex: bit `kind` lets
+    /// that item kind spawn. Required with `item_frequency`.
+    #[serde(default)]
+    pub item_mask: Option<String>,
     /// How players spawn (melee_lib::slippi::SpawnRule).
     #[serde(default, deserialize_with = "spawn_rule::deserialize")]
     pub spawn: melee_lib::slippi::SpawnRule,
@@ -271,6 +279,7 @@ impl Scenario {
             !self.friendly_fire || teams[0].is_some(),
             "friendly_fire belongs to a team battle"
         );
+        self.item_rules()?;
         let mut previous_port = None;
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
@@ -349,6 +358,21 @@ impl Scenario {
         Ok(())
     }
     /// The screen code the scenario's flags name.
+    /// The match's item rules: off unless the scenario names them.
+    pub fn item_rules(&self) -> Result<melee_lib::ItemRules> {
+        match (self.item_frequency, &self.item_mask) {
+            (None, None) => Ok(melee_lib::ItemRules::OFF),
+            (Some(frequency), Some(mask)) => {
+                let digits = mask.trim_start_matches("0x");
+                let mask = u64::from_str_radix(digits, 16)
+                    .with_context(|| format!("item_mask {mask:?} is not hex"))?;
+                let rules = melee_lib::ItemRules { frequency, mask };
+                rules.validate().map_err(anyhow::Error::msg)?;
+                Ok(rules)
+            }
+            _ => anyhow::bail!("item_frequency and item_mask go together"),
+        }
+    }
     pub fn screen(&self) -> melee_lib::slippi::Screen {
         use melee_lib::slippi::Screen;
         if self.widescreen_92_63 {
@@ -530,6 +554,7 @@ impl Scenario {
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
             friendly_fire: self.friendly_fire,
+            items: self.item_rules().expect("validated item rules"),
             slippi: melee_lib::slippi::SlippiCodes {
                 spawn: self.spawn,
                 stadium_preload: self.stadium_preload,

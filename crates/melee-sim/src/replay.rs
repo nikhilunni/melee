@@ -859,6 +859,8 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
         sudden_death: false,
         friendly_fire: cold.friendly_fire,
         time_limit: None,
+        item_frequency: None,
+        item_mask: None,
         spawn: Default::default(),
         stadium_preload: false,
         stadium_frozen: false,

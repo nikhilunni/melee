@@ -44,6 +44,8 @@ enum Callback {
     Camera,
     /// grLib_801C9C40 for every playing quake model.
     Quakes,
+    /// fn_8026C88C: the random item spawner (it_8026D018's GObj).
+    ItemSpawner,
 }
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 struct Registration {
@@ -95,6 +97,7 @@ impl Registration {
             Callback::Effects => 0x8005_BC50,
             Callback::Camera => 0x8002_F360,
             Callback::Quakes => 0x801C_9C40,
+            Callback::ItemSpawner => 0x8026_C88C,
             // Cold-only composite callback has no single retail proc identity.
             Callback::Banner => 0,
         };
@@ -339,10 +342,103 @@ impl Runtime {
             self.pad_queue_x = recorded;
         }
     }
+    /// fn_8026C88C (8026C88C), the random item spawner's proc: when its
+    /// countdown runs out, a kind from the pick table (it_8026C75C) drops
+    /// in at a random item marker (it_8026CB3C: Stage_80224FDC, and no
+    /// solid stage there) in a puff (efSync_Spawn 0x420); then the next
+    /// interval. db_AreItemSpawnsEnabled is on in a retail match.
+    fn spawn_random_item(&mut self, world: &mut World) -> Result<()> {
+        let state = &mut self.state;
+        let Some(spawner) = state.item_spawner.as_mut() else {
+            return Ok(());
+        };
+        if !spawner.count_down() {
+            return Ok(());
+        }
+        // it_8026C75C: Poke Balls switched off, or Item_804A0C64.x1C at its
+        // limit (ItCo +C).
+        let poke_balls = state
+            .items
+            .iter()
+            .filter(|item| item.kind == melee_types::ItemKind::MBall)
+            .count();
+        let poke_ball_limit = state.items.common().hold_limits[9].unwrap_or(0);
+        let barred = !spawner.switched_on(melee_types::ItemKind::MBall)
+            || poke_balls >= poke_ball_limit;
+        if barred && poke_balls > 0 {
+            unimplemented!("it_8026C75C: Item_804A0C64.x1C counts Poke Balls (item.c:408)");
+        }
+        let kind = spawner.items.pick(barred, &mut state.rng);
+        if let Some(kind) = kind {
+            // it_8026CB3C: a marker, flattened onto the stage plane, outside
+            // solid stage (mpColl_8004D024).
+            let position = melee_gr::bomb_rain::random_item_marker(
+                &state.assets.drop_markers,
+                &mut state.rng,
+            )
+            .map(|mut position| {
+                position.z = 0.0;
+                position
+            })
+            .filter(|position| !state.map.is_point_inside_solid(position));
+            if let Some(position) = position {
+                // it_8026B684 -> ftLib_800864A8.
+                let facing = crate::scene_items::facing_toward_fighters(
+                    position,
+                    &mut state.fighters,
+                    &mut state.rng,
+                );
+                let spawned = crate::scene_items::spawn_random_item(
+                    &mut state.items,
+                    &mut state.effects.gobjs,
+                    &state.assets.items,
+                    &mut state.map,
+                    world,
+                    &mut self.item_objects,
+                    kind,
+                    position,
+                    facing,
+                    &mut state.rng,
+                );
+                if let Some(id) = spawned {
+                    // efSync_Spawn(0x420, item, &pos); it_80274ED8 counts
+                    // the spawn (it_804D6D0C, which nothing in a match reads).
+                    state
+                        .items
+                        .get_mut(id)
+                        .expect("the new item")
+                        .events
+                        .push(melee_it::ItemEvent::Effect { id: 0x420, position });
+                }
+                self.drain_item_events(false, world)?;
+            }
+        }
+        let state = &mut self.state;
+        let intervals = state.items.common().random_items.intervals;
+        state
+            .item_spawner
+            .as_mut()
+            .expect("the spawner")
+            .restart(&intervals, &mut state.rng);
+        Ok(())
+    }
     /// Item requests made during a proc, in request order: effects spawn and
     /// draw now; efAsync requests below s_link 9 wait for the item's link 9
     /// flush (Item_80269A9C -> efAsync_QueueFlush), which `flush` performs.
-    fn drain_item_events(&mut self, flush: bool) -> Result<()> {
+    fn drain_item_events(&mut self, flush: bool, world: &mut World) -> Result<()> {
+        // A container's release creates items, which the walk over the
+        // pool cannot: it stops there, lets the items out, and goes on.
+        while let Some((container, release)) = self.drain_item_events_to_release(flush)? {
+            self.release_contents(container, release, world)?;
+        }
+        Ok(())
+    }
+    /// [`Self::drain_item_events`] up to a container's release, which it
+    /// returns with the container.
+    fn drain_item_events_to_release(
+        &mut self,
+        flush: bool,
+    ) -> Result<Option<(u32, melee_it::ItemEvent)>> {
         let state = &mut self.state;
         for item in state.items.iter_mut() {
             if flush {
@@ -353,6 +449,37 @@ impl Runtime {
             }
             while !item.events.is_empty() {
                 match item.events.remove(0) {
+                    release @ (melee_it::ItemEvent::Release { .. }
+                    | melee_it::ItemEvent::CrateContents { .. }) => {
+                        return Ok(Some((item.id, release)));
+                    }
+                    melee_it::ItemEvent::Resume(step) => {
+                        // What the callback pushes now precedes what it
+                        // had pushed after this point.
+                        let mut rest = melee_types::fixed::FixedVec::<melee_it::ItemEvent, 8>::default();
+                        while !item.events.is_empty() {
+                            rest.push(item.events.remove(0));
+                        }
+                        let logic = <crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
+                            item.kind,
+                        );
+                        (logic.resumed)(item, step, state.assets.items.get(item.kind), &mut state.rng);
+                        while !rest.is_empty() {
+                            item.events.push(rest.remove(0));
+                        }
+                    }
+                    melee_it::ItemEvent::Effect {
+                        id: melee_ef::BOX_FRAGMENTS_REQUEST,
+                        position,
+                    } => {
+                        state.effects.spawn_box_fragments::<RetailTrig>(
+                            item.id,
+                            position,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
                     melee_it::ItemEvent::HitSpark { position, damage } => {
                         state.effects.spawn_item_hit_spark::<RetailTrig>(
                             item.id,
@@ -735,6 +862,135 @@ impl Runtime {
                             });
                     }
                 }
+            }
+        }
+        Ok(None)
+    }
+
+    /// it_8026F3D4 (8026F3D4): a container lets out `count` items, each a
+    /// draw from the contents table (it_8026C75C on it_804A0E50), created
+    /// at the container (it_8026F5C8) and launched (it_8026F53C). A draw
+    /// that finds nothing ends the release. ftLib_800874CC's tally of what
+    /// came out is the owner's match statistics only.
+    fn release_contents(
+        &mut self,
+        container: u32,
+        release: melee_it::ItemEvent,
+        world: &mut World,
+    ) -> Result<()> {
+        let state = &mut self.state;
+        let (count, same_kind, position, previous_position) = match release {
+            melee_it::ItemEvent::Release {
+                count,
+                same_kind,
+                position,
+                previous_position,
+            } => (count, same_kind, position, previous_position),
+            melee_it::ItemEvent::CrateContents {
+                roll,
+                position,
+                previous_position,
+            } => {
+                // it_8026F6BC (8026F6BC): under the hold-kind 6 limit, one
+                // crate in ItCo +124 lets out a monster instead.
+                let common = state.items.common().random_items;
+                let monsters = state.items.iter().filter(|item| item.hold_kind == 6).count();
+                if (monsters as i32) < common.monster_limit
+                    && state.rng.randi(common.monster_odds) == 0
+                {
+                    unimplemented!("it_8026F6BC: a monster from a crate (it_8026C65C on it_804A0E60)");
+                }
+                let Some(melee_it::CrateRoll {
+                    weights: [one, two, three],
+                    same_kind_odds,
+                }) = roll
+                else {
+                    // it_802886C4: a barrel lets out one.
+                    return self.release_contents(
+                        container,
+                        melee_it::ItemEvent::Release {
+                            count: 1,
+                            same_kind: false,
+                            position,
+                            previous_position,
+                        },
+                        world,
+                    );
+                };
+                // it_80286248: the same-kind roll, then one, two or three.
+                let same_kind = state.rng.randi(same_kind_odds) == 0;
+                let two_or_fewer = one + two;
+                let roll = state.rng.randi(three + two_or_fewer);
+                let count = if roll < one {
+                    1
+                } else if roll < two_or_fewer {
+                    2
+                } else {
+                    3
+                };
+                (count, same_kind, position, previous_position)
+            }
+            _ => unreachable!("a release event"),
+        };
+        let Some(spawner) = state.item_spawner else {
+            // it_8026C75C on an empty table: x8 is zero without a spawner.
+            return Ok(());
+        };
+        let attack = state.items.get_mut(container).expect("the container").stale_source;
+        let mut kind = None;
+        for _ in 0..count {
+            let poke_balls = state
+                .items
+                .iter()
+                .filter(|item| item.kind == melee_types::ItemKind::MBall)
+                .count();
+            let limit = state.items.common().hold_limits[9].unwrap_or(0);
+            let barred = !spawner.switched_on(melee_types::ItemKind::MBall) || poke_balls >= limit;
+            if barred && poke_balls > 0 {
+                unimplemented!("it_8026C75C: Item_804A0C64.x1C counts Poke Balls (item.c:408)");
+            }
+            // it_8026F3D4: with arg3 bit 0, the first draw's kind repeats.
+            if !same_kind || kind.is_none() {
+                kind = spawner.contents.pick(barred, &mut state.rng);
+            }
+            let Some(kind) = kind else {
+                break;
+            };
+            if kind == melee_types::ItemKind::MBall {
+                // it_8026F3D4's it_8026C704 test (itdrop.c:63).
+                unimplemented!("it_8026F3D4: a Poke Ball from a container (it_8026C704)");
+            }
+            // it_8026F5C8: facing from the stage-plane position.
+            let facing = crate::scene_items::facing_toward_fighters(
+                previous_position,
+                &mut state.fighters,
+                &mut state.rng,
+            );
+            let spawned = crate::scene_items::spawn_released_item(
+                &mut state.items,
+                &mut state.effects.gobjs,
+                &state.assets.items,
+                &mut state.map,
+                world,
+                &mut self.item_objects,
+                crate::scene_items::Released {
+                    kind,
+                    position,
+                    previous_position,
+                    facing,
+                    attack,
+                },
+                &mut state.rng,
+            );
+            if let Some(id) = spawned {
+                // it_8026F53C: x54 * (2 * (r - 0.5)) sideways (separate
+                // fmuls, 8026F578 / 8026F57C), the kind's x18 upward.
+                let common = state.items.common().random_items;
+                let random = state.rng.randf();
+                let item = state.items.get_mut(id).expect("the released item");
+                let rise = state.assets.items.get(kind).launch_vertical_velocity;
+                item.velocity = Vec3::new(common.release_spread * (2.0 * (random - 0.5)), rise, 0.0);
+                // it_80274ED8: the spawn count nothing in a match reads.
             }
         }
         Ok(())
@@ -1293,7 +1549,7 @@ impl Runtime {
                         spawner_teardown = Some((id, held));
                     }
                 }
-                self.drain_item_events(phase == 9)?;
+                self.drain_item_events(phase == 9, world)?;
                 self.notify_owner_at_once(id, true)?;
             }
             Callback::Banner => {
@@ -1410,6 +1666,7 @@ impl Runtime {
             Callback::Quakes => state
                 .quakes
                 .animate(&mut state.camera, &mut state.effects.gobjs),
+            Callback::ItemSpawner => self.spawn_random_item(world)?,
             Callback::Fighter { player, proc } => {
                 if proc == FighterProc::Animation {
                     use crate::scene_fighter::with_fighter;
@@ -2172,7 +2429,7 @@ impl Runtime {
                             facing,
                             &mut state.rng,
                         );
-                        self.drain_item_events(false)?;
+                        self.drain_item_events(false, world)?;
                     }
                 }
                 0x801C461C | 0x801CADBC | 0x801C1D38 => {}
@@ -2588,7 +2845,7 @@ impl Runtime {
                 )
             })
         }) {
-            self.drain_item_events(false)?;
+            self.drain_item_events(false, world)?;
         }
         if let Some((id, held)) = spawner_teardown {
             if let Some(item) = self.state.items.get_mut(id) {
@@ -2596,7 +2853,7 @@ impl Runtime {
                     item.events.push(event);
                 }
             }
-            self.drain_item_events(false)?;
+            self.drain_item_events(false, world)?;
         }
         let state = &mut self.state;
         // The spawner's own end (Item_8026A8EC's efLib_DestroyAll) follows
@@ -3086,6 +3343,16 @@ impl Simulation {
                 priority: 0,
                 object: 0,
                 callback: Callback::Banner,
+            });
+        }
+        if state.item_spawner.is_some() {
+            // it_8026D018: GObj_Create(5, 7, 0), its proc at s_link 0.
+            rows.push(Registration {
+                s_link: 0,
+                p_link: 7,
+                priority: 0,
+                object: 0,
+                callback: Callback::ItemSpawner,
             });
         }
         // Ground_801C0FB8's GObjs join the scheduler when the stage starts.

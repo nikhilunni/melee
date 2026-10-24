@@ -112,6 +112,108 @@ fn step_after_clone_and_clone_from_allocates_nothing() {
 }
 
 #[test]
+fn random_item_spawns_and_container_capture_allocate_nothing() {
+    TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut seen = [false; 3];
+    for name in [
+        "corpus_v3_fd_items_sword_e9af22990_p0",
+        "corpus_v3_bf_items_sword_e49783a03_p1",
+        "corpus_v3_fd_items_taru_ece1e43b7_p2",
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        if !melee_test_support::require_files(scenario.required_files()) {
+            return;
+        }
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut presentation = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        for frame in 0..scenario.frames {
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} tick {frame}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let result = presentation.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            result.unwrap_or_else(|error| panic!("{name} capture {frame}: {error}"));
+            assert_eq!(COUNT.with(Cell::get), 0, "{name} capture {frame}");
+            for item in game.observe().unwrap().items() {
+                // Retail item kinds 0/1/2: Capsule, Box and Barrel.
+                if let Ok(index) = usize::try_from(item.kind().0) {
+                    if let Some(present) = seen.get_mut(index) {
+                        *present = true;
+                    }
+                }
+            }
+        }
+    }
+    assert!(
+        seen.into_iter().all(|present| present),
+        "exercise every container"
+    );
+}
+
+#[test]
+fn imported_item_rules_survive_clone_and_reset_when_the_scenario_omits_them() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let mut scenario = melee_sim::scenario::Scenario::load(
+        &root.join("harness/scenarios/corpus_v3_fd_items_sword_e9af22990_p0.toml"),
+    )
+    .unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    let rules = scenario.item_rules().unwrap();
+    assert!(rules.enabled());
+    assert!(!scenario.is_cold());
+    scenario.item_frequency = None;
+    scenario.item_mask = None;
+    let imported = diagnostics::import_match(&scenario).unwrap();
+    assert_eq!(imported.config().rules.items, rules);
+    let mut cloned = imported.clone();
+    cloned.reset(Seed(42)).unwrap();
+    assert_eq!(cloned.config().rules.items, rules);
+}
+
+#[test]
+fn imported_warm_team_rules_survive_clone_and_reset_without_metadata() {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let scenario = melee_sim::scenario::Scenario::load(
+        &root.join("harness/scenarios/start_fd_doubles_ff_fox_falco_marth_captainfalcon2.toml"),
+    )
+    .unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    assert!(!scenario.is_cold());
+    assert!(!scenario.friendly_fire);
+    let imported = diagnostics::import_match(&scenario).unwrap();
+    assert!(imported.config().rules.friendly_fire);
+    let teams: Vec<_> = imported
+        .config()
+        .players
+        .iter()
+        .map(|player| player.team)
+        .collect();
+    assert!(teams.iter().all(Option::is_some));
+    let mut cloned = imported.clone();
+    cloned.reset(Seed(42)).unwrap();
+    assert!(cloned.config().rules.friendly_fire);
+    assert_eq!(
+        cloned
+            .config()
+            .players
+            .iter()
+            .map(|player| player.team)
+            .collect::<Vec<_>>(),
+        teams
+    );
+}
+
+#[test]
 fn cold_match_step_and_observe_allocate_nothing() {
     let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
     if !melee_test_support::require_files([files.join("PlCo.dat")]) {

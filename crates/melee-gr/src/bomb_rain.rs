@@ -117,7 +117,7 @@ fn drops_over_players(stage: GrKind) -> bool {
 /// Stage_80224FDC (80224FDC): draw item markers from a shrinking range until
 /// one exists, then spawn markers the same way. Retail's shrinking range is
 /// not a shuffle: a missing marker can be drawn again.
-fn random_item_marker(markers: &DropMarkers, rng: &mut HsdRng) -> Option<Vec3> {
+pub fn random_item_marker(markers: &DropMarkers, rng: &mut HsdRng) -> Option<Vec3> {
     for range in (1..=ITEM_MARKER_COUNT as i32).rev() {
         if let Some(position) = markers.items[rng.randi(range) as usize] {
             return Some(position);

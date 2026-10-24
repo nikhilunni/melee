@@ -107,7 +107,8 @@ impl Match {
         let mut config = MatchConfig::versus(stage, players)
             .with_stocks(setup.fighters[0].stocks)
             .with_seed(Seed(setup.seed.unwrap_or(0)));
-        config.rules.friendly_fire = setup.friendly_fire;
+        config.rules.friendly_fire = engine.state().player_fighter(0).0.player.friendly_fire;
+        config.rules.items = engine.state().item_rules;
         let assets = GameAssets {
             inner: Arc::clone(&engine.state().assets),
             stage,

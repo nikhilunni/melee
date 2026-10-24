@@ -24,6 +24,7 @@ mod game;
 mod input;
 mod observation;
 pub use assets::FileSource;
+pub use melee_it::random_spawn::ItemRules;
 pub use config::{
     Character, ControllerFix, Costume, MatchConfig, MatchRules, PlayerConfig, Port, Seed, Stage,
 };

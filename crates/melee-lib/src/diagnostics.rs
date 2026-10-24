@@ -143,6 +143,7 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
             friendly_fire: self.friendly_fire,
+            items: self.item_rules().expect("validated item rules"),
             slippi: Default::default(),
         })
     }

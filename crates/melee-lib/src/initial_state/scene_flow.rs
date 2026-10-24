@@ -54,6 +54,72 @@ pub(super) fn restore_clock(saved: &super::SavedPose) -> Result<(MatchClock, Bom
     Ok((clock, rain))
 }
 
+/// StartMeleeRules (+0x24C8) xB, the item frequency, and x20, the mask.
+const ITEM_FREQUENCY_RULE: u32 = 0x24C8 + 0xB;
+const ITEM_MASK_RULE: u32 = 0x24C8 + 0x20;
+/// it_804A0E30 (RandomItemSpawner): x0 the countdown, x4 the pick table
+/// (its total, a halfword, at +0xC), x18 the mask.
+const ITEM_SPAWNER: u32 = 0x804A_0E30;
+const SPAWNER_TOTAL: u32 = 0xC;
+const SPAWNER_MASK: u32 = 0x18;
+
+pub(super) fn restore_item_rules(saved: &super::SavedPose) -> melee_it::random_spawn::ItemRules {
+    let frequency = saved.bytes(MATCH_DATA + ITEM_FREQUENCY_RULE, 1)[0] as i8;
+    let mask = saved.bytes(MATCH_DATA + ITEM_MASK_RULE, 8);
+    let mask = u64::from(word(mask, 0)) << 32 | u64::from(word(mask, 4));
+    melee_it::random_spawn::ItemRules { frequency, mask }
+}
+
+/// The match's item rules and, when it_8026D018 made one, the random item
+/// spawner: its tables rebuilt from the rules, its countdown from memory.
+pub(super) fn restore_item_spawner(
+    saved: &super::SavedPose,
+    setup: &crate::setup::Setup,
+    assets: &crate::assets::Assets,
+) -> Result<Option<melee_it::random_spawn::RandomItemSpawner>> {
+    let rules = restore_item_rules(saved);
+    ensure!(
+        !setup.items.enabled() || setup.items == rules,
+        "the scenario names items {:?}, the savestate runs {rules:?}",
+        setup.items
+    );
+    let sudden_death = saved.bytes(MATCH_DATA + SUDDEN_DEATH_RULE as u32, 1)[0] != 0;
+    super::require_item_witness(
+        rules,
+        sudden_death,
+        assets.stage_desc.kind,
+        setup.fighters.len(),
+    );
+    if sudden_death {
+        return Ok(None);
+    }
+    let common = &assets.items.common.random_items;
+    let spawner = saved.bytes(ITEM_SPAWNER, 0x20);
+    let Some(restored) = melee_it::random_spawn::RandomItemSpawner::restore(
+        rules,
+        &assets.item_rates,
+        super::item_weight_scale(setup.fighters.len()),
+        &common.monster_weights,
+        word(spawner, 0) as i32,
+    ) else {
+        return Ok(None);
+    };
+    let saved_total = u16::from_be_bytes([
+        spawner[SPAWNER_TOTAL as usize],
+        spawner[SPAWNER_TOTAL as usize + 1],
+    ]);
+    let saved_mask = u64::from(word(spawner, SPAWNER_MASK as usize)) << 32
+        | u64::from(word(spawner, SPAWNER_MASK as usize + 4));
+    ensure!(
+        saved_total == restored.items.total() && saved_mask == restored.mask,
+        "the saved item spawner (total {saved_total}, mask {saved_mask:#x}) is not the one \
+         the rules build (total {}, mask {:#x})",
+        restored.items.total(),
+        restored.mask
+    );
+    Ok(Some(restored))
+}
+
 /// FighterMatchInfo[i].x8 (lbl_8046B6A0 + 0x38 + i * 0xE + 8): the shared
 /// revival offset slot timers.
 pub(super) fn restore_revival_offsets(

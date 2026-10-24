@@ -17,6 +17,7 @@ mod map;
 pub mod particle_track;
 pub use map::AirContact;
 pub mod pose;
+pub mod random_spawn;
 mod spawn;
 pub use engine::*;
 pub use logic::*;

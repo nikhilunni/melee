@@ -377,8 +377,10 @@ impl PlayerConfig {
     }
 }
 pub use melee_ft::input::ControllerFix;
+use crate::ItemRules;
 
-/// Supported Versus rules: singles, stock, no items, normal damage, no timer.
+/// Supported Versus rules: singles, stock, normal damage; an optional
+/// timer and items.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MatchRules {
     pub stocks: u8,
@@ -395,6 +397,8 @@ pub struct MatchRules {
     /// StartMeleeRules friendly_fire: in a team battle, teammates' attacks
     /// land (gm_8016B0D4).
     pub friendly_fire: bool,
+    /// The Item Switch (StartMeleeRules xB and x20): off by default.
+    pub items: ItemRules,
 }
 impl Default for MatchRules {
     fn default() -> Self {
@@ -404,6 +408,7 @@ impl Default for MatchRules {
             sudden_death: false,
             all_characters_unlocked: true,
             friendly_fire: false,
+            items: ItemRules::OFF,
         }
     }
 }
@@ -473,6 +478,9 @@ impl MatchConfig {
         if self.rules.time_limit_seconds == Some(0) {
             return Err(StartError::InvalidConfig("a time limit must be positive"));
         }
+        if self.rules.items.validate().is_err() {
+            return Err(StartError::InvalidConfig("item frequency must be in -1..=4"));
+        }
         if !(1..=99).contains(&self.rules.stocks) {
             return Err(StartError::InvalidConfig("stocks must be in 1..=99"));
         }
@@ -501,6 +509,7 @@ impl MatchConfig {
             time_limit: self.rules.time_limit_seconds,
             sudden_death: self.rules.sudden_death,
             friendly_fire: self.rules.friendly_fire,
+            items: self.rules.items,
             slippi: Default::default(),
         })
     }

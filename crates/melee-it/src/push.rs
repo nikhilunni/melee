@@ -150,9 +150,68 @@ impl ItemPool {
                 self.push_from_items(index, rng);
             }
         }
-        // it_80271F78 pushes heavy items (crates, barrels) off each other;
-        // none is a supported kind.
+        let item = &self.items[index];
+        if !item.held && item.ground_or_air == GroundOrAir::Ground && item.heavy {
+            self.push_heavy(index, rng);
+        }
         self.items[index].push_settled = true;
+    }
+
+    /// it_80271F78 (80271F78): a heavy item (a crate or barrel) on the
+    /// ground is pushed off every other grounded heavy one it overlaps,
+    /// whether or not either is pushable, as it_80271D2C pushes; the last
+    /// in the list wins. An exploding one (xDD1 b0) pushes nothing.
+    fn push_heavy(&mut self, index: usize, rng: &core::cell::Cell<gekko_math::HsdRng>) {
+        let push_speed = self.common().push_speed;
+        let target = self.items[index].root_translation;
+        let push_box = self.items[index].push_box;
+        let mut nudge = None;
+        for (other_index, other) in self.items.iter().enumerate() {
+            let eligible = other_index != index
+                && !other.held
+                && other.ground_or_air == GroundOrAir::Ground
+                && !other.exploding
+                && other.heavy;
+            if !eligible
+                || !overlaps(
+                    other.root_translation.x,
+                    other.root_translation.y,
+                    &push_box,
+                    &other.push_box,
+                    target,
+                )
+            {
+                continue;
+            }
+            let offset = target.x - other.root_translation.x;
+            let direction = if gekko_math::msl::fabsf(offset) < 0.001 {
+                if !other.push_settled {
+                    if other.nudge.x < 0.0 {
+                        1.0
+                    } else {
+                        -1.0
+                    }
+                } else {
+                    let mut r = rng.get();
+                    let side = r.randi(2);
+                    rng.set(r);
+                    if side != 0 {
+                        1.0
+                    } else {
+                        -1.0
+                    }
+                }
+            } else if offset < 0.0 {
+                -1.0
+            } else {
+                1.0
+            };
+            // retail: fmuls.
+            nudge = Some(push_speed * direction);
+        }
+        if let Some(nudge) = nudge {
+            self.items[index].nudge.x = nudge;
+        }
     }
 
     /// it_80271D2C (80271D2C): every other grounded item this one overlaps

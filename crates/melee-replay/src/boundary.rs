@@ -33,6 +33,13 @@ pub struct Boundary {
     /// Friendly fire in a team battle.
     #[serde(default)]
     pub friendly_fire: bool,
+    /// The Item Switch frequency the match runs (`make_boundary.py
+    /// --item-frequency`); absent means items off.
+    #[serde(default)]
+    pub item_frequency: Option<i8>,
+    /// The match's item mask, hex (StartMeleeRules x20).
+    #[serde(default)]
+    pub item_mask: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -49,6 +56,18 @@ pub fn load(path: &Path) -> Result<Vec<Boundary>, String> {
 }
 
 impl Boundary {
+    /// The item rules as the recording format holds them.
+    fn items(&self) -> Result<Option<(i8, u64)>, String> {
+        match (self.item_frequency, &self.item_mask) {
+            (None, None) => Ok(None),
+            (Some(frequency), Some(mask)) => {
+                let mask = u64::from_str_radix(mask.trim_start_matches("0x"), 16)
+                    .map_err(|e| format!("{}: item_mask: {e}", self.name))?;
+                Ok(Some((frequency, mask)))
+            }
+            _ => Err(format!("{}: item_frequency and item_mask go together", self.name)),
+        }
+    }
     /// The match this boundary starts: its costumes, the unlocked roster
     /// every boundary is recorded with, and the savestate's seed.
     pub fn config(&self) -> Result<MatchConfig, String> {
@@ -76,6 +95,7 @@ impl Boundary {
             controller_fixes: None,
             teams: self.teams.clone(),
             friendly_fire: self.friendly_fire,
+            items: self.items()?,
         }
         .decode()
         .map_err(|e| format!("{}: {e}", self.name))
@@ -146,6 +166,8 @@ mod tests {
             costumes: None,
             teams: None,
             friendly_fire: false,
+            item_frequency: None,
+            item_mask: None,
         };
         assert!(boundary.config().is_err());
     }

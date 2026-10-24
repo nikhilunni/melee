@@ -140,17 +140,25 @@ impl InitialState {
     pub(crate) fn from_assets(scenario: &Setup, assets: std::sync::Arc<Assets>) -> Result<Self> {
         let mut map = melee_gr::desc::load_collision(&assets.stage, &assets.stage_desc)
             .map_err(|e| anyhow::anyhow!("{e}"))?;
-        // The supplied seed is after creation, before music. grLast's four
-        // draws (Battle/Story: one; Dream Land: two), then two CPU draws per slot.
+        // The supplied seed is after creation, before music. The random item
+        // spawner's first interval, grLast's four draws (Battle/Story: one;
+        // Dream Land: two), then two CPU draws per slot.
         // Invert this fixed, audited interval; never search an oracle at runtime.
         let boundary_seed = scenario.seed.expect("validated cold seed");
+        // it_8026D018 draws its first interval when it creates the spawner.
+        let spawner_draws =
+            usize::from(create_item_spawner(scenario, &assets, &mut HsdRng::default()).is_some());
         let mut rng = HsdRng::new(before_setup(
             boundary_seed,
             setup_draws(
                 assets.stage_desc.kind,
                 scenario.roster().iter().map(|entry| entry.descriptor.kind),
-            )?,
+            )? + spawner_draws,
         ));
+        // fn_8016E730: Item_80266FCC, then it_8026D018 (the random item
+        // spawner), after the stage's files load (Stage_802251E8) and before
+        // its maps are created (Stage_8022524C), where every stage draws.
+        let item_spawner = create_item_spawner(scenario, &assets, &mut rng);
         let mut particles = ParticleSystem::default();
         let (mut stage, mut stage_animations) =
             initialize_stage(&assets, &scenario.slippi, &mut rng, &mut particles, &mut map)?;
@@ -242,6 +250,8 @@ impl InitialState {
                 ..Default::default()
             },
             bomb_rain: Default::default(),
+            item_spawner,
+            item_rules: scenario.items,
             revival_offsets: Default::default(),
             assets,
             map,
@@ -268,6 +278,30 @@ impl InitialState {
                 .offscreen_damage_by_camera_limits,
         })
     }
+}
+
+/// it_8026D018 for a Versus match of `scenario`'s players.
+fn create_item_spawner(
+    scenario: &Setup,
+    assets: &Assets,
+    rng: &mut HsdRng,
+) -> Option<melee_it::random_spawn::RandomItemSpawner> {
+    super::require_item_witness(
+        scenario.items,
+        scenario.sudden_death,
+        assets.stage_desc.kind,
+        scenario.fighters.len(),
+    );
+    let common = &assets.items.common.random_items;
+    melee_it::random_spawn::RandomItemSpawner::create(
+        scenario.items,
+        scenario.sudden_death,
+        &assets.item_rates,
+        super::item_weight_scale(scenario.fighters.len()),
+        &common.monster_weights,
+        &common.intervals,
+        rng,
+    )
 }
 
 /// Inverse of the odd HSD LCG multiplier, modulo 2^32.

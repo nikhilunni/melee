@@ -4,11 +4,36 @@ from __future__ import annotations
 
 import struct
 import tomllib
+import inspect
+from unittest.mock import create_autospec
 
 import pytest
 
 import boundary_script as bs
 import make_boundary as mb
+
+
+def test_boundary_command_keeps_item_rules_teams_and_extra_in_their_own_arguments(monkeypatch, tmp_path):
+    monkeypatch.setattr(mb.data_root, "ROMS", tmp_path)
+    monkeypatch.setattr(mb.data_root, "SCENARIOS", tmp_path)
+    registry = tmp_path / "boundaries.toml"
+    registry.write_text("boundary = []\n")
+    monkeypatch.setattr(mb, "BOUNDARIES", registry)
+    signature = inspect.signature(mb.make_savestate)
+    capture = create_autospec(mb.make_savestate, side_effect=RuntimeError("before Dolphin"))
+    monkeypatch.setattr(mb, "make_savestate", capture)
+    with pytest.raises(RuntimeError, match="before Dolphin"):
+        mb.main(["--stage", "FinalDestination", "--players", "Fox", "Marth", "--name", "args",
+                 "--teams", "0", "1", "--friendly-fire", "--item-frequency", "very-high",
+                 "--items", "Sword", "--no-containers"])
+    arguments = signature.bind(*capture.call_args.args, **capture.call_args.kwargs)
+    arguments.apply_defaults()
+    assert arguments.arguments["teams"] == [0, 1]
+    assert arguments.arguments["friendly_fire"] is True
+    assert arguments.arguments["item_frequency"] == 4
+    assert arguments.arguments["item_switch"] == [mb.SWITCHABLE["Sword"]]
+    assert arguments.arguments["rules_item_mask"] & 0xF == 0
+    assert arguments.arguments["extra"] is None
 
 
 class Memory:
@@ -141,6 +166,57 @@ def test_scenarios_and_registry_entry_parse():
     entry = tomllib.loads(mb.boundary_entry(name, "Battlefield", ["Marth", "Fox"], 4, 1234))["boundary"][0]
     assert entry == {"name": name, "cold": f"{name}_cold", "savestate": f"harness/roms/{name}.sav",
                      "stage": "Battlefield", "players": ["Marth", "Fox"], "stocks": 4, "seed": 1234}
+
+
+def test_items_are_poked_into_save_data_as_the_item_switch_holds_them():
+    d, mem = driver()
+    d.config |= {"item_frequency": 4, "item_switch": [mb.SWITCHABLE["Sword"]]}
+    mem.write_u8(bs.SCENE_MACHINE, bs.GM_MENU)
+    d.step()
+    assert mem.read_s8(bs.ITEM_FREQUENCY) == 4
+    assert (mem.read_u32(bs.ITEM_SWITCH), mem.read_u32(bs.ITEM_SWITCH + 4)) == (0, 1 << 27)
+    # No item switch named: every entry on.
+    d, mem = driver()
+    mem.write_u8(bs.SCENE_MACHINE, bs.GM_MENU)
+    d.step()
+    assert mem.read_u32(bs.ITEM_SWITCH + 4) == bs.ITEM_SWITCH_ALL
+
+
+def test_the_menus_item_mask_keeps_containers_and_clears_what_the_switch_turns_off():
+    sword = mb.menu_item_mask([mb.SWITCHABLE["Sword"]])
+    assert sword & 0xF == 0xF                  # Capsule, Box, Barrel, Egg
+    assert sword >> 12 & 1 and not sword >> 6 & 1    # Sword on, Bob-omb off
+    assert sword >> 0x23 & 1                   # the unused bit keeps the menus' 1
+    assert mb.menu_item_mask(None) == (1 << 64) - 1
+
+
+def test_an_items_boundary_names_its_rules_in_both_scenarios_and_the_registry():
+    items = (4, 0xFFFFFFF800001000)
+    start = tomllib.loads(mb.start_scenario("b", "FinalDestination", ["Fox", "Marth"], 4, items=items))
+    cold = tomllib.loads(mb.cold_scenario("b", "FinalDestination", ["Fox", "Marth"], 4, 7, [0, 0],
+                                          items=items))
+    entry = tomllib.loads(mb.boundary_entry("b", "FinalDestination", ["Fox", "Marth"], 4, 7,
+                                            items=items))["boundary"][0]
+    for table in (start, cold, entry):
+        assert (table["item_frequency"], int(table["item_mask"], 16)) == items
+    plain = tomllib.loads(mb.cold_scenario("b", "FinalDestination", ["Fox", "Marth"], 4, 7, [0, 0]))
+    assert "item_frequency" not in plain
+    with pytest.raises(SystemExit, match="needs its own --name"):
+        mb.main(["--stage", "FinalDestination", "--players", "Fox", "Marth",
+                 "--item-frequency", "high", "--no-containers"])
+    with pytest.raises(SystemExit, match="need --item-frequency"):
+        mb.main(["--stage", "FinalDestination", "--players", "Fox", "Marth", "--items", "Sword"])
+
+
+def test_the_item_mask_is_written_into_the_start_data_when_the_match_is_created():
+    d, mem, watched = creation_driver(seed=None, rules_item_mask=0xFFF0)
+    at = bs.VS_START_RULES + bs.RULES_ITEM_MASK
+    mem.write_u32(at, 0xFFFFFFFF)
+    mem.write_u32(at + 4, 0xFFFFFFFF)
+    d.step()
+    d.on_memory(True, bs.MATCH_START_TEST, bs.MATCH_START_TEST_FN)
+    assert (mem.read_u32(at), mem.read_u32(at + 4)) == (0, 0xFFF0)
+    assert d.creation_seed() == {"rules_item_mask_replaced": (1 << 64) - 1}
 
 
 def test_every_registered_boundary_names_known_characters_and_stages():

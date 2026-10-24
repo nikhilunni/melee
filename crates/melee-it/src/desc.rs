@@ -43,6 +43,27 @@ pub struct ItemCommonData {
     /// +7C: the speed a push moves a grounded item (it_80271B60).
     pub push_speed: f32,
     pub slide_rule: SlideRule,
+    /// What the random item spawner reads (itspawn.c).
+    pub random_items: RandomItemData,
+}
+
+/// ItCo common data the random item spawner reads.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct RandomItemData {
+    /// +FC: per Item Switch frequency (Very Low .. Very High), the range of
+    /// ticks between spawns (fn_8026C88C, it_8026D018).
+    pub intervals: [[i32; 2]; 5],
+    /// +128: the monster table's weights (it_8026CF04).
+    pub monster_weights: [i32; 4],
+    /// +54: a released item's sideways launch reach (it_8026F53C).
+    pub release_spread: f32,
+    /// +70: a released item's spin, in degrees (it_8026F5C8).
+    pub release_spin_degrees: f32,
+    /// +124: one crate in this many lets out a monster (it_8026F6BC).
+    pub monster_odds: i32,
+    /// +14: the hold-kind 6 items (Item_804A0C64.x2C) above which no
+    /// monster comes out (x30).
+    pub monster_limit: i32,
 }
 
 /// ItCo common data for an item sliding down a floor (it_80277040,
@@ -104,6 +125,18 @@ impl ItemCommonData {
         ] {
             hold_limits[kind] = Some(r.u32(base + offset)? as usize);
         }
+        let mut random_items = RandomItemData::default();
+        for (i, range) in random_items.intervals.iter_mut().enumerate() {
+            let at = base + 0xFC + 8 * i as u32;
+            *range = [r.s32(at)?, r.s32(at + 4)?];
+        }
+        for (i, weight) in random_items.monster_weights.iter_mut().enumerate() {
+            *weight = r.s32(base + 0x128 + 4 * i as u32)?;
+        }
+        random_items.release_spread = r.f32(base + 0x54)?;
+        random_items.release_spin_degrees = r.f32(base + 0x70)?;
+        random_items.monster_odds = r.s32(base + 0x124)?;
+        random_items.monster_limit = r.s32(base + 0x14)?;
         Ok(Self {
             hold_limits,
             lifetime: r.u32(base + 0x30)? as f32,
@@ -148,6 +181,7 @@ impl ItemCommonData {
                 stop_speed_squared: r.f32(base + 0xCC)?,
                 reversal_frames: r.u32(base + 0x38)?,
             },
+            random_items,
         })
     }
 }

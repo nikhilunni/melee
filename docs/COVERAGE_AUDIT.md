@@ -378,6 +378,23 @@ and falls back to the common scratch (Fox's Fire Fox 353-356, whose angle
 then reaches CliffCatch; Squat 39 out of some predecessors). No gated
 trace reads them; they are follow-up work, not fail-closed sites.
 
+## Random items (2026-10-24)
+
+Unreachable on the witnessed Item Switch stages (Final Destination and
+Battlefield), from stage data and call graph:
+- The Egg (It_Kind_Egg) as a random item: Ground_801C28CC's weight is 0 on
+  Final Destination and Battlefield (GrNLa / GrNBa grGroundParam +0x6A
+  times the row's +0x1A), so neither pick table holds it.
+- The Box's floating state 8 (it_80286088 / it_802870A4): only Kongo
+  Jungle's grKongo creates it.
+- The Barrel's state 4: no ittaru.c code calls Item_80268E5C with 4.
+
+Items-on setups on other stages or with more than two players stay
+fail-closed in both cold setup and saved-state import until witnessed.
+The warm guard reads the saved rules, including when the scenario omits them.
+
+See docs/PORT_NOTES/RANDOM_ITEMS.md for the open worklist.
+
 ## Exit status
 
 Remaining reachable boundaries: the Sudden Death item gaps in the table

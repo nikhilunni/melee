@@ -546,6 +546,55 @@ pub fn read_music(archive: &Archive, stage_id: i32) -> ReadResult<crate::music::
     })
 }
 
+/// The random item spawner's stage data for one StageParam row.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ItemRates {
+    /// `stage_info.xA0` (Ground_801C28CC): per item kind below
+    /// It_Kind_L_Gun_Ray, the ground parameters' weight (+0x6A) times the
+    /// row's (+0x1A).
+    pub weights: [i32; ITEM_RATE_KINDS],
+    /// Ground_801C2AE8: `(0.01f * ground +0x68) * (0.01f * row +0x18)`.
+    pub interval_scale: f32,
+}
+/// Ground_801C28CC's loop bound.
+pub const ITEM_RATE_KINDS: usize = 35;
+/// Ground_801C2AE8's percent (retail 801C2B3C: `@842`).
+const PERCENT: f32 = 0.01;
+
+/// `Ground_801C28CC` (0x801C28CC) and `Ground_801C2AE8` (0x801C2AE8): the
+/// item weights and spawn interval scale of the StageParam row for
+/// `stage_id` (a StKind).
+pub fn read_item_rates(archive: &Archive, stage_id: i32) -> ReadResult<ItemRates> {
+    let root = public(archive, "grGroundParam")?;
+    let r = archive.reader();
+    let count = r.u32(root + 0xB4)?;
+    let table = archive
+        .link(root + 0xB0)?
+        .ok_or_else(|| error("missing StageParam"))?;
+    let mut selected = None;
+    for i in 0..count {
+        let row = table + i * 0x64;
+        if r.s32(row)? == stage_id {
+            selected = Some(row);
+            break;
+        }
+    }
+    let row = selected.ok_or_else(|| error("missing stage item parameters"))?;
+    let mut weights = [0; ITEM_RATE_KINDS];
+    for (j, weight) in weights.iter_mut().enumerate() {
+        let offset = 2 * j as u32;
+        *weight =
+            i32::from(r.s16(root + 0x6A + offset)?) * i32::from(r.s16(row + 0x1A + offset)?);
+    }
+    // retail 801C2B5C..801C2B64: two fmuls, then their product.
+    let ground = PERCENT * f32::from(r.s16(root + 0x68)?);
+    let stage = PERCENT * f32::from(r.s16(row + 0x18)?);
+    Ok(ItemRates {
+        weights,
+        interval_scale: ground * stage,
+    })
+}
+
 /// `Ground_801C466C` (0x801C466C), ground.c:2665-2670, and
 /// `lb_80011AC4` (0x80011AC4): the selected map's Melee LightList table.
 pub fn read_static_lights(

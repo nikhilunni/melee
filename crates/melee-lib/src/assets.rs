@@ -48,6 +48,8 @@ pub struct Assets {
     pub stage_camera: melee_cm::StageCamera,
     /// Ground_801C2D24 at the markers the Sudden Death rain reads.
     pub drop_markers: melee_gr::bomb_rain::DropMarkers,
+    /// The stage's random item weights and spawn interval scale.
+    pub item_rates: melee_it::random_spawn::StageItemRates,
     /// One per fighter GObj, in fighter-list order (`Setup::roster`).
     pub(crate) fighters: melee_ft::fighter::assets::FighterAssetSet,
     pub stage: Archive,
@@ -287,6 +289,12 @@ impl Assets {
         for (i, slot) in drop_markers.spawns.iter_mut().enumerate() {
             *slot = bound_marker(i as i16)?;
         }
+        let rates = melee_gr::desc::read_item_rates(&stage, stage_descriptor.music_id)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+        let item_rates = melee_it::random_spawn::StageItemRates {
+            weights: rates.weights,
+            interval_scale: rates.interval_scale,
+        };
         let character_effects: [Archive; melee_ef::CHARACTER_EFFECT_FILES.len()] =
             melee_ef::CHARACTER_EFFECT_FILES
                 .iter()
@@ -320,6 +328,7 @@ impl Assets {
             arena,
             stage_camera,
             drop_markers,
+            item_rates,
             fighters,
             stage,
             stage_descriptor,
