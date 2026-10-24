@@ -121,11 +121,14 @@ impl<O: crate::ToadOwner> ItemLogic for Spore<O> {
         item.life_timer = life_timer;
         false
     }
-    fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+    /// itPeachToadSpore_Logic68_ShieldBounced (802BE518) ->
+    /// itColl_BounceOffShield.
+    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
         if !O::SPORE_DEFENSE_EVENTS {
             return false;
         }
-        unimplemented!("itPeachToadSpore_Logic68_ShieldBounced: itColl_BounceOffShield")
+        item.bounce_off_shield(ctx.shield_normal);
+        false
     }
 }
 

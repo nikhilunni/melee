@@ -1,0 +1,28 @@
+# As peach_upb_parasol_hitlag_hit_fd_fox, but Fox holds his shield from
+# tick 104 and Peach's up special (tick 194) strikes it: the shield hitlag
+# runs the same parasol pre/post-hitlag pair (it_802BDBF8 / it_802BDC18).
+# From the start_fd_peach_fox4 boundary. Input frames count ticks.
+name = "peach_upb_parasol_hitlag_shield_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 330
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 1, buttons = { R = true }, raw = { button = 32 } },
+  { frame = 105, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 194, port = 0, buttons = { B = true, StickY = 0.64224609375 }, raw = { button = 512, stickY = 80 } },
+  { frame = 196, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -1,0 +1,29 @@
+# Peach dashes right from tick 105 and up-specials into a standing Fox at
+# tick 202: once ftPe_SpecialHi_8011D424 has drawn the parasol it installs
+# the pre/post-hitlag pair ftPe_SpecialHi_8011D620 / 8011D650, so each hit
+# Peach lands freezes the parasol (it_802BDBF8 -> it_8026B724, xDC8 x3)
+# for her hitlag and thaws it after (it_802BDC18 -> it_8026B73C).
+# From the start_fd_peach_fox4 boundary. Input frames count ticks.
+name = "peach_upb_parasol_hitlag_hit_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 330
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = { B = true, StickY = 0.64224609375 }, raw = { button = 512, stickY = 80 } },
+  { frame = 204, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

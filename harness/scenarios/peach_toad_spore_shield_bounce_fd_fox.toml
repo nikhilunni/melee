@@ -1,0 +1,36 @@
+# Toad's spores bounce off a shield (itPeachToadSpore_Logic68_ShieldBounced
+# -> itColl_BounceOffShield). Fox runs in (105-129), fires his blaster at
+# 190 into Toad (Peach's neutral special at 184): the counter releases the
+# spores (it_802BE214), and Fox, shielding from the end of the shot, meets
+# one rising past his shield at an incidence under 90 + it_804D6D28 +E0
+# degrees: the velocity mirrors off the shield normal and the facing
+# follows it. Found with a grid over Fox's stop tick, shield tick and the
+# Toad tick (`melee-sim dry-run`). From start_fd_peach_fox4; input frames
+# count ticks.
+name = "peach_toad_spore_shield_bounce_fd_fox"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_peach_fox4.sav"
+frames = 300
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 105, port = 1, buttons = { StickX = -1.0 }, raw = { stickX = -128 } },
+  { frame = 129, port = 1, buttons = {  }, raw = {  } },
+  { frame = 190, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 192, port = 1, buttons = {  }, raw = {  } },
+  { frame = 197, port = 1, buttons = { R = true }, raw = { button = 32 } },
+  { frame = 184, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 186, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

@@ -4,8 +4,8 @@
 //!
 //! The pre/post-hitlag callbacks the parasol and Toad install
 //! (it_8026B724 / it_8026B73C, freezing the item for the owner's hitlag)
-//! are not modelled: both items hold still in Peach's hand and the freeze
-//! only delays their animation frame, which no compared state reads.
+//! go through `effect_state.article_hitlag`, which the scene turns into
+//! [`ItemControl::OwnerHitlag`] requests.
 use crate::init::Peach;
 use crate::special_hi::{it_parasol, PARASOL_FALL, PARASOL_OPEN};
 use melee_ft::fighter::{

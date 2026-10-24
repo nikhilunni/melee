@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 560] = [
+const MATRIX_WITNESSES: [(&str, usize); 563] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1120,12 +1120,22 @@ const MATRIX_WITNESSES: [(&str, usize); 560] = [
     ("peach2_upb_close_reopen", 360),
     ("peach2_upb_air_steer", 380),
     ("peach2_upb_hit", 300),
+    // The parasol's pre/post-hitlag pair (ftPe_SpecialHi_8011D620 /
+    // 8011D650 -> it_802BDBF8 / it_802BDC18): Peach's up special hitting
+    // Fox, and hitting his shield, freezes the drawn parasol for her hitlag.
+    ("peach_upb_parasol_hitlag_hit_fd_fox", 330),
+    ("peach_upb_parasol_hitlag_shield_fd_fox", 330),
     // Toad (ftpeachspecialn.c): ground and aerial, and the counter against a
-    // laser and a dash attack, whose spores hit Fox.
+    // laser and a dash attack, whose spores hit Fox. The counters' hitlag
+    // freezes Toad (onEnterHitlag / onExitHitlag -> it_802BDFA0 / it_802BDFC0).
     ("peach2_toad_ground", 220),
     ("peach2_toad_air", 300),
     ("peach2_toad_counter_laser", 260),
     ("peach2_toad_counter_melee", 280),
+    // A counter's spore meets Fox's shield at a glancing incidence and
+    // bounces off it (itPeachToadSpore_Logic68_ShieldBounced ->
+    // itColl_BounceOffShield).
+    ("peach_toad_spore_shield_bounce_fd_fox", 300),
     // ftPe_AttackS4_Enter: three forward smashes redraw HSD_Randi(3) away
     // from the previous club/pan/racket; one charged, one turning round.
     ("peach2_fsmash_sequence", 360),

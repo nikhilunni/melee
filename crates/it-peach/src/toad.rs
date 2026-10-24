@@ -61,9 +61,8 @@ impl<O: crate::ToadOwner> ItemLogic for Toad<O> {
                 item.change_motion_with(COUNTER, ARTICLE_STATES[1], ANIM_UPDATE, assets);
                 item.animation_frame = COUNTER_START_FRAME;
             }
-            ItemControl::OwnerHitlag(_) => {
-                unimplemented!("it_802BDFA0 / it_802BDFC0: Toad owner hitlag")
-            }
+            // it_8026B724 / it_8026B73C: xDC8 x3 (x7 is never set here).
+            ItemControl::OwnerHitlag(frozen) => item.frozen = frozen,
             _ => unreachable!("{control:?} sent to Toad"),
         }
     }

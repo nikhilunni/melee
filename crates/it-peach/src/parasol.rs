@@ -68,9 +68,8 @@ impl ItemLogic for PeachParasol {
             ItemControl::Remove => item.destroyed = true,
             ItemControl::ParasolOpening(rate) => set_opening(item, rate, assets),
             ItemControl::ParasolOpen(rate) => set_open(item, rate, assets),
-            ItemControl::OwnerHitlag(_) => {
-                unimplemented!("it_802BDBF8 / it_802BDC18: parasol owner hitlag")
-            }
+            // it_8026B724 / it_8026B73C: xDC8 x3 (x7 is never set here).
+            ItemControl::OwnerHitlag(frozen) => item.frozen = frozen,
             _ => unreachable!("{control:?} sent to Peach's parasol"),
         }
     }

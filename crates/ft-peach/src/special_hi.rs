@@ -139,8 +139,9 @@ pub fn draw_parasol(f: &mut Fighter, assets: &FighterAssets) {
             peach.items.take_damage_armed = true;
         }
     }
-    // pre/post-hitlag callbacks (ftPe_SpecialHi_8011D620 / 8011D650) are
-    // installed but not modelled: see crate::articles.
+    // pre/post-hitlag callbacks ftPe_SpecialHi_8011D620 / 8011D650: the
+    // parasol freezes for Peach's hitlag (it_802BDBF8 / it_802BDC18).
+    f.effect_state.article_hitlag = Some(ItemKind::PeachParasol);
 }
 
 /// The parasol item's motion ids, as Peach drives them.

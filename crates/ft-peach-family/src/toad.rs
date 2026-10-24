@@ -251,6 +251,10 @@ pub fn draw_toad<C: ToadUser>(f: &mut Fighter) {
     // The death2/take-damage callbacks and the hitlag callbacks follow the
     // item reference.
     C::hold_toad(f);
+    // onEnterHitlag / onExitHitlag (8011E348 / 8011E378), fn_8010C44C /
+    // ftKb_SpecialNPe_8010C47C: Toad freezes for the owner's hitlag
+    // (it_802BDFA0 / it_802BDFC0).
+    f.effect_state.article_hitlag = Some(C::TOAD);
 }
 
 /// doHitAccessory4 (8011E1C8, inlined in onHitAccessory4) / fn_8010C344:
@@ -496,11 +500,13 @@ fn transition<C: ToadUser>(f: &mut Fighter, a: &FighterAssets, state: ActionId) 
     Ok(())
 }
 
-/// setupColl / setupHitColl: death2_cb and take_dmg_cb while Toad is out.
+/// setupColl / setupHitColl: death2_cb and take_dmg_cb while Toad is out,
+/// and the hitlag pair always (onEnterHitlag checks for Toad itself).
 fn arm_toad_callbacks<C: ToadUser>(f: &mut Fighter) {
     if C::toad_out(f) {
         C::arm_damage_callbacks(f);
     }
+    f.effect_state.article_hitlag = Some(C::TOAD);
 }
 
 /// The AbsorbDesc, installed by ftColl_8007B1B8.
