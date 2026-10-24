@@ -20,6 +20,7 @@ pub mod donkey;
 pub mod mewtwo;
 pub mod samus;
 pub mod thunder_jolt;
+pub mod toad;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -61,7 +62,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Ness
     unported("ftKb_SpecialNNs_800FED38", "ftKb_SpecialNNs_800FEDD0"),
     // Peach
-    unported("ftKb_SpecialNPe_8010C4D4", "ftKb_SpecialNPe_8010C560"),
+    CopiedNeutral::Ported(toad::enter),
     // Ice Climbers
     unported("ftKb_SpecialNIc_80108D64", "ftKb_SpecialNIc_80108E14"),
     // Nana: NULL (a swallowed Nana gives Popo's ability).
@@ -173,4 +174,31 @@ pub fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     chef::article_destroyed(f, kind);
     samus::article_destroyed(f, kind);
     mewtwo::article_destroyed(f, kind);
+    toad::article_destroyed(f, kind);
+}
+
+/// shield_hit_cb's volume of a copied special against a fighter's hit
+/// (the copied Toad's).
+pub fn defense_contact(
+    f: &mut Fighter,
+    attacker: &mut Fighter,
+    assets: &FighterAssets,
+    id: usize,
+) -> bool {
+    toad::contact(f, attacker, assets, id)
+}
+
+/// The same against an item's hit.
+pub fn item_defense_contact(
+    f: &mut Fighter,
+    item: &mut melee_it::ItemCore,
+    id: usize,
+    assets: &FighterAssets,
+) -> bool {
+    toad::item_contact(f, item, id, assets)
+}
+
+/// shield_hit_cb itself (the copied Toad's fn_8010CD88).
+pub fn process_defense_hit(f: &mut Fighter, assets: &FighterAssets) {
+    toad::process_hit(f, assets);
 }

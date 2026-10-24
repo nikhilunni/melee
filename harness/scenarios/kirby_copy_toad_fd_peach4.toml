@@ -1,0 +1,43 @@
+# KIRBY directed witness from start_fd_kirby_peach4 (Kirby runs to x=51 beside Peach at +60 and swallows it): the copied Toad. Kirby turns to Peach and holds Toad out; Peach jabs into it (the counter and its spores); a full hop with an aerial Toad (the lift) and a second one in the same flight (no lift); a short hop whose aerial Toad lands in the grounded row.
+name = "kirby_copy_toad_fd_peach4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_peach4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 432, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 433, port = 1, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 568, port = 0, buttons = {  }, raw = {  } },
+  { frame = 572, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 574, port = 0, buttons = {  }, raw = {  } },
+  { frame = 640, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 642, port = 0, buttons = {  }, raw = {  } },
+  { frame = 760, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 762, port = 0, buttons = {  }, raw = {  } },
+  { frame = 766, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 768, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Peach"
+controller = "scripted"

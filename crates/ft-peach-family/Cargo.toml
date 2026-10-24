@@ -1,0 +1,14 @@
+[package]
+name = "ft-peach-family"
+description = "Peach's Toad, shared with Kirby's copy of it (retail ftPe_SpecialN, ftKb_SpecialNPe)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gekko-math = { path = "../gekko-math" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+melee-coll = { path = "../melee-coll" }
+melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-types = { path = "../melee-types" }

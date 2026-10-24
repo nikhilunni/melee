@@ -1,8 +1,9 @@
 //! ftPe_DatAttrs, ft/kinds/ftPeach/types.h; ftData.ext_attr (+4).
 use hsd_archive::{Archive, Reader};
-use hsd_types::Vec3;
 use melee_ft::desc::{special_attributes_offset, FighterDescError};
 use melee_types::ItemKind;
+/// Toad's blocks, shared with Kirby's copy.
+pub use ft_peach_family::toad::{CounterVolume, ToadAttributes};
 type Result<T> = std::result::Result<T, FighterDescError>;
 pub const PEACH_ATTRIBUTES_SIZE: u32 = 0xC0;
 #[derive(Clone, Debug, PartialEq)]
@@ -104,35 +105,11 @@ pub struct ParasolAttributes {
     pub open_duration: i32,
 }
 #[derive(Clone, Debug, PartialEq)]
-pub struct ToadAttributes {
-    /// +0x94, ftPeach/types.h.
-    pub horizontal_momentum_divisor: f32,
-    /// +0x98, ftPeach/types.h.
-    pub air_friction: f32,
-    /// +0x9C, ftPeach/types.h.
-    pub first_air_vertical_speed: f32,
-    /// +0xA0, ftPeach/types.h.
-    pub gravity: f32,
-    /// +0xA4, ftPeach/types.h.
-    pub terminal_velocity: f32,
-    /// +0xA8, ftPeach/types.h.
-    pub collision_parameter: f32,
-}
-#[derive(Clone, Debug, PartialEq)]
 pub struct ItemChance {
     /// ItemChance +0: weight supplied to HSD_Randi.
     pub weight: i32,
     /// ItemChance +4: ItemKind.
     pub kind: ItemKind,
-}
-#[derive(Clone, Debug, PartialEq)]
-pub struct CounterVolume {
-    /// +AC: signed joint index.
-    pub bone: i32,
-    /// +B0: local collision offset.
-    pub offset: Vec3,
-    /// +BC: collision radius.
-    pub radius: f32,
 }
 pub fn read_peach_attributes(archive: &Archive) -> Result<PeachAttributes> {
     let root = archive.public("ftDataPeach").ok_or_else(|| {
@@ -218,19 +195,8 @@ impl PeachAttributes {
                 ending_momentum_multiplier: r.f32(0x8C)?,
                 open_duration: r.s32(0x90)?,
             },
-            toad: ToadAttributes {
-                horizontal_momentum_divisor: r.f32(0x94)?,
-                air_friction: r.f32(0x98)?,
-                first_air_vertical_speed: r.f32(0x9C)?,
-                gravity: r.f32(0xA0)?,
-                terminal_velocity: r.f32(0xA4)?,
-                collision_parameter: r.f32(0xA8)?,
-            },
-            toad_volume: CounterVolume {
-                bone: r.s32(0xAC)?,
-                offset: Vec3::new(r.f32(0xB0)?, r.f32(0xB4)?, r.f32(0xB8)?),
-                radius: r.f32(0xBC)?,
-            },
+            toad: ToadAttributes::read(&r, 0x94)?,
+            toad_volume: CounterVolume::read(&r, 0xAC)?,
             turnip_faces: TurnipFaces {
                 count: 0,
                 weights: [0; TURNIP_FACE_CAPACITY],

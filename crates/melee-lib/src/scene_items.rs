@@ -105,6 +105,8 @@ melee_it::item_kinds! {
         KirbyPikachuTJoltAir: it_pikachu::ThunderJoltCrawler<it_pikachu::KirbyPikachu>,
         KirbyPichuTJoltGround: it_pikachu::ThunderJoltBall<it_pikachu::KirbyPichu>,
         KirbyPichuTJoltAir: it_pikachu::ThunderJoltCrawler<it_pikachu::KirbyPichu>,
+        KirbyPeachToad: it_peach::KirbyPeachToad,
+        KirbyPeachToadSpore: it_peach::KirbyPeachToadSpore,
     }
 }
 
@@ -120,7 +122,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 10] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 11] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -207,6 +209,16 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 10] = [
             (ItemKind::KirbyPichuTJoltAir, it_pikachu::KIRBY_CRAWLER_SLOT, 1),
         ],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Peach,
+        file: "PlKbCpPe.dat",
+        symbol: "ftDataKirbyCopyPeach",
+        // Toad's two states and the spore's one, as Peach's own.
+        articles: &[
+            (ItemKind::KirbyPeachToad, it_peach::KIRBY_TOAD_SLOT, 2),
+            (ItemKind::KirbyPeachToadSpore, it_peach::KIRBY_SPORE_SLOT, 1),
+        ],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -247,6 +259,13 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
         ItemKind::KirbyPikachuTJoltAir | ItemKind::KirbyPichuTJoltAir => {
             Some((&it_pikachu::jolt::CRAWLER_ARTICLE_STATES, 0))
         }
+        // Toad's none, the spore's four (as ftPe_Init_OnLoad registers
+        // Peach's own).
+        ItemKind::KirbyPeachToad => Some((&it_peach::toad::ARTICLE_STATES, 0)),
+        ItemKind::KirbyPeachToadSpore => Some((
+            &it_peach::spore::ARTICLE_STATES,
+            it_peach::spore::SPECIAL_ATTRIBUTES,
+        )),
         _ => None,
     }
 }

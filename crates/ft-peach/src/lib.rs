@@ -151,39 +151,13 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT]
     rows[15] = state::empty_row(356, 304, callbacks::camera::follow_fighter);
     rows[21].anim = special_hi::unreachable_end;
     rows[23].anim = special_hi::unreachable_end;
-    // ftPe_MS_SpecialN..SpecialAirNHit (365..368), ftPe_SM 312..315.
-    rows[24] = row(
-        365,
-        312,
-        special_n::anim,
-        special_n::input,
-        special_n::physics,
-        special_n::collision,
-    );
-    rows[25] = row(
-        366,
-        313,
-        special_n::hit_anim,
-        special_n::input,
-        special_n::physics,
-        special_n::collision,
-    );
-    rows[26] = row(
-        367,
-        314,
-        special_n::air_anim,
-        special_n::input,
-        special_n::air_physics,
-        special_n::air_collision,
-    );
-    rows[27] = row(
-        368,
-        315,
-        special_n::air_hit_anim,
-        special_n::input,
-        special_n::air_hit_physics,
-        special_n::air_collision,
-    );
+    // ftPe_MS_SpecialN..SpecialAirNHit (365..368), ftPe_SM 312..315:
+    // Toad, shared with Kirby's copy (ft_peach_family::toad).
+    let toad = special_n::rows();
+    rows[24] = toad[0];
+    rows[25] = toad[1];
+    rows[26] = toad[2];
+    rows[27] = toad[3];
     // ftPe_MS_ItemParasolOpen / ItemParasolFall (369 / 370): the common
     // ItemParasolOpen and ItemParasolFallSpecial callbacks, ftPe_SM 316/317.
     rows[28] = row(

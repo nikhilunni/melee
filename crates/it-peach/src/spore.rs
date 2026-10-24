@@ -10,7 +10,11 @@ use melee_it::{
 };
 use melee_types::ItemKind;
 
-pub struct PeachToadSpore;
+/// A spore, for the owner `O`'s kind (itpeachtoadspore.c:73-77 spawns the
+/// same effect for either).
+pub struct Spore<O>(std::marker::PhantomData<O>);
+pub type PeachToadSpore = Spore<crate::Peach>;
+pub type KirbyPeachToadSpore = Spore<crate::Kirby>;
 
 /// it_803F7548's anim_id column.
 pub const ARTICLE_STATES: [i32; 1] = [0];
@@ -49,8 +53,8 @@ static STATES: [ItemStateRow; 1] = [ItemStateRow {
     collision: no_collision,
 }];
 
-impl ItemLogic for PeachToadSpore {
-    const KIND: ItemKind = ItemKind::PeachToadSpore;
+impl<O: crate::ToadOwner> ItemLogic for Spore<O> {
+    const KIND: ItemKind = O::SPORE;
     const STATES: &'static [ItemStateRow] = &STATES;
     /// it_8026B3A8 clears xDC8 x15; there is no pickup callback.
     fn pickup_possible(_item: &ItemCore) -> bool {
@@ -93,28 +97,34 @@ impl ItemLogic for PeachToadSpore {
     fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
         true
     }
-    /// itPeachToadSpore_Logic68_Clanked.
+    /// itPeachToadSpore_Logic68_Clanked (Peach's table only).
     fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
+        O::SPORE_DEFENSE_EVENTS
     }
-    /// itPeachToadSpore_Logic68_HitShield.
+    /// itPeachToadSpore_Logic68_HitShield (Peach's table only).
     fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
+        O::SPORE_DEFENSE_EVENTS
     }
-    /// itPeachToadSpore_Logic68_Absorbed.
+    /// itPeachToadSpore_Logic68_Absorbed (Peach's table only).
     fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
+        O::SPORE_DEFENSE_EVENTS
     }
     /// itPeachToadSpore_Logic68_Reflected (0x802BE538): it_80273030 turns
     /// the spore back, and the lifetime it restarted is put back as it was
     /// (itpeachtoadspore.c:144-146).
     fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+        if !O::SPORE_DEFENSE_EVENTS {
+            return false;
+        }
         let life_timer = item.life_timer;
         item.reverse_on_reflect(ctx.reflected_speed);
         item.life_timer = life_timer;
         false
     }
     fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+        if !O::SPORE_DEFENSE_EVENTS {
+            return false;
+        }
         unimplemented!("itPeachToadSpore_Logic68_ShieldBounced: itColl_BounceOffShield")
     }
 }

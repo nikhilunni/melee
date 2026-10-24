@@ -6,7 +6,10 @@ use melee_it::{
 };
 use melee_types::ItemKind;
 
-pub struct PeachToad;
+/// Toad, for the owner `O`'s kinds and rows.
+pub struct Toad<O>(std::marker::PhantomData<O>);
+pub type PeachToad = Toad<crate::Peach>;
+pub type KirbyPeachToad = Toad<crate::Kirby>;
 
 /// it_803F7528's anim_id column.
 pub const ARTICLE_STATES: [i32; 2] = [0, 1];
@@ -16,27 +19,26 @@ pub const COUNTER: u16 = 1;
 /// it_802BE100: lb_8000BA0C(jobj, 10) then HSD_JObjAnimAll.
 const COUNTER_START_FRAME: f32 = 10.0;
 
-/// ftPe_SpecialN_IsActive (8011E3A4): ftPe_MS_SpecialN..SpecialAirNHit.
-const OWNER_MOTIONS: std::ops::RangeInclusive<u16> = 365..=368;
+impl<O: crate::ToadOwner> Toad<O> {
+    const ROWS: [ItemStateRow; 2] = [
+        ItemStateRow {
+            animation_id: ARTICLE_STATES[0],
+            animation: waiting::<O>,
+            physics: no_physics,
+            collision: no_collision,
+        },
+        ItemStateRow {
+            animation_id: ARTICLE_STATES[1],
+            animation: counter::<O>,
+            physics: no_physics,
+            collision: no_collision,
+        },
+    ];
+}
 
-static STATES: [ItemStateRow; 2] = [
-    ItemStateRow {
-        animation_id: ARTICLE_STATES[0],
-        animation: waiting,
-        physics: no_physics,
-        collision: no_collision,
-    },
-    ItemStateRow {
-        animation_id: ARTICLE_STATES[1],
-        animation: counter,
-        physics: no_physics,
-        collision: no_collision,
-    },
-];
-
-impl ItemLogic for PeachToad {
-    const KIND: ItemKind = ItemKind::PeachToad;
-    const STATES: &'static [ItemStateRow] = &STATES;
+impl<O: crate::ToadOwner> ItemLogic for Toad<O> {
+    const KIND: ItemKind = O::TOAD;
+    const STATES: &'static [ItemStateRow] = &Self::ROWS;
     fn pickup_possible(item: &ItemCore) -> bool {
         !item.held
     }
@@ -69,13 +71,13 @@ impl ItemLogic for PeachToad {
 
 /// The owner check both rows share (itpeachtoad_inline_2): Toad goes once
 /// its owner leaves the neutral special.
-fn owner_done(ctx: &ItemAnimationContext<'_>) -> bool {
+fn owner_done<O: crate::ToadOwner>(ctx: &ItemAnimationContext<'_>) -> bool {
     ctx.owner
-        .is_none_or(|owner| !OWNER_MOTIONS.contains(&owner.motion))
+        .is_none_or(|owner| !O::OWNER_MOTIONS.contains(&owner.motion))
 }
 
 /// itPeachtoad_UnkMotion0_Anim (802BE07C).
-fn waiting(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+fn waiting<O: crate::ToadOwner>(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     clamp_to_animation_end(item, ctx.assets, ARTICLE_STATES[0]);
     if item.animation_frame == 7.0 {
         item.hidden = false;
@@ -83,14 +85,14 @@ fn waiting(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     if item.animation_frame >= 53.0 {
         item.hidden = true;
     }
-    owner_done(ctx)
+    owner_done::<O>(ctx)
 }
 
 /// itPeachtoad_UnkMotion1_Anim (802BE184).
-fn counter(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+fn counter<O: crate::ToadOwner>(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     clamp_to_animation_end(item, ctx.assets, ARTICLE_STATES[1]);
     if item.animation_frame >= 60.0 {
         item.hidden = true;
     }
-    owner_done(ctx)
+    owner_done::<O>(ctx)
 }

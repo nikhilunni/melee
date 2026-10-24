@@ -2811,6 +2811,16 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_pichujolt_fd_pichu4", 900),
     ("kirby_copy_pichujolt_edge_fd_pichu4", 700),
     ("kirby_copy_thunderjolt_lost_fd_pikachu4", 760),
+    // The copied Toad (ftkirbyspecialpeach.c over ft_peach_family's
+    // states, boundary `start_fd_kirby_peach4`): a jab caught by the
+    // grounded counter and its spores (Kirby's spore table has no Clanked,
+    // so the first survives Peach's rebounding jab), aerial Toads with and
+    // without the lift, one landing in the grounded row; an aerial counter
+    // landing in the grounded counter row; a jab from behind putting Toad
+    // away (ftKb_SpecialNPe_8010C3F4) before a taunt drops the ability.
+    ("kirby_copy_toad_fd_peach4", 900),
+    ("kirby_copy_toad_air_fd_peach4", 700),
+    ("kirby_copy_toad_lost_fd_peach4", 760),
 ];
 
 #[test]

@@ -577,6 +577,7 @@ dependencies = [
  "ft-mario-family",
  "ft-mars-family",
  "ft-mewtwo-family",
+ "ft-peach-family",
  "ft-pikachu-family",
  "ft-purin-family",
  "ft-samus-family",
@@ -790,6 +791,7 @@ dependencies = [
 name = "ft-peach"
 version = "0.0.1"
 dependencies = [
+ "ft-peach-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -800,6 +802,19 @@ dependencies = [
  "melee-it",
  "melee-lb",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-peach-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-coll",
+ "melee-ft",
+ "melee-it",
  "melee-types",
 ]
 

@@ -4,6 +4,7 @@
 //! and action ids, `lfs` for the impulses (ftCo_800D74A4).
 use ft_captain_family::attributes::FalconPunchAttributes;
 use ft_mars_family::attributes::ShieldBreakerAttributes;
+use ft_peach_family::toad::{CounterVolume, ToadAttributes};
 use ft_pikachu_family::attributes::ThunderJoltAttributes;
 use ft_purin_family::RolloutAttributes;
 use hsd_archive::{Archive, Reader};
@@ -49,6 +50,10 @@ pub struct KirbyAttributes {
     pub fox_blaster: BlasterAttributes,
     /// +244..+268 (`specialn_fc_*`): the copied Falco Blaster.
     pub falco_blaster: BlasterAttributes,
+    /// +178..+190 (`specialn_pe_*`): the copied Toad.
+    pub peach_toad: ToadAttributes,
+    /// +3EC (`specialn_pe_absorbdesc`): the copied Toad's counter volume.
+    pub peach_toad_volume: CounterVolume,
     /// +1C0..+1DC (`specialn_pk_*`): the copied Thunder Jolt.
     pub pikachu_thunder_jolt: ThunderJoltAttributes,
     /// +1DC..+1F8 (`specialn_pc_*`): the copied Thunder Jolt, Pichu's.
@@ -287,6 +292,8 @@ impl KirbyAttributes {
                 punch_speed: r.f32(0x198)?,
                 landing_lag: r.f32(0x19C)?,
             },
+            peach_toad: ToadAttributes::read(&r, 0x178)?,
+            peach_toad_volume: CounterVolume::read(&r, 0x3EC)?,
             pikachu_thunder_jolt: ThunderJoltAttributes::read(&r, 0x1C0)?,
             pichu_thunder_jolt: ThunderJoltAttributes::read(&r, 0x1DC)?,
             falcon_punch: FalconPunchAttributes::read(Reader::new(r.slice(0x1F8, 0x14)?))?,

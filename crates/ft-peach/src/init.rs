@@ -54,7 +54,7 @@ pub struct Peach {
     /// Fighter accessory4_cb while a special owns it.
     pub accessory: Accessory,
     /// Toad's counter volume and caught hit.
-    pub special_n: crate::special_n::SpecialN,
+    pub special_n: ft_peach_family::toad::SpecialN,
     /// fp->mv.pe.specialhi.
     pub special_hi: crate::special_hi::SpecialHi,
     /// fp->mv.pe.specials.

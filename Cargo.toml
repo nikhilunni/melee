@@ -52,6 +52,7 @@ members = [
     "crates/ft-captain-family",
     "crates/ft-captain",
     "crates/ft-ganon",
+    "crates/ft-peach-family",
     "crates/ft-peach",
     "crates/ft-yoshi",
     "crates/ft-purin-family",

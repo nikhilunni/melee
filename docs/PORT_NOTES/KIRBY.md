@@ -726,10 +726,31 @@ fails closed.
   Pikachu or Pichu needed nothing new. Witnesses `kirby_copy_thunderjolt_*`,
   `kirby_copy_pichujolt_*` (boundaries `start_fd_kirby_pikachu4`,
   `start_fd_kirby_pichu4`).
+- **The copied Toad** (`ft-kirby` `copied/toad.rs`, ftkirbyspecialpeach.c):
+  Peach's Toad states moved into a new family crate, `ft-peach-family`
+  (`toad::ToadUser`: four rows from a first id, the article joint, the item
+  kinds, attributes +178..+18C and the AbsorbDesc at +3EC, the scratch,
+  u.kb.xCC as the lift flag, u.kb.xD0 as Toad's reference). Kirby's side
+  differs from Peach's in three places: no x1984_heldItemSpec, his own
+  damage callbacks (ftKb_Init_800EE74C / 800EE7B8, whose put-away arm is
+  ftKb_SpecialNPe_8010C3F4), and bone 44 (FtPart_R3rdNa as an index). Kirby
+  gains the defense hooks (DEFENSE_CONTACT, PROCESS_DEFENSE_HIT,
+  ITEM_DEFENSE_CONTACT), which answer only under Peach's hat. Items: Toad
+  and its spore are it-peach's `Toad<O>` / `Spore<O>` with Kirby's kinds and
+  rows; Kirby's spore logic table (it_3F2F.c:1782-1798) has no Reflected,
+  Clanked, Absorbed, ShieldBounced or HitShield, so his spores fly on where
+  Peach's die. Copy archive `PlKbCpPe.dat`, hat_dynamics[0] and [1]; no
+  effect bank (ftKb_Init_803CB46C names row 45, which is empty).
+  Swallowing Peach needed ftCo_800DB368's clear of XRotN's
+  JOBJ_USE_QUATERNION (ftParts_JObjSetRotation). Not witnessed: the
+  grounded rows leaving the floor (ft_800827A0 stops at Final Destination's
+  edge) and an item caught by the volume (a thrown turnip passes over it
+  on the ground and under it in the air); both are Peach's code
+  (`peach2_toad_counter_laser`). Witnesses `kirby_copy_toad_*`.
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
   Megavitamin, the green Fireball, the Charge Shot, the Giant Punch, the
-  Shadow Ball and the Thunder Jolt
+  Shadow Ball, the Thunder Jolt and the Toad
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -785,7 +806,11 @@ Remaining work, in the order to take it:
    Donkey Kong's Giant Punch (`kirby_copy_giantpunch_*`) and Mewtwo's
    Shadow Ball (`kirby_copy_shadowball_*`). The charge flash's Sheik arm
    (xB4 == 6, colour 87) waits for the copied Needle Storm.
-   Next: Sheik, Peach, then the rest; each row's stale-move id exists
+   Pikachu's and Pichu's Thunder Jolt (`kirby_copy_thunderjolt_*`,
+   `kirby_copy_pichujolt_*`, boundaries `start_fd_kirby_pikachu4`,
+   `start_fd_kirby_pichu4`); Peach's Toad (`kirby_copy_toad_*`, boundary
+   `start_fd_kirby_peach4`, the new `ft-peach-family`).
+   Next: Sheik, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,
      `KirbyFalco`) implementing the original family's trait over Kirby's

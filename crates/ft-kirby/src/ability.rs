@@ -45,6 +45,8 @@ fn reset_copied_scratch(f: &mut Fighter) {
     state.giant_punch_swings = 0;
     state.shadow_ball_held = false;
     state.shadow_ball_charge = 0;
+    // xD0.
+    state.toad.toad_out = false;
     crate::charge_flash::refresh(f);
 }
 
@@ -92,9 +94,9 @@ fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
 
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
 /// the death callback and ftKb_SpecialN_800F5D04. Fox's and Falco's arm
-/// destroys the blaster, Mr. Game & Watch's the pan. The other kinds whose
-/// arm only releases an article or a held fighter (Ice Climbers, Peach,
-/// Link, Young Link, Ness, Sheik, Yoshi; the Yoshi arm's hat animation is
+/// destroys the blaster, Mr. Game & Watch's the pan, Peach's Toad. The
+/// other kinds whose arm only releases an article or a held fighter (Ice
+/// Climbers, Link, Young Link, Ness, Sheik, Yoshi; the Yoshi arm's hat animation is
 /// drawn) do nothing while their copied special is not ported: their
 /// scratch is always at rest.
 fn put_away(f: &mut Fighter) {
@@ -103,6 +105,10 @@ fn put_away(f: &mut Fighter) {
     if kind == FighterKind::GameWatch {
         // ftKb_SpecialNGw_8010D0A8.
         crate::copied::chef::put_away(f);
+    }
+    if kind == FighterKind::Peach {
+        // ftKb_SpecialNPe_8010C3F4.
+        crate::copied::toad::put_away(f);
     }
     if put_away_charge(f, kind) {
         return;
@@ -121,6 +127,10 @@ pub fn put_away_on_hit(f: &mut Fighter) {
     if kind == FighterKind::GameWatch {
         // ftKb_SpecialNGw_8010D0A8.
         crate::copied::chef::put_away(f);
+    }
+    if kind == FighterKind::Peach {
+        // ftKb_SpecialNPe_8010C3F4.
+        crate::copied::toad::put_away(f);
     }
     if put_away_charge(f, kind) {
         return;

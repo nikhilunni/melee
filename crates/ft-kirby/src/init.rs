@@ -77,6 +77,8 @@ pub struct Kirby {
     pub shadow_ball_held: bool,
     pub shadow_ball_charge: i32,
     pub shadow_ball: ft_mewtwo_family::shadow_ball::ShadowBall,
+    /// The copied Toad: u.kb.xD0 and its counter volume.
+    pub toad: crate::copied::toad::KirbyToad,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -96,6 +98,10 @@ pub enum Accessory {
     Fireball,
     /// fn_800F98F4: the copied green Fireball on the script's flag.
     GreenFireball,
+    /// fn_8010C288: the copied Toad drawn out.
+    ToadDraw,
+    /// fn_8010C344: one of the copied Toad's spores.
+    ToadSpore,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -132,6 +138,7 @@ impl Kirby {
             shadow_ball_held: false,
             shadow_ball_charge: 0,
             shadow_ball: Default::default(),
+            toad: Default::default(),
         }
     }
 }
@@ -281,6 +288,9 @@ impl CharacterCallbacks for Kirby {
             Accessory::ChefFood => crate::copied::chef::throw_accessory(f, assets, rng),
             Accessory::Fireball => crate::copied::fireball::mario_accessory(f, assets, rng),
             Accessory::GreenFireball => crate::copied::fireball::luigi_accessory(f, assets),
+            toad @ (Accessory::ToadDraw | Accessory::ToadSpore) => {
+                crate::copied::toad::accessory(f, toad)
+            }
             Accessory::None => {}
         }
     }
@@ -307,6 +317,14 @@ impl CharacterCallbacks for Kirby {
     /// copied specials' articles.
     const ARTICLE_DESTROYED: fn(&mut Fighter, melee_types::ItemKind) =
         crate::copied::article_destroyed;
+    /// A copied special's shield volume (the copied Toad's,
+    /// ftColl_8007B1B8 from doPeAnim).
+    const DEFENSE_CONTACT: Option<melee_ft::fighter::DefenseContact> =
+        Some(crate::copied::defense_contact);
+    const PROCESS_DEFENSE_HIT: Option<melee_ft::fighter::DefenseHit> =
+        Some(crate::copied::process_defense_hit);
+    const ITEM_DEFENSE_CONTACT: Option<melee_ft::fighter::ItemDefenseContact> =
+        Some(crate::copied::item_defense_contact);
 
     /// ftCo_Throw.c:145-157: the FTKIND_KIRBY arm is `THROW_TRAITS`.
     fn throw_variant(&self) {}
