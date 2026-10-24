@@ -3,7 +3,9 @@
 //! breathes (itKoopaFlame_Spawn). Each flies at a random speed and angle,
 //! scaled by how much breath he had left; its hitbox lasts attribute x4
 //! frames and the flame itself attribute x0. A surface it touches bends
-//! its flight along it.
+//! its flight along it. Kirby's copied Fire Breath spawns the same item
+//! code as It_Kind_Kirby_KoopaFlame (ftkirbyspecialkoopa.c, PlKbCpKp.dat),
+//! with its own generators.
 use gekko_math::{
     fma::fmadds,
     msl::{cosf, sinf},
@@ -20,7 +22,12 @@ use melee_types::{
     ItemKind,
 };
 
-pub struct KoopaFlame;
+/// The flame's item code, for Bowser's kind or Kirby's (`KIRBY`).
+pub struct Flame<const KIRBY: bool>;
+/// It_Kind_Koopa_Flame.
+pub type KoopaFlame = Flame<false>;
+/// It_Kind_Kirby_KoopaFlame: the flame of Kirby's copy.
+pub type KirbyKoopaFlame = Flame<true>;
 
 /// ftData.x48_items index (ftKp_Init_OnLoad registers it first).
 pub const ARTICLE_INDEX: u32 = 0;
@@ -32,6 +39,9 @@ pub const SPECIAL_ATTRIBUTES: u32 = 6;
 /// efSync_Spawn(1243 + x48, gobj, jobj): the four flame generators
 /// (efLib_CreateGenerator_Attach_Scale 0x2EE5..0x2EE8 on the flame's JObj).
 const FIRST_FLAME_EFFECT: u16 = 0x4DB;
+/// efSync_Spawn(1189 + x48, gobj, jobj) for Kirby's kind: efAlt's
+/// generators 0xA028..0xA02B of EfKbKp.dat (efalt.c:349-360).
+const KIRBY_FIRST_FLAME_EFFECT: u16 = 0x4A5;
 /// The fixed ECB the collision callback writes each frame (@310).
 const ECB_REACH: f32 = 3.0;
 /// M_PI, M_PI_2 and M_TAU as the C's doubles (@187, @221, @185).
@@ -113,9 +123,13 @@ static STATES: [ItemStateRow; 1] = [ItemStateRow {
     collision,
 }];
 
-/// it_3F2F.c's Logic111 row.
-impl ItemLogic for KoopaFlame {
-    const KIND: ItemKind = ItemKind::KoopaFlame;
+/// it_3F2F.c's Logic111 row (and Kirby's kind's row, the same callbacks).
+impl<const KIRBY: bool> ItemLogic for Flame<KIRBY> {
+    const KIND: ItemKind = if KIRBY {
+        ItemKind::KirbyKoopaFlame
+    } else {
+        ItemKind::KoopaFlame
+    };
     const STATES: &'static [ItemStateRow] = &STATES;
     /// itKoopaFlame_Setup clears xDC8 x15 (it_8026B3A8).
     fn pickup_possible(_item: &ItemCore) -> bool {
@@ -295,7 +309,13 @@ fn animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     let flame = state(item);
     if !flame.effect_spawned {
         flame.effect_spawned = true;
-        let id = FIRST_FLAME_EFFECT + flame.effect as u16;
+        // 802AD0EC / 802AD0F8: the switch on it->kind.
+        let first = if item.kind == ItemKind::KirbyKoopaFlame {
+            KIRBY_FIRST_FLAME_EFFECT
+        } else {
+            FIRST_FLAME_EFFECT
+        };
+        let id = first + state(item).effect as u16;
         item.events.push(ItemEvent::OwnEffect { id });
     }
     item.life_timer -= 1.0;

@@ -2907,6 +2907,18 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_nayru_edge_fd_zelda4", 780),
     ("kirby_copy_nayru_reflect_fd_zelda4", 800),
     ("kirby_copy_nayru_struck_fd_zelda4", 700),
+    // The copied Fire Breath (ftkirbyspecialkoopa.c over
+    // ft_koopa_family::fire_breath, rows 443..448, the fuels u.kb.x84/x88,
+    // It_Kind_Kirby_KoopaFlame from PlKbCpKp.dat with EfKbKp.dat's
+    // generators efAlt 0x4A5..0x4A8), from `start_fd_kirby_bowser4`: a long
+    // breath into Bowser draining both fuels, one after a partial refill,
+    // aerial breaths landing in the grounded loop (an aerial start too:
+    // ftKb_KpSpecialAirNStart_Coll lands in row 444); off the edge into the
+    // aerial rows and Fall, death with the ability; Bowser's dash attack
+    // in the start and a taunt's star.
+    ("kirby_copy_firebreath_fd_bowser4", 1100),
+    ("kirby_copy_firebreath_edge_fd_bowser4", 780),
+    ("kirby_copy_firebreath_air_fd_bowser4", 800),
 ];
 
 #[test]

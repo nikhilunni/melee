@@ -1,6 +1,6 @@
 //! Bowser: ft/kinds/ftKoopa. Common states live in melee-ft.
 pub mod attributes;
-pub mod common;
+pub use ft_koopa_family::common;
 pub mod init;
 pub mod special_hi;
 pub mod special_lw;

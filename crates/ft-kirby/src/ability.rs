@@ -27,8 +27,8 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are x68, x6C, x74, x78, x7C (ns_flash_gobj), xC4,
-/// xCC, xB0, x8C, xA4..xAC and xD4..xDC. With every charge word at 0,
+/// The copied scratch includes x68..x88, xA4..xAC, xB0, xC4, xCC and xD4..xDC.
+/// With every charge word at 0,
 /// ftKb_Init_UnkMotionStates4 has no colour for any kind
 /// (`crate::charge_flash`).
 fn reset_copied_scratch(f: &mut Fighter) {
@@ -52,6 +52,8 @@ fn reset_copied_scratch(f: &mut Fighter) {
     // x74, x78 (Fighter +22A0, +22A4): the copied bow's arrow and bow.
     state.bow.arrow_out = false;
     state.bow.bow_out = false;
+    // x84, x88: the copied Fire Breath's fuels, full.
+    state.breath_fuels = ft_koopa_family::fire_breath::Fuels::full(&state.attributes.fire_breath);
     crate::charge_flash::refresh(f);
 }
 

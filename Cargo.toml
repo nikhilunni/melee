@@ -83,6 +83,7 @@ members = [
     "crates/ft-younglink",
     "crates/ft-donkey-family",
     "crates/ft-donkey",
+    "crates/ft-koopa-family",
     "crates/ft-koopa",
     "crates/it-koopaflame",
     "crates/it-ness",

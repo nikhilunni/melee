@@ -11,12 +11,11 @@ pub struct Koopa {
     pub attributes: KoopaAttributes,
     /// ftKp_Init_OnDeath resets model group 0 to selection 0.
     pub model_group: i32,
-    /// Fighter +222C, u.kp.x222C: the Fire Breath's reach left.
-    pub breath_reach: f32,
-    /// Fighter +2230, u.kp.x2230: the Fire Breath's lifetime left.
-    pub breath_life: f32,
+    /// Fighter +222C / +2230, u.kp.x222C / x2230: the Fire Breath's reach
+    /// and lifetime left.
+    pub fuels: ft_koopa_family::fire_breath::Fuels,
     /// mv.kp.specials while a Fire Breath row runs.
-    pub breath: crate::special_n::Breath,
+    pub breath: ft_koopa_family::fire_breath::Breath,
     /// mv.kp.unk1 while a Koopa Klaw row runs.
     pub klaw: crate::special_s::Klaw,
     /// mv.kp while a Whirling Fortress row runs.
@@ -46,8 +45,7 @@ impl Koopa {
         Self {
             attributes,
             model_group: 0,
-            breath_reach: 0.0,
-            breath_life: 0.0,
+            fuels: Default::default(),
             breath: Default::default(),
             klaw: Default::default(),
             fortress: Default::default(),
@@ -113,7 +111,7 @@ impl CharacterCallbacks for Koopa {
     /// ftKp_SpecialLw_80134ACC's HSD_Randi draws and flame, once the
     /// Fire Breath's IASA has returned.
     const INPUT_RNG: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> =
-        Some(crate::special_n::release_flame);
+        Some(ft_koopa_family::fire_breath::release_flame::<Koopa>);
     /// Fighter_8006C80C: the special's accessory4, installed until it runs
     /// or the motion changes; each uninstalls itself.
     fn accessory(f: &mut Fighter, _assets: &FighterAssets, _rng: &mut gekko_math::HsdRng) {
@@ -140,8 +138,8 @@ impl CharacterCallbacks for Koopa {
     /// ftKoopa_FighterVars +222C..+2234.
     fn restore_saved(&mut self, raw: &[u8]) {
         let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
-        self.breath_reach = f32::from_bits(word(0x222C));
-        self.breath_life = f32::from_bits(word(0x2230));
+        self.fuels.reach = f32::from_bits(word(0x222C));
+        self.fuels.life = f32::from_bits(word(0x2230));
     }
     /// ftKp_Init_OnLoad (80132ABC): PUSH_ATTRS, the flame's item
     /// registration (it_8026B3F8, the item scene's) and x2226_b1.
@@ -155,8 +153,7 @@ impl CharacterCallbacks for Koopa {
     /// (see `on_load`) and both breath fuels refilled.
     fn on_reset(&mut self) {
         self.model_group = 0;
-        self.breath_reach = self.attributes.fire_breath.reach_max;
-        self.breath_life = self.attributes.fire_breath.life_max;
+        self.fuels = ft_koopa_family::fire_breath::Fuels::full(&self.attributes.fire_breath);
     }
 }
 
@@ -199,15 +196,5 @@ fn refill_breath(f: &mut Fighter) {
     if (crate::special_n::FIRST_ROW..=crate::special_n::LAST_ROW).contains(&action) {
         return;
     }
-    let koopa = f.character.get_mut::<Koopa>();
-    let a = &koopa.attributes.fire_breath;
-    // 80134DA4 / 80134DC0: fadds, then the clamp by fcmpo.
-    koopa.breath_reach += a.reach_recharge;
-    if koopa.breath_reach > a.reach_max {
-        koopa.breath_reach = a.reach_max;
-    }
-    koopa.breath_life += a.life_recharge;
-    if koopa.breath_life > a.life_max {
-        koopa.breath_life = a.life_max;
-    }
+    ft_koopa_family::fire_breath::refill::<Koopa>(f);
 }

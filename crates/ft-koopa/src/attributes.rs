@@ -18,30 +18,8 @@ pub struct KoopaAttributes {
     pub bomb: BombAttributes,
 }
 
-/// Fire Breath (ftkoopaspecialn.c). The breath has two fuels: the flame's
-/// reach (u.kp.x222C) and its lifetime (u.kp.x2230); both drain by one a
-/// tick while breathing and refill outside the move.
-#[derive(Clone, Debug, PartialEq)]
-pub struct FireBreathAttributes {
-    /// +0x04 x4: ticks of breath before releasing B may end it.
-    pub minimum_ticks: i32,
-    /// +0x08 x8: reach regained per tick outside the move.
-    pub reach_recharge: f32,
-    /// +0x0C xC: lifetime regained per tick outside the move.
-    pub life_recharge: f32,
-    /// +0x10 x10 / +0x14 x14: the reach's full and spent values.
-    pub reach_max: f32,
-    pub reach_min: f32,
-    /// +0x18 x18 / +0x1C x1C: the lifetime's full and spent values.
-    pub life_max: f32,
-    pub life_min: f32,
-    /// +0x20 x20: ticks between camera quakes.
-    pub quake_interval: i32,
-    /// +0x24 x24 / +0x28 x28: the flame's spawn offset from the mouth
-    /// (part 48), facing- and scale-scaled.
-    pub spawn_offset_x: f32,
-    pub spawn_offset_y: f32,
-}
+/// Fire Breath (ftkoopaspecialn.c), +0x04..+0x28.
+pub use ft_koopa_family::fire_breath::FireBreathAttributes;
 
 /// Koopa Klaw (ftkoopaspecials.c, ftCo_CaptureKoopa.c).
 #[derive(Clone, Debug, PartialEq)]
@@ -126,18 +104,7 @@ impl KoopaAttributes {
         let r = Reader::new(archive.reader().slice(offset, KOOPA_ATTRIBUTES_SIZE)?);
         Ok(Self {
             armor: r.f32(0x00)?,
-            fire_breath: FireBreathAttributes {
-                minimum_ticks: r.s32(0x04)?,
-                reach_recharge: r.f32(0x08)?,
-                life_recharge: r.f32(0x0C)?,
-                reach_max: r.f32(0x10)?,
-                reach_min: r.f32(0x14)?,
-                life_max: r.f32(0x18)?,
-                life_min: r.f32(0x1C)?,
-                quake_interval: r.s32(0x20)?,
-                spawn_offset_x: r.f32(0x24)?,
-                spawn_offset_y: r.f32(0x28)?,
-            },
+            fire_breath: FireBreathAttributes::read(&r, 0x04)?,
             klaw: KlawAttributes {
                 bite_damage: r.u32(0x2C)?,
                 throw_stick: r.f32(0x30)?,

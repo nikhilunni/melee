@@ -57,6 +57,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Link
                             | FighterKind::CLink
                             | FighterKind::Zelda
+                            | FighterKind::Koopa
                     ),
                     "{kind:?}"
                 )
@@ -144,6 +145,15 @@ fn the_nayrus_love_rows_follow_kirbys_table() {
     for (row, (action, animation)) in rows.iter().zip([(465, 400), (466, 401)]) {
         assert_eq!(row.action.0, action);
         assert_eq!(row.animation, animation);
+    }
+}
+
+#[test]
+fn the_fire_breath_rows_follow_kirbys_table() {
+    let rows = ft_kirby::copied::fire_breath::rows();
+    for (i, row) in rows.iter().enumerate() {
+        assert_eq!(row.action.0, 443 + i as u16);
+        assert_eq!(row.animation, 378 + i as i32);
     }
 }
 
@@ -297,5 +307,16 @@ fn real_copy_archives_hold_the_grafted_hats_part_masks() {
         let hat = archive.public(symbol).unwrap();
         let mask = archive.reader().u32(hat + 0x10).unwrap();
         assert_eq!(mask, hat::grafted_parts(*kind), "{kind:?}");
+    }
+}
+
+#[test]
+fn unwitnessed_giga_bowser_copy_stays_fail_closed() {
+    assert!(matches!(
+        ft_kirby::copied::NEUTRAL[i32::from(FighterKind::GKoops) as usize],
+        ft_kirby::copied::CopiedNeutral::Unported { .. }
+    ));
+    for row in ft_kirby::special_rows().iter().filter(|row| (538..544).contains(&row.action.0)) {
+        assert!(!row.implemented);
     }
 }

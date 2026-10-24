@@ -893,7 +893,14 @@ Remaining work, in the order to take it:
    reflector is a `REFLECTOR_CONTACT` hook on Kirby over his
    `specialn_zd_reflectdesc` (+400); the witness reflects a needle of
    Sheik's (Zelda transforms after the swallow), since Din's Fire has no
-   hitbox in flight.
+   hitbox in flight. Bowser's Fire Breath (`kirby_copy_firebreath_*`,
+   boundary `start_fd_kirby_bowser4`; the states in the new
+   `ft-koopa-family`, generic over `FireBreathUser`, rows 443..448 and
+   Giga Bowser's 538..543). Kirby's flame leaves from parts[12] with an
+   offset (0, 0.5, 3); his aerial start lands in the grounded loop (row 444,
+   800FB218), not the start; the fuels u.kb.x84 / x88 refill every frame
+   with the hat on (ftKb_Init_UnkMotionStates3, `EVERY_FRAME`) outside
+   443..448, and 800F190C fills them.
    Next: Sheik, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,
@@ -971,3 +978,6 @@ Remaining work, in the order to take it:
    a collision callback, the spat star's hitbox on a third fighter (no
    three-fighter boundary). Done (wave 13): the grounded Inhale rows
    leaving a floor (`kirby_inhale_randall_{start,loop,end}_ys_fox4`).
+
+Giga Bowser's copied Fire Breath entries and rows 538..543 stay fail-closed
+until a retail witness exists (ftKb_Init_803C9DD0/803C9E54).

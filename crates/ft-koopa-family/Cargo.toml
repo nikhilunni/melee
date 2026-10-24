@@ -1,0 +1,16 @@
+[package]
+name = "ft-koopa-family"
+description = "Bowser's Fire Breath, shared with Kirby's copy of it (retail ftKp_SpecialN, ftKb_SpecialNKp)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gekko-math = { path = "../gekko-math" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+it-koopaflame = { path = "../it-koopaflame" }
+melee-cm = { path = "../melee-cm" }
+melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-mp = { path = "../melee-mp" }
+melee-types = { path = "../melee-types" }

@@ -10,6 +10,7 @@ melee-ft = { path = "../melee-ft" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 it-koopaflame = { path = "../it-koopaflame" }
+ft-koopa-family = { path = "../ft-koopa-family" }
 melee-coll = { path = "../melee-coll" }
 melee-mp = { path = "../melee-mp" }
 melee-lb = { path = "../melee-lb" }

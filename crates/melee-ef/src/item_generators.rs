@@ -104,6 +104,19 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             add_appsrt: true,
             scaled: true,
         },
+        // efalt.c:349-360: efLib_CreateGenerator_Attach_Scale(0xA028 ..
+        // 0xA02B): the four flames of Kirby's copied Fire Breath.
+        0x4A5..=0x4A8 => ItemGenerators {
+            bank: 41,
+            kinds: match id {
+                0x4A5 => &[0xA028],
+                0x4A6 => &[0xA029],
+                0x4A7 => &[0xA02A],
+                _ => &[0xA02B],
+            },
+            add_appsrt: true,
+            scaled: true,
+        },
         // efalt.c:92-97: Samus's missile trails, hsd_8039EFAC(0, 2, 0x7DB /
         // 0x7DE, jobj) on the missile model's grandchild.
         // efalt.c:77-85: the charge shot's glow in hand (0x7D4, on the

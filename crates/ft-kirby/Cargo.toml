@@ -18,6 +18,7 @@ ft-ness-family = { path = "../ft-ness-family" }
 ft-yoshi-family = { path = "../ft-yoshi-family" }
 ft-link-family = { path = "../ft-link-family" }
 ft-zelda-family = { path = "../ft-zelda-family" }
+ft-koopa-family = { path = "../ft-koopa-family" }
 it-drmariopill = { path = "../it-drmariopill" }
 ft-samus-family = { path = "../ft-samus-family" }
 ft-donkey-family = { path = "../ft-donkey-family" }

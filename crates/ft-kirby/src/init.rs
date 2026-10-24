@@ -87,6 +87,10 @@ pub struct Kirby {
     pub toad: crate::copied::toad::KirbyToad,
     /// The copied Nayru's Love: mv.zd.specialn and the reflector.
     pub nayrus_love: ft_zelda_family::nayrus_love::NayrusLove,
+    /// The copied Fire Breath's fuels: u.kb.x84 (reach) and x88 (life).
+    pub breath_fuels: ft_koopa_family::fire_breath::Fuels,
+    /// The copied Fire Breath's mv.kb.specialn_kp.
+    pub fire_breath: ft_koopa_family::fire_breath::Breath,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -154,6 +158,8 @@ impl Kirby {
             pk_flash: Default::default(),
             bow: Default::default(),
             nayrus_love: Default::default(),
+            breath_fuels: Default::default(),
+            fire_breath: Default::default(),
         }
     }
 }
@@ -333,6 +339,14 @@ impl CharacterCallbacks for Kirby {
     );
     const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
         Some(ft_zelda_family::nayrus_love::reflect_hit);
+    /// ftData_UnkMotionStates3[FTKIND_KIRBY]: ftKb_Init_UnkMotionStates3,
+    /// the copied Fire Breath's refill.
+    const EVERY_FRAME: Option<fn(&mut Fighter)> = Some(crate::copied::fire_breath::refill);
+    /// ftKb_SpecialNKp_800FA588's HSD_Randi draws and flame, once the
+    /// copied Fire Breath's IASA has returned.
+    const INPUT_RNG: Option<fn(&mut Fighter, &mut gekko_math::HsdRng)> = Some(
+        ft_koopa_family::fire_breath::release_flame::<crate::copied::fire_breath::KirbyKoopa>,
+    );
     fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
         crate::copied::item_owner(f)
     }

@@ -65,7 +65,7 @@ fn death_refills_both_breath_fuels() {
     word(&mut raw, 0x222C, 41.0_f32.to_bits());
     word(&mut raw, 0x2230, 61.0_f32.to_bits());
     koopa.restore_saved(&raw);
-    assert_eq!((koopa.breath_reach, koopa.breath_life), (41.0, 61.0));
+    assert_eq!((koopa.fuels.reach, koopa.fuels.life), (41.0, 61.0));
     koopa.on_reset();
-    assert_eq!((koopa.breath_reach, koopa.breath_life), (360.0, 380.0));
+    assert_eq!((koopa.fuels.reach, koopa.fuels.life), (360.0, 380.0));
 }

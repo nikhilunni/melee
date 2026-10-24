@@ -113,6 +113,7 @@ melee_it::item_kinds! {
         KirbyLinkBow: it_link::KirbyLinkBow,
         KirbyCLinkArrow: it_link::KirbyYoungLinkArrow,
         KirbyCLinkBow: it_link::KirbyYoungLinkBow,
+        KirbyKoopaFlame: it_koopaflame::KirbyKoopaFlame,
     }
 }
 
@@ -128,7 +129,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 14] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 15] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -257,6 +258,13 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 14] = [
             (ItemKind::KirbyCLinkBow, 1, 7),
         ],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Koopa,
+        file: "PlKbCpKp.dat",
+        symbol: "ftDataKirbyCopyKoopa",
+        // hats[4]->hat_dynamics[0]: the flame's one state, as Bowser's.
+        articles: &[(ItemKind::KirbyKoopaFlame, 0, 1)],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -319,6 +327,10 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
         ItemKind::KirbyLinkBow | ItemKind::KirbyCLinkBow => Some((
             &it_link::bow::ARTICLE_STATES,
             it_link::bow::SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbyKoopaFlame => Some((
+            &it_koopaflame::ARTICLE_STATES,
+            it_koopaflame::SPECIAL_ATTRIBUTES,
         )),
         _ => None,
     }
@@ -960,6 +972,22 @@ impl Resources {
                 // The copied arrows' release sweep (it_80275D5C), as Link's.
                 if matches!(kind, ItemKind::KirbyLinkArrow | ItemKind::KirbyCLinkArrow) {
                     assets.read_common_release(&common_archive, public)?;
+                }
+                if kind == ItemKind::KirbyKoopaFlame {
+                    // itKoopaFlame_Spawn divides by Kirby's full fuels
+                    // (ftKb_SpecialNKp_800FA83C / 800FA878: ftKb_DatAttrs
+                    // +124 and +12C, returned as s32).
+                    let kirby = characters
+                        .iter()
+                        .find(|c| c.descriptor.data_file == "PlKb.dat")
+                        .context("Kirby fighter data")?;
+                    let breath = ft_kirby::attributes::read_kirby_attributes(&kirby.data)
+                        .map_err(|e| anyhow::anyhow!("Kirby attributes: {e:?}"))?
+                        .fire_breath;
+                    assets.special_attributes.extend(it_koopaflame::owner_fuels(
+                        breath.reach_max,
+                        breath.life_max,
+                    ));
                 }
                 kinds.push((kind, assets));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));

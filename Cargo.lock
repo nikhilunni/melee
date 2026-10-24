@@ -573,6 +573,7 @@ dependencies = [
  "ft-donkey-family",
  "ft-fox-family",
  "ft-gamewatch-family",
+ "ft-koopa-family",
  "ft-link-family",
  "ft-luigi-family",
  "ft-mario-family",
@@ -604,6 +605,7 @@ dependencies = [
 name = "ft-koopa"
 version = "0.0.1"
 dependencies = [
+ "ft-koopa-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -616,6 +618,21 @@ dependencies = [
  "melee-lb",
  "melee-mp",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-koopa-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "it-koopaflame",
+ "melee-cm",
+ "melee-ft",
+ "melee-it",
+ "melee-mp",
  "melee-types",
 ]
 

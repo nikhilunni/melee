@@ -25,6 +25,7 @@ pub mod pk_flash;
 pub mod egg_lay;
 pub mod bow;
 pub mod nayrus_love;
+pub mod fire_breath;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -58,7 +59,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Kirby
     CopiedNeutral::Inhale,
     // Bowser
-    unported("ftKb_SpecialNKp_800FA8B4", "ftKb_SpecialNKp_800FA958"),
+    CopiedNeutral::Ported(fire_breath::enter),
     // Link
     CopiedNeutral::Ported(bow::enter),
     // Sheik
@@ -106,7 +107,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     CopiedNeutral::Inhale,
     CopiedNeutral::Inhale,
     CopiedNeutral::Inhale,
-    // Giga Bowser: Bowser's entries.
+    // Giga Bowser: ftKb_Init_803C9DD0/803C9E54; no retail witness yet.
     unported("ftKb_SpecialNKp_800FA8B4", "ftKb_SpecialNKp_800FA958"),
     // Sandbag: NULL.
     CopiedNeutral::Inhale,

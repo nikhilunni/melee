@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 31] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 32] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -249,6 +249,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 31] = [
         file: "EfKbDk.dat",
         table: "effKirbyDonkeyDataTable",
         models: 2,
+    },
+    // Kirby's copied Fire Breath (efAsync_DatEntries[41],
+    // ftKb_Init_803CB46C for Bowser): generators 0xA028..0xA02B, the
+    // flames (efAlt 0x4A5..0x4A8); no models.
+    CharacterEffectFile {
+        bank: 41,
+        file: "EfKbKp.dat",
+        table: "effKirbyKoopaDataTable",
+        models: 0,
     },
     // Kirby's copied Warlock Punch (efAsync_DatEntries[47], for Ganondorf):
     // models 0xB798 and 0xB799 (efAlt 0x4B3).
