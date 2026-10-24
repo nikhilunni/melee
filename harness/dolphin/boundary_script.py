@@ -25,6 +25,11 @@ API has memory breakpoints only, so the hook is the first store after that
 address: gm_801A4B08 (called at 0x8016E75C) stores
 gm_AnyControllerPressedStart at gm_80479D58 +0x14, and nothing between the
 two addresses draws.
+`item_frequency` (optional, coverage runs only) replaces the items-off rule
+(gmm_x1CB0.item_freq: 0 very low .. 4 very high). `cpu_players` (optional,
+coverage runs only) lists players that the match makes CPUs at `cpu_level`:
+written at the creation hook into the start data's PlayerInitData (slot_type
++1 = Gm_PKind_Cpu, cpu_level +0xF); the CSS still picks them as humans.
 `spawn_points` (optional) gives each player's spawn point, written at the
 same hook into the match's start data (gmVsMelee_StartData's PlayerInitData
 +5, which the menus leave at -1: the port's own marker). fn_8016D8AC copies
@@ -128,6 +133,8 @@ MATCH_START_TEST_FN = symbols.addr("gm_AnyControllerPressedStart")
 VS_START_PLAYERS = symbols.addr("gmVsMelee_StartData") + 0x60
 START_PLAYER_SIZE = 0x24
 START_PLAYER_SPAWN = 5
+START_PLAYER_SLOT_TYPE, START_PLAYER_CPU_LEVEL = 1, 0xF
+PKIND_CPU = 1                          # pl/forward.h Gm_PKind_Cpu
 ENTITIES_ADDR = symbols.addr("HSD_GObj_Entities")
 MS_ENTRY = 322   # ftCo_MS_Entry, every fighter's first match state
 # pl/player.c:58 ftMapping_list: CKIND_POPONANA creates a second fighter
@@ -193,6 +200,7 @@ class BoundaryDriver:
         # Each player's spawn point, and what the hook found there.
         self.spawn_points: list[int] | None = config.get("spawn_points")
         self.spawn_points_replaced: list[int] | None = None
+        self.cpu_players: list[int] = list(config.get("cpu_players") or [])
         self.creation_hooked = False
         self.watching_creation = False
 
@@ -315,9 +323,13 @@ class BoundaryDriver:
                                         f"{self.mem.read_s8(base)}, not {self.config['players'][player]}")
                 self.spawn_points_replaced.append(self.mem.read_s8(base + START_PLAYER_SPAWN))
                 self.mem.write_u8(base + START_PLAYER_SPAWN, point & 0xFF)
+        for player in self.cpu_players:
+            base = VS_START_PLAYERS + self.ports[player] * START_PLAYER_SIZE
+            self.mem.write_u8(base + START_PLAYER_SLOT_TYPE, PKIND_CPU)
+            self.mem.write_u8(base + START_PLAYER_CPU_LEVEL, int(self.config.get("cpu_level", 9)))
 
     def hooks_creation(self) -> bool:
-        return self.game_start_seed is not None or self.spawn_points is not None
+        return self.game_start_seed is not None or self.spawn_points is not None or bool(self.cpu_players)
 
     def poke_save_data(self) -> None:
         mem = self.mem
@@ -326,7 +338,7 @@ class BoundaryDriver:
         mem.write_u8(GAME_RULES + RULES_MODE, MODE_STOCK)
         mem.write_u8(GAME_RULES + RULES_STOCKS, self.config["stocks"])
         mem.write_u8(GAME_RULES + RULES_STOCK_TIME, self.config.get("time_limit_minutes", 0))
-        mem.write_u8(ITEM_FREQUENCY, ITEMS_OFF)
+        mem.write_u8(ITEM_FREQUENCY, self.config.get("item_frequency", ITEMS_OFF) & 0xFF)
 
     def navigate_menu(self) -> dict:
         if self.frame < self.wait_until or self.frame - self.phase_frame < SETTLE_FRAMES:

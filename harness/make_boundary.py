@@ -205,8 +205,9 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                    transform: list[int] | None = None, costumes: list[int] | None = None,
                    codes: list[str] | None = None, slots: list[int] | None = None,
                    time_limit: int = 0, game_start_seed: int | None = None,
-                   spawn_points: list[int] | None = None) -> dict:
-    """Run boundary_script.py in a private headless Dolphin; return its summary."""
+                   spawn_points: list[int] | None = None, extra: dict | None = None) -> dict:
+    """Run boundary_script.py in a private headless Dolphin; return its summary.
+    `extra` adds config keys (retail_coverage.py's items and CPU players)."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
     for p in (done, err):
         p.unlink(missing_ok=True)
@@ -221,7 +222,8 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                                       **({"game_start_seed": game_start_seed}
                                          if game_start_seed is not None else {}),
                                       **({"spawn_points": spawn_points} if spawn_points else {}),
-                                      **({"costumes": costumes} if costumes else {})}))
+                                      **({"costumes": costumes} if costumes else {}),
+                                      **(extra or {})}))
         dolphin = dolphin_config.binary()
         flags = dolphin_flags(dolphin, ports=len(players))
         if codes:

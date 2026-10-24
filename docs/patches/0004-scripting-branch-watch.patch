@@ -1,0 +1,141 @@
+From 97aabd68cbd626df4400b81e617d0ce6cb7ce8d3 Mon Sep 17 00:00:00 2001
+From: Nikhil Unni <nikhil.unni3000@gmail.com>
+Date: Sat, 24 Oct 2026 07:45:59 -0700
+Subject: [PATCH] Scripting: Branch Watch start/stop/clear/save from Python
+
+emulation.branch_watch_start/stop/clear/save expose Core::BranchWatch to
+scripts, for execution coverage without the Qt debugger. Recording needs
+debug mode (Dolphin.Interface.DebugModeEnabled=True), where the JITs emit
+the Branch Watch calls; start raises otherwise.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+---
+ .../Python/Modules/emulationmodule.cpp        | 68 +++++++++++++++++++
+ python-stubs/dolphin/emulation.pyi            | 19 ++++++
+ 2 files changed, 87 insertions(+)
+
+diff --git a/Source/Core/Scripting/Python/Modules/emulationmodule.cpp b/Source/Core/Scripting/Python/Modules/emulationmodule.cpp
+index 28cdb03..959e6bd 100644
+--- a/Source/Core/Scripting/Python/Modules/emulationmodule.cpp
++++ b/Source/Core/Scripting/Python/Modules/emulationmodule.cpp
+@@ -4,8 +4,15 @@
+ 
+ #include "Scripting/Python/Modules/emulationmodule.h"
+ 
++#include <cstdio>
++
++#include "Common/Config/Config.h"
++#include "Core/Config/MainSettings.h"
++#include "Core/Core.h"
++#include "Core/Debugger/BranchWatch.h"
+ #include "Core/HW/ProcessorInterface.h"
+ #include "Core/Movie.h"
++#include "Core/PowerPC/PowerPC.h"
+ #include "Core/System.h"
+ 
+ #include "Scripting/Python/Utils/module.h"
+@@ -48,6 +55,63 @@ static PyObject* EmulationReset(PyObject* self)
+   Py_RETURN_NONE;
+ }
+ 
++// Branch Watch from scripts: execution coverage without the Qt debugger.
++// The JITs emit the recording code only in debug mode
++// (-C Dolphin.Interface.DebugModeEnabled=True); without it nothing is recorded,
++// so starting raises instead of silently collecting nothing.
++static PyObject* BranchWatchStart(PyObject* self)
++{
++  EmulationModuleState* state = Py::GetState<EmulationModuleState>(self);
++  if (!Config::Get(Config::MAIN_ENABLE_DEBUGGING))
++  {
++    PyErr_SetString(PyExc_RuntimeError,
++                    "branch watch needs debug mode (Dolphin.Interface.DebugModeEnabled=True)");
++    return nullptr;
++  }
++  const Core::CPUThreadGuard guard{*state->system};
++  state->system->GetPowerPC().GetBranchWatch().SetRecordingActive(guard, true);
++  Py_RETURN_NONE;
++}
++
++static PyObject* BranchWatchStop(PyObject* self)
++{
++  EmulationModuleState* state = Py::GetState<EmulationModuleState>(self);
++  const Core::CPUThreadGuard guard{*state->system};
++  state->system->GetPowerPC().GetBranchWatch().SetRecordingActive(guard, false);
++  Py_RETURN_NONE;
++}
++
++static PyObject* BranchWatchClear(PyObject* self)
++{
++  EmulationModuleState* state = Py::GetState<EmulationModuleState>(self);
++  const Core::CPUThreadGuard guard{*state->system};
++  state->system->GetPowerPC().GetBranchWatch().Clear(guard);
++  Py_RETURN_NONE;
++}
++
++// Writes Branch Watch's text snapshot: one line per (origin, destination,
++// instruction): "origin destin inst total_hits hits_snapshot flags".
++static PyObject* BranchWatchSave(PyObject* self, PyObject* args)
++{
++  EmulationModuleState* state = Py::GetState<EmulationModuleState>(self);
++  auto filename_opt = Py::ParseTuple<const char*>(args);
++  if (!filename_opt.has_value())
++    return nullptr;
++  const char* filename = std::get<0>(filename_opt.value());
++  std::FILE* file = std::fopen(filename, "w");
++  if (file == nullptr)
++  {
++    PyErr_SetFromErrnoWithFilename(PyExc_OSError, filename);
++    return nullptr;
++  }
++  {
++    const Core::CPUThreadGuard guard{*state->system};
++    state->system->GetPowerPC().GetBranchWatch().Save(guard, file);
++  }
++  std::fclose(file);
++  Py_RETURN_NONE;
++}
++
+ static void SetupEmulationModule(PyObject* module, EmulationModuleState* state)
+ {
+   Core::System* system = PyScripting::PyScriptingBackend::GetCurrent()->GetSystem();
+@@ -60,6 +124,10 @@ PyMODINIT_FUNC PyInit_emulation()
+       Py::MakeMethodDef<EmulationResume>("resume"),
+       Py::MakeMethodDef<EmulationPause>("pause"),
+       Py::MakeMethodDef<EmulationReset>("reset"),
++      Py::MakeMethodDef<BranchWatchStart>("branch_watch_start"),
++      Py::MakeMethodDef<BranchWatchStop>("branch_watch_stop"),
++      Py::MakeMethodDef<BranchWatchClear>("branch_watch_clear"),
++      {"branch_watch_save", BranchWatchSave, METH_VARARGS, ""},
+ 
+       {nullptr, nullptr, 0, nullptr}  // Sentinel
+   };
+diff --git a/python-stubs/dolphin/emulation.pyi b/python-stubs/dolphin/emulation.pyi
+index 209f6dd..5957989 100644
+--- a/python-stubs/dolphin/emulation.pyi
++++ b/python-stubs/dolphin/emulation.pyi
+@@ -17,3 +17,22 @@ def reset() -> None:
+     """
+     Resets the emulation. Acts like tapping the "Reset"-Button.
+     """
++
++def branch_watch_start() -> None:
++    """
++    Starts Branch Watch recording: every executed branch, taken or not, with
++    hit counts. Needs debug mode (Dolphin.Interface.DebugModeEnabled=True).
++    """
++
++def branch_watch_stop() -> None:
++    """Pauses Branch Watch recording; the collection is kept."""
++
++def branch_watch_clear() -> None:
++    """Empties the Branch Watch collection."""
++
++def branch_watch_save(filename: str, /) -> None:
++    """
++    Writes the collection as text, one line per branch:
++    origin destination instruction total_hits hits_snapshot flags
++    (hex, hex, hex, decimal, decimal, hex).
++    """
+-- 
+2.42.0
+
