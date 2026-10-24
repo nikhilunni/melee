@@ -2,14 +2,18 @@
 //! in ftColl_GetWindOffsetVec (0x8007B924) at its position after velocity
 //! integration and before the moving-floor offset.
 //!
-//! Dream Land is the only ported stage with one: Whispy Woods' gust
-//! (fn_802112F4, 0x802112F4) pushes along x inside a strict rectangle.
+//! Dream Land's Whispy Woods gust (fn_802112F4, 0x802112F4) pushes along x
+//! inside a strict rectangle; Jungle Japes' river (grGarden_8020349C)
+//! carries a fighter below its line and splashes on entry.
 use hsd_types::Vec3;
 
 /// One tick's wind device state, copied into the fighter physics phase.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Wind {
     gust: Option<Gust>,
+    water: Option<crate::garden::Water>,
+    /// The fighter's camera size (ftLib_80086B80), for the river's splash.
+    size: f32,
 }
 
 /// An active rectangular gust.
@@ -25,10 +29,37 @@ pub struct Gust {
 
 impl Wind {
     /// No device, or a registered device that is not blowing.
-    pub const CALM: Wind = Wind { gust: None };
+    pub const CALM: Wind = Wind {
+        gust: None,
+        water: None,
+        size: 0.0,
+    };
 
     pub const fn gust(gust: Gust) -> Self {
-        Self { gust: Some(gust) }
+        Self {
+            gust: Some(gust),
+            water: None,
+            size: 0.0,
+        }
+    }
+
+    /// Jungle Japes' river device for a fighter of camera size `size`.
+    pub const fn water(water: crate::garden::Water, size: f32) -> Self {
+        Self {
+            gust: None,
+            water: Some(water),
+            size,
+        }
+    }
+
+    /// ftColl_GetWindOffsetVec (0x8007B924) over the registered device:
+    /// the offset at `position` (cur_pos), and a river's splash when the
+    /// fighter entered the water from `previous` (prev_pos).
+    pub fn sample(&self, position: Vec3, previous: Vec3) -> (Vec3, Option<crate::garden::Splash>) {
+        if let Some(water) = &self.water {
+            return water.sample(position, previous, self.size);
+        }
+        (self.at(position), None)
     }
 
     /// fn_802112F4 (0x802112F4): the offset at `position` (the fighter's

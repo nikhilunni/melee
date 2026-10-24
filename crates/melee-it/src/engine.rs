@@ -230,6 +230,7 @@ pub enum ItemScratch {
     KirbyHammer(KirbyHammerState),
     Container(ContainerState),
     Barrel(BarrelState),
+    Yaku(YakuAnchor),
     None,
 }
 /// itTaru_ItemVars (ittaru.c): a barrel.
@@ -265,6 +266,19 @@ pub struct ContainerState {
     pub exploded: bool,
     /// The Box's despawn_timer: ticks left once opened.
     pub despawn_timer: i32,
+}
+/// Item.xDD4_itemVar.yaku (ityaku.c) with x2 == 1: a stage material item
+/// that follows a stage JObj. The stage writes the JObj's world translation
+/// and local scale and rotation here after its proc moves the JObj; the
+/// item's physics copies them (it_2E6A_UnkMotion19_Phys).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct YakuAnchor {
+    /// lb_8000B1CC(x4): the JObj's world translation.
+    pub position: Vec3,
+    /// HSD_JObjGetScale(x4).
+    pub scale: Vec3,
+    /// HSD_JObjGetRotation(x4), Euler.
+    pub rotation: Vec3,
 }
 /// Item.xDD4_itemVar.kirbyhammer (itkirbyhammer.c).
 #[derive(Clone, Copy, Debug, Default)]

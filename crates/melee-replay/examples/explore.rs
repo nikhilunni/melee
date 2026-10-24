@@ -70,6 +70,9 @@ fn stage_edges(stage: Stage) -> StageEdges {
         // Yoshi's Island N64 69.25, Kongo Jungle N64 71.
         Stage::YoshisIsland64 => (64.0, 39.0),
         Stage::KongoJungle64 => (66.0, 41.0),
+        // The side platforms' outer ledges (x -101.2, 106.9; the centre
+        // ends at -44.9 and 49.9).
+        Stage::JungleJapes => (99.0, 42.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

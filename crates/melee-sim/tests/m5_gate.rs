@@ -4972,7 +4972,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 770] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 772] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6210,6 +6210,11 @@ static CORPUS_V3_MATCHES: [(&str, usize); 770] = [
     ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_e89a89d0e_p0", 3632),
     ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_edb2b114a_p0", 4265),
     ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_ef89b3e70_p0", 4504),
+    // Jungle Japes: the Klaptrap's bite lands (the stage material item's
+    // ALDYakuAll hitbox, 30 damage) and KOs through the river, whose
+    // current still carries a dead body (DeadDown's procUpdate tail).
+    ("corpus_v3_jj_fox_marth4_ee133b82f_p0", 1367),
+    ("corpus_v3_jj_fox_marth4_ee98155f3_p0", 1791),
 ];
 
 #[test]

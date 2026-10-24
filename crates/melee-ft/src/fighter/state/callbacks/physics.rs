@@ -9,8 +9,16 @@ pub fn capture(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadDown (0), ftCo_MS_DeadLeft (1), ftCo_MS_DeadRight (2):
-/// no retail callback, and nothing left to integrate.
-pub fn dead(_fighter: &mut Fighter, _phase: PhysicsPhase<'_>) {}
+/// no retail callback; Fighter_procUpdate's tail still runs, so a stage
+/// device (Jungle Japes' river) still carries the body.
+pub fn dead(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
+    let PhysicsPhase {
+        assets,
+        map: _,
+        wind,
+    } = phase;
+    fighter.core.free_flight_physics(assets, wind)
+}
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpStar (4): no retail callback; Fighter_procUpdate's
 /// tail still integrates the flight velocity.

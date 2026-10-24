@@ -1198,6 +1198,16 @@ fn n64_stage_particle_rng_order() {
 }
 
 #[test]
+fn jungle_japes_start_particle_rng_order() {
+    particle_rng_sites_with_ledger("start_jj_fox_marth4", 600, "ledger600");
+}
+#[test]
+fn start_jj_fox_marth4_600() {
+    movement_gate_ticks("start_jj_fox_marth4", 600);
+    movement_gate_ticks("start_jj_fox_marth4_cold", 600);
+}
+
+#[test]
 fn idle_fd_puff_600() {
     movement_gate_ticks("idle_fd_puff", 600);
 }

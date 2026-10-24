@@ -48,6 +48,8 @@ fn collision_category(kind: ItemKind, hold_kind: u8) -> u8 {
         8 => 5,
         0 if (kind as u32) < ItemKind::LGunRay as u32 => 2,
         4 if stage_enemy => 3,
+        // It_PKind_Random (the stage material item, itmaplib.c:207): 5.
+        3 if kind == ItemKind::PokemonRandom => 5,
         _ => unimplemented!("it_80275E98: collision category for {kind:?}"),
     }
 }

@@ -329,6 +329,26 @@ pub fn read_izumi_parameters(archive: &Archive) -> ReadResult<crate::izumi::Para
         submerged_frames: [f(0x50)?, f(0x4C)?],
     })
 }
+/// grGd_StageData / grDatFiles_801C6038: GrGd.dat. grGd_StageCallbacks[2]
+/// (the main stage) carries flags 0xC0000000.
+pub fn read_garden(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Garden, 2)
+}
+/// `grGarden_YakumonoParam` (grgarden.c:26-35), read through
+/// Ground_GetYakumonoParam by grGarden_80202B70 (0x80202B70).
+pub fn read_garden_parameters(archive: &Archive) -> ReadResult<crate::garden::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    Ok(crate::garden::Parameters {
+        water_level: r.f32(p)?,
+        current: r.f32(p + 0x4)?,
+        cranky_rest_loops: r.s32(p + 0x8)?,
+        cranky_busy_loops: r.s32(p + 0xC)?,
+        klaptrap_wait_minimum: r.s32(p + 0x10)?,
+        klaptrap_wait_range: r.s32(p + 0x14)?,
+        klaptrap_x: [r.f32(p + 0x18)?, r.f32(p + 0x1C)?],
+    })
+}
 fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadResult<StageDesc> {
     let header = public(archive, "map_head")?;
     let reader = archive.reader();

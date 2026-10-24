@@ -289,6 +289,49 @@ pub struct ItemAssets {
     /// through by [`Self::from_stage_item`]: the integer at each.
     pub special_pointees: Vec<i32>,
 }
+/// it_802E6AEC: `it_804D6D38[It_PKind_Random - It_Kind_Kuriboh]`.
+const YAKU_ARTICLE_INDEX: u32 = 0xA0 - 0x2B;
+/// it_803F8C8C: the stage material item's twenty motion states, each
+/// playing the article state of its own number.
+pub const YAKU_STATES: usize = 20;
+/// it_803F8C08 (ityaku.c), the ItemAttr it_802E6AEC installs, as it lies
+/// in memory: x0 0x31 (use kind 6, hold kind 1), x1 0x08 (hitlag), the
+/// collision box 2.0 on each side (x40..x4C), scale 1.0 (x60), no destroy
+/// effects (x64, x68 = -1) and 0x83D60 for every sound (x6C..x80).
+const YAKU_ATTRIBUTES: [u8; 0x84] = {
+    let mut bytes = [0u8; 0x84];
+    bytes[0] = 0x31;
+    bytes[1] = 0x08;
+    let two = 2.0f32.to_bits().to_be_bytes();
+    let mut at = 0x40;
+    while at < 0x50 {
+        bytes[at] = two[0];
+        bytes[at + 1] = two[1];
+        bytes[at + 2] = two[2];
+        bytes[at + 3] = two[3];
+        at += 4;
+    }
+    let one = 1.0f32.to_bits().to_be_bytes();
+    bytes[0x60] = one[0];
+    bytes[0x61] = one[1];
+    bytes[0x62] = one[2];
+    bytes[0x63] = one[3];
+    let mut at = 0x64;
+    while at < 0x6C {
+        bytes[at] = 0xFF;
+        at += 1;
+    }
+    let sound = 0x0008_3D60u32.to_be_bytes();
+    let mut at = 0x6C;
+    while at < 0x84 {
+        bytes[at] = sound[0];
+        bytes[at + 1] = sound[1];
+        bytes[at + 2] = sound[2];
+        bytes[at + 3] = sound[3];
+        at += 4;
+    }
+    bytes
+};
 /// The `target`-th joint in depth-first order (a joint, its children, then
 /// its next siblings), counting from `index`; no heap stack, as it runs in
 /// the tick.
@@ -456,8 +499,32 @@ impl ItemAssets {
         special_count: u32,
         minimum_article_states: usize,
     ) -> hsd_archive::desc::Result<Self> {
+        Self::from_article_with_attributes(
+            archive,
+            article,
+            article_states,
+            special_count,
+            minimum_article_states,
+            None,
+        )
+    }
+
+    /// [`Self::from_article_with_count`], with the ItemAttr block taken
+    /// from `attributes` (big-endian, as in memory) rather than the
+    /// article's own pointer when given.
+    fn from_article_with_attributes(
+        archive: &Archive,
+        article: u32,
+        article_states: &[i32],
+        special_count: u32,
+        minimum_article_states: usize,
+        attributes: Option<&[u8]>,
+    ) -> hsd_archive::desc::Result<Self> {
         let r = archive.reader();
-        let common = r.u32(article)?;
+        let (c, common) = match attributes {
+            Some(bytes) => (hsd_archive::Reader::new(bytes), 0),
+            None => (archive.reader(), r.u32(article)?),
+        };
         let special = r.u32(article + 4)?;
         let state_array = r.u32(article + 12)?;
         let model_desc = r.u32(article + 16)?;
@@ -524,56 +591,93 @@ impl ItemAssets {
             scripts,
             hit_flags,
             special_attributes,
-            scale: r.f32(common + 0x60)?,
+            scale: c.f32(common + 0x60)?,
             model: r.u32(model_desc)?,
-            rotate_to_facing: r.u8(common + 1)? & 0x20 != 0,
+            rotate_to_facing: c.u8(common + 1)? & 0x20 != 0,
             push_box: melee_types::mp::ItEcb {
-                top: r.f32(common + 0x20)?,
-                bottom: r.f32(common + 0x24)?,
-                right: r.f32(common + 0x28)?,
-                left: r.f32(common + 0x2C)?,
+                top: c.f32(common + 0x20)?,
+                bottom: c.f32(common + 0x24)?,
+                right: c.f32(common + 0x28)?,
+                left: c.f32(common + 0x2C)?,
             },
-            pushable: r.u8(common + 1)? & 0x10 != 0,
+            pushable: c.u8(common + 1)? & 0x10 != 0,
             collision_box: melee_types::mp::ItEcb {
-                top: r.f32(common + 0x40)?,
-                bottom: r.f32(common + 0x44)?,
-                right: r.f32(common + 0x48)?,
-                left: r.f32(common + 0x4C)?,
+                top: c.f32(common + 0x40)?,
+                bottom: c.f32(common + 0x44)?,
+                right: c.f32(common + 0x48)?,
+                left: c.f32(common + 0x4C)?,
             },
-            collision_damage_multiplier: r.f32(common + 0x1C)?,
-            hitlag: r.u8(common + 1)? & 0x08 != 0,
-            camera_kind: (r.u8(common + 1)? >> 1) & 3,
-            fall_acceleration: r.f32(common + 0x10)?,
-            fall_speed_limit: r.f32(common + 0x14)?,
-            launch_vertical_velocity: r.f32(common + 0x18)?,
-            rotation_axis: r.u8(common + 1)? >> 6,
+            collision_damage_multiplier: c.f32(common + 0x1C)?,
+            hitlag: c.u8(common + 1)? & 0x08 != 0,
+            camera_kind: (c.u8(common + 1)? >> 1) & 3,
+            fall_acceleration: c.f32(common + 0x10)?,
+            fall_speed_limit: c.f32(common + 0x14)?,
+            launch_vertical_velocity: c.f32(common + 0x18)?,
+            rotation_axis: c.u8(common + 1)? >> 6,
             explosion_lifetime: 0.0,
             common_lifetime: 0.0,
-            spin_rate: r.f32(common + 0xC)?,
+            spin_rate: c.f32(common + 0xC)?,
             fall_spin_degrees: 0.0,
             release_box_scale: 0.0,
             throw_break: 0,
-            heavy: r.u8(common)? & 0x80 != 0,
-            use_kind: (r.u8(common)? >> 3) & 0xF,
-            hand_hold_kind: r.u8(common)? & 7,
-            throw_speed_multiplier: r.f32(common + 4)?,
-            bounce_scale: r.f32(common + 0x58)?,
-            bounce_sound: r.u32(common + 0x80)?,
-            rest_speed: r.f32(common + 0x5C)?,
-            slide_speed: r.f32(common + 0x50)?,
-            slide_friction: r.f32(common + 0x54)?,
+            heavy: c.u8(common)? & 0x80 != 0,
+            use_kind: (c.u8(common)? >> 3) & 0xF,
+            hand_hold_kind: c.u8(common)? & 7,
+            throw_speed_multiplier: c.f32(common + 4)?,
+            bounce_scale: c.f32(common + 0x58)?,
+            bounce_sound: c.u32(common + 0x80)?,
+            rest_speed: c.f32(common + 0x5C)?,
+            slide_speed: c.f32(common + 0x50)?,
+            slide_friction: c.f32(common + 0x54)?,
             slide_rule: SlideRule::NEVER,
             landing_spin_degrees: 0.0,
-            destroy_effect: u16::try_from(r.s32(common + 0x64)?).ok(),
-            event_destroy_effect: u16::try_from(r.s32(common + 0x68)?).ok(),
-            grab_offset: hsd_types::Vec2::new(r.f32(common + 0x30)?, r.f32(common + 0x34)?),
-            grab_range: hsd_types::Vec2::new(r.f32(common + 0x38)?, r.f32(common + 0x3C)?),
+            destroy_effect: u16::try_from(c.s32(common + 0x64)?).ok(),
+            event_destroy_effect: u16::try_from(c.s32(common + 0x68)?).ok(),
+            grab_offset: hsd_types::Vec2::new(c.f32(common + 0x30)?, c.f32(common + 0x34)?),
+            grab_range: hsd_types::Vec2::new(c.f32(common + 0x38)?, c.f32(common + 0x3C)?),
             attachment_translation,
             bone_motion: None,
             pose: None,
             particle_tracks: None,
             special_pointees: Vec::new(),
         })
+    }
+
+    /// it_802E6AEC (ityaku.c) with Ground_801C0800 (ground.c:493-498): the
+    /// stage material item, kind It_PKind_Random (0xA0). Its Article is
+    /// ItCo's it_804D6D38[0xA0 - It_Kind_Kuriboh] (itPublicData +8), with
+    /// it_803F8C08 for its ItemAttr; the stage's `ALDYakuAll[i]`, from
+    /// i = 1 to the first null, replaces article state i's script. `None`
+    /// when the stage has no ALDYakuAll.
+    pub fn from_yaku(
+        itco: &Archive,
+        public: u32,
+        stage: &Archive,
+    ) -> hsd_archive::desc::Result<Option<Self>> {
+        let Some(table) = stage.public("ALDYakuAll") else {
+            return Ok(None);
+        };
+        let r = itco.reader();
+        let articles = r.u32(public + 8)?;
+        let article = r.u32(articles + YAKU_ARTICLE_INDEX * 4)?;
+        let states: Vec<i32> = (0..YAKU_STATES as i32).collect();
+        let mut assets = Self::from_article_with_attributes(
+            itco,
+            article,
+            &states,
+            0,
+            0,
+            Some(&YAKU_ATTRIBUTES),
+        )?;
+        for state in 1..YAKU_STATES {
+            let Some(script) = stage.link(table + state as u32 * 4)? else {
+                break;
+            };
+            let (commands, flags) = read_script(stage, script)?;
+            assets.scripts[state] = commands;
+            assets.hit_flags[state] = flags;
+        }
+        Ok(Some(assets))
     }
 
     /// Ground_801C0800 -> it_8026B40C: a stage's `itemdata` table pairs an

@@ -217,9 +217,21 @@ impl InitialState {
         ));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
+        let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
+        if matches!(stage, SceneStage::Garden(_)) {
+            // grGarden_802031A4: the Klaptrap's material item on its jaw.
+            let anchor = crate::scene_stage::garden::klaptrap_jaw(&mut stage_animations);
+            crate::scene_items::spawn_yaku(
+                &mut items,
+                &mut effects.gobjs,
+                &assets.items,
+                &mut map,
+                anchor,
+            );
+        }
         let rendered_camera = camera.render_camera(&assets.stage_camera);
         Ok(Self {
-            items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
+            items,
             article_poses: Box::new(crate::article_pose::ArticlePoses::new(
                 &assets.items.article_skeletons,
             )),
@@ -323,6 +335,10 @@ fn setup_draws(
         // stageGObj1_OnInit: the barrel's turn wait and drift;
         // stageGObj2_OnInit: the bird's wait.
         GrKind::OldKongo => 3,
+        // Map 4's six frame-zero keys, Cranky's loops (grGarden_80203004),
+        // the Klaptrap's wait (grGarden_802031A4), then the main stage's
+        // keys (a common-bank one draws).
+        GrKind::Garden => 9,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -508,6 +524,12 @@ fn initialize_stage(
         }
         GrKind::OldKongo => {
             let (stage, animations) = crate::scene_stage::oldkongo::initialize(assets, rng, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Garden => {
+            let (stage, animations) =
+                crate::scene_stage::garden::initialize(assets, rng, particles)?;
             stage_animations = animations;
             stage
         }

@@ -121,6 +121,7 @@ fn framing(stage: Stage) -> Framing {
         Stage::YoshisStory => (200.0, 15.0, 12.0),
         Stage::YoshisIsland64 => (220.0, 25.0, 10.0),
         Stage::KongoJungle64 => (220.0, 15.0, 10.0),
+        Stage::JungleJapes => (260.0, 20.0, 8.0),
         // TODO(framing): chosen by eye once each stage is ported.
         _ => (240.0, 15.0, 10.0),
     };

@@ -131,6 +131,10 @@ pub(super) fn restore_scene(
         melee_types::GrKind::PStadium => restore_stadium(saved, assets, particles, slippi),
         melee_types::GrKind::OldYoshi => super::stage_oldyoshi::restore(saved, assets, particles),
         melee_types::GrKind::OldKongo => super::stage_oldkongo::restore(saved, assets, particles),
+        melee_types::GrKind::Garden => {
+            super::stage_garden::check_saved_items(saved)?;
+            super::stage_garden::restore(saved, assets, match_start, particles, metadata)
+        }
         _ => unreachable!("registered stage descriptor"),
     }
 }

@@ -157,6 +157,13 @@ impl BackgroundAnimation {
         self.first_aobj(self.root)
             .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0)
     }
+    /// `grAnime_801C84A4(gobj, 0, 7)` (0x801C84A4): the same AObj as
+    /// [`Self::first_animation_ended`], tested for `AOBJ_REWINDED` (a loop
+    /// wrapped this frame).
+    pub fn first_animation_rewound(&self) -> bool {
+        self.first_aobj(self.root)
+            .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_REWINDED != 0)
+    }
     /// The end frame of the AObj `first_animation_ended` tests.
     pub fn first_animation_end_frame(&self) -> Option<f32> {
         self.first_aobj(self.root).map(|a| a.end_frame)

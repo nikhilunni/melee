@@ -88,6 +88,16 @@ const SHARED_FILES: [&str; 7] = [
 const STADIUM_FORM_FILES: [&str; 4] = ["GrPs1.dat", "GrPs2.dat", "GrPs3.dat", "GrPs4.dat"];
 
 impl Assets {
+    /// The particle bank a stage animation's DPtcl key names: bank 0 is
+    /// EfCoData's common bank, any other the stage's own (psInitDataBankLoad
+    /// 0x1E, ground.c:500).
+    pub(crate) fn stage_key_bank(&self, bank: u8) -> &ParticleBank {
+        if bank == 0 {
+            &self.common_particle_bank
+        } else {
+            &self.particle_bank
+        }
+    }
     /// Every file [`Assets::load`] reads for this roster and stage, so a host
     /// without synchronous file access can fetch them first.
     pub fn files(
@@ -496,7 +506,6 @@ fn stage_camera(
             GrKind::Castle
                 | GrKind::Corneria
                 | GrKind::Zebes
-                | GrKind::Garden
                 | GrKind::KinokoRoute
                 | GrKind::Homerun
         ),
@@ -536,7 +545,11 @@ fn stage_camera(
         },
         // Ground_801BFFB0's stage_info.x724.
         floor: -10000.0,
-        min_eye_height: -f32::MAX,
+        // Camera_8002AF68's per-stage floor for the eye.
+        min_eye_height: match stage.kind {
+            GrKind::Garden => melee_gr::garden::MIN_EYE_HEIGHT,
+            _ => -f32::MAX,
+        },
     })
 }
 pub(crate) fn stage_position(

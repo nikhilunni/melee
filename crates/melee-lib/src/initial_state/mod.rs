@@ -19,6 +19,7 @@ mod scene_flow;
 pub(crate) mod scheduler_resume;
 mod setup_resume;
 pub(crate) mod stage;
+mod stage_garden;
 mod stage_izumi;
 mod stage_oldkongo;
 mod stage_oldyoshi;
@@ -600,8 +601,20 @@ impl InitialState {
         let rendered_camera = camera.render_camera(&assets.stage_camera);
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
+        let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
+        if matches!(stage, crate::scene_stage::SceneStage::Garden(_)) {
+            // The Klaptrap's idle material item, rebuilt on its jaw.
+            let anchor = crate::scene_stage::garden::klaptrap_jaw(&mut stage_animations);
+            crate::scene_items::spawn_yaku(
+                &mut items,
+                &mut effects.gobjs,
+                &assets.items,
+                &mut map,
+                anchor,
+            );
+        }
         Ok(Self {
-            items: Box::new(melee_it::ItemPool::new(assets.items.common.clone())),
+            items,
             article_poses: Box::new(crate::article_pose::ArticlePoses::new(
                 &assets.items.article_skeletons,
             )),

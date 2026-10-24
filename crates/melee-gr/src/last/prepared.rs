@@ -146,6 +146,12 @@ impl BackgroundAnimation {
     pub fn joint_scale(&self, bone: usize) -> hsd_types::Vec3 {
         self.tree.scale(self.joints[bone])
     }
+    /// `HSD_JObjGetRotation` of a model bone, as the Euler angles its
+    /// rotation's x, y and z hold.
+    pub fn joint_rotation(&self, bone: usize) -> hsd_types::Vec3 {
+        let rotation = self.tree.rotation(self.joints[bone]);
+        hsd_types::Vec3::new(rotation.x, rotation.y, rotation.z)
+    }
     /// `HSD_JObjGetTranslation` of a model bone.
     pub fn joint_translation(&self, bone: usize) -> hsd_types::Vec3 {
         self.tree.translation(self.joints[bone])

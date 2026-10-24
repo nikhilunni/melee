@@ -63,6 +63,9 @@ pub struct FighterPhysics {
     /// state: `Capabilities::fixed_traction`, kept here because the ground
     /// physics takes only these fields.
     pub fixed_traction: bool,
+    /// A river device's splash (grGarden_8020349C) from this tick's
+    /// physics, for the scene to spawn after the proc. Not retail state.
+    pub water_splash: Option<melee_gr::garden::Splash>,
 }
 
 impl FighterPhysics {
@@ -92,6 +95,7 @@ impl FighterPhysics {
             velocity_blend: Default::default(),
             shield_position_cached: false,
             fixed_traction: false,
+            water_splash: None,
         }
     }
 

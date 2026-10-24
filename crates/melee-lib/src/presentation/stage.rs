@@ -96,6 +96,8 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::OldYoshi => 4,
         // stage_callbacks[3] carries 0xC0000000.
         GrKind::OldKongo => 3,
+        // grGd_StageCallbacks[2] carries 0xC0000000 (grgarden.c:43).
+        GrKind::Garden => 2,
         _ => return Err(error("stage light set unknown")),
     })
 }

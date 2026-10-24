@@ -125,6 +125,13 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.cannon", &stage.cannon);
             sink.field("stage.catch_enabled", &stage.catch_enabled);
         }
+        SceneStage::Garden(stage) => {
+            sink.field("stage.cranky.animation", &stage.cranky.animation);
+            sink.field("stage.cranky.loops_left", &stage.cranky.loops_left);
+            sink.field("stage.klaptrap.leaping", &stage.klaptrap.leaping);
+            sink.field("stage.klaptrap.timer", &stage.klaptrap.timer);
+            sink.field("stage.water_active", &stage.water_active);
+        }
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
             sink.field("stage.shy_timer", &stage.shy_timer);
@@ -298,6 +305,11 @@ fn cold_run_reads_only_dat_assets() {
         assert!(!scenario.root.join("harness/traces").exists());
         crate::trace::write_run(&scenario, std::io::sink()).unwrap();
     }
+}
+
+#[test]
+fn start_jj_fox_marth4_cold_600() {
+    verify("start_jj_fox_marth4");
 }
 
 #[test]

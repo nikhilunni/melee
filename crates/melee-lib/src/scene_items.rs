@@ -31,6 +31,7 @@ melee_it::item_kinds! {
         PeachToad: it_peach::PeachToad,
         PeachToadSpore: it_peach::PeachToadSpore,
         Heiho: it_heiho::Heiho,
+        Yaku: it_yaku::Yaku,
         PikachuTJoltGround: it_pikachu::ThunderJoltBall,
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
         PikachuThunder: it_pikachu::ThunderBolt,
@@ -1403,6 +1404,11 @@ impl Resources {
                 .map_err(|e| anyhow::anyhow!("Shy Guy gait: {e}"))?;
             kinds.push((ItemKind::Heiho, heiho));
         }
+        // Ground_801C0800 (ground.c:493-498): a stage with ALDYakuAll
+        // scripts its material item (it_802E6AEC, Jungle Japes' Klaptrap).
+        if let Some(yaku) = ItemAssets::from_yaku(&common_archive, public, stage)? {
+            kinds.push((ItemKind::PokemonRandom, yaku));
+        }
         // it_80277040 reads it_804D6D28 for every kind.
         for (_, assets) in &mut kinds {
             assets.slide_rule = common.slide_rule;
@@ -2310,6 +2316,60 @@ pub fn spawn_shy_guy(
             resources.get(ItemKind::Heiho),
         );
     }
+}
+
+/// grMaterial_801C8CFC -> it_802E6AEC during stage creation: the stage
+/// material item on a JObj at `anchor`. Its scheduler object is made with
+/// the scene's ([`register_existing`]).
+pub(crate) fn spawn_yaku(
+    pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    anchor: melee_it::YakuAnchor,
+) -> u32 {
+    let spawn = it_yaku::spawn(anchor.position);
+    let assets = resources.get(ItemKind::PokemonRandom);
+    let id = pool
+        .spawn::<SceneItems>(spawn, assets, gobjs)
+        .expect("the stage material item");
+    let item = pool.get_mut(id).unwrap();
+    item.initialize_collision(spawn, assets, map);
+    it_yaku::set_anchor(item, anchor);
+    id
+}
+
+/// The scheduler objects of the items a scene began with (a stage's
+/// material item), in pool order.
+pub(crate) fn register_existing(pool: &ItemPool, world: &mut World, objects: &mut Objects) {
+    for item in pool.iter() {
+        let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
+        for phase in melee_it::ITEM_PROCESS_LINKS {
+            world.add_tagged_proc(object, phase, tag(item.id, phase));
+        }
+        objects.push((item.id, object));
+    }
+}
+
+/// The stage material item (kind 0xA0); a stage creates one at most.
+fn yaku_mut(pool: &mut ItemPool) -> &mut melee_it::ItemCore {
+    pool.iter_mut()
+        .find(|item| item.kind == ItemKind::PokemonRandom && !item.destroyed)
+        .expect("the stage material item")
+}
+
+/// Item_80268E5C(item, state, ITEM_ANIM_UPDATE) from the stage's proc.
+pub(crate) fn change_yaku_state(state: &mut crate::initial_state::InitialState, motion: u16) {
+    let assets = state.assets.items.get(ItemKind::PokemonRandom);
+    it_yaku::change_state(yaku_mut(&mut state.items), motion, assets);
+}
+
+/// The stage moved the material item's JObj.
+pub(crate) fn anchor_yaku(
+    state: &mut crate::initial_state::InitialState,
+    anchor: melee_it::YakuAnchor,
+) {
+    it_yaku::set_anchor(yaku_mut(&mut state.items), anchor);
 }
 
 /// Item_8026A8EC's end for `item`, marked destroyed: its GObjs and its

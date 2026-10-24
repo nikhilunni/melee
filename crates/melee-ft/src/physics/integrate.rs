@@ -68,7 +68,10 @@ pub fn integrate_velocity(state: &mut FighterPhysics) {
 // inlining heuristic otherwise emits another copy in each special family.
 #[inline(never)]
 pub fn integrate_environment(state: &mut FighterPhysics, floor_speed: Option<Vec3>, wind: Wind) {
-    let wind = wind.at(state.position);
+    let (wind, splash) = wind.sample(state.position, state.previous_position);
+    if splash.is_some() {
+        state.water_splash = splash;
+    }
     if let Some(speed) = floor_speed {
         state.position = add(state.position, speed);
     }

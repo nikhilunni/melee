@@ -1199,3 +1199,12 @@ stocks = 4
 seed = 656512273
 item_frequency = 4
 item_mask = "0xfffffff80000100f"
+
+[[boundary]]
+name = "start_jj_fox_marth4"
+cold = "start_jj_fox_marth4_cold"
+savestate = "harness/roms/start_jj_fox_marth4.sav"
+stage = "JungleJapes"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2835597521

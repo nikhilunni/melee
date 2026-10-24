@@ -90,6 +90,11 @@ impl Default for ParticleSystem {
     }
 }
 impl ParticleSystem {
+    /// Retain `bank` for child-generator instructions, as a spawn in it
+    /// would have: a restored population's banks.
+    pub fn register_bank(&mut self, id: u8, bank: &ParticleBank) {
+        self.banks[usize::from(id)].get_or_insert_with(|| bank.clone());
+    }
     /// Immutable descriptor bank retained by the first spawn in that bank.
     pub fn bank(&self, id: u8) -> Option<&ParticleBank> {
         self.banks.get(usize::from(id)).and_then(Option::as_ref)

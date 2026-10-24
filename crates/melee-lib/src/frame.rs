@@ -1599,6 +1599,10 @@ impl Runtime {
                             if let SceneStage::OldKongo(stage) = &mut state.stage {
                                 stage.catch_enabled = true;
                             }
+                            // grGarden_80202D9C: the river's device.
+                            if let SceneStage::Garden(stage) = &mut state.stage {
+                                stage.start();
+                            }
                             // grStadium_801D4040.
                             crate::scene_stage::stadium::show(
                                 state,
@@ -1946,6 +1950,15 @@ impl Runtime {
                             // its velocity (ftColl_GetWindOffsetVec).
                             let wind = match &state.stage {
                                 SceneStage::Pupupu(stage) => stage.wind(),
+                                SceneStage::Garden(stage) => stage.water().map_or(
+                                    melee_gr::wind::Wind::CALM,
+                                    |water| {
+                                        melee_gr::wind::Wind::water(
+                                            water,
+                                            f.camera.target_extents.radius,
+                                        )
+                                    },
+                                ),
                                 _ => melee_gr::wind::Wind::CALM,
                             };
                             dispatch_fighter(
@@ -2366,7 +2379,7 @@ impl Runtime {
                             request.joint = Some((stage::joint_id(map, event.joint), event.matrix));
                             state.effects.events.spawn(&request, false, false);
                             state.particles.spawn::<RetailTrig>(
-                                &state.assets.particle_bank,
+                                state.assets.stage_key_bank(event.bank),
                                 request,
                                 &mut state.rng,
                                 &mut self.particle_draws,
@@ -2496,6 +2509,7 @@ impl Runtime {
                         || address == 0x801C_C0D4
                         || address == melee_gr::oldyoshi::procs::DYNAMICS_PROC
                         || address == melee_gr::oldkongo::procs::DYNAMICS_PROC
+                        || address == 0x8020_2E48
                     {
                         self.radial_forces.tick();
                         // lb_80011ABC reads the state this tick left.
@@ -2532,6 +2546,12 @@ impl Runtime {
                         }
                     } else if matches!(state.stage, SceneStage::OldYoshi(_)) {
                         crate::scene_stage::oldyoshi::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Garden(_)) {
+                        crate::scene_stage::garden::run_proc(
                             state,
                             map_id,
                             &mut self.particle_draws,
@@ -3424,6 +3444,12 @@ impl Simulation {
             world.add_tagged_proc(object, row.s_link, index);
         }
         crate::scene_items::prepare_scheduler(&mut world);
+        // A stage's material item exists from its creation.
+        crate::scene_items::register_existing(
+            &runtime.state.items,
+            &mut world,
+            &mut runtime.item_objects,
+        );
         world.reserve_removals();
         Self {
             world,
@@ -4217,6 +4243,9 @@ fn dispatch_fighter(
         }
         FighterProc::Update => {
             f.proc_update(assets, map, wind);
+            if let Some(splash) = f.core.physics.water_splash.take() {
+                crate::scene_stage::garden::splash(scene_assets, particles, splash, rng)?;
+            }
             f.check_blast_zone(assets, &scene_assets.arena, rng)
                 .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         }
