@@ -4,7 +4,8 @@
 //! ftKb_SpecialN_800F5D04 throws it from above Kirby when a taunt or a hit
 //! takes his ability. It belongs to nobody, has no hitbox and no event
 //! callback: it falls under its own gravity for its lifetime (50 frames,
-//! which end it 9 units above where it began) and ends early on a floor.
+//! which end it 9 units above where it began) and ends early on a floor, a
+//! wall or a ceiling.
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
     state_change::ANIM_UPDATE,

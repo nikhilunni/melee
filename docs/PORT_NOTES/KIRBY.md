@@ -837,25 +837,53 @@ Remaining work, in the order to take it:
 3. **Inhaling items** (rows 357, 368, 370, 375, 379, 381; `fn_800F6178`,
    `ftKb_SpecialN_800F5DE8`) and **item pickup hand poses**
    (`ftKb_Init_OnItemPickup`).
-4. **Branches that fail closed for want of a witness** (each `unimplemented!`
-   names its C line): the aerial Final Cutter rows landing
-   (ftkirbyspecialhi.c:447-453, 526-536); the beam on a slope, landing from
-   the air, clanked, absorbed, shield-bounced (itkirbycutterbeam.c:93-97,
-   128-133, 162, 167, 205-243) and beside a wall at rest (:138-143); an
-   airborne throw landing before its flag (`fn_800DD5EC`, ftCo_Throw.c:207-223)
-   and a throwing pair losing its floor (`fn_800DD684`, :225-234); the victim
-   side's rarer partings (ftCo_CaptureCut.c:29-30, 115-122, 137-189;
-   ftCo_Throw.c:534-538; ftCo_ThrownKirby.c:
-   63-69, 76-83, 340-343); the mouthful sliding off a floor's end
-   (ftkirbyspecialn.c:565-571, 591-598); Stone's steeper slides
-   (ftkirbyspeciallw.c:177-188, 273-285, 308-313, 338-352) and a phantom hit
-   on the shell (ftcoll.c:3666-3676); the ability star against a wall or
-   ceiling (itgroundcoll.c:381-382). The explorer from the three Kirby
-   boundaries (not yet run) and `melee-sim search` are the way to reach them.
+4. **Branches that fail closed for want of a witness.** Wave 13 ran the
+   explorer from the three Kirby boundaries (6,264 cases) and aimed
+   `melee-sim search` at the rest (`goal.fault = "<C line>"` succeeds on the
+   tick the port panics with that `unimplemented!`). Closed, with witnesses:
+   - the beam glancing off a shield past a floor's end
+     (it_2725_Logic7_ShieldBounced, itkirbycutterbeam.c:205-243,
+     `corpus_v3_ys_kirby_fox4_ed97ea327_p1`) and landing on a lower floor
+     (:128-133, `corpus_v3_ys_kirby_fox4_ed922eba2_p2`); the slope descent
+     (:93-97) and the aerial start's landing (ftkirbyspecialhi.c:447-453)
+     were ported and witnessed in wave 12;
+   - the spat star bouncing off a floor that rises ahead of it
+     (ftCo_800BDA74, ftCo_ThrownKirby.c:76-77,
+     `corpus_v3_ys_kirby_fox4_e05625e18_p2`, `_ea4d5d9ec_p1`);
+   - Stone's end rows meeting a floor, which their collision ignores
+     (ftkirbyspeciallw.c:695, 866; `_e64e742b5_p1`, `_e4358fb9c_p0`);
+   - a phantom hit's damage against the shell (ftColl_8007BE3C,
+     ftcoll.c:3666-3676; `_ee769e727_p2`);
+   - the ability star ending on a wall (it_8026DFB0, itgroundcoll.c:381-385;
+     `kirby_ability_star_wall_ys_fox4`, a taunt from Randall toward the
+     stage's side).
+   Still fail-closed, with the evidence in `COVERAGE_AUDIT.md` ("Kirby's
+   fail-closed branches"): the beam beside a wall at rest (unreachable),
+   clanked or absorbed; the aerial landing row landing (it floats: TransN
+   only); an airborne throw landing before its flag; the victim side's
+   ftCo_CaptureCut.c:29-30, 115-122, ftCo_Throw.c:534-538 and
+   ftCo_ThrownKirby.c:63-69, 82-83, 340-343; the pull and the gulp losing
+   their floor (ftkirbyspecialn.c:565-571, 591-598); Stone's steeper slides
+   (ftkirbyspeciallw.c:177-188, 273-285, 308-313, 338-352: unreachable on
+   the Kirby boundaries' stages). A throwing pair losing its floor
+   (fn_800DD684) is the shared grounded-throw path, witnessed for other
+   kinds.
+   Open divergence found on the way: ftCo_CaptureCut.c:137-189, a fighter
+   dying pinned in Kirby's mouth beside a wall, is recorded
+   (`kirby_inhale_randall_pit_ys_fox4`, unregistered; tick 1358): retail
+   sets Fox down at his XRotN before the death entry, and the port, given
+   the thrower there, still lands 1.53 right and 0.34 up of it. And
+   `corpus_v3_ys_kirby_fox4_e45211ed5_p0` (unregistered) diverges at 642:
+   a Fox hit on Kirby's Stone (hatted with Fox's ability) at tick 513 is a
+   full hit the shell takes in retail (dmg.x1834 38 -> 20.43, no hitlag)
+   and a phantom in the port (a hitlag, so the rock ends four frames late).
    Done (wave 11): the held fighter's tap down through a platform
    (ftCo_CaptureWaitKirby.c:56-62, `kirby_capture_drop_ys_fox4`), and the
    holding accessory (fn_800DA190/DA4A0/DA678) keyed on the motion id, not
    the scratch: an inhale after a whiffed grab keeps Catch's scratch.
-5. **No witness yet**: the wall-bounce star (`WALL_BOUNCE_EFFECT`), the
-   bump-star cooldown in a state without a collision callback, the grounded
-   Inhale rows leaving a floor, the spat star's hitbox on a third fighter.
+5. **No witness yet**: the wall-bounce star (`WALL_BOUNCE_EFFECT`: a prone
+   Kirby driven into a wall, which only Randall's side of Yoshi's Story
+   offers on these boundaries), the bump-star cooldown in a state without
+   a collision callback, the spat star's hitbox on a third fighter (no
+   three-fighter boundary). Done (wave 13): the grounded Inhale rows
+   leaving a floor (`kirby_inhale_randall_{start,loop,end}_ys_fox4`).

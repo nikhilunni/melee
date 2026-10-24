@@ -218,6 +218,29 @@ are transcribed (`state::empty_row`); the others stay fail-closed.
 | `ft-purin-family` `ftPr_SpecialS_8013D8E4` enabling a capsule never seen | Unreachable as a retail state: it is the port's own condition (retail re-enables whatever x914[0] holds; the port remembers hitbox 0 from the roll's scripts). Both release scripts create hitbox 0 before the first `update_hitbox` of a roll, so the remembered capsule is always the roll's: with a probe, all 6,334 `update_hitbox` calls in the 201 `puff` scenarios and all 5,945 in the 168 `jigglypuff` ones (every Rollout and copied-Rollout witness and the corpus) found it remembered, the 6 re-enables in each included. The guard stays as an assertion |
 | `ft-purin` `ftPr_SpecialHi_Anim` Pokémon Stadium sleep element | Out of the VS scope: `mv.pr.specialhi.x0` needs `gm_8016B1D8` (StartMeleeRules x5_3), which only event matches write (gmevent.c:403, from the event's x1_4 bit), and `grStadium_801D4FF8` (Pokémon Stadium's display in mode 8 on this player). Stays fail-closed for event mode |
 
+## Kirby's fail-closed branches (2026-10-24)
+
+The explorer from `start_fd_kirby_fox4`, `start_ys_kirby_fox4` and
+`start_fd_kirby_captainfalcon4` (6,264 cases: seeds 0..96 on all three,
+96..696 on Yoshi's Story, 96..496 on the two Final Destination ones) and
+directed `melee-sim search` runs (`goal.fault` aims a search at an
+`unimplemented!` message). Closed with witnesses: listed in
+`PORT_NOTES/KIRBY.md`, "Where this stands", item 4. What stays fail-closed:
+
+| Location | Boundary | Evidence |
+|---|---|---|
+| `it-kirby/cutter_beam.rs` itKirbycutterbeam_UnkMotion0_Coll (itkirbycutterbeam.c:138-143) | A wall beside a beam with no horizontal speed | Unreachable: the physics, which runs before the collision, always sets `vel.x = facing * speed * cosf(angle)` with `speed >= 0.01`; the angle is a floor's (`atan2f(n.x, n.y)` with `n.y > 0`, inside +-pi/2) or a turned flight's (0 or pi plus `atan2f(vy, vx)` of a nonzero `vx`), and no float angle has a zero cosine |
+| `it-kirby/cutter_beam.rs` Logic7_Clanked / Logic7_Absorbed (:162-170) | A clank with the beam; an absorber (Ness's PSI Magnet) | Out of scope for the Kirby boundaries: no Fox or Falcon hitbox clanks with an item (the explorer's 6,264 cases met none), and no absorber is on these boundaries |
+| `ft-kirby/special_hi.rs` ftKb_SpecialAirHiEnd_Coll (ftkirbyspecialhi.c:526-536) | The aerial landing row landing | Its physics is ft_80085134 alone (TransN, no gravity), so once the landing has left its floor (392, Fox pushing it off: `kirby_cutter_push_fd_fox4`) it floats: only a floor rising into it could land it. Searches on Yoshi's Story with Fox running into a landing on a platform's end: 10,086 and 8,118 candidates, none reached 392 there |
+| `melee-ft/fighter/throw_flight.rs` fn_800DD5EC (ftCo_Throw.c:207-223) | An airborne throw landing before its script's flag | Its pass refuses platforms (fn_800DD6E4), so only a main floor higher than the take-off can meet the flight early. Yoshi's Story's slopes rise 3.5 over 17 units: 7,812 candidates (Kirby's forward, back and up throws of Fox on the right slope, every grab tick from 195 to 215 and every Fox position from 42 to 50) found none |
+| `melee-ft/fighter/capture_kirby.rs` ftCo_CaptureCut_Enter (ftCo_CaptureCut.c:29-30) | A fighter out of Kirby's mouth landed by its release sweep | 10,000 candidates on Yoshi's Story (Fox mashing out of the mouthful while Kirby walks onto or down the right slope, every walk start 281..320, five speeds, every stop 1..50 ticks later) found none |
+| `melee-ft/fighter/life.rs` ftCo_800DC920 (ftCo_CaptureCut.c:137-189) | A fighter dying pinned in Kirby's mouth, moved by its release before its death entry | Reached and recorded (`kirby_inhale_randall_pit_ys_fox4`: both fall off Randall under Yoshi's Story, Kirby inhales Fox in the air and they cross the bottom blast zone, tick 1358). Not ported: passing the thrower to the death entry (the release, then the effect position, ft_0D31.c:408, 434) still puts Fox 1.53 right and 0.34 up of retail's release point, which is his XRotN; refreshing XRotN's constraint from Kirby's TransN2 first does not change it. Undiagnosed |
+| `ft-kirby/special_lw.rs` ftKb_SpecialHi_800F3B28 (ftkirbyspeciallw.c:308-313, 338-352) | A floor past fifty degrees (+F8); the slide at its 2.0 top speed (+100) | Unreachable on the Kirby boundaries: Final Destination is level and Yoshi's Story's slopes are 11.8 degrees and 17 units long. Down one, the push is `(1 + (1 - traction)) * n.x * 0.1` (at most 0.041 a frame on that slope) and a rock landing on it starts at 2.0 times `n.x` (0.41), so it leaves the slope below 1.4 |
+| `ft-kirby/special_lw.rs` ftKb_SpecialHi_800F3570 (:177-188), ftKb_SpecialHi_800F37EC (:273-285) | A dip (the floor ahead slopes back); a slope turned against the slide within four frames | Unreachable on the Kirby boundaries: Yoshi's Story's two slopes fall away from a level middle, so a sliding rock always crosses level floor (inside +F4) between slopes of opposite sign, which ends the history scan with 0.9 first |
+| `melee-ft/fighter/capture_kirby.rs` ftCo_800BDA74 (ftCo_ThrownKirby.c:82-83), ftCo_800BE7C0 (:340-343), `ft-kirby/init.rs` ftCo_800BDA50 (:63-69) | The spat star under a ceiling; a hit on a fighter out of a star; a Kirby with a copied ability inhaled | The last needs two Kirbys (no Kirby ditto boundary); a hit in the four ticks out of a spat star needs a third fighter or an article in flight then; no stage on the boundaries has a ceiling the level spat star can reach (the explorer's cases met none) |
+| `melee-ft/fighter/capture_kirby.rs` (ftCo_CaptureCut.c:115-122), (ftCo_Throw.c:534-538) | A pair parted while the Inhale still pulls; an invincible fighter leaving the mouth | Not reached by the explorer's 6,264 cases or the Randall searches (a pull lasts a few ticks) |
+| `ft-kirby/mouthful.rs` fn_800F697C / fn_800F6AC8 (ftkirbyspecialn.c:565-571, 591-598) | The pull and the gulp losing their floor | 1,260 candidates with Kirby and Fox on Randall as it runs into Yoshi's Story's side wall (Kirby's turn 1286..1300, B 4..45 ticks later) found none: Randall leaves Kirby before Fox, so the inhale starts in the air |
+
 ## Exit status
 
 Remaining reachable boundaries: the Sudden Death item gaps in the table
@@ -265,203 +288,3 @@ transitions no gated trace covers yet.
   has (its items are fighter articles, Shy Guys and Sudden Death's
   Bob-ombs, none catchable). The earlier note above that only stage enemies
   set `xDD0 b4` misses the container monsters.
-||||||| parent of 46179860 (hsd-particle: close the fail-closed particle sites against a scan of every bank on the disc)
-
-## Wave 13: particle banks on the disc (PARITY item 27)
-
-Scan (2026-10-24): every `.dat`/`.usd` in `harness/roms/files` (1000
-files), each `eff*DataTable` bank with particle commands (26: the
-character banks, the Kirby copy banks, `EfCoData.dat`, `EfMnData.dat`) and
-each stage `map_ptcl`/`map_texg` bank (24), 1037 descriptors in all, every
-program decoded with `particle.c`'s operand lengths up to its `FF`. No
-other public names a particle bank. Results and what they close:
-
-| Feature | Disc data | Port |
-|---|---|---|
-| Opcodes | Only `00-3F 40-7F 80-9F A0 A2 A3 A5 A6 A8 A9 AB AC AD AF B1 B3 B6 B8 BA BB BC BD BE BF C0-CF D0-DF E0 E4 E5 E6 E8 E9 ED EF FA FB FC FD FF` occur | All ported; the other opcodes stay `UnsupportedOpcode` |
-| Generator shapes | 0 (879), 2 tornado (14), 3 (12), 4 (1), 5 rectangle (49), 8 sphere (82); none of 1, 6, 7, 9-15 | Custom shapes (9-15) stay `UnsupportedGenerator`: retail calls `hsd_804D78EC`, which Melee never sets |
-| Rectangle surface emission | No rectangle descriptor has a negative dimension; `rect.flag` is set only from the descriptor (generator.c:1155-1164) and no Melee code touches `gen->aux` | `Error::OutsideRetailData` |
-| Camera-facing generator (kind 0x10000) | No descriptor sets it; only the `F0` opcode (unused) writes generator kind bits, and only 25-27 | An assertion, as retail: `psCamera` is only ever written NULL (generator.c:80), so `HSD_ASSERT(677, psCamera)` would halt |
-| Descriptor AppSRT (kind 0x20000) | 84 descriptors (common, Fox, Ice Climbers, Kirby, Luigi, Mario, Pikachu, Pichu, Samus, Yoshi, Kirby's Pikachu/Pichu copies, stages `GrSt` and `GrZe`) | Allocated with `xA2 = 1` by `Generator::new` too; the camera-facing display cache (psdisp.c:1426-1438) is ported |
-| Point joints (`B8`, `BF`) | Index 0 in all 13 uses (common 81/83, Fox 3000, Kirby 5004-5006, Mewtwo 13004-13006); `pJObjOfs` is only ever 0 (particle.c:474) | An index past slot 7 is `Error::OutsideRetailData` |
-| Tornado particles | Kind bit 4 is in no descriptor: only a tornado generator's emission sets it, and `hsd_8039D3AC` (generator.c:92) keeps a generator while it has children | The "no live generator" errors became invariants (`expect`) |
-
-`EfKbSs.dat`'s CI8 texture group 0 has neither `palflag` nor `palnum`, so
-retail relocates a word of image data as its palette pointer; the bank
-loader no longer rejects an out-of-range palette slot (it is never read).
-
-## Wave 13: stage and camera sites (PARITY item 31)
-
-Five fail-closed sites, audited 2026-10-24 against the decomp, the retail
-asm and a scan of every stage archive on the disc (all 76 `Gr*.dat`/`Gr*.usd`
-files with a `map_head`: each map's LightList through
-`hsd_archive::visual::read_lights`, with `Ground_801C20E0`'s overrides
-applied as `presentation/lighting.rs` applies them, and every
-`HSD_AnimJoint` of every map animation walked raw for `HSD_A_J_PATH`
-tracks).
-
-- **Stage spline animation** (`melee-gr` `last/animation.rs`,
-  `JObjEvent::Path`): proven unreachable, now `unreachable!`. The port
-  raises the event only for a path track whose AObj has no object
-  (`obj_id` 0); retail's `JObjUpdateFunc` asserts that object
-  (`HSD_ASSERT(0x24D, jp)`, jobj.c:369-372), so such a track would halt the
-  game. The scan finds 56 path tracks in stage map animations (GrBb,
-  GrEF1-3, GrGd, GrKg, GrMc, GrNBr, GrNSr, GrRc, GrSt, GrTe, GrTFc, GrTGw,
-  GrTMr, GrTMt); every one
-  carries a relocated `obj_id`, which `attach_anim_joint` resolves to its
-  spline joint or rejects at load. (Mute City map 30 animation 0 holds an
-  unrelocated -1 child the strict reader refuses; the raw walk covers it.)
-- **Battlefield demo/event background** (`melee-lib`
-  `scene_stage/battle.rs`, map 5's proc): ported. `grBattle_OnInit`
-  (0x80219CE8..0x80219D24) creates map 5 instead of maps 3 and 1 when
-  `gm_8016B3D8` (Classic, Adventure, All-Star) holds or the stage kind is
-  0x111 or 0xF5; its proc `grBattle_GObj5_Callback2` (0x8021A204) is a lone
-  `blr`. VS and the replay runner never create map 5, and the Battlefield
-  boundary loader still refuses any map order but `[0, 3, 1, 6]`, so the
-  map 5 layout itself (its `Ground_JObjInline1` on-init, no transition
-  controller) stays unported until a 1P mode runs.
-- **Zoomed single-player framing** (`melee-cm` `standard.rs`,
-  `Camera_8002B1F8`): still open, reachable only in modes the port does not
-  run. The zoom `x2BC` is 1.0 from camera init (camera.c:193) and changes
-  only in `Camera_8002B0E0`, under `gm_8016B41C` (Classic, Adventure,
-  All-Star, Target Test, Training, Home-Run Contest, the multi-man modes,
-  Event). VS and Slippi replays keep it at 1.0, where `Camera_8002B1F8`
-  returns at once. The C-stick zoom (`Camera_8002B0E0`, already asserted
-  off as `single_player_zoom`) and this branch need a 1P-mode boundary to
-  witness.
-- **Battlefield light kind outside ambient/directional/point**
-  (`melee-gr` `battle/lights.rs`) and **animated light descriptors**
-  (`melee-gr` `desc.rs`, `read_static_lights`): still open, reachable on
-  stages whose simulation-side lights the port does not load yet. The
-  static loader serves Battlefield map 6, Yoshi's Story map 3 and Dream
-  Land map 5 (the `flags_b0` rows of `grNBa`, `grSt`, `grOp`
-  StageCallbacks); their sets are ambient 0x4 plus infinite 0xD or point
-  0xE, with no animation set and no active override. On the disc, after
-  overrides, light flags are 0x4, 0x5, 0x6, 0xD, 0xE, 0x25, 0x40D and
-  0x42D: the type bits are always ambient, infinite or point (no spot light
-  anywhere), and the extra bits (hidden 0x20, 0x400, a dropped specular)
-  come from `GrNBr.dat` maps 0, 1, 31-33 and Fountain of Dreams'
-  overrides. Light sets with animations occur in 21 archives (GrBb, GrCn,
-  GrCs, GrEF1, GrEF2, GrFs, GrGb, GrIz, GrKr, GrMc, GrNBr, GrNLa, GrOk,
-  GrOp, GrPu, GrRc, GrSh, GrTPe, GrVe and the two `.usd` twins); among the
-  supported stages they are the selected sets of Final Destination (map 3)
-  and Fountain of Dreams (map 3), which only `presentation/lighting.rs`
-  reads, and it ports the overrides and the LObj animation. A stage
-  bring-up that loads its lights through
-  `read_static_lights` must port these with it.
-
-## Wave 13: effects (PARITY item 28)
-
-Audited 2026-10-24 from main `1d722e33`. Two scans of the disc, read in
-place: every effect table (`Ef*.dat`, 36 files) and every fighter script
-(`ftData` `xC` motion table of all 33 `PlXx.dat`, decoded with
-`ftAction_803C0870`'s lengths and followed through Command_05/07, plus the
-color programs of `PlCo.dat`'s table at `ftLoadCommonData` +0x18).
-
-**Closed as invariants** (`unreachable!`, not counted as fail-closed):
-
-| site (line at `1d722e33`) | evidence |
-|---|---|
-| `melee-ef/src/resources.rs:341` particle commands without textures | All 36 effect tables link both particle commands and textures or neither (`efAsync_OnLoad`, efasync.c:1281). `crates/melee-ef/tests/disc_effect_tables.rs` checks it. |
-| `melee-ef/src/lib.rs:2157` animation reference is not a spline | Of 138 effect models in 36 tables, one AObj names an object: effCommonDataTable row 36's PATH track, whose object is a spline joint. Same test. |
-| `melee-ef/src/lib.rs:2412` unsupported ef animation event | The effect models' joint tracks are types 1-10, 12, PATH (4) and DPTCL (0x28): no SETBYTE/SETFLOAT (20-39) or PTCLTGT (0x2A) track, the only events without an arm. Same test. |
-| `melee-ef/src/lib.rs:2018` AccumOffset on a freed item JObj | Retail call graph: efLib_CreateGenerator_AppSRT_SetPos parents the model to the item (`efLib_Create(0, gobj)`, eflib.c:1517) and Item_8026A8EC always runs `efLib_DestroyAll(gobj)` (item.c:1991) before the item is freed, so efLib_Cb_AccumOffset_FromParams never reads a freed JObj. The port's model has `ModelOwner::Item`, removed by `ItemEvent::DestroyEffects` and by the destroyed-item sweep in `frame.rs`. |
-| `melee-ef/src/lib.rs:1561` unsupported fighter effect | A port dispatch default with no retail counterpart. Every `EffectRequest` constructor in the workspace was enumerated; the id-guarded rows cover each id passed: SyncAttached 0x47A 0x47C 0x482 0x488-0x48D 0x491-0x493 0x496 0x497 0x49B 0x49C 0x4B4 0x4B5 0x4B8 0x4B9 0x4BE 0x4BF 0x4C6-0x4CA 0x4D6 0x4DA 0x4DF 0x4EC 0x4EE 0x4EF 0x4F1-0x4F7 0x4FB-0x4FD 0x507 0x509 0x50A 0x50D-0x50F 0x510-0x512; SyncAttachedPair 0x48F 0x494 0x4AB 0x4B3 0x4BB 0x4BC 0x50B; AttachedParameter 0x490 0x495 0x49A 0x50C; FollowingGenerator 0x446 0x4E1; BoneModel 0x4CC. HitSpark reaches the switch only as Normal or Slash (`hit_log.rs` maps Ground/Cape to Normal and drops the no-effect elements). |
-
-**Graphics ids a fighter can issue.** The scripts and color programs hand
-ftCo_8009F834 these ids (opcode 10, the landing opcode 55, color opcode 21;
-the terrain opcodes 54/55 and ftCo_DownBound add only stage-bank 30xxx ids
-and 0x407): below 0x250, and 0x3E9, 0x3EF-0x407, 0x40C-0x413, 0x416,
-0x41C, 0x41D, 0x422-0x424, 0x426, 0x428-0x42A, 0x438, 0x43A, 0x446,
-0x44B, 0x487, 0x495, 0x49D, 0x4C1, 0x4C2, 0x4C4, 0x4C5, 0x4D1, 0x4D9,
-0x4E1-0x4E6, 0x4FE, 0x500-0x502, 0x513-0x515. Every one has an arm in
-`resolve_graphics_while` except two, so the dispatch site stays open for
-them:
-
-- `melee-ft/src/fighter/effects.rs:328`, 0x438 (block_66: efAsync kind 3,
-  `efLib_Create_Attach(0x22)` with SetScale_FromParamX): issued only by the
-  Screw Attack item's motions (ItemScrew, ItemScrewAir, ItemScrewDamage,
-  in 27 playable fighters' data and the wireframes' and Giga Bowser's). Retail reaches it in any item match;
-  the port has no Screw Attack item, so it waits for that item.
-- 0x410 (efLib_CreateGenerator 0x22A): only Giga Bowser's SpecialLwLanding
-  (PlGk.dat motion 315), a single-player fighter outside the port.
-
-**Still open, with what reaches them.**
-
-| site | why it stays |
-|---|---|
-| `melee-ft/src/fighter/procs.rs:467` terrain footstep before the proc's motion change | Needs a footstep (opcode 54) followed by a graphics command in the same script step, a terrain with a footstep effect (the port loads two: Fountain of Dreams' and Pokemon Stadium's water, material 10), and a motion change later in the same proc. The scripts that pair opcode 54 with a graphics command in one step are Bowser's walks (motions 7-9) and the heavy-item walks (motions 90/91 of 20 playable fighters' data). Walk's anim callback only sets the rate; the one proc-internal motion change found is ftCo_LiftWalk_Anim -> ftCo_80096F48 (ftCo_Lift.c:93-98, 78-91), which starts the next LiftWalk step at the end of each step: crate and barrel carrying, not ported. ftCo_800D71D8's item catch (an item caught while walking) also changes motion there but was not attempted. |
-| `melee-ef/src/dust.rs:149` efAsync_Dispatch unsupported dust | The default of efAsync_Dispatch's positional rows. Every id the port's callers pass is in `DUST_SPAWNS` or below 0x250 or 30xxx: the graphics ids above that are not model rows, the `PositionalGenerator` constants of the character crates, and the item rows (`spawn_positional`). Retail reaches the other efasync.c rows (0x3ED, 0x40A, 0x41F, 0x425, 0x444, 0x445, ...) through callers the port has not ported (items, stages); each closes with its caller. |
-| `melee-ef/src/egg_shell.rs:137` item root effect | efAsync kinds 1/4 on an item root: only the Egg Throw burst and the fireball's bounce are ported; other items' requests arrive with their items. |
-| `melee-ef/src/item_generators.rs:41` and `:133` | efSync_Spawn rows on item JObjs and bones: the ported items' ids are all rows; other items' rows arrive with them. |
-| `melee-ef/src/lib.rs:314` item-following generator | efLib_CreateGenerator_AppSRT_SetPos on an item: 0x448 (Link's stuck fire arrow, itlinkarrow.c:643) is ported. it_80278800 (iteffect.c:94-104) also sends 0x446 to an item when an item's animation list asks for it; no scan of item scripts was made, and the port's item-script graphics stop first at `frame.rs` "it_80278800: item effect". |
-
-## Wave 13: subaction, capsule and part-tree sites (PARITY items 29-30)
-
-The evidence for the fail-closed sites of `docs/PARITY.md` items 29 and 30
-that no data or caller reaches. Scans read the disc's files in place
-(`harness/roms/files`) with a scratch scanner over `hsd-archive` and the
-port's decoders.
-
-**Subaction opcodes (ftAction_80073240).** Every motion-table row of the 33
-fighter data files (`Pl??.dat`: the 26 playable kinds, Nana, the Master and
-Crazy Hands, Giga Bowser, the wireframes and Sandbag; 10014 rows with a
-script, row counts equal to the descriptors' `animation_count`) and the 23
-Kirby copy files, following Call (5) and Goto (7), decoded with retail's
-lengths (`ftAction_803C0870` for 10..=58, lbcommand for 0..=9): no script
-holds opcode 9 (lbBgFlash), 22, 32, 33, 44, 47, 48, 57 or anything above
-58. The counts of the others run from 4 (opcodes 39, 53, 58) to 10334
-(opcode 2). Fighter scripts come only from these tables
-(`ftData_80085CD8`), so `melee_cmd::decode` now refuses those opcodes and a
-file holding one would fail its load; `Command::Unported` is gone.
-
-**Sound behaviors (ftAction_80071B50, ftAction_80071FC8).** Opcode 17
-uses behaviors 0 (1337 commands), 1 (1031), 2 (341), 3 (83), 6 (57) and 11
-(5); opcode 54 only 0 (300); opcode 38 behaviors 0 (5) and 2 (38). The port
-now maps every behavior retail plays or stops (0..=6, 10..=15) and plays
-nothing for 38's 7..=15 (retail 0x800721E8, `bgt`). Opcode 17's other
-behaviors leave the stream after two words (ftaction.c:653), which the
-three-word decoder cannot follow; none occurs, and the decoder refuses one.
-
-**Colour animations.** All entries of PlCo.dat's colour table
-(`ftLoadCommonData` +0x18, ids below 0x7B) decode with
-`smash::read_overlay`; the table now fails its load on one that does not,
-instead of keeping an undecodable program for run time. The scripts
-request ids 1, 6, 13, 14, 39-41, 44-46, 48-52, 55, 56, 59, 63-76, 78-85,
-88-91, 94-98, 100-102, 104, 108-116 and (smash charge) 119.
-
-**Hit capsules.**
-- `ftColl_80078C70` site (`melee_coll::detection::first_contact`): its one
-  game caller is the grab test `ftColl_80078A2C`, whose catch box contacts
-  only an enabled capsule (`lbColl_80007ECC`; `first_hurt_contact` already
-  skips any other for a Catch hitbox), so an invincible capsule cannot
-  come back. The function now drops the state.
-- `ft_8007C224` (thrown-victim capsule): its `default: break` is ported;
-  only `ft_8007C17C` (state 1) and the switch itself (2, 3) write the
-  state.
-- `lbColl_80008434` on a capsule never made: the only caller is Ness's
-  yo-yo rehit (`ftNs_AttackHi4_YoyoCheckTimedRehit`, 0x80114F0C), whose
-  timer starts in `deal_dmg_cb` (0x80115C74) when the yo-yo rows'
-  capsule hits; those rows (0x127..0x12A of PlNs.dat) make capsule 0 only,
-  and their entry clears the timer, so capsule 0 was made in this life.
-  The site is now an invariant `expect`.
-
-**Part trees (ftParts_800753D4, ftParts_80075304).** `Fighter_804D6540`
-(PlCo.dat `ftLoadCommonData` +0x14) has entries for three kinds only:
-Link (part 68 under 67, type 0, the joint's root), Young Link (72 under 71,
-type 0, root) and Kirby (thirteen: types 0-3, source indices 7-28). The
-port's `graft_conditional_joint` serves Link's and Young Link's OnLoad
-(`ftLk_Init_OnLoad`, `ftCl_Init_OnLoad`), and in all ten of their costumes
-(PlLk{Nr,Re,Bu,Bk,Wh}, PlCl{Nr,Re,Bu,Wh,Bk}) the parent part is
-uninstanced and childless and the graft succeeds. Kirby's entries are
-used only by `ftKb_SpecialN_800EF040`, which the port models in
-`ft_kirby::hat` without moving a joint (no bone table names those parts).
-The five sites are now assertions of the OnLoad layout.
-
-Still open: a scaled fighter's hurt matrix (`lbColl_80008248` with
-`ftCommon_8007F804`) needs a fighter scale other than 1 (the Super and
-Poison Mushrooms, not ported); two efAsync flushes in one proc with a sound
-draw between them (fighter.c:951) needs a second motion change in the proc
-that entered a motion whose frame-0 commands draw a sound: 283 rows do
-(opcode 18 or 38 before the first timer), mostly the damage motions
-(0x6E..0x83) and 0xF7..0xFA; no witness is recorded.
