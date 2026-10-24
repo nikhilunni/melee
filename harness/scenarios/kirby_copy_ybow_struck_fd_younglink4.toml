@@ -1,0 +1,37 @@
+# KIRBY directed witness from start_fd_kirby_younglink4 (Kirby runs to x=51 beside Young Link at +60 and swallows him): Young Link jabs Kirby as he draws the copied bow (the take-damage callbacks: ftKb_Init_800EE7B8's put-away, ftKb_SpecialNLk800FB800 / 800FB840, takes the arrow and the bow); a taunt then drops the ability as a star (ftKb_SpecialN_800F5D04), and B is the Inhale.
+name = "kirby_copy_ybow_struck_fd_younglink4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_younglink4.sav"
+frames = 760
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 445, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 446, port = 1, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 601, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 702, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "YoungLink"
+controller = "scripted"

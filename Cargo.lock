@@ -573,6 +573,7 @@ dependencies = [
  "ft-donkey-family",
  "ft-fox-family",
  "ft-gamewatch-family",
+ "ft-link-family",
  "ft-luigi-family",
  "ft-mario-family",
  "ft-mars-family",

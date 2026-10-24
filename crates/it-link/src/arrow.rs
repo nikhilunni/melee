@@ -8,7 +8,9 @@
 //! (it_802A9458): it wobbles a few random frames, stays its stuck lifetime,
 //! then fades (a destroy effect) and goes 300 frames later. A hit or a
 //! clank ends it; a reflector turns it round. The trail models are drawing
-//! only.
+//! only. Kirby's copied bow nocks the same item code as
+//! It_Kind_Kirby_LinkArrow / It_Kind_Kirby_CLinkArrow (PlKbCpLk.dat,
+//! PlKbCpCl.dat), whose switches on the kind read Kirby's rows.
 use hsd_types::Vec3;
 use melee_it::{desc::ItemAssets, state_change::*, *};
 use melee_types::ItemKind;
@@ -30,8 +32,17 @@ mod motion {
 
 /// The x2071_b6 bit of Fighter.x2070 (the archer's motion flags).
 const FLAG_2071_B6: u32 = 0x0002_0000;
-/// ftLk_MS_SpecialNStart.
-const FIRST_DRAW_ROW: u16 = 344;
+/// The archer's first draw row for each kind: ftLk_MS_SpecialNStart (344)
+/// for Link's and Young Link's (ftLk_SpecialN_IsActiveAnd2071b6), Kirby's
+/// ftKb_MS_LkSpecialNStart (401) and ftKb_MS_ClSpecialNStart (514) for his
+/// copies' (ftKb_SpecialNLk800FB470).
+pub(crate) fn first_draw_row(kind: ItemKind) -> u16 {
+    match kind {
+        ItemKind::KirbyLinkArrow | ItemKind::KirbyLinkBow => 401,
+        ItemKind::KirbyCLinkArrow | ItemKind::KirbyCLinkBow => 514,
+        _ => 344,
+    }
+}
 /// MTXDegToRad's factor as MWCC rounds it.
 const DEGREES_TO_RADIANS: f32 = 0.017_453_292;
 /// it_803F6A84: each wobble's base and random range (degrees).
@@ -132,14 +143,16 @@ static STATES: [ItemStateRow; 5] = [
     },
 ];
 
-/// The arrow of Link (`YOUNG = false`) or Young Link's fire arrow.
-pub struct Arrow<const YOUNG: bool>;
+/// The arrow of Link (`YOUNG = false`) or Young Link's fire arrow, or of
+/// Kirby's copies of their bows (`KIRBY`).
+pub struct Arrow<const YOUNG: bool, const KIRBY: bool>;
 
-impl<const YOUNG: bool> ItemLogic for Arrow<YOUNG> {
-    const KIND: ItemKind = if YOUNG {
-        ItemKind::CLinkArrow
-    } else {
-        ItemKind::LinkArrow
+impl<const YOUNG: bool, const KIRBY: bool> ItemLogic for Arrow<YOUNG, KIRBY> {
+    const KIND: ItemKind = match (YOUNG, KIRBY) {
+        (false, false) => ItemKind::LinkArrow,
+        (true, false) => ItemKind::CLinkArrow,
+        (false, true) => ItemKind::KirbyLinkArrow,
+        (true, true) => ItemKind::KirbyCLinkArrow,
     };
     const STATES: &'static [ItemStateRow] = &STATES;
     /// it_802A83E0 (802A83E0) once Item_80268B18 returns: command variables
@@ -301,7 +314,8 @@ fn nocked_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool 
     let Some(owner) = ctx.owner else {
         return false;
     };
-    let in_draw = (FIRST_DRAW_ROW..FIRST_DRAW_ROW + 6).contains(&owner.motion);
+    let first = first_draw_row(item.kind);
+    let in_draw = (first..first + 6).contains(&owner.motion);
     if !in_draw || owner.motion_flags.unwrap_or(0) & FLAG_2071_B6 != 0 {
         state(item).archer = None;
         return true;
@@ -516,7 +530,7 @@ fn stick(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) {
     s.faded_frames = 0;
     item.change_motion_with(motion::STUCK, ARTICLE_STATES[4], ANIM_UPDATE, ctx.assets);
     item.rotation.z = state(item).angle;
-    if matches!(item.kind, ItemKind::CLinkArrow) {
+    if matches!(item.kind, ItemKind::CLinkArrow | ItemKind::KirbyCLinkArrow) {
         item.events.push(ItemEvent::FollowingEffect {
             id: FIRE_EFFECT,
             offset: Vec3::new(0.0, 0.0, 5.0),

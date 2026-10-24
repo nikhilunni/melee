@@ -11,6 +11,19 @@ type Result<T> = std::result::Result<T, FighterDescError>;
 
 pub const LINK_ATTRIBUTES_SIZE: u32 = 0xDC;
 
+impl BowAttributes {
+    /// The block at `base`.
+    pub fn read(r: &Reader<'_>, base: u32) -> Result<Self> {
+        Ok(Self {
+            max_charge: r.f32(base)?,
+            draw_animation_rate: r.f32(base + 0x4)?,
+            air_landing_lag: r.f32(base + 0x8)?,
+            arrow_item: r.u32(base + 0xC)?,
+            bow_item: r.u32(base + 0x10)?,
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct LinkAttributes {
     pub bow: BowAttributes,
@@ -37,7 +50,9 @@ pub struct LinkAttributes {
     pub shield: ShieldAttributes,
 }
 
-#[derive(Clone, Debug, PartialEq)]
+/// ftLk_DatAttrs +0..+10, and Kirby's copies of the block (ftKb_DatAttrs
+/// +268 `specialn_lk_*`, +27C `specialn_cl_*`).
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BowAttributes {
     /// +0x00: the charge (frames held) that stops growing.
     pub max_charge: f32,
@@ -193,13 +208,7 @@ impl LinkAttributes {
             wall_hang_frames: r.u32(0xB8)? as i32,
         };
         Ok(Self {
-            bow: BowAttributes {
-                max_charge: r.f32(0x0)?,
-                draw_animation_rate: r.f32(0x4)?,
-                air_landing_lag: r.f32(0x8)?,
-                arrow_item: r.u32(0xC)?,
-                bow_item: r.u32(0x10)?,
-            },
+            bow: BowAttributes::read(&r, 0)?,
             boomerang: BoomerangAttributes {
                 angle_stick_threshold: r.f32(0x14)?,
                 max_angle: r.f32(0x18)?,

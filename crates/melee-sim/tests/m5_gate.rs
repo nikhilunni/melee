@@ -2872,6 +2872,22 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // The tongue at the floor's edge slides off into the aerial row and
     // Fall; death with the ability, then B is the Inhale.
     ("kirby_copy_egglay_edge_fd_yoshi4", 780),
+    // The copied bow (ftkirbyspeciallink.c over ft_link_family's states,
+    // rows 401..406 and 514..519; It_Kind_Kirby_LinkArrow / LinkBow and
+    // the Young Link kinds from PlKbCpLk.dat / PlKbCpCl.dat), from
+    // boundaries `start_fd_kirby_{link,younglink}4`: a short draw, a full
+    // draw into the loop shot into the copied fighter, an aerial draw shot
+    // in the air and landing, a short-hop draw landing in the grounded rows.
+    ("kirby_copy_bow_fd_link4", 1000),
+    ("kirby_copy_ybow_fd_younglink4", 1000),
+    // A jab in the draw takes the arrow and the bow (800FB800 / 800FB840);
+    // a taunt's star.
+    ("kirby_copy_bow_struck_fd_link4", 760),
+    ("kirby_copy_ybow_struck_fd_younglink4", 760),
+    // A draw at the floor's edge slides off into the aerial rows; death in
+    // the aerial loop with both articles out, then B is the Inhale.
+    ("kirby_copy_bow_edge_fd_link4", 900),
+    ("kirby_copy_ybow_edge_fd_younglink4", 900),
 ];
 
 #[test]

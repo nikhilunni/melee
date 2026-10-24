@@ -4,7 +4,10 @@
 //! It hangs from the archer's right thumb and plays the row of the bow
 //! special he is in (ftLk_SpecialN_GetIndex): a switch between the grounded
 //! and aerial row keeps its frame. It goes once the release has played 24
-//! frames, once the archer has left the special or let go of it.
+//! frames, once the archer has left the special or let go of it. Kirby's
+//! copied bow is the same item code as It_Kind_Kirby_LinkBow /
+//! It_Kind_Kirby_CLinkBow, whose switches on the kind read Kirby's rows
+//! (ftKb_SpecialNLk800FB394, 800FB470).
 use melee_it::{desc::ItemAssets, state_change::*, *};
 use melee_types::ItemKind;
 
@@ -70,14 +73,16 @@ static STATES: [ItemStateRow; 7] = [
     },
 ];
 
-/// The bow of Link (`YOUNG = false`) or Young Link.
-pub struct Bow<const YOUNG: bool>;
+/// The bow of Link (`YOUNG = false`) or Young Link, or of Kirby's copies
+/// of it (`KIRBY`).
+pub struct Bow<const YOUNG: bool, const KIRBY: bool>;
 
-impl<const YOUNG: bool> ItemLogic for Bow<YOUNG> {
-    const KIND: ItemKind = if YOUNG {
-        ItemKind::CLinkBow
-    } else {
-        ItemKind::LinkBow
+impl<const YOUNG: bool, const KIRBY: bool> ItemLogic for Bow<YOUNG, KIRBY> {
+    const KIND: ItemKind = match (YOUNG, KIRBY) {
+        (false, false) => ItemKind::LinkBow,
+        (true, false) => ItemKind::CLinkBow,
+        (false, true) => ItemKind::KirbyLinkBow,
+        (true, true) => ItemKind::KirbyCLinkBow,
     };
     const STATES: &'static [ItemStateRow] = &STATES;
     /// it_802AF1A4 (802AF1A4) once Item_80268B18 returns: command
@@ -151,7 +156,7 @@ fn bow_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> boo
     let Some(owner) = ctx.owner else {
         return false;
     };
-    let first = 344u16;
+    let first = crate::arrow::first_draw_row(item.kind);
     let in_special = (first..first + 6).contains(&owner.motion);
     let flags = owner.motion_flags.unwrap_or(0);
     !in_special || flags & FLAG_2071_B6 != 0

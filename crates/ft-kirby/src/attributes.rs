@@ -64,6 +64,10 @@ pub struct KirbyAttributes {
     pub marth_shield_breaker: ShieldBreakerAttributes,
     /// +370..+384 (`fe`): the copied Flare Blade.
     pub roy_flare_blade: ShieldBreakerAttributes,
+    /// +268..+27C (`specialn_lk_*`): the copied bow, Link's block.
+    pub link_bow: ft_link_family::attributes::BowAttributes,
+    /// +27C..+290 (`specialn_cl_*`): the copied bow, Young Link's block.
+    pub young_link_bow: ft_link_family::attributes::BowAttributes,
     /// +2B4..+358 (`specialn_pr_*`): the copied Rollout, Jigglypuff's block.
     pub rollout: RolloutAttributes,
     /// +384..+39C (`specialn_mt_*`): the copied Shadow Ball, Mewtwo's
@@ -304,6 +308,8 @@ impl KirbyAttributes {
             ness_pk_flash: ft_ness_family::pk_flash::PkFlashAttributes::read(&r, 0x1A0)?,
             fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,
             falco_blaster: BlasterAttributes::read(Reader::new(r.slice(0x244, 0x24)?))?,
+            link_bow: ft_link_family::attributes::BowAttributes::read(&r, 0x268)?,
+            young_link_bow: ft_link_family::attributes::BowAttributes::read(&r, 0x27C)?,
             marth_shield_breaker: ShieldBreakerAttributes::read(&r, 0x35C)?,
             roy_flare_blade: ShieldBreakerAttributes::read(&r, 0x370)?,
             rollout: RolloutAttributes::read(&r, 0x2B4)?,

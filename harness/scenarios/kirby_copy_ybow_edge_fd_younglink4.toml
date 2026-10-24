@@ -1,0 +1,33 @@
+# KIRBY directed witness from start_fd_kirby_younglink4 (Kirby runs to x=51 beside Young Link at +60 and swallows him): the copied bow off the floor's edge. Kirby runs right and draws at the edge (the stick at 30, below the side special's): the slide carries him off into the aerial rows (ftKb_LkSpecialNStart_Coll), he holds the draw as he falls and dies with the bow out (ftKb_Init_800EE74C's put-away), losing the ability; back on the stage, B is the Inhale.
+name = "kirby_copy_ybow_edge_fd_younglink4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_younglink4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 427, port = 0, buttons = {  }, raw = { stickX = 30, button = 512 } },
+  { frame = 429, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 640, port = 0, buttons = {  }, raw = {  } },
+  { frame = 820, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 822, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "YoungLink"
+controller = "scripted"

@@ -1686,6 +1686,17 @@ fn start_fd_kirby_yoshi_boundary_600() {
     particle_rng_sites_with_ledger(name, 600, "ledger600");
 }
 
+/// Kirby vs Link and Young Link on Final Destination, for the copied bow:
+/// warm, cold and the particle draw order.
+#[test]
+fn start_fd_kirby_bow_boundaries_600() {
+    for name in ["start_fd_kirby_link4", "start_fd_kirby_younglink4"] {
+        movement_gate_ticks(name, 600);
+        movement_gate_ticks(&format!("{name}_cold"), 600);
+        particle_rng_sites_with_ledger(name, 600, "ledger600");
+    }
+}
+
 /// Kirby vs the five fighters whose hats are grafted into his own parts,
 /// on Final Destination, warm and cold, with the particle draw order.
 #[test]

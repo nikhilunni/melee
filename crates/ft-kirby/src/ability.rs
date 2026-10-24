@@ -27,7 +27,7 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are x68, x6C, x7C (ns_flash_gobj), xC4,
+/// The ones with a reader so far are x68, x6C, x74, x78, x7C (ns_flash_gobj), xC4,
 /// xCC, xB0, x8C, xA4..xAC and xD4..xDC. With every charge word at 0,
 /// ftKb_Init_UnkMotionStates4 has no colour for any kind
 /// (`crate::charge_flash`).
@@ -49,6 +49,9 @@ fn reset_copied_scratch(f: &mut Fighter) {
     state.toad.toad_out = false;
     // x7C (Fighter +22A8): the copied PK Flash's pointer.
     state.pk_flash.flash_out = false;
+    // x74, x78 (Fighter +22A0, +22A4): the copied bow's arrow and bow.
+    state.bow.arrow_out = false;
+    state.bow.bow_out = false;
     crate::charge_flash::refresh(f);
 }
 
@@ -96,7 +99,8 @@ fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
 
 /// The arms of ftKb_SpecialN_800F19AC / 800F1A8C that release an article:
 /// Fox's and Falco's destroy the blaster, Mr. Game & Watch's the pan,
-/// Peach's Toad; Ness's lets the flash fly on.
+/// Peach's Toad; Ness's lets the flash fly on, Link's and Young Link's
+/// take the arrow and the bow.
 fn put_away_article(f: &mut Fighter, kind: FighterKind) {
     crate::copied::blaster::put_away(f, kind);
     match kind {
@@ -106,6 +110,8 @@ fn put_away_article(f: &mut Fighter, kind: FighterKind) {
         FighterKind::Peach => crate::copied::toad::put_away(f),
         // ftKb_SpecialNNs_800FECE8.
         FighterKind::Ness => crate::copied::pk_flash::put_away(f),
+        // ftKb_SpecialNLk800FB800, 800FB840.
+        FighterKind::Link | FighterKind::CLink => crate::copied::bow::put_away(f, kind),
         _ => {}
     }
 }
@@ -113,8 +119,8 @@ fn put_away_article(f: &mut Fighter, kind: FighterKind) {
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
 /// the death callback and ftKb_SpecialN_800F5D04 (`put_away_article`).
 /// The other kinds whose arm only releases an article or a held fighter
-/// (Ice Climbers, Link, Young Link, Sheik) do nothing while their copied
-/// special is not ported: their scratch is always at rest. Yoshi's
+/// (Ice Climbers, Sheik) do nothing while their copied special is not
+/// ported: their scratch is always at rest. Yoshi's
 /// (801093B4: the hat's animation, drawn only; 8010A8BC: an item on the
 /// tongue, which the port never catches) has nothing to do.
 fn put_away(f: &mut Fighter) {

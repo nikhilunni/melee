@@ -109,6 +109,10 @@ melee_it::item_kinds! {
         KirbyPeachToadSpore: it_peach::KirbyPeachToadSpore,
         KirbyNessPKFlush: it_ness::KirbyNessPkFlash,
         KirbyNessPKFlushExplode: it_ness::KirbyNessPkFlashExplode,
+        KirbyLinkArrow: it_link::KirbyLinkArrow,
+        KirbyLinkBow: it_link::KirbyLinkBow,
+        KirbyCLinkArrow: it_link::KirbyYoungLinkArrow,
+        KirbyCLinkBow: it_link::KirbyYoungLinkBow,
     }
 }
 
@@ -124,7 +128,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 12] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 14] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -232,6 +236,27 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 12] = [
             (ItemKind::KirbyNessPKFlushExplode, 1, 1),
         ],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Link,
+        file: "PlKbCpLk.dat",
+        symbol: "ftDataKirbyCopyLink",
+        // hats[5]->hat_dynamics[0, 1]: the arrow's five states and the
+        // bow's seven, as Link's own.
+        articles: &[
+            (ItemKind::KirbyLinkArrow, 0, 5),
+            (ItemKind::KirbyLinkBow, 1, 7),
+        ],
+    },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::CLink,
+        file: "PlKbCpCl.dat",
+        symbol: "ftDataKirbyCopyClink",
+        // hats[19]->hat_dynamics[0, 1]: the fire arrow and the bow.
+        articles: &[
+            (ItemKind::KirbyCLinkArrow, 0, 5),
+            (ItemKind::KirbyCLinkBow, 1, 7),
+        ],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -286,6 +311,14 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
         ItemKind::KirbyNessPKFlushExplode => Some((
             &it_ness::pk_flash::EXPLODE_ARTICLE_STATES,
             it_ness::pk_flash::EXPLODE_SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbyLinkArrow | ItemKind::KirbyCLinkArrow => Some((
+            &it_link::arrow::ARTICLE_STATES,
+            it_link::arrow::SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbyLinkBow | ItemKind::KirbyCLinkBow => Some((
+            &it_link::bow::ARTICLE_STATES,
+            it_link::bow::SPECIAL_ATTRIBUTES,
         )),
         _ => None,
     }
@@ -924,6 +957,10 @@ impl Resources {
                     None => ItemAssets::from_article_slot(&a, at, states)?,
                 };
                 kirby_copy_article_finish(kind, &mut assets, &a, &common)?;
+                // The copied arrows' release sweep (it_80275D5C), as Link's.
+                if matches!(kind, ItemKind::KirbyLinkArrow | ItemKind::KirbyCLinkArrow) {
+                    assets.read_common_release(&common_archive, public)?;
+                }
                 kinds.push((kind, assets));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }

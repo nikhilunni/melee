@@ -1,0 +1,41 @@
+# KIRBY directed witness from start_fd_kirby_link4 (Kirby runs to x=51 beside Link at +60 and swallows him): the copied bow (rows 401..406). Kirby turns to Link and draws: a short draw released early, then a full draw held into the loop and shot into him; a full hop with an aerial draw shot in the air and landing; a short-hop draw landing in the grounded rows.
+name = "kirby_copy_bow_fd_link4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_link4.sav"
+frames = 1000
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 440, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 600, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 708, port = 0, buttons = {  }, raw = {  } },
+  { frame = 714, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 740, port = 0, buttons = {  }, raw = {  } },
+  { frame = 860, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 862, port = 0, buttons = {  }, raw = {  } },
+  { frame = 866, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 900, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Link"
+controller = "scripted"

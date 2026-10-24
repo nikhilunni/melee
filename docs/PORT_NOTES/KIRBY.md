@@ -795,10 +795,32 @@ fails closed.
   aerial catch swallowed as Kirby lands; Yoshi's jab in the tongue's start
   and a taunt's star; the tongue sliding off the edge into Fall, death
   with the ability.
+- **The copied bow** (`ft-kirby` `copied/bow.rs`; ftkirbyspeciallink.c):
+  Link's states (`ft_link_family::special_n`, now generic over a
+  `BowUser` trait that every `LinkFamily` gets by a blanket impl) over rows
+  401..406 (Link's hat) and 514..519 (Young Link's), with Kirby's blocks of
+  attributes (+268 / +27C, Link's +0..+10 layout, the item kinds among
+  them). Kirby's code indexes `fp->parts` with the part enum: the bow
+  appears and hangs at FtPart_R3rdNa (44), the arrow at FtPart_RHandN (39),
+  the shot leaves from parts[44] with its tail at parts[39]. While drawn,
+  the arrow is aimed at ftKb_Init_803B7548's vectors, all zero in the DOL
+  (800FBE00..B8), not at the hands. The articles are Link's item code under
+  Kirby's kinds; their switches on the kind read Kirby's rows (401 / 514
+  for the in-draw tests, ftKb_SpecialNLk800FB470; the bow's stage,
+  800FB394). The put-away arm (800FB800 / 800FB840) takes the arrow and
+  the bow; 800F190C clears both pointers. Copy archives `PlKbCpLk.dat`
+  (hats[5]) and `PlKbCpCl.dat` (hats[19]), hat_dynamics[0] (arrow, with
+  the common release sweep) and [1] (bow); no effect bank. Evidence:
+  boundaries `start_fd_kirby_{link,younglink}4` and six
+  `kirby_copy_{bow,ybow}_*` scenes in `KIRBY_WITNESSES`, exact on their
+  first gate with 0 differing particle-site ticks: short and full draws
+  shot into the copied fighter, aerial draws shot in the air and landing,
+  a jab in the draw taking both articles and a taunt's star, a draw
+  sliding off the edge into the aerial rows and death in the aerial loop.
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
   Megavitamin, the green Fireball, the Charge Shot, the Giant Punch, the
-  Shadow Ball, the Thunder Jolt, the Toad, PK Flash and Egg Lay
+  Shadow Ball, the Thunder Jolt, the Toad, PK Flash, Egg Lay and the bow
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -859,7 +881,9 @@ Remaining work, in the order to take it:
    `start_fd_kirby_pichu4`); Peach's Toad (`kirby_copy_toad_*`, boundary
    `start_fd_kirby_peach4`, the new `ft-peach-family`); Ness's PK Flash
    (`kirby_copy_pkflash_*`, boundary `start_fd_kirby_ness4`); Yoshi's Egg
-   Lay (`kirby_copy_egglay_*`, boundary `start_fd_kirby_yoshi4`).
+   Lay (`kirby_copy_egglay_*`, boundary `start_fd_kirby_yoshi4`); Link's
+   and Young Link's bow (`kirby_copy_{bow,ybow}_*`, boundaries
+   `start_fd_kirby_{link,younglink}4`).
    Next: Sheik, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,

@@ -23,6 +23,7 @@ pub mod thunder_jolt;
 pub mod toad;
 pub mod pk_flash;
 pub mod egg_lay;
+pub mod bow;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -58,7 +59,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Bowser
     unported("ftKb_SpecialNKp_800FA8B4", "ftKb_SpecialNKp_800FA958"),
     // Link
-    unported("ftKb_SpecialNLk800FB880", "ftKb_SpecialNLk800FBA00"),
+    CopiedNeutral::Ported(bow::enter),
     // Sheik
     unported("ftKb_SpecialNSk_8010612C", "ftKb_SpecialNSk_801061E4"),
     // Ness
@@ -86,7 +87,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Zelda
     unported("ftKb_SpecialNZd_80105B2C", "ftKb_SpecialNZd_80105BA8"),
     // Young Link: Link's entries.
-    unported("ftKb_SpecialNLk800FB880", "ftKb_SpecialNLk800FBA00"),
+    CopiedNeutral::Ported(bow::enter),
     // Dr. Mario: Mario's entries.
     CopiedNeutral::Ported(fireball::enter_mario),
     // Falco: Fox's entries.
@@ -164,6 +165,8 @@ pub fn item_owner(f: &mut Fighter) -> melee_it::ItemOwner {
         .unwrap_or_else(|| melee_it::ItemOwner {
             // The copied PK Flash's ftKb_SpecialNNs_800FEC78.
             steering_article: pk_flash::steering(f),
+            // The copied bow's ftKb_SpecialNLk800FB394.
+            article_stage: bow::stage(f),
             ..melee_ft::fighter::default_item_owner(f)
         })
 }
@@ -182,6 +185,7 @@ pub fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     mewtwo::article_destroyed(f, kind);
     toad::article_destroyed(f, kind);
     pk_flash::article_destroyed(f, kind);
+    bow::article_destroyed(f, kind);
 }
 
 /// shield_hit_cb's volume of a copied special against a fighter's hit

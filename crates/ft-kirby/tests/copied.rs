@@ -54,6 +54,8 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Peach
                             | FighterKind::Ness
                             | FighterKind::Yoshi
+                            | FighterKind::Link
+                            | FighterKind::CLink
                     ),
                     "{kind:?}"
                 )
@@ -109,6 +111,19 @@ fn the_egg_lay_rows_follow_kirbys_table() {
         if let Some(animation) = animation {
             assert_eq!(row.animation, animation);
         }
+    }
+}
+
+#[test]
+fn the_bow_rows_follow_kirbys_table() {
+    // ftKb_MS_LkSpecialNStart..LkSpecialAirNEnd (401..406) play
+    // ftKb_SM_LkSpecialNStart (340) and on; ftKb_MS_ClSpecialNStart.. (514..519)
+    // ftKb_SM_ClSpecialNStart (449) and on.
+    let rows = ft_kirby::copied::bow::rows();
+    for (i, row) in rows.iter().enumerate() {
+        let (action, animation) = if i < 6 { (401, 340) } else { (514 - 6, 449 - 6) };
+        assert_eq!(row.action.0, action + i as u16);
+        assert_eq!(row.animation, animation + i as i32);
     }
 }
 

@@ -61,6 +61,9 @@ pub struct Kirby {
     pub rollout: ft_purin_family::RolloutState,
     /// The copied Chef: u.kb.xD4..xDC and mv.kb.specialn_gw.
     pub chef: crate::copied::chef::KirbyChef,
+    /// The copied bow: mv.lk.specialn, u.kb.x74 (the arrow) and x78 (the
+    /// bow).
+    pub bow: ft_link_family::special_n::Bow,
     /// The copied PK Flash: mv.kb.specialn_ns and u.kb.ns_flash_gobj
     /// (Fighter +22A8).
     pub pk_flash: ft_ness_family::pk_flash::PkFlash,
@@ -143,6 +146,7 @@ impl Kirby {
             shadow_ball: Default::default(),
             toad: Default::default(),
             pk_flash: Default::default(),
+            bow: Default::default(),
         }
     }
 }
