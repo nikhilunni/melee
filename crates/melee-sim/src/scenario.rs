@@ -222,19 +222,6 @@ impl Scenario {
                 "cold setup requires an explicit boundary seed"
             );
             ensure!(
-                matches!(
-                    self.stage.as_str(),
-                    "FinalDestination"
-                        | "Battlefield"
-                        | "YoshisStory"
-                        | "DreamLand"
-                        | "FountainOfDreams"
-                        | "PokemonStadium"
-                ),
-                "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land, Fountain of \
-                 Dreams and Pokemon Stadium"
-            );
-            ensure!(
                 self.all_characters_unlocked.is_some(),
                 "cold setup requires all_characters_unlocked"
             );
@@ -247,10 +234,14 @@ impl Scenario {
             self.boundary_seed.is_none() || self.is_cold(),
             "a recording with a replaced boundary seed gates through its cold twin"
         );
-        ensure!(
-            crate::scene_stage::descriptor(&self.stage).is_some(),
-            "unsupported stage"
-        );
+        match melee_lib::Stage::from_name(&self.stage) {
+            None => anyhow::bail!("unknown stage {:?}", self.stage),
+            Some(stage) => ensure!(
+                crate::scene_stage::descriptor(&self.stage).is_some(),
+                "{}",
+                melee_lib::unported_stage(stage)
+            ),
+        }
         // Recordings are bounded by the tracer's run, not by the importer; the
         // eight-minute acceptance match (S11) is 28,800 ticks.
         ensure!(

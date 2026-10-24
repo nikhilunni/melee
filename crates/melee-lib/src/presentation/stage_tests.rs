@@ -57,7 +57,7 @@ fn every_stage_draws_exactly_its_live_ground_models() {
     let Some(files) = files() else {
         return;
     };
-    for stage in Stage::ALL {
+    for stage in Stage::PORTED {
         let mut game = start(&files, stage);
         let mut view =
             Presentation::new(&game).unwrap_or_else(|e| panic!("{stage:?}: presentation: {e}"));

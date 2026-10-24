@@ -86,14 +86,39 @@ BOUNDARIES = HERE / "boundaries.toml"
 BACKUP = Path.home() / "melee-data/roms"
 SCRIPT = HERE / "dolphin/boundary_script.py"
 
-# Scenario stage name -> (StKind, short name). gr/forward.h StKind.
+# Every Versus stage: scenario stage name (the port's spelling, slp ids.rs
+# stage_name) -> (StKind, gr/forward.h; short name). A stage the port has
+# not ported records on retail and fails the gate naming the stage.
 STAGES = {
-    "FinalDestination": (0x20, "fd"),
-    "Battlefield": (0x1F, "bf"),
-    "YoshisStory": (0x08, "ys"),
-    "DreamLand": (0x1C, "dl"),
     "FountainOfDreams": (0x02, "fod"),
     "PokemonStadium": (0x03, "ps"),
+    "PrincessPeachsCastle": (0x04, "pc"),
+    "KongoJungle": (0x05, "kj"),
+    "Brinstar": (0x06, "brin"),
+    "Corneria": (0x07, "cor"),
+    "YoshisStory": (0x08, "ys"),
+    "Onett": (0x09, "onett"),
+    "MuteCity": (0x0A, "mc"),
+    "RainbowCruise": (0x0B, "rc"),
+    "JungleJapes": (0x0C, "jj"),
+    "GreatBay": (0x0D, "gb"),
+    "HyruleTemple": (0x0E, "ht"),
+    "BrinstarDepths": (0x0F, "bd"),
+    "YoshisIsland": (0x10, "yi"),
+    "GreenGreens": (0x11, "gg"),
+    "Fourside": (0x12, "fs"),
+    "MushroomKingdom": (0x13, "mk"),
+    "MushroomKingdom2": (0x14, "mk2"),
+    "Venom": (0x16, "venom"),
+    "PokeFloats": (0x17, "pf"),
+    "BigBlue": (0x18, "bb"),
+    "IcicleMountain": (0x19, "im"),
+    "FlatZone": (0x1B, "fz"),
+    "DreamLand": (0x1C, "dl"),
+    "YoshisIsland64": (0x1D, "yi64"),
+    "KongoJungle64": (0x1E, "kj64"),
+    "Battlefield": (0x1F, "bf"),
+    "FinalDestination": (0x20, "fd"),
 }
 # Scenario character name (the port's spelling, melee-lib scene_characters!)
 # -> CSS CharacterKind (ft/forward.h). Sheik is Zelda's CSS icon with A held
@@ -153,7 +178,7 @@ def start_scenario(name: str, stage: str, players: list[str], stocks: int,
         for i, kind in enumerate(players))
     return f'''# {" vs ".join(players)} on {stage}, {stocks} stocks, start boundary. Savestate
 # made by make_boundary.py (headless, RAM-only save-data pokes: characters and
-# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# every stage unlocked, stock rules, items off; the memory card is a
 # discarded copy). Every fighter in Entry at the first initialised frame.
 {transformed}name = "{name}"
 {gate}savestate = "harness/roms/{name}.sav"

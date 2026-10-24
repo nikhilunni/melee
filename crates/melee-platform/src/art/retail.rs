@@ -230,13 +230,37 @@ struct StageRow {
 }
 
 fn stage_row(stage: Stage) -> StageRow {
+    // The row whose x5 is the stage's StKind, and its x3.
     let (row, name_frame) = match stage {
+        Stage::PrincessPeachsCastle => (0, 0x00),
+        Stage::RainbowCruise => (1, 0x01),
+        Stage::KongoJungle => (2, 0x02),
+        Stage::JungleJapes => (3, 0x03),
+        Stage::GreatBay => (4, 0x04),
+        Stage::HyruleTemple => (5, 0x05),
         Stage::YoshisStory => (6, 0x08),
+        Stage::YoshisIsland => (7, 0x09),
         Stage::FountainOfDreams => (8, 0x0A),
+        Stage::GreenGreens => (9, 0x0B),
+        Stage::Corneria => (10, 0x0C),
+        Stage::Venom => (11, 0x0D),
+        Stage::Brinstar => (12, 0x06),
+        Stage::BrinstarDepths => (13, 0x07),
+        Stage::Onett => (14, 0x12),
+        Stage::Fourside => (15, 0x13),
+        Stage::MuteCity => (16, 0x10),
+        Stage::BigBlue => (17, 0x11),
         Stage::PokemonStadium => (18, 0x0E),
+        Stage::PokeFloats => (19, 0x0F),
+        Stage::MushroomKingdom => (20, 0x14),
+        Stage::MushroomKingdom2 => (21, 0x15),
+        Stage::IcicleMountain => (22, 0x16),
+        Stage::FlatZone => (23, 0x17),
         Stage::Battlefield => (24, 0x18),
         Stage::FinalDestination => (25, 0x19),
         Stage::DreamLand => (26, 0x1A),
+        Stage::YoshisIsland64 => (27, 0x1B),
+        Stage::KongoJungle64 => (28, 0x1C),
     };
     StageRow { row, name_frame }
 }

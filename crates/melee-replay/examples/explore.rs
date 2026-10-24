@@ -67,6 +67,7 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::DreamLand => (72.0, 47.0),
         Stage::FountainOfDreams => (58.0, 33.0),
         Stage::PokemonStadium => (82.0, 57.0),
+        stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {
         offstage_x,

@@ -48,7 +48,7 @@ fn every_character_loads_exactly_its_listed_files() {
 #[test]
 fn every_stage_loads_exactly_its_listed_files() {
     let Some(directory) = files() else { return };
-    for stage in Stage::ALL {
+    for stage in Stage::PORTED {
         let players = [
             PlayerConfig::new(Port::P1, Character::Fox),
             PlayerConfig::new(Port::P2, Character::Marth),

@@ -1,5 +1,5 @@
 //! Errors distinguish rejected requests from a fault during simulation.
-use crate::Port;
+use crate::{Port, Stage};
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StartError {
@@ -7,6 +7,8 @@ pub enum StartError {
     IncompatibleAssets,
     Load(String),
     Initialization(String),
+    /// A Versus stage the port has not ported (fails closed, naming it).
+    UnportedStage(Stage),
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StepError {
@@ -29,8 +31,18 @@ impl std::fmt::Display for StartError {
             }
             Self::Load(reason) => write!(f, "loading game assets: {reason}"),
             Self::Initialization(reason) => write!(f, "initializing match: {reason}"),
+            Self::UnportedStage(stage) => write!(f, "{}", unported_stage(*stage)),
         }
     }
+}
+/// Why a match cannot start on `stage`.
+pub fn unported_stage(stage: Stage) -> String {
+    format!(
+        "{} ({}, StKind {:#04x}) is not ported yet",
+        stage.display_name(),
+        stage.name(),
+        stage.st_kind()
+    )
 }
 impl std::fmt::Display for StepError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

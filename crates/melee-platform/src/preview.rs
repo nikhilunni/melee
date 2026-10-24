@@ -119,6 +119,8 @@ fn framing(stage: Stage) -> Framing {
         Stage::FountainOfDreams => (200.0, 0.0, 8.0),
         Stage::PokemonStadium => (240.0, 15.0, 8.0),
         Stage::YoshisStory => (200.0, 15.0, 12.0),
+        // TODO(framing): chosen by eye once each stage is ported.
+        _ => (240.0, 15.0, 10.0),
     };
     Framing {
         width,

@@ -7,7 +7,7 @@ pub fn characters() -> &'static [Character] {
     &Character::ALL
 }
 pub fn stages() -> &'static [Stage] {
-    &Stage::ALL
+    &Stage::PORTED
 }
 pub fn character_id(character: Character) -> u32 {
     characters()

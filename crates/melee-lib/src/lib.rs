@@ -27,7 +27,7 @@ pub use assets::FileSource;
 pub use config::{
     Character, ControllerFix, Costume, MatchConfig, MatchRules, PlayerConfig, Port, Seed, Stage,
 };
-pub use error::{StartError, StateError, StepError};
+pub use error::{unported_stage, StartError, StateError, StepError};
 pub use events::{ConsumedEvents, ExternalEvents, StageRead};
 pub use game::{GameAssets, Match, MatchOutcome, MatchStatus, Tick};
 pub use input::{Buttons, ControllerState, Inputs, Stick};

@@ -173,17 +173,58 @@ impl Character {
     }
 }
 
+/// Every Versus stage, in `StKind` order (gr/forward.h). A stage the port
+/// has not ported is still named, configured and recorded; starting a match
+/// on it fails with [`StartError::UnportedStage`](crate::StartError).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Stage {
-    FinalDestination,
-    Battlefield,
-    YoshisStory,
-    DreamLand,
     FountainOfDreams,
     PokemonStadium,
+    PrincessPeachsCastle,
+    KongoJungle,
+    Brinstar,
+    Corneria,
+    YoshisStory,
+    Onett,
+    MuteCity,
+    RainbowCruise,
+    JungleJapes,
+    GreatBay,
+    HyruleTemple,
+    BrinstarDepths,
+    YoshisIsland,
+    GreenGreens,
+    Fourside,
+    MushroomKingdom,
+    MushroomKingdom2,
+    Venom,
+    PokeFloats,
+    BigBlue,
+    IcicleMountain,
+    FlatZone,
+    DreamLand,
+    YoshisIsland64,
+    KongoJungle64,
+    Battlefield,
+    FinalDestination,
+}
+/// One Versus stage: the scenario/Slippi spelling (slp `stage_name`), the
+/// name the game prints, and the stage-select `StKind`.
+struct StageNames {
+    name: &'static str,
+    display: &'static str,
+    st_kind: u8,
+}
+const fn names(name: &'static str, display: &'static str, st_kind: u8) -> StageNames {
+    StageNames {
+        name,
+        display,
+        st_kind,
+    }
 }
 impl Stage {
-    pub const ALL: [Self; 6] = [
+    /// The stages a match can start on, in the order menus offer them.
+    pub const PORTED: [Self; 6] = [
         Self::Battlefield,
         Self::FinalDestination,
         Self::DreamLand,
@@ -191,27 +232,99 @@ impl Stage {
         Self::PokemonStadium,
         Self::YoshisStory,
     ];
-    /// The name as the game spells it.
-    pub fn display_name(self) -> &'static str {
+    /// Every Versus stage (the 29 of the stage select screen), `StKind` order.
+    pub const VERSUS: [Self; 29] = [
+        Self::FountainOfDreams,
+        Self::PokemonStadium,
+        Self::PrincessPeachsCastle,
+        Self::KongoJungle,
+        Self::Brinstar,
+        Self::Corneria,
+        Self::YoshisStory,
+        Self::Onett,
+        Self::MuteCity,
+        Self::RainbowCruise,
+        Self::JungleJapes,
+        Self::GreatBay,
+        Self::HyruleTemple,
+        Self::BrinstarDepths,
+        Self::YoshisIsland,
+        Self::GreenGreens,
+        Self::Fourside,
+        Self::MushroomKingdom,
+        Self::MushroomKingdom2,
+        Self::Venom,
+        Self::PokeFloats,
+        Self::BigBlue,
+        Self::IcicleMountain,
+        Self::FlatZone,
+        Self::DreamLand,
+        Self::YoshisIsland64,
+        Self::KongoJungle64,
+        Self::Battlefield,
+        Self::FinalDestination,
+    ];
+    fn names(self) -> StageNames {
         match self {
-            Self::FinalDestination => "Final Destination",
-            Self::Battlefield => "Battlefield",
-            Self::YoshisStory => "Yoshi's Story",
-            Self::DreamLand => "Dream Land N64",
-            Self::FountainOfDreams => "Fountain of Dreams",
-            Self::PokemonStadium => "Pokémon Stadium",
+            Self::FountainOfDreams => names("FountainOfDreams", "Fountain of Dreams", 0x02),
+            Self::PokemonStadium => names("PokemonStadium", "Pokémon Stadium", 0x03),
+            Self::PrincessPeachsCastle => {
+                names("PrincessPeachsCastle", "Princess Peach's Castle", 0x04)
+            }
+            Self::KongoJungle => names("KongoJungle", "Kongo Jungle", 0x05),
+            Self::Brinstar => names("Brinstar", "Brinstar", 0x06),
+            Self::Corneria => names("Corneria", "Corneria", 0x07),
+            Self::YoshisStory => names("YoshisStory", "Yoshi's Story", 0x08),
+            Self::Onett => names("Onett", "Onett", 0x09),
+            Self::MuteCity => names("MuteCity", "Mute City", 0x0A),
+            Self::RainbowCruise => names("RainbowCruise", "Rainbow Cruise", 0x0B),
+            Self::JungleJapes => names("JungleJapes", "Jungle Japes", 0x0C),
+            Self::GreatBay => names("GreatBay", "Great Bay", 0x0D),
+            Self::HyruleTemple => names("HyruleTemple", "Temple", 0x0E),
+            Self::BrinstarDepths => names("BrinstarDepths", "Brinstar Depths", 0x0F),
+            Self::YoshisIsland => names("YoshisIsland", "Yoshi's Island", 0x10),
+            Self::GreenGreens => names("GreenGreens", "Green Greens", 0x11),
+            Self::Fourside => names("Fourside", "Fourside", 0x12),
+            Self::MushroomKingdom => names("MushroomKingdom", "Mushroom Kingdom", 0x13),
+            Self::MushroomKingdom2 => names("MushroomKingdom2", "Mushroom Kingdom II", 0x14),
+            Self::Venom => names("Venom", "Venom", 0x16),
+            Self::PokeFloats => names("PokeFloats", "Poké Floats", 0x17),
+            Self::BigBlue => names("BigBlue", "Big Blue", 0x18),
+            Self::IcicleMountain => names("IcicleMountain", "Icicle Mountain", 0x19),
+            Self::FlatZone => names("FlatZone", "Flat Zone", 0x1B),
+            Self::DreamLand => names("DreamLand", "Dream Land N64", 0x1C),
+            Self::YoshisIsland64 => names("YoshisIsland64", "Yoshi's Island N64", 0x1D),
+            Self::KongoJungle64 => names("KongoJungle64", "Kongo Jungle N64", 0x1E),
+            Self::Battlefield => names("Battlefield", "Battlefield", 0x1F),
+            Self::FinalDestination => names("FinalDestination", "Final Destination", 0x20),
         }
     }
-    pub(crate) fn descriptor(self) -> &'static crate::scene_stage::StageDescriptor {
-        use crate::scene_stage::*;
-        match self {
-            Self::FinalDestination => &FINAL_DESTINATION,
-            Self::Battlefield => &BATTLEFIELD,
-            Self::YoshisStory => &YOSHIS_STORY,
-            Self::DreamLand => &DREAM_LAND,
-            Self::FountainOfDreams => &FOUNTAIN_OF_DREAMS,
-            Self::PokemonStadium => &POKEMON_STADIUM,
-        }
+    /// The name as the game spells it.
+    pub fn display_name(self) -> &'static str {
+        self.names().display
+    }
+    /// The scenario and Slippi spelling (`stage = "KongoJungle64"`).
+    pub fn name(self) -> &'static str {
+        self.names().name
+    }
+    /// The stage-select `StKind` (gr/forward.h), the Slippi stage id.
+    pub fn st_kind(self) -> u8 {
+        self.names().st_kind
+    }
+    pub fn from_name(name: &str) -> Option<Self> {
+        Self::VERSUS.into_iter().find(|s| s.name() == name)
+    }
+    pub fn from_st_kind(st_kind: u16) -> Option<Self> {
+        Self::VERSUS
+            .into_iter()
+            .find(|s| u16::from(s.st_kind()) == st_kind)
+    }
+    /// Whether a match can start on the stage.
+    pub fn is_ported(self) -> bool {
+        self.descriptor().is_some()
+    }
+    pub(crate) fn descriptor(self) -> Option<&'static crate::scene_stage::StageDescriptor> {
+        crate::scene_stage::descriptor(self.name())
     }
 }
 
@@ -339,7 +452,10 @@ impl MatchConfig {
                 stocks: self.rules.stocks,
                 controller_fix: self.players[p].controller_fix,
             }),
-            stage: self.stage.descriptor(),
+            stage: self
+                .stage
+                .descriptor()
+                .ok_or(StartError::UnportedStage(self.stage))?,
             seed: Some(self.seed.0),
             all_characters_unlocked: Some(self.rules.all_characters_unlocked),
             time_limit: self.rules.time_limit_seconds,

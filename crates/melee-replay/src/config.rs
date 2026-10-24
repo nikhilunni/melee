@@ -48,23 +48,10 @@ const CHARACTERS: [(Character, &str); 26] = [
     (Character::Mewtwo, "Mewtwo"),
     (Character::Kirby, "Kirby"),
 ];
-const STAGES: [(Stage, &str); 6] = [
-    (Stage::FinalDestination, "FinalDestination"),
-    (Stage::Battlefield, "Battlefield"),
-    (Stage::YoshisStory, "YoshisStory"),
-    (Stage::DreamLand, "DreamLand"),
-    (Stage::FountainOfDreams, "FountainOfDreams"),
-    (Stage::PokemonStadium, "PokemonStadium"),
-];
 impl From<&MatchConfig> for Config {
     fn from(config: &MatchConfig) -> Self {
         Self {
-            stage: STAGES
-                .iter()
-                .find(|(s, _)| *s == config.stage)
-                .unwrap()
-                .1
-                .into(),
+            stage: config.stage.name().into(),
             players: config.players.each_ref().map(|p| {
                 (
                     p.port as u8,
@@ -96,11 +83,7 @@ impl From<&MatchConfig> for Config {
 }
 impl Config {
     pub fn decode(&self) -> Result<MatchConfig, String> {
-        let stage = STAGES
-            .iter()
-            .find(|(_, name)| *name == self.stage)
-            .ok_or("unknown replay stage")?
-            .0;
+        let stage = Stage::from_name(&self.stage).ok_or("unknown replay stage")?;
         let player = |index: usize| -> Result<PlayerConfig, String> {
             let (port, name, costume) = &self.players[index];
             Ok(PlayerConfig {

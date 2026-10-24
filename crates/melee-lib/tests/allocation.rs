@@ -564,7 +564,7 @@ fn every_stage_and_character_steps_without_allocating() {
     const TICKS: usize = 3600;
     let mut failures = Vec::new();
     for (index, pair) in Character::ALL.chunks(2).enumerate() {
-        let stage = Stage::ALL[index % Stage::ALL.len()];
+        let stage = Stage::PORTED[index % Stage::PORTED.len()];
         let config = MatchConfig::versus(
             stage,
             [

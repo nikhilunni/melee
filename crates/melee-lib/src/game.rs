@@ -85,15 +85,7 @@ pub struct Match {
 }
 impl Match {
     pub(crate) fn from_import(engine: Simulation, setup: &crate::setup::Setup) -> Self {
-        let stage = match setup.stage.name {
-            "FinalDestination" => Stage::FinalDestination,
-            "Battlefield" => Stage::Battlefield,
-            "YoshisStory" => Stage::YoshisStory,
-            "DreamLand" => Stage::DreamLand,
-            "FountainOfDreams" => Stage::FountainOfDreams,
-            "PokemonStadium" => Stage::PokemonStadium,
-            _ => unreachable!("validated imported stage"),
-        };
+        let stage = Stage::from_name(setup.stage.name).expect("validated imported stage");
         let players = std::array::from_fn(|i| {
             let f = &engine.state().player_fighter(i).0;
             PlayerConfig {

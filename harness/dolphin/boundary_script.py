@@ -43,7 +43,7 @@ the inputs, so no step depends on timing or screenshots:
   boot     pulse Start until the scene machine reaches the main menu (the
            opening movie and the title both exit on a Start edge);
   menu     apply the RAM-only save-data pokes every boundary uses (characters
-           and Battlefield/FD unlocked, stock rules, items off), then walk the
+           and every stage unlocked, stock rules, items off), then walk the
            main menu to VS. Mode > Melee by D-pad, checking the hovered item;
   css      per port, place that port's hand over the character's icon (the
            icon bounds come from the CSS icon table in RAM) and press A with
@@ -92,10 +92,14 @@ MENU_MAIN, MENU_VS = 0, 2              # mn/forward.h MenuKind
 SEL_MAIN_VS, SEL_VS_MELEE = 1, 0       # MainMenuSelection, VsMenuSelection
 
 # Save data (gmMainLib_804D3EE0 -> 0x8045A6C0), the pokes of docs/DOLPHIN_RUN.md
-# "Unlocks and rules are RAM-only pokes". Only the character bits reach match
-# state (music selection); the stage bits only unlock the menu tiles.
+# "Unlocks and rules are RAM-only pokes". The unlock bits reach match state
+# only through music selection (Ground_801C24F8: rule 6 asks whether every
+# character is unlocked, gm_80164ABC; rule 7 whether every stage is,
+# gm_80164600). Every stage is unlocked, as gm_8016468C (0x8016468C) does:
+# all eleven bits. Savestates made before 2026-10-24 have only Battlefield
+# and Final Destination (0x00C0), which no ported stage's music reads.
 CHARACTER_UNLOCKS, CHARACTER_UNLOCK_BITS = 0x8045BF28, 0xFFFF
-STAGE_UNLOCKS, STAGE_UNLOCK_BITS = 0x8045BF2A, 0x00C0   # Battlefield, Final Destination
+STAGE_UNLOCKS, STAGE_UNLOCK_BITS = 0x8045BF2A, 0x07FF
 GAME_RULES = 0x8045BF10                # gm/types.h GameRules
 RULES_MODE, RULES_STOCKS, RULES_STOCK_TIME = 0x2, 0x4, 0x8
 MODE_STOCK = 1

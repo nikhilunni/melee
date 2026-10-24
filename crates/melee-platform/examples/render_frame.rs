@@ -26,7 +26,7 @@ fn config(args: &[String]) -> Result<melee_lib::MatchConfig, String> {
     };
     let mut config = Session::default_config();
     if let Some(name) = flag("--stage") {
-        config.stage = *Stage::ALL
+        config.stage = *Stage::PORTED
             .iter()
             .find(|s| format!("{s:?}") == name)
             .ok_or_else(|| format!("unknown stage {name}"))?;

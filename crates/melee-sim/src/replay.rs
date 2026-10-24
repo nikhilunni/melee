@@ -241,19 +241,15 @@ impl std::fmt::Display for Report {
     }
 }
 
-/// Slippi stage ids with a cold setup.
-const COLD_STAGES: [u16; 6] = [2, 3, 8, 28, 31, 32];
-
 /// Report every structural limitation, without loading DATs for an unsupported
 /// matchup. A supported character does not imply its whole moveset is ported.
 pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
     let mut reasons = Vec::new();
     let start = &replay.start;
-    if !COLD_STAGES.contains(&start.stage) {
-        reasons.push(format!(
-            "{} cold stage",
-            slp::ids::stage_name(start.stage).unwrap_or("unknown")
-        ));
+    match melee_lib::Stage::from_st_kind(start.stage) {
+        Some(stage) if stage.is_ported() => {}
+        Some(stage) => reasons.push(melee_lib::unported_stage(stage)),
+        None => reasons.push(format!("stage {} is not a Versus stage", start.stage)),
     }
     if replay.leader_ports().count() != 2 {
         reasons.push("requires two leaders".into());
