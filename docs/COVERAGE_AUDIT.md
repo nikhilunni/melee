@@ -289,3 +289,63 @@ other public names a particle bank. Results and what they close:
 `EfKbSs.dat`'s CI8 texture group 0 has neither `palflag` nor `palnum`, so
 retail relocates a word of image data as its palette pointer; the bank
 loader no longer rejects an out-of-range palette slot (it is never read).
+
+## Wave 13: stage and camera sites (PARITY item 31)
+
+Five fail-closed sites, audited 2026-10-24 against the decomp, the retail
+asm and a scan of every stage archive on the disc (all 76 `Gr*.dat`/`Gr*.usd`
+files with a `map_head`: each map's LightList through
+`hsd_archive::visual::read_lights`, with `Ground_801C20E0`'s overrides
+applied as `presentation/lighting.rs` applies them, and every
+`HSD_AnimJoint` of every map animation walked raw for `HSD_A_J_PATH`
+tracks).
+
+- **Stage spline animation** (`melee-gr` `last/animation.rs`,
+  `JObjEvent::Path`): proven unreachable, now `unreachable!`. The port
+  raises the event only for a path track whose AObj has no object
+  (`obj_id` 0); retail's `JObjUpdateFunc` asserts that object
+  (`HSD_ASSERT(0x24D, jp)`, jobj.c:369-372), so such a track would halt the
+  game. The scan finds 56 path tracks in stage map animations (GrBb,
+  GrEF1-3, GrGd, GrKg, GrMc, GrNBr, GrNSr, GrRc, GrSt, GrTe, GrTFc, GrTGw,
+  GrTMr, GrTMt); every one
+  carries a relocated `obj_id`, which `attach_anim_joint` resolves to its
+  spline joint or rejects at load. (Mute City map 30 animation 0 holds an
+  unrelocated -1 child the strict reader refuses; the raw walk covers it.)
+- **Battlefield demo/event background** (`melee-lib`
+  `scene_stage/battle.rs`, map 5's proc): ported. `grBattle_OnInit`
+  (0x80219CE8..0x80219D24) creates map 5 instead of maps 3 and 1 when
+  `gm_8016B3D8` (Classic, Adventure, All-Star) holds or the stage kind is
+  0x111 or 0xF5; its proc `grBattle_GObj5_Callback2` (0x8021A204) is a lone
+  `blr`. VS and the replay runner never create map 5, and the Battlefield
+  boundary loader still refuses any map order but `[0, 3, 1, 6]`, so the
+  map 5 layout itself (its `Ground_JObjInline1` on-init, no transition
+  controller) stays unported until a 1P mode runs.
+- **Zoomed single-player framing** (`melee-cm` `standard.rs`,
+  `Camera_8002B1F8`): still open, reachable only in modes the port does not
+  run. The zoom `x2BC` is 1.0 from camera init (camera.c:193) and changes
+  only in `Camera_8002B0E0`, under `gm_8016B41C` (Classic, Adventure,
+  All-Star, Target Test, Training, Home-Run Contest, the multi-man modes,
+  Event). VS and Slippi replays keep it at 1.0, where `Camera_8002B1F8`
+  returns at once. The C-stick zoom (`Camera_8002B0E0`, already asserted
+  off as `single_player_zoom`) and this branch need a 1P-mode boundary to
+  witness.
+- **Battlefield light kind outside ambient/directional/point**
+  (`melee-gr` `battle/lights.rs`) and **animated light descriptors**
+  (`melee-gr` `desc.rs`, `read_static_lights`): still open, reachable on
+  stages whose simulation-side lights the port does not load yet. The
+  static loader serves Battlefield map 6, Yoshi's Story map 3 and Dream
+  Land map 5 (the `flags_b0` rows of `grNBa`, `grSt`, `grOp`
+  StageCallbacks); their sets are ambient 0x4 plus infinite 0xD or point
+  0xE, with no animation set and no active override. On the disc, after
+  overrides, light flags are 0x4, 0x5, 0x6, 0xD, 0xE, 0x25, 0x40D and
+  0x42D: the type bits are always ambient, infinite or point (no spot light
+  anywhere), and the extra bits (hidden 0x20, 0x400, a dropped specular)
+  come from `GrNBr.dat` maps 0, 1, 31-33 and Fountain of Dreams'
+  overrides. Light sets with animations occur in 21 archives (GrBb, GrCn,
+  GrCs, GrEF1, GrEF2, GrFs, GrGb, GrIz, GrKr, GrMc, GrNBr, GrNLa, GrOk,
+  GrOp, GrPu, GrRc, GrSh, GrTPe, GrVe and the two `.usd` twins); among the
+  supported stages they are the selected sets of Final Destination (map 3)
+  and Fountain of Dreams (map 3), which only `presentation/lighting.rs`
+  reads, and it ports the overrides and the LObj animation. A stage
+  bring-up that loads its lights through
+  `read_static_lights` must port these with it.

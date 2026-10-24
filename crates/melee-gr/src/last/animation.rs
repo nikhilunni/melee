@@ -359,7 +359,14 @@ impl BackgroundAnimation {
                         matrix: self.tree.get(jobj).mtx,
                     });
                 }
-                JObjEvent::Path { .. } => unimplemented!("jobj.c:287-292: stage spline animation"),
+                // A path track without a resolved spline reference: retail's
+                // JObjUpdateFunc asserts the AObj's object (jobj.c:369-372).
+                // Every stage map animation on the disc names its spline
+                // joint (COVERAGE_AUDIT.md, wave 13), so attach_anim_joint
+                // always resolves it.
+                JObjEvent::Path { .. } => {
+                    unreachable!("jobj.c:371: HSD_ASSERT(jp) for an unreferenced path track")
+                }
                 _ => {}
             }
         }
