@@ -949,9 +949,10 @@ impl CollMap {
     pub fn notify_floor_joint(&mut self, cd: &mut CollData, line_id: i32, arg2: bool, dy: f32) {
         let joint_id = self.joint_from_line(line_id);
         if joint_id != NO_ID {
+            let thing = if !arg2 { 2 } else { 1 };
+            self.record_joint_event(joint_id, cd, thing);
             let (cb, _) = self.joint_get_cb1(joint_id);
             if let Some(cb) = cb {
-                let thing = if !arg2 { 2 } else { 1 };
                 let user_data = &mut self.joint_cbs[joint_id as usize].cb_data_0;
                 cb(user_data, joint_id, cd, cd.x50 as i32, thing, dy);
             }
@@ -1009,6 +1010,7 @@ impl CollMap {
         if kind == line_kind::FLOOR {
             let joint_id = self.joint_from_line(line_id);
             if joint_id != NO_ID {
+                self.record_joint_event(joint_id, cd, 2);
                 let (cb, _) = self.joint_get_cb1(joint_id);
                 if let Some(cb) = cb {
                     cb(&mut self.joint_cbs[joint_id as usize].cb_data_0, joint_id, cd, cd.x50 as i32, 2, 0.0);

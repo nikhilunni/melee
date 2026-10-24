@@ -2,6 +2,7 @@
 pub(crate) mod battle;
 pub(crate) mod garden;
 pub(crate) mod izumi;
+pub(crate) mod kongo;
 pub(crate) mod last;
 pub(crate) mod oldkongo;
 pub(crate) mod oldyoshi;
@@ -158,6 +159,14 @@ pub const JUNGLE_JAPES: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Garden,
     read: melee_gr::desc::read_garden,
 };
+/// grKg_StageData (0x803E1800): GrKg.dat; StageParam row 5 (StKind).
+pub const KONGO_JUNGLE: StageDescriptor = StageDescriptor {
+    name: "KongoJungle",
+    file: "GrKg.dat",
+    music_id: 5,
+    kind: melee_types::GrKind::Kongo,
+    read: melee_gr::desc::read_kongo,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -169,6 +178,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &YOSHIS_ISLAND_64,
         &KONGO_JUNGLE_64,
         &JUNGLE_JAPES,
+        &KONGO_JUNGLE,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -184,6 +194,7 @@ pub enum SceneStage {
     OldYoshi(melee_gr::oldyoshi::OldYoshi),
     OldKongo(melee_gr::oldkongo::OldKongo),
     Garden(melee_gr::garden::Garden),
+    Kongo(Box<melee_gr::kongo::Kongo>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -194,7 +205,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -208,6 +219,7 @@ impl SceneStage {
             Self::OldYoshi(s) => s.proc_table(),
             Self::OldKongo(s) => s.proc_table(),
             Self::Garden(s) => s.proc_table(),
+            Self::Kongo(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -239,6 +251,7 @@ impl SceneStage {
                 unreachable!("Kongo Jungle N64 callbacks require animation state")
             }
             Self::Garden(_) => unreachable!("Jungle Japes callbacks require animation state"),
+            Self::Kongo(_) => unreachable!("Kongo Jungle callbacks require animation state"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

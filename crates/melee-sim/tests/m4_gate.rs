@@ -1198,13 +1198,16 @@ fn n64_stage_particle_rng_order() {
 }
 
 #[test]
-fn jungle_japes_start_particle_rng_order() {
+fn jungle_japes_and_kongo_jungle_start_particle_rng_order() {
     particle_rng_sites_with_ledger("start_jj_fox_marth4", 600, "ledger600");
+    particle_rng_sites_with_ledger("start_kj_fox_marth4", 600, "ledger600");
 }
 #[test]
-fn start_jj_fox_marth4_600() {
+fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);
     movement_gate_ticks("start_jj_fox_marth4_cold", 600);
+    movement_gate_ticks("start_kj_fox_marth4", 600);
+    movement_gate_ticks("start_kj_fox_marth4_cold", 600);
 }
 
 #[test]

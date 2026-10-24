@@ -349,6 +349,63 @@ pub fn read_garden_parameters(archive: &Archive) -> ReadResult<crate::garden::Pa
         klaptrap_x: [r.f32(p + 0x18)?, r.f32(p + 0x1C)?],
     })
 }
+/// grKg_StageData / grDatFiles_801C6038: GrKg.dat. grKg_StageCallbacks[10]
+/// (the main stage) carries flags 0xC0000000.
+pub fn read_kongo(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Kongo, 10)
+}
+/// `grKongo_YakumonoParam` (grkongo.static.h), read through
+/// Ground_GetYakumonoParam by grKongo_801D523C (0x801D523C).
+pub fn read_kongo_parameters(archive: &Archive) -> ReadResult<crate::kongo::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |offset: u32| r.f32(p + offset);
+    let pair = |offset: u32| -> ReadResult<[f32; 2]> { Ok([f(offset)?, f(offset + 4)?]) };
+    let ints = |offset: u32| -> ReadResult<[i32; 2]> { Ok([r.s32(offset + p)?, r.s32(p + offset + 4)?]) };
+    let mut direction_weights = [0; 8];
+    for (i, w) in direction_weights.iter_mut().enumerate() {
+        *w = r.s16(p + 0x44 + i as u32 * 2)?;
+    }
+    let mut launch_hit = [0; 6];
+    for (i, w) in launch_hit.iter_mut().enumerate() {
+        *w = r.u32(p + 0x6C + i as u32 * 4)?;
+    }
+    Ok(crate::kongo::Parameters {
+        event_wait: pair(0x0)?,
+        klap_weight: f(0x8)?,
+        box_weight: f(0xC)?,
+        object_weight: f(0x10)?,
+        path_speed: f(0x14)?,
+        log_share: f(0x18)?,
+        repeat_chance: f(0x1C)?,
+        hold_frames: pair(0x20)?,
+        catch_radius: f(0x28)?,
+        rest_frames: pair(0x2C)?,
+        spin_acceleration: f(0x34)?,
+        spin_speed: f(0x38)?,
+        spin_frames: pair(0x3C)?,
+        direction_weights,
+        dim_frames: ints(0x54)?,
+        rate_step: f(0x5C)?,
+        rate_top: f(0x60)?,
+        bright_frames: ints(0x64)?,
+        launch_hit,
+        catch_material: r.u32(p + 0x84)?,
+        log_landings: f(0x88)?,
+        log_frames: f(0x8C)?,
+        plank_limit: f(0x90)?,
+        plank_restore: f(0x94)?,
+        plank_speed_limit: f(0x98)?,
+        plank_slack: f(0x9C)?,
+        plank_pull: f(0xA0)?,
+        plank_kick: f(0xA4)?,
+        end_tilt: f(0xA8)?,
+        end_angle_limit: f(0xAC)?,
+        end_jolt: f(0xB0)?,
+        swing_damping: f(0xB4)?,
+        swing_limit: f(0xB8)?,
+    })
+}
 fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadResult<StageDesc> {
     let header = public(archive, "map_head")?;
     let reader = archive.reader();

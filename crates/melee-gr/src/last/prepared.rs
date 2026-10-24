@@ -152,6 +152,25 @@ impl BackgroundAnimation {
         let rotation = self.tree.rotation(self.joints[bone]);
         hsd_types::Vec3::new(rotation.x, rotation.y, rotation.z)
     }
+    /// `HSD_JObjSetRotationX` of a model bone.
+    pub fn set_joint_rotation_x(&mut self, bone: usize, x: f32) {
+        self.tree.set_rotation_x(self.joints[bone], x);
+    }
+    /// `HSD_JObjSetRotationZ` of a model bone.
+    pub fn set_joint_rotation_z(&mut self, bone: usize, z: f32) {
+        self.tree.set_rotation_z(self.joints[bone], z);
+    }
+    /// `HSD_JObjGetRotationZ` of a model bone.
+    pub fn joint_rotation_z(&self, bone: usize) -> f32 {
+        self.tree.rotation_z(self.joints[bone])
+    }
+    /// grAnime_801C7A04(gobj, 0, 7, rate) (0x801C7A04): every joint
+    /// animation of the model plays at `rate`.
+    pub fn set_animation_rate(&mut self, rate: f32) {
+        for bone in 0..self.joints.len() {
+            self.set_joint_rate(bone, rate);
+        }
+    }
     /// `HSD_JObjGetTranslation` of a model bone.
     pub fn joint_translation(&self, bone: usize) -> hsd_types::Vec3 {
         self.tree.translation(self.joints[bone])

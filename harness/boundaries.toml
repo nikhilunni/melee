@@ -1208,3 +1208,12 @@ stage = "JungleJapes"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2835597521
+
+[[boundary]]
+name = "start_kj_fox_marth4"
+cold = "start_kj_fox_marth4_cold"
+savestate = "harness/roms/start_kj_fox_marth4.sav"
+stage = "KongoJungle"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2146705218

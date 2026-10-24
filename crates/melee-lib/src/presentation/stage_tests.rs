@@ -22,6 +22,8 @@ fn files() -> Option<PathBuf> {
             "GrPs.dat",
             "GrOy.dat",
             "GrOk.dat",
+            "GrGd.dat",
+            "GrKg.dat",
         ]
         .map(|file| files.join(file)),
     )
@@ -185,4 +187,25 @@ fn yoshis_story_draws_its_shy_guys() {
         });
     }
     assert!(seen, "no Shy Guy drawn");
+}
+
+/// Both new public stage variants must follow the real asset -> Match ->
+/// Presentation route. This catches a missing authored light-map selection
+/// before the stage can be offered by the app's catalog.
+#[test]
+fn jungle_stages_construct_and_capture_from_public_assets() {
+    let Some(files) = files() else {
+        return;
+    };
+    for stage in [Stage::JungleJapes, Stage::KongoJungle] {
+        let mut game = start(&files, stage);
+        let mut view = Presentation::new(&game)
+            .unwrap_or_else(|e| panic!("{stage:?}: presentation: {e}"));
+        for tick in 0..600 {
+            game.step(&Inputs::default())
+                .unwrap_or_else(|e| panic!("{stage:?} tick {tick}: {e}"));
+            view.capture(&game)
+                .unwrap_or_else(|e| panic!("{stage:?} capture {tick}: {e}"));
+        }
+    }
 }

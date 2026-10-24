@@ -4972,7 +4972,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 772] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 781] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6215,7 +6215,79 @@ static CORPUS_V3_MATCHES: [(&str, usize); 772] = [
     // current still carries a dead body (DeadDown's procUpdate tail).
     ("corpus_v3_jj_fox_marth4_ee133b82f_p0", 1367),
     ("corpus_v3_jj_fox_marth4_ee98155f3_p0", 1791),
+    // Further explorer matches through Japes' river and Klaptrap runtime:
+    // complete retail field traces and RNG ledgers (particle dumps partial).
+    ("corpus_v3_jj_fox_marth4_e0fcf0c70_p0", 2488),
+    ("corpus_v3_jj_fox_marth4_e573e2d95_p0", 4102),
+    ("corpus_v3_jj_fox_marth4_eb17a6598_p0", 2706),
+    // KONGO: Kongo Jungle's bridge, platform ends, barrel spin and path,
+    // the first event (grKongo_801D7BBC at tick 1664: logs on maps 1/2,
+    // passers-by on maps 7/8/9, each drawn and placed); the barrel never
+    // comes near enough to catch (that branch fails closed).
+    ("corpus_v3_kj_fox_marth4_e0fcbde24_p0", 2236),
+    ("corpus_v3_kj_fox_marth4_e11788094_p2", 3240),
+    ("corpus_v3_kj_fox_marth4_e726cfdde_p1", 1666),
+    // Another full input path through the first map-9 passer-by event.
+    ("corpus_v3_kj_fox_marth4_e726cfdde_p2", 1666),
+    ("corpus_v3_kj_fox_marth4_e9943b4ab_p0", 1666),
+    ("corpus_v3_kj_fox_marth4_ec13743d5_p1", 1666),
 ];
+
+/// Japes ef89 has a full 2038-tick retail field trace, but its separate
+/// ledger capture stopped after 1489 ticks and no particle-state dump exists.
+/// Preserve all field proof and only the available ordered RNG prefix; this
+/// does not establish particle state or particle RNG after tick 1488.
+#[test]
+fn jungle_japes_ef89_full_fields_and_partial_ledger_prefix_only() {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../harness/scenarios/corpus_v3_jj_fox_marth4_ef89b3e70_p0.toml");
+    let scenario = Scenario::load(&path).unwrap();
+    let ledger_path = scenario.trace_path("ledger.raw.jsonl");
+    if !melee_test_support::require_files(
+        scenario
+            .required_files()
+            .into_iter()
+            .chain([ledger_path.clone()]),
+    ) {
+        return;
+    }
+    assert_eq!(scenario.frames, 2038);
+    let fields =
+        melee_test_support::trace::read_to_string(&scenario.trace_path("tick.expected.jsonl"))
+            .unwrap();
+    assert_eq!(fields.lines().count(), 2038);
+    assert_eq!(trace::compared_keys(&scenario).unwrap(), 62);
+    // Full fighter/item fields, including rng.seed: never shortened to the
+    // separate ledger capture's prefix.
+    trace::gate_items(&scenario).unwrap();
+
+    let ledger = melee_test_support::trace::read_to_string(&ledger_path).unwrap();
+    assert_eq!(ledger.lines().count(), 1489);
+    let initial = InitialState::from_savestate_traces(&scenario).unwrap();
+    let mut simulation = Simulation::with_inputs(
+        initial,
+        trace::pad_script(&scenario)
+            .unwrap()
+            .with_display_from(&ledger_path)
+            .unwrap(),
+    );
+    for (tick, line) in ledger.lines().enumerate() {
+        let row: serde_json::Value = serde_json::from_str(line).unwrap();
+        let expected: Vec<u32> = row["rng_draws"]
+            .as_array()
+            .unwrap()
+            .iter()
+            .map(|draw| draw["lr"].as_u64().unwrap() as u32 - 4)
+            .filter(|site| (0x8039_8f8c..0x8039_f6cc).contains(site))
+            .collect();
+        simulation.tick().unwrap();
+        assert_eq!(
+            simulation.particle_rng_sites(),
+            expected,
+            "tick {tick} partial-ledger particle RNG order"
+        );
+    }
+}
 
 #[test]
 fn corpus_v3_matches_retail() {

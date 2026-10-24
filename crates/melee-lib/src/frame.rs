@@ -1603,6 +1603,17 @@ impl Runtime {
                             if let SceneStage::Garden(stage) = &mut state.stage {
                                 stage.start();
                             }
+                            // grKongo_801D52FC (the barrel's catch device),
+                            // then the deferred fn_801D542C (the bridge's
+                            // landing callback, the first event wait).
+                            if let SceneStage::Kongo(stage) = &mut state.stage {
+                                stage.catch_active = true;
+                                state.map.record_joint_events(
+                                    melee_gr::kongo::planks::BRIDGE_COLLISION_JOINT,
+                                    true,
+                                );
+                                stage.start(&mut state.rng);
+                            }
                             // grStadium_801D4040.
                             crate::scene_stage::stadium::show(
                                 state,
@@ -1716,7 +1727,13 @@ impl Runtime {
                     if !state.fighters[player].0.status.disabled {
                         crate::scene_stage::oldkongo::catch(state, player)?;
                     }
+                    // Fighter_UnkProcessGrab_8006CA5C: ftColl_8007BA0C's
+                    // catch devices come first.
+                    crate::scene_stage::kongo::barrel_catch(state, player)?;
                     grab_pairs::select(state, player)?;
+                }
+                if proc == FighterProc::Accessories {
+                    crate::scene_stage::kongo::barrel_accessory(state, player);
                 }
                 // Falcon Dive's accessory4 reads the held fighter's position;
                 // so does the Inhale's pull from its animation callback
@@ -1978,6 +1995,9 @@ impl Runtime {
                         }
                     })?;
                     partner_fighters::act(state, player)?;
+                    if proc == FighterProc::Input {
+                        crate::scene_stage::kongo::barrel_fire_request(state, player);
+                    }
                 }
                 if proc == FighterProc::Map {
                     // fn_800DD568 / fn_800DD5EC: a thrower's landing resumes
@@ -2510,6 +2530,7 @@ impl Runtime {
                         || address == melee_gr::oldyoshi::procs::DYNAMICS_PROC
                         || address == melee_gr::oldkongo::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
+                        || address == 0x801D_557C
                     {
                         self.radial_forces.tick();
                         // lb_80011ABC reads the state this tick left.
@@ -2549,6 +2570,14 @@ impl Runtime {
                             state,
                             map_id,
                             &mut self.particle_draws,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Kongo(_)) {
+                        crate::scene_stage::kongo::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                            world,
+                            &mut self.stage_objects,
                         )?;
                     } else if matches!(state.stage, SceneStage::Garden(_)) {
                         crate::scene_stage::garden::run_proc(
@@ -3615,6 +3644,9 @@ impl Simulation {
                                 SceneStage::Stadium(_) => {
                                     melee_gr::stadium::procs::map_callback(map)
                                 }
+                                SceneStage::Kongo(_) => melee_gr::kongo::procs::map_callback(map)
+                                    .expect("an event map's gobj proc")
+                                    .1,
                                 _ => melee_gr::last::procs::map_callback(map),
                             },
                         },

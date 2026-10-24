@@ -119,6 +119,20 @@ jab window, now gated) and taught the decoder to encode stale NaN words.
 | `ft-ness/yoyo` itNessyoyo_UnkMotion3_Phys (it_802BF800, itnessyoyo.c:255) | The yo-yo reeled in (motion 3): `unimplemented!` | Unreachable: the only call of it_802BFEC4 (motion 3) is ftNs_AttackHi4_YoyoThink_IsRemove's at 80115930, on the return frame (yo-yo attributes x44 / x4C); the same call ends the article (it_802BE958: Item_8026A8EC, HSD_GObjPLink_80390228) on frame 49 / 60, and PlNs.dat's yo-yo has x44 = 49 and x4C = 60 (re-read 2026-10-24: x40..x4C = 4, 49, 5, 60). Item_80268E5C with ITEM_ANIM_UPDATE runs no phys, so no phys callback of motion 3 ever runs |
 | `ft-ness/yoyo` ftNs_AttackHi4_YoyoThink_IsRemove (ftnessattackhi4.c:460) | A yo-yo row past frame 2 with no article: `unimplemented!` (retail reads the user data of a NULL gobj) | Unreachable by the call graph (2026-10-24). The counter reaches 3 only through frame 2 of the same entry (the AttackHi4 / AttackLw4 Enters set 1; Charge, entered on frame 13, sets 0 and Release 14), where a failed Item_80268B18 sends Ness to Wait (ft_8008A2BC) before frame 3. After that fp->u.ns.yoyo_gobj is cleared only by the think's own despawn on the last frame (49 / 60; later frames skip the branch); the rows' Coll, after ft_80084104 has entered Fall; ftNs_Init_OnDamage from ftCommon_8007DB58, whose every caller (Fighter_ProcessHit_8006D1EC, ftCo_800C8D00, fn_800D290C, the capture and bind states) changes the motion; OnDeath; and the article's Anim (it_802BE958_inline), which ends it only with its owner outside motions 0x156..0x15B. The yo-yo's logic table has no hit, shield, reflect or collide callback, and as a held item (x13, it_802742F4) it skips the blast-zone and lifetime checks. A yo-yo left behind by re-entering a smash at IASA (frame 2 overwrites yoyo_gobj) lives on while Ness stays in the rows, so it cannot clear the new one there either |
 | `melee-ft/fighter/commands.rs` rehit_hitbox | Ness's yo-yo rehit enabling hitbox 0 after the script's clear-all: ported (`ness_yoyo_stored_hitbox_fd_fox4`: a frame-12 hit, the clear at 32, the capsule back at 42 until the down smash's frame-44 clear; retail's +914 state and x2219_b3 agree). A capsule so revived that survives a motion change (x2219_b3 clear) is ported, unwitnessed | Scans of the up and down smash charged into Fox and his shield (also with a roll away), 1,200 candidates, found no revival outside the down smash's frames 42-43; Ness struck on those frames would carry it |
+| `melee-lib/scene_stage/kongo.rs` fn_801D8134, ftCo_8009EC44 | Kongo Jungle's barrel catching, holding and firing a fighter stays fail-closed, including a stationary barrel: the cited catch scenarios now stop under the moving-barrel guard and no completed witness covers use. The scene adopts main's shared barrel APIs; the N64 barrel witnesses remain exact. A fighter within twice the catch radius of a moving barrel also fails closed | Reachable and frequent: explorer round kj2 (2026-10-24, 60 seeds) shows the port's x730 (Ground_801C4D70 from grKongo_801D5774's lb_8000B1CC) a step off retail's while the barrel travels its path: a held Fox sits 1.48 behind (`corpus_v3_kj_fox_marth4_e0c8363c7_p1`, tick 1032), catches land a tick early or late (`_ef5e3e043_p0` 158, `_e255c070a_p1` 706, `_e8be4d273_p2` 1059). Next step: the barrel model's animation step against its proc (which runs first in retail) |
+| `melee-lib/scene_stage/kongo.rs` grKongo_801D7BBC, Klaptrap | Kongo Jungle's Klaptrap event (map 11's path rider grKongo_801D651C/801D6668 on GrKg spline 4/5/6, itklap.c): `unimplemented!` | Reachable: 77 of 180 kj2 explorer cases stop here (`corpus_v3_kj_fox_marth4_e75fb4a9a_p0`, `_e89a89d0e_p0`, `_e0fcbde24_p1`, recorded). The unused, ungated WIP rider/tangent commit is excluded from this integration |
+| `melee-lib/scene_stage/kongo.rs` grKongo_801D7BBC, box | Kongo Jungle's box event: `unimplemented!` | Creates a container item: with items off it is never drawn (its weight, yakumono +0xC, counts only when it_8026D324(It_Kind_Box) allows boxes, grkongo.c:1191) |
+| `melee-lib/scene_stage/kongo.rs` grKongo_801D5340 | A second log (map 1) while the first lives: `unimplemented!` | Reachable once in 180 kj2 explorer cases (frame 3633); not bridged |
+| `melee-gr/kongo` grKongo_801D577C | The barrel's keep case 1 with a NULL keep | Unreachable: the keep is set with the hold (fn_801D8134) and cleared only on launch |
+
+
+| `melee-lib/scene_stage/kongo.rs` grKongo_801D6198, fn_801D7E60 | A log entering collision is witnessed by `corpus_v3_kj_fox_marth4_e0fcbde24_p0` and `_e11788094_p2`. A fighter standing on a log, sinking, and removal stay `unimplemented!` (grkongo.c:579,1282) | Guarding Land stopped both named full witnesses; enabling that transition alone restores complete exact gates. None of the eleven accepted Kongo/Japes witnesses reaches the retained standing/Sink/Remove guards |
+| `hsd-anim/spline.rs` splGetSplinePoint / splArcLengthGetParameter | Linear and B-spline execution is ported; Bezier and Cardinal evaluation stays `unimplemented!` (spline.c:82-135,178) | Jungle Japes' main model carries a B-spline PATH joint, exercised by its warm/cold boundaries and full Klaptrap/river corpus witnesses. No Bezier/Cardinal retail witness is supplied |
+
+Kongo's Box event weight is currently excluded by items-off setup. Items-on
+Kongo must remain rejected until the actual `it_8026D324(It_Kind_Box)`
+eligibility is supplied to `tick_events` and the event's behavior is witnessed;
+allowing other item stages must not silently retain `tick_events(false)`.
 
 ### Out of scope (other characters, stages, CPU or modes)
 
@@ -442,3 +456,24 @@ transitions no gated trace covers yet.
   has (its items are fighter articles, Shy Guys and Sudden Death's
   Bob-ombs, none catchable). The earlier note above that only stage enemies
   set `xDD0 b4` misses the container monsters.
+### Additional wave 14 stage explorer evidence
+
+Four further existing retail traces now enter the ordinary m5 corpus:
+Japes `e0fcf0c70_p0` (2488 ticks), `e573e2d95_p0` (4102),
+`eb17a6598_p0` (2706), and Kongo `e726cfdde_p2` (1666), all with
+62 field keys exact and complete RNG ledgers with zero particle-site
+differences. The Kongo particle dump is exact. The three Japes particle
+state passes timed out after 1976, 2484 and 2010 records respectively;
+they remain NOTCMP for particle state, not evidence of a full state pass.
+
+Japes `corpus_v3_jj_fox_marth4_ef89b3e70_p0` is retained as an ordinary
+scenario with 2038 exact retail field ticks. Its ledger stops after 1489
+records (`ledger.raw.jsonl.err`: no scheduler tick for 120 VI fields) and
+there is no particle dump. It is not registered in the strict m5 corpus:
+`combat_gate_ticks` requires exactly 2038 ledger records. Particle sites
+agree only over the available 1489 records; the remaining 549 ticks need
+valid existing evidence or a separately authorized recording before a full
+particle claim or ordinary corpus registration can be made. A separate named
+m5 test retains all 2038 field ticks and strictly compares the 1489-row RNG
+prefix, asserting both lengths without changing the full-ledger helper. No
+recording was changed.

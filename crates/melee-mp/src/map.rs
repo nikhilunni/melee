@@ -39,7 +39,26 @@ pub struct JointCallbacks {
     pub cb_data_0: u32,
     pub cb_1: Option<JointCollisionHandler>,
     pub cb_data_1: u32,
+    /// A stage callback the stage applies at its own next step: each call
+    /// is recorded in [`CollMap::joint_events`] instead (see
+    /// [`CollMap::record_joint_events`]).
+    pub recorded: bool,
 }
+
+/// One recorded joint callback: what a stage callback reads of its call.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct JointEvent {
+    pub joint: i32,
+    /// The callback's `ground_kind`: 0 ceiling, 1 or 2 floor, 3 ledge.
+    pub ground_kind: i32,
+    /// `coll->x34_flags.b1234`: 1 fighter, 2 item, 3 stage enemy...
+    pub collision_type: u8,
+    /// `coll->cur_pos.x`.
+    pub x: f32,
+}
+/// Joint callbacks recorded between two stage steps; a frame's fighters
+/// and items land a handful at most.
+pub const JOINT_EVENT_CAPACITY: usize = 64;
 
 /// What `mpLib_80055E9C` reads from a joint's `HSD_JObj`: its `JOBJ_HIDDEN`
 /// flag and its world matrix after `HSD_JObjSetupMatrix`.
@@ -83,6 +102,8 @@ pub struct CollMap {
     pub(crate) grkind: GrKind,
     /// `mpIsland_80458E88`: the floor and ceiling islands.
     pub(crate) islands: crate::island::Islands,
+    /// Recorded joint callbacks, oldest first (`JointCallbacks::recorded`).
+    pub(crate) joint_events: melee_types::fixed::FixedVec<JointEvent, JOINT_EVENT_CAPACITY>,
 }
 
 /// `F32_MAX`
@@ -216,6 +237,7 @@ impl CollMap {
             lines,
             joints,
             joint_cbs,
+            joint_events: Default::default(),
             joint_list,
             did_check_bounding: false,
             bounds,
@@ -979,6 +1001,42 @@ impl CollMap {
         c.cb_data_0 = user_data;
     }
 
+    /// A stage's floor callback (`mpJointSetCb1`) that the stage applies
+    /// at its next step: calls are recorded for [`Self::take_joint_events`].
+    pub fn record_joint_events(&mut self, joint_id: i32, recorded: bool) {
+        self.joint_cbs[joint_id as usize].recorded = recorded;
+    }
+
+    /// The recorded calls of `joint_id`'s callback since the last take,
+    /// oldest first.
+    pub fn take_joint_events(
+        &mut self,
+        joint_id: i32,
+    ) -> melee_types::fixed::FixedVec<JointEvent, JOINT_EVENT_CAPACITY> {
+        let mut taken = melee_types::fixed::FixedVec::default();
+        let mut index = 0;
+        while index < self.joint_events.len() {
+            if self.joint_events.iter().nth(index).unwrap().joint == joint_id {
+                taken.push(self.joint_events.remove(index));
+            } else {
+                index += 1;
+            }
+        }
+        taken
+    }
+
+    /// Record a call of a recorded floor callback (`cb_0`).
+    pub(crate) fn record_joint_event(&mut self, joint_id: i32, coll: &CollData, ground_kind: i32) {
+        if self.joint_cbs[joint_id as usize].recorded {
+            self.joint_events.push(JointEvent {
+                joint: joint_id,
+                ground_kind,
+                collision_type: coll.x34_flags.b1234,
+                x: coll.cur_pos.x,
+            });
+        }
+    }
+
     /// `mpJointClearCb1` (retail `0x800580E0`).
     pub fn joint_clear_cb1(&mut self, joint_id: i32) {
         let c = &mut self.joint_cbs[joint_id as usize];
@@ -1020,6 +1078,7 @@ impl CollMap {
         if ledge_id != NO_ID {
             let joint_id = self.joint_from_line(ledge_id);
             if joint_id != NO_ID {
+                self.record_joint_event(joint_id, coll, MpLibGroundEnum::LEDGE);
                 let c = &mut self.joint_cbs[joint_id as usize];
                 if let Some(cb) = c.cb_0 {
                     cb(

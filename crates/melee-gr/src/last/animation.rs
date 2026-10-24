@@ -148,6 +148,29 @@ impl BackgroundAnimation {
         });
         result.unwrap_or(false)
     }
+    /// `grAnime_801C84A4(gobj, 0, 1)` (0x801C84A4): the first joint AObj
+    /// (as [`Self::ended`]) wrapped its loop this frame.
+    pub fn rewound(&self) -> bool {
+        let mut result = None;
+        self.tree.walk_tree(self.root, &mut |joint, _| {
+            if result.is_none() {
+                result = self
+                    .tree
+                    .get(joint)
+                    .aobj
+                    .as_ref()
+                    .map(|a| a.flags & hsd_anim::aobj::AOBJ_REWINDED != 0);
+            }
+        });
+        result.unwrap_or(false)
+    }
+    /// grAnime_801C78FC(gobj, 0, mask) (0x801C78FC): every joint
+    /// animation stops looping (HSD_AObjClearFlags(AOBJ_LOOP)).
+    pub fn clear_loops(&mut self) {
+        for bone in 0..self.joints.len() {
+            self.clear_joint_loop(bone);
+        }
+    }
     /// `grAnime_801C83D0(gobj, 0, 7)` (0x801C83D0): `HSD_ForeachAnim` over
     /// every animation type from the archive root stops at the first AObj
     /// (JObjForeachAnim order: joint, then its DObjs' own, material and
@@ -271,11 +294,6 @@ impl BackgroundAnimation {
     pub fn set_wrapper_flags_all(&mut self, flags: u32) {
         let joint = self.gobj_joint();
         self.tree.set_flags_all(joint, flags);
-    }
-    /// `HSD_JObjSetRotationZ` on a descendant (Ground_801C3FA4 index).
-    pub fn set_joint_rotation_z(&mut self, bone: usize, z: f32) {
-        let joint = self.joints[bone];
-        self.tree.set_rotation_z(joint, z);
     }
     /// `grAnime_801C7A04(gobj, 0, 7, rate)` (0x801C7A04): every joint,
     /// material and texture AObj of the model plays at `rate`

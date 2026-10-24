@@ -132,6 +132,29 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.klaptrap.timer", &stage.klaptrap.timer);
             sink.field("stage.water_active", &stage.water_active);
         }
+        SceneStage::Kongo(stage) => {
+            for (i, plank) in stage.bridge.planks.iter().enumerate() {
+                sink.field(&format!("stage.plank[{i}].angle"), &plank.angle);
+                sink.field(&format!("stage.plank[{i}].velocity"), &plank.velocity);
+                sink.field(&format!("stage.plank[{i}].sag"), &plank.sag);
+            }
+            for (i, swing) in stage.swings.iter().enumerate() {
+                sink.field(&format!("stage.swing[{i}].angle"), &swing.angle);
+                sink.field(&format!("stage.swing[{i}].velocity"), &swing.velocity);
+            }
+            sink.field("stage.event_timer", &stage.event_timer);
+            sink.field("stage.last_event", &stage.last_event);
+            let barrel = &stage.barrel;
+            sink.field("stage.barrel.spin", &(barrel.spin as u8));
+            sink.field("stage.barrel.rate_phase", &barrel.rate_phase);
+            sink.field("stage.barrel.spin_timer", &barrel.spin_timer);
+            sink.field("stage.barrel.rate_timer", &barrel.rate_timer);
+            sink.field("stage.barrel.angle", &barrel.angle);
+            sink.field("stage.barrel.speed", &barrel.speed);
+            sink.field("stage.barrel.rate", &barrel.rate);
+            sink.field("stage.barrel_position.x", &stage.barrel_position.x);
+            sink.field("stage.barrel_position.y", &stage.barrel_position.y);
+        }
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
             sink.field("stage.shy_timer", &stage.shy_timer);
@@ -305,6 +328,11 @@ fn cold_run_reads_only_dat_assets() {
         assert!(!scenario.root.join("harness/traces").exists());
         crate::trace::write_run(&scenario, std::io::sink()).unwrap();
     }
+}
+
+#[test]
+fn start_kj_fox_marth4_cold_600() {
+    verify("start_kj_fox_marth4");
 }
 
 #[test]

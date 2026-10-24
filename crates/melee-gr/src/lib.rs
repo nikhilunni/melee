@@ -6,6 +6,7 @@ pub mod desc;
 pub mod garden;
 pub mod ground;
 pub mod izumi;
+pub mod kongo;
 pub mod last;
 pub mod music;
 pub mod rand;

@@ -23,6 +23,7 @@ mod stage_garden;
 mod stage_izumi;
 mod stage_oldkongo;
 mod stage_oldyoshi;
+mod stage_kongo;
 mod stock;
 use hsd_types::Vec3;
 /// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
@@ -331,6 +332,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::OldKongo {
             stage_oldkongo::restore_collision(&saved, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::Kongo {
+            stage_kongo::restore_collision(&saved, &mut map)?;
         }
         let mut rng = HsdRng::new(word(saved.bytes(0x804D_5F90, 4), 0));
         let mut fighters: Vec<SceneFighter> = (0..roster.len())

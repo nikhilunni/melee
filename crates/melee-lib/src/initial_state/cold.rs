@@ -174,7 +174,7 @@ impl InitialState {
         // joints during creation.
         let archive_bindings = !matches!(
             stage,
-            SceneStage::Izumi(_) | SceneStage::OldYoshi(_) | SceneStage::OldKongo(_)
+            SceneStage::Izumi(_) | SceneStage::OldYoshi(_) | SceneStage::OldKongo(_) | SceneStage::Kongo(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -186,7 +186,8 @@ impl InitialState {
                 map.joint_snapshot_prev_pos(i32::from(binding.joint_index));
             }
         }
-        let (mut fighters, spawn_counter) = create_players(scenario, &assets, &mut map, &mut rng)?;
+        let (mut fighters, spawn_counter) =
+            create_players(scenario, &assets, &mut map, &mut stage_animations, &mut rng)?;
         for (index, fighter) in fighters.iter_mut().enumerate() {
             fighter.0.cpu.fighter_address =
                 super::heap::fighter_address_after_boot(scenario, index);
@@ -339,6 +340,8 @@ fn setup_draws(
         // the Klaptrap's wait (grGarden_802031A4), then the main stage's
         // keys (a common-bank one draws).
         GrKind::Garden => 9,
+        // The barrel's two waits (grKongo_801D55D8), then two keys.
+        GrKind::Kongo => 4,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -394,6 +397,27 @@ fn spawn_position(assets: &Assets, slot: i16) -> Result<Vec3> {
         .bone(root, binding.joint_index as usize)
         .expect("validated marker joint");
     Ok(melee_ft::collision::ecb::world_position(&mut tree, joint))
+}
+
+/// Ground_801C2D24 reads the marker's live JObj (stage_info.x280). Kongo
+/// Jungle's markers sit on the bridge and platform ends its creation
+/// already moved; the other stages' markers rest at their bind pose.
+fn live_spawn_position(
+    assets: &Assets,
+    stage_animations: &mut BTreeMap<u8, BackgroundAnimation>,
+    slot: i16,
+) -> Option<Vec3> {
+    if assets.stage_desc.kind != GrKind::Kongo {
+        return None;
+    }
+    let binding = assets
+        .stage_desc
+        .position_bindings
+        .iter()
+        .find(|b| b.stage_position == slot)?;
+    let model = stage_animations.get_mut(&u8::try_from(binding.model_id).ok()?)?;
+    let matrix = model.joint_matrix(binding.joint_index as usize);
+    Some(Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]))
 }
 
 /// Ground creation precedes every Fighter_Create call.
@@ -533,6 +557,18 @@ fn initialize_stage(
             stage_animations = animations;
             stage
         }
+        GrKind::Kongo => {
+            // A fresh boot's bridge (grKg_803E188C as the DOL holds it).
+            let (stage, animations) = crate::scene_stage::kongo::initialize(
+                assets,
+                melee_gr::kongo::Bridge::default(),
+                rng,
+                particles,
+                map,
+            )?;
+            stage_animations = animations;
+            stage
+        }
         GrKind::PStadium => {
             let parameters = melee_gr::desc::read_stadium_parameters(&assets.stage)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
@@ -606,6 +642,7 @@ fn create_players(
     scenario: &Setup,
     assets: &Assets,
     map: &mut melee_mp::CollMap,
+    stage_animations: &mut BTreeMap<u8, BackgroundAnimation>,
     rng: &mut HsdRng,
 ) -> Result<(Vec<SceneFighter>, SpawnCounter)> {
     let mut positions: Vec<_> = scenario
@@ -617,7 +654,8 @@ fn create_players(
             } else {
                 i16::from(fighter.spawn_point)
             };
-            spawn_position(assets, marker)
+            live_spawn_position(assets, stage_animations, marker)
+                .map_or_else(|| spawn_position(assets, marker), Ok)
         })
         .collect::<Result<_>>()?;
     let spawn_x: Vec<f32> = positions.iter().map(|p| p.x).collect();

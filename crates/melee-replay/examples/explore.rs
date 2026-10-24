@@ -73,6 +73,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         // The side platforms' outer ledges (x -101.2, 106.9; the centre
         // ends at -44.9 and 49.9).
         Stage::JungleJapes => (99.0, 42.0),
+        // The bridge ends at about x -70 and 70.
+        Stage::KongoJungle => (66.0, 41.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {
