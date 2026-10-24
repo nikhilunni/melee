@@ -1,7 +1,7 @@
 //! Shared application SRT state (`psappsrt.c`, `psdisp.c`).
 use crate::{system::ParticleSystem, Error};
 use gekko_math::msl::sqrtf;
-use hsd_anim::mtx::{hsd_mtx_srt, mtx_concat};
+use hsd_anim::mtx::{hsd_mtx_get_scale, hsd_mtx_srt, mtx_concat};
 use hsd_types::{Mtx, Vec3};
 use std::{collections::BTreeMap, sync::Arc};
 
@@ -50,11 +50,6 @@ impl ApplicationTransform {
         if self.frame_number == frame_number {
             return Ok(());
         }
-        if self.camera_facing != 0 {
-            return Err(Error::UnsupportedFeature(
-                "psdisp.c:1426 camera-facing AppSRT",
-            ));
-        }
         if self.status != 2 {
             hsd_mtx_srt(
                 &mut self.model_matrix,
@@ -75,8 +70,34 @@ impl ApplicationTransform {
             // fnmsub at 803A202C/203C/204C (and the second column).
             self.axis_scale[column] = sqrtf(z * z + (x * x + y * y));
         }
+        if self.camera_facing != 0 {
+            self.face_camera(view);
+        }
         self.frame_number = frame_number;
         Ok(())
+    }
+
+    /// psdisp.c:1426-1438 (retail 0x803A20EC..0x803A2178), an AppSRT with
+    /// `xA2` set (every one a descriptor allocates, generator.c:1214): the
+    /// model-view keeps only the view's scale at the translation, so the
+    /// particles face the camera. The axis scales above stay those of the
+    /// full model-view. All arithmetic is in the library calls:
+    /// PSMTXConcat (0x80342204), HSD_MtxGetScale, then PSMTXScale writes
+    /// the diagonal and zero translation that the three stores replace.
+    fn face_camera(&mut self, view: &Mtx) {
+        let mut translation = Mtx::IDENTITY;
+        translation.0[0][3] = self.translation.x;
+        translation.0[1][3] = self.translation.y;
+        translation.0[2][3] = self.translation.z;
+        let mut placed = Mtx::IDENTITY;
+        mtx_concat(view, &translation, &mut placed);
+        let mut scale = Vec3::ZERO;
+        hsd_mtx_get_scale(&placed, &mut scale);
+        self.model_view_matrix = Mtx([
+            [scale.x, 0.0, 0.0, placed.0[0][3]],
+            [0.0, scale.y, 0.0, placed.0[1][3]],
+            [0.0, 0.0, scale.z, placed.0[2][3]],
+        ]);
     }
 }
 
@@ -132,5 +153,41 @@ impl ParticleSystem {
             }
         }
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::ApplicationTransform;
+    use hsd_types::{Mtx, Vec3};
+
+    /// psdisp.c:1426-1438: a camera-facing AppSRT's model-view is the view's
+    /// scale at the view-space translation; its axis scales are still those
+    /// of view * model. HSD_MtxGetScale's PSVECMag (frsqrte) leaves the
+    /// scales an ulp low.
+    #[test]
+    fn camera_facing_keeps_only_the_views_scale_at_the_translation() {
+        let view = Mtx([
+            [2.0, 0.0, 0.0, 10.0],
+            [0.0, 3.0, 0.0, 20.0],
+            [0.0, 0.0, 1.0, 30.0],
+        ]);
+        let mut transform = ApplicationTransform {
+            translation: Vec3::new(3.0, 4.0, 5.0),
+            scale: Vec3::new(4.0, 4.0, 4.0),
+            camera_facing: 1,
+            ..Default::default()
+        };
+        transform.prepare_display(&view, 7).unwrap();
+        assert_eq!(
+            transform.model_view_matrix,
+            Mtx([
+                [1.9999999, 0.0, 0.0, 16.0],
+                [0.0, 2.9999998, 0.0, 32.0],
+                [0.0, 0.0, 0.99999994, 35.0],
+            ])
+        );
+        assert_eq!(transform.axis_scale, [8.0, 12.0]);
+        assert_eq!(transform.frame_number, 7);
     }
 }

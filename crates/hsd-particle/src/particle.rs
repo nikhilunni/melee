@@ -129,24 +129,17 @@ impl Particle {
         rng: &mut HsdRng,
         draws: &mut DrawLog,
     ) -> Result<bool, Error> {
-        self.update_with_generators::<T>(
-            None,
-            Some(T::atan2f),
-            &mut [None; 8],
-            rng,
-            draws,
-            &mut |_, _, _, _, _| {
-                Err(Error::UnsupportedFeature(
-                    "generator opcode requires ParticleSystem",
-                ))
-            },
-        )
+        // A particle outside a ParticleSystem has no bank loaded: retail's
+        // hsd_8039F05C returns NULL before any draw when psCmdListArray[bank]
+        // is zero (generator.c:1048), so A5/EF spawn nothing.
+        self.update_with_generators::<T>(None, &mut [None; 8], rng, draws, &mut |_, _, _, _, _| {
+            Ok(())
+        })
     }
 
     pub(crate) fn update_with_generators<T: InverseTrig>(
         &mut self,
         tornado: Option<TornadoPhysics>,
-        atan2: Option<fn(f32, f32) -> f32>,
         point_joints: &mut [Option<[f32; 3]>; 8],
         rng: &mut HsdRng,
         draws: &mut DrawLog,
@@ -165,7 +158,7 @@ impl Particle {
         if self.wait != 0 {
             self.wait -= 1;
             if self.wait == 0 {
-                self.interpret::<T>(atan2, point_joints, rng, draws, spawn)?;
+                self.interpret::<T>(point_joints, rng, draws, spawn)?;
             }
         }
         self.life = self.life.wrapping_sub(1);
@@ -176,8 +169,11 @@ impl Particle {
             return Ok(false);
         }
         if self.kind & TORNADO != 0 {
+            // Only a tornado generator's emission sets the bit (no bank
+            // descriptor carries it), and hsd_8039D3AC (generator.c:92)
+            // keeps a generator while it has children: pp->gen is live.
             tornado
-                .ok_or(Error::UnsupportedFeature("tornado requires live generator"))?
+                .expect("a tornado particle's generator outlives it (generator.c:92)")
                 .integrate(self);
         } else {
             self.integrate();
@@ -285,7 +281,6 @@ impl Particle {
 
     fn interpret<T: InverseTrig>(
         &mut self,
-        atan2: Option<fn(f32, f32) -> f32>,
         point_joints: &[Option<[f32; 3]>; 8],
         rng: &mut HsdRng,
         draws: &mut DrawLog,
@@ -337,9 +332,12 @@ impl Particle {
                             usize::from(cursor.byte()?) + usize::from(self.point_joint_offset);
                         let force = cursor.float()?;
                         let range = cursor.float()?;
-                        let target = *point_joints.get(index).ok_or(Error::UnsupportedFeature(
-                            "point-joint index exceeds retail slots",
-                        ))?;
+                        // hsd_804D08E8 has eight slots and pJObjOfs is only
+                        // ever 0 (particle.c:474); every B8 on the disc names
+                        // slot 0. A larger index reads past the array.
+                        let target = *point_joints
+                            .get(index)
+                            .ok_or(Error::OutsideRetailData("B8 point-joint index past slot 7"))?;
                         if force_toward_joint(
                             self.position,
                             &mut self.velocity,
@@ -357,7 +355,7 @@ impl Particle {
                         let angle = cursor.float()?;
                         self.randomize_direction(
                             angle,
-                            atan2.ok_or(Error::UnsupportedFeature("A9 requires inverse trig"))?,
+                            T::atan2f,
                             rng,
                             draws,
                         );
@@ -406,7 +404,7 @@ impl Particle {
                             return Ok(());
                         }
                     }
-                    _ => self.command::<T>(opcode, opcode_pc, &mut cursor, rng, draws)?,
+                    _ => self.command(opcode, opcode_pc, &mut cursor, rng, draws)?,
                 }
             }
         }
@@ -443,7 +441,7 @@ impl Particle {
         Ok(())
     }
 
-    fn command<T: InverseTrig>(
+    fn command(
         &mut self,
         opcode: u8,
         opcode_pc: u16,
@@ -490,10 +488,6 @@ impl Particle {
                     // subsequent position addition remains separate.
                     self.position[axis] += fmsubs(2.0 * range, draws.draw(rng, site), range);
                 }
-            }
-            0xa9 => {
-                self.velocity =
-                    super::direction::randomize::<T>(self.velocity, pc.float()?, rng, draws);
             }
             0xab => {
                 let scale = pc.float()?;

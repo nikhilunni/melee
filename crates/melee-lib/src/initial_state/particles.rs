@@ -447,13 +447,23 @@ pub fn restore(record: &Record, banks: &impl Banks) -> ParticleSystem {
         0,
         "pending attachment execution unsupported"
     );
-    let system = ParticleSystem::from_live_lists(
+    let mut system = ParticleSystem::from_live_lists(
         generators,
         particles,
         uint(record, "particles.family_id_counter")
             .try_into()
             .unwrap(),
     );
+    // Retail had every bank of a live generator or particle loaded.
+    let live_banks: std::collections::BTreeSet<u8> = system
+        .generators
+        .iter()
+        .map(|g| g.bank)
+        .chain(system.particles.iter().flatten().map(|p| p.bank))
+        .collect();
+    for bank_id in live_banks {
+        system.load_bank(bank_id, banks.bank(bank_id));
+    }
     // This also rejects an unmapped field instead of silently dropping it.
     assert_state(
         record,

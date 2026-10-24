@@ -94,6 +94,15 @@ impl ParticleSystem {
     pub fn bank(&self, id: u8) -> Option<&ParticleBank> {
         self.banks.get(usize::from(id)).and_then(Option::as_ref)
     }
+
+    /// `psInitDataBankLoad` (particle.c, 0x803984F4) for a system restored
+    /// from a retail dump: retail loaded every bank its live particles came
+    /// from, so their bytecode's child generators (A5/EF) find it.
+    pub fn load_bank(&mut self, id: u8, bank: &ParticleBank) {
+        if let Some(slot) = self.banks.get_mut(usize::from(id)) {
+            slot.get_or_insert_with(|| bank.clone());
+        }
+    }
     /// HSD AppSRT shared lifetime, with storage prepared before simulation.
     /// A slot can be overwritten only after every generator/particle alias expires.
     fn share_application_transform(
@@ -330,18 +339,18 @@ impl ParticleSystem {
         let mut point_joints = self.point_joints;
         let result = particle.update_with_generators::<T>(
             tornado,
-            Some(T::atan2f),
             &mut point_joints,
             rng,
             draws,
             &mut |parent, kind, blend, rng, draws| {
-                let bank = self
-                    .banks
-                    .get(usize::from(parent.bank))
-                    .and_then(Clone::clone)
-                    .ok_or(Error::UnsupportedFeature(
-                        "child generator bank not registered",
-                    ))?;
+                // hsd_8039F05C (generator.c:1048): an unloaded bank has
+                // psCmdListArray[bank] == 0, so the spawn is NULL before any
+                // draw. A particle's bank is loaded by the spawn that made
+                // its generator, or by `load_bank` on a restore.
+                let Some(bank) = self.banks.get(usize::from(parent.bank)).and_then(Clone::clone)
+                else {
+                    return Ok(());
+                };
                 let attachment = parent
                     .generator_id
                     .and_then(|id| self.generators.iter().find(|g| g.id == id))

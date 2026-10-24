@@ -96,8 +96,10 @@ impl Generator {
         Self::with_application_transform::<T>(descriptor, bank, link, None, rng, draws)
     }
 
-    /// System-owned AppSRT allocation precedes exposing the new generator.
-    /// Direct callers must provide that owner for kind bit 0x20000.
+    /// AppSRT allocation precedes exposing the new generator. The system
+    /// passes the owner from its pool; without one, a descriptor with kind
+    /// bit 0x20000 gets its own, as `psAddGeneratorAppSRT_begin` allocates
+    /// it (generator.c:1210-1217): unit scale and `xA2` set.
     pub(crate) fn with_application_transform<T: InverseTrig>(
         descriptor: &Descriptor,
         bank: u8,
@@ -109,9 +111,14 @@ impl Generator {
         if link >= 8 {
             return Err(Error::InvalidLink(link));
         }
-        if descriptor.kind & 0x20000 != 0 && application_transform.is_none() {
-            return Err(Error::UnsupportedFeature("generator AppSRT"));
-        }
+        let application_transform = application_transform.or_else(|| {
+            (descriptor.kind & 0x20000 != 0).then(|| {
+                Arc::new(ApplicationTransform {
+                    camera_facing: 1,
+                    ..Default::default()
+                })
+            })
+        });
         let shape = EmissionShape::new::<T>(descriptor)?;
         let rate = descriptor.emission_rate;
         let count = if descriptor.kind & 0x100 != 0 {
@@ -227,9 +234,13 @@ impl Generator {
         if !self.count.is_finite() || self.count >= i32::MAX as f32 {
             return Err(Error::InvalidEmissionCount);
         }
-        if self.descriptor.kind & 0x10000 != 0 {
-            return Err(Error::UnsupportedFeature("camera-facing generator"));
-        }
+        // generator.c:438-459: kind bit 0x10000 orients emission to psCamera,
+        // which Melee never sets (only generator.c:80 writes it, NULL), so
+        // retail halts on the assertion. No descriptor on the disc sets it.
+        assert!(
+            self.descriptor.kind & 0x10000 == 0,
+            "HSD_ASSERT(677, psCamera): a camera-facing generator"
+        );
         let speed = magnitude(self.descriptor.velocity);
         let mut rotation = Mtx::IDENTITY;
         if self.flags & 0x500 == 0x500 && self.descriptor.kind & 0x30000 == 0 {
@@ -378,8 +389,12 @@ impl Generator {
             draws.draw(rng, 0x8039_E6F0),
             draws.draw(rng, 0x8039_E6F8),
         ];
+        // generator.c:770-835: a negative dimension (rect.flag, set only from
+        // the descriptor at generator.c:1155-1164; no Melee code touches
+        // gen->aux) snaps emission to a face. None of the disc's 49
+        // rectangle descriptors has one.
         if dimensions.iter().any(|&v| v < 0.0) {
-            return Err(Error::UnsupportedFeature("rectangle surface emission"));
+            return Err(Error::OutsideRetailData("rectangle surface emission"));
         }
         for value in &mut point {
             *value -= 0.5;

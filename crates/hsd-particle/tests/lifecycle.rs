@@ -239,12 +239,18 @@ fn supported_shape_variants_and_unsupported_extensions_are_explicit() {
             ),
         }
     }
+    // generator.c:1210-1217: kind bit 0x20000 allocates the generator's own
+    // AppSRT, unit scale, xA2 set.
     let mut d = descriptor(vec![]);
     d.kind = 0x20000;
-    assert!(matches!(
-        Generator::new::<RetailTrig>(&d, 0, 0, &mut HsdRng::new(1), &mut DrawLog::default()),
-        Err(Error::UnsupportedFeature(_))
-    ));
+    let generator =
+        Generator::new::<RetailTrig>(&d, 0, 0, &mut HsdRng::new(1), &mut DrawLog::default())
+            .unwrap();
+    let transform = generator.application_transform.unwrap();
+    assert_eq!(
+        (transform.camera_facing, transform.scale, generator.flags & 0x800),
+        (1, hsd_types::Vec3::new(1.0, 1.0, 1.0), 0x800)
+    );
 }
 
 #[test]

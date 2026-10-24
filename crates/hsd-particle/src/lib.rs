@@ -5,7 +5,6 @@
 pub mod appsrt;
 pub mod bank;
 mod color;
-mod direction;
 pub mod display;
 pub mod generator;
 pub mod particle;
@@ -22,6 +21,10 @@ pub enum Error {
     InstructionLimit { pc: u16 },
     UnsupportedGenerator { shape: u16 },
     UnsupportedFeature(&'static str),
+    /// A descriptor or program does what no particle bank on the NTSC-U 1.02
+    /// disc does, and retail Melee code never sets up at run time
+    /// (docs/COVERAGE_AUDIT.md, "Particle banks on the disc").
+    OutsideRetailData(&'static str),
     InvalidLink(u8),
     InvalidEmissionCount,
 }

@@ -265,3 +265,27 @@ transitions no gated trace covers yet.
   has (its items are fighter articles, Shy Guys and Sudden Death's
   Bob-ombs, none catchable). The earlier note above that only stage enemies
   set `xDD0 b4` misses the container monsters.
+||||||| parent of 46179860 (hsd-particle: close the fail-closed particle sites against a scan of every bank on the disc)
+
+## Wave 13: particle banks on the disc (PARITY item 27)
+
+Scan (2026-10-24): every `.dat`/`.usd` in `harness/roms/files` (1000
+files), each `eff*DataTable` bank with particle commands (26: the
+character banks, the Kirby copy banks, `EfCoData.dat`, `EfMnData.dat`) and
+each stage `map_ptcl`/`map_texg` bank (24), 1037 descriptors in all, every
+program decoded with `particle.c`'s operand lengths up to its `FF`. No
+other public names a particle bank. Results and what they close:
+
+| Feature | Disc data | Port |
+|---|---|---|
+| Opcodes | Only `00-3F 40-7F 80-9F A0 A2 A3 A5 A6 A8 A9 AB AC AD AF B1 B3 B6 B8 BA BB BC BD BE BF C0-CF D0-DF E0 E4 E5 E6 E8 E9 ED EF FA FB FC FD FF` occur | All ported; the other opcodes stay `UnsupportedOpcode` |
+| Generator shapes | 0 (879), 2 tornado (14), 3 (12), 4 (1), 5 rectangle (49), 8 sphere (82); none of 1, 6, 7, 9-15 | Custom shapes (9-15) stay `UnsupportedGenerator`: retail calls `hsd_804D78EC`, which Melee never sets |
+| Rectangle surface emission | No rectangle descriptor has a negative dimension; `rect.flag` is set only from the descriptor (generator.c:1155-1164) and no Melee code touches `gen->aux` | `Error::OutsideRetailData` |
+| Camera-facing generator (kind 0x10000) | No descriptor sets it; only the `F0` opcode (unused) writes generator kind bits, and only 25-27 | An assertion, as retail: `psCamera` is only ever written NULL (generator.c:80), so `HSD_ASSERT(677, psCamera)` would halt |
+| Descriptor AppSRT (kind 0x20000) | 84 descriptors (common, Fox, Ice Climbers, Kirby, Luigi, Mario, Pikachu, Pichu, Samus, Yoshi, Kirby's Pikachu/Pichu copies, stages `GrSt` and `GrZe`) | Allocated with `xA2 = 1` by `Generator::new` too; the camera-facing display cache (psdisp.c:1426-1438) is ported |
+| Point joints (`B8`, `BF`) | Index 0 in all 13 uses (common 81/83, Fox 3000, Kirby 5004-5006, Mewtwo 13004-13006); `pJObjOfs` is only ever 0 (particle.c:474) | An index past slot 7 is `Error::OutsideRetailData` |
+| Tornado particles | Kind bit 4 is in no descriptor: only a tornado generator's emission sets it, and `hsd_8039D3AC` (generator.c:92) keeps a generator while it has children | The "no live generator" errors became invariants (`expect`) |
+
+`EfKbSs.dat`'s CI8 texture group 0 has neither `palflag` nor `palnum`, so
+retail relocates a word of image data as its palette pointer; the bank
+loader no longer rejects an out-of-range palette slot (it is never read).

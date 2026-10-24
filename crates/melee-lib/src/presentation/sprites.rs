@@ -152,21 +152,17 @@ impl Sprites {
                 // Force evaluation in private scratch; simulation cache/camera
                 // stamps cannot establish validity for this independent view.
                 scratch.frame_number = 1;
-                if scratch.camera_facing != 0 {
-                    scratch.rotation = hsd_types::Vec3::ZERO;
-                    scratch.scale = hsd_types::Vec3::new(1.0, 1.0, 1.0);
-                    scratch.status = 0;
-                    scratch.camera_facing = 0;
-                }
+                // Under the identity view the model-view is the model matrix,
+                // or, for a camera-facing AppSRT, its translation alone.
                 scratch.prepare_display(&identity, 0).map_err(error)?;
                 let previous = previous_position;
                 hsd_anim::mtx::mtx_mult_vec(
-                    &scratch.model_matrix,
+                    &scratch.model_view_matrix,
                     &previous,
                     &mut previous_position,
                 );
                 let source = position;
-                hsd_anim::mtx::mtx_mult_vec(&scratch.model_matrix, &source, &mut position);
+                hsd_anim::mtx::mtx_mult_vec(&scratch.model_view_matrix, &source, &mut position);
                 half_size = [
                     p.size * scratch.axis_scale[0],
                     p.size * scratch.axis_scale[1],

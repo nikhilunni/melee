@@ -178,14 +178,16 @@ switch's default case.
 | `FE`, `FF` | End/delete |
 | All other bytes | `UnsupportedOpcode` |
 
-Not yet ported: child particle/generator creation/remaps (`A4/A5/AA/B9/EF–F2`),
-force/JObj operations, AppSRT transforms, material/ambient/alpha compare
-tracks, additional color/velocity operations, callbacks and user data.
-Generator shapes 2 (tornado), 5 (rectangle), and custom shapes error.
-Shapes 0/1/3/4/6/7/8 are supported; camera-facing generators error at emission
-and AppSRT generators error at creation. Deferred detach requests and
-arbitrary callback-created list mutations remain unimplemented. Other FD
-animations/effect kinds and the full stage's transitions are not validated.
+Since ported: `A5`/`EF` child generators, `A9`, `B3`, `B6`, `B8`, `BD`, `BF`,
+`E0`, `E9`, tornado and rectangle generators, descriptor-allocated AppSRTs and
+their camera-facing display cache. Still `UnsupportedOpcode`: `A4`, `AA`, `B2`,
+`B4`, `B5`, `B7`, `B9`, `E1`, `E2`, `EA`, `EB`, `EC`, `F0`, `F1`, `F2` and the
+switch's no-op default bytes. No particle bank on the disc uses any of them,
+nor a custom generator shape (9-15), a camera-facing generator (kind 0x10000,
+which retail would halt on: psCamera is never set), a rectangle surface
+emitter or a point-joint index other than 0: the scan is in
+`docs/COVERAGE_AUDIT.md` ("Wave 13: particle banks on the disc"). The last two
+report `Error::OutsideRetailData`.
 
 ## Measured cold-start result and verification
 

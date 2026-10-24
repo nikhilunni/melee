@@ -212,8 +212,11 @@ fn read_texture(reader: Reader<'_>, offset: u32) -> Result<TextureGroup> {
         .checked_add(palette_count)
         .ok_or(BankError::InvalidLayout("texture count overflow"))?;
     let pointers = read_table(r, 24, total)?;
-    // Validate every non-null bank-relative pointer before discarding addresses.
-    for &pointer in &pointers {
+    // Validate every non-null bank-relative image pointer before discarding
+    // addresses. Palette slots are not: psInitDataBankLocate (particle.c:
+    // 257-300) relocates them unread, and EfKbSs.dat's CI8 group 0, with
+    // neither palflag nor palnum, has a word of image data in its second slot.
+    for &pointer in &pointers[..count as usize] {
         if pointer != 0 {
             reader.slice(pointer, 1)?;
         }

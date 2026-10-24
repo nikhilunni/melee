@@ -17,11 +17,12 @@ pub fn previous_position(p: &Particle, generator: Option<&Generator>) -> Result<
             p.position[axis] - p.velocity[axis]
         }));
     }
-    let g = generator.ok_or(Error::UnsupportedFeature(
-        "tornado display without generator",
-    ))?;
+    // Only a tornado generator's emission sets the bit, and the generator
+    // outlives its children (hsd_8039D3AC, generator.c:92), so retail's
+    // `gp == NULL` branch (which dereferences the null gp) is never taken.
+    let g = generator.expect("a tornado particle's generator outlives it (generator.c:92)");
     let EmissionShape::Tornado { speed } = g.shape else {
-        return Err(Error::UnsupportedFeature("tornado display generator shape"));
+        unreachable!("a tornado particle comes from a tornado generator")
     };
     Ok(tornado_previous(
         p.velocity,
