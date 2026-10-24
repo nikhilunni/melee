@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 29] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 30] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -204,6 +204,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 29] = [
         file: "EfKbSs.dat",
         table: "effKirbySamusDataTable",
         models: 1,
+    },
+    // Kirby's copied Thunder Jolt (efAsync_DatEntries[36],
+    // ftKb_Init_803CB46C for Pikachu and Pichu): no models; its particle
+    // kind 0x8CA0 is the ball's trail (efAlt 0x4AD).
+    CharacterEffectFile {
+        bank: 36,
+        file: "EfKbPk.dat",
+        table: "effKirbyPikachuDataTable",
+        models: 0,
     },
     // Kirby's copied green Fireball (efAsync_DatEntries[37],
     // ftKb_Init_803CB46C for Luigi): model 0x9088, the hand flash (efAlt

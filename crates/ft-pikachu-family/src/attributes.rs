@@ -35,6 +35,20 @@ pub struct ThunderJoltAttributes {
     pub air_item: u32,
 }
 
+impl ThunderJoltAttributes {
+    /// The block at `at`: +0 in ftPk_DatAttrs, +1C0 (Pikachu's) and +1DC
+    /// (Pichu's) in ftKb_DatAttrs.
+    pub fn read(r: &Reader, at: u32) -> Result<Self> {
+        Ok(Self {
+            ground_spawn_offset: hsd_types::Vec2::new(r.f32(at)?, r.f32(at + 0x4)?),
+            air_spawn_offset: hsd_types::Vec2::new(r.f32(at + 0x8)?, r.f32(at + 0xC)?),
+            air_landing_lag: r.f32(at + 0x10)?,
+            ground_item: r.u32(at + 0x14)?,
+            air_item: r.u32(at + 0x18)?,
+        })
+    }
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub struct SkullBashAttributes {
     /// +0x1C: a side-B entered within this many frames of the stick's
@@ -164,13 +178,7 @@ impl PikachuAttributes {
         };
         let i32_at = |at: u32| -> Result<i32> { Ok(r.u32(at)? as i32) };
         Ok(Self {
-            thunder_jolt: ThunderJoltAttributes {
-                ground_spawn_offset: vec2(0x0)?,
-                air_spawn_offset: vec2(0x8)?,
-                air_landing_lag: r.f32(0x10)?,
-                ground_item: r.u32(0x14)?,
-                air_item: r.u32(0x18)?,
-            },
+            thunder_jolt: ThunderJoltAttributes::read(&r, 0x0)?,
             skull_bash: SkullBashAttributes {
                 smash_input_window: r.f32(0x1C)?,
                 smash_input_charge: r.f32(0x20)?,

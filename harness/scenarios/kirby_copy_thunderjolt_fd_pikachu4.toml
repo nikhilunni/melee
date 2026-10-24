@@ -1,0 +1,43 @@
+# KIRBY directed witness from start_fd_kirby_pikachu4 (Kirby runs to x=51 beside Pikachu at +60 and swallows it): the copied Thunder Jolt. Kirby turns to Pikachu and jolts it; turns back and jolts right along the floor; a full hop with an aerial jolt; a short hop whose aerial jolt lands in the grounded row.
+name = "kirby_copy_thunderjolt_fd_pikachu4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_pikachu4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 503, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 522, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 608, port = 0, buttons = {  }, raw = {  } },
+  { frame = 612, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 614, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 702, port = 0, buttons = {  }, raw = {  } },
+  { frame = 706, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 708, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Pikachu"
+controller = "scripted"

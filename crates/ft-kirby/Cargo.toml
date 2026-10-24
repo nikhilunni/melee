@@ -18,6 +18,7 @@ it-drmariopill = { path = "../it-drmariopill" }
 ft-samus-family = { path = "../ft-samus-family" }
 ft-donkey-family = { path = "../ft-donkey-family" }
 ft-mewtwo-family = { path = "../ft-mewtwo-family" }
+ft-pikachu-family = { path = "../ft-pikachu-family" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 melee-coll = { path = "../melee-coll" }

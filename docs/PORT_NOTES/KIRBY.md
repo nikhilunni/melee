@@ -711,10 +711,25 @@ fails closed.
   Mewtwo's). Witnesses: `kirby_copy_shadowball_fd_mewtwo4` and
   `kirby_copy_shadowball_{hit,lost}_fd_mewtwo4` (boundary
   `start_fd_kirby_mewtwo4`, the hat's).
+- **The copied Thunder Jolt** (`ft-kirby` `copied/thunder_jolt.rs`,
+  ftkirbyspecialpikachu.c): Pikachu's states in `ft-pikachu-family`
+  (`special_n::ThunderJolt`, which every family member has by a blanket
+  impl) over one marker, `KirbyJolt`, that picks the rows (429/430 for
+  Pikachu's hat, 526/527 for Pichu's), the attributes (+1C0 / +1DC, the
+  family's own block layout) and the sound by the hat's kind, as the
+  callbacks' switches do. No scratch and no put-away arm. The ball and
+  crawler are it-pikachu's under Kirby's kinds (`KirbyPikachu`,
+  `KirbyPichu` owners; copy archives `PlKbCpPk.dat` / `PlKbCpPc.dat`,
+  hat_dynamics[0] and [1], the crawler's pose sampled as for Pikachu's);
+  the ball's trail is efAlt 0x4AD, particle kind 0x8CA0 of `EfKbPk.dat`
+  (bank 36, which ftKb_Init_803CB46C names for both kinds). Swallowing
+  Pikachu or Pichu needed nothing new. Witnesses `kirby_copy_thunderjolt_*`,
+  `kirby_copy_pichujolt_*` (boundaries `start_fd_kirby_pikachu4`,
+  `start_fd_kirby_pichu4`).
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
-  Megavitamin, the green Fireball, the Charge Shot, the Giant Punch and
-  the Shadow Ball
+  Megavitamin, the green Fireball, the Charge Shot, the Giant Punch, the
+  Shadow Ball and the Thunder Jolt
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 

@@ -101,6 +101,10 @@ melee_it::item_kinds! {
         KirbyLuigiFire: it_luigifire::KirbyLuigiFire,
         KirbySamusCharge: it_samus::KirbySamusCharge,
         KirbyMewtwoShadowBall: it_mewtwo::KirbyMewtwoShadowBall,
+        KirbyPikachuTJoltGround: it_pikachu::ThunderJoltBall<it_pikachu::KirbyPikachu>,
+        KirbyPikachuTJoltAir: it_pikachu::ThunderJoltCrawler<it_pikachu::KirbyPikachu>,
+        KirbyPichuTJoltGround: it_pikachu::ThunderJoltBall<it_pikachu::KirbyPichu>,
+        KirbyPichuTJoltAir: it_pikachu::ThunderJoltCrawler<it_pikachu::KirbyPichu>,
     }
 }
 
@@ -116,7 +120,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 8] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 10] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -184,6 +188,25 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 8] = [
         // states, as Mewtwo's own.
         articles: &[(ItemKind::KirbyMewtwoShadowBall, 3, 18)],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Pikachu,
+        file: "PlKbCpPk.dat",
+        symbol: "ftDataKirbyCopyPikachu",
+        // The Thunder Jolt ball's two states and the crawler's one.
+        articles: &[
+            (ItemKind::KirbyPikachuTJoltGround, it_pikachu::KIRBY_BALL_SLOT, 2),
+            (ItemKind::KirbyPikachuTJoltAir, it_pikachu::KIRBY_CRAWLER_SLOT, 1),
+        ],
+    },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Pichu,
+        file: "PlKbCpPc.dat",
+        symbol: "ftDataKirbyCopyPichu",
+        articles: &[
+            (ItemKind::KirbyPichuTJoltGround, it_pikachu::KIRBY_BALL_SLOT, 2),
+            (ItemKind::KirbyPichuTJoltAir, it_pikachu::KIRBY_CRAWLER_SLOT, 1),
+        ],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -216,6 +239,14 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
             &it_mewtwo::shadow_ball::ARTICLE_STATES,
             it_mewtwo::shadow_ball::SPECIAL_ATTRIBUTES,
         )),
+        // The Thunder Jolt ball's four words, the crawler's none (as
+        // ftPk_Init_OnLoad registers Pikachu's own).
+        ItemKind::KirbyPikachuTJoltGround | ItemKind::KirbyPichuTJoltGround => {
+            Some((&it_pikachu::jolt::BALL_ARTICLE_STATES, 4))
+        }
+        ItemKind::KirbyPikachuTJoltAir | ItemKind::KirbyPichuTJoltAir => {
+            Some((&it_pikachu::jolt::CRAWLER_ARTICLE_STATES, 0))
+        }
         _ => None,
     }
 }
@@ -246,6 +277,13 @@ fn kirby_copy_article_finish(
             assets
                 .read_particle_tracks(archive)
                 .map_err(|e| anyhow::anyhow!("Kirby's Shadow Ball particle track: {e}"))?;
+        }
+        // As Pikachu's own: the Thunder Jolt crawler's joint 6, which the
+        // ball rides and its hitbox follows.
+        ItemKind::KirbyPikachuTJoltAir | ItemKind::KirbyPichuTJoltAir => {
+            assets
+                .read_pose(archive)
+                .map_err(|e| anyhow::anyhow!("Kirby's Thunder Jolt crawler pose: {e}"))?;
         }
         _ => {}
     }

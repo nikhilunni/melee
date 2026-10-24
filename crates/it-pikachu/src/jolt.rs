@@ -28,8 +28,6 @@ const RIDING: u16 = 1;
 /// it_803F71D8's anim_id column: the crawler's one state.
 pub const CRAWLER_ARTICLE_STATES: [i32; 1] = [0];
 
-/// efSync_Spawn 0x4BD on the ball's JObj: its trail.
-const TRAIL: u16 = 0x4BD;
 /// The crawler's joint the ball rides (xBBC_dynamicBoneTable->bones[6]).
 pub const RIDE_JOINT: usize = 6;
 /// itPikachutjoltair_UnkMotion0_Anim: frames a crawler lasts on a surface.
@@ -138,7 +136,7 @@ impl<O: crate::Owner> ItemLogic for ThunderJoltBall<O> {
         state.frames = 0;
         state.previous_position = spawn.position;
         state.normal = Vec3::ZERO;
-        set_up_ball(item, assets);
+        set_up_ball::<O>(item, assets);
     }
     /// it_2725_Logic106_DmgDealt: the crawler lets go, the trail goes.
     fn damage_dealt(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
@@ -179,8 +177,8 @@ impl<O: crate::Owner> ItemLogic for ThunderJoltBall<O> {
 
 /// it_802B3554 (802B3554): not grabbable, shown, state 0, the flight's
 /// angle (the attribute facing right, pi plus its size facing left, in
-/// double), and the trail.
-fn set_up_ball(item: &mut ItemCore, assets: &ItemAssets) {
+/// double), and the owner's trail (efSync_Spawn on the ball's JObj).
+fn set_up_ball<O: crate::Owner>(item: &mut ItemCore, assets: &ItemAssets) {
     item.grabbable = false;
     item.held = false;
     item.hidden = false;
@@ -194,7 +192,7 @@ fn set_up_ball(item: &mut ItemCore, assets: &ItemAssets) {
     let state = jolt(item);
     state.angle = angle;
     state.trail = true;
-    item.events.push(ItemEvent::OwnEffect { id: TRAIL });
+    item.events.push(ItemEvent::OwnEffect { id: O::TRAIL });
 }
 
 /// The ball's events that end it: the crawler lets go (it_802B43B0) and

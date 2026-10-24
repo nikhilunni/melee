@@ -954,3 +954,30 @@ stage = "FinalDestination"
 players = ["Mario", "Yoshi"]
 stocks = 4
 seed = 920403811
+
+[[boundary]]
+name = "start_fd_kirby_pikachu4"
+cold = "start_fd_kirby_pikachu4_cold"
+savestate = "harness/roms/start_fd_kirby_pikachu4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Pikachu"]
+stocks = 4
+seed = 2873549982
+
+[[boundary]]
+name = "start_fd_kirby_pichu4"
+cold = "start_fd_kirby_pichu4_cold"
+savestate = "harness/roms/start_fd_kirby_pichu4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Pichu"]
+stocks = 4
+seed = 2873549982
+
+[[boundary]]
+name = "start_fd_kirby_peach4"
+cold = "start_fd_kirby_peach4_cold"
+savestate = "harness/roms/start_fd_kirby_peach4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Peach"]
+stocks = 4
+seed = 2873549982

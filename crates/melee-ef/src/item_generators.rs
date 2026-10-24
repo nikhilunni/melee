@@ -71,6 +71,14 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             add_appsrt: false,
             scaled: false,
         },
+        // efalt.c:450-453: Kirby's copied Thunder Jolt ball's trail,
+        // hsd_8039EFAC(0, 0x24, 0x8CA0, jobj).
+        0x4AD => ItemGenerators {
+            bank: 36,
+            kinds: &[0x8CA0],
+            add_appsrt: false,
+            scaled: false,
+        },
         // efsync.c:485-493: efLib_CreateGenerator_Attach_Scale(0x6E / 0x1C8
         // / 0x166): Din's Fire flying, bursting, and its explosion.
         0x4F8..=0x4FA => ItemGenerators {

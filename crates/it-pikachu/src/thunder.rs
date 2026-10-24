@@ -90,7 +90,7 @@ static STATES: [ItemStateRow; 3] = [
     },
 ];
 
-impl<O: crate::Owner> ItemLogic for ThunderBolt<O> {
+impl<O: crate::ThunderOwner> ItemLogic for ThunderBolt<O> {
     const KIND: ItemKind = O::THUNDER;
     const STATES: &'static [ItemStateRow] = &STATES;
     fn pickup_possible(_item: &ItemCore) -> bool {

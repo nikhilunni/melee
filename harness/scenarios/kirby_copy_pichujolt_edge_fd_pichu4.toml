@@ -1,0 +1,31 @@
+# KIRBY directed witness from start_fd_kirby_pichu4 (Kirby runs to x=51 beside Pichu at +60 and swallows it): the copied Thunder Jolt (Pichu's) off the edge. Kirby runs right and jolts as he reaches the stage's edge: the slide takes him off it into the aerial row (ftKb_PkSpecialN_Coll), which ends in the air.
+name = "kirby_copy_pichujolt_edge_fd_pichu4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_pichu4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 428, port = 0, buttons = {  }, raw = {  } },
+  { frame = 428, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 430, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Pichu"
+controller = "scripted"

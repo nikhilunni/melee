@@ -577,6 +577,7 @@ dependencies = [
  "ft-mario-family",
  "ft-mars-family",
  "ft-mewtwo-family",
+ "ft-pikachu-family",
  "ft-purin-family",
  "ft-samus-family",
  "gekko-math",

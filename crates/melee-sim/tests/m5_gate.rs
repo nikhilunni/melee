@@ -2801,6 +2801,16 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_shadowball_hit_fd_mewtwo4", 1000),
     // A jab in the loop whose draw takes the ability.
     ("kirby_copy_shadowball_lost_fd_mewtwo4", 620),
+    // The copied Thunder Jolt (ftkirbyspecialpikachu.c over
+    // ft_pikachu_family's states, boundaries `start_fd_kirby_pikachu4` and
+    // `start_fd_kirby_pichu4`, Kirby's ball and crawler with EfKbPk.dat's
+    // trail): a jolt into the fighter, one along the floor, aerial jolts
+    // landing in the grounded row, a slide off the edge into the aerial row
+    // ending in Fall, and a jab in the jolt before a taunt drops the ability.
+    ("kirby_copy_thunderjolt_fd_pikachu4", 900),
+    ("kirby_copy_pichujolt_fd_pichu4", 900),
+    ("kirby_copy_pichujolt_edge_fd_pichu4", 700),
+    ("kirby_copy_thunderjolt_lost_fd_pikachu4", 760),
 ];
 
 #[test]

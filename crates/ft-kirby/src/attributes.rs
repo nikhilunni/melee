@@ -4,6 +4,7 @@
 //! and action ids, `lfs` for the impulses (ftCo_800D74A4).
 use ft_captain_family::attributes::FalconPunchAttributes;
 use ft_mars_family::attributes::ShieldBreakerAttributes;
+use ft_pikachu_family::attributes::ThunderJoltAttributes;
 use ft_purin_family::RolloutAttributes;
 use hsd_archive::{Archive, Reader};
 use hsd_types::Vec2;
@@ -48,6 +49,10 @@ pub struct KirbyAttributes {
     pub fox_blaster: BlasterAttributes,
     /// +244..+268 (`specialn_fc_*`): the copied Falco Blaster.
     pub falco_blaster: BlasterAttributes,
+    /// +1C0..+1DC (`specialn_pk_*`): the copied Thunder Jolt.
+    pub pikachu_thunder_jolt: ThunderJoltAttributes,
+    /// +1DC..+1F8 (`specialn_pc_*`): the copied Thunder Jolt, Pichu's.
+    pub pichu_thunder_jolt: ThunderJoltAttributes,
     /// +35C..+370 (`ms`): the copied Shield Breaker.
     pub marth_shield_breaker: ShieldBreakerAttributes,
     /// +370..+384 (`fe`): the copied Flare Blade.
@@ -282,6 +287,8 @@ impl KirbyAttributes {
                 punch_speed: r.f32(0x198)?,
                 landing_lag: r.f32(0x19C)?,
             },
+            pikachu_thunder_jolt: ThunderJoltAttributes::read(&r, 0x1C0)?,
+            pichu_thunder_jolt: ThunderJoltAttributes::read(&r, 0x1DC)?,
             falcon_punch: FalconPunchAttributes::read(Reader::new(r.slice(0x1F8, 0x14)?))?,
             fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,
             falco_blaster: BlasterAttributes::read(Reader::new(r.slice(0x244, 0x24)?))?,

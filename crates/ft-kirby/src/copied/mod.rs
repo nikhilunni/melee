@@ -19,6 +19,7 @@ pub mod fireball;
 pub mod donkey;
 pub mod mewtwo;
 pub mod samus;
+pub mod thunder_jolt;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -66,7 +67,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Nana: NULL (a swallowed Nana gives Popo's ability).
     CopiedNeutral::Inhale,
     // Pikachu
-    unported("ftKb_SpecialNPk_800F9FD4", "ftKb_SpecialNPk_800FA064"),
+    CopiedNeutral::Ported(thunder_jolt::enter),
     // Samus
     CopiedNeutral::Ported(samus::enter),
     // Yoshi
@@ -88,7 +89,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Falco: Fox's entries.
     CopiedNeutral::Ported(blaster::enter::<blaster::KirbyFalco>),
     // Pichu: Pikachu's entries.
-    unported("ftKb_SpecialNPk_800F9FD4", "ftKb_SpecialNPk_800FA064"),
+    CopiedNeutral::Ported(thunder_jolt::enter),
     // Mr. Game & Watch
     CopiedNeutral::Ported(chef::enter),
     // Ganondorf: Captain Falcon's entries.
