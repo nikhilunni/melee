@@ -893,7 +893,7 @@ pub(super) fn hold_floor_lost(
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(Some(match hold {
         LostHold::Catch => [Some(player), Some(other)],
-        LostHold::Throw => [Some(other), Some(player)],
+        LostHold::Throw | LostHold::Klaw => [Some(other), Some(player)],
     }))
 }
 

@@ -363,6 +363,10 @@ pub enum LostHold {
     /// holds its victim, ftCo_800DC920 and ftCo_Fall_Enter on the victim;
     /// then ftCo_Fall_Enter on the thrower.
     Throw,
+    /// ftKp_SpecialS_801332C4 / 80133398 / 80133484 (the Koopa Klaw's
+    /// grounded hold, bite, wait and throws): ftCommon_8007D5D4 on Bowser
+    /// first, then as `Throw`.
+    Klaw,
 }
 
 /// fn_800DA004 / fn_800DA440 / fn_800DD684 on the pair, `captured` the
@@ -377,10 +381,13 @@ pub fn part_on_lost_floor(
     map: &mut melee_mp::CollMap,
 ) -> Result<()> {
     use melee_types::CommonMotionState::Fall;
+    if hold == LostHold::Klaw {
+        captor.leave_ground();
+    }
     let Some((captured, captured_assets)) = captured else {
-        assert_eq!(
+        assert_ne!(
             hold,
-            LostHold::Throw,
+            LostHold::Catch,
             "fn_800DA004 / fn_800DA440 read victim_gobj without a NULL test"
         );
         return captor.change_motion_state(Fall.into(), captor_assets);
@@ -399,7 +406,7 @@ pub fn part_on_lost_floor(
             captor.change_motion_state(Fall.into(), captor_assets)?;
             captured.change_motion_state(Fall.into(), captured_assets)
         }
-        LostHold::Throw => {
+        LostHold::Throw | LostHold::Klaw => {
             captured.change_motion_state(Fall.into(), captured_assets)?;
             captor.change_motion_state(Fall.into(), captor_assets)
         }

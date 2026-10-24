@@ -521,17 +521,16 @@ fn start_air_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()>
 /// The grounded hold rows' collision (ftKp_SpecialSHit_Coll 801343D8,
 /// ftKp_SpecialSWait_Coll 80134428, ftKp_SpecialSEndF/B_Coll 80134478 /
 /// 801344A0): ft_800827A0 stops at the floor's edge, so the floor is lost
-/// only when it goes from under Bowser. Then he leaves the ground, the
-/// victim is set down (ftCo_800DC920) and both fall
-/// (ftKp_SpecialS_801332C4 / 80133398 / 80133484), which no stage in
-/// scope reaches while he holds still.
+/// only when it goes from under Bowser (a Stadium windmill blade turning
+/// into a wall). Then ft_800841B8 runs ftKp_SpecialS_801332C4 / 80133398 /
+/// 80133484: Bowser leaves the ground (ftCommon_8007D5D4), the victim is set
+/// down (ftCo_800DC920) and falls, then Bowser falls; the scene parts the
+/// pair after this Map proc (`LostHold::Klaw`).
 fn held_ground_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
-    if common::stays_on_edge(f, &mut p) {
-        return Ok(());
+    if !common::stays_on_edge(f, &mut p) {
+        f.core.combat.hold_floor_lost = Some(melee_ft::fighter::grab_damage::LostHold::Klaw);
     }
-    unimplemented!(
-        "ftKp_SpecialS_801332C4 (ftkoopaspecials.c:214): the Koopa Klaw's holder loses its floor"
-    )
+    Ok(())
 }
 
 /// ftKp_SpecialAirSHit_Coll (80134400): landing (ft_80081D0C) continues in

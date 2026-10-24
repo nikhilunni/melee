@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 564] = [
+const MATRIX_WITNESSES: [(&str, usize); 567] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1931,6 +1931,13 @@ const MATRIX_WITNESSES: [(&str, usize); 564] = [
     ("catchwait_windmill_wall_ps_mewtwo_younglink4", 5330),
     ("throwhi_windmill_wall_ps_mewtwo_younglink4", 5330),
     ("throwf_windmill_wall_ps_mewtwo_younglink4", 5330),
+    // The Koopa Klaw on such a blade (5440): SpecialSWait's
+    // ftKp_SpecialS_80133398 and SpecialSEndF's 80133484 before the release
+    // (Bowser off the ground, Ness set down and falling, then Bowser) and
+    // after it (Bowser alone).
+    ("koopa_klaw_windmill_wall_ps_bowser_ness4", 5560),
+    ("koopa_klaw_throw_held_windmill_wall_ps_bowser_ness4", 5560),
+    ("koopa_klaw_throw_windmill_wall_ps_bowser_ness4", 5560),
 ];
 
 #[test]
