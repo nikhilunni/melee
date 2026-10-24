@@ -579,8 +579,17 @@ fn detach_xrot(victim: &mut FighterCore, va: &FighterAssets) -> Vec3 {
     let xrot =
         victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
     let saved_translation = victim.skeleton.translation(xrot);
+    zero_rotation(victim, xrot);
+    saved_translation
+}
+
+/// ftParts_JObjSetRotation (ftparts.c:987) with a zero rotation: the joint
+/// becomes an Euler one (HSD_JObjClearFlags(JOBJ_USE_QUATERNION)), so a
+/// quaternion XRotN (Peach's) is the identity rather than a zero
+/// quaternion's NaN matrix.
+pub(super) fn zero_rotation(victim: &mut FighterCore, joint: hsd_anim::jobj::JObjId) {
     victim.skeleton.set_rotation(
-        xrot,
+        joint,
         &hsd_anim::quat::Quaternion {
             x: 0.0,
             y: 0.0,
@@ -588,7 +597,9 @@ fn detach_xrot(victim: &mut FighterCore, va: &FighterAssets) -> Vec3 {
             w: 0.0,
         },
     );
-    saved_translation
+    victim
+        .skeleton
+        .clear_flags(joint, hsd_anim::jobj::JOBJ_USE_QUATERNION);
 }
 fn hip_translation(victim: &FighterCore, va: &FighterAssets) -> Vec3 {
     let hip =

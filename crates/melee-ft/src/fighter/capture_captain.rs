@@ -30,15 +30,7 @@ pub fn attach(
         [usize::from(attached_assets.parts.joint(FtPart::XRotN).expect("XRotN"))]
     .joint;
     let saved_translation = attached.skeleton.translation(xrot);
-    attached.skeleton.set_rotation(
-        xrot,
-        &hsd_anim::quat::Quaternion {
-            x: 0.0,
-            y: 0.0,
-            z: 0.0,
-            w: 0.0,
-        },
-    );
+    grab_throw::zero_rotation(attached, xrot);
     let hip = attached.animation.parts
         [usize::from(attached_assets.parts.joint(FtPart::HipN).expect("HipN"))]
     .joint;
