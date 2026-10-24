@@ -76,17 +76,17 @@ impl PairCursor {
         None
     }
 }
-/// ftColl_80078C70: the first colliding hurt capsule wins in data-table order.
-/// Callers that do not handle an invincible capsule use this form.
+/// The first colliding hurt capsule in data-table order, without its state.
+/// The game's caller is the grab test (ftColl_80078A2C, 0x80078B7C): a catch
+/// box contacts only an enabled capsule (lbColl_80007ECC), so the state is
+/// always Normal there; any other hit takes the contact of an invincible
+/// capsule as `first_hurt_contact` does.
 pub fn first_contact<C: Collider>(
     victim: &mut C,
     hit: &HitCapsule,
     attacker_scale: f32,
 ) -> Option<(Contact, HurtHeight)> {
-    let (contact, height, status) = first_hurt_contact(victim, hit, attacker_scale)?;
-    if status == melee_types::combat::HurtStatus::Invincible {
-        unimplemented!("ftColl_80078C70: invincible capsule contact")
-    }
+    let (contact, height, _) = first_hurt_contact(victim, hit, attacker_scale)?;
     Some((contact, height))
 }
 /// ftColl_80078C70: the first colliding non-intangible hurt capsule in

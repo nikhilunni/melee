@@ -42,7 +42,9 @@ impl ThrownHitbox {
                 self.previous_position = self.position;
                 self.position = part_position(tree, animation, self.bone, self.offset);
             }
-            _ => unimplemented!("ft_07C1.c:71: unsupported HitCapsule state {}", self.state),
+            // ft_8007C224's `default: break` (ft_07C1.c:71). Nothing writes
+            // another state: ft_8007C17C sets 1 and this switch 2 and 3.
+            _ => {}
         }
     }
 }

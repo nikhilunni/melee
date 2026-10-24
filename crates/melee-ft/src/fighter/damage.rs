@@ -1976,7 +1976,8 @@ impl FighterCore {
         damage
     }
 
-    /// ftColl_80078C70: first colliding hurt capsule wins, in ftData order.
+    /// ftColl_80078A2C's capsule loop: the first colliding hurt capsule
+    /// wins, in ftData order.
     pub(super) fn contact_with_hurtboxes(
         &mut self,
         hit: &HitCapsule,

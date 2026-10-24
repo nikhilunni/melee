@@ -26,28 +26,21 @@ struct Entry {
     priority: u8,
     /// Fighter_804D653C_t.unk5: nonzero selects the secondary slot (x488).
     secondary: bool,
-    program: Program,
-}
-
-/// Where an entry's decoded program lives in the table's shared storage.
-#[derive(Clone, Copy, Debug)]
-enum Program {
     /// `ColorOverlayTable::commands[start..end]`; gotos are program-relative.
-    Decoded { start: u32, end: u32 },
-    /// Index into `ColorOverlayTable::errors`: the program does not decode,
-    /// which only matters once something installs it.
-    Undecodable(u32),
+    start: u32,
+    end: u32,
 }
 
 /// The decoded color table; ids without a program (id 0) are idle.
 ///
 /// Programs share one command buffer and entries are plain data, so the
-/// whole table drops as two vectors wherever the fighter's assets are freed.
+/// whole table drops as one vector wherever the fighter's assets are freed.
+/// Every program of PlCo.dat's table decodes (docs/COVERAGE_AUDIT.md, wave
+/// 13), so one that did not would fail the load.
 #[derive(Clone, Debug)]
 pub struct ColorOverlayTable {
     entries: [Option<Entry>; TABLE_LEN as usize],
     commands: Vec<OverlayCommand>,
-    errors: Vec<String>,
 }
 impl ColorOverlayTable {
     pub fn read(archive: &Archive, table: u32) -> super::assets::Result<Self> {
@@ -55,7 +48,6 @@ impl ColorOverlayTable {
         let mut overlays = Self {
             entries: [None; TABLE_LEN as usize],
             commands: Vec::new(),
-            errors: Vec::new(),
         };
         for id in 0..TABLE_LEN {
             let entry = table + id * 8;
@@ -64,24 +56,15 @@ impl ColorOverlayTable {
             };
             let priority = r.u8(entry + 4)?;
             let secondary = r.u8(entry + 5)? != 0;
-            let program = match super::smash::read_overlay(archive, script) {
-                Ok(program) => {
-                    let start = overlays.commands.len() as u32;
-                    overlays.commands.extend(program);
-                    Program::Decoded {
-                        start,
-                        end: overlays.commands.len() as u32,
-                    }
-                }
-                Err(error) => {
-                    overlays.errors.push(error.to_string());
-                    Program::Undecodable(overlays.errors.len() as u32 - 1)
-                }
-            };
+            let program = super::smash::read_overlay(archive, script)
+                .map_err(|error| format!("color animation {id}: {error}"))?;
+            let start = overlays.commands.len() as u32;
+            overlays.commands.extend(program);
             overlays.entries[id as usize] = Some(Entry {
                 priority,
                 secondary,
-                program,
+                start,
+                end: overlays.commands.len() as u32,
             });
         }
         Ok(overlays)
@@ -98,12 +81,8 @@ impl ColorOverlayTable {
             .map_or(0, |e| e.priority)
     }
     pub fn program(&self, id: u8) -> &[OverlayCommand] {
-        match self.entry(id).program {
-            Program::Decoded { start, end } => &self.commands[start as usize..end as usize],
-            Program::Undecodable(error) => {
-                unimplemented!("color animation {id}: {}", self.errors[error as usize])
-            }
-        }
+        let entry = self.entry(id);
+        &self.commands[entry.start as usize..entry.end as usize]
     }
 }
 
