@@ -58,7 +58,8 @@ pub struct InitialState {
     pub(crate) items: Box<melee_it::ItemPool>,
     /// Posed articles whose bones effects follow (crate::article_pose).
     pub(crate) article_poses: Box<crate::article_pose::ArticlePoses>,
-    pub(crate) stock_displays: [Option<melee_if::StockDisplay>; 2],
+    /// Each player's stock icons, in player order.
+    pub(crate) stock_displays: Vec<Option<melee_if::StockDisplay>>,
     pub(crate) spawn_counter: melee_ft::fighter::SpawnCounter,
     pub(crate) assets: std::sync::Arc<Assets>,
     /// Every fighter GObj in fighter-list order (`Setup::roster`); a
@@ -452,7 +453,12 @@ impl InitialState {
             &setup.slippi,
         )?;
         stage.set_frozen_stages(setup.slippi.frozen_stages);
-        crate::frame::validate_saved_resume(&resume, &stage, fighters.len())?;
+        crate::frame::validate_saved_resume(
+            &resume,
+            &stage,
+            fighters.iter().filter(|f| !f.0.player.secondary).count(),
+            fighters.len(),
+        )?;
         if matches!(stage, crate::scene_stage::SceneStage::Story(_)) {
             for (&id, animation) in &mut stage_animations {
                 let bindings = &assets.stage_desc.models[id as usize].joint_mappings;
@@ -477,33 +483,41 @@ impl InitialState {
             None
         };
         // ifStock_804A1378: import only the saved HUD boundary, never later trace rows.
+        let players: Vec<(u8, u8)> = (0..fighters.iter().filter(|f| !f.0.player.secondary).count())
+            .map(|player| {
+                let own = crate::scene_fighter::player_fighter_index(&fighters, player);
+                crate::scene_fighter::with_fighter!(&fighters[own], |f| (
+                    f.player.stocks,
+                    f.player.id
+                ))
+            })
+            .collect();
         let stock_displays = if match_start {
             stock::create(
                 &assets.interface,
-                std::array::from_fn(|slot| {
-                    let own = crate::scene_fighter::player_fighter_index(&fighters, slot);
-                    crate::scene_fighter::with_fighter!(&fighters[own], |f| f.player.stocks)
-                }),
-                std::array::from_fn(|slot| {
-                    let own = crate::scene_fighter::player_fighter_index(&fighters, slot);
-                    crate::scene_fighter::with_fighter!(&fighters[own], |f| f.player.id)
-                }),
+                &players.iter().map(|p| p.0).collect::<Vec<_>>(),
+                &players.iter().map(|p| p.1).collect::<Vec<_>>(),
             )?
         } else {
-            std::array::from_fn(|slot| {
-                let player = saved.bytes(0x804A_1378 + 8 + slot as u32 * 0x50, 0x50);
-                let state = saved.bytes(0x804A_1378 + 0x204 + slot as u32 * 0x54, 12);
-                let root = vector(saved.bytes(word(player, 4) + 0x38, 12), 0);
-                let icon_positions = std::array::from_fn(|i| {
-                    let local = vector(saved.bytes(word(player, 8 + i * 4) + 0x38, 12), 0);
-                    Vec3::new(local.x + root.x, local.y + root.y, local.z + root.z)
-                });
-                Some(melee_if::StockDisplay {
-                    icon_positions,
-                    animation_frames: state[5..10].try_into().unwrap(),
-                    animate_losses: state[2] != 0,
+            // ifStock_804A1378 keeps one record per port.
+            players
+                .iter()
+                .map(|&(_, port)| {
+                    let slot = u32::from(port);
+                    let player = saved.bytes(0x804A_1378 + 8 + slot * 0x50, 0x50);
+                    let state = saved.bytes(0x804A_1378 + 0x204 + slot * 0x54, 12);
+                    let root = vector(saved.bytes(word(player, 4) + 0x38, 12), 0);
+                    let icon_positions = std::array::from_fn(|i| {
+                        let local = vector(saved.bytes(word(player, 8 + i * 4) + 0x38, 12), 0);
+                        Vec3::new(local.x + root.x, local.y + root.y, local.z + root.z)
+                    });
+                    Some(melee_if::StockDisplay {
+                        icon_positions,
+                        animation_frames: state[5..10].try_into().unwrap(),
+                        animate_losses: state[2] != 0,
+                    })
                 })
-            })
+                .collect()
         };
         let spawn_counter = melee_ft::fighter::SpawnCounter(
             fighters

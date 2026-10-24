@@ -107,12 +107,12 @@ fn clamp_to_bounds(position: &mut Vec3, stage: &StageCamera) {
 /// Camera_8002958C (0x8002958C): the rectangle framing every counted
 /// subject, each widened by its extents times the tracking ratio.
 pub(crate) fn frame_subjects(
-    subjects: &mut [&mut Subject],
+    subjects: &mut [Option<&mut Subject>],
     transform: &Transform,
     stage: &StageCamera,
 ) -> Bounds {
     let mut count = 0;
-    for subject in subjects.iter_mut() {
+    for subject in subjects.iter_mut().flatten() {
         if subject.is_framed(stage) {
             count += 1;
         }
@@ -123,7 +123,7 @@ pub(crate) fn frame_subjects(
         let weight = TRACKING_WEIGHTS.get(count as usize).copied().unwrap_or(1.0);
         let multiplier = weight * stage.track_ratio;
         count = 0;
-        for subject in subjects.iter_mut() {
+        for subject in subjects.iter_mut().flatten() {
             if !subject.is_framed(stage) {
                 continue;
             }
@@ -474,7 +474,7 @@ pub(crate) fn keep_view_in_bounds(transform: &mut Transform, stage: &StageCamera
 /// Camera_8002B3D4's `update_transform`: frame, blend the field of view, fit
 /// the depth and aim.
 fn update_transform(
-    subjects: &mut [&mut Subject],
+    subjects: &mut [Option<&mut Subject>],
     transform: &mut Transform,
     stage: &StageCamera,
     lock_depth: bool,
@@ -500,10 +500,14 @@ fn update_transform(
 
 impl GameCamera {
     /// Camera_8002B3D4 (0x8002B3D4): one standard-mode tick.
-    pub fn update_standard(&mut self, subjects: &mut [&mut Subject], stage: &StageCamera) {
+    pub fn update_standard(
+        &mut self,
+        subjects: &mut [Option<&mut Subject>],
+        stage: &StageCamera,
+    ) {
         // Camera_80030DF8.
         self.translation = hsd_types::Vec2::ZERO;
-        for subject in subjects.iter_mut() {
+        for subject in subjects.iter_mut().flatten() {
             if subject.is_framed(stage) {
                 subject.smooth_extents();
             }
@@ -544,7 +548,11 @@ impl GameCamera {
 
     /// Camera_8002F3AC (0x8002F3AC), at match setup: one update, then jump
     /// straight to the targets.
-    pub fn snap_standard(&mut self, subjects: &mut [&mut Subject], stage: &StageCamera) {
+    pub fn snap_standard(
+        &mut self,
+        subjects: &mut [Option<&mut Subject>],
+        stage: &StageCamera,
+    ) {
         self.update_standard(subjects, stage);
         for t in [&mut self.transform, &mut self.transform_copy] {
             t.position = t.target_position;

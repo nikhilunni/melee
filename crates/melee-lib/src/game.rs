@@ -11,7 +11,7 @@ use std::{
 pub struct GameAssets {
     pub(crate) inner: Arc<Assets>,
     stage: Stage,
-    characters: [Character; 2],
+    characters: Vec<Character>,
 }
 impl GameAssets {
     pub fn load(directory: impl AsRef<Path>, config: &MatchConfig) -> Result<Self, StartError> {
@@ -26,7 +26,7 @@ impl GameAssets {
         Ok(Self {
             inner: Arc::new(inner),
             stage: config.stage,
-            characters: config.players.each_ref().map(|p| p.character),
+            characters: config.players.iter().map(|p| p.character).collect(),
         })
     }
     /// Every file [`GameAssets::load_from`] reads for this configuration.
@@ -36,7 +36,11 @@ impl GameAssets {
     }
     fn compatible(&self, config: &MatchConfig) -> bool {
         self.stage == config.stage
-            && self.characters == config.players.each_ref().map(|p| p.character)
+            && self
+                .characters
+                .iter()
+                .copied()
+                .eq(config.players.iter().map(|p| p.character))
     }
 }
 
@@ -86,22 +90,24 @@ pub struct Match {
 impl Match {
     pub(crate) fn from_import(engine: Simulation, setup: &crate::setup::Setup) -> Self {
         let stage = Stage::from_name(setup.stage.name).expect("validated imported stage");
-        let players = std::array::from_fn(|i| {
-            let f = &engine.state().player_fighter(i).0;
-            PlayerConfig {
-                port: Port::from_index(f.player.id),
-                character: Character::from_kind(f.kind),
-                costume: Costume(f.player.costume),
-                controller_fix: engine.state().controller_fixes[usize::from(f.player.id)],
-            }
-        });
+        let players: Vec<PlayerConfig> = (0..setup.fighters.len())
+            .map(|i| {
+                let f = &engine.state().player_fighter(i).0;
+                PlayerConfig {
+                    port: Port::from_index(f.player.id),
+                    character: Character::from_kind(f.kind),
+                    costume: Costume(f.player.costume),
+                    controller_fix: engine.state().controller_fixes[usize::from(f.player.id)],
+                }
+            })
+            .collect();
         let config = MatchConfig::versus(stage, players)
             .with_stocks(setup.fighters[0].stocks)
             .with_seed(Seed(setup.seed.unwrap_or(0)));
         let assets = GameAssets {
             inner: Arc::clone(&engine.state().assets),
             stage,
-            characters: config.players.each_ref().map(|p| p.character),
+            characters: config.players.iter().map(|p| p.character).collect(),
         };
         Self {
             engine,
@@ -231,29 +237,23 @@ impl Match {
             return MatchStatus::Faulted;
         }
         let state = self.engine.state();
-        let fighters = [state.player_fighter(0), state.player_fighter(1)];
+        let fighters = || (0..self.config.players.len())
+            .map(|player| &**state.player_fighter(player).0);
+        let port = |f: &melee_ft::fighter::Fighter| Port::from_index(f.player.id);
         if self.engine.state().clock.timed_out() {
-            // The results screen ranks a timed-out stock match by stocks.
-            let stocks = fighters.each_ref().map(|f| f.0.player.stocks);
-            return MatchStatus::Finished(match stocks[0].cmp(&stocks[1]) {
-                std::cmp::Ordering::Greater => {
-                    MatchOutcome::Winner(Port::from_index(fighters[0].0.player.id))
-                }
-                std::cmp::Ordering::Less => {
-                    MatchOutcome::Winner(Port::from_index(fighters[1].0.player.id))
-                }
-                std::cmp::Ordering::Equal => MatchOutcome::SuddenDeath,
+            // The results screen ranks a timed-out stock match by stocks;
+            // a tie for the most goes to Sudden Death.
+            let most = fighters().map(|f| f.player.stocks).max().unwrap_or(0);
+            let mut leaders = fighters().filter(|f| f.player.stocks == most);
+            return MatchStatus::Finished(match (leaders.next(), leaders.next()) {
+                (Some(winner), None) => MatchOutcome::Winner(port(winner)),
+                _ => MatchOutcome::SuddenDeath,
             });
         }
-        let alive = fighters.each_ref().map(|f| f.0.player.stocks > 0);
-        match alive {
-            [true, false] => MatchStatus::Finished(MatchOutcome::Winner(Port::from_index(
-                fighters[0].0.player.id,
-            ))),
-            [false, true] => MatchStatus::Finished(MatchOutcome::Winner(Port::from_index(
-                fighters[1].0.player.id,
-            ))),
-            [false, false] => MatchStatus::Finished(MatchOutcome::Draw),
+        let mut alive = fighters().filter(|f| f.player.stocks > 0);
+        match (alive.next(), alive.next()) {
+            (Some(winner), None) => MatchStatus::Finished(MatchOutcome::Winner(port(winner))),
+            (None, _) => MatchStatus::Finished(MatchOutcome::Draw),
             _ if state.fighters.iter().any(|f| f.0.status.input_frozen) => MatchStatus::Startup,
             _ => MatchStatus::Playing,
         }

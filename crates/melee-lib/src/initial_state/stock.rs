@@ -17,13 +17,13 @@ use std::path::Path;
 /// plays.
 pub(super) fn create(
     archive: &Archive,
-    stocks: [u8; 2],
-    ports: [u8; 2],
-) -> Result<[Option<StockDisplay>; 2]> {
+    stocks: &[u8],
+    ports: &[u8],
+) -> Result<Vec<Option<StockDisplay>>> {
     let layout = model::read_scene_joint(archive, "ScInfDmg_scene_data")?;
     let (mut layout_tree, layout_root) = load_joint_tree(archive, &layout)?;
     let (joint, animation) = model::read_dynamic_model_animation(archive, "Stc_scemdls", 0, 0)?;
-    let mut displays = [None, None];
+    let mut displays = vec![None; stocks.len()];
     for (player, display) in displays.iter_mut().enumerate() {
         // gm_SetupRulesDefaults selects four HUD slots even with two fighters;
         // ifAll_802F343C(4) uses descendants 2..5, indexed by player slot.
@@ -84,9 +84,9 @@ mod tests {
             return;
         }
         let saved = InitialState::from_savestate_traces(&scenario).unwrap();
-        let stocks =
+        let stocks: [u8; 2] =
             std::array::from_fn(|slot| with_fighter!(&saved.fighters[slot], |f| f.player.stocks));
-        let created = create(&saved.assets.interface, stocks, [0, 1]).unwrap();
+        let created = create(&saved.assets.interface, &stocks, &[0, 1]).unwrap();
         for (slot, (actual, expected)) in created.iter().zip(&saved.stock_displays).enumerate() {
             let actual = actual.as_ref().unwrap();
             let expected = expected.as_ref().unwrap();

@@ -17,7 +17,7 @@ impl PlayerSetup {
 }
 #[derive(Clone)]
 pub struct Setup {
-    pub fighters: [PlayerSetup; 2],
+    pub fighters: Vec<PlayerSetup>,
     pub stage: &'static crate::scene_stage::StageDescriptor,
     pub seed: Option<u32>,
     pub all_characters_unlocked: Option<bool>,

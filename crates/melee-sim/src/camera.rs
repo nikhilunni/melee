@@ -161,7 +161,7 @@ pub fn isolated_diff(samples: &[CameraSample], stage: &StageCamera, limit: usize
                 ..new.clone()
             })
             .collect();
-        let mut refs: Vec<&mut Subject> = subjects.iter_mut().collect();
+        let mut refs: Vec<Option<&mut Subject>> = subjects.iter_mut().map(Some).collect();
         camera.update_standard(&mut refs, stage);
         for line in camera_mismatches(&camera, &subjects, &after.camera, &after.subjects) {
             report.push(format!("frame {}: {line}", after.frame));

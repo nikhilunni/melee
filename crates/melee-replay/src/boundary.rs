@@ -46,23 +46,23 @@ impl Boundary {
     /// The match this boundary starts: its costumes, the unlocked roster
     /// every boundary is recorded with, and the savestate's seed.
     pub fn config(&self) -> Result<MatchConfig, String> {
-        let [first, second] = self.players.as_slice() else {
-            return Err(format!(
-                "{}: the port runs two-player matches only",
-                self.name
-            ));
-        };
-        let [first_costume, second_costume] = match self.costumes.as_deref() {
-            None => [0, 0],
-            Some(&[a, b]) => [a, b],
+        if !(2..=4).contains(&self.players.len()) {
+            return Err(format!("{}: a match has two to four players", self.name));
+        }
+        let costumes = match self.costumes.as_deref() {
+            None => vec![0; self.players.len()],
+            Some(c) if c.len() == self.players.len() => c.to_vec(),
             Some(_) => return Err(format!("{}: one costume per player", self.name)),
         };
         Config {
             stage: self.stage.clone(),
-            players: [
-                (0, first.clone(), first_costume),
-                (1, second.clone(), second_costume),
-            ],
+            players: self
+                .players
+                .iter()
+                .zip(costumes)
+                .enumerate()
+                .map(|(port, (name, costume))| (port as u8, name.clone(), costume))
+                .collect(),
             stocks: self.stocks,
             all_characters_unlocked: true,
             seed: self.seed,
@@ -125,13 +125,13 @@ mod tests {
     }
 
     #[test]
-    fn three_player_boundaries_are_rejected() {
+    fn five_player_boundaries_are_rejected() {
         let boundary = Boundary {
             name: "b".into(),
             cold: "b_cold".into(),
             savestate: String::new(),
             stage: "FinalDestination".into(),
-            players: vec!["Fox".into(), "Fox".into(), "Fox".into()],
+            players: vec!["Fox".into(); 5],
             stocks: 4,
             seed: 0,
             sudden_death: false,

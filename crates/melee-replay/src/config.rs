@@ -6,7 +6,8 @@ use serde::{Deserialize, Serialize};
 #[serde(deny_unknown_fields)]
 pub struct Config {
     pub(crate) stage: String,
-    pub(crate) players: [(u8, String, u8); 2],
+    /// (port, character, costume) per player, two to four.
+    pub(crate) players: Vec<(u8, String, u8)>,
     pub(crate) stocks: u8,
     pub(crate) all_characters_unlocked: bool,
     pub(crate) seed: u32,
@@ -17,7 +18,7 @@ pub struct Config {
     /// Each player's controller fix (`ControllerFix::name`); absent in
     /// older recordings and when both are off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub(crate) controller_fixes: Option<[String; 2]>,
+    pub(crate) controller_fixes: Option<Vec<String>>,
 }
 
 const CHARACTERS: [(Character, &str); 26] = [
@@ -52,18 +53,22 @@ impl From<&MatchConfig> for Config {
     fn from(config: &MatchConfig) -> Self {
         Self {
             stage: config.stage.name().into(),
-            players: config.players.each_ref().map(|p| {
-                (
-                    p.port as u8,
-                    CHARACTERS
-                        .iter()
-                        .find(|(c, _)| *c == p.character)
-                        .unwrap()
-                        .1
-                        .into(),
-                    p.costume.0,
-                )
-            }),
+            players: config
+                .players
+                .iter()
+                .map(|p| {
+                    (
+                        p.port as u8,
+                        CHARACTERS
+                            .iter()
+                            .find(|(c, _)| *c == p.character)
+                            .unwrap()
+                            .1
+                            .into(),
+                        p.costume.0,
+                    )
+                })
+                .collect(),
             stocks: config.rules.stocks,
             all_characters_unlocked: config.rules.all_characters_unlocked,
             seed: config.seed.0,
@@ -75,8 +80,9 @@ impl From<&MatchConfig> for Config {
                 .then(|| {
                     config
                         .players
-                        .each_ref()
+                        .iter()
                         .map(|p| p.controller_fix.name().to_owned())
+                        .collect()
                 }),
         }
     }
@@ -98,12 +104,17 @@ impl Config {
                 costume: Costume(*costume),
                 controller_fix: match &self.controller_fixes {
                     None => ControllerFix::Off,
-                    Some(names) => ControllerFix::from_name(&names[index])
+                    Some(names) => names
+                        .get(index)
+                        .and_then(|name| ControllerFix::from_name(name))
                         .ok_or("unknown replay controller fix")?,
                 },
             })
         };
-        let mut config = MatchConfig::versus(stage, [player(0)?, player(1)?])
+        let players = (0..self.players.len())
+            .map(player)
+            .collect::<Result<Vec<_>, _>>()?;
+        let mut config = MatchConfig::versus(stage, players)
             .with_stocks(self.stocks)
             .with_seed(Seed(self.seed));
         config.rules.all_characters_unlocked = self.all_characters_unlocked;

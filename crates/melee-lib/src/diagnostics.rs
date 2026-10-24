@@ -124,17 +124,18 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
     fn setup(&self) -> anyhow::Result<Setup> {
         self.validate()?;
         Ok(Setup {
-            fighters: std::array::from_fn(|p| {
-                let f = &self.fighters[p];
-                PlayerSetup {
+            fighters: self
+                .fighters
+                .iter()
+                .map(|f| PlayerSetup {
                     slot: f.slot,
                     descriptor: f.descriptor(),
                     costume: f.costume,
                     stocks: f.stocks,
                     spawn_point: f.spawn_point,
                     controller_fix: f.controller_fix().expect("validated controller fix"),
-                }
-            }),
+                })
+                .collect(),
             stage: stage_descriptor(&self.stage).unwrap(),
             seed: self.seed,
             all_characters_unlocked: self.all_characters_unlocked,

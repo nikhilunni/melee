@@ -399,16 +399,17 @@ impl Default for MatchRules {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MatchConfig {
     pub stage: Stage,
-    pub players: [PlayerConfig; 2],
+    /// Two to four players on ascending ports.
+    pub players: Vec<PlayerConfig>,
     pub rules: MatchRules,
     pub seed: Seed,
 }
 impl MatchConfig {
     /// Deterministic defaults: four stocks, default costumes, and seed zero.
-    pub fn versus(stage: Stage, players: [PlayerConfig; 2]) -> Self {
+    pub fn versus(stage: Stage, players: impl IntoIterator<Item = PlayerConfig>) -> Self {
         Self {
             stage,
-            players,
+            players: players.into_iter().collect(),
             rules: MatchRules::default(),
             seed: Seed::default(),
         }
@@ -422,7 +423,14 @@ impl MatchConfig {
         self
     }
     pub(crate) fn setup(&self) -> Result<Setup, StartError> {
-        if self.players[0].port.index() >= self.players[1].port.index() {
+        if !(2..=4).contains(&self.players.len()) {
+            return Err(StartError::InvalidConfig("a match has two to four players"));
+        }
+        if self
+            .players
+            .windows(2)
+            .any(|pair| pair[0].port.index() >= pair[1].port.index())
+        {
             return Err(StartError::InvalidConfig(
                 "players must occupy distinct ascending ports",
             ));
@@ -446,18 +454,19 @@ impl MatchConfig {
             }
         }
         Ok(Setup {
-            fighters: std::array::from_fn(|p| PlayerSetup {
-                slot: self.players[p].port as u8,
-                descriptor: self.players[p].character.descriptor(),
-                costume: self.players[p].costume.0,
-                spawn_point: -1,
-                stocks: self.rules.stocks,
-                controller_fix: self.players[p].controller_fix,
-            }),
-            stage: self
-                .stage
-                .descriptor()
-                .ok_or(StartError::UnportedStage(self.stage))?,
+            fighters: self
+                .players
+                .iter()
+                .map(|player| PlayerSetup {
+                    slot: player.port as u8,
+                    descriptor: player.character.descriptor(),
+                    costume: player.costume.0,
+                    spawn_point: -1,
+                    stocks: self.rules.stocks,
+                    controller_fix: player.controller_fix,
+                })
+                .collect(),
+            stage: self.stage.descriptor().ok_or(StartError::UnportedStage(self.stage))?,
             seed: Some(self.seed.0),
             all_characters_unlocked: Some(self.rules.all_characters_unlocked),
             time_limit: self.rules.time_limit_seconds,

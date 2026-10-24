@@ -169,6 +169,10 @@ pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<(
     if !awaiting_respawn(&state.fighters[index]) {
         return Ok(());
     }
+    // An eliminated player's fighter sleeps on with its death scratch.
+    if state.fighters[index].status.disabled && !state.fighters[index].player.secondary {
+        return Ok(());
+    }
     let partner = partner_of(state, index);
     if state.fighters[index].player.secondary {
         // The death's countdown ends once (ftCo_800BFD9C); a second
@@ -204,6 +208,12 @@ pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<(
     // the summed position by an ulp.
     with_fighter!(fighter, |f| f.enter_sleep(&assets.fighters[index]))
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    // gm_80167320 (gm_1601.c:3338-3341): a stock match does not revive a
+    // player out of stocks; gm_8016AC44 finds no Versus roster (StartMeleeRules
+    // x58 is NULL) and the fighter sleeps for the rest of the match.
+    if fighter.player.stocks == 0 {
+        return Ok(());
+    }
     let platform = fighter.place_revival(&assets.arena, revival_offsets);
     with_fighter!(fighter, |f| f.revive_at(
         &assets.fighters[index],
@@ -260,6 +270,12 @@ fn complete_partner_death(state: &mut InitialState, index: usize, leader: usize)
     let fighter = &mut fighters[index];
     with_fighter!(fighter, |f| f.enter_sleep(&assets.fighters[index]))
         .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+    // gm_80167320 (gm_1601.c:3338-3341): a stock match does not revive a
+    // player out of stocks; gm_8016AC44 finds no Versus roster (StartMeleeRules
+    // x58 is NULL) and the fighter sleeps for the rest of the match.
+    if fighter.player.stocks == 0 {
+        return Ok(());
+    }
     fighter.place_revival(&assets.arena, revival_offsets);
     Ok(())
 }

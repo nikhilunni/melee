@@ -147,10 +147,11 @@ def main(argv: list[str] | None = None) -> None:
                          "eight-minute dump is ~4 GB)")
     a = ap.parse_args(argv)
     scenario = tomllib.loads(a.scenario.resolve().read_text())
-    # Fighters on other ports than the first ones (a Slippi layout): every
-    # capture pass plugs controllers into exactly their slots.
+    # Fighters on other ports than the first two (a Slippi layout, or three
+    # or four players): every capture pass plugs controllers into exactly
+    # their slots.
     slots = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))]
-    if slots != list(range(len(slots))):
+    if slots and slots != [0, 1]:
         os.environ[dolphin_config.SI_PORTS_ENV] = ",".join(str(s) for s in slots)
     with gecko_codes(scenario.get("gecko", [])):
         record(a, scenario)

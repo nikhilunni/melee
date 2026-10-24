@@ -614,10 +614,8 @@ impl Fighter {
                 ko.phase = ScreenKoPhase::Vanished;
             }
             ScreenKoPhase::Vanished => {
-                // ftCo_800BFD9C: Sleep, then the GM respawn.
-                if self.core.player.stocks == 0 {
-                    unimplemented!("gm_80167320: final stock / elimination");
-                }
+                // ftCo_800BFD9C: Sleep, then the GM respawn, or none for a
+                // player out of stocks (gm_80167320, the match's side).
                 self.core.state_data = MotionData::Life(LifeState::AwaitingRespawn);
             }
         }
@@ -1134,9 +1132,7 @@ impl FighterCore {
         };
         *remaining -= 1;
         if *remaining == 0 {
-            if self.player.stocks == 0 {
-                unimplemented!("gm_80167320: final stock / elimination");
-            }
+            // ftCo_800BFD9C: Sleep, then gm_80167320 (the match's side).
             self.state_data = MotionData::Life(LifeState::AwaitingRespawn);
         }
     }

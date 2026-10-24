@@ -139,8 +139,9 @@ def write_scenario(recording: dict, name: str, ticks: int | None,
     samples = recording["samples"][:ticks] if ticks else recording["samples"]
     steps, previous = [], {}
     # Sample k drives oracle tick k+1; tick 0 is the boundary's own.
+    ports = range(len(boundary["players"]))
     for k, sample in enumerate(samples, start=1):
-        for port in range(2):
+        for port in ports:
             pad, raw = dolphin_pad(sample[port], table)
             if previous.get(port) != raw:
                 keys = ", ".join(f"{key} = {toml_value(v)}" for key, v in pad.items())
@@ -191,9 +192,10 @@ def verify(recording: dict, name: str) -> int:
     trace = data_root.TRACES / f"{name}.tick.expected.jsonl"
     lines = trace_io.open_text(trace)
     next(lines)  # tick 0 is the boundary's; sample k drove tick k+1
+    ports = range(len(recording["config"]["players"]))
     for k, (line, sample) in enumerate(zip(lines, recording["samples"]), start=1):
         pads = json.loads(line)["inputs"]
-        for port in range(2):
+        for port in ports:
             p = pads[f"p{port}"]
             want = sample[port]
             got = [p["button"]["v"] & 0xFFFF, p["nml_stickX"]["v"]["bits"], p["nml_stickY"]["v"]["bits"],

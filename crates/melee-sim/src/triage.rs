@@ -269,10 +269,22 @@ fn fighter_line(record: &Record, port: usize) -> String {
 }
 
 fn write_history(out: &mut String, history: &VecDeque<(u64, Record, Record)>) -> Result<()> {
+    // Every fighter slot the trace names (players and their partners).
+    let fighters = |r: &Record| {
+        (0..8)
+            .take_while(|p| r.state.contains_key(&format!("p{p}.motion_id")))
+            .count()
+    };
     let motions = |r: &Record| {
-        (0..2)
+        (0..fighters(r))
             .map(|p| r.state.get(&format!("p{p}.motion_id")).cloned())
             .collect::<Vec<_>>()
+    };
+    let line = |r: &Record| {
+        (0..fighters(r))
+            .map(|p| fighter_line(r, p))
+            .collect::<Vec<_>>()
+            .join(" | ")
     };
     let mut previous = None;
     for (tick, exp, act) in history {
@@ -280,20 +292,9 @@ fn write_history(out: &mut String, history: &VecDeque<(u64, Record, Record)>) ->
         if previous.as_ref() == Some(&now) {
             continue;
         }
-        writeln!(
-            out,
-            "{tick:>6} retail {} | {}",
-            fighter_line(exp, 0),
-            fighter_line(exp, 1)
-        )?;
+        writeln!(out, "{tick:>6} retail {}", line(exp))?;
         if now.0 != now.1 {
-            writeln!(
-                out,
-                "{:>6} port   {} | {}",
-                "",
-                fighter_line(act, 0),
-                fighter_line(act, 1)
-            )?;
+            writeln!(out, "{:>6} port   {}", "", line(act))?;
         }
         previous = Some(now);
     }

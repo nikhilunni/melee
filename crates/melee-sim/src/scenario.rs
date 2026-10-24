@@ -248,7 +248,10 @@ impl Scenario {
             self.frames > 0 && self.frames <= 30_000,
             "scenario frames must be in 1..=30000"
         );
-        ensure!(self.fighters.len() == 2, "requires two fighters");
+        ensure!(
+            (2..=4).contains(&self.fighters.len()),
+            "requires two to four fighters"
+        );
         let mut previous_port = None;
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
@@ -488,17 +491,18 @@ impl Scenario {
     /// The match parameters of a validated scenario.
     fn unchecked_setup(&self) -> melee_lib::diagnostics::Setup {
         melee_lib::diagnostics::Setup {
-            fighters: std::array::from_fn(|p| {
-                let f = &self.fighters[p];
-                melee_lib::diagnostics::PlayerSetup {
+            fighters: self
+                .fighters
+                .iter()
+                .map(|f| melee_lib::diagnostics::PlayerSetup {
                     slot: f.slot,
                     descriptor: f.descriptor(),
                     costume: f.costume,
                     stocks: f.stocks,
                     spawn_point: f.spawn_point,
                     controller_fix: f.controller_fix().expect("validated controller fix"),
-                }
-            }),
+                })
+                .collect(),
             stage: self.stage_descriptor(),
             seed: self.seed,
             all_characters_unlocked: self.all_characters_unlocked,

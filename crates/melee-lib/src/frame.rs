@@ -109,9 +109,9 @@ impl Registration {
         }
     }
 }
-/// Scheduled procs for `stage`, two players' HUDs and `fighters` fighter
-/// GObjs (a player's partner, such as Nana, is a fighter of its own).
-fn registrations(stage: &SceneStage, fighters: usize) -> Vec<Registration> {
+/// Scheduled procs for `stage`, `players` players' HUDs and `fighters`
+/// fighter GObjs (a player's partner, such as Nana, is a fighter of its own).
+fn registrations(stage: &SceneStage, players: usize, fighters: usize) -> Vec<Registration> {
     let mut rows: Vec<_> = stage
         .proc_table()
         .into_iter()
@@ -126,7 +126,7 @@ fn registrations(stage: &SceneStage, fighters: usize) -> Vec<Registration> {
             },
         })
         .collect();
-    for player in 0..2 {
+    for player in 0..players {
         rows.push(Registration {
             s_link: 17,
             p_link: 15,
@@ -190,11 +190,12 @@ fn registrations(stage: &SceneStage, fighters: usize) -> Vec<Registration> {
 pub(crate) fn validate_saved_resume(
     resume: &crate::initial_state::scheduler_resume::SchedulerResume,
     stage: &SceneStage,
+    players: usize,
     fighters: usize,
 ) -> Result<()> {
     if let Some((key, _)) = resume.current {
         ensure!(
-            registrations(stage, fighters)
+            registrations(stage, players, fighters)
                 .iter()
                 .filter(|row| row.s_link == resume.s_link && row.key() == key)
                 .count()
@@ -262,7 +263,8 @@ struct Runtime {
     /// Diagnostic only: values observed around procs, never gameplay inputs.
     rng_writers: Vec<(Option<Callback>, u32)>,
     particle_draws: DrawLog,
-    interface: [melee_if::PercentDisplay; 2],
+    /// Each player's damage display (ifStatus), in player order.
+    interface: Vec<melee_if::PercentDisplay>,
     match_finished: bool,
     /// Scenario input: retail rendered (and so ran particleSort) between the
     /// previous tick and this one. Live play renders every tick; a recording
@@ -3054,7 +3056,8 @@ impl Simulation {
             };
             link.reserve(reserve.saturating_sub(link.len()));
         }
-        let mut rows = registrations(&state.stage, state.fighters.len());
+        let players = state.fighters.iter().filter(|f| !f.0.player.secondary).count();
+        let mut rows = registrations(&state.stage, players, state.fighters.len());
         if state.banner.is_some() {
             rows.push(Registration {
                 s_link: 0,
@@ -3084,11 +3087,14 @@ impl Simulation {
             })
             .collect();
         use crate::scene_fighter::with_fighter;
-        let interface = std::array::from_fn(|player| {
-            melee_if::PercentDisplay::new(with_fighter!(state.player_fighter(player), |f| f
-                .physics
-                .percent))
-        });
+        let players = state.fighters.iter().filter(|f| !f.0.player.secondary).count();
+        let interface = (0..players)
+            .map(|player| {
+                melee_if::PercentDisplay::new(with_fighter!(state.player_fighter(player), |f| f
+                    .physics
+                    .percent))
+            })
+            .collect();
         let mut runtime = Box::new(Runtime {
             radial_forces: Default::default(),
             item_objects: Default::default(),
@@ -3204,12 +3210,18 @@ impl Simulation {
             }
         }
         let runtime = self.runtime.as_mut();
-        // gm_GetFFAOutcome (8016BF74): the supported two-player stock match ends
-        // when only one player retains stocks. The pause takes effect next tick.
-        let finished = runtime.state.clock.timed_out()
-            || runtime.state.fighters.iter().any(|fighter| {
-                crate::scene_fighter::with_fighter!(fighter, |f| f.player.stocks == 0)
+        // gm_GetFFAOutcome (8016BF74): a stock match ends once every player
+        // but at most one is out of stocks (`eliminated >= players - 1`).
+        // The pause takes effect next tick.
+        let (players, eliminated) = runtime
+            .state
+            .fighters
+            .iter()
+            .filter(|fighter| !fighter.0.player.secondary)
+            .fold((0, 0), |(players, eliminated), fighter| {
+                (players + 1, eliminated + usize::from(fighter.0.player.stocks == 0))
             });
+        let finished = runtime.state.clock.timed_out() || eliminated + 1 >= players;
         if finished && !runtime.match_finished {
             // The GAME! (or TIME!) banner's GObj (classifier 0xE, p_link
             // 14), created by the scene's frame callback before this
@@ -3429,38 +3441,24 @@ fn deliver_owner_request(
 /// holder's part as the holder stands now.
 /// Fighter GObjs a Versus match can hold: four players and their partners.
 pub(crate) const MAX_FIGHTERS: usize = 8;
-/// Run `f` over the camera subjects as one slice, without allocating:
-/// at most four players, their partners and a stage subject.
+/// Camera subjects one tick can hold: retail links them in a list with no
+/// bound (cm_804D6468); this is the port's fixed pool, room for eight
+/// fighters, a stage subject and the framed items.
+const MAX_CAMERA_SUBJECTS: usize = 64;
+/// Run `f` over the camera subjects as one slice of filled slots, without
+/// allocating.
 pub(crate) fn with_subjects<'a, R>(
     mut subjects: impl Iterator<Item = &'a mut melee_cm::Subject>,
-    f: impl FnOnce(&mut [&'a mut melee_cm::Subject]) -> R,
+    f: impl FnOnce(&mut [Option<&'a mut melee_cm::Subject>]) -> R,
 ) -> R {
-    let first: [Option<&'a mut melee_cm::Subject>; 10] = std::array::from_fn(|_| subjects.next());
+    let mut slots: [Option<&'a mut melee_cm::Subject>; MAX_CAMERA_SUBJECTS] =
+        std::array::from_fn(|_| subjects.next());
     assert!(
         subjects.next().is_none(),
-        "more than ten camera subjects"
+        "more than {MAX_CAMERA_SUBJECTS} camera subjects"
     );
-    match first {
-        [None, ..] => f(&mut []),
-        [Some(a), None, ..] => f(&mut [a]),
-        [Some(a), Some(b), None, ..] => f(&mut [a, b]),
-        [Some(a), Some(b), Some(c), None, ..] => f(&mut [a, b, c]),
-        [Some(a), Some(b), Some(c), Some(d), None, ..] => f(&mut [a, b, c, d]),
-        [Some(a), Some(b), Some(c), Some(d), Some(e), None, ..] => f(&mut [a, b, c, d, e]),
-        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), None, ..] => {
-            f(&mut [a, b, c, d, e, g])
-        }
-        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), Some(h), None, ..] => {
-            f(&mut [a, b, c, d, e, g, h])
-        }
-        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), Some(h), Some(i), None, ..] => {
-            f(&mut [a, b, c, d, e, g, h, i])
-        }
-        [Some(a), Some(b), Some(c), Some(d), Some(e), Some(g), Some(h), Some(i), Some(j), None] => {
-            f(&mut [a, b, c, d, e, g, h, i, j])
-        }
-        _ => unimplemented!("more than nine camera subjects"),
-    }
+    let count = slots.iter().take_while(|slot| slot.is_some()).count();
+    f(&mut slots[..count])
 }
 fn article_bone_matrix(
     fighters: &mut [crate::scene_fighter::SceneFighter],
@@ -4080,13 +4078,13 @@ mod tests {
             callback: 0x8006_A360,
         };
         resume.current = Some((key, Continuation::Invoke));
-        assert!(validate_saved_resume(&resume, &stage(), 2).is_ok());
+        assert!(validate_saved_resume(&resume, &stage(), 2, 2).is_ok());
         resume.current = Some((ProcKey { object: 9, ..key }, Continuation::Invoke));
-        assert!(validate_saved_resume(&resume, &stage(), 2).is_err());
+        assert!(validate_saved_resume(&resume, &stage(), 2, 2).is_err());
     }
     #[test]
     fn m3_proc_order() {
-        let rows = registrations(&stage(), 2);
+        let rows = registrations(&stage(), 2, 2);
         let calls = Rc::new(RefCell::new(Vec::new()));
         let output = Rc::clone(&calls);
         let mut world = World::new(WorldConfig::MELEE);

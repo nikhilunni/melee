@@ -187,7 +187,7 @@ pub struct Presentation {
     lighting: lighting::Lighting,
     sprites: sprites::Sprites,
     assets: Arc<crate::assets::Assets>,
-    players: [PlayerConfig; 2],
+    players: Vec<PlayerConfig>,
     meshes: Vec<Mesh>,
     materials: Vec<Material>,
     parts: Vec<Part>,
@@ -196,7 +196,7 @@ pub struct Presentation {
     visible: Vec<bool>,
     instances: Vec<[[f32; 4]; 4]>,
     instance_ranges: Vec<std::ops::Range<u32>>,
-    camera_targets: [Option<[f32; 2]>; 2],
+    camera_targets: Vec<Option<[f32; 2]>>,
     view: ViewCamera,
     stage_frame: StageFrame,
     fog_desc: Option<melee_gr::desc::FogDesc>,
@@ -223,7 +223,7 @@ impl Presentation {
             models: Vec::new(),
             matrices: Vec::new(),
             visible: Vec::new(),
-            camera_targets: [None; 2],
+            camera_targets: vec![None; game.config.players.len()],
             view: ViewCamera::capture(game),
             stage_frame: StageFrame::of(&game.engine.state().assets.stage_camera),
             fog_desc: stage::fog_desc(&game.assets.inner)?,
@@ -348,7 +348,7 @@ impl Presentation {
     pub fn shadow_floors(&self) -> &[[f32; 4]; 2] {
         &self.shadow_floors
     }
-    pub fn camera_targets(&self) -> &[Option<[f32; 2]>; 2] {
+    pub fn camera_targets(&self) -> &[Option<[f32; 2]>] {
         &self.camera_targets
     }
     /// The stage fog for the captured tick, if any.

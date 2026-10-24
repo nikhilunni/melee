@@ -291,8 +291,8 @@ struct ResultRow {
     profile: u32,
     ticks: u64,
     status: String,
-    actions: [BTreeSet<u16>; 2],
-    transitions: [BTreeSet<(u16, u16)>; 2],
+    actions: Vec<BTreeSet<u16>>,
+    transitions: Vec<BTreeSet<(u16, u16)>>,
     fault: Option<String>,
 }
 #[derive(Serialize)]
@@ -390,7 +390,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 let config = base.clone();
                 let mut game = Match::new(&assets, config.clone())?;
                 let mut recording = Recording::new(&config, &assets);
-                let mut held = [Held::default(); 2];
+                let ports: Vec<Port> = config.players.iter().map(|p| p.port).collect();
+                let mut held = vec![Held::default(); ports.len()];
                 let mut choices = Choices(seed ^ (profile + 1).wrapping_mul(0x9e3779b9));
                 let name = format!(
                     "v{version}{}-{tag}-explore{seed:08x}-profile{profile}",
@@ -403,20 +404,25 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     profile,
                     ticks: 0,
                     status: String::new(),
-                    actions: Default::default(),
-                    transitions: Default::default(),
+                    actions: vec![BTreeSet::new(); ports.len()],
+                    transitions: vec![BTreeSet::new(); ports.len()],
                     fault: None,
                 };
-                let mut previous = [None; 2];
+                let mut previous = vec![None; ports.len()];
                 while game.status().is_running() && game.tick().0 < ticks {
                     let mut inputs = Inputs::default();
                     {
                         let view = game.observe()?;
-                        let fighters = [
-                            view.fighter(Port::P1).unwrap(),
-                            view.fighter(Port::P2).unwrap(),
-                        ];
-                        for i in 0..2 {
+                        let fighters: Vec<_> =
+                            ports.iter().map(|&p| view.fighter(p).unwrap()).collect();
+                        // Each player plays against the next one still in the
+                        // match (the other in a two-player match).
+                        let n = fighters.len();
+                        for i in 0..n {
+                            let opponent = (1..n)
+                                .map(|k| fighters[(i + k) % n])
+                                .find(|f| f.stocks() > 0)
+                                .unwrap_or(fighters[(i + 1) % n]);
                             let action = fighters[i].action().0;
                             row.actions[i].insert(action);
                             if let Some(old) = previous[i] {
@@ -429,21 +435,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 held[i] = if sudden_death {
                                     choose_sudden_death(
                                         fighters[i],
-                                        fighters[1 - i],
+                                        opponent,
                                         &mut choices,
                                         edges,
                                     )
                                 } else {
                                     choose(
                                         fighters[i],
-                                        fighters[1 - i],
+                                        opponent,
                                         &mut choices,
                                         profile,
                                         edges,
                                     )
                                 };
                             }
-                            inputs.0[i] = held[i].pad;
+                            inputs.0[ports[i].index()] = held[i].pad;
                             held[i].remaining -= 1;
                         }
                     }

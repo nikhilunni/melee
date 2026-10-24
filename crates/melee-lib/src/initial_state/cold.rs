@@ -217,8 +217,8 @@ impl InitialState {
             )),
             stock_displays: super::stock::create(
                 &assets.interface,
-                std::array::from_fn(|player| scenario.fighters[player].stocks),
-                std::array::from_fn(|player| scenario.fighters[player].slot),
+                &scenario.fighters.iter().map(|f| f.stocks).collect::<Vec<_>>(),
+                &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
             )?,
             spawn_counter,
             banner: Some(crate::banner::Banner::from_archive(
@@ -493,6 +493,58 @@ fn initialize_stage(
 /// player_standings_inline: PlayerInitData x12 = 300 for Sudden Death.
 const SUDDEN_DEATH_DAMAGE: f32 = 300.0;
 
+/// Within this distance a player faces away from its chosen opponent's
+/// facing rather than toward its marker (fn_8016DEEC's +-5.0).
+const FACE_DEADBAND: f32 = 5.0;
+
+/// fn_8016DEEC (gm_16AE.c:1762): each player, in slot order, faces the
+/// opponent it picks by marker X. The pick keeps the largest distance, but
+/// retail's first candidate takes the distance register's stale value (f26,
+/// 0x8016E054 after the `r23 == -1` branch skips 0x8016E02C-0x8016E044) and
+/// only a later candidate strictly farther than that value replaces it. The
+/// register carries over from player to player; on entry it is the caller's,
+/// which the three- and four-player boundaries show lies below 38.8 (0.0
+/// here). Within +-5 of the pick the player faces away from the pick's
+/// facing (+1 while the pick has none yet). Teams never pick a teammate
+/// (Versus free-for-all has none).
+fn initial_facings(spawn_x: &[f32]) -> Vec<f32> {
+    let mut facing = vec![0.0f32; spawn_x.len()];
+    let mut distance = 0.0f32; // f26
+    for i in 0..spawn_x.len() {
+        let mut pick: Option<usize> = None;
+        let mut farthest = 0.0f32; // f25
+        for j in (0..spawn_x.len()).filter(|&j| j != i) {
+            if pick.is_some() {
+                // 0x8016E034: fsubs, then fneg below zero.
+                let dx = spawn_x[i] - spawn_x[j];
+                distance = if dx < 0.0 { -dx } else { dx };
+                // 0x8016E048: fcmpo, then `bge` (also taken when unordered).
+                if farthest.partial_cmp(&distance) != Some(std::cmp::Ordering::Less) {
+                    continue;
+                }
+            }
+            pick = Some(j);
+            farthest = distance;
+        }
+        facing[i] = match pick {
+            None => 1.0,
+            Some(j) => {
+                let dx = spawn_x[j] - spawn_x[i];
+                if dx < -FACE_DEADBAND {
+                    -1.0
+                } else if dx > FACE_DEADBAND {
+                    1.0
+                } else if facing[j] == 1.0 {
+                    -1.0
+                } else {
+                    1.0
+                }
+            }
+        };
+    }
+    facing
+}
+
 fn create_players(
     scenario: &Setup,
     assets: &Assets,
@@ -511,13 +563,8 @@ fn create_players(
             spawn_position(assets, marker)
         })
         .collect::<Result<_>>()?;
-    // fn_8016DEEC: face the other player; nearby/equal-X markers
-    // resolve +1 for the first player, then -1 for the second.
-    let mut facing = if positions[1].x - positions[0].x < -5.0 {
-        [-1.0, 1.0]
-    } else {
-        [1.0, -1.0]
-    };
+    let spawn_x: Vec<f32> = positions.iter().map(|p| p.x).collect();
+    let mut facing = initial_facings(&spawn_x);
     // fn_8016D8AC (0x8016DA3C): the delay grows by five for every Player slot
     // up to this one, entering or not (ports 2 and 4 enter at 10 and 20).
     let mut entry_delays: Vec<i32> = scenario

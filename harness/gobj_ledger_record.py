@@ -27,7 +27,7 @@ def main() -> None:
     scenario = tomllib.loads(scenario_path.read_text())
     out = a.out.resolve()
     slots = [int(f.get("slot", i)) for i, f in enumerate(scenario.get("fighters", []))]
-    if slots != list(range(len(slots))):
+    if slots and slots != [0, 1]:
         os.environ[dolphin_config.SI_PORTS_ENV] = ",".join(str(s) for s in slots)
     with dolphin_config.isolated_user_dir() as user_dir:
         os.environ["DOLPHIN_USER_DIR"] = str(user_dir)
