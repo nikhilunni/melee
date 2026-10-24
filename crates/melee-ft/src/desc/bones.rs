@@ -178,39 +178,51 @@ pub fn read_conditional_parts(
 /// cleared) becomes part `placement.part`. The costume's own joints skip
 /// that part number (ftParts_8007506C), so grafting before the model is
 /// built gives every joint its retail part index in pre-order.
+///
+/// Its callers are Link's and Young Link's OnLoad (ftLk_Init_OnLoad,
+/// ftCl_Init_OnLoad: `Fighter_804D6540[kind]->x0`). Both entries graft the
+/// item joint's root with type 0 under a lower-numbered, uninstanced parent
+/// that has no child, in every costume (docs/COVERAGE_AUDIT.md, wave 13).
+/// Kirby's thirteen entries, the only others on the disc, go through
+/// ftKb_SpecialN_800EF040 (`ft_kirby::hat`), which moves no joint. The
+/// asserts name the layouts retail supports and no caller gives.
 pub fn graft_conditional_joint(
     model: &mut hsd_archive::desc::JObjDesc,
     joint: &hsd_archive::desc::JObjDesc,
     placement: ConditionalPart,
 ) {
-    if placement.source_index != INVALID_PART {
-        unimplemented!("ftParts_800753D4: a joint below its source tree's root");
-    }
-    if placement.insertion != 0 {
-        unimplemented!("ftParts_80075304: insertion type {}", placement.insertion);
-    }
-    if placement.parent >= placement.part {
-        unimplemented!("ftParts_800753D4: a parent numbered after its conditional part");
-    }
+    assert_eq!(
+        placement.source_index, INVALID_PART,
+        "ftParts_800753D4: OnLoad grafts its joint's root"
+    );
+    assert_eq!(
+        placement.insertion, 0,
+        "ftParts_80075304: OnLoad inserts with type 0"
+    );
+    assert!(
+        placement.parent < placement.part,
+        "ftParts_800753D4: OnLoad's parent precedes its conditional part"
+    );
     let mut graft = joint.clone();
     graft.child = None;
     graft.next = None;
     let mut index = 0;
     let parent = nth_joint(model, usize::from(placement.parent), &mut index)
         .expect("conditional part's parent outside the costume model");
-    if parent.is_instance() {
-        unimplemented!("ftParts_80075304: an instanced parent");
-    }
+    assert!(
+        !parent.is_instance(),
+        "ftParts_80075304: OnLoad's parent is not instanced"
+    );
     // Type 0: the graft becomes the parent's child and takes its child
     // chain. Retail repoints only the first child's parent, so a chain
     // with siblings would keep them under the old parent.
-    if parent
-        .child
-        .as_ref()
-        .is_some_and(|child| child.next.is_some())
-    {
-        unimplemented!("ftParts_80075304: type 0 over a child with siblings");
-    }
+    assert!(
+        parent
+            .child
+            .as_ref()
+            .is_none_or(|child| child.next.is_none()),
+        "ftParts_80075304: OnLoad's type 0 parent has no child with siblings"
+    );
     graft.child = parent.child.take();
     parent.child = Some(Box::new(graft));
 }
