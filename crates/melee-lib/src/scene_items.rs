@@ -96,6 +96,9 @@ melee_it::item_kinds! {
         KirbyFalcoBlaster: it_foxlaser::KirbyFalcoBlaster,
         KirbyGameWatchChef: it_gamewatch::KirbyChef,
         KirbyGameWatchChefPan: it_kirby::ChefPan,
+        KirbyMarioFire: it_mariofire::KirbyMarioFire,
+        KirbyDrMarioVitamin: it_drmariopill::KirbyDrMarioPill,
+        KirbyLuigiFire: it_luigifire::KirbyLuigiFire,
     }
 }
 
@@ -111,7 +114,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 3] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 6] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -143,6 +146,27 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 3] = [
             (ItemKind::KirbyGameWatchChefPan, 6, 1),
         ],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Mario,
+        file: "PlKbCpMr.dat",
+        symbol: "ftDataKirbyCopyMario",
+        // ft_80459B88.x0->xC: the fireball's one state, as Mario's own.
+        articles: &[(ItemKind::KirbyMarioFire, 0, 1)],
+    },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::DrMario,
+        file: "PlKbCpDr.dat",
+        symbol: "ftDataKirbyCopyDrmario",
+        // hats[20]->hat_dynamics[0]: the pill's seven states, as Dr. Mario's.
+        articles: &[(ItemKind::KirbyDrMarioVitamin, 0, 7)],
+    },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Luigi,
+        file: "PlKbCpLg.dat",
+        symbol: "ftDataKirbyCopyLuigi",
+        // hats[16]->hat_dynamics[0]: the fireball's one state.
+        articles: &[(ItemKind::KirbyLuigiFire, 0, 1)],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -155,8 +179,42 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
             it_gamewatch::chef::SPECIAL_ATTRIBUTES,
         )),
         ItemKind::KirbyGameWatchChefPan => Some((&it_kirby::chef_pan::ARTICLE_STATES, 10)),
+        ItemKind::KirbyMarioFire => Some((
+            &it_mariofire::ARTICLE_STATES,
+            it_mariofire::SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbyDrMarioVitamin => Some((
+            &it_drmariopill::ARTICLE_STATES,
+            it_drmariopill::SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbyLuigiFire => Some((
+            &it_luigifire::ARTICLE_STATES,
+            it_luigifire::SPECIAL_ATTRIBUTES,
+        )),
         _ => None,
     }
+}
+
+/// What a copy article reads beyond its slot, as the original's load does:
+/// the falling articles' common spin (Item_ApplyFallingPhysics,
+/// it_80274658) and the fireballs' DPtcl keys.
+fn kirby_copy_article_finish(
+    kind: ItemKind,
+    assets: &mut ItemAssets,
+    archive: &Archive,
+    common: &ItemCommonData,
+) -> Result<()> {
+    match kind {
+        ItemKind::KirbyMarioFire | ItemKind::KirbyLuigiFire => {
+            assets.fall_spin_degrees = common.fall_spin_degrees;
+            assets
+                .read_particle_tracks(archive)
+                .map_err(|e| anyhow::anyhow!("Kirby's copied fireball particle track: {e}"))?;
+        }
+        ItemKind::KirbyDrMarioVitamin => assets.fall_spin_degrees = common.fall_spin_degrees,
+        _ => {}
+    }
+    Ok(())
 }
 
 /// ftKb_Init_UnkMotionStates5 -> Player_80031DC8(ftKb_SpecialN_800EED50):
@@ -742,12 +800,13 @@ impl Resources {
             for &(kind, slot, states) in copy.articles {
                 // KirbyHatStruct.hat_dynamics (+C).
                 let at = hat + 0xC + slot * 4;
-                let assets = match kirby_copy_article_layout(kind) {
+                let mut assets = match kirby_copy_article_layout(kind) {
                     Some((article_states, attributes)) => {
                         ItemAssets::from_article_slot_states(&a, at, article_states, attributes)?
                     }
                     None => ItemAssets::from_article_slot(&a, at, states)?,
                 };
+                kirby_copy_article_finish(kind, &mut assets, &a, &common)?;
                 kinds.push((kind, assets));
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }

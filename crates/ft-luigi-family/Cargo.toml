@@ -1,0 +1,12 @@
+[package]
+name = "ft-luigi-family"
+description = "Luigi's Fireball, shared with Kirby's copy of it (retail ftLg_SpecialN, ftKb_SpecialNLg)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+hsd-types = { path = "../hsd-types" }
+melee-ef = { path = "../melee-ef" }
+melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-types = { path = "../melee-types" }

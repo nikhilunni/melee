@@ -28,13 +28,17 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are xC4, xCC, xB0, x8C and xD4..xDC.
+/// The ones with a reader so far are x68, x6C, xC4, xCC, xB0, x8C and
+/// xD4..xDC.
 fn reset_copied_scratch(state: &mut Kirby) {
     state.ice_shot_lift_used = false;
     state.toad_lift_used = false;
     state.blaster = Default::default();
     state.rollout.scale = crate::copied::rollout::SCALE_AT_REST;
     state.chef = crate::copied::chef::KirbyChef::AT_REST;
+    // x68, x6C: the copied Megavitamin's colours.
+    state.vitamin_current = 9;
+    state.vitamin_previous = 9;
 }
 
 /// ftKb_SpecialN_800F1BAC (800F1BAC) with `arg2` true: a new kind replaces

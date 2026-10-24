@@ -5,6 +5,7 @@ version.workspace = true
 edition.workspace = true
 
 [dependencies]
+ft-luigi-family = { path = "../ft-luigi-family" }
 melee-types = { path = "../melee-types" }
 melee-ft = { path = "../melee-ft" }
 melee-ef = { path = "../melee-ef" }

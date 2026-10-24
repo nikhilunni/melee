@@ -84,13 +84,18 @@ impl Effects {
 
 /// Requests whose dispatch is efLib_CreateGenerator(generator, &pos): a
 /// character-bank generator at a world position.
-const ROOT_GENERATORS: [(u16, u32); 3] = [
+const ROOT_GENERATORS: [(u16, u32); 5] = [
     // efSync_Spawn 0x4CE (efsync.c:225): Yoshi's egg sparkle.
     (0x4CE, 0x2328),
     // efAlt_Spawn 0x47B (efalt.c:58-60): Mario's fireball bounce.
     (0x47B, 0x3EB),
     // efSync_Spawn 0x508 (efsync.c:581-583): Luigi's fireball bounce.
     (0x508, 0x4652),
+    // efAlt_Spawn 0x4A0 (efalt.c:346-348): Kirby's copied fireball bounce.
+    (0x4A0, 0x7D02),
+    // efAlt_Spawn 0x4B2 (efalt.c:486-488): Kirby's copied green fireball
+    // bounce.
+    (0x4B2, 0x908A),
 ];
 /// efSync_Spawn 0x4CF (efsync.c:228): the shell burst.
 const EGG_SHELL_REQUEST: u16 = 0x4CF;

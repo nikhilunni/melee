@@ -810,14 +810,16 @@ impl Effects {
                 continue;
             }
             if let EffectRequest::SyncAttached {
-                id: id @ (0x47A | 0x507),
+                id: id @ (0x47A | 0x507 | 0x49F | 0x4B1),
                 bone,
             } = request
             {
-                let fire = if id == 0x47A {
-                    mario::MARIO_HAND_FIRE
-                } else {
-                    mario::LUIGI_HAND_FIRE
+                let fire = match id {
+                    0x47A => mario::MARIO_HAND_FIRE,
+                    0x507 => mario::LUIGI_HAND_FIRE,
+                    // Kirby's copies (fn_800F9260, fn_800F98F4).
+                    0x49F => mario::KIRBY_MARIO_HAND_FIRE,
+                    _ => mario::KIRBY_LUIGI_HAND_FIRE,
                 };
                 self.spawn_hand_fire::<T>(fire, player, bone, fighter, bank, particles, rng)?;
                 continue;

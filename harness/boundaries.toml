@@ -900,3 +900,30 @@ stage = "FinalDestination"
 players = ["Kirby", "Roy"]
 stocks = 4
 seed = 4068591721
+
+[[boundary]]
+name = "start_fd_kirby_mario4"
+cold = "start_fd_kirby_mario4_cold"
+savestate = "harness/roms/start_fd_kirby_mario4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Mario"]
+stocks = 4
+seed = 3979937767
+
+[[boundary]]
+name = "start_fd_kirby_drmario4"
+cold = "start_fd_kirby_drmario4_cold"
+savestate = "harness/roms/start_fd_kirby_drmario4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "DrMario"]
+stocks = 4
+seed = 3979937767
+
+[[boundary]]
+name = "start_fd_kirby_luigi4"
+cold = "start_fd_kirby_luigi4_cold"
+savestate = "harness/roms/start_fd_kirby_luigi4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Luigi"]
+stocks = 4
+seed = 3979937767

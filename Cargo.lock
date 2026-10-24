@@ -561,11 +561,14 @@ dependencies = [
  "ft-captain-family",
  "ft-fox-family",
  "ft-gamewatch-family",
+ "ft-luigi-family",
+ "ft-mario-family",
  "ft-mars-family",
  "ft-purin-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
+ "it-drmariopill",
  "melee-cm",
  "melee-coll",
  "melee-ef",
@@ -632,6 +635,7 @@ dependencies = [
 name = "ft-luigi"
 version = "0.0.1"
 dependencies = [
+ "ft-luigi-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -641,6 +645,17 @@ dependencies = [
  "melee-it",
  "melee-lb",
  "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
+name = "ft-luigi-family"
+version = "0.0.1"
+dependencies = [
+ "hsd-types",
+ "melee-ef",
+ "melee-ft",
+ "melee-it",
  "melee-types",
 ]
 

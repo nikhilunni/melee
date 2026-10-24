@@ -7,11 +7,14 @@
 //! attribute x10, or its hit connects. The side taunt holds one
 //! (itDrMarioPill_Appeal_Spawn) at its owner's position until he leaves the
 //! taunt. Motions 3..6 (the sleeping and star-KO poses, itDrMarioPill_802C09C4)
-//! are unported.
+//! are unported. Kirby's copied Megavitamin throws the same item code as
+//! It_Kind_Kirby_DrMarioVitamin (ftkirbyspecialmario.c, PlKbCpDr.dat).
 use melee_it::{desc::ItemAssets, state_change::ANIM_UPDATE, *};
 use melee_types::ItemKind;
 
 pub struct DrMarioPill;
+/// It_Kind_Kirby_DrMarioVitamin: the pill of Kirby's copy.
+pub struct KirbyDrMarioPill;
 
 /// it_803F75D0's anim_id column.
 pub const ARTICLE_STATES: [i32; 7] = [0, 1, 2, 1, 3, 4, 5];
@@ -101,94 +104,100 @@ static STATES: [ItemStateRow; 7] = [
     unported(6),
 ];
 
-/// it_3F2F.c's Dr Mario pill row.
-impl ItemLogic for DrMarioPill {
-    const KIND: ItemKind = ItemKind::DrMarioVitamin;
-    const STATES: &'static [ItemStateRow] = &STATES;
-    /// it_8026B3A8 clears xDC8 x15 in every callback: never grabbable.
-    fn pickup_possible(_item: &ItemCore) -> bool {
-        false
-    }
-    /// Both spawns end with it_802750F8.
-    const PROCS_AT_SPAWN: bool = true;
-    fn launched(
-        item: &mut ItemCore,
-        assets: &ItemAssets,
-        common: &melee_it::desc::ItemCommonData,
-        spawn: &SpawnItem,
-        _rng: &mut gekko_math::HsdRng,
-    ) {
-        let colour = (spawn.spawn_argument & !TAUNT_SPAWN) as f32;
-        if spawn.spawn_argument & TAUNT_SPAWN == 0 {
-            throw(item, assets, common, colour);
-        } else {
-            hold_for_taunt(item, assets, common, colour);
+/// it_3F2F.c's Dr Mario pill row, for both kinds.
+macro_rules! pill_logic {
+    ($type:ty, $kind:ident) => {
+        impl ItemLogic for $type {
+            const KIND: ItemKind = ItemKind::$kind;
+            const STATES: &'static [ItemStateRow] = &STATES;
+            /// it_8026B3A8 clears xDC8 x15 in every callback: never grabbable.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
+            }
+            /// Both spawns end with it_802750F8.
+            const PROCS_AT_SPAWN: bool = true;
+            fn launched(
+                item: &mut ItemCore,
+                assets: &ItemAssets,
+                common: &melee_it::desc::ItemCommonData,
+                spawn: &SpawnItem,
+                _rng: &mut gekko_math::HsdRng,
+            ) {
+                let colour = (spawn.spawn_argument & !TAUNT_SPAWN) as f32;
+                if spawn.spawn_argument & TAUNT_SPAWN == 0 {
+                    throw(item, assets, common, colour);
+                } else {
+                    hold_for_taunt(item, assets, common, colour);
+                }
+            }
+            /// itDrMarioPill_DmgDealt (802C1384).
+            fn damage_dealt(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                item.sound_requests.push(SOUND);
+                true
+            }
+            /// itDrMarioPill_Reflected (802C13CC) -> it_80273030.
+            fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                item.reverse_on_reflect(ctx.reflected_speed);
+                false
+            }
+            /// itDrMarioPill_Clanked (802C1400).
+            fn clanked(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                item.sound_requests.push(SOUND);
+                true
+            }
+            /// itDrMarioPill_HitShield (802C145C).
+            fn hit_shield(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                item.sound_requests.push(SOUND);
+                true
+            }
+            /// itDrMarioPill_Absorbed (802C14B8).
+            fn absorbed(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                item.sound_requests.push(SOUND);
+                true
+            }
+            /// itDrMarioPill_ShieldBounced (802C1514): the sound and the end, like
+            /// the other contacts (no itColl_BounceOffShield).
+            fn shield_bounced(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                item.sound_requests.push(SOUND);
+                true
+            }
+            /// itDrMarioPill_802C0DBC: the owner's ftDr_Init_801497CC destroys the
+            /// taunt pill (xDD4.x4 cleared first, so its owner is not called back).
+            /// A thrown pill of the same owner is not the one +2240 points at.
+            fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
+                match control {
+                    ItemControl::Remove if item.motion == TAUNT => item.destroyed = true,
+                    ItemControl::Remove => {}
+                    _ => unreachable!("{control:?} sent to a Megavitamin"),
+                }
+            }
+            /// itDrMarioPill_802C061C, the taunt pill's on_accessory: it sits at
+            /// its owner's position (the JObj's Y rotation, M_PI_2 * facing, and
+            /// Z rotation are the model's alone).
+            fn accessory(
+                item: &mut ItemCore,
+                owner: Option<&ItemOwner>,
+                _assets: &ItemAssets,
+            ) -> Option<OwnerBlast> {
+                if item.motion != TAUNT {
+                    return None;
+                }
+                if let Some(owner) = owner {
+                    item.position = owner.position;
+                    item.set_root_translation(owner.position);
+                }
+                None
+            }
+            /// Only the taunt pill that let go of its owner itself (ftDr_Init_801498A0
+            /// in itDrMarioPill_Motion2_Anim) reaches the owner.
+            fn notifies_owner(item: &ItemCore) -> bool {
+                item.motion == TAUNT
+            }
         }
-    }
-    /// itDrMarioPill_DmgDealt (802C1384).
-    fn damage_dealt(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        item.sound_requests.push(SOUND);
-        true
-    }
-    /// itDrMarioPill_Reflected (802C13CC) -> it_80273030.
-    fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        item.reverse_on_reflect(ctx.reflected_speed);
-        false
-    }
-    /// itDrMarioPill_Clanked (802C1400).
-    fn clanked(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        item.sound_requests.push(SOUND);
-        true
-    }
-    /// itDrMarioPill_HitShield (802C145C).
-    fn hit_shield(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        item.sound_requests.push(SOUND);
-        true
-    }
-    /// itDrMarioPill_Absorbed (802C14B8).
-    fn absorbed(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        item.sound_requests.push(SOUND);
-        true
-    }
-    /// itDrMarioPill_ShieldBounced (802C1514): the sound and the end, like
-    /// the other contacts (no itColl_BounceOffShield).
-    fn shield_bounced(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        item.sound_requests.push(SOUND);
-        true
-    }
-    /// itDrMarioPill_802C0DBC: the owner's ftDr_Init_801497CC destroys the
-    /// taunt pill (xDD4.x4 cleared first, so its owner is not called back).
-    /// A thrown pill of the same owner is not the one +2240 points at.
-    fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
-        match control {
-            ItemControl::Remove if item.motion == TAUNT => item.destroyed = true,
-            ItemControl::Remove => {}
-            _ => unreachable!("{control:?} sent to a Megavitamin"),
-        }
-    }
-    /// itDrMarioPill_802C061C, the taunt pill's on_accessory: it sits at
-    /// its owner's position (the JObj's Y rotation, M_PI_2 * facing, and
-    /// Z rotation are the model's alone).
-    fn accessory(
-        item: &mut ItemCore,
-        owner: Option<&ItemOwner>,
-        _assets: &ItemAssets,
-    ) -> Option<OwnerBlast> {
-        if item.motion != TAUNT {
-            return None;
-        }
-        if let Some(owner) = owner {
-            item.position = owner.position;
-            item.set_root_translation(owner.position);
-        }
-        None
-    }
-    /// Only the taunt pill that let go of its owner itself (ftDr_Init_801498A0
-    /// in itDrMarioPill_Motion2_Anim) reaches the owner.
-    fn notifies_owner(item: &ItemCore) -> bool {
-        item.motion == TAUNT
-    }
+    };
 }
+pill_logic!(DrMarioPill, DrMarioVitamin);
+pill_logic!(KirbyDrMarioPill, KirbyDrMarioVitamin);
 
 /// itDrMarioPill_Spawn's set-up: itDrMarioPill_802C0B5C (802C0B5C) launches
 /// along the attribute angle with the lifetime in motion 0, then

@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 25] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 27] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -177,6 +177,16 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 25] = [
         table: "effKirbyMarsDataTable",
         models: 2,
     },
+    // Kirby's copied Fireball and Megavitamin (efAsync_DatEntries[32],
+    // ftKb_Init_803CB46C for Mario and Dr. Mario): model 0x7D00, the
+    // fireball's hand flash (efAlt 0x49F), and generator 0x7D02, its bounce
+    // (efAlt 0x4A0).
+    CharacterEffectFile {
+        bank: 32,
+        file: "EfKbMr.dat",
+        table: "effKirbyMarioDataTable",
+        models: 1,
+    },
     // Kirby's copied Blasters (efAsync_DatEntries[33], ftKb_Init_803CB46C
     // for Fox and Falco, loaded with a Kirby facing either): model 0x80E8,
     // the shot's flash (efAlt 0x4AC).
@@ -184,6 +194,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 25] = [
         bank: 33,
         file: "EfKbFx.dat",
         table: "effKirbyFoxDataTable",
+        models: 1,
+    },
+    // Kirby's copied green Fireball (efAsync_DatEntries[37],
+    // ftKb_Init_803CB46C for Luigi): model 0x9088, the hand flash (efAlt
+    // 0x4B1), and generator 0x908A, the bounce (efAlt 0x4B2).
+    CharacterEffectFile {
+        bank: 37,
+        file: "EfKbLg.dat",
+        table: "effKirbyLuigiDataTable",
         models: 1,
     },
     // Kirby's copied Falcon Punch (efAsync_DatEntries[38],

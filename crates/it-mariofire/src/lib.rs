@@ -3,10 +3,14 @@
 //! (it_8029B6F8); it falls under ItemAttr gravity, bounces along the floor
 //! with ItemAttr x58 of its speed each time, and ends when its lifetime runs
 //! out, a bounce leaves it slower than attribute x10, or its hit connects.
+//! Kirby's copied Fireball throws the same item code as
+//! It_Kind_Kirby_MarioFire (ftkirbyspecialmario.c, PlKbCpMr.dat).
 use melee_it::{desc::ItemAssets, state_change::ANIM_UPDATE, *};
 use melee_types::ItemKind;
 
 pub struct MarioFire;
+/// It_Kind_Kirby_MarioFire: the fireball of Kirby's copy.
+pub struct KirbyMarioFire;
 
 /// it_803F6788's anim_id column: one motion state, article state 0.
 pub const ARTICLE_STATES: [i32; 1] = [0];
@@ -21,6 +25,9 @@ const BOUNCE_EFFECT: u16 = 0x47B;
 /// Item_8026AE84(item, ~0xFFFD40C6, 0x7F, 0x40): the bounce sound
 /// (retail 8029B9C4..C8: lis 3, subi 0x40C7).
 const BOUNCE_SOUND: u32 = 0x2_BF39;
+/// efAsync_Spawn(item, xBC0, 1, 1184, root): Kirby's copy's bounce
+/// (efAlt 0x4A0, generator 0x7D02 of EfKbMr.dat), without a sound.
+const KIRBY_BOUNCE_EFFECT: u16 = 0x4A0;
 
 /// The fireball's special attributes (itUnkAttributes).
 struct Attributes<'a>(&'a [f32]);
@@ -47,67 +54,79 @@ static STATES: [ItemStateRow; 1] = [ItemStateRow {
     animation_id: ARTICLE_STATES[0],
     animation,
     physics,
-    collision,
+    collision: collision::<false>,
+}];
+static KIRBY_STATES: [ItemStateRow; 1] = [ItemStateRow {
+    animation_id: ARTICLE_STATES[0],
+    animation,
+    physics,
+    collision: collision::<true>,
 }];
 
-/// it_3F2F.c's Logic87 row.
-impl ItemLogic for MarioFire {
-    const KIND: ItemKind = ItemKind::MarioFire;
-    const STATES: &'static [ItemStateRow] = &STATES;
-    /// The logic row has no pickup callback.
-    fn pickup_possible(_item: &ItemCore) -> bool {
-        false
-    }
-    /// it_8029B6F8 ends with it_802750F8.
-    const PROCS_AT_SPAWN: bool = true;
-    /// it_8029B7C0 (8029B7C0): the launch velocity along the attribute
-    /// angle, the lifetime, and motion 0. No fused sites: 8029B800/80C and
-    /// 8029B818 are separate fmuls.
-    fn launched(
-        item: &mut ItemCore,
-        assets: &ItemAssets,
-        common: &melee_it::desc::ItemCommonData,
-        _spawn: &SpawnItem,
-        _rng: &mut gekko_math::HsdRng,
-    ) {
-        let a = Attributes(&assets.special_attributes);
-        let (speed, angle) = (a.speed(), a.angle());
-        item.velocity.x = item.facing * (speed * gekko_math::msl::cosf(angle));
-        item.velocity.y = speed * gekko_math::msl::sinf(angle);
-        item.velocity.z = 0.0;
-        // it_80275158: both timers.
-        let lifetime = a.lifetime();
-        item.life_timer = lifetime;
-        item.half_life = lifetime * common.half_life_scale;
-        item.change_motion_with(0, ARTICLE_STATES[0], ANIM_UPDATE, assets);
-    }
-    /// itMarioFireball_Logic87_DmgDealt.
-    fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itMarioFireball_Logic87_Reflected -> it_80273030.
-    fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        item.reverse_on_reflect(ctx.reflected_speed);
-        false
-    }
-    /// itMarioFireball_Logic87_Clanked.
-    fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itMarioFireball_Logic87_HitShield.
-    fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itMarioFireball_Logic87_Absorbed.
-    fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itMarioFireball_Logic87_ShieldBounced -> itColl_BounceOffShield.
-    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        item.bounce_off_shield(ctx.shield_normal);
-        false
-    }
+/// it_3F2F.c's Logic87 row, for both kinds.
+macro_rules! fire_logic {
+    ($type:ty, $kind:ident, $states:ident) => {
+        impl ItemLogic for $type {
+            const KIND: ItemKind = ItemKind::$kind;
+            const STATES: &'static [ItemStateRow] = &$states;
+            /// The logic row has no pickup callback.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
+            }
+            /// it_8029B6F8 ends with it_802750F8.
+            const PROCS_AT_SPAWN: bool = true;
+            /// it_8029B7C0 (8029B7C0): the launch velocity along the attribute
+            /// angle, the lifetime, and motion 0. No fused sites: 8029B800/80C and
+            /// 8029B818 are separate fmuls.
+            fn launched(
+                item: &mut ItemCore,
+                assets: &ItemAssets,
+                common: &melee_it::desc::ItemCommonData,
+                _spawn: &SpawnItem,
+                _rng: &mut gekko_math::HsdRng,
+            ) {
+                let a = Attributes(&assets.special_attributes);
+                let (speed, angle) = (a.speed(), a.angle());
+                item.velocity.x = item.facing * (speed * gekko_math::msl::cosf(angle));
+                item.velocity.y = speed * gekko_math::msl::sinf(angle);
+                item.velocity.z = 0.0;
+                // it_80275158: both timers.
+                let lifetime = a.lifetime();
+                item.life_timer = lifetime;
+                item.half_life = lifetime * common.half_life_scale;
+                item.change_motion_with(0, ARTICLE_STATES[0], ANIM_UPDATE, assets);
+            }
+            /// itMarioFireball_Logic87_DmgDealt.
+            fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itMarioFireball_Logic87_Reflected -> it_80273030.
+            fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                item.reverse_on_reflect(ctx.reflected_speed);
+                false
+            }
+            /// itMarioFireball_Logic87_Clanked.
+            fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itMarioFireball_Logic87_HitShield.
+            fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itMarioFireball_Logic87_Absorbed.
+            fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itMarioFireball_Logic87_ShieldBounced -> itColl_BounceOffShield.
+            fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                item.bounce_off_shield(ctx.shield_normal);
+                false
+            }
+        }
+    };
 }
+fire_logic!(MarioFire, MarioFire, STATES);
+fire_logic!(KirbyMarioFire, KirbyMarioFire, KIRBY_STATES);
 
 /// itMariofireball_UnkMotion0_Anim (8029B868): the lifetime counts down;
 /// the fireball ends when it is spent.
@@ -128,7 +147,9 @@ fn physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 /// fireball slower than attribute x10 ends it (8029B928..3C: two fmuls and
 /// an fadds, then the inlined sqrtf_accurate); a faster one plays the
 /// bounce sound and effect.
-fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+/// `KIRBY`: the item is It_Kind_Kirby_MarioFire (the kind test at
+/// 8029B9BC), which spawns its own bounce effect and no sound.
+fn collision<const KIRBY: bool>(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     item.airborne_pass(ctx.map);
     if !item.bounce_velocity(ctx.map, ctx.assets) {
         return false;
@@ -138,8 +159,13 @@ fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if speed < Attributes(&ctx.assets.special_attributes).minimum_bounce_speed() {
         return true;
     }
-    // Dr. Mario's pill (It_Kind_DrMario_Vitamin) shares this callback with
-    // effect 0x4A0 and no sound; only the fireball is registered.
+    if KIRBY {
+        item.spawn_async(ItemEvent::RootEffect {
+            id: KIRBY_BOUNCE_EFFECT,
+            parameter: None,
+        });
+        return false;
+    }
     item.sound_requests.push(BOUNCE_SOUND);
     item.spawn_async(ItemEvent::RootEffect {
         id: BOUNCE_EFFECT,

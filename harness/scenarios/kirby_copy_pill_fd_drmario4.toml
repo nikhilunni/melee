@@ -1,0 +1,43 @@
+# KIRBY directed witness from start_fd_kirby_drmario4 (Kirby runs to x=51 beside DrMario at +60 and swallows him): the copied Megavitamin (rows 512, 513). Kirby turns to DrMario and throws two grounded Megavitamins into him (Megavitamins drawn over u.kb.x68/x6C); a full hop and a midair jump with an aerial Megavitamin that ends in Fall; a short hop with one that lands in the grounded row.
+name = "kirby_copy_pill_fd_drmario4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_drmario4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 480, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 482, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 608, port = 0, buttons = {  }, raw = {  } },
+  { frame = 614, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 616, port = 0, buttons = {  }, raw = {  } },
+  { frame = 626, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 628, port = 0, buttons = {  }, raw = {  } },
+  { frame = 720, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 722, port = 0, buttons = {  }, raw = {  } },
+  { frame = 726, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 728, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "DrMario"
+controller = "scripted"

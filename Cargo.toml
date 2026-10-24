@@ -68,6 +68,7 @@ members = [
     "crates/ft-samus",
     "crates/it-samus",
     "crates/ft-gamewatch-family",
+    "crates/ft-luigi-family",
     "crates/ft-gamewatch",
     "crates/it-gamewatch",
     "crates/ft-seak",

@@ -15,6 +15,7 @@ pub mod captain;
 pub mod shield_breaker;
 pub mod rollout;
 pub mod chef;
+pub mod fireball;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -38,7 +39,7 @@ const fn unported(ground: &'static str, air: &'static str) -> CopiedNeutral {
 /// ftKb_Init_803C9DD0 and ftKb_Init_803C9E54, by `FighterKind`.
 pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Mario
-    unported("ftKb_SpecialN_800F9110", "ftKb_SpecialNMr_800F93CC"),
+    CopiedNeutral::Ported(fireball::enter_mario),
     // Fox
     CopiedNeutral::Ported(blaster::enter::<blaster::KirbyFox>),
     // Captain Falcon
@@ -72,7 +73,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Mewtwo
     unported("ftKb_SpecialNMt_80107568", "ftKb_SpecialNMt_80107638"),
     // Luigi
-    unported("ftKb_SpecialNLg_800F9614", "ftKb_SpecialNLg_800F9684"),
+    CopiedNeutral::Ported(fireball::enter_luigi),
     // Marth
     CopiedNeutral::Ported(shield_breaker::enter::<shield_breaker::KirbyMarth>),
     // Zelda
@@ -80,7 +81,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Young Link: Link's entries.
     unported("ftKb_SpecialNLk800FB880", "ftKb_SpecialNLk800FBA00"),
     // Dr. Mario: Mario's entries.
-    unported("ftKb_SpecialN_800F9110", "ftKb_SpecialNMr_800F93CC"),
+    CopiedNeutral::Ported(fireball::enter_mario),
     // Falco: Fox's entries.
     CopiedNeutral::Ported(blaster::enter::<blaster::KirbyFalco>),
     // Pichu: Pikachu's entries.

@@ -1,0 +1,37 @@
+# KIRBY directed witness from start_fd_kirby_mario4 (Kirby runs to x=51 beside Mario at +60 and swallows him): Mario jabs Kirby as he starts the copied Fireball (the hit's draw in a copied special's row, ftKb_SpecialN_800F5C34); a taunt then drops the ability as a star (ftKb_SpecialN_800F5D04), and B is the Inhale.
+name = "kirby_copy_fireball_struck_fd_mario4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_mario4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 432, port = 0, buttons = {  }, raw = {  } },
+  { frame = 432, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 433, port = 1, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 521, port = 0, buttons = {  }, raw = {  } },
+  { frame = 640, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 642, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Mario"
+controller = "scripted"

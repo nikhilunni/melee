@@ -25,6 +25,20 @@ pub(super) const LUIGI_HAND_FIRE: HandFire = HandFire {
     bank: 18,
     generator: 0x4650,
 };
+/// efAlt_Spawn 0x49F (efalt.c:325-345): Kirby's copied fireball's flash,
+/// model 0x7D00 and hsd_8039EFAC(0, 0x20, 0x7D00, jobj).
+pub(super) const KIRBY_MARIO_HAND_FIRE: HandFire = HandFire {
+    model: 0x7D00,
+    bank: 32,
+    generator: 0x7D00,
+};
+/// efAlt_Spawn 0x4B1 (efalt.c:465-485): Kirby's copied green fireball's
+/// flash, model 0x9088 and hsd_8039EFAC(0, 0x25, 0x9088, jobj).
+pub(super) const KIRBY_LUIGI_HAND_FIRE: HandFire = HandFire {
+    model: 0x9088,
+    bank: 37,
+    generator: 0x9088,
+};
 /// efAlt_Spawn 0x47C: the Tornado's model.
 pub(super) const TORNADO_MODEL: u32 = 0x3E9;
 /// efSync_Spawn 0x509 (efsync.c:584-590): the Cyclone's model.

@@ -61,6 +61,10 @@ pub struct Kirby {
     pub rollout: ft_purin_family::RolloutState,
     /// The copied Chef: u.kb.xD4..xDC and mv.kb.specialn_gw.
     pub chef: crate::copied::chef::KirbyChef,
+    /// Fighter +2294 (u.kb.x68): the copied Megavitamin's last colour.
+    pub vitamin_current: i32,
+    /// Fighter +2298 (u.kb.x6C): the colour before it.
+    pub vitamin_previous: i32,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -76,6 +80,10 @@ pub enum Accessory {
     ChefPan,
     /// fn_8010CE5C: the copied Chef's food on the script's flag.
     ChefFood,
+    /// fn_800F9260: the copied Fireball or Megavitamin on the script's flag.
+    Fireball,
+    /// fn_800F98F4: the copied green Fireball on the script's flag.
+    GreenFireball,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -102,6 +110,10 @@ impl Kirby {
             shield_breaker: Default::default(),
             rollout: crate::copied::rollout::at_rest(),
             chef: Default::default(),
+            // ftKb_SpecialN_800F190C's 9, which every new ability sets
+            // before the first draw reads them.
+            vitamin_current: 9,
+            vitamin_previous: 9,
         }
     }
 }
@@ -249,6 +261,8 @@ impl CharacterCallbacks for Kirby {
             Accessory::Hammer => crate::special_s::hammer_accessory(f),
             Accessory::ChefPan => crate::copied::chef::pan_accessory(f, assets),
             Accessory::ChefFood => crate::copied::chef::throw_accessory(f, assets, rng),
+            Accessory::Fireball => crate::copied::fireball::mario_accessory(f, assets, rng),
+            Accessory::GreenFireball => crate::copied::fireball::luigi_accessory(f, assets),
             Accessory::None => {}
         }
     }

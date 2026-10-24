@@ -623,8 +623,36 @@ fails closed.
   lack Mr. Game & Watch's SkipModel. Copy archive `PlKbCpGw.dat`,
   hat_dynamics[5] (food) and [6] (pan); no effect bank. The pan's hitlag
   pair is unreached (any hit on Kirby in Chef changes his motion first).
+- **The copied Fireball, Megavitamin and green Fireball** (`ft-kirby`
+  `copied/fireball.rs`; ftkirbyspecialmario.c, ftkirbyspecialluigi.c):
+  Mario's states (`ft_mario_family::special_n`, now generic over a
+  `Fireball` trait that every `MarioFamily` gets by a blanket impl) over
+  rows 399/400 (Mario's hat) and 512/513 (any other: the entries and
+  ftKb_SpecialNLg_800F951C / 800F9598 test hat.kind != MARIO); Luigi's
+  (moved into the new `ft-luigi-family`, `fireball::GreenFireball`) over
+  rows 431/432. Both throw from LHandN (Mario's and Luigi's own use
+  L1stNb). fn_800F9260 returns before reading the throw flag without a
+  copied kind; Mario's hat throws It_Kind_Kirby_MarioFire with efAlt 0x49F
+  (EfKbMr.dat, bank 32, model 0x7D00), any other a Megavitamin
+  (It_Kind_Kirby_DrMarioVitamin) whose colour is drawn over u.kb.x68 / x6C
+  (800F190C resets both to 9), without a flash. fn_800F98F4 throws
+  It_Kind_Kirby_LuigiFire with efAlt 0x4B1 (EfKbLg.dat, bank 37, model
+  0x9088). The articles are the originals' item code under Kirby's kinds;
+  the fireballs' bounces spawn efAlt 0x4A0 / 0x4B2 (generators 0x7D02 /
+  0x908A) and Kirby's Mario fireball plays no bounce sound (the kind test
+  at 8029B9BC). Copy archives `PlKbCpMr.dat` (ft_80459B88.x0->xC),
+  `PlKbCpDr.dat` and `PlKbCpLg.dat`, hat_dynamics[0] each. No damage
+  callbacks and no put-away arm. Evidence: boundaries
+  `start_fd_kirby_{mario,drmario,luigi}4` and seven
+  `kirby_copy_{fireball,pill,greenfireball}_*` scenes in `KIRBY_WITNESSES`,
+  exact on their first gate with 0 differing particle-site ticks: two
+  grounded throws into the copied fighter, an aerial throw ending in Fall,
+  a short-hop one landing in the grounded row, a throw at the floor's edge
+  sliding off into the aerial row (and death with the ability), a jab in
+  the row whose draw keeps the ability and a taunt that drops it.
 - Not ported: the copied neutral specials other than the Blaster, the
-  Punch, the Shield Breaker, the Rollout and the Chef
+  Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
+  Megavitamin and the green Fireball
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -672,6 +700,9 @@ Remaining work, in the order to take it:
    Mr. Game & Watch's Chef (`kirby_copy_chef_*`: the held loop, aerial
    landing in it, a jab putting the pan away, a jab's draw taking the
    ability, a death in it).
+   Done (wave 13): Mario's, Dr. Mario's and Luigi's Fireball / Megavitamin
+   (`kirby_copy_{fireball,pill,greenfireball}_*`, boundaries
+   `start_fd_kirby_{mario,drmario,luigi}4`).
    Next: Sheik, Peach, Samus, then the rest; each row's stale-move id
    exists already (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (the
    charge flashes of Donkey Kong, Samus, Mewtwo and Sheik) comes with those

@@ -90,7 +90,7 @@ pub const fn rows<C: MarioFamily>(taunt: [MotionRow; 2]) -> [MotionRow; SPECIAL_
         &mut rows,
         common::row(
             special_n::GROUND,
-            special_n::anim,
+            special_n::ground_anim,
             special_n::ground_input,
             special_n::ground_physics,
             special_n::ground_collision::<C>,
@@ -100,7 +100,7 @@ pub const fn rows<C: MarioFamily>(taunt: [MotionRow; 2]) -> [MotionRow; SPECIAL_
         &mut rows,
         common::row(
             special_n::AIR,
-            special_n::anim,
+            special_n::air_anim,
             special_n::air_input,
             special_n::air_physics,
             special_n::air_collision::<C>,
@@ -260,19 +260,26 @@ impl Specials {
 /// ftMr_SpecialN_VitaminRandom (800E0D1C): a colour other than the last
 /// two (HSD_Randi over the rest), remembered as the new current one.
 pub fn vitamin_random<C: MarioFamily>(f: &mut Fighter, rng: &mut gekko_math::HsdRng) -> i32 {
+    let s = specials::<C>(f);
+    draw_vitamin(&mut s.vitamin_current, &mut s.vitamin_previous, rng)
+}
+
+/// The draw of ftMr_SpecialN_VitaminRandom and of Kirby's copy (fn_800F9260,
+/// over u.kb.x68 / x6C): the nine colours but `current` and `previous`,
+/// one of them by HSD_Randi; `previous` takes `current`, which takes it.
+pub fn draw_vitamin(current: &mut i32, previous: &mut i32, rng: &mut gekko_math::HsdRng) -> i32 {
     /// Nine Megavitamin colour pairs.
     const COLOURS: i32 = 9;
-    let s = specials::<C>(f);
     let mut choices = [0; COLOURS as usize];
     let mut count = 0;
     for colour in 0..COLOURS {
-        if colour != s.vitamin_current && colour != s.vitamin_previous {
+        if colour != *current && colour != *previous {
             choices[count] = colour;
             count += 1;
         }
     }
     let picked = choices[rng.randi(count as i32) as usize];
-    s.vitamin_previous = s.vitamin_current;
-    s.vitamin_current = picked;
+    *previous = *current;
+    *current = picked;
     picked
 }

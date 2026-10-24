@@ -3,10 +3,14 @@
 //! (it_802C01AC); it flies level at attribute x0 under ItemAttr gravity,
 //! bounces along the floor, and ends when its lifetime runs out, a bounce
 //! leaves it slower than attribute xC, or its hit connects.
+//! Kirby's copied Fireball throws the same item code as
+//! It_Kind_Kirby_LuigiFire (ftkirbyspecialluigi.c, PlKbCpLg.dat).
 use melee_it::{desc::ItemAssets, state_change::ANIM_UPDATE, *};
 use melee_types::ItemKind;
 
 pub struct LuigiFire;
+/// It_Kind_Kirby_LuigiFire: the fireball of Kirby's copy.
+pub struct KirbyLuigiFire;
 
 /// it_803F75C0's anim_id column: one motion state, article state 0.
 pub const ARTICLE_STATES: [i32; 1] = [0];
@@ -18,6 +22,9 @@ pub const ARTICLE_INDEX: u32 = 0;
 /// efAsync_Spawn(item, xBC0, 1, 1288, root): efSync's generator 0x4652 at
 /// a bounce.
 const BOUNCE_EFFECT: u16 = 0x508;
+/// efAsync_Spawn(item, xBC0, 1, 1202, root): Kirby's copy's bounce (efAlt
+/// 0x4B2, generator 0x908A of EfKbLg.dat).
+const KIRBY_BOUNCE_EFFECT: u16 = 0x4B2;
 
 /// The fireball's special attributes (itUnkAttributes).
 struct Attributes<'a>(&'a [f32]);
@@ -40,65 +47,77 @@ static STATES: [ItemStateRow; 1] = [ItemStateRow {
     animation_id: ARTICLE_STATES[0],
     animation,
     physics,
-    collision,
+    collision: collision::<false>,
+}];
+static KIRBY_STATES: [ItemStateRow; 1] = [ItemStateRow {
+    animation_id: ARTICLE_STATES[0],
+    animation,
+    physics,
+    collision: collision::<true>,
 }];
 
-/// it_3F2F.c's Logic89 row.
-impl ItemLogic for LuigiFire {
-    const KIND: ItemKind = ItemKind::LuigiFire;
-    const STATES: &'static [ItemStateRow] = &STATES;
-    /// The logic row has no pickup callback.
-    fn pickup_possible(_item: &ItemCore) -> bool {
-        false
-    }
-    /// it_802C01AC ends with it_802750F8.
-    const PROCS_AT_SPAWN: bool = true;
-    /// it_802C027C (802C027C): level flight at x0 along the facing
-    /// (802C02A4: fmuls), the lifetime, and motion 0.
-    fn launched(
-        item: &mut ItemCore,
-        assets: &ItemAssets,
-        common: &melee_it::desc::ItemCommonData,
-        _spawn: &SpawnItem,
-        _rng: &mut gekko_math::HsdRng,
-    ) {
-        let a = Attributes(&assets.special_attributes);
-        item.velocity.x = a.speed() * item.facing;
-        item.velocity.y = 0.0;
-        item.velocity.z = 0.0;
-        // it_80275158: both timers.
-        let lifetime = a.lifetime();
-        item.life_timer = lifetime;
-        item.half_life = lifetime * common.half_life_scale;
-        item.change_motion_with(0, ARTICLE_STATES[0], ANIM_UPDATE, assets);
-    }
-    /// itLuigiFireball_Logic89_DmgDealt.
-    fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itLuigiFireball_Logic89_Reflected -> it_80273030.
-    fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        item.reverse_on_reflect(ctx.reflected_speed);
-        false
-    }
-    /// itLuigiFireball_Logic89_Clanked.
-    fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itLuigiFireball_Logic89_HitShield.
-    fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itLuigiFireball_Logic89_Absorbed.
-    fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itLuigiFireball_Logic89_ShieldBounced -> itColl_BounceOffShield.
-    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
-        item.bounce_off_shield(ctx.shield_normal);
-        false
-    }
+/// it_3F2F.c's Logic89 row, for both kinds.
+macro_rules! fire_logic {
+    ($type:ty, $kind:ident, $states:ident) => {
+        impl ItemLogic for $type {
+            const KIND: ItemKind = ItemKind::$kind;
+            const STATES: &'static [ItemStateRow] = &$states;
+            /// The logic row has no pickup callback.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
+            }
+            /// it_802C01AC ends with it_802750F8.
+            const PROCS_AT_SPAWN: bool = true;
+            /// it_802C027C (802C027C): level flight at x0 along the facing
+            /// (802C02A4: fmuls), the lifetime, and motion 0.
+            fn launched(
+                item: &mut ItemCore,
+                assets: &ItemAssets,
+                common: &melee_it::desc::ItemCommonData,
+                _spawn: &SpawnItem,
+                _rng: &mut gekko_math::HsdRng,
+            ) {
+                let a = Attributes(&assets.special_attributes);
+                item.velocity.x = a.speed() * item.facing;
+                item.velocity.y = 0.0;
+                item.velocity.z = 0.0;
+                // it_80275158: both timers.
+                let lifetime = a.lifetime();
+                item.life_timer = lifetime;
+                item.half_life = lifetime * common.half_life_scale;
+                item.change_motion_with(0, ARTICLE_STATES[0], ANIM_UPDATE, assets);
+            }
+            /// itLuigiFireball_Logic89_DmgDealt.
+            fn damage_dealt(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itLuigiFireball_Logic89_Reflected -> it_80273030.
+            fn reflected(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                item.reverse_on_reflect(ctx.reflected_speed);
+                false
+            }
+            /// itLuigiFireball_Logic89_Clanked.
+            fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itLuigiFireball_Logic89_HitShield.
+            fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itLuigiFireball_Logic89_Absorbed.
+            fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itLuigiFireball_Logic89_ShieldBounced -> itColl_BounceOffShield.
+            fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+                item.bounce_off_shield(ctx.shield_normal);
+                false
+            }
+        }
+    };
 }
+fire_logic!(LuigiFire, LuigiFire, STATES);
+fire_logic!(KirbyLuigiFire, KirbyLuigiFire, KIRBY_STATES);
 
 /// itLuigifireball_UnkMotion0_Anim (802C02E4): the lifetime counts down;
 /// the fireball ends when it is spent.
@@ -119,7 +138,9 @@ fn physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 /// fireball slower than attribute xC ends it (802C03A0..B4: two fmuls and
 /// an fadds, then the inlined sqrtf_accurate); a faster one spawns the
 /// bounce effect (no sound, unlike Mario's).
-fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+/// `KIRBY`: the item is It_Kind_Kirby_LuigiFire, which spawns its own
+/// bounce effect.
+fn collision<const KIRBY: bool>(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     item.airborne_pass(ctx.map);
     if !item.bounce_velocity(ctx.map, ctx.assets) {
         return false;
@@ -129,10 +150,12 @@ fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if speed < Attributes(&ctx.assets.special_attributes).minimum_bounce_speed() {
         return true;
     }
-    // Kirby's copy (It_Kind_Kirby_LuigiFire) shares this callback with
-    // effect 0x4B2; only Luigi's fireball is registered.
     item.spawn_async(ItemEvent::RootEffect {
-        id: BOUNCE_EFFECT,
+        id: if KIRBY {
+            KIRBY_BOUNCE_EFFECT
+        } else {
+            BOUNCE_EFFECT
+        },
         parameter: None,
     });
     false

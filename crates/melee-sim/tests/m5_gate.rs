@@ -2734,6 +2734,25 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_chef_struck_fd_gameandwatch4", 600),
     ("kirby_copy_chef_lost_fd_gameandwatch4", 640),
     ("kirby_copy_chef_pit_fd_gameandwatch4", 700),
+    // The copied Fireball, Megavitamin and green Fireball
+    // (ftkirbyspecialmario.c over ft_mario_family's states, rows 399/400 and
+    // 512/513; ftkirbyspecialluigi.c over ft_luigi_family's, rows 431/432;
+    // the articles from PlKbCpMr/Dr/Lg.dat, efAlt 0x49F/0x4A0 and
+    // 0x4B1/0x4B2 from EfKbMr.dat / EfKbLg.dat), from boundaries
+    // `start_fd_kirby_{mario,drmario,luigi}4`: two grounded throws into the
+    // copied fighter, an aerial one ending in Fall and a short-hop one
+    // landing in the grounded row (the pills drawn over u.kb.x68/x6C).
+    ("kirby_copy_fireball_fd_mario4", 900),
+    ("kirby_copy_pill_fd_drmario4", 900),
+    ("kirby_copy_greenfireball_fd_luigi4", 900),
+    // A throw at the floor's edge slides off into the aerial row; Kirby
+    // dies with the ability, and back on the stage B is the Inhale.
+    ("kirby_copy_fireball_edge_fd_mario4", 780),
+    ("kirby_copy_pill_edge_fd_drmario4", 780),
+    ("kirby_copy_greenfireball_edge_fd_luigi4", 780),
+    // Mario jabs Kirby in the Fireball's row (the draw keeps the ability);
+    // a taunt drops it as a star.
+    ("kirby_copy_fireball_struck_fd_mario4", 700),
 ];
 
 #[test]
