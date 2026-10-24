@@ -337,13 +337,15 @@ fn charge_hitboxes(f: &mut Fighter) {
     let bonus = scratch(f).swings * attributes(f).damage_per_swing;
     for index in 0..2 {
         if scratch(f).base_damage[index] == -1 {
-            // x914[index] is read whatever its state: a capsule the script
-            // has not made keeps its last damage.
+            // x914[index] is read whatever its state, but PlDk.dat's
+            // SpecialN/SpecialAirN scripts make hitboxes 0 and 1 together and
+            // clear them only together (op 16), so hitbox 1 is live whenever
+            // hitbox 0 is (docs/COVERAGE_AUDIT.md).
             let damage = f.commands.hitboxes[index]
                 .as_ref()
                 .map(|hit| hit.descriptor.damage)
                 .unwrap_or_else(|| {
-                    unimplemented!(
+                    unreachable!(
                         "ftdonkeyspecialn.c:165: Giant Punch hitbox {index} not created with hitbox 0"
                     )
                 });

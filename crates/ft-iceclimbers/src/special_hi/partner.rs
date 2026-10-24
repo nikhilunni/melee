@@ -159,13 +159,7 @@ fn free_to_join(nana: &PartnerView) -> bool {
     if nana.disabled || nana.in_hitlag {
         return false;
     }
-    let class = nana.class.unwrap_or_else(|| {
-        unimplemented!(
-            "ftNn_Init_8012300C: x2071 of Nana's action {} (no x4_flags column)",
-            nana.action.0
-        )
-    });
-    !busy(class)
+    !busy(nana.class)
 }
 
 /// ftNn_Init_8012309C (8012309C): Nana is flying or has landed from it.

@@ -182,13 +182,16 @@ pub fn quake(f: &mut Fighter, map: &mut melee_mp::CollMap) {
         };
         // retail 0x8010DC40: fadds.
         point.y += LIFT;
-        if let Some(hit) = f.core.commands.hitboxes[index].as_mut() {
-            hit.world = true;
-            hit.descriptor.offset = point;
-        } else {
-            unimplemented!(
+        // PlDk.dat's SpecialLwLoop script makes hitboxes 0..3, then sets
+        // throw_flags_b3 on that frame and the next, and clears every hitbox
+        // (op 16) only a frame after the second: the flag is never up without
+        // all four (docs/COVERAGE_AUDIT.md). Retail would move a stale slot.
+        let Some(hit) = f.core.commands.hitboxes[index].as_mut() else {
+            unreachable!(
                 "ftcoll.c:3385: ftColl_8007B8A8 on Hand Slap hitbox {index} the script has not made"
             );
-        }
+        };
+        hit.world = true;
+        hit.descriptor.offset = point;
     }
 }

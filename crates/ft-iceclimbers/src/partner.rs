@@ -20,8 +20,8 @@ pub struct PartnerView {
     pub spawn_number: u32,
     /// motion_id.
     pub action: ActionId,
-    /// x2070's x2071_b0_3 class (None for a row without a known column).
-    pub class: Option<u8>,
+    /// x2070's x2071_b0_3 class.
+    pub class: u8,
     /// cur_anim_frame.
     pub frame: f32,
     pub position: Vec3,
@@ -51,7 +51,12 @@ pub struct PartnerView {
 
 impl PartnerView {
     fn of(f: &Fighter) -> Self {
-        let class = f.motion_flags().map(melee_ft::fighter::state::class_nibble);
+        // The common table's flags column and SPECIAL_MOTION_FLAGS cover
+        // every row a climber can be in (0..=366).
+        let flags = f
+            .motion_flags()
+            .expect("an Ice Climbers row with an x4_flags column");
+        let class = melee_ft::fighter::state::class_nibble(flags);
         Self {
             spawn_number: f.spawn_number,
             action: f.motion_state.action,

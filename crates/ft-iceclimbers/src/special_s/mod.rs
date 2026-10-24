@@ -173,9 +173,7 @@ pub fn enter(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
 /// into her row after this proc (`partner::join`).
 fn invite_partner(f: &mut Fighter) -> bool {
     let nana = link::view(f);
-    let class = nana.class.unwrap_or_else(|| {
-        unimplemented!("ftNn_Init_80123954: Nana's motion {:?} class", nana.action)
-    });
+    let class = nana.class;
     if (1..=13).contains(&class) {
         link::work(f).clear_link = true;
         return false;

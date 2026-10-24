@@ -175,6 +175,38 @@ Catch boxes against items (`ftColl_8007BC90`) are not a gap: the item side
 requires `xDD0 b4`, which only stage enemies set. A grabber dying with its
 victim (ftCo_800D331C, ftCo_800DD100) is ported and gated by corpus v3.
 
+## Character rows with no retail entry (2026-10-24)
+
+A row is "entered" only by `Fighter_ChangeMotionState`,
+`ftCommon_GroundToAirStateChange`/`AirToGroundStateChange`, `ftCo_Landing_Enter`,
+`ftCo_Turn_Enter`, `ftWalkCommon_800DFCA4` or `ftCo_8008DCE0` with its action
+id. For each row below the decomp names no such call, and the retail asm of
+the character's units has no `li r4, <id>` (nor an `addi` that reaches the id
+from a table base). Rows whose four state callbacks are NULL or a lone `blr`
+are transcribed (`state::empty_row`); the others stay fail-closed.
+
+| Row | Callbacks | Evidence |
+| --- | --- | --- |
+| Mario AppealSR/SL (341/342) | NULL, ftCo_SM_None | Entered only by ftDr_Init_80149910, ftCo_800DEA28's FTKIND_DRMARIO arm. Transcribed |
+| Link AppealSR/SL (342/343) | NULL, ftCo_SM_None | Entered only by ftCl_Init_80149318, FTKIND_CLINK arm (Young Link's milk rows). Transcribed |
+| Luigi SpecialS2 (345) | `blr` (80143B18/58/60, 80143BE0) | No `0x159` in ftLuigi; Green Missile's launch is 347 and its aerial twin 351 is entered at ftluigispecials.c:717. Transcribed |
+| Pikachu/Pichu SpecialS1 (345) | `blr` (8012590C/4C/54, 801259D4) | No `0x159` in ftPikachu (Pichu shares the code); Skull Bash enters 343/344/346/347 on the ground and 348-352 in the air. Transcribed |
+| Peach SpecialSJump (356) | NULL | No `0x164` in ftPeach; the Bomber's jump is the aerial 360. Transcribed |
+| Ice Climbers SpecialHi_2/_5 (363/366) | NULL | No `0x16b`/`0x16e` load in ftPopo or ftNana (366 is only the top of `cmpwi` range tests). Transcribed |
+| Ice Climbers SpecialHi_3 (364) | ftPp_SpecialHi_3_* | No `0x16c` in ftPopo or ftNana: fail-closed |
+| Peach SpecialHiEnd/AirHiEnd (362/364) | ftPe_SpecialHiEnd_* | No `0x16a`/`0x16c` load in ftPeach (`0x16c` only in ftPe_SpecialHi_NotActive's range test, 8011D69C): fail-closed |
+| Donkey Kong ThrowFWait2 (360) | ftCo_CargoWait2_* | The cargo rows are reached from `x2CC->x4_motion_state` (351) + 0..8 and the throws' +10..13; only the heavy-item landing adds 9 (ftDk_MS_349, 800E07CC), to `x2CC->motion_state` (341), giving HeavyWait2 (350): fail-closed |
+| Donkey Kong SpecialLwEnd1 (386) | ftDk_SpecialLwEnd1_* | No `0x182` in ftDonkey; Hand Slap is grounded only (Start 383, Loop 384, End0 385): fail-closed |
+
+## Special edges proven unreachable by the disc's data (2026-10-24)
+
+| Site | Evidence |
+| --- | --- |
+| `ft-gamewatch/special_s.rs` ftGw_SpecialS_GetRandomInt, no face | The draw is `HSD_Randi(total)` and the last ceiling is `total`, so a face is found whenever `total > 0`. PlGw.dat's ext attributes x34..x54 (`ftDataGamewatch` +4, then +0x34) are nine 1s, so at least seven faces always weigh in. Now `unreachable!` |
+| `ft-donkey/special_lw.rs` ftColl_8007B8A8 on a missing Hand Slap hitbox | PlDk.dat SpecialLwLoop (submotion 334): hitboxes 0..3 (op 11) are made, then throw_flags_b3 is set (op 20) that frame and the next, and op 16 clears every hitbox a frame after the second flag; the flag is consumed in the same tick's callbacks. Now `unreachable!` |
+| `ft-donkey/special_n.rs` Giant Punch hitbox 1 without hitbox 0 | PlDk.dat SpecialN/SpecialAirN (submotions 322, 323, 327, 328): hitboxes 0 and 1 are always made together and only op 16 (clear all) removes them; no op 15. Now `unreachable!` |
+| `ft-iceclimbers` ftNn_Init_8012300C / ftNn_Init_80123954, Nana's class | The port's `x4_flags` column covers every row a climber can be in (the common table and the 26 `SPECIAL_MOTION_FLAGS`); the Option is gone |
+
 ## Exit status
 
 Remaining reachable boundaries: the Sudden Death item gaps in the table

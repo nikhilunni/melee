@@ -120,9 +120,13 @@ pub fn draw_face(gw: &mut GameWatch, rng: &mut gekko_math::HsdRng) -> i32 {
         }
     }
     let draw = rng.randi(total);
+    // `draw < total`, the last ceiling, finds a face whenever `total > 0`.
+    // ftgamewatchspecials.c:135-143 leaves the result uninitialised only when
+    // every candidate's weight is zero; PlGw.dat's x34 table is nine 1s
+    // (docs/COVERAGE_AUDIT.md), so at least seven faces always weigh in.
     let Some(index) = (0..count).find(|&i| draw < ceilings[i]) else {
-        unimplemented!(
-            "ftGw_SpecialS_GetRandomInt (ftgamewatchspecials.c:135-143): no face enabled, result uninitialised"
+        unreachable!(
+            "ftGw_SpecialS_GetRandomInt (ftgamewatchspecials.c:135-143): no Judgment face weighted"
         );
     };
     gw.judge_previous = gw.judge_last;
