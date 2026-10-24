@@ -791,9 +791,9 @@ fn contact_normal(victim: &mut Fighter, phase: &mut CollisionPhase<'_>) -> Vec3 
     let cd = &c.collision.data;
     let flags = cd.env_flags as u32;
     if landed {
-        // `*normal = coll->floor.normal`: neither star descends (the spat
-        // one flies level, the copy star rises).
-        unimplemented!("ftCo_800BDA74 (ftCo_ThrownKirby.c:76-77): a star landing on a floor");
+        // A level star meets a floor that rises ahead of it (Yoshi's
+        // Story's slopes); it bounces off the floor and stays airborne.
+        cd.floor.normal
     } else if flags & collide::RIGHT_WALL_MASK != 0 {
         cd.right_facing_wall.normal
     } else if flags & collide::LEFT_WALL_MASK != 0 {
