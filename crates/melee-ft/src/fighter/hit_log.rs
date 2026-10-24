@@ -211,20 +211,23 @@ impl FighterCore {
             return;
         }
         self.combat.phantom_lockout = 0.0;
-        let Some(phantom) = self.combat.phantom.clone() else {
+        let Some(mut phantom) = self.combat.phantom.clone() else {
             return;
         };
-        if self.combat.shell_active {
-            unimplemented!(
-                "ftColl_8007BE3C (ftcoll.c:3666-3676): a phantom hit's damage against the \
-                 x221C_b4 shell"
-            );
+        // The count is taken from the damage before the shell
+        // (ftcoll.c:3655-3664); a shell that holds takes all of it, and
+        // nothing follows: no credit, no effect (:3666-3684).
+        let count = damage_count(phantom.damage);
+        let Some(damage) = self.combat.through_shell(phantom.damage) else {
+            return;
+        };
+        phantom.damage = damage;
+        if let Some(stored) = self.combat.phantom.as_mut() {
+            // `fp->dmg.x1898 = -fp->dmg.x1834` when the shell breaks.
+            stored.damage = damage;
         }
         self.combat.frame_damage += phantom.damage;
-        self.combat.frame_max_damage = self
-            .combat
-            .frame_max_damage
-            .max(damage_count(phantom.damage));
+        self.combat.frame_max_damage = self.combat.frame_max_damage.max(count);
         // plStale_UpdateStaleMovesFromFighter / ftColl_80076444 run on the
         // source fighter (for an item, plStale_UpdateStaleMovesFromItem /
         // ftColl_8007646C on its owner); the scene applies this credit after

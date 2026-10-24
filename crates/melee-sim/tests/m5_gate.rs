@@ -5961,6 +5961,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 717] = [
     // collision ignores ft_80081D0C's landing (ftkirbyspeciallw.c:695, 866).
     ("corpus_v3_ys_kirby_fox4_e64e742b5_p1", 748),
     ("corpus_v3_ys_kirby_fox4_e4358fb9c_p0", 762),
+    // A phantom hit's damage comes off Stone's shell when its lockout ends
+    // (ftColl_8007BE3C, ftcoll.c:3666-3676); the shell holds.
+    ("corpus_v3_ys_kirby_fox4_ee769e727_p2", 1505),
     // Landing out of Sheik's Vanish air end (360) inherits mv+4, the travel's
     // stick x (ftCo_Landing.c:41-50), Zelda-as-Sheik.
     ("corpus_v3_fod_captainfalcon_zelda4_e5909cbff_p1", 1672),
