@@ -26,6 +26,7 @@ pub mod egg_lay;
 pub mod bow;
 pub mod nayrus_love;
 pub mod fire_breath;
+pub mod ice_shot;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -69,7 +70,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Peach
     CopiedNeutral::Ported(toad::enter),
     // Ice Climbers
-    unported("ftKb_SpecialNIc_80108D64", "ftKb_SpecialNIc_80108E14"),
+    CopiedNeutral::Ported(ice_shot::enter),
     // Nana: NULL (a swallowed Nana gives Popo's ability).
     CopiedNeutral::Inhale,
     // Pikachu
@@ -183,6 +184,7 @@ pub fn item_muzzle(f: &mut Fighter, assets: &FighterAssets) -> Option<(hsd_types
 pub fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     crate::special_s::article_destroyed(f, kind);
     chef::article_destroyed(f, kind);
+    ice_shot::article_destroyed(f, kind);
     samus::article_destroyed(f, kind);
     mewtwo::article_destroyed(f, kind);
     toad::article_destroyed(f, kind);

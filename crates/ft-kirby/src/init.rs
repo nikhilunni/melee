@@ -91,6 +91,12 @@ pub struct Kirby {
     pub breath_fuels: ft_koopa_family::fire_breath::Fuels,
     /// The copied Fire Breath's mv.kb.specialn_kp.
     pub fire_breath: ft_koopa_family::fire_breath::Breath,
+    /// Fighter +22EC (u.kb.xC0): the copied Ice Shot's block, held until
+    /// it leaves.
+    pub ice_held: bool,
+    /// Fighter +22F4 (u.kb.xC8): how far below the usual height a
+    /// repeated aerial Ice Shot makes its block.
+    pub ice_drop: f32,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -118,6 +124,8 @@ pub enum Accessory {
     NayrusLoveCrystal,
     /// fn_80105AB0: the crystal in the air.
     NayrusLoveAirCrystal,
+    /// fn_801090D4: the copied Ice Shot's script commands.
+    IceShot,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -160,6 +168,8 @@ impl Kirby {
             nayrus_love: Default::default(),
             breath_fuels: Default::default(),
             fire_breath: Default::default(),
+            ice_held: false,
+            ice_drop: 0.0,
         }
     }
 }
@@ -329,6 +339,7 @@ impl CharacterCallbacks for Kirby {
             }
             Accessory::NayrusLoveCrystal => crate::copied::nayrus_love::crystal(f, false),
             Accessory::NayrusLoveAirCrystal => crate::copied::nayrus_love::crystal(f, true),
+            Accessory::IceShot => crate::copied::ice_shot::accessory(f, assets),
             Accessory::None => {}
         }
     }

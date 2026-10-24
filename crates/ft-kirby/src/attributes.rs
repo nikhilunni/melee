@@ -82,6 +82,8 @@ pub struct KirbyAttributes {
     pub nayrus_love: ft_zelda_family::nayrus_love::NayrusLoveAttributes,
     /// +118..+13C (`specialn_kp_*`): the copied Fire Breath.
     pub fire_breath: ft_koopa_family::fire_breath::FireBreathAttributes,
+    /// +39C..+3A8 (`specialn_pp_*`): the copied Ice Shot.
+    pub ice_shot: ft_iceclimbers_family::ice_shot::IceShotAttributes,
     /// +400 (`specialn_zd_reflectdesc`): its reflector.
     pub nayrus_love_reflection: melee_ft::desc::fox_attributes::ReflectionAttributes,
 }
@@ -333,6 +335,7 @@ impl KirbyAttributes {
                 max_sausages: r.f32(0x3E8)?,
             },
             fire_breath: ft_koopa_family::fire_breath::FireBreathAttributes::read(&r, 0x118)?,
+            ice_shot: ft_iceclimbers_family::ice_shot::IceShotAttributes::read(&r, 0x39C)?,
             nayrus_love: ft_zelda_family::nayrus_love::NayrusLoveAttributes::read(&r, 0x2A4)?,
             nayrus_love_reflection: melee_ft::desc::fox_attributes::ReflectionAttributes::read_at(
                 r, 0x400,

@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 32] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 33] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -259,6 +259,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 32] = [
         table: "effKirbyKoopaDataTable",
         models: 0,
     },
+    // Kirby's copied Ice Shot (efAsync_DatEntries[46], ftKb_Init_803CB46C
+    // for the Ice Climbers): generators 0xB3B0, 0xB3B1 and 0xB3B6, the
+    // block made, launched and sliding (efAlt 0x4AE..0x4B0); no models.
+    CharacterEffectFile {
+        bank: 46,
+        file: "EfKbIc.dat",
+        table: "effKirbyIceDataTable",
+        models: 0,
+    },
     // Kirby's copied Warlock Punch (efAsync_DatEntries[47], for Ganondorf):
     // models 0xB798 and 0xB799 (efAlt 0x4B3).
     CharacterEffectFile {
@@ -337,7 +346,7 @@ impl Resources {
         characters: &[Archive; CHARACTER_EFFECT_FILES.len()],
     ) -> Result<Self> {
         let mut models = pool::load_common(common)?;
-        let mut character_banks = CharacterBanks::default();
+        let mut character_banks: CharacterBanks = std::array::from_fn(|_| None);
         for ((file, archive), slot) in CHARACTER_EFFECT_FILES
             .iter()
             .zip(characters)

@@ -1,0 +1,37 @@
+# KIRBY directed witness from start_fd_kirby_iceclimbers4 (Kirby swallows Nana): Popo's forward smash hits Kirby holding the block (take_dmg_cb ftKb_Init_800EE7B8 -> 800F1A8C -> ftKb_SpecialNIc_80108D04 breaks it); a taunt drops the ability as a star; B is the Inhale.
+name = "kirby_copy_iceshot_struck_fd_iceclimbers4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_iceclimbers4.sav"
+frames = 700
+seed = 1
+stage = "FinalDestination"
+inputs = [
+{ frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 426, port = 1, buttons = {  }, raw = { stickX = -127, button = 256 } },
+  { frame = 427, port = 1, buttons = {  }, raw = {  } },
+  { frame = 428, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 430, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 561, port = 0, buttons = {  }, raw = {  } },
+  { frame = 640, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 642, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+controller = "scripted"

@@ -114,6 +114,7 @@ melee_it::item_kinds! {
         KirbyCLinkArrow: it_link::KirbyYoungLinkArrow,
         KirbyCLinkBow: it_link::KirbyYoungLinkBow,
         KirbyKoopaFlame: it_koopaflame::KirbyKoopaFlame,
+        KirbyIceClimberIce: it_climbersice::KirbyClimbersIce,
     }
 }
 
@@ -129,7 +130,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 15] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 16] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -265,6 +266,13 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 15] = [
         // hats[4]->hat_dynamics[0]: the flame's one state, as Bowser's.
         articles: &[(ItemKind::KirbyKoopaFlame, 0, 1)],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Popo,
+        file: "PlKbCpPp.dat",
+        symbol: "ftDataKirbyCopyPopo",
+        // hats[9]->hat_dynamics[0]: the ice block's four states, as Popo's.
+        articles: &[(ItemKind::KirbyIceClimberIce, 0, 4)],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -332,6 +340,10 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
             &it_koopaflame::ARTICLE_STATES,
             it_koopaflame::SPECIAL_ATTRIBUTES,
         )),
+        ItemKind::KirbyIceClimberIce => Some((
+            &it_climbersice::ARTICLE_STATES,
+            it_climbersice::SPECIAL_ATTRIBUTES,
+        )),
         _ => None,
     }
 }
@@ -353,6 +365,14 @@ fn kirby_copy_article_finish(
                 .map_err(|e| anyhow::anyhow!("Kirby's copied fireball particle track: {e}"))?;
         }
         ItemKind::KirbyDrMarioVitamin => assets.fall_spin_degrees = common.fall_spin_degrees,
+        // As Popo's block: the common falling spin, and the generators
+        // follow the model root's child.
+        ItemKind::KirbyIceClimberIce => {
+            assets.fall_spin_degrees = common.fall_spin_degrees;
+            assets
+                .read_pose(archive)
+                .map_err(|e| anyhow::anyhow!("Kirby's copied ice block pose: {e}"))?;
+        }
         // As Mewtwo's own: the hitbox rides the model's grandchild, and the
         // joint animations carry DPtcl keys.
         ItemKind::KirbyMewtwoShadowBall => {

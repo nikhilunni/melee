@@ -107,7 +107,7 @@ impl Effects {
             instances: Default::default(),
             models,
             gobjs: Default::default(),
-            character_banks: Default::default(),
+            character_banks: std::array::from_fn(|_| None),
             loaded_banks: 0,
             next_joint: 0,
             fighter_joints: [false; FIGHTER_SLOTS * FIGHTER_JOINT_STRIDE],

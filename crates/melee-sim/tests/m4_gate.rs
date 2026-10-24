@@ -1715,7 +1715,11 @@ fn start_fd_kirby_bow_boundaries_600() {
 /// particle draw order.
 #[test]
 fn start_fd_kirby_copy_wave13_boundaries_600() {
-    const BOUNDARIES: &[&str] = &["start_fd_kirby_zelda4", "start_fd_kirby_bowser4"];
+    const BOUNDARIES: &[&str] = &[
+        "start_fd_kirby_zelda4",
+        "start_fd_kirby_bowser4",
+        "start_fd_kirby_iceclimbers4",
+    ];
     for name in BOUNDARIES {
         movement_gate_ticks(name, 600);
         movement_gate_ticks(&format!("{name}_cold"), 600);

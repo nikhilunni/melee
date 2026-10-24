@@ -2919,6 +2919,17 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_firebreath_fd_bowser4", 1100),
     ("kirby_copy_firebreath_edge_fd_bowser4", 780),
     ("kirby_copy_firebreath_air_fd_bowser4", 800),
+    // The copied Ice Shot (ftkirbyspecialiceclimber.c over
+    // ft_iceclimbers_family::ice_shot, rows 453/454, the block u.kb.xC0,
+    // It_Kind_Kirby_IceClimberIce from PlKbCpPp.dat with EfKbIc.dat's
+    // generators efAlt 0x4AE..0x4B0), from `start_fd_kirby_iceclimbers4`
+    // (a swallowed Nana gives Popo's ability): grounded and aerial shots,
+    // the repeated aerial one 10 lower, off the edge with the block held,
+    // Popo's forward smash on a held block, a taunt's star.
+    ("kirby_copy_iceshot_fd_iceclimbers4", 800),
+    ("kirby_copy_iceshot_air_fd_iceclimbers4", 760),
+    ("kirby_copy_iceshot_edge_fd_iceclimbers4", 780),
+    ("kirby_copy_iceshot_struck_fd_iceclimbers4", 700),
 ];
 
 #[test]

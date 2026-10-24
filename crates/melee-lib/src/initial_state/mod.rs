@@ -237,9 +237,26 @@ impl InitialState {
                 )?)
             })
             .collect::<Result<Vec<_>>>()?;
+        // A partner saved before its entry's motion change completed (x3EC
+        // still stale heap bytes, not a script; its callbacks and mv words
+        // likewise) takes the tick-zero row, which the rest of its creation
+        // finished: start_fd_kirby_iceclimbers4's Nana. The other fighters'
+        // saved bytes equal that row there.
         let saved_bytes = bases
             .iter()
-            .map(|&address| saved.bytes(address, 0x23EC).to_vec())
+            .zip(&bytes)
+            .zip(&roster)
+            .map(|((&address, tick_zero), entry)| {
+                let raw = saved.bytes(address, 0x23EC);
+                let script = word(raw, 0x3EC);
+                let unfinished_partner =
+                    entry.secondary && script != 0 && !(0x8000_0000..0x8180_0000).contains(&script);
+                if unfinished_partner {
+                    tick_zero.clone()
+                } else {
+                    raw.to_vec()
+                }
+            })
             .collect::<Vec<_>>();
         let bytes = saved_bytes;
         for (index, raw) in bytes.iter().enumerate() {

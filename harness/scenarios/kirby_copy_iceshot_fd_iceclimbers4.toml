@@ -1,0 +1,41 @@
+# KIRBY directed witness from start_fd_kirby_iceclimbers4 (Kirby runs to x=49 and swallows Nana, who gives Popo's ability, ftCo_ThrownKirby.c:57-59): the copied Ice Shot (rows 453, 454). A grounded shot; a full hop with an aerial one (the lift), landing in LandingFallSpecial; a short hop with another.
+name = "kirby_copy_iceshot_fd_iceclimbers4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_iceclimbers4.sav"
+frames = 800
+seed = 1
+stage = "FinalDestination"
+inputs = [
+{ frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 430, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 432, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 528, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 542, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+  { frame = 660, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 662, port = 0, buttons = {  }, raw = {  } },
+  { frame = 664, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 666, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+controller = "scripted"

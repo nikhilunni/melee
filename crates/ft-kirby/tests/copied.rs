@@ -58,6 +58,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::CLink
                             | FighterKind::Zelda
                             | FighterKind::Koopa
+                            | FighterKind::Popo
                     ),
                     "{kind:?}"
                 )
@@ -154,6 +155,15 @@ fn the_fire_breath_rows_follow_kirbys_table() {
     for (i, row) in rows.iter().enumerate() {
         assert_eq!(row.action.0, 443 + i as u16);
         assert_eq!(row.animation, 378 + i as i32);
+    }
+}
+
+#[test]
+fn the_ice_shot_rows_follow_kirbys_table() {
+    let rows = ft_kirby::copied::ice_shot::rows();
+    for (row, (action, animation)) in rows.iter().zip([(453, 388), (454, 389)]) {
+        assert_eq!(row.action.0, action);
+        assert_eq!(row.animation, animation);
     }
 }
 

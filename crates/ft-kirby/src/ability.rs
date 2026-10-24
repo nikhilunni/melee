@@ -27,7 +27,7 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The copied scratch includes x68..x88, xA4..xAC, xB0, xC4, xCC and xD4..xDC.
+/// The copied scratch includes x68..x88, xA4..xAC, xB0, xC0..xCC and xD4..xDC.
 /// With every charge word at 0,
 /// ftKb_Init_UnkMotionStates4 has no colour for any kind
 /// (`crate::charge_flash`).
@@ -41,6 +41,9 @@ fn reset_copied_scratch(f: &mut Fighter) {
     // x68, x6C: the copied Megavitamin's colours.
     state.vitamin_current = 9;
     state.vitamin_previous = 9;
+    // xC0, xC8: the copied Ice Shot's block and drop.
+    state.ice_held = false;
+    state.ice_drop = 0.0;
     state.charge_shot = Default::default();
     state.giant_punch_swings = 0;
     state.shadow_ball_held = false;
@@ -105,6 +108,7 @@ fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
 /// take the arrow and the bow.
 fn put_away_article(f: &mut Fighter, kind: FighterKind) {
     crate::copied::blaster::put_away(f, kind);
+    crate::copied::ice_shot::put_away(f, kind);
     match kind {
         // ftKb_SpecialNGw_8010D0A8.
         FighterKind::GameWatch => crate::copied::chef::put_away(f),
@@ -121,7 +125,7 @@ fn put_away_article(f: &mut Fighter, kind: FighterKind) {
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
 /// the death callback and ftKb_SpecialN_800F5D04 (`put_away_article`).
 /// The other kinds whose arm only releases an article or a held fighter
-/// (Ice Climbers, Sheik) do nothing while their copied special is not
+/// (Sheik) do nothing while their copied special is not
 /// ported: their scratch is always at rest. Yoshi's
 /// (801093B4: the hat's animation, drawn only; 8010A8BC: an item on the
 /// tongue, which the port never catches) has nothing to do.

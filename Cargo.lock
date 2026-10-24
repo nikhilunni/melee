@@ -553,6 +553,7 @@ dependencies = [
 name = "ft-iceclimbers"
 version = "0.0.1"
 dependencies = [
+ "ft-iceclimbers-family",
  "gekko-math",
  "hsd-archive",
  "hsd-types",
@@ -566,6 +567,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "ft-iceclimbers-family"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-ft",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "ft-kirby"
 version = "0.0.1"
 dependencies = [
@@ -573,6 +586,7 @@ dependencies = [
  "ft-donkey-family",
  "ft-fox-family",
  "ft-gamewatch-family",
+ "ft-iceclimbers-family",
  "ft-koopa-family",
  "ft-link-family",
  "ft-luigi-family",

@@ -64,6 +64,7 @@ members = [
     "crates/ft-mario",
     "crates/ft-drmario",
     "crates/ft-luigi",
+    "crates/ft-iceclimbers-family",
     "crates/ft-iceclimbers",
     "crates/it-climbersice",
     "crates/ft-samus-family",

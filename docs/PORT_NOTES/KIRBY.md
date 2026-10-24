@@ -900,7 +900,15 @@ Remaining work, in the order to take it:
    offset (0, 0.5, 3); his aerial start lands in the grounded loop (row 444,
    800FB218), not the start; the fuels u.kb.x84 / x88 refill every frame
    with the hat on (ftKb_Init_UnkMotionStates3, `EVERY_FRAME`) outside
-   443..448, and 800F190C fills them.
+   443..448, and 800F190C fills them. The Ice Climbers' Ice Shot
+   (`kirby_copy_iceshot_*`, boundary `start_fd_kirby_iceclimbers4`; the
+   states in the new `ft-iceclimbers-family`, generic over `IceShotUser`):
+   a swallowed Nana now gives Popo's ability (ftCo_ThrownKirby.c:57-59, in
+   `capture_kirby::ability`); the made block installs Kirby's damage
+   callbacks, whose put-away arm (80108D04) breaks a held block. That
+   boundary's savestate holds Nana before her entry's motion change
+   finished (x3EC stale heap bytes), so the warm import takes her
+   tick-zero row (`initial_state`).
    Next: Sheik, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,

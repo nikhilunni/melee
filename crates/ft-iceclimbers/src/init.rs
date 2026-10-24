@@ -157,6 +157,11 @@ fn nana_descriptor() -> &'static CharacterDescriptor {
 }
 
 impl CharacterCallbacks for IceClimber {
+    /// ftCo_800BD9E0 (ftCo_ThrownKirby.c:57-59): either climber gives
+    /// Popo's copied ability; Nana has no separate Kirby copy.
+    const SWALLOWED_ABILITY: Option<fn(&melee_ft::fighter::CharacterState) -> FighterKind> =
+        Some(|_| FighterKind::Popo);
+
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &POPO_TABLE
     }

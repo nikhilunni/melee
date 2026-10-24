@@ -17,7 +17,13 @@ use melee_it::{
 };
 use melee_types::ItemKind;
 
-pub struct ClimbersIce;
+/// The block's item code, for the climbers' kind or Kirby's (`KIRBY`).
+pub struct Ice<const KIRBY: bool>;
+/// It_Kind_IceClimber_Ice.
+pub type ClimbersIce = Ice<false>;
+/// It_Kind_Kirby_IceClimberIce: the block of Kirby's copied Ice Shot
+/// (PlKbCpPp.dat), with EfKbIc.dat's generators (efAlt 0x4AE..0x4B0).
+pub type KirbyClimbersIce = Ice<true>;
 
 /// ftData.x48_items index (ftPp_Init_OnLoad registers it first).
 pub const ARTICLE_INDEX: u32 = 0;
@@ -39,6 +45,23 @@ const MADE_EFFECT: u16 = 0x4E9;
 const LAUNCH_EFFECT: u16 = 0x4EA;
 /// efAsync_Spawn(gobj, xBC0, 3, 0x4EB, child, &facing): sliding.
 const SLIDE_EFFECT: u16 = 0x4EB;
+/// itClimbersice_Spawn / Spawn2's other arm (`ip->kind` not
+/// It_Kind_IceClimber_Ice): Kirby's block, made, launched and sliding.
+const KIRBY_MADE_EFFECT: u16 = 0x4AE;
+const KIRBY_LAUNCH_EFFECT: u16 = 0x4AF;
+const KIRBY_SLIDE_EFFECT: u16 = 0x4B0;
+
+/// The request for `effect` (the climbers' id) from this block's kind.
+fn effect_for(item: &ItemCore, effect: u16) -> u16 {
+    if item.kind == ItemKind::IceClimberIce {
+        return effect;
+    }
+    match effect {
+        MADE_EFFECT => KIRBY_MADE_EFFECT,
+        LAUNCH_EFFECT => KIRBY_LAUNCH_EFFECT,
+        _ => KIRBY_SLIDE_EFFECT,
+    }
+}
 
 /// Below this child scale a melting block is gone
 /// (itClimbersice_UnkMotion0_Anim).
@@ -135,8 +158,12 @@ static STATES: [ItemStateRow; 4] = [
 ];
 
 /// it_2725.c's Logic90 row.
-impl ItemLogic for ClimbersIce {
-    const KIND: ItemKind = ItemKind::IceClimberIce;
+impl<const KIRBY: bool> ItemLogic for Ice<KIRBY> {
+    const KIND: ItemKind = if KIRBY {
+        ItemKind::KirbyIceClimberIce
+    } else {
+        ItemKind::IceClimberIce
+    };
     const STATES: &'static [ItemStateRow] = &STATES;
     /// it_802C1590 clears xDC8 x15 (it_8026B3A8): never grabbable.
     fn pickup_possible(_item: &ItemCore) -> bool {
@@ -163,7 +190,7 @@ impl ItemLogic for ClimbersIce {
             half_life_scale: common.half_life_scale,
         };
         item.spawn_async(ItemEvent::ChildEffect {
-            id: MADE_EFFECT,
+            id: effect_for(item, MADE_EFFECT),
             facing: None,
         });
         item.change_motion_with(DROPPING, ARTICLE_STATES[1], ANIM_UPDATE, assets);
@@ -247,7 +274,7 @@ fn launch(item: &mut ItemCore, assets: &ItemAssets) {
     ice(item).launched = true;
     item.face_velocity();
     item.spawn_async(ItemEvent::ChildEffect {
-        id: LAUNCH_EFFECT,
+        id: effect_for(item, LAUNCH_EFFECT),
         facing: Some(item.facing),
     });
     start_sliding(item, assets);
@@ -256,7 +283,7 @@ fn launch(item: &mut ItemCore, assets: &ItemAssets) {
 /// it_802C1AE4 (802C1AE4): the sliding effect, then motion 2.
 fn start_sliding(item: &mut ItemCore, assets: &ItemAssets) {
     item.spawn_async(ItemEvent::ChildEffect {
-        id: SLIDE_EFFECT,
+        id: effect_for(item, SLIDE_EFFECT),
         facing: Some(item.facing),
     });
     item.change_motion_with(SLIDING, ARTICLE_STATES[2], ANIM_UPDATE, assets);

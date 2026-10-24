@@ -38,6 +38,11 @@ fn bone_generator(id: u16) -> Result<(u8, u32, bool)> {
         0x4E9 => (14, 0x36B0, false),
         0x4EA => (14, 0x36B1, false),
         0x4EB => (14, 0x36B6, true),
+        // efalt.c:454-464: Kirby's copied ice block, made (0x4AE),
+        // launched (0x4AF) and sliding (0x4B0), from EfKbIc.dat.
+        0x4AE => (46, 0xB3B0, false),
+        0x4AF => (46, 0xB3B1, false),
+        0x4B0 => (46, 0xB3B6, true),
         _ => anyhow::bail!("efAsync kind 0 {id:#x} on an item bone"),
     })
 }

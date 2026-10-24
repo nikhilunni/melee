@@ -1,0 +1,47 @@
+# KIRBY directed witness from start_fd_kirby_iceclimbers4 (Kirby swallows Nana): a full hop and four midair jumps, an aerial Ice Shot with the lift ending in Fall, then a second one before landing (no lift, the block 10 lower, u.kb.xC8); a taunt drops the ability as a star; B is the Inhale.
+name = "kirby_copy_iceshot_air_fd_iceclimbers4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_iceclimbers4.sav"
+frames = 760
+seed = 1
+stage = "FinalDestination"
+inputs = [
+{ frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = -60 } },
+  { frame = 407, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 428, port = 0, buttons = {  }, raw = {  } },
+  { frame = 434, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 436, port = 0, buttons = {  }, raw = {  } },
+  { frame = 452, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 454, port = 0, buttons = {  }, raw = {  } },
+  { frame = 470, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 472, port = 0, buttons = {  }, raw = {  } },
+  { frame = 488, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 490, port = 0, buttons = {  }, raw = {  } },
+  { frame = 500, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 502, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+  { frame = 680, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 681, port = 0, buttons = {  }, raw = {  } },
+  { frame = 730, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 732, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+controller = "scripted"
