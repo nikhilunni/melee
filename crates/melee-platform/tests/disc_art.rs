@@ -47,8 +47,13 @@ fn pieces() -> Vec<(Piece, Option<(u32, u32)>)> {
         out.push((Piece::CharacterEmblem(character), Some((80, 64))));
     }
     for &stage in catalog::stages() {
-        // The Past Stages row has smaller icons.
-        let icon = if stage == Stage::DreamLand { (48, 48) } else { (64, 56) };
+        // MnSlMap.usd: model 2, joint 1's image descriptors at data offsets
+        // 0x976F0/0x97708/0x97720 are 48x48 (Dream Land/Yoshi/Kongo).
+        // Retail selects frames x9 - 0x16: mnstagesel.c:599-600.
+        let icon = match stage {
+            Stage::DreamLand | Stage::YoshisIsland64 | Stage::KongoJungle64 => (48, 48),
+            _ => (64, 56),
+        };
         out.push((Piece::StageIcon(stage), Some(icon)));
         out.push((Piece::StageName(stage), Some((224, 56))));
         out.push((Piece::StageEmblem(stage), Some((64, 64))));
