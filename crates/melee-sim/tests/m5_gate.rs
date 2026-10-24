@@ -2895,6 +2895,18 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // the aerial loop with both articles out, then B is the Inhale.
     ("kirby_copy_bow_edge_fd_link4", 900),
     ("kirby_copy_ybow_edge_fd_younglink4", 900),
+    // The copied Nayru's Love (ftkirbyspecialzelda.c over
+    // ft_zelda_family::nayrus_love, rows 465/466, the reflector at
+    // ftKb_DatAttrs +400, EfKbZd.dat's crystals efAlt 0x4B6/0x4B7), from
+    // `start_fd_kirby_zelda4`: grounded (hitting Zelda), aerial into Fall,
+    // a short hop landing in the grounded row; started at the edge, the
+    // slide carries Kirby off into the aerial row and he dies with the
+    // ability; Sheik's needle reflected; Zelda's forward smash in the row
+    // and a taunt's star.
+    ("kirby_copy_nayru_fd_zelda4", 900),
+    ("kirby_copy_nayru_edge_fd_zelda4", 780),
+    ("kirby_copy_nayru_reflect_fd_zelda4", 800),
+    ("kirby_copy_nayru_struck_fd_zelda4", 700),
 ];
 
 #[test]

@@ -85,6 +85,8 @@ pub struct Kirby {
     pub shadow_ball: ft_mewtwo_family::shadow_ball::ShadowBall,
     /// The copied Toad: u.kb.xD0 and its counter volume.
     pub toad: crate::copied::toad::KirbyToad,
+    /// The copied Nayru's Love: mv.zd.specialn and the reflector.
+    pub nayrus_love: ft_zelda_family::nayrus_love::NayrusLove,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -108,6 +110,10 @@ pub enum Accessory {
     ToadDraw,
     /// fn_8010C344: one of the copied Toad's spores.
     ToadSpore,
+    /// fn_80105A34: the copied Nayru's Love's crystal on the ground.
+    NayrusLoveCrystal,
+    /// fn_80105AB0: the crystal in the air.
+    NayrusLoveAirCrystal,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -147,6 +153,7 @@ impl Kirby {
             toad: Default::default(),
             pk_flash: Default::default(),
             bow: Default::default(),
+            nayrus_love: Default::default(),
         }
     }
 }
@@ -314,9 +321,18 @@ impl CharacterCallbacks for Kirby {
             toad @ (Accessory::ToadDraw | Accessory::ToadSpore) => {
                 crate::copied::toad::accessory(f, toad)
             }
+            Accessory::NayrusLoveCrystal => crate::copied::nayrus_love::crystal(f, false),
+            Accessory::NayrusLoveAirCrystal => crate::copied::nayrus_love::crystal(f, true),
             Accessory::None => {}
         }
     }
+    /// The copied Nayru's Love's reflector (ftColl_CreateReflectHit with
+    /// the empty fn_80105FEC).
+    const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> = Some(
+        ft_zelda_family::nayrus_love::reflector_contact::<crate::copied::nayrus_love::KirbyZelda>,
+    );
+    const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
+        Some(ft_zelda_family::nayrus_love::reflect_hit);
     fn item_owner(f: &mut Fighter, _assets: &FighterAssets) -> melee_it::ItemOwner {
         crate::copied::item_owner(f)
     }

@@ -1,7 +1,7 @@
 //! Zelda: ft/kinds/ftZelda. Common states live in melee-ft; Sheik, her
 //! transformation partner, lives in ft-seak.
 pub mod attributes;
-mod common;
+use ft_zelda_family::common;
 pub mod init;
 pub mod special_hi;
 pub mod special_lw;
@@ -23,29 +23,9 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         i += 1;
     }
     use melee_ft::fighter::state::{callbacks, AnimFn, CollisionFn, PhysicsFn};
-    use special_n as n;
-    place(
-        &mut rows,
-        common::row(
-            n::GROUND,
-            n::ANIMATIONS[0],
-            n::anim,
-            common::no_input,
-            n::ground_physics,
-            n::ground_collision,
-        ),
-    );
-    place(
-        &mut rows,
-        common::row(
-            n::AIR,
-            n::ANIMATIONS[1],
-            n::anim,
-            common::no_input,
-            n::air_physics,
-            n::air_collision,
-        ),
-    );
+    let nayrus_love = special_n::rows();
+    place(&mut rows, nayrus_love[0]);
+    place(&mut rows, nayrus_love[1]);
     use melee_ft::fighter::state::InputFn;
     use special_s as s;
     let dins_fire: [(ActionId, AnimFn, InputFn, PhysicsFn, CollisionFn); 6] = [

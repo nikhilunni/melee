@@ -1044,3 +1044,12 @@ stage = "KongoJungle64"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2781696025
+
+[[boundary]]
+name = "start_fd_kirby_zelda4"
+cold = "start_fd_kirby_zelda4_cold"
+savestate = "harness/roms/start_fd_kirby_zelda4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Zelda"]
+stocks = 4
+seed = 1495875259

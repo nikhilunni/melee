@@ -117,9 +117,9 @@ impl CharacterCallbacks for Zelda {
     /// Nayru's Love's reflector (ftColl_CreateReflectHit, an empty hit
     /// callback).
     const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
-        Some(crate::special_n::reflector_contact);
+        Some(ft_zelda_family::nayrus_love::reflector_contact::<Self>);
     const REFLECT_HIT: Option<melee_ft::fighter::reflection::CharacterResponse> =
-        Some(crate::special_n::reflect_hit);
+        Some(ft_zelda_family::nayrus_love::reflect_hit);
     /// ftZd_SpecialLw_8013B4D8: Zelda arrives from Sheik's transformation.
     const TRANSFORMATION_ARRIVAL: fn(
         &mut Fighter,

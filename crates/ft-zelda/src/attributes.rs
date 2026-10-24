@@ -22,19 +22,8 @@ pub struct ZeldaAttributes {
     pub nayrus_love_reflection: ReflectionAttributes,
 }
 
-/// Nayru's Love (ftzeldaspecialn.c).
-#[derive(Clone, Debug, PartialEq)]
-pub struct NayrusLoveAttributes {
-    /// +0x00.
-    // TODO(meaning): no consumer in the pinned C.
-    pub unused: f32,
-    /// +0x04: aerial frames before gravity applies.
-    pub air_float_frames: i32,
-    /// +0x08: aerial horizontal velocity divisor on entry.
-    pub air_horizontal_velocity_divisor: f32,
-    /// +0x0C: aerial gravity after the float.
-    pub air_gravity: f32,
-}
+/// Nayru's Love (ftzeldaspecialn.c), +0x00..+0x0C.
+pub use ft_zelda_family::nayrus_love::NayrusLoveAttributes;
 
 /// Din's Fire (ftzeldaspecials.c).
 #[derive(Clone, Debug, PartialEq)]
@@ -127,12 +116,7 @@ impl ZeldaAttributes {
     pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
         let r = Reader::new(archive.reader().slice(offset, ZELDA_ATTRIBUTES_SIZE)?);
         Ok(Self {
-            nayrus_love: NayrusLoveAttributes {
-                unused: r.f32(0x00)?,
-                air_float_frames: r.s32(0x04)?,
-                air_horizontal_velocity_divisor: r.f32(0x08)?,
-                air_gravity: r.f32(0x0C)?,
-            },
+            nayrus_love: NayrusLoveAttributes::read(&r, 0x00)?,
             dins_fire: DinsFireAttributes {
                 loop_frames: r.s32(0x10)?,
                 second_loop_frames: r.s32(0x14)?,

@@ -1,0 +1,45 @@
+# KIRBY directed witness from start_fd_kirby_zelda4 (Kirby runs to x=51 beside Zelda at +60 and swallows her): the copied Nayru's Love (rows 465, 466). A grounded Nayru's Love; a full hop and four midair jumps with an aerial one that ends in Fall; a short hop with one that lands in the grounded row.
+name = "kirby_copy_nayru_fd_zelda4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_zelda4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 528, port = 0, buttons = {  }, raw = {  } },
+  { frame = 534, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 536, port = 0, buttons = {  }, raw = {  } },
+  { frame = 552, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 554, port = 0, buttons = {  }, raw = {  } },
+  { frame = 570, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 572, port = 0, buttons = {  }, raw = {  } },
+  { frame = 588, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 590, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 602, port = 0, buttons = {  }, raw = {  } },
+  { frame = 720, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 722, port = 0, buttons = {  }, raw = {  } },
+  { frame = 726, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 728, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Zelda"
+controller = "scripted"

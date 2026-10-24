@@ -74,6 +74,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     place_all(&mut rows, copied::pk_flash::rows());
     place_all(&mut rows, copied::egg_lay::rows());
     place_all(&mut rows, copied::bow::rows());
+    place_all(&mut rows, copied::nayrus_love::rows());
     rows
 }
 

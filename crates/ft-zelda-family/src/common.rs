@@ -1,4 +1,5 @@
-//! Motion helpers Zelda's specials share (ft_0819.c, ft_081B.c, ftcommon.c).
+//! Motion helpers Zelda's specials and Kirby's copied Nayru's Love share
+//! (ft_0819.c, ft_081B.c, ftcommon.c).
 use melee_ft::{
     collision::{air, ground},
     fighter::{

@@ -78,6 +78,10 @@ pub struct KirbyAttributes {
     /// +3E4 / +3E8 (`specialn_gw_frame_on_repeat`,
     /// `specialn_gw_max_sausages_per_use`): the copied Chef.
     pub gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes,
+    /// +2A4..+2B0 (`specialn_zd_*`): the copied Nayru's Love.
+    pub nayrus_love: ft_zelda_family::nayrus_love::NayrusLoveAttributes,
+    /// +400 (`specialn_zd_reflectdesc`): its reflector.
+    pub nayrus_love_reflection: melee_ft::desc::fox_attributes::ReflectionAttributes,
 }
 
 /// ftKb_DatAttrs +EC..+114 (`speciallw_*`). +10C and +110 (16 and 28 on
@@ -326,6 +330,10 @@ impl KirbyAttributes {
                 loop_frame: r.f32(0x3E4)?,
                 max_sausages: r.f32(0x3E8)?,
             },
+            nayrus_love: ft_zelda_family::nayrus_love::NayrusLoveAttributes::read(&r, 0x2A4)?,
+            nayrus_love_reflection: melee_ft::desc::fox_attributes::ReflectionAttributes::read_at(
+                r, 0x400,
+            )?,
         })
     }
 }

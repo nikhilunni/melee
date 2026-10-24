@@ -24,6 +24,7 @@ pub mod toad;
 pub mod pk_flash;
 pub mod egg_lay;
 pub mod bow;
+pub mod nayrus_love;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -85,7 +86,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Marth
     CopiedNeutral::Ported(shield_breaker::enter::<shield_breaker::KirbyMarth>),
     // Zelda
-    unported("ftKb_SpecialNZd_80105B2C", "ftKb_SpecialNZd_80105BA8"),
+    CopiedNeutral::Ported(nayrus_love::enter),
     // Young Link: Link's entries.
     CopiedNeutral::Ported(bow::enter),
     // Dr. Mario: Mario's entries.

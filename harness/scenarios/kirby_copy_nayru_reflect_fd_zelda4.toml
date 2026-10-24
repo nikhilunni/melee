@@ -1,0 +1,41 @@
+# KIRBY directed witness from start_fd_kirby_zelda4 (Kirby runs to x=51 beside Zelda at +60 and swallows her): the copied Nayru's Love reflects a needle. Kirby walks right and turns back; Zelda transforms into Sheik (down-B at 420), who taps B (560) and throws a needle into Kirby's Nayru's Love (B at 540), which sends it back (ftColl_CreateReflectHit with ftKb_DatAttrs +400, the empty fn_80105FEC). A taunt then drops the ability as a star; B is the Inhale.
+name = "kirby_copy_nayru_reflect_fd_zelda4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_zelda4.sav"
+frames = 800
+seed = 1
+stage = "FinalDestination"
+inputs = [
+{ frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 380, port = 0, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 400, port = 0, buttons = {  }, raw = {  } },
+  { frame = 410, port = 0, buttons = {  }, raw = { stickX = -40 } },
+  { frame = 413, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 1, buttons = {  }, raw = { button = 512, stickY = -80 } },
+  { frame = 424, port = 1, buttons = {  }, raw = {  } },
+  { frame = 560, port = 1, buttons = {  }, raw = { button = 512 } },
+  { frame = 563, port = 1, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 542, port = 0, buttons = {  }, raw = {  } },
+  { frame = 640, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 641, port = 0, buttons = {  }, raw = {  } },
+  { frame = 740, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 742, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Zelda"
+controller = "scripted"

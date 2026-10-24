@@ -884,6 +884,16 @@ Remaining work, in the order to take it:
    Lay (`kirby_copy_egglay_*`, boundary `start_fd_kirby_yoshi4`); Link's
    and Young Link's bow (`kirby_copy_{bow,ybow}_*`, boundaries
    `start_fd_kirby_{link,younglink}4`).
+   Zelda's Nayru's Love
+   (`kirby_copy_nayru_*`, boundary `start_fd_kirby_zelda4`; the states in
+   the new `ft-zelda-family`, generic over `NayrusLoveUser`). Kirby's
+   ground/air changes (ftKb_SpecialNSk_80105E8C / 80105F3C, misnamed in the
+   decomp) do not install the crystal's spawner again, as Zelda's do: they
+   restore the effects' hitlag callbacks when the crystal is out. The
+   reflector is a `REFLECTOR_CONTACT` hook on Kirby over his
+   `specialn_zd_reflectdesc` (+400); the witness reflects a needle of
+   Sheik's (Zelda transforms after the swallow), since Din's Fire has no
+   hitbox in flight.
    Next: Sheik, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,

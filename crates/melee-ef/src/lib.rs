@@ -831,7 +831,7 @@ impl Effects {
                     | 0x496..=0x497
                     | 0x4A9..=0x4AA
                     | 0x4C6..=0x4CA
-                    | 0x4B4..=0x4B5
+                    | 0x4B4..=0x4B7
                     | 0x4B8..=0x4B9
                     | 0x4D6
                     | 0x4EE..=0x4EF
@@ -870,6 +870,10 @@ impl Effects {
                     // efalt.c:499-506, 524-531: Kirby's copied Shield
                     // Breaker and Flare Blade releases.
                     0x4B4..=0x4B5 => 0x4E20 + u32::from(id - 0x4B4),
+                    // efalt.c:507-523: Kirby's copied Nayru's Love crystals,
+                    // as Zelda's 0x4F4 / 0x4F5 (efLib_Create_AttachChild,
+                    // the fighter root's scale).
+                    0x4B6..=0x4B7 => 0x5208 + u32::from(id - 0x4B6),
                     0x4B8..=0x4B9 => 0xBB80 + u32::from(id - 0x4B8),
                     0x4F2..=0x4F3 => 0x3E80 + u32::from(id - 0x4F2),
                     // efsync.c:645-652: Roy's Flare Blade release.
@@ -889,7 +893,7 @@ impl Effects {
                     id,
                     0x488..=0x48A
                         | 0x492..=0x493
-                        | 0x4B4..=0x4B5
+                        | 0x4B4..=0x4B7
                         | 0x4B8..=0x4B9
                         | 0x4A9..=0x4AA
                         | 0x4C6..=0x4CA
@@ -952,7 +956,7 @@ impl Effects {
                     effect.root,
                     &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
                 );
-                if matches!(id, 0x4F4..=0x4F5) {
+                if matches!(id, 0x4F4..=0x4F5 | 0x4B6..=0x4B7) {
                     // efLib_Create_AttachChild (eflib.c:557-565): lb_8000C290
                     // turns the root with the joint, and with it every
                     // particle its DPtcl events spawn.

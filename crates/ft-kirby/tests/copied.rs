@@ -56,6 +56,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Yoshi
                             | FighterKind::Link
                             | FighterKind::CLink
+                            | FighterKind::Zelda
                     ),
                     "{kind:?}"
                 )
@@ -134,6 +135,15 @@ fn the_pk_flash_rows_follow_kirbys_table() {
     for (i, row) in ft_kirby::copied::pk_flash::rows().iter().enumerate() {
         assert_eq!(row.action.0, 435 + i as u16);
         assert_eq!(row.animation, 370 + i as i32);
+    }
+}
+
+#[test]
+fn the_nayrus_love_rows_follow_kirbys_table() {
+    let rows = ft_kirby::copied::nayrus_love::rows();
+    for (row, (action, animation)) in rows.iter().zip([(465, 400), (466, 401)]) {
+        assert_eq!(row.action.0, action);
+        assert_eq!(row.animation, animation);
     }
 }
 

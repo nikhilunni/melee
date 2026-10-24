@@ -1710,6 +1710,19 @@ fn start_fd_kirby_bow_boundaries_600() {
     }
 }
 
+/// Kirby vs Zelda, Bowser, the Ice Climbers and Sheik on Final
+/// Destination, for their copied neutral specials: warm, cold and the
+/// particle draw order.
+#[test]
+fn start_fd_kirby_copy_wave13_boundaries_600() {
+    const BOUNDARIES: &[&str] = &["start_fd_kirby_zelda4"];
+    for name in BOUNDARIES {
+        movement_gate_ticks(name, 600);
+        movement_gate_ticks(&format!("{name}_cold"), 600);
+        particle_rng_sites_with_ledger(name, 600, "ledger600");
+    }
+}
+
 /// Kirby vs the five fighters whose hats are grafted into his own parts,
 /// on Final Destination, warm and cold, with the particle draw order.
 #[test]

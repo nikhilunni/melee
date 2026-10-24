@@ -76,6 +76,7 @@ members = [
     "crates/ft-gamewatch",
     "crates/it-gamewatch",
     "crates/ft-seak",
+    "crates/ft-zelda-family",
     "crates/ft-zelda",
     "crates/ft-link-family",
     "crates/ft-link",

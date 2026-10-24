@@ -1,0 +1,13 @@
+[package]
+name = "ft-zelda-family"
+description = "Zelda's Nayru's Love, shared with Kirby's copy of it (retail ftZd_SpecialN, ftKb_SpecialNZd)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+melee-coll = { path = "../melee-coll" }
+melee-ef = { path = "../melee-ef" }
+melee-ft = { path = "../melee-ft" }
+melee-types = { path = "../melee-types" }

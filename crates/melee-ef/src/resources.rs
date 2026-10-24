@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 30] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 31] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -175,6 +175,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 30] = [
         bank: 20,
         file: "EfKbMs.dat",
         table: "effKirbyMarsDataTable",
+        models: 2,
+    },
+    // Kirby's copied Nayru's Love (efAsync_DatEntries[21],
+    // ftKb_Init_803CB46C for Zelda): models 0x5208 / 0x5209, the crystal on
+    // the ground and in the air (efAlt 0x4B6 / 0x4B7).
+    CharacterEffectFile {
+        bank: 21,
+        file: "EfKbZd.dat",
+        table: "effKirbyZeldaDataTable",
         models: 2,
     },
     // Kirby's copied Fireball and Megavitamin (efAsync_DatEntries[32],
