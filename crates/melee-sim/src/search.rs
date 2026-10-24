@@ -26,6 +26,12 @@
 //! avoid = ["p1.motion_id == DeadDown"]
 //! ```
 //!
+//! A goal may instead (or after its `reach` conditions) name a fail-closed
+//! branch: `fault = "itkirbycutterbeam.c:128"` succeeds on the tick the port
+//! panics with a message containing that text, which is how a search aims at
+//! an `unimplemented!` branch to record its retail witness. Other panics end
+//! their candidate quietly.
+//!
 //! A key written `|a-b|` compares the absolute difference of two keys
 //! (`"|items.0.pos.x-items.1.pos.x| < 0.001"`).
 //!
@@ -61,6 +67,12 @@ pub struct Spec {
     margin: u64,
     #[serde(default = "default_limit")]
     limit: usize,
+}
+impl Spec {
+    /// Whether the goal is a port panic (its candidates are expected to panic).
+    pub fn aims_at_fault(&self) -> bool {
+        self.goal.fault.is_some()
+    }
 }
 fn default_margin() -> u64 {
     40
@@ -99,9 +111,21 @@ impl RawChoice {
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Goal {
+    #[serde(default)]
     reach: Vec<String>,
     #[serde(default)]
     avoid: Vec<String>,
+    /// Text of the port panic (an `unimplemented!` message) that completes the goal.
+    fault: Option<String>,
+}
+
+/// A caught panic's message (`unimplemented!` gives a `String`).
+fn panic_message(payload: &(dyn std::any::Any + Send)) -> String {
+    payload
+        .downcast_ref::<String>()
+        .cloned()
+        .or_else(|| payload.downcast_ref::<&str>().map(|s| s.to_string()))
+        .unwrap_or_default()
 }
 
 /// `<key> <op> <value>`: the value is a number or a common motion name.
@@ -287,7 +311,15 @@ impl Search<'_> {
             .min()
             .unwrap_or(self.max_ticks);
         while sim.frame() < until.min(self.max_ticks) {
-            sim.tick_without_snapshot()?;
+            // A fault before the next edit ends this branch; no candidate
+            // of it has all its edits, so it is no finding.
+            let ticked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                sim.tick_without_snapshot()
+            }));
+            match ticked {
+                Ok(result) => result?,
+                Err(_) => return Ok(()),
+            }
         }
         let (lo, hi) = self.range(level, &chosen);
         let vary = &self.spec.vary[level];
@@ -313,11 +345,23 @@ impl Search<'_> {
         let mut reached = Vec::new();
         while sim.frame() < self.max_ticks && reached.len() < self.reach.len() {
             let frame = sim.frame();
-            let mut record = match sim.tick() {
-                Ok(record) => record,
+            let ticked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| sim.tick()));
+            let mut record = match ticked {
+                Ok(Ok(record)) => record,
                 // A port fault ends the candidate; report it as a finding.
-                Err(e) => {
+                Ok(Err(e)) => {
                     eprintln!("candidate {edits:?} faulted at {frame}: {e}");
+                    return Ok(());
+                }
+                Err(payload) => {
+                    let message = panic_message(payload.as_ref());
+                    let wanted = self.spec.goal.fault.as_deref();
+                    if reached.len() == self.reach.len()
+                        && wanted.is_some_and(|w| message.contains(w))
+                    {
+                        reached.push(frame);
+                        self.record_found(edits, reached);
+                    }
                     return Ok(());
                 }
             };
@@ -331,14 +375,18 @@ impl Search<'_> {
                 reached.push(frame);
             }
         }
-        if reached.len() == self.reach.len() {
-            let mut found = self.found.lock().unwrap();
-            found.push(Found { edits, reached });
-            if found.len() >= self.spec.limit {
-                self.done.store(true, Ordering::Relaxed);
-            }
+        if reached.len() == self.reach.len() && self.spec.goal.fault.is_none() {
+            self.record_found(edits, reached);
         }
         Ok(())
+    }
+
+    fn record_found(&self, edits: Vec<Edit>, reached: Vec<u64>) {
+        let mut found = self.found.lock().unwrap();
+        found.push(Found { edits, reached });
+        if found.len() >= self.spec.limit {
+            self.done.store(true, Ordering::Relaxed);
+        }
     }
 }
 
@@ -359,8 +407,8 @@ pub fn search(
         "the reference must start from the same savestate"
     );
     ensure!(
-        !spec.goal.reach.is_empty(),
-        "the goal needs a reach condition"
+        !spec.goal.reach.is_empty() || spec.goal.fault.is_some(),
+        "the goal needs a reach condition or a fault"
     );
     for (i, vary) in spec.vary.iter().enumerate() {
         ensure!(
@@ -532,7 +580,13 @@ pub fn write_scenario(
         if !wrote_note && !line.starts_with('#') {
             out += &format!(
                 "# melee-sim search: reached [{}] at ticks {:?}.\n",
-                spec.goal.reach.join("; "),
+                spec.goal
+                    .reach
+                    .iter()
+                    .cloned()
+                    .chain(spec.goal.fault.iter().map(|f| format!("fault {f:?}")))
+                    .collect::<Vec<_>>()
+                    .join("; "),
                 found.reached
             );
             wrote_note = true;

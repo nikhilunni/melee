@@ -571,6 +571,10 @@ fn main() -> anyhow::Result<()> {
             let scenario = melee_sim::scenario::Scenario::load(&path)?;
             let reference = melee_sim::scenario::Scenario::load(&state_from)?;
             let spec: melee_sim::search::Spec = toml::from_str(&std::fs::read_to_string(&spec)?)?;
+            if spec.aims_at_fault() {
+                // Candidates are meant to panic; the search reports the hits.
+                std::panic::set_hook(Box::new(|_| {}));
+            }
             let t0 = std::time::Instant::now();
             let (found, tried) = melee_sim::search::search(&scenario, &reference, &spec, jobs)?;
             println!(
