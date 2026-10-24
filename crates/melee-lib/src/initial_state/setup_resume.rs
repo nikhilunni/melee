@@ -65,14 +65,17 @@ pub(super) fn fighter(
     );
     // pl/player.h StaticPlayer; Player_Get* assembly confirms stride 0xE90.
     let raw = saved.bytes(0x8045_3080 + slot as u32 * 0xE90, 0xB0);
-    ensure!(
-        raw[0xC] == 0 && word(raw, 8) == 0,
-        "transformed or CPU setup is unsupported"
-    );
+    ensure!(raw[0xC] == 0, "transformed setup is unsupported");
+    // StaticPlayer slot_type (+8): Gm_PKind_Human or Gm_PKind_Cpu.
+    let control = match word(raw, 8) {
+        0 => melee_types::PlayerKind::Human,
+        1 => melee_types::PlayerKind::Cpu,
+        kind => anyhow::bail!("slot type {kind} is unsupported"),
+    };
     let player = PlayerSlot {
         id: slot as u8,
         secondary: false,
-        control: melee_types::PlayerKind::Human,
+        control,
         costume: raw[0x44],
         stocks: raw[0x8E],
         // Player_GetFallsByIndex(slot, 0).

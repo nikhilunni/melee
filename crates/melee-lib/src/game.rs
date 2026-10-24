@@ -101,6 +101,8 @@ impl Match {
                     costume: Costume(f.player.costume),
                     controller_fix: engine.state().controller_fixes[usize::from(f.player.id)],
                     team: f.player.team,
+                    cpu_level: (f.player.control == melee_types::PlayerKind::Cpu)
+                        .then_some(f.player.cpu_level as u8),
                 }
             })
             .collect();

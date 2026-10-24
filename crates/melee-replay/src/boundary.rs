@@ -30,6 +30,9 @@ pub struct Boundary {
     /// Team per port in a team battle (`make_boundary.py --teams`).
     #[serde(default)]
     pub teams: Option<Vec<u8>>,
+    /// CPU level per player, 0 for a human.
+    #[serde(default)]
+    pub cpu_levels: Option<Vec<u8>>,
     /// Friendly fire in a team battle.
     #[serde(default)]
     pub friendly_fire: bool,
@@ -94,6 +97,7 @@ impl Boundary {
             sudden_death: self.sudden_death,
             controller_fixes: None,
             teams: self.teams.clone(),
+            cpu_levels: self.cpu_levels.clone(),
             friendly_fire: self.friendly_fire,
             items: self.items()?,
         }
@@ -165,6 +169,7 @@ mod tests {
             sudden_death: false,
             costumes: None,
             teams: None,
+            cpu_levels: None,
             friendly_fire: false,
             item_frequency: None,
             item_mask: None,

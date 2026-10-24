@@ -12,6 +12,8 @@ pub struct PlayerSetup {
     /// PlayerInitData team in a team battle (StartMeleeRules is_teams);
     /// `None` in a free-for-all. Either every player has one or none does.
     pub team: Option<u8>,
+    /// Versus CPU level, 1..=9; None for a human.
+    pub cpu_level: Option<u8>,
 }
 impl PlayerSetup {
     pub fn descriptor(&self) -> &'static CharacterDescriptor {

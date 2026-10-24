@@ -716,7 +716,11 @@ fn create_players(
         let player = PlayerSlot {
             id: scenario.fighters[p].slot,
             secondary: entry.secondary,
-            control: PlayerKind::Human,
+            control: if scenario.fighters[p].cpu_level.is_some() {
+                PlayerKind::Cpu
+            } else {
+                PlayerKind::Human
+            },
             costume: scenario.fighters[p].costume,
             stocks: scenario.fighters[p].stocks,
             falls: 0,
@@ -729,7 +733,8 @@ fn create_players(
                 0.0
             },
             cpu_mode: 4,
-            cpu_level: 1,
+            // A human retains the CSS default level 1.
+            cpu_level: i32::from(scenario.fighters[p].cpu_level.unwrap_or(1)),
             team: scenario.fighters[p].team,
             friendly_fire: scenario.friendly_fire,
         };

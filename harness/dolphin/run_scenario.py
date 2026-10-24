@@ -184,8 +184,10 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit("tick trace record count does not match the scenario and .done marker")
         flags = ["--max-draws", "1024"]  # two simultaneous shield breaks draw ~400 in a tick
         if any(step.get("buttons") or step.get("raw") for step in scenario.get("inputs", [])) or any(
-                f.get("controller") == "human" for f in scenario.get("fighters", [])):
-            flags.append("--scripted")  # inputs drive the fighters: animation rates vary
+                f.get("controller") in ("human", "cpu") for f in scenario.get("fighters", [])):
+            # Inputs (a person's, a script's or a CPU's) drive the fighters:
+            # animation rates vary.
+            flags.append("--scripted")
         if scenario.get("online_rng_offset") is not None:
             flags += ["--online-rng-offset", str(scenario["online_rng_offset"])]
         if validate_ticks.main([str(expected), *flags]):

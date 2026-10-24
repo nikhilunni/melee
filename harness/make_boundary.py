@@ -227,9 +227,18 @@ def creation_line(game_start_seed: int | None) -> str:
             f"game_start_seed = {game_start_seed}\n")
 
 
+def controller_lines(i: int, default: str, cpu_levels: list[int] | None) -> str:
+    """A fighter's controller: a CPU names its level; a human `default`."""
+    level = (cpu_levels or [0] * (i + 1))[i]
+    if level:
+        return f'controller = "cpu"\ncpu_level = {level}\n'
+    return f'controller = "{default}"\n'
+
+
 def start_scenario(name: str, stage: str, players: list[str], stocks: int,
                    codes: list[str] | None = None, slots: list[int] | None = None,
-                   game_start_seed: int | None = None, items: tuple[int, int] = (-1, 0)) -> str:
+                   game_start_seed: int | None = None, items: tuple[int, int] = (-1, 0),
+                   cpu_levels: list[int] | None = None) -> str:
     # The savestate importer covers slots 0..n: other ports gate the cold twin.
     gate = f'gate = "{name}_cold"\n' if slots and slots != list(range(len(players))) else ""
     slots = slots or list(range(len(players)))
@@ -238,7 +247,8 @@ def start_scenario(name: str, stage: str, players: list[str], stocks: int,
         f"# (fn_8016D8AC); {TRANSFORMED[p]} sleeps beside {p} as the transformation partner.\n"
         for i, p in enumerate(players) if p in TRANSFORMED)
     fighters = "\n".join(
-        f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\ncontroller = "{"scripted" if i == 0 else "idle"}"\n'
+        f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\n'
+        f'{controller_lines(i, "scripted" if i == 0 else "idle", cpu_levels)}'
         f'{fix_line(codes)}'
         for i, kind in enumerate(players))
     return f'''# {" vs ".join(players)} on {stage}, {stocks} stocks, start boundary. Savestate
@@ -261,7 +271,9 @@ def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: 
                   codes: list[str] | None = None, slots: list[int] | None = None,
                   time_limit: int = 0, game_start_seed: int | None = None,
                   spawn_points: list[int] | None = None, teams: list[int] | None = None,
-                  friendly_fire: bool = False, items: tuple[int, int] = (-1, 0)) -> str:
+                  friendly_fire: bool = False, items: tuple[int, int] = (-1, 0),
+                   cpu_levels: list[int] | None = None) -> str:
+    ports = "CPU ports at their levels" if cpu_levels and any(cpu_levels) else "human ports"
     slots = slots or list(range(len(players)))
     team_lines = [f"team = {t}\n" for t in teams] if teams else [""] * len(players)
     ff_line = "friendly_fire = true\n" if friendly_fire else ""
@@ -270,9 +282,9 @@ def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: 
     points = [f"spawn_point = {p}\n" for p in spawn_points] if spawn_points else [""] * len(players)
     fighters = "\n".join(
         f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\ncostume = {costumes[i]}\nstocks = {stocks}\n'
-        f'{points[i]}{team_lines[i]}controller = "idle"\n{fix_line(codes)}' for i, kind in enumerate(players))
+        f'{points[i]}{team_lines[i]}{controller_lines(i, "idle", cpu_levels)}{fix_line(codes)}' for i, kind in enumerate(players))
     return f'''# Parameters only; seed is after stage/fighter creation, before music.
-# Stock {stocks}, items {"off" if items[0] < 0 else "on"}, normal Versus Entry, human ports, neutral pads.
+# Stock {stocks}, items {"off" if items[0] < 0 else "on"}, normal Versus Entry, {ports}, neutral pads.
 name = "{name}_cold"
 expected = "{name}"
 frames = 600
@@ -286,10 +298,12 @@ seed = {seed}
 
 def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed: int,
                    costumes: list[int] | None = None, teams: list[int] | None = None,
-                   friendly_fire: bool = False, items: tuple[int, int] = (-1, 0)) -> str:
+                   friendly_fire: bool = False, items: tuple[int, int] = (-1, 0),
+                   cpu_levels: list[int] | None = None) -> str:
     quoted = ", ".join(f'"{p}"' for p in players)
     # Costumes other than each port's first are written out (boundary.rs).
     worn = f"costumes = {list(costumes)}\n" if costumes and any(costumes) else ""
+    cpus = f"cpu_levels = {list(cpu_levels)}\n" if cpu_levels and any(cpu_levels) else ""
     team_line = f"teams = {list(teams)}\n" if teams else ""
     ff_line = "friendly_fire = true\n" if friendly_fire else ""
 
@@ -297,7 +311,7 @@ def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed:
              if items[0] >= 0 else "")
     return (f'\n[[boundary]]\nname = "{name}"\ncold = "{name}_cold"\n'
             f'savestate = "harness/roms/{name}.sav"\nstage = "{stage}"\nplayers = [{quoted}]\n'
-            f'stocks = {stocks}\nseed = {seed}\n{worn}{team_line}{ff_line}{rules}')
+            f'stocks = {stocks}\nseed = {seed}\n{worn}{team_line}{ff_line}{rules}{cpus}')
 
 
 def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
@@ -307,7 +321,7 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                    spawn_points: list[int] | None = None, teams: list[int] | None = None,
                    friendly_fire: bool = False, extra: dict | None = None,
                    item_frequency: int = -1, item_switch: list[int] | None = None,
-                   rules_item_mask: int | None = None) -> dict:
+                   rules_item_mask: int | None = None, cpu_levels: list[int] | None = None) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary.
     `extra` adds config keys (retail_coverage.py's items and CPU players)."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
@@ -327,6 +341,7 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                                       **({"teams": teams, "friendly_fire": friendly_fire}
                                          if teams else {}),
 
+                                      **({"cpu_levels": cpu_levels} if cpu_levels else {}),
                                       "item_frequency": item_frequency,
                                       **({"item_switch": item_switch}
                                          if item_switch is not None else {}),
@@ -395,6 +410,8 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--spawn-points", type=int, nargs="+", metavar="MARKER",
                     help="each player's spawn point (a replay's `spawn_point` per player in "
                          "melee-sim replay --retail-inputs)")
+    ap.add_argument("--cpu-levels", type=int, nargs="+", metavar="LEVEL",
+                    help="each player CPU level, 1..9, or 0 for a human")
     ap.add_argument("--teams", type=int, nargs="+", choices=[0, 1, 2],
                     help="a team battle: each player's team (0 red, 1 blue, 2 green)")
     ap.add_argument("--friendly-fire", action="store_true",
@@ -436,6 +453,11 @@ def main(argv: list[str] | None = None) -> None:
         os.environ[dolphin_config.SI_PORTS_ENV] = ",".join(str(s) for s in slots)
     if a.costumes is not None and len(a.costumes) != len(a.players):
         sys.exit("--costumes needs one costume per player")
+    if a.cpu_levels is not None and (len(a.cpu_levels) != len(a.players)
+                                    or not all(0 <= level <= 9 for level in a.cpu_levels)):
+        sys.exit("--cpu-levels needs one level (0 human, 1..9 CPU) per player")
+    if a.cpu_levels is not None and not any(a.cpu_levels):
+        a.cpu_levels = None
     if a.teams is not None and (len(a.teams) != len(a.players) or len(set(a.teams)) < 2):
         sys.exit("--teams needs one team per player, two teams at least")
     if a.friendly_fire and a.teams is None:
@@ -469,7 +491,8 @@ def main(argv: list[str] | None = None) -> None:
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
                              a.stocks, a.timeout, transform, a.costumes, a.gecko, slots, a.time_limit,
                              a.game_start_seed, a.spawn_points, teams=a.teams,
-                             friendly_fire=a.friendly_fire, item_frequency=item_frequency,
+                             friendly_fire=a.friendly_fire, cpu_levels=a.cpu_levels,
+                             item_frequency=item_frequency,
                              item_switch=item_switch, rules_item_mask=rules_item_mask)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
@@ -479,6 +502,8 @@ def main(argv: list[str] | None = None) -> None:
     if a.game_start_seed is not None:
         print(f"   created from Game Start seed {a.game_start_seed} (it replaced {summary['seed_replaced']})",
               flush=True)
+    if a.cpu_levels is not None:
+        print(f"   CPU levels {a.cpu_levels} (the start data held {summary['cpu_replaced']})", flush=True)
     if a.spawn_points is not None:
         print(f"   spawn points {a.spawn_points} (they replaced {summary['spawn_points_replaced']})",
               flush=True)
@@ -496,10 +521,10 @@ def main(argv: list[str] | None = None) -> None:
         print(f"   items: frequency {items[0]}, mask {items[1]:#018x}", flush=True)
 
     scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks, a.gecko, slots,
-                                       a.game_start_seed, items))
+                                       a.game_start_seed, items=items, cpu_levels=a.cpu_levels))
     cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes, a.spawn, a.gecko,
                                   slots, a.time_limit, a.game_start_seed, a.spawn_points, a.teams,
-                                  a.friendly_fire, items=items))
+                                  a.friendly_fire, items=items, cpu_levels=a.cpu_levels))
     print(f"== recording {scenario.name}", flush=True)
     # record_many gives the run a private Dolphin user folder, so parallel
     # make_boundary runs (one per agent) never share config or card writes.
@@ -513,14 +538,14 @@ def main(argv: list[str] | None = None) -> None:
     if gate.returncode:
         print(f"== {name} is not registered: the port does not reproduce it yet. Its savestate, scenarios "
               f"and traces stay for that work; register it by rerunning the gate and adding\n"
-              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams, a.friendly_fire, items=items)}")
+              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams, a.friendly_fire, items=items, cpu_levels=a.cpu_levels)}")
         sys.exit(1)
     if a.no_register:
         print(f"== {name} passes; not registered (--no-register)")
         return
     with BOUNDARIES.open("a") as f:
         f.write(boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams,
-                               a.friendly_fire, items=items))
+                               a.friendly_fire, items=items, cpu_levels=a.cpu_levels))
     if BACKUP.is_dir():
         for src in (sav, Path(str(sav) + ".json")):
             dst = BACKUP / src.name

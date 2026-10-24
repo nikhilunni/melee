@@ -372,6 +372,18 @@ impl InitialState {
         for (index, fighter) in fighters.iter_mut().enumerate() {
             let unfinished =
                 match_start && word(&bytes[index], 0x10) == 0 && word(&bytes[index], 0x2C) == 0;
+            if !unfinished {
+                // StaticPlayer (stride 0xE90): slot_type +8, cpu_level +49,
+                // cpu_type +4A, as Fighter_Create read them.
+                let player = saved.bytes(0x8045_3080 + u32::from(fighter.0.player.id) * 0xE90, 0x4C);
+                fighter.0.player.control = match word(player, 8) {
+                    0 => melee_types::PlayerKind::Human,
+                    1 => melee_types::PlayerKind::Cpu,
+                    kind => anyhow::bail!("slot type {kind} is unsupported"),
+                };
+                fighter.0.player.cpu_level = i32::from(player[0x49]);
+                fighter.0.player.cpu_mode = i32::from(player[0x4A]);
+            }
             // Only a CPU-driven fighter reads the rest of CpuFighter; a
             // human's keeps stale words (Peach's savestates hold an old x4C).
             let cpu_driven = fighter.0.input_source() == melee_ft::input::human::InputSource::Cpu;

@@ -40,6 +40,14 @@ the match's rules afterwards), for a match no menu makes (no containers).
 coverage runs only) lists players that the match makes CPUs at `cpu_level`:
 written at the creation hook into the start data's PlayerInitData (slot_type
 +1 = Gm_PKind_Cpu, cpu_level +0xF); the CSS still picks them as humans.
+`cpu_levels` (optional) gives each player's CPU level, 0 for a human: a
+nonzero level makes that player a CPU at that level, written at the same hook
+into the match's start data (PlayerInitData slot_type +1 = Gm_PKind_Cpu,
+cpu_level +0xF, nametag +0xA = GM_NAMETAG_NONE: what the CSS writes when a
+hand clicks a door to CPU, mncharsel.c:2476, and sets its slider,
+mncharsel.c:2341; cpu_kind +0xE stays the CSS's 4). fn_8016D8AC copies them
+into the match info afterwards (gm_16AE.c:1597-1598), so Fighter_Create runs
+ftCo_800A101C with CPU type 4 and the level.
 `spawn_points` (optional) gives each player's spawn point, written at the
 same hook into the match's start data (gmVsMelee_StartData's PlayerInitData
 +5, which the menus leave at -1: the port's own marker). fn_8016D8AC copies
@@ -164,8 +172,9 @@ VS_START_RULES = symbols.addr("gmVsMelee_StartData")
 VS_START_PLAYERS = VS_START_RULES + 0x60
 START_PLAYER_SIZE = 0x24
 START_PLAYER_SPAWN = 5
-START_PLAYER_SLOT_TYPE, START_PLAYER_CPU_LEVEL = 1, 0xF
-PKIND_CPU = 1                          # pl/forward.h Gm_PKind_Cpu
+START_PLAYER_SLOT_TYPE, START_PLAYER_NAMETAG, START_PLAYER_CPU_LEVEL = 1, 0xA, 0xF
+PKIND_CPU = 1
+NAMETAG_NONE = 0x78
 ENTITIES_ADDR = symbols.addr("HSD_GObj_Entities")
 MS_ENTRY = 322   # ftCo_MS_Entry, every fighter's first match state
 # pl/player.c:58 ftMapping_list: CKIND_POPONANA creates a second fighter
@@ -235,6 +244,9 @@ class BoundaryDriver:
         # The match's item mask, replaced at the same hook.
         self.rules_item_mask: int | None = config.get("rules_item_mask")
         self.rules_item_mask_replaced: int | None = None
+        # Each player's CPU level (0: human), and what the hook found there.
+        self.cpu_levels: list[int] | None = config.get("cpu_levels")
+        self.cpu_replaced: list[dict] | None = None
         self.creation_hooked = False
         self.watching_creation = False
 
@@ -327,7 +339,8 @@ class BoundaryDriver:
                     missed = " and ".join(
                         what for what, named in (("the Game Start seed was", self.game_start_seed),
                                                  ("the spawn points were", self.spawn_points),
-                                                 ("the item mask was", self.rules_item_mask))
+                                                 ("the item mask was", self.rules_item_mask),
+                                                 ("the CPU levels were", self.cpu_levels))
                         if named is not None)
                     raise BoundaryError("the match was created without passing fn_8016E730's "
                                         f"gm_801A4B08 call: {missed} not written")
@@ -358,10 +371,27 @@ class BoundaryDriver:
                                         f"{self.mem.read_s8(base)}, not {self.config['players'][player]}")
                 self.spawn_points_replaced.append(self.mem.read_s8(base + START_PLAYER_SPAWN))
                 self.mem.write_u8(base + START_PLAYER_SPAWN, point & 0xFF)
-        for player in self.cpu_players:
-            base = VS_START_PLAYERS + self.ports[player] * START_PLAYER_SIZE
-            self.mem.write_u8(base + START_PLAYER_SLOT_TYPE, PKIND_CPU)
-            self.mem.write_u8(base + START_PLAYER_CPU_LEVEL, int(self.config.get("cpu_level", 9)))
+        if self.cpu_levels is None:
+            for player in self.cpu_players:
+                base = VS_START_PLAYERS + self.ports[player] * START_PLAYER_SIZE
+                self.mem.write_u8(base + START_PLAYER_SLOT_TYPE, PKIND_CPU)
+                self.mem.write_u8(base + START_PLAYER_CPU_LEVEL, int(self.config.get("cpu_level", 9)))
+        if self.cpu_levels is not None:
+            self.cpu_replaced = []
+            for player, level in enumerate(self.cpu_levels):
+                base = VS_START_PLAYERS + self.ports[player] * START_PLAYER_SIZE
+                if self.mem.read_s8(base) != self.config["players"][player]:
+                    raise BoundaryError(f"the start data's player {self.ports[player]} is character "
+                                        f"{self.mem.read_s8(base)}, not {self.config['players'][player]}")
+                self.cpu_replaced.append({
+                    "slot_type": self.mem.read_u8(base + START_PLAYER_SLOT_TYPE),
+                    "nametag": self.mem.read_u8(base + START_PLAYER_NAMETAG),
+                    "cpu_kind": self.mem.read_u8(base + START_PLAYER_CPU_LEVEL - 1),
+                    "cpu_level": self.mem.read_u8(base + START_PLAYER_CPU_LEVEL)})
+                if level:
+                    self.mem.write_u8(base + START_PLAYER_SLOT_TYPE, PKIND_CPU)
+                    self.mem.write_u8(base + START_PLAYER_NAMETAG, NAMETAG_NONE)
+                    self.mem.write_u8(base + START_PLAYER_CPU_LEVEL, level)
         if self.rules_item_mask is not None:
             at = VS_START_RULES + RULES_ITEM_MASK
             self.rules_item_mask_replaced = (self.mem.read_u32(at) << 32) | self.mem.read_u32(at + 4)
@@ -370,7 +400,7 @@ class BoundaryDriver:
 
     def hooks_creation(self) -> bool:
         return (self.game_start_seed is not None or self.spawn_points is not None
-                or bool(self.cpu_players) or self.rules_item_mask is not None)
+                or self.cpu_levels is not None or bool(self.cpu_players) or self.rules_item_mask is not None)
 
     def poke_save_data(self) -> None:
         mem = self.mem
@@ -539,6 +569,8 @@ class BoundaryDriver:
                     "spawn_points_replaced": self.spawn_points_replaced}
         if self.rules_item_mask is not None:
             out |= {"rules_item_mask_replaced": self.rules_item_mask_replaced}
+        if self.cpu_levels is not None:
+            out |= {"cpu_levels": self.cpu_levels, "cpu_replaced": self.cpu_replaced}
         return out
 
 

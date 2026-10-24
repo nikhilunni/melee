@@ -358,6 +358,8 @@ pub struct PlayerConfig {
     /// The player's team in a team battle (PlayerInitData +9: 0 red, 1 blue,
     /// 2 green); `None` in a free-for-all. Every player has one or none does.
     pub team: Option<u8>,
+    /// Versus CPU level, 1..=9; None for a human.
+    pub cpu_level: Option<u8>,
 }
 impl PlayerConfig {
     pub fn new(port: Port, character: Character) -> Self {
@@ -367,7 +369,12 @@ impl PlayerConfig {
             costume: Costume::default(),
             controller_fix: ControllerFix::Off,
             team: None,
+            cpu_level: None,
         }
+    }
+    pub fn with_cpu_level(mut self, level: u8) -> Self {
+        self.cpu_level = Some(level);
+        self
     }
     pub fn with_team(mut self, team: u8) -> Self {
         self.team = Some(team);
@@ -487,6 +494,9 @@ impl MatchConfig {
             return Err(StartError::InvalidConfig("stocks must be in 1..=99"));
         }
         for player in &self.players {
+            if player.cpu_level.is_some_and(|level| !(1..=9).contains(&level)) {
+                return Err(StartError::InvalidConfig("a CPU level is 1..=9"));
+            }
             if usize::from(player.costume.0) >= player.character.descriptor().costumes.len() {
                 return Err(StartError::InvalidConfig("unsupported character costume"));
             }
@@ -503,6 +513,7 @@ impl MatchConfig {
                     stocks: self.rules.stocks,
                     controller_fix: player.controller_fix,
                     team: player.team,
+                    cpu_level: player.cpu_level,
                 })
                 .collect(),
             stage: self.stage.descriptor().ok_or(StartError::UnportedStage(self.stage))?,

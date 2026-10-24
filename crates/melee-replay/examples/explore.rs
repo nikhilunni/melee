@@ -436,6 +436,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                                 }
                             }
                             previous[i] = Some(action);
+                            if config.players[i].cpu_level.is_some() {
+                                // The CPU supplies this port's input; its
+                                // pad stays neutral.
+                                continue;
+                            }
                             if held[i].remaining == 0 {
                                 held[i] = if sudden_death {
                                     choose_sudden_death(

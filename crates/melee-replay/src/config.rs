@@ -22,6 +22,9 @@ pub struct Config {
     /// Each player's team in a team battle; absent in a free-for-all.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) teams: Option<Vec<u8>>,
+    /// CPU level per player, 0 for a human.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) cpu_levels: Option<Vec<u8>>,
     /// Friendly fire in a team battle.
     #[serde(default, skip_serializing_if = "std::ops::Not::not")]
     pub(crate) friendly_fire: bool,
@@ -107,6 +110,8 @@ impl From<&MatchConfig> for Config {
                 .items
                 .enabled()
                 .then_some((config.rules.items.frequency, config.rules.items.mask)),
+            cpu_levels: config.players.iter().any(|p| p.cpu_level.is_some())
+                .then(|| config.players.iter().map(|p| p.cpu_level.unwrap_or(0)).collect()),
         }
     }
 }
@@ -131,6 +136,13 @@ impl Config {
                         .get(index)
                         .and_then(|name| ControllerFix::from_name(name))
                         .ok_or("unknown replay controller fix")?,
+                },
+                cpu_level: match &self.cpu_levels {
+                    None => None,
+                    Some(levels) => {
+                        let level = *levels.get(index).ok_or("one CPU level per player")?;
+                        (level != 0).then_some(level)
+                    }
                 },
                 team: match &self.teams {
                     None => None,

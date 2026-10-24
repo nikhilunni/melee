@@ -80,6 +80,11 @@ def boundary_for(config: dict) -> dict:
     if not config["all_characters_unlocked"]:
         raise SystemExit("boundaries assume the unlocked roster")
     costumes = [p[2] for p in sorted(config["players"])]
+    # A CPU player's level per port (0: human); absent when every port is human.
+    cpu_levels = config.get("cpu_levels") or [0] * len(players)
+    layout = [b for b in layout if (b.get("cpu_levels") or [0] * len(players)) == cpu_levels]
+    if not layout:
+        raise SystemExit(f"no boundary in {BOUNDARIES.name} has CPU levels {cpu_levels}")
     for b in layout:
         if b["seed"] == config["seed"]:
             if b.get("costumes", [0] * len(players)) != costumes:
@@ -160,8 +165,11 @@ def write_scenario(recording: dict, name: str, ticks: int | None,
                 previous[port] = raw
     fault = recording.get("fault")
     note = f"# Port fault at attempt {fault['attempt']}: {fault['message']}\n" if fault else ""
-    fighters = "\n".join(f'[[fighters]]\nslot = {i}\nkind = "{kind}"\ncontroller = "scripted"\n'
-                         for i, kind in enumerate(boundary["players"]))
+    levels = boundary.get("cpu_levels") or [0] * len(boundary["players"])
+    fighters = "\n".join(
+        f'[[fighters]]\nslot = {i}\nkind = "{kind}"\n'
+        + (f'controller = "cpu"\ncpu_level = {levels[i]}\n' if levels[i] else 'controller = "scripted"\n')
+        for i, kind in enumerate(boundary["players"]))
     cadence = "render_every_tick = true\n" if render_every_tick else ""
     items = (f'item_frequency = {boundary["item_frequency"]}\nitem_mask = "{boundary["item_mask"]}"\n'
              if "item_frequency" in boundary else "")

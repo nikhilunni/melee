@@ -883,6 +883,8 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
                 stocks: fighter.stocks,
                 controller_fix: None,
                 team: fighter.team,
+                // Replays continue to reject CPU players without a level.
+                cpu_level: None,
             })
             .collect(),
         inputs: Vec::new(),

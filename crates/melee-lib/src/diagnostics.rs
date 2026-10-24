@@ -135,6 +135,7 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
                     spawn_point: f.spawn_point,
                     controller_fix: f.controller_fix().expect("validated controller fix"),
                     team: f.team,
+                    cpu_level: f.cpu_level(),
                 })
                 .collect(),
             stage: stage_descriptor(&self.stage).unwrap(),

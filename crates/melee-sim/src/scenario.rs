@@ -168,6 +168,10 @@ pub struct FighterScenario {
     /// ...; `ControllerFix::ALL`). Absent: retail.
     #[serde(default)]
     pub controller_fix: Option<String>,
+    /// `controller = "cpu"`: the CPU's level, 1..=9 (StaticPlayer
+    /// cpu_level; the Versus CSS's slider).
+    #[serde(default)]
+    pub cpu_level: Option<u8>,
 }
 fn one_stock() -> u8 {
     1
@@ -288,8 +292,13 @@ impl Scenario {
                     && previous_port.is_none_or(|p| p < fighter.slot))
                     || (!self.is_cold() && usize::from(fighter.slot) == slot))
                     && melee_lib::diagnostics::CHARACTERS.contains(&fighter.kind.as_str())
-                    && matches!(fighter.controller.as_str(), "scripted" | "idle" | "human"),
-                "requires ascending distinct human ports with a registered character kind"
+                    && matches!(fighter.controller.as_str(), "scripted" | "idle" | "human" | "cpu"),
+                "requires ascending distinct ports with a registered character kind"
+            );
+            ensure!(
+                (fighter.controller == "cpu")
+                    == fighter.cpu_level.is_some_and(|level| (1..=9).contains(&level)),
+                "a CPU fighter names its cpu_level (1..=9), a human none"
             );
             previous_port = Some(fighter.slot);
             if self.is_cold() {
@@ -524,6 +533,10 @@ impl FighterScenario {
                 .with_context(|| format!("unknown controller_fix {name:?}")),
         }
     }
+    /// A CPU player's level; None for a human.
+    pub fn cpu_level(&self) -> Option<u8> {
+        self.cpu_level
+    }
     /// Composition root selects a character crate; gameplay uses its callbacks.
     pub fn descriptor(&self) -> &'static melee_ft::fighter::assets::CharacterDescriptor {
         melee_lib::diagnostics::character_descriptor(&self.kind)
@@ -546,6 +559,7 @@ impl Scenario {
                     spawn_point: f.spawn_point,
                     controller_fix: f.controller_fix().expect("validated controller fix"),
                     team: f.team,
+                    cpu_level: f.cpu_level(),
                 })
                 .collect(),
             stage: self.stage_descriptor(),
