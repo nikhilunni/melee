@@ -51,19 +51,8 @@ pub struct BombJumpAttributes {
     pub squat_stick_y: f32,
 }
 
-/// Charge Shot (ftsamusspecialn.c).
-#[derive(Clone, Debug, PartialEq)]
-pub struct ChargeShotAttributes {
-    /// +0x18 x18: full charge, in levels (a float compared with the
-    /// integer level).
-    pub max_charge: f32,
-    /// +0x1C x1C: aerial recoil per charge level.
-    pub recoil_per_level: f32,
-    /// +0x20 x20: frames per charge level.
-    pub frames_per_level: i32,
-    /// +0x24 x24: landing lag after an aerial shot (0: plain fall).
-    pub landing_lag: f32,
-}
+/// Charge Shot (ftsamusspecialn.c): +0x18..+0x28, shared with Kirby's copy.
+pub use ft_samus_family::charge_shot::ChargeShotAttributes;
 
 /// Missiles (ftsamusspecials.c).
 #[derive(Clone, Debug, PartialEq)]

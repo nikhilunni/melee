@@ -427,13 +427,15 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 29] = [
 ];
 // efsync.c efSync_Spawn rows that call efLib_Create_Attach_Pos: the
 // request id and the model it creates at the given point.
-pub(super) static POSITIONAL_MODELS: [(u16, u32); 4] = [
+pub(super) static POSITIONAL_MODELS: [(u16, u32); 5] = [
     // efasync.c:817-829: a buried fighter's dirt mound (common model 0x28).
     (0x447, 0x28),
     // efsync.c:433-435: Peach's vegetable pull.
     (0x4D2, 0x3A98),
     // efalt.c:98-113: Samus's charge shot muzzle flash, turned to the facing.
     (0x486, 0x7D1),
+    // efalt.c:373-389: Kirby's copied Charge Shot's flash, the same.
+    (0x4A4, 0x84D0),
     // efsync.c:412-413: Mewtwo's Teleport flash.
     (0x4E8, 0x32CB),
 ];

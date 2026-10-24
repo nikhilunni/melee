@@ -72,14 +72,14 @@ fn restore_then_death_resets_the_fighter_vars_but_keeps_the_charge_effect_flag()
     word(&mut raw, 0x2238, 2);
     word(&mut raw, 0x2244, 1);
     samus.restore_saved(&raw);
-    assert_eq!(samus.charge_level, 5);
+    assert_eq!(samus.charge.level, 5);
     assert_eq!(samus.missiles_fired, 2);
-    assert!(samus.charge_effects && samus.screw_effect);
+    assert!(samus.charge.effects && samus.screw_effect);
     samus.model_group = 1;
     samus.on_reset();
     assert_eq!(
-        (samus.charge_level, samus.missiles_fired, samus.model_group),
+        (samus.charge.level, samus.missiles_fired, samus.model_group),
         (0, 0, 0)
     );
-    assert!(samus.charge_effects && !samus.screw_effect);
+    assert!(samus.charge.effects && !samus.screw_effect);
 }

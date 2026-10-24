@@ -7,6 +7,6 @@ pub mod grapple;
 pub mod missile;
 
 pub use bomb::SamusBomb;
-pub use charge::SamusCharge;
+pub use charge::{KirbySamusCharge, SamusCharge};
 pub use grapple::SamusGrapple;
 pub use missile::SamusMissile;

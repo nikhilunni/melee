@@ -99,6 +99,7 @@ melee_it::item_kinds! {
         KirbyMarioFire: it_mariofire::KirbyMarioFire,
         KirbyDrMarioVitamin: it_drmariopill::KirbyDrMarioPill,
         KirbyLuigiFire: it_luigifire::KirbyLuigiFire,
+        KirbySamusCharge: it_samus::KirbySamusCharge,
     }
 }
 
@@ -114,7 +115,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 6] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 7] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -167,6 +168,13 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 6] = [
         // hats[16]->hat_dynamics[0]: the fireball's one state.
         articles: &[(ItemKind::KirbyLuigiFire, 0, 1)],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Samus,
+        file: "PlKbCpSs.dat",
+        symbol: "ftDataKirbyCopySamus",
+        // The charge shot's nine states, as Samus's own.
+        articles: &[(ItemKind::KirbySamusCharge, 0, 9)],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -190,6 +198,10 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
         ItemKind::KirbyLuigiFire => Some((
             &it_luigifire::ARTICLE_STATES,
             it_luigifire::SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbySamusCharge => Some((
+            &it_samus::charge::ARTICLE_STATES,
+            it_samus::charge::SPECIAL_ATTRIBUTES,
         )),
         _ => None,
     }

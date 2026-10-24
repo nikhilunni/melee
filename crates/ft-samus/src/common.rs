@@ -1,23 +1,23 @@
-//! Motion helpers Samus's specials share (ft_081B.c, ft_084E.c, ftcommon.c).
+//! Motion helpers Samus's specials share (ft_081B.c, ft_084E.c, ftcommon.c);
+//! the ones the Charge Shot needs live in `ft_samus_family::motion`.
 use melee_ft::{
     collision::{air, ground},
     fighter::{
-        assets::{FighterAssets, Result},
-        state::{CollisionPhase, InputPhase, MotionRow, PhysicsPhase},
-        ActionId, Fighter, MotionEntryFlags,
+        state::{CollisionPhase, MotionRow, PhysicsPhase},
+        ActionId, Fighter,
     },
     physics::{airborne, friction, grounded},
 };
 use melee_types::{CommonMotionState, GroundOrAir};
 
+pub use ft_samus_family::motion::{
+    air_to_ground, change, fall, ground_friction, ground_to_air, lands, no_input, seal_graphics,
+    stays_grounded, wait, GROUND_AIR,
+};
+
 /// ftSs_SM_SpecialLw = ftCo_SM_Count: row 341 plays submotion 295.
 const FIRST_SPECIAL_ACTION: u16 = 341;
 const FIRST_SPECIAL_ANIMATION: i32 = 295;
-
-/// ftCommon_GroundAirColl_MF (ftCommon/forward.h:9-12): SkipMatAnim |
-/// SkipColAnim | UpdateCmd | SkipItemVis | Unk19 | SkipModelPartVis |
-/// SkipModelFlags | Unk27.
-pub const GROUND_AIR: MotionEntryFlags = MotionEntryFlags(0x0C4C_5080);
 
 /// A ported row of ftSs_Init_MotionStateTable (341..358).
 pub const fn row(
@@ -40,74 +40,6 @@ pub const fn row(
     }
 }
 
-/// The empty IASA callbacks.
-pub fn no_input(_: &mut Fighter, _: InputPhase<'_>) {}
-
-/// Fighter_ChangeMotionState(gobj, state, flags, start, rate, 0, NULL).
-pub fn change(
-    f: &mut Fighter,
-    state: ActionId,
-    flags: MotionEntryFlags,
-    start: f32,
-    rate: f32,
-    assets: &FighterAssets,
-) -> Result<()> {
-    f.change_motion_state_with_flags(state, assets, flags, start, rate)
-}
-
-/// ft_8008A2BC on the ground (Wait).
-pub fn wait(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
-    f.change_motion_state(CommonMotionState::Wait.into(), assets)
-}
-
-/// ftCo_Fall_Enter: Fall, leaving the ground first when grounded.
-pub fn fall(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
-    if f.physics.ground_or_air == GroundOrAir::Ground {
-        f.leave_ground();
-    }
-    f.change_motion_state(CommonMotionState::Fall.into(), assets)
-}
-
-/// ftCommon_GroundToAirStateChange: ftCommon_8007D5D4, then the airborne
-/// row at the current frame and rate with `flags`.
-pub fn ground_to_air(
-    f: &mut Fighter,
-    state: ActionId,
-    flags: MotionEntryFlags,
-    assets: &FighterAssets,
-) -> Result<()> {
-    f.leave_ground();
-    let frame = f.animation.frame;
-    change(f, state, flags, frame, 1.0, assets)
-}
-
-/// ftCommon_AirToGroundStateChange: ftCommon_8007D7FC, then the grounded
-/// row at the current frame with `flags`.
-pub fn air_to_ground(
-    f: &mut Fighter,
-    state: ActionId,
-    flags: MotionEntryFlags,
-    assets: &FighterAssets,
-) -> Result<()> {
-    f.land();
-    let frame = f.animation.frame;
-    change(f, state, flags, frame, 1.0, assets)
-}
-
-/// ft_80082708 (80082708): ordinary ground collision that walks off the
-/// floor's edge. True while supported.
-pub fn stays_grounded(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
-    let c = &mut f.core;
-    ground::map_ground_action(
-        &mut c.physics,
-        &mut c.collision,
-        p.map,
-        &mut c.skeleton,
-        c.animation.root,
-        c.input.current.stick.x,
-    ) == ground::WaitGroundResult::Supported
-}
-
 /// ft_800827A0 (800827A0): ground collision that stops at the floor's
 /// edge. True while supported.
 pub fn stays_on_edge(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
@@ -120,24 +52,6 @@ pub fn stays_on_edge(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
         c.animation.root,
         c.input.current.stick.x,
     ) == ground::WaitGroundResult::Supported
-}
-
-/// ft_80081D0C (80081D0C): ordinary airborne collision; true on landing.
-pub fn lands(f: &mut Fighter, p: &mut CollisionPhase<'_>) -> bool {
-    let c = &mut f.core;
-    air::begin_map(
-        &c.physics,
-        &mut c.collision,
-        &mut c.skeleton,
-        c.animation.root,
-    );
-    air::collide_air_dodge(
-        &mut c.physics,
-        &mut c.collision,
-        p.map,
-        &mut c.skeleton,
-        c.animation.root,
-    )
 }
 
 /// ft_80082888 (80082888) with a fixed box: false off the floor.
@@ -185,12 +99,6 @@ pub fn lands_in_box(
         c.animation.root,
         ecb,
     )
-}
-
-/// ft_80084F3C (80084F3C): ground friction (scaled above walk speed) and
-/// ftCommon_ApplyGroundMovement, with Fighter_procUpdate's tail.
-pub fn ground_friction(f: &mut Fighter, p: PhysicsPhase<'_>) {
-    melee_ft::fighter::state::callbacks::physics::guard_on(f, p);
 }
 
 /// ftCommon_8007CADC (8007CADC) -> ftCommon_8007CA80: walk toward the
@@ -327,15 +235,4 @@ pub fn clamp_self_velocity_x(f: &mut Fighter, maximum: f32) {
 /// part enum directly (no ftParts_GetBoneIndex), so these are parts indices.
 pub fn part(part: melee_types::FtPart) -> usize {
     i32::from(part) as usize
-}
-
-/// Fighter_ChangeMotionState's efAsync_QueueFlush (fighter.c:951) from an
-/// animation callback: what the outgoing script issued this frame spawns
-/// before the change, ahead of the new script's frame-0 effects and colour
-/// step. Resolving those graphics commands now (their offset draws are the
-/// proc's next RNG work) lets the change seal them with the outgoing pose.
-pub fn seal_graphics(f: &mut Fighter, assets: &FighterAssets, rng: &mut gekko_math::HsdRng) {
-    if !f.core.commands.graphics.is_empty() {
-        f.core.resolve_graphics_commands(assets, rng);
-    }
 }

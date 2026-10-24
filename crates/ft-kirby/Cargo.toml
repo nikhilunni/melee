@@ -15,6 +15,7 @@ ft-gamewatch-family = { path = "../ft-gamewatch-family" }
 ft-mario-family = { path = "../ft-mario-family" }
 ft-luigi-family = { path = "../ft-luigi-family" }
 it-drmariopill = { path = "../it-drmariopill" }
+ft-samus-family = { path = "../ft-samus-family" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 melee-coll = { path = "../melee-coll" }

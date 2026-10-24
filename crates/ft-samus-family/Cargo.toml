@@ -1,0 +1,13 @@
+[package]
+name = "ft-samus-family"
+description = "Samus's Charge Shot, shared with Kirby's copy of it (retail ftSs_SpecialN, ftKb_SpecialNSs)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gekko-math = { path = "../gekko-math" }
+hsd-types = { path = "../hsd-types" }
+melee-ef = { path = "../melee-ef" }
+melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-types = { path = "../melee-types" }

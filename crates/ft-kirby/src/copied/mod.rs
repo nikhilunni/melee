@@ -16,6 +16,7 @@ pub mod shield_breaker;
 pub mod rollout;
 pub mod chef;
 pub mod fireball;
+pub mod samus;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -65,7 +66,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Pikachu
     unported("ftKb_SpecialNPk_800F9FD4", "ftKb_SpecialNPk_800FA064"),
     // Samus
-    unported("ftKb_SpecialNSs_800FCF74", "ftKb_SpecialNSs_800FD020"),
+    CopiedNeutral::Ported(samus::enter),
     // Yoshi
     unported("ftKb_SpecialNYs_8010941C", "ftKb_SpecialNYs_801094FC"),
     // Jigglypuff
@@ -119,7 +120,7 @@ pub fn enter_neutral(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
 
 /// The copied specials' motion rows (ftKb_Init_MotionStateTable 399..543)
 /// that are ported: the Blaster's here, each other kind's in its module
-/// (`captain::rows`, `rollout::rows`, `chef::rows`).
+/// (`captain::rows`, `rollout::rows`, `chef::rows`, `samus::rows`).
 pub const fn rows() -> [MotionRow; 12] {
     blaster::rows()
 }
@@ -150,7 +151,9 @@ pub fn accessory(f: &mut Fighter, assets: &FighterAssets) {
 /// What an article reads of Kirby (the copied Blaster's
 /// ftKb_SpecialNFx_800FDD4C / 800FDD14).
 pub fn item_owner(f: &mut Fighter) -> melee_it::ItemOwner {
-    blaster::item_owner(f).unwrap_or_else(|| melee_ft::fighter::default_item_owner(f))
+    blaster::item_owner(f)
+        .or_else(|| samus::item_owner(f))
+        .unwrap_or_else(|| melee_ft::fighter::default_item_owner(f))
 }
 
 /// The copied Blaster's flash point (ftKb_SpecialNFx_800FDC00 / 800FDC70).
@@ -163,4 +166,5 @@ pub fn item_muzzle(f: &mut Fighter, assets: &FighterAssets) -> Option<(hsd_types
 pub fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     crate::special_s::article_destroyed(f, kind);
     chef::article_destroyed(f, kind);
+    samus::article_destroyed(f, kind);
 }

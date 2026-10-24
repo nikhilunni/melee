@@ -1,0 +1,34 @@
+# KIRBY directed witness from start_fd_kirby_samus4 (Kirby swallows Samus; she lands behind him): Samus's jab strikes Kirby from behind in the copied Charge Shot's hold; the put-away (ftKb_SpecialNSs_800FCD60) destroys the shot in hand, and the hit's draw (one in 32) takes the ability as the star; a later B is the Inhale.
+# melee-sim search: reached [p0.motion_id == 408; items.0.kind == 52] at ticks [418, 427].
+name = "kirby_copy_chargeshot_lost_fd_samus4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_samus4.sav"
+frames = 600
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 406, port = 0, buttons = {  }, raw = {  } },
+  { frame = 425, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 427, port = 1, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 522, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Samus"
+controller = "scripted"

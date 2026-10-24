@@ -1,0 +1,39 @@
+# KIRBY directed witness from start_fd_kirby_samus4 (Kirby swallows Samus; she lands behind him): a charge runs to full and stores (colour 54 whenever the secondary slot empties); Samus's jab is the first hit since the swallow, whose death1_cb (ftKb_Init_800EE7B8 -> 800F1A8C -> ftKb_SpecialNSs_800FCD60) resets the kept level and ends the glow; a new charge starts from nothing, a roll out of the hold drops the shot, and a last charge fires on B.
+name = "kirby_copy_chargeshot_hit_fd_samus4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_samus4.sav"
+frames = 920
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 406, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 1, buttons = {  }, raw = { button = 256 } },
+  { frame = 602, port = 1, buttons = {  }, raw = {  } },
+  { frame = 680, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 682, port = 0, buttons = {  }, raw = {  } },
+  { frame = 720, port = 0, buttons = {  }, raw = { button = 32, stickX = -127 } },
+  { frame = 724, port = 0, buttons = {  }, raw = {  } },
+  { frame = 800, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 802, port = 0, buttons = {  }, raw = {  } },
+  { frame = 840, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 842, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Samus"
+controller = "scripted"

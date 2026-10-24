@@ -19,7 +19,7 @@ impl CharacterEffectFile {
 }
 
 /// Character effect files loaded with every scene, in bank order.
-pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 27] = [
+pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 28] = [
     // Mario (efAsync_DatEntries[1]): model 0x3E8, the fireball's hand flash
     // (efAlt 0x47A), and 0x3E9, the Tornado's (efAlt 0x47C).
     CharacterEffectFile {
@@ -194,6 +194,15 @@ pub const CHARACTER_EFFECT_FILES: [CharacterEffectFile; 27] = [
         bank: 33,
         file: "EfKbFx.dat",
         table: "effKirbyFoxDataTable",
+        models: 1,
+    },
+    // Kirby's copied Charge Shot (efAsync_DatEntries[34], ftKb_Init_803CB46C
+    // for Samus): model 0x84D0, the muzzle flash (efAlt 0x4A4), and the
+    // shot's generators 0x84D2..0x84D4 (efAlt 0x4A1..0x4A3).
+    CharacterEffectFile {
+        bank: 34,
+        file: "EfKbSs.dat",
+        table: "effKirbySamusDataTable",
         models: 1,
     },
     // Kirby's copied green Fireball (efAsync_DatEntries[37],

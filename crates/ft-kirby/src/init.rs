@@ -65,6 +65,9 @@ pub struct Kirby {
     pub vitamin_current: i32,
     /// Fighter +2298 (u.kb.x6C): the colour before it.
     pub vitamin_previous: i32,
+    /// The copied Charge Shot: u.kb.xA4 (the shot in hand), xA8 (the kept
+    /// level), xAC and mv.kb.specialhi.
+    pub charge_shot: ft_samus_family::charge_shot::ChargeState,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -114,6 +117,7 @@ impl Kirby {
             // before the first draw reads them.
             vitamin_current: 9,
             vitamin_previous: 9,
+            charge_shot: Default::default(),
         }
     }
 }

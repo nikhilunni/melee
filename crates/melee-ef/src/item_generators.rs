@@ -118,6 +118,19 @@ fn item_generators(id: u16) -> Result<ItemGenerators> {
             add_appsrt: false,
             scaled: false,
         },
+        // efalt.c:361-372: Kirby's copied charge shot, hsd_8039EFAC(0,
+        // 0x22, ...) from EfKbSs.dat: the glow in hand (0x84D4) and the
+        // full shot's sparkles (0x84D2, 0x84D3).
+        0x4A1..=0x4A3 => ItemGenerators {
+            bank: 34,
+            kinds: match id {
+                0x4A1 => &[0x84D4],
+                0x4A2 => &[0x84D2],
+                _ => &[0x84D3],
+            },
+            add_appsrt: false,
+            scaled: false,
+        },
         0x484 => ItemGenerators {
             bank: 2,
             kinds: &[0x7DB],

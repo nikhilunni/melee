@@ -1691,9 +1691,10 @@ impl Effects {
                             .tree
                             .set_scale(effect.root, &Vec3::new(1.0, 1.0, 1.0));
                     }
-                    if id == 0x486 {
-                        // efAlt 0x486: HSD_JObjSetRotationY of an f64
-                        // +-M_PI_2 by the facing, rounded.
+                    if id == 0x486 || id == 0x4A4 {
+                        // efAlt 0x486 (and Kirby's copy, 0x4A4):
+                        // HSD_JObjSetRotationY of an f64 +-M_PI_2 by the
+                        // facing, rounded.
                         effect.tree.set_rotation_y(
                             effect.root,
                             if fighter.effect_facing() < 0.0 {

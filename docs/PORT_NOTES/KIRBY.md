@@ -650,9 +650,37 @@ fails closed.
   a short-hop one landing in the grounded row, a throw at the floor's edge
   sliding off into the aerial row (and death with the ability), a jab in
   the row whose draw keeps the ability and a taunt that drops it.
+- **The charge flashes** (`charge_flash.rs`, ftKb_Init_UnkMotionStates4,
+  800EE818): the colour Kirby's secondary colour slot takes whenever it
+  empties, by the copied kind, while its kept charge is full: Donkey Kong
+  58 (xBC == +190), Samus 54 (xA8 == +168, the integer converted), Mewtwo
+  93 (x9C == +384), Sheik 87 (xB4 == 6). The port keeps it in
+  `secondary_color_fallback`, refreshed by every charge-word write and by
+  800F190C / the hat's change (every word 0: no colour). The arms of kinds
+  not yet ported read their words at rest.
+- **The copied Charge Shot** (`copied/samus.rs`): Samus's states moved
+  into the family crate `ft-samus-family` (`charge_shot`, generic over
+  `ChargeShotUser`; Samus and `KirbySamus` implement it), over Kirby's
+  rows 407..412 (anim ids 346..351) with his ss attributes (+168..+178,
+  Samus's +18..+28 word for word), the shot formed and fired at parts[44]
+  (both; Samus uses RHandNb and ThrowN), colour 0x36 on reaching full,
+  the muzzle flash efAlt 0x4A4 (EfKbSs.dat model 0x84D0, bank 34), and
+  It_Kind_Kirby_SamusCharge (it-samus `SamusCharge<Kirby>`: the same item
+  code; in hand efAlt 0x4A1, at full 0x4A2 / 0x4A3; owner rows 407..412
+  without the cancel; copy archive PlKbCpSs.dat, hat_dynamics[0]). Two
+  differences beyond the names: the charge's efLib_DestroyAll runs whether
+  or not xAC is set (ftKb_SpecialNSs_DestroyChargeShot, so every frame of
+  the cancel destroys Kirby's effects), and the put-away arm
+  (ftKb_SpecialNSs_800FCD60, from 800F19AC and 800F1A8C) resets the kept
+  level: the first hit after the swallow (death1_cb) takes a stored full
+  charge. EfKbSs.dat's first texture group (CI8) carries a stale RAM
+  address as its palette pointer; hsd-particle validates image pointers
+  only. Witnesses: `kirby_copy_chargeshot_fd_samus4` and
+  `kirby_copy_chargeshot_{lost,hit}_fd_samus4`
+  (boundary `start_fd_kirby_samus4`).
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
-  Megavitamin and the green Fireball
+  Megavitamin, the green Fireball and the Charge Shot
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -702,11 +730,11 @@ Remaining work, in the order to take it:
    ability, a death in it).
    Done (wave 13): Mario's, Dr. Mario's and Luigi's Fireball / Megavitamin
    (`kirby_copy_{fireball,pill,greenfireball}_*`, boundaries
-   `start_fd_kirby_{mario,drmario,luigi}4`).
-   Next: Sheik, Peach, Samus, then the rest; each row's stale-move id
-   exists already (`StaleMove::Copied*`). `ftKb_Init_UnkMotionStates4` (the
-   charge flashes of Donkey Kong, Samus, Mewtwo and Sheik) comes with those
-   kinds. The pattern, per kind:
+   `start_fd_kirby_{mario,drmario,luigi}4`);
+   `ftKb_Init_UnkMotionStates4` (`charge_flash.rs`) and Samus's Charge
+   Shot (`kirby_copy_chargeshot_*`, boundary `start_fd_kirby_samus4`).
+   Next: Sheik, Peach, then the rest; each row's stale-move id exists
+   already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,
      `KirbyFalco`) implementing the original family's trait over Kirby's
      state (rows, items, hand, attributes, scratch in `Kirby`, callbacks =

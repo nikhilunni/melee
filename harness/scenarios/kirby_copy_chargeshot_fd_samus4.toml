@@ -1,0 +1,49 @@
+# KIRBY directed witness from start_fd_kirby_samus4 (Kirby runs to x=51 beside Samus at +60, inhales and swallows her; she lands behind him): the copied Charge Shot (rows 407..412). A tap of B starts a charge that a shield press cancels with the level kept; a second B resumes it and a B press fires a partial shot; a third charge runs to full (colour 54, ftKb_Init_UnkMotionStates4) and stores; a full hop and an aerial B fire the full shot at once with recoil; a fourth charge stores again (Samus now ahead of him) and a grounded B fires the full shot into her; a short hop and an aerial B fire an empty one, landing in the grounded fire.
+name = "kirby_copy_chargeshot_fd_samus4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_samus4.sav"
+frames = 1245
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 480, port = 0, buttons = {  }, raw = { button = 32 } },
+  { frame = 482, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 522, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+  { frame = 640, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 642, port = 0, buttons = {  }, raw = {  } },
+  { frame = 820, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 830, port = 0, buttons = {  }, raw = {  } },
+  { frame = 834, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 836, port = 0, buttons = {  }, raw = {  } },
+  { frame = 900, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 902, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1072, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 1074, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1150, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 1151, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1156, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 1158, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Samus"
+controller = "scripted"

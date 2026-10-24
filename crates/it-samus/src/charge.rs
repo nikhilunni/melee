@@ -5,11 +5,44 @@
 //! (it_802B56E4), it takes the charge level's state (1..8), speed and
 //! scale and flies straight until its lifetime ends, it meets the stage in
 //! the direction it flies, or its hit connects.
+//!
+//! Kirby's copy (It_Kind_Kirby_SamusCharge, from ftkirbyspecialsamus.c)
+//! runs the same code: its kind picks the owner's charge rows
+//! (ftKb_SpecialNSs_800FCC6C / 800FCCBC) and the effects (efAlt 0x4A1..0x4A3
+//! from EfKbSs.dat instead of 0x47F..0x481).
 use hsd_types::Vec3;
 use melee_it::{desc::ItemAssets, state_change::ANIM_UPDATE, *};
 use melee_types::ItemKind;
 
-pub struct SamusCharge;
+/// The charge shot of `O` (Samus's, or Kirby's copy).
+pub struct SamusCharge<O = Samus>(std::marker::PhantomData<O>);
+/// Kirby's copy of the charge shot.
+pub type KirbySamusCharge = SamusCharge<Kirby>;
+
+/// What tells the two kinds' shots apart.
+pub trait ChargeOwner: 'static {
+    const KIND: ItemKind;
+    /// efSync_Spawn on the model's grandchild in hand (it_2725_Logic108_PickedUp).
+    const HAND_GLOW: u16;
+    /// The full shot's two sparkles on the root (it_802B5EDC).
+    const FULL_SPARKLES: [u16; 2];
+}
+/// It_Kind_Samus_Charge.
+pub struct Samus;
+impl ChargeOwner for Samus {
+    const KIND: ItemKind = ItemKind::SamusCharge;
+    const HAND_GLOW: u16 = HAND_GLOW;
+    const FULL_SPARKLES: [u16; 2] = [FULL_SPARKLE_A, FULL_SPARKLE_B];
+}
+/// It_Kind_Kirby_SamusCharge: efAlt 0x4A1 (bank 34's 0x84D4) in hand,
+/// 0x4A2 / 0x4A3 (0x84D2 / 0x84D3) at full charge
+/// (itsamuschargeshot.c:213-214, 360-362).
+pub struct Kirby;
+impl ChargeOwner for Kirby {
+    const KIND: ItemKind = ItemKind::KirbySamusCharge;
+    const HAND_GLOW: u16 = 0x4A1;
+    const FULL_SPARKLES: [u16; 2] = [0x4A2, 0x4A3];
+}
 
 /// it_803F7288's anim_id column: in hand, then one flight per charge level.
 pub const ARTICLE_STATES: [i32; 9] = [0, 1, 2, 3, 4, 5, 6, 7, 8];
@@ -22,6 +55,9 @@ pub const ARTICLE_INDEX: u32 = 1;
 /// which the shot stays (ftSs_SpecialLw_80129158; ftSs_SpecialN_801291A8
 /// excludes the cancel, 345).
 const OWNER_CHARGE_STATES: [u16; 5] = [343, 344, 346, 347, 348];
+/// ftKb_MS_SsSpecialNStart .. SsSpecialAirN for Kirby's copy
+/// (ftKb_SpecialNSs_800FCC6C; 800FCCBC excludes the cancel, 409).
+const KIRBY_OWNER_CHARGE_STATES: [u16; 5] = [407, 408, 410, 411, 412];
 /// The highest flight state's charge (it_802B5CBC's clamp).
 const MAXIMUM_LEVEL: i32 = 7;
 /// efSync_Spawn(0x47F, item, grandchild): efAlt's hsd_8039EFAC(0, 2, 0x7D4)
@@ -86,9 +122,9 @@ fn shot_mut(item: &mut ItemCore) -> &mut ChargeShotState {
     state
 }
 
-/// it_3F2F.c's Logic108 row.
-impl ItemLogic for SamusCharge {
-    const KIND: ItemKind = ItemKind::SamusCharge;
+/// it_3F2F.c's Logic108 row (and Kirby's copy's).
+impl<O: ChargeOwner> ItemLogic for SamusCharge<O> {
+    const KIND: ItemKind = O::KIND;
     const STATES: &'static [ItemStateRow] = &STATES;
     fn pickup_possible(_item: &ItemCore) -> bool {
         false
@@ -118,7 +154,7 @@ impl ItemLogic for SamusCharge {
     /// the model's grandchild.
     fn picked_up(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
         item.change_motion_with(0, ARTICLE_STATES[0], ANIM_UPDATE, context.assets);
-        item.events.push(ItemEvent::OwnEffect { id: HAND_GLOW });
+        item.events.push(ItemEvent::OwnEffect { id: O::HAND_GLOW });
         shot_mut(item).glowing = true;
     }
     /// it_802B5974 (802B5974), Samus's ftSamus_UnkAndDestroyAllEF: the
@@ -218,10 +254,9 @@ impl ItemLogic for SamusCharge {
         let sparkle = state.level == state.full && state.sparkle == 0;
         state.sparkle = (state.sparkle + 1) % 3;
         if sparkle {
-            item.events
-                .push(ItemEvent::OwnEffect { id: FULL_SPARKLE_A });
-            item.events
-                .push(ItemEvent::OwnEffect { id: FULL_SPARKLE_B });
+            for id in O::FULL_SPARKLES {
+                item.events.push(ItemEvent::OwnEffect { id });
+            }
         }
         None
     }
@@ -308,8 +343,13 @@ fn take_flight_state(
 fn hand_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     let original = shot(item).original_owner;
     if let (Some(owner), true) = (ctx.owner, original.is_some() && item.owner == original) {
-        // x2071_b6 is clear in every Samus charge state.
-        if !OWNER_CHARGE_STATES.contains(&owner.motion) {
+        // x2071_b6 is clear in every Samus and Kirby charge state.
+        let charge_states = if item.kind == ItemKind::KirbySamusCharge {
+            &KIRBY_OWNER_CHARGE_STATES
+        } else {
+            &OWNER_CHARGE_STATES
+        };
+        if !charge_states.contains(&owner.motion) {
             return true;
         }
         let Some((level, full)) = owner.charge else {

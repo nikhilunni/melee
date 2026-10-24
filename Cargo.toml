@@ -65,6 +65,7 @@ members = [
     "crates/ft-luigi",
     "crates/ft-iceclimbers",
     "crates/it-climbersice",
+    "crates/ft-samus-family",
     "crates/ft-samus",
     "crates/it-samus",
     "crates/ft-gamewatch-family",

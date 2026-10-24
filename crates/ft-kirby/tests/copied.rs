@@ -46,6 +46,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Mario
                             | FighterKind::DrMario
                             | FighterKind::Luigi
+                            | FighterKind::Samus
                     ),
                     "{kind:?}"
                 )
@@ -92,6 +93,17 @@ fn the_fireball_rows_follow_kirbys_table() {
     for (row, (action, animation)) in rows.iter().zip(expected) {
         assert_eq!(row.action.0, action);
         assert_eq!(row.animation, animation);
+    }
+}
+
+#[test]
+fn the_charge_shot_rows_follow_kirbys_table() {
+    // ftKb_Init_MotionStateTable rows 407..412 (0x803C8368): anim ids
+    // 346..351.
+    let rows = ft_kirby::copied::samus::rows();
+    for (i, row) in rows.iter().enumerate() {
+        assert_eq!(row.action.0, 407 + i as u16);
+        assert_eq!(row.animation, 346 + i as i32);
     }
 }
 

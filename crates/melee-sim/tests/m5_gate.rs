@@ -2762,6 +2762,19 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // Mario jabs Kirby in the Fireball's row (the draw keeps the ability);
     // a taunt drops it as a star.
     ("kirby_copy_fireball_struck_fd_mario4", 700),
+    // The copied Charge Shot (ftkirbyspecialsamus.c over
+    // ft_samus_family's states; rows 407..412, It_Kind_Kirby_SamusCharge
+    // with EfKbSs.dat's glow and sparkles, efAlt 0x4A4's flash): a shield
+    // cancel keeping the level, a resumed charge fired, a full charge
+    // stored (colour 54, ftKb_Init_UnkMotionStates4) and fired in the air
+    // with recoil and on the ground into Samus, an empty aerial shot
+    // landing in the grounded fire.
+    ("kirby_copy_chargeshot_fd_samus4", 1245),
+    // A jab in the hold puts the shot away and its draw takes the ability.
+    ("kirby_copy_chargeshot_lost_fd_samus4", 600),
+    // The first hit after the swallow (death1_cb) resets a stored full
+    // charge (ftKb_SpecialNSs_800FCD60); a roll out of the hold.
+    ("kirby_copy_chargeshot_hit_fd_samus4", 920),
 ];
 
 #[test]

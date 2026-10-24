@@ -34,6 +34,9 @@ pub struct KirbyAttributes {
     pub final_cutter: FinalCutterAttributes,
     /// +EC..+114: Stone.
     pub stone: StoneAttributes,
+    /// +168..+178 (`specialn_ss_*`): the copied Charge Shot, Samus's
+    /// +18..+28 word for word.
+    pub charge_shot: ft_samus_family::charge_shot::ChargeShotAttributes,
     /// +1F8..+20C (`specialn_ca_*`): the copied Falcon Punch, and the
     /// Warlock Punch as well (ftKb_CaSpecialAirN_IASA reads these for both;
     /// +20C..+220, `specialn_gn_*`, has no reader).
@@ -263,6 +266,12 @@ impl KirbyAttributes {
                 fall_speed: r.f32(0x104)?,
                 health: r.s32(0x108)?,
                 free_fall_lag: r.f32(0x114)?,
+            },
+            charge_shot: ft_samus_family::charge_shot::ChargeShotAttributes {
+                max_charge: r.f32(0x168)?,
+                recoil_per_level: r.f32(0x16C)?,
+                frames_per_level: r.s32(0x170)?,
+                landing_lag: r.f32(0x174)?,
             },
             falcon_punch: FalconPunchAttributes::read(Reader::new(r.slice(0x1F8, 0x14)?))?,
             fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,

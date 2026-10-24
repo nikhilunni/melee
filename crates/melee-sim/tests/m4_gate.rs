@@ -1650,6 +1650,22 @@ fn start_fd_kirby_fireball_boundaries_600() {
     }
 }
 
+/// Kirby vs Samus on Final Destination, for the copied Charge Shot.
+#[test]
+fn start_fd_kirby_samus4_600() {
+    movement_gate_ticks("start_fd_kirby_samus4", 600);
+}
+
+#[test]
+fn start_fd_kirby_samus4_cold_600() {
+    movement_gate_ticks("start_fd_kirby_samus4_cold", 600);
+}
+
+#[test]
+fn start_kirby_samus_particle_draw_order() {
+    particle_rng_sites_with_ledger("start_fd_kirby_samus4", 600, "ledger600");
+}
+
 /// Kirby vs the five fighters whose hats are grafted into his own parts,
 /// on Final Destination, warm and cold, with the particle draw order.
 #[test]

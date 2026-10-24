@@ -28,9 +28,12 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are x68, x6C, xC4, xCC, xB0, x8C and
-/// xD4..xDC.
-fn reset_copied_scratch(state: &mut Kirby) {
+/// The ones with a reader so far are x68, x6C, xC4, xCC, xB0, x8C,
+/// xA4..xAC and xD4..xDC. With every charge word at 0,
+/// ftKb_Init_UnkMotionStates4 has no colour for any kind
+/// (`crate::charge_flash`).
+fn reset_copied_scratch(f: &mut Fighter) {
+    let state = f.character.get_mut::<Kirby>();
     state.ice_shot_lift_used = false;
     state.toad_lift_used = false;
     state.blaster = Default::default();
@@ -39,6 +42,8 @@ fn reset_copied_scratch(state: &mut Kirby) {
     // x68, x6C: the copied Megavitamin's colours.
     state.vitamin_current = 9;
     state.vitamin_previous = 9;
+    state.charge_shot = Default::default();
+    crate::charge_flash::refresh(f);
 }
 
 /// ftKb_SpecialN_800F1BAC (800F1BAC) with `arg2` true: a new kind replaces
@@ -49,7 +54,7 @@ pub fn take(f: &mut Fighter, kind: FighterKind) {
     let state = f.character.get_mut::<Kirby>();
     let sound = if state.copied != kind {
         state.copied = kind;
-        reset_copied_scratch(state);
+        reset_copied_scratch(f);
         // ftKb_Init_803C9CC8[kind * 2]: the hat's loader.
         crate::hat::load(f, kind);
         COPY_SOUND
@@ -91,8 +96,12 @@ fn drop_shadow_ball_charge(f: &mut Fighter) {
 /// whether the kind has one.
 fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
     match kind {
-        FighterKind::Donkey | FighterKind::Samus => {
+        FighterKind::Donkey => {
             destroy_effects(f);
+            true
+        }
+        FighterKind::Samus => {
+            crate::copied::samus::put_away(f);
             true
         }
         _ => false,
@@ -154,8 +163,8 @@ pub fn put_away_on_hit(f: &mut Fighter) {
 /// fmuls for the facing).
 pub fn lose(f: &mut Fighter, star: bool) {
     put_away(f);
+    reset_copied_scratch(f);
     let state = f.character.get_mut::<Kirby>();
-    reset_copied_scratch(state);
     if state.copied != FighterKind::Kirby && star {
         let a = state.attributes.inhale.ability_star;
         let facing = f.physics.facing;
@@ -174,4 +183,5 @@ pub fn lose(f: &mut Fighter, star: bool) {
     let copied = f.character.get::<Kirby>().copied;
     crate::hat::unload(f, copied);
     f.character.get_mut::<Kirby>().copied = FighterKind::Kirby;
+    crate::charge_flash::refresh(f);
 }

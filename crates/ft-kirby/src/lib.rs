@@ -3,6 +3,7 @@ pub mod ability;
 pub mod attack_dash;
 pub mod attributes;
 pub mod bump_star;
+pub mod charge_flash;
 pub mod damage_callbacks;
 pub mod common;
 pub mod copied;
@@ -65,6 +66,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     place_all(&mut rows, copied::rollout::rows());
     place_all(&mut rows, copied::chef::rows());
     place_all(&mut rows, copied::fireball::rows());
+    place_all(&mut rows, copied::samus::rows());
     rows
 }
 

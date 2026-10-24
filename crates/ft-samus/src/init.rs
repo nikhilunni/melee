@@ -12,10 +12,9 @@ pub struct Samus {
     pub attributes: SamusAttributes,
     /// ftSs_Init_OnDeath resets model group 0 to selection 0.
     pub model_group: i32,
-    /// Fighter +2230, x2230: the Charge Shot level kept between shots.
-    pub charge_level: i32,
-    /// Fighter +2234, x2234: the charge's effects are alive.
-    pub charge_effects: bool,
+    /// Fighter +222C..+2234 (the shot in hand, the level kept between
+    /// shots, the charge's effects) and Charge Shot's motion scratch.
+    pub charge: ft_samus_family::charge_shot::ChargeState,
     /// Fighter +2238, x2238: missiles fired (ftSs_SpecialS_8012A074).
     pub missiles_fired: u32,
     /// Fighter +2244, x2244: the Screw Attack's effect is alive.
@@ -30,10 +29,6 @@ pub struct Samus {
     pub screw_attack: crate::special_hi::ScrewAttack,
     /// The accessory4 callback a special installed.
     pub accessory: Accessory,
-    /// Fighter +222C, x222C: the charge shot in Samus's hand.
-    pub charge_article: bool,
-    /// Charge Shot's motion scratch.
-    pub charge_shot: crate::special_n::ChargeShot,
     /// The grab's frame counter (mv.ca.specials.grav, fn_800D9558).
     pub grab_frames: f32,
     /// The grapple beam and its rope (u.ss.x223C).
@@ -57,16 +52,13 @@ impl Samus {
         Self {
             attributes,
             model_group: 0,
-            charge_level: 0,
-            charge_effects: false,
+            charge: Default::default(),
             missiles_fired: 0,
             screw_effect: false,
             ball: false,
             damage_callbacks: false,
             screw_attack: Default::default(),
             accessory: Accessory::None,
-            charge_article: false,
-            charge_shot: Default::default(),
             grab_frames: 0.0,
             grapple: Default::default(),
             grapple_article: Default::default(),
@@ -146,9 +138,9 @@ impl CharacterCallbacks for Samus {
             remove_blaster: true,
             motion: f.motion_state.action.0,
             articles_fired: f.character.get::<Samus>().missiles_fired,
-            charge: f.character.get::<Samus>().charge_article.then(|| {
+            charge: f.character.get::<Samus>().charge.article.then(|| {
                 (
-                    f.character.get::<Samus>().charge_level,
+                    f.character.get::<Samus>().charge.level,
                     crate::special_n::full_charge(f),
                 )
             }),
@@ -229,8 +221,8 @@ impl CharacterCallbacks for Samus {
     /// (+222C, +223C) are not modelled; a save with either set fails closed.
     fn restore_saved(&mut self, raw: &[u8]) {
         let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
-        self.charge_level = word(0x2230) as i32;
-        self.charge_effects = word(0x2234) != 0;
+        self.charge.level = word(0x2230) as i32;
+        self.charge.effects = word(0x2234) != 0;
         self.missiles_fired = word(0x2238);
         self.screw_effect = word(0x2244) != 0;
         if word(0x222C) != 0 || word(0x223C) != 0 {
@@ -243,7 +235,7 @@ impl CharacterCallbacks for Samus {
     /// nonzero word there costs one efLib_DestroyAll.
     fn restore_stale_heap(&mut self, raw: &[u8]) {
         let word = |offset: usize| u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap());
-        self.charge_effects = word(0x2234) != 0;
+        self.charge.effects = word(0x2234) != 0;
     }
     /// ftSs_Init_OnLoad (8012837C): can_walljump and PUSH_ATTRS. The four
     /// item registrations (it_8026B3F8: bomb, charge shot, missile, grapple
@@ -256,7 +248,7 @@ impl CharacterCallbacks for Samus {
     /// FighterVars reset (x2234 and x2248 keep their values).
     fn on_reset(&mut self) {
         self.model_group = 0;
-        self.charge_level = 0;
+        self.charge.level = 0;
         self.missiles_fired = 0;
         self.screw_effect = false;
         self.grapple.code = 0;
