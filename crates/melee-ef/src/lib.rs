@@ -829,6 +829,7 @@ impl Effects {
                     id @ (0x488..=0x48C
                     | 0x491..=0x493
                     | 0x496..=0x497
+                    | 0x4A9..=0x4AA
                     | 0x4C6..=0x4CA
                     | 0x4B4..=0x4B5
                     | 0x4B8..=0x4B9
@@ -854,6 +855,9 @@ impl Effects {
                     // (Headbutt ground and air, Giant Punch ground and air,
                     // Spinning Kong).
                     0x4C6..=0x4CA => 0x1F40 + u32::from(id - 0x4C6),
+                    // efalt.c:391-430: Kirby's copied Giant Punch, the same
+                    // pair from EfKbDk.dat.
+                    0x4A9..=0x4AA => 0x9858 + u32::from(id - 0x4A9),
                     // efsync.c:611-640: Gerudo Dragon's start and lunge models.
                     0x50D => 0x4A3B,
                     0x50E => 0x4A3C,
@@ -887,6 +891,7 @@ impl Effects {
                         | 0x492..=0x493
                         | 0x4B4..=0x4B5
                         | 0x4B8..=0x4B9
+                        | 0x4A9..=0x4AA
                         | 0x4C6..=0x4CA
                         | 0x4D6
                         | 0x4F2..=0x4F7
@@ -898,6 +903,7 @@ impl Effects {
                     0x492..=0x493
                         | 0x4B4..=0x4B5
                         | 0x4B8..=0x4B9
+                        | 0x4A9..=0x4AA
                         | 0x4C8..=0x4C9
                         | 0x4F2..=0x4F3
                         | 0x50E..=0x50F
@@ -909,8 +915,9 @@ impl Effects {
                 // installs the same callback on a plain efLib_Create_Attach.
                 let follows_facing = matches!(id, 0x497 | 0x4C6..=0x4C7);
                 // efsync.c:185, 201: efSync 0x4C8/0x4C9 run HSD_JObjAnimAll on
-                // the new model themselves, before efLib_AnimQueue's drain.
-                let animated_at_creation = matches!(id, 0x4C8..=0x4C9);
+                // the new model themselves, before efLib_AnimQueue's drain;
+                // so do Kirby's copies, efAlt 0x4A9/0x4AA (efalt.c:407, 427).
+                let animated_at_creation = matches!(id, 0x4A9..=0x4AA | 0x4C8..=0x4C9);
                 let mut effect = self.acquire(model, particles);
                 effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
                 self.next_joint += effect.tree.len();

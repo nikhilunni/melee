@@ -1,0 +1,47 @@
+# KIRBY directed witness from start_fd_kirby_donkeykong4 (Kirby runs to x=51 beside DonkeyKong at +60, inhales and swallows him; DonkeyKong lands behind him): the copied Giant Punch (rows 455..464). A wind-up that a shield press cancels at the loop's wrap, keeping its swings; a second wind-up resumes them and B punches (the swings add damage and lunge), striking DonkeyKong; a third runs to the full charge (colour 58, ftKb_Init_UnkMotionStates4) and walks away glowing; a full hop and B spend it in the aerial full punch, landing in the grounded one; a short hop and B wind up in the air, land in the grounded loop, and B punches.
+name = "kirby_copy_giantpunch_fd_donkeykong4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_donkeykong4.sav"
+frames = 1150
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 420, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 422, port = 0, buttons = {  }, raw = {  } },
+  { frame = 480, port = 0, buttons = {  }, raw = { button = 32 } },
+  { frame = 482, port = 0, buttons = {  }, raw = {  } },
+  { frame = 560, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 562, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 602, port = 0, buttons = {  }, raw = {  } },
+  { frame = 700, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 702, port = 0, buttons = {  }, raw = {  } },
+  { frame = 880, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 890, port = 0, buttons = {  }, raw = {  } },
+  { frame = 894, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 896, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1000, port = 0, buttons = {  }, raw = { button = 1024 } },
+  { frame = 1001, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1004, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 1006, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1060, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 1062, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "DonkeyKong"
+controller = "scripted"

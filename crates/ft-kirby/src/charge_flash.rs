@@ -9,8 +9,9 @@ use crate::init::Kirby;
 use melee_ft::fighter::Fighter;
 use melee_types::FighterKind;
 
-/// ftCo_800BFFD0's colours: Samus's full charge (54), Mewtwo's full
-/// Shadow Ball (93).
+/// ftCo_800BFFD0's colours: Donkey Kong's full swing count (58), Samus's
+/// full charge (54), Mewtwo's full Shadow Ball (93).
+const DONKEY_FULL: u8 = 58;
 const SAMUS_FULL: u8 = 54;
 const MEWTWO_FULL: u8 = 93;
 
@@ -18,10 +19,10 @@ const MEWTWO_FULL: u8 = 93;
 pub fn color(kirby: &Kirby) -> Option<u8> {
     let a = &kirby.attributes;
     match kirby.copied {
-        // `xBC == specialn_dk_swings_to_full_charge` (colour 58): no copied
-        // Giant Punch is ported, so xBC is 0 and never full (the attribute
-        // is not 0 on the disc).
-        FighterKind::Donkey => None,
+        // `xBC == specialn_dk_swings_to_full_charge`.
+        FighterKind::Donkey => {
+            (kirby.giant_punch_swings == a.giant_punch.max_swings).then_some(DONKEY_FULL)
+        }
         // `xA8 == specialn_ss_charge_time`, the integer converted.
         FighterKind::Samus => {
             (kirby.charge_shot.level as f32 == a.charge_shot.max_charge).then_some(SAMUS_FULL)

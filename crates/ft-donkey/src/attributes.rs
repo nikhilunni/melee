@@ -47,18 +47,9 @@ pub struct CarryAttributes {
     pub landing_frames: f32,
 }
 
-/// Giant Punch (ftdonkeyspecialn.c).
-#[derive(Clone, Debug, PartialEq)]
-pub struct GiantPunchAttributes {
-    /// +0x2C x2C_MAX_ARM_SWINGS: the full charge.
-    pub max_swings: i32,
-    /// +0x30 x30_DAMAGE_PER_SWING.
-    pub damage_per_swing: i32,
-    /// +0x34 x34_PUNCH_HORIZONTAL_VEL, per swing.
-    pub punch_speed: f32,
-    /// +0x38 x38_LANDING_LAG after an aerial punch (0: plain fall).
-    pub landing_lag: f32,
-}
+/// Giant Punch (ftdonkeyspecialn.c): +0x2C..+0x3C, shared with Kirby's
+/// copy.
+pub use ft_donkey_family::giant_punch::GiantPunchAttributes;
 
 /// Headbutt (ftdonkeyspecials.c).
 #[derive(Clone, Debug, PartialEq)]

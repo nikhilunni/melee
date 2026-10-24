@@ -2775,6 +2775,19 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // The first hit after the swallow (death1_cb) resets a stored full
     // charge (ftKb_SpecialNSs_800FCD60); a roll out of the hold.
     ("kirby_copy_chargeshot_hit_fd_samus4", 920),
+    // The copied Giant Punch (ftkirbyspecialdonkey.c over
+    // ft_donkey_family's states; rows 455..464, efAlt 0x4A9 / 0x4AA from
+    // EfKbDk.dat): a shield cancel at the loop's wrap keeping the swings,
+    // a resumed wind-up punching DonkeyKong, a full charge stored (colour
+    // 58) and spent in the aerial full punch landing in the grounded one,
+    // an aerial wind-up landing in the grounded loop.
+    ("kirby_copy_giantpunch_fd_donkeykong4", 1150),
+    // A jab in the loop: the put-away (ftKb_SpecialNPr_80100DE0) and the
+    // draw taking the ability.
+    ("kirby_copy_giantpunch_lost_fd_donkeykong4", 600),
+    // The first hit after the swallow drops a stored full charge; a roll
+    // out of the loop.
+    ("kirby_copy_giantpunch_hit_fd_donkeykong4", 900),
 ];
 
 #[test]

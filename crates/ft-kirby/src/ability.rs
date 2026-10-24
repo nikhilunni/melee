@@ -43,6 +43,7 @@ fn reset_copied_scratch(f: &mut Fighter) {
     state.vitamin_current = 9;
     state.vitamin_previous = 9;
     state.charge_shot = Default::default();
+    state.giant_punch_swings = 0;
     crate::charge_flash::refresh(f);
 }
 
@@ -97,7 +98,7 @@ fn drop_shadow_ball_charge(f: &mut Fighter) {
 fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
     match kind {
         FighterKind::Donkey => {
-            destroy_effects(f);
+            crate::copied::donkey::put_away(f);
             true
         }
         FighterKind::Samus => {

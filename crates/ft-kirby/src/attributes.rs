@@ -37,6 +37,9 @@ pub struct KirbyAttributes {
     /// +168..+178 (`specialn_ss_*`): the copied Charge Shot, Samus's
     /// +18..+28 word for word.
     pub charge_shot: ft_samus_family::charge_shot::ChargeShotAttributes,
+    /// +190..+1A0 (`specialn_dk_*`): the copied Giant Punch, Donkey Kong's
+    /// +2C..+3C word for word.
+    pub giant_punch: ft_donkey_family::giant_punch::GiantPunchAttributes,
     /// +1F8..+20C (`specialn_ca_*`): the copied Falcon Punch, and the
     /// Warlock Punch as well (ftKb_CaSpecialAirN_IASA reads these for both;
     /// +20C..+220, `specialn_gn_*`, has no reader).
@@ -272,6 +275,12 @@ impl KirbyAttributes {
                 recoil_per_level: r.f32(0x16C)?,
                 frames_per_level: r.s32(0x170)?,
                 landing_lag: r.f32(0x174)?,
+            },
+            giant_punch: ft_donkey_family::giant_punch::GiantPunchAttributes {
+                max_swings: r.s32(0x190)?,
+                damage_per_swing: r.s32(0x194)?,
+                punch_speed: r.f32(0x198)?,
+                landing_lag: r.f32(0x19C)?,
             },
             falcon_punch: FalconPunchAttributes::read(Reader::new(r.slice(0x1F8, 0x14)?))?,
             fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,

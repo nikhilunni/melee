@@ -16,6 +16,7 @@ pub mod shield_breaker;
 pub mod rollout;
 pub mod chef;
 pub mod fireball;
+pub mod donkey;
 pub mod samus;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
@@ -46,7 +47,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Captain Falcon
     CopiedNeutral::Ported(captain::enter),
     // Donkey Kong
-    unported("ftKb_SpecialNDk_800FF8EC", "ftKb_SpecialNDk_800FFA10"),
+    CopiedNeutral::Ported(donkey::enter),
     // Kirby
     CopiedNeutral::Inhale,
     // Bowser
@@ -120,7 +121,8 @@ pub fn enter_neutral(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
 
 /// The copied specials' motion rows (ftKb_Init_MotionStateTable 399..543)
 /// that are ported: the Blaster's here, each other kind's in its module
-/// (`captain::rows`, `rollout::rows`, `chef::rows`, `samus::rows`).
+/// (`captain::rows`, `rollout::rows`, `chef::rows`, `samus::rows`,
+/// `donkey::rows`).
 pub const fn rows() -> [MotionRow; 12] {
     blaster::rows()
 }

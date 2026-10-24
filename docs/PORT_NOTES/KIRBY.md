@@ -678,9 +678,23 @@ fails closed.
   only. Witnesses: `kirby_copy_chargeshot_fd_samus4` and
   `kirby_copy_chargeshot_{lost,hit}_fd_samus4`
   (boundary `start_fd_kirby_samus4`).
+- **The copied Giant Punch** (`copied/donkey.rs`): Donkey Kong's states
+  moved into the family crate `ft-donkey-family` (`giant_punch`, generic
+  over `GiantPunchUser`), over Kirby's rows 455..464 (anim ids 390..399)
+  with his dk attributes (+190..+1A0, Donkey Kong's +2C..+3C word for
+  word), the swings kept in u.kb.xBC, colour 58 at full, and the punch's
+  models efAlt 0x4A9 / 0x4AA (EfKbDk.dat 0x9858 / 0x9859, bank 39, sync;
+  the same scale, facing and animate-at-creation as efSync 0x4C8 / 0x4C9).
+  Kirby's states arm ftKb_SpecialN_set_cbs and the efLib hitlag pair, but
+  no take_dmg_2_cb (Donkey Kong's own destroys his effects on any hit in
+  the move); the put-away (ftKb_SpecialNPr_80100DE0) drops the swings and
+  Kirby's effects, so the first hit after the swallow takes a stored full
+  charge. No article. Witnesses: `kirby_copy_giantpunch_fd_donkeykong4`
+  and `kirby_copy_giantpunch_{lost,hit}_fd_donkeykong4` (boundary
+  `start_fd_kirby_donkeykong4`, the hat's).
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
-  Megavitamin, the green Fireball and the Charge Shot
+  Megavitamin, the green Fireball, the Charge Shot and the Giant Punch
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -731,8 +745,9 @@ Remaining work, in the order to take it:
    Done (wave 13): Mario's, Dr. Mario's and Luigi's Fireball / Megavitamin
    (`kirby_copy_{fireball,pill,greenfireball}_*`, boundaries
    `start_fd_kirby_{mario,drmario,luigi}4`);
-   `ftKb_Init_UnkMotionStates4` (`charge_flash.rs`) and Samus's Charge
-   Shot (`kirby_copy_chargeshot_*`, boundary `start_fd_kirby_samus4`).
+   `ftKb_Init_UnkMotionStates4` (`charge_flash.rs`), Samus's Charge Shot
+   (`kirby_copy_chargeshot_*`, boundary `start_fd_kirby_samus4`) and
+   Donkey Kong's Giant Punch (`kirby_copy_giantpunch_*`).
    Next: Sheik, Peach, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,

@@ -68,6 +68,10 @@ pub struct Kirby {
     /// The copied Charge Shot: u.kb.xA4 (the shot in hand), xA8 (the kept
     /// level), xAC and mv.kb.specialhi.
     pub charge_shot: ft_samus_family::charge_shot::ChargeState,
+    /// The copied Giant Punch: u.kb.xBC (the stored swings) and
+    /// mv.dk.specialn.
+    pub giant_punch_swings: i32,
+    pub giant_punch: ft_donkey_family::giant_punch::GiantPunch,
 }
 
 /// Kirby's accessory4 callbacks.
@@ -118,6 +122,8 @@ impl Kirby {
             vitamin_current: 9,
             vitamin_previous: 9,
             charge_shot: Default::default(),
+            giant_punch_swings: 0,
+            giant_punch: Default::default(),
         }
     }
 }

@@ -1,0 +1,11 @@
+[package]
+name = "ft-donkey-family"
+description = "Donkey Kong's Giant Punch, shared with Kirby's copy of it (retail ftDk_SpecialN, ftKb_SpecialNDk)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gekko-math = { path = "../gekko-math" }
+melee-ef = { path = "../melee-ef" }
+melee-ft = { path = "../melee-ft" }
+melee-types = { path = "../melee-types" }
