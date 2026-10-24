@@ -719,15 +719,11 @@ fn rock_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
 
 /// ftKb_SpecialLwEnd_Coll (800F49E4) / ftKb_SpecialAirLwEnd_Coll
 /// (800F51C0): the airborne pass (ft_80081D0C), a level history and a level
-/// root. Retail ignores the pass's result, so an end row on a floor would
-/// stay airborne there until Fall; the rows only rise, and none has met one.
+/// root. Retail ignores the pass's result (ftkirbyspeciallw.c:695, 866), so
+/// an end row that meets a floor (rising from a slope) stays airborne on it
+/// until Fall.
 fn end_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Result<()> {
-    if common::lands(f, &mut p) {
-        unimplemented!(
-            "ftKb_SpecialLwEnd_Coll / ftKb_SpecialAirLwEnd_Coll (ftkirbyspeciallw.c:695, 866): \
-             an end row touching a floor (ft_80081D0C's result is ignored)"
-        );
-    }
+    let _ = common::lands(f, &mut p);
     scratch(f).level_floor();
     tilt_root(f, 0.0);
     Ok(())
