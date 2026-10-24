@@ -5947,6 +5947,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 717] = [
     // Kirby's aerial Final Cutter start lands into the grounded start
     // (ftKb_SpecialAirHi1_Coll, ftkirbyspecialhi.c:447-453).
     ("corpus_v3_ys_kirby_fox4_e119262ea_p1", 431),
+    // Final Cutter's beam off a floor's end glances off Fox's shield
+    // (it_2725_Logic7_ShieldBounced, itkirbycutterbeam.c:205-243).
+    ("corpus_v3_ys_kirby_fox4_ed97ea327_p1", 1600),
     // Landing out of Sheik's Vanish air end (360) inherits mv+4, the travel's
     // stick x (ftCo_Landing.c:41-50), Zelda-as-Sheik.
     ("corpus_v3_fod_captainfalcon_zelda4_e5909cbff_p1", 1672),

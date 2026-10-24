@@ -8,9 +8,9 @@
 //! it; a hit does not. A reflector or a reflecting shield turns it round.
 //!
 //! Recorded on Final Destination and on Yoshi's Story (the wall from its
-//! cloud, the descent down its slopes). What those scenes do not reach
-//! fails closed: a landing from the air, a clank, an absorber and a
-//! glancing shield.
+//! cloud, the descent down its slopes, a shield it glances off past a
+//! floor's end). What those scenes do not reach fails closed: a landing
+//! from the air, a clank and an absorber.
 use hsd_types::Vec3;
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
@@ -204,11 +204,15 @@ impl ItemLogic for CutterBeam {
         unimplemented!("itKirbyCutterBeam_Logic7_Absorbed (itkirbycutterbeam.c:167-170)")
     }
     /// it_2725_Logic7_ShieldBounced (8029C208): the velocity mirrored off
-    /// the shield and the model turned as a reflection turns it. Only an
-    /// airborne item glances off a shield, and the beam is airborne only
-    /// past a floor's end, where no shield has stood.
-    fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        unimplemented!("it_2725_Logic7_ShieldBounced (itkirbycutterbeam.c:205-243)")
+    /// the shield (lbVector_Mirror with xC58), the facing taken from its
+    /// sign (8029C298: fcmpo, cror: zero faces right), and the model turned
+    /// as a reflection turns it. The angle first stored from atan2f
+    /// (8029C240) is overwritten by the turn, so only the turn is kept.
+    fn shield_bounced(item: &mut ItemCore, ctx: &ItemEventContext<'_>) -> bool {
+        item.velocity = melee_lb::vector::mirror(item.velocity, ctx.shield_normal);
+        item.facing = if item.velocity.x >= 0.0 { 1.0 } else { -1.0 };
+        turn_model(item);
+        false
     }
 }
 
