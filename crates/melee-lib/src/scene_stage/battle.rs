@@ -50,7 +50,7 @@ pub(crate) fn load_reserved(
 }
 
 /// A Battlefield map's gobj proc (s_link 4). Only map 3's controller acts:
-/// maps 0, 1, 2 and 4 have empty callbacks; map 6 updates the static
+/// maps 0, 1, 2, 4 and 5 have empty callbacks; map 6 updates the static
 /// collision transform and ticks the radial dynamics fields (lb_800115F4,
 /// in the scene dispatch).
 pub(crate) fn run_proc(
@@ -62,8 +62,12 @@ pub(crate) fn run_proc(
 ) -> Result<()> {
     match map {
         TRANSITION_MAP => {}
-        0 | 1 | 2 | 4 | 6 => return Ok(()),
-        _ => unimplemented!("grbattle.c:165-170: demo/event background"),
+        // Map 5, the background grBattle_OnInit creates instead of maps 3
+        // and 1 in Classic, Adventure, All-Star and the two event stage kinds
+        // (grbattle.c:165-170), has grBattle_GObj5_Callback2 (0x8021A204,
+        // a lone blr) as its proc.
+        0 | 1 | 2 | 4 | 5 | 6 => return Ok(()),
+        _ => unreachable!("grNBa_StageCallbacks has seven rows"),
     }
     let SceneStage::Battlefield(stage) = &mut state.stage else {
         unreachable!()
