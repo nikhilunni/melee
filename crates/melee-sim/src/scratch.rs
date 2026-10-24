@@ -131,3 +131,80 @@ pub fn diff(scenario: &Scenario, kind: Option<u32>, every_bit: bool) -> Result<R
         summary,
     })
 }
+
+/// Fighter offset of the second motion scratch word (mv+4).
+const WORD: usize = 0x2344;
+
+/// The port's mv+4 (`Fighter::inherited_scratch_word`) against the
+/// recording on every tick, for fighters of `kind` or all of them. Each
+/// difference is listed where it starts (a run of ticks with the same
+/// pair is one line); the summary tallies, per retail motion, the ticks
+/// compared, those the port does not model (`None`) and those that differ.
+pub fn diff_word(scenario: &Scenario, kind: Option<u32>) -> Result<Report> {
+    let path = scenario.trace_path("tick.raw.jsonl");
+    let mut simulation = crate::trace::simulation_displayed_as(scenario, &path)?;
+    let mut differences = Vec::new();
+    // (kind, retail motion) -> ticks, unmodelled, differing.
+    let mut by_state: BTreeMap<(u32, u32), [usize; 3]> = BTreeMap::new();
+    let mut last: Vec<Option<(u32, Option<u32>)>> = Vec::new();
+    let offsets = [KIND, MOTION, WORD];
+    for (tick, line) in melee_trace_io::open(&path)?.lines().enumerate() {
+        let line = line?;
+        if simulation.tick_without_snapshot().is_err() {
+            differences.push(format!("tick {tick}: the port stopped"));
+            break;
+        }
+        let port = simulation.fighter_scratch_words();
+        for (index, retail) in fighter_words(&line, &offsets).iter().enumerate() {
+            let Some(&image) = port.get(index) else {
+                continue;
+            };
+            if kind.is_some_and(|kind| kind != retail[0]) {
+                continue;
+            }
+            if last.len() <= index {
+                last.resize(index + 1, None);
+            }
+            let counts = by_state.entry((retail[0], retail[1])).or_default();
+            counts[0] += 1;
+            let image = image.map(f32::to_bits);
+            let pair = (retail[2], image);
+            if image == Some(retail[2]) {
+                last[index] = None;
+                continue;
+            }
+            counts[if image.is_none() { 1 } else { 2 }] += 1;
+            if last[index] != Some(pair) {
+                last[index] = Some(pair);
+                differences.push(format!(
+                    "tick {tick}: fighter {index} (kind {}) motion {} mv+4: retail {:08X} ({}), port {}",
+                    retail[0],
+                    retail[1],
+                    retail[2],
+                    f32::from_bits(retail[2]),
+                    image.map_or("unmodelled".to_string(), |bits| format!(
+                        "{bits:08X} ({})",
+                        f32::from_bits(bits)
+                    )),
+                ));
+            }
+        }
+    }
+    let mut summary = String::new();
+    for ((kind, motion), [ticks, unmodelled, differing]) in &by_state {
+        if unmodelled + differing != 0 {
+            summary.push_str(&format!(
+                "kind {kind} motion {motion}: {ticks} ticks, {unmodelled} unmodelled, {differing} differing\n"
+            ));
+        }
+    }
+    let ticks: usize = by_state.values().map(|counts| counts[0]).sum();
+    summary.push_str(&format!(
+        "{} differences over {ticks} fighter ticks",
+        differences.len()
+    ));
+    Ok(Report {
+        differences,
+        summary,
+    })
+}

@@ -243,6 +243,11 @@ enum Command {
         /// List every differing word, not only those whose countdown differs.
         #[arg(long)]
         every_bit: bool,
+        /// Compare mv+4 (fp+0x2344, the word a state that writes none
+        /// inherits) instead: the port's `inherited_scratch_word` on every
+        /// tick, tallied by retail motion.
+        #[arg(long)]
+        word: bool,
         #[arg(long, default_value_t = 12)]
         limit: usize,
     },
@@ -535,10 +540,15 @@ fn main() -> anyhow::Result<()> {
             scenario,
             kind,
             every_bit,
+            word,
             limit,
         } => {
             let scenario = melee_sim::scenario::Scenario::load(&scenario)?;
-            let report = melee_sim::scratch::diff(&scenario, kind, every_bit)?;
+            let report = if word {
+                melee_sim::scratch::diff_word(&scenario, kind)?
+            } else {
+                melee_sim::scratch::diff(&scenario, kind, every_bit)?
+            };
             for line in report.differences.iter().take(limit) {
                 println!("{line}");
             }

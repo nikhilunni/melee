@@ -2861,6 +2861,17 @@ impl Simulation {
             .map(|fighter| fighter.0.scratch_tail())
             .collect()
     }
+    /// Each fighter's second motion scratch word (mv+4, fp+0x2344) as the
+    /// port models it (`Fighter::inherited_scratch_word`), `None` where it
+    /// does not: `melee-sim scratch-diff --word` checks it against retail.
+    pub fn fighter_scratch_words(&self) -> Vec<Option<f32>> {
+        self.runtime
+            .state
+            .fighters
+            .iter()
+            .map(|fighter| fighter.0.inherited_scratch_word())
+            .collect()
+    }
     /// Replace fighter `index`'s image of those words with a recording's,
     /// so `melee-sim scratch-diff` names each difference where it starts.
     pub fn set_fighter_scratch_tail(&mut self, index: usize, words: [u32; 2]) {
