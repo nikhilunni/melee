@@ -2640,6 +2640,9 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_ability_lasers_fd_fox4", 868),
     ("kirby_ability_smash_fd_fox4", 702),
     ("kirby_ability_taunt_platform_ys_fox4", 660),
+    // Taunted from Randall toward Yoshi's Story's side wall: the star ends
+    // on the wall (it_8026DFB0, itgroundcoll.c:381-385).
+    ("kirby_ability_star_wall_ys_fox4", 1400),
     // Captain Falcon swallowed (boundary `start_fd_kirby_captainfalcon4`):
     // under his helmet the midair jumps are rows 346..350 (ftCo_800D7268 ->
     // fn_800F1CA0), all five, a sixth press with none left, and one turned

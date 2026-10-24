@@ -1,0 +1,39 @@
+# KIRBY directed witness from start_ys_kirby_fox4 (Yoshi's Story): both drop to the floor, Kirby runs to Fox and swallows him (Fox's ability), walks back, then runs off the left ledge onto Randall low beside the stage, turns toward the stage and taunts: the ability star flies into the stage's side wall, which ends it (it_8026DFB0, itgroundcoll.c:381-385). Randall then carries Kirby into the wall and he falls to the blast zone.
+name = "kirby_ability_star_wall_ys_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_ys_kirby_fox4.sav"
+frames = 1400
+seed = 1
+stage = "YoshisStory"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 140, port = 0, buttons = {  }, raw = {  } },
+  { frame = 130, port = 1, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 140, port = 1, buttons = {  }, raw = {  } },
+  { frame = 185, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 236, port = 0, buttons = {  }, raw = {  } },
+  { frame = 260, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 262, port = 0, buttons = {  }, raw = {  } },
+  { frame = 364, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 370, port = 0, buttons = {  }, raw = {  } },
+  { frame = 400, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 430, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1200, port = 0, buttons = {  }, raw = { stickX = -127 } },
+  { frame = 1245, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1292, port = 0, buttons = {  }, raw = { stickX = 50 } },
+  { frame = 1294, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1302, port = 0, buttons = {  }, raw = { button = 8 } },
+  { frame = 1304, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

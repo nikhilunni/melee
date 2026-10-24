@@ -70,14 +70,9 @@ fn physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 
 /// it_2ADA_UnkMotion0_Coll (802ADBB0) -> it_8026DFB0: an airborne pass; a
 /// floor, a wall (it_80276308) or a ceiling (it_802763E0) ends the star.
-/// Thrown from a taunt it comes down on nothing but a platform above the
-/// floor Kirby stands on; no recorded star has met a wall or a ceiling.
+/// Any of them ends it (`cond & 0xF`, itgroundcoll.c:381-385): recorded on
+/// a platform above Kirby and on Yoshi's Story's side wall, thrown from
+/// Randall under the stage.
 fn collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    let bits = item.air_contact_bits(ctx.map);
-    if bits & 0xE != 0 {
-        unimplemented!(
-            "it_8026DFB0 (itgroundcoll.c:381-382): the ability star against a wall or a ceiling"
-        );
-    }
-    bits & 1 != 0
+    item.air_contact_bits(ctx.map) & 0xF != 0
 }
