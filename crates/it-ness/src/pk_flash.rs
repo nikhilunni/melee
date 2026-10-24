@@ -4,6 +4,9 @@
 //! stick while he holds the charge row, grows with every frame of flight
 //! and bursts when he lets go, its lifetime ends or it meets a surface; the
 //! burst spawns the explosion, sized and powered by the charge.
+//! Kirby's copied PK Flash runs the same code as It_Kind_Kirby_NessPKFlush
+//! and It_Kind_Kirby_NessPKFlush_Explode (PlKbCpNs.dat); the flash's
+//! switches on its kind pick Kirby's hold check, release and explosion.
 use gekko_math::{
     fma::fmadds,
     msl::{cosf, fctiwz, sinf},
@@ -12,14 +15,18 @@ use hsd_types::Vec3;
 use melee_it::{
     desc::{ItemAssets, ItemCommonData},
     state_change::ANIM_UPDATE,
-    ItemAnimationContext, ItemCollisionContext, ItemControl, ItemCore, ItemEvent,
-    ItemEventContext, ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, LinkMessage,
-    LinkRequest, LinkTarget, PkFlashState, SpawnItem,
+    ItemAnimationContext, ItemCollisionContext, ItemControl, ItemCore, ItemEvent, ItemEventContext,
+    ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, LinkMessage, LinkRequest, LinkTarget,
+    PkFlashState, SpawnItem,
 };
 use melee_types::{mp::collide, ItemKind};
 
 pub struct NessPkFlash;
 pub struct NessPkFlashExplode;
+/// It_Kind_Kirby_NessPKFlush: the flash of Kirby's copy.
+pub struct KirbyNessPkFlash;
+/// It_Kind_Kirby_NessPKFlush_Explode.
+pub struct KirbyNessPkFlashExplode;
 
 /// ftData.x48_items indices (ftNs_Init_OnLoad).
 pub const FLASH_ARTICLE_INDEX: u32 = 2;
@@ -154,96 +161,107 @@ static FLASH_STATES: [ItemStateRow; 3] = [
     },
 ];
 
-/// it_3F2F.c's Logic102 row.
-impl ItemLogic for NessPkFlash {
-    const KIND: ItemKind = ItemKind::NessPKFlush;
-    const STATES: &'static [ItemStateRow] = &FLASH_STATES;
-    /// The logic row has no pickup callback.
-    fn pickup_possible(_item: &ItemCore) -> bool {
-        false
-    }
-    fn spawned(item: &mut ItemCore, _assets: &ItemAssets) {
-        item.scratch = ItemScratch::PkFlash(PkFlashState::default());
-    }
-    /// it_802AA8C0 (802AA8C0) once Item_80268B18 returns: the command
-    /// variables, the lifetime, the creator (the parent), then it_802AAA80
-    /// (802AAA80): not grabbable, shown, flying; the launch leans x10
-    /// degrees toward the facing from straight up (retail 0x802AAB08:
-    /// fmadds) at speed x14.
-    fn launched(
-        item: &mut ItemCore,
-        assets: &ItemAssets,
-        common: &ItemCommonData,
-        _spawn: &SpawnItem,
-        _rng: &mut gekko_math::HsdRng,
-    ) {
-        let a = Flash(&assets.special_attributes);
-        item.command_variables = [0; 4];
-        let creator = item.owner;
-        *state(item) = PkFlashState {
-            creator,
-            ..Default::default()
-        };
-        item.grabbable = false;
-        item.held = false;
-        item.hidden = false;
-        item.change_motion_with(FLYING, FLASH_ARTICLE_STATES[0], ANIM_UPDATE, assets);
-        item.life_timer = a.lifetime();
-        item.half_life = a.lifetime() * common.half_life_scale;
-        let angle = fmadds(DEGREES * a.launch_degrees(), item.facing, HALF_PI);
-        item.velocity.x = -a.launch_speed() * cosf(angle);
-        item.velocity.y = a.launch_speed() * sinf(angle);
-        item.velocity.z = 0.0;
-    }
-    /// itNesspkflash_Logic102_Reflected (802AB2AC): out of its creator's
-    /// hands, turned round (the JObj's Y rotation in double) and flying
-    /// back.
-    fn reflected(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        state(item).reflected = true;
-        item.facing = -item.facing;
-        item.rotation.y = (std::f64::consts::FRAC_PI_2 * f64::from(item.facing)) as f32;
-        item.velocity.x = -item.velocity.x;
-        item.velocity.y = -item.velocity.y;
-        item.velocity.z = 0.0;
-        false
-    }
-    /// itNesspkflash_Logic102_Clanked.
-    fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itNesspkflash_Logic102_Absorbed.
-    fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// it_802AAA50 (802AAA50), from ftNs_SpecialN_ItemPKFlushSetNULL when
-    /// Ness is hit or dies with his flash out: it flies on without an owner.
-    fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
-        match control {
-            ItemControl::Orphan => {
-                item.owner = None;
-                state(item).creator = None;
-                item.held = false;
+/// it_3F2F.c's Logic102 row, for both kinds.
+macro_rules! flash_logic {
+    ($type:ty, $kind:ident) => {
+        impl ItemLogic for $type {
+            const KIND: ItemKind = ItemKind::$kind;
+            const STATES: &'static [ItemStateRow] = &FLASH_STATES;
+            /// The logic row has no pickup callback.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
             }
-            _ => unreachable!("{control:?} sent to PK Flash"),
+            fn spawned(item: &mut ItemCore, _assets: &ItemAssets) {
+                item.scratch = ItemScratch::PkFlash(PkFlashState::default());
+            }
+            /// it_802AA8C0 (802AA8C0) once Item_80268B18 returns: the command
+            /// variables, the lifetime, the creator (the parent), then it_802AAA80
+            /// (802AAA80): not grabbable, shown, flying; the launch leans x10
+            /// degrees toward the facing from straight up (retail 0x802AAB08:
+            /// fmadds) at speed x14.
+            fn launched(
+                item: &mut ItemCore,
+                assets: &ItemAssets,
+                common: &ItemCommonData,
+                _spawn: &SpawnItem,
+                _rng: &mut gekko_math::HsdRng,
+            ) {
+                let a = Flash(&assets.special_attributes);
+                item.command_variables = [0; 4];
+                let creator = item.owner;
+                *state(item) = PkFlashState {
+                    creator,
+                    ..Default::default()
+                };
+                item.grabbable = false;
+                item.held = false;
+                item.hidden = false;
+                item.change_motion_with(FLYING, FLASH_ARTICLE_STATES[0], ANIM_UPDATE, assets);
+                item.life_timer = a.lifetime();
+                item.half_life = a.lifetime() * common.half_life_scale;
+                let angle = fmadds(DEGREES * a.launch_degrees(), item.facing, HALF_PI);
+                item.velocity.x = -a.launch_speed() * cosf(angle);
+                item.velocity.y = a.launch_speed() * sinf(angle);
+                item.velocity.z = 0.0;
+            }
+            /// itNesspkflash_Logic102_Reflected (802AB2AC): out of its creator's
+            /// hands, turned round (the JObj's Y rotation in double) and flying
+            /// back.
+            fn reflected(item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                state(item).reflected = true;
+                item.facing = -item.facing;
+                item.rotation.y = (std::f64::consts::FRAC_PI_2 * f64::from(item.facing)) as f32;
+                item.velocity.x = -item.velocity.x;
+                item.velocity.y = -item.velocity.y;
+                item.velocity.z = 0.0;
+                false
+            }
+            /// itNesspkflash_Logic102_Clanked.
+            fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itNesspkflash_Logic102_Absorbed.
+            fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// it_802AAA50 (802AAA50), from ftNs_SpecialN_ItemPKFlushSetNULL when
+            /// Ness is hit or dies with his flash out: it flies on without an owner.
+            fn control(item: &mut ItemCore, control: ItemControl, _assets: &ItemAssets) {
+                match control {
+                    ItemControl::Orphan => {
+                        item.owner = None;
+                        state(item).creator = None;
+                        item.held = false;
+                    }
+                    _ => unreachable!("{control:?} sent to PK Flash"),
+                }
+            }
+            /// it_2725_Logic102_Destroyed (802AA9CC): its creator hears of it
+            /// (ftNs_SpecialN_SetNULL) while the flash is still his.
+            fn notifies_owner(item: &ItemCore) -> bool {
+                match &item.scratch {
+                    ItemScratch::PkFlash(flash) => {
+                        flash.creator.is_some() && flash.creator == item.owner
+                    }
+                    _ => false,
+                }
+            }
+            /// it_802AA7E4 / it_802AA7F0: Ness reads whether the flash is still
+            /// his (the report exists) and whether a surface burst it (motion 2).
+            fn owner_report(
+                item: &ItemCore,
+                _assets: &ItemAssets,
+            ) -> Option<melee_it::ArticleReport> {
+                Some(melee_it::ArticleReport {
+                    point: item.position,
+                    struck: item.motion == STRUCK,
+                })
+            }
         }
-    }
-    /// it_2725_Logic102_Destroyed (802AA9CC): its creator hears of it
-    /// (ftNs_SpecialN_SetNULL) while the flash is still his.
-    fn notifies_owner(item: &ItemCore) -> bool {
-        match &item.scratch {
-            ItemScratch::PkFlash(flash) => flash.creator.is_some() && flash.creator == item.owner,
-            _ => false,
-        }
-    }
-    /// it_802AA7E4 / it_802AA7F0: Ness reads whether the flash is still
-    /// his (the report exists) and whether a surface burst it (motion 2).
-    fn owner_report(item: &ItemCore, _assets: &ItemAssets) -> Option<melee_it::ArticleReport> {
-        Some(melee_it::ArticleReport {
-            point: item.position,
-            struck: item.motion == STRUCK,
-        })
-    }
+    };
 }
+flash_logic!(NessPkFlash, NessPKFlush);
+flash_logic!(KirbyNessPkFlash, KirbyNessPKFlush);
 
 /// itNesspkflash_SetScale: the model's scale for the charge (fsubs, fdivs,
 /// then fmadds at 0x802AACA0 and its copies).
@@ -304,12 +322,13 @@ fn burst_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
         let delay = fctiwz(Flash(&ctx.assets.special_attributes).burst_frames());
         if item.command_variables[0] as i32 >= delay - 2 {
             let owner = item.owner.expect("the creator");
-            let mut spawn = SpawnItem::ray(
-                ItemKind::NessPKFlushExplode,
-                owner,
-                item.position,
-                item.facing,
-            );
+            // The switch on the flash's kind (802AADC4..D0).
+            let explosion = if item.kind == ItemKind::KirbyNessPKFlush {
+                ItemKind::KirbyNessPKFlushExplode
+            } else {
+                ItemKind::NessPKFlushExplode
+            };
+            let mut spawn = SpawnItem::ray(explosion, owner, item.position, item.facing);
             spawn.spawn_argument = state(item).charge.to_bits() as i32;
             // it_802AF940: the flash is the spawn's second parent
             // (0x802AF9C4).
@@ -399,72 +418,79 @@ static EXPLODE_STATES: [ItemStateRow; 1] = [ItemStateRow {
     collision: no_collision,
 }];
 
-/// it_3F2F.c's Logic103 row.
-impl ItemLogic for NessPkFlashExplode {
-    const KIND: ItemKind = ItemKind::NessPKFlushExplode;
-    const STATES: &'static [ItemStateRow] = &EXPLODE_STATES;
-    /// The logic row has no pickup callback.
-    fn pickup_possible(_item: &ItemCore) -> bool {
-        false
-    }
-    fn spawned(item: &mut ItemCore, _assets: &ItemAssets) {
-        item.scratch = ItemScratch::PkFlash(PkFlashState::default());
-    }
-    /// it_802AF940 (802AF940) once Item_80268B18 returns, then it_802AFA70
-    /// (802AFA70): the charge; not grabbable, shown, state 0, a 1024-frame
-    /// life; one animation step (Item_802694CC) and the animation callback
-    /// (its result dropped); a quake for a strong charge.
-    fn launched(
-        item: &mut ItemCore,
-        assets: &ItemAssets,
-        common: &ItemCommonData,
-        spawn: &SpawnItem,
-        _rng: &mut gekko_math::HsdRng,
-    ) {
-        item.command_variables = [0; 4];
-        state(item).charge = f32::from_bits(spawn.spawn_argument as u32);
-        item.grabbable = false;
-        item.held = false;
-        item.hidden = false;
-        item.change_motion_with(0, EXPLODE_ARTICLE_STATES[0], ANIM_UPDATE, assets);
-        item.life_timer = EXPLOSION_LIFETIME;
-        item.half_life = EXPLOSION_LIFETIME * common.half_life_scale;
-        state(item).hitbox_size = 0.0;
-        item.advance_animation(assets);
-        blast(item, assets);
-        let share = state(item).charge / Explosion(&assets.special_attributes).full_charge();
-        let quake = if share > MEDIUM_QUAKE_SHARE {
-            Some(MEDIUM_QUAKE)
-        } else if share > SMALL_QUAKE_SHARE {
-            Some(SMALL_QUAKE)
-        } else {
-            None
-        };
-        if let Some(kind) = quake {
-            item.events.push(ItemEvent::Quake {
-                kind,
-                joint: 0,
-                offset: Vec3::ZERO,
-            });
+/// it_3F2F.c's Logic103 row, for both kinds.
+macro_rules! explode_logic {
+    ($type:ty, $kind:ident) => {
+        impl ItemLogic for $type {
+            const KIND: ItemKind = ItemKind::$kind;
+            const STATES: &'static [ItemStateRow] = &EXPLODE_STATES;
+            /// The logic row has no pickup callback.
+            fn pickup_possible(_item: &ItemCore) -> bool {
+                false
+            }
+            fn spawned(item: &mut ItemCore, _assets: &ItemAssets) {
+                item.scratch = ItemScratch::PkFlash(PkFlashState::default());
+            }
+            /// it_802AF940 (802AF940) once Item_80268B18 returns, then it_802AFA70
+            /// (802AFA70): the charge; not grabbable, shown, state 0, a 1024-frame
+            /// life; one animation step (Item_802694CC) and the animation callback
+            /// (its result dropped); a quake for a strong charge.
+            fn launched(
+                item: &mut ItemCore,
+                assets: &ItemAssets,
+                common: &ItemCommonData,
+                spawn: &SpawnItem,
+                _rng: &mut gekko_math::HsdRng,
+            ) {
+                item.command_variables = [0; 4];
+                state(item).charge = f32::from_bits(spawn.spawn_argument as u32);
+                item.grabbable = false;
+                item.held = false;
+                item.hidden = false;
+                item.change_motion_with(0, EXPLODE_ARTICLE_STATES[0], ANIM_UPDATE, assets);
+                item.life_timer = EXPLOSION_LIFETIME;
+                item.half_life = EXPLOSION_LIFETIME * common.half_life_scale;
+                state(item).hitbox_size = 0.0;
+                item.advance_animation(assets);
+                blast(item, assets);
+                let share =
+                    state(item).charge / Explosion(&assets.special_attributes).full_charge();
+                let quake = if share > MEDIUM_QUAKE_SHARE {
+                    Some(MEDIUM_QUAKE)
+                } else if share > SMALL_QUAKE_SHARE {
+                    Some(SMALL_QUAKE)
+                } else {
+                    None
+                };
+                if let Some(kind) = quake {
+                    item.events.push(ItemEvent::Quake {
+                        kind,
+                        joint: 0,
+                        offset: Vec3::ZERO,
+                    });
+                }
+            }
+            /// itNessPKFlashExplode_Logic103_Clanked.
+            fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itNessPKFlashExplode_Logic103_Absorbed.
+            fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itNessPKFlashExplode_Logic103_ShieldBounced.
+            fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
+            /// itNessPKFlashExplode_Logic103_HitShield.
+            fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
+                true
+            }
         }
-    }
-    /// itNessPKFlashExplode_Logic103_Clanked.
-    fn clanked(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itNessPKFlashExplode_Logic103_Absorbed.
-    fn absorbed(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itNessPKFlashExplode_Logic103_ShieldBounced.
-    fn shield_bounced(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
-    /// itNessPKFlashExplode_Logic103_HitShield.
-    fn hit_shield(_item: &mut ItemCore, _ctx: &ItemEventContext<'_>) -> bool {
-        true
-    }
+    };
 }
+explode_logic!(NessPkFlashExplode, NessPKFlushExplode);
+explode_logic!(KirbyNessPkFlashExplode, KirbyNessPKFlushExplode);
 
 /// itNessPKFlashExplode_UnkMotion0_Anim's body: the model's scale for the
 /// charge (fmadds at 0x802AFBF4); once, while the script's third command

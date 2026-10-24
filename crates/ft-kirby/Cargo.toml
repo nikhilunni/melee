@@ -14,6 +14,7 @@ ft-purin-family = { path = "../ft-purin-family" }
 ft-gamewatch-family = { path = "../ft-gamewatch-family" }
 ft-mario-family = { path = "../ft-mario-family" }
 ft-luigi-family = { path = "../ft-luigi-family" }
+ft-ness-family = { path = "../ft-ness-family" }
 it-drmariopill = { path = "../it-drmariopill" }
 ft-samus-family = { path = "../ft-samus-family" }
 ft-donkey-family = { path = "../ft-donkey-family" }

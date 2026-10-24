@@ -27,8 +27,8 @@ fn play(f: &mut Fighter, id: u32) {
 }
 
 /// ftKb_SpecialN_800F190C (800F190C): the copied specials' words at rest.
-/// The ones with a reader so far are x68, x6C, xC4, xCC, xB0, x8C,
-/// xA4..xAC and xD4..xDC. With every charge word at 0,
+/// The ones with a reader so far are x68, x6C, x7C (ns_flash_gobj), xC4,
+/// xCC, xB0, x8C, xA4..xAC and xD4..xDC. With every charge word at 0,
 /// ftKb_Init_UnkMotionStates4 has no colour for any kind
 /// (`crate::charge_flash`).
 fn reset_copied_scratch(f: &mut Fighter) {
@@ -47,6 +47,8 @@ fn reset_copied_scratch(f: &mut Fighter) {
     state.shadow_ball_charge = 0;
     // xD0.
     state.toad.toad_out = false;
+    // x7C (Fighter +22A8): the copied PK Flash's pointer.
+    state.pk_flash.flash_out = false;
     crate::charge_flash::refresh(f);
 }
 
@@ -92,24 +94,31 @@ fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
     }
 }
 
+/// The arms of ftKb_SpecialN_800F19AC / 800F1A8C that release an article:
+/// Fox's and Falco's destroy the blaster, Mr. Game & Watch's the pan,
+/// Peach's Toad; Ness's lets the flash fly on.
+fn put_away_article(f: &mut Fighter, kind: FighterKind) {
+    crate::copied::blaster::put_away(f, kind);
+    match kind {
+        // ftKb_SpecialNGw_8010D0A8.
+        FighterKind::GameWatch => crate::copied::chef::put_away(f),
+        // ftKb_SpecialNPe_8010C3F4.
+        FighterKind::Peach => crate::copied::toad::put_away(f),
+        // ftKb_SpecialNNs_800FECE8.
+        FighterKind::Ness => crate::copied::pk_flash::put_away(f),
+        _ => {}
+    }
+}
+
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
-/// the death callback and ftKb_SpecialN_800F5D04. Fox's and Falco's arm
-/// destroys the blaster, Mr. Game & Watch's the pan, Peach's Toad. The
-/// other kinds whose arm only releases an article or a held fighter (Ice
-/// Climbers, Link, Young Link, Ness, Sheik, Yoshi; the Yoshi arm's hat animation is
-/// drawn) do nothing while their copied special is not ported: their
-/// scratch is always at rest.
+/// the death callback and ftKb_SpecialN_800F5D04 (`put_away_article`).
+/// The other kinds whose arm only releases an article or a held fighter
+/// (Ice Climbers, Link, Young Link, Sheik, Yoshi; the Yoshi arm's hat
+/// animation is drawn) do nothing while their copied special is not
+/// ported: their scratch is always at rest.
 fn put_away(f: &mut Fighter) {
     let kind = f.character.get::<Kirby>().copied;
-    crate::copied::blaster::put_away(f, kind);
-    if kind == FighterKind::GameWatch {
-        // ftKb_SpecialNGw_8010D0A8.
-        crate::copied::chef::put_away(f);
-    }
-    if kind == FighterKind::Peach {
-        // ftKb_SpecialNPe_8010C3F4.
-        crate::copied::toad::put_away(f);
-    }
+    put_away_article(f, kind);
     if put_away_charge(f, kind) {
         return;
     }
@@ -123,15 +132,7 @@ fn put_away(f: &mut Fighter) {
 /// (ftKb_SpecialNMt_80107130).
 pub fn put_away_on_hit(f: &mut Fighter) {
     let kind = f.character.get::<Kirby>().copied;
-    crate::copied::blaster::put_away(f, kind);
-    if kind == FighterKind::GameWatch {
-        // ftKb_SpecialNGw_8010D0A8.
-        crate::copied::chef::put_away(f);
-    }
-    if kind == FighterKind::Peach {
-        // ftKb_SpecialNPe_8010C3F4.
-        crate::copied::toad::put_away(f);
-    }
+    put_away_article(f, kind);
     if put_away_charge(f, kind) {
         return;
     }

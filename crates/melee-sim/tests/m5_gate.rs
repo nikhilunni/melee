@@ -2844,6 +2844,21 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_toad_fd_peach4", 900),
     ("kirby_copy_toad_air_fd_peach4", 700),
     ("kirby_copy_toad_lost_fd_peach4", 760),
+    // The copied PK Flash (ftkirbyspecialness.c over ft_ness_family's
+    // states, rows 435..442; It_Kind_Kirby_NessPKFlush and its explosion
+    // from PlKbCpNs.dat), from boundary `start_fd_kirby_ness4`: a grounded
+    // flash let go into the release and end rows; an aerial one landing in
+    // the grounded hold; a tap.
+    ("kirby_copy_pkflash_fd_ness4", 900),
+    // High in the air: the aerial release and end rows, landing in the
+    // grounded end.
+    ("kirby_copy_pkflash_air_fd_ness4", 760),
+    // Ness jabs Kirby holding the flash: ftKb_SpecialNNs_800FECE8 leaves it
+    // flying without him; a taunt drops the ability as a star.
+    ("kirby_copy_pkflash_struck_fd_ness4", 760),
+    // A flash started at the floor's edge slides off into the aerial rows;
+    // Kirby falls to his death with the ability, then B is the Inhale.
+    ("kirby_copy_pkflash_edge_fd_ness4", 900),
 ];
 
 #[test]

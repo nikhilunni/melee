@@ -61,6 +61,9 @@ pub struct Kirby {
     pub rollout: ft_purin_family::RolloutState,
     /// The copied Chef: u.kb.xD4..xDC and mv.kb.specialn_gw.
     pub chef: crate::copied::chef::KirbyChef,
+    /// The copied PK Flash: mv.kb.specialn_ns and u.kb.ns_flash_gobj
+    /// (Fighter +22A8).
+    pub pk_flash: ft_ness_family::pk_flash::PkFlash,
     /// Fighter +2294 (u.kb.x68): the copied Megavitamin's last colour.
     pub vitamin_current: i32,
     /// Fighter +2298 (u.kb.x6C): the colour before it.
@@ -139,6 +142,7 @@ impl Kirby {
             shadow_ball_charge: 0,
             shadow_ball: Default::default(),
             toad: Default::default(),
+            pk_flash: Default::default(),
         }
     }
 }

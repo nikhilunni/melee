@@ -10,6 +10,7 @@ melee-ft = { path = "../melee-ft" }
 melee-ef = { path = "../melee-ef" }
 melee-it = { path = "../melee-it" }
 it-ness = { path = "../it-ness" }
+ft-ness-family = { path = "../ft-ness-family" }
 melee-coll = { path = "../melee-coll" }
 melee-mp = { path = "../melee-mp" }
 melee-lb = { path = "../melee-lb" }

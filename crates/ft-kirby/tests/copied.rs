@@ -52,6 +52,7 @@ fn the_copied_neutral_table_ports_its_kinds_and_names_every_other_entry() {
                             | FighterKind::Pikachu
                             | FighterKind::Pichu
                             | FighterKind::Peach
+                            | FighterKind::Ness
                     ),
                     "{kind:?}"
                 )
@@ -81,6 +82,16 @@ fn the_punch_rows_follow_kirbys_table() {
     for (row, (action, animation)) in rows.iter().zip(expected) {
         assert_eq!(row.action.0, action);
         assert_eq!(row.animation, animation);
+    }
+}
+
+#[test]
+fn the_pk_flash_rows_follow_kirbys_table() {
+    // ftKb_MS_NsSpecialNStart..NsSpecialAirNEnd play ftKb_SM_NsSpecialNStart
+    // and the seven after it.
+    for (i, row) in ft_kirby::copied::pk_flash::rows().iter().enumerate() {
+        assert_eq!(row.action.0, 435 + i as u16);
+        assert_eq!(row.animation, 370 + i as i32);
     }
 }
 

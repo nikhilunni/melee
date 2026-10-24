@@ -1,0 +1,33 @@
+# KIRBY directed witness from start_fd_kirby_ness4 (Kirby runs to x=51 beside Ness at +60 and swallows him): the copied PK Flash off the floor's edge. Kirby runs right and starts the flash at the edge (the stick at 30, below the side special's): the slide carries him off into the aerial rows (ftKb_NsSpecialNStart_Coll), he holds B as he falls and dies with the flash out (ftKb_Init_800EE74C's put-away, ftKb_SpecialNNs_800FECE8), losing the ability; back on the stage, B is the Inhale.
+name = "kirby_copy_pkflash_edge_fd_ness4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_ness4.sav"
+frames = 900
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = {  }, raw = {  } },
+  { frame = 340, port = 0, buttons = {  }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = {  }, raw = {  } },
+  { frame = 404, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 427, port = 0, buttons = {  }, raw = { stickX = 30, button = 512 } },
+  { frame = 429, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 560, port = 0, buttons = {  }, raw = {  } },
+  { frame = 820, port = 0, buttons = {  }, raw = { button = 512 } },
+  { frame = 822, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Ness"
+controller = "scripted"

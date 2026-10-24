@@ -21,6 +21,7 @@ pub mod mewtwo;
 pub mod samus;
 pub mod thunder_jolt;
 pub mod toad;
+pub mod pk_flash;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -60,7 +61,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Sheik
     unported("ftKb_SpecialNSk_8010612C", "ftKb_SpecialNSk_801061E4"),
     // Ness
-    unported("ftKb_SpecialNNs_800FED38", "ftKb_SpecialNNs_800FEDD0"),
+    CopiedNeutral::Ported(pk_flash::enter),
     // Peach
     CopiedNeutral::Ported(toad::enter),
     // Ice Climbers
@@ -159,7 +160,11 @@ pub fn item_owner(f: &mut Fighter) -> melee_it::ItemOwner {
     blaster::item_owner(f)
         .or_else(|| samus::item_owner(f))
         .or_else(|| mewtwo::item_owner(f))
-        .unwrap_or_else(|| melee_ft::fighter::default_item_owner(f))
+        .unwrap_or_else(|| melee_it::ItemOwner {
+            // The copied PK Flash's ftKb_SpecialNNs_800FEC78.
+            steering_article: pk_flash::steering(f),
+            ..melee_ft::fighter::default_item_owner(f)
+        })
 }
 
 /// The copied Blaster's flash point (ftKb_SpecialNFx_800FDC00 / 800FDC70).
@@ -175,6 +180,7 @@ pub fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     samus::article_destroyed(f, kind);
     mewtwo::article_destroyed(f, kind);
     toad::article_destroyed(f, kind);
+    pk_flash::article_destroyed(f, kind);
 }
 
 /// shield_hit_cb's volume of a copied special against a fighter's hit

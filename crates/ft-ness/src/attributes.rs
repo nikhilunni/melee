@@ -22,30 +22,8 @@ pub struct NessAttributes {
     pub bat_reflection: ReflectionAttributes,
 }
 
-/// PK Flash (ftnessspecialn.c).
-#[derive(Clone, Debug, PartialEq)]
-pub struct PkFlashAttributes {
-    /// +0x00 x0_PKFLASH_TIMER1_LOOPFRAMES: frames Ness holds the loop on
-    /// the ground once the flash is gone.
-    pub ground_loop_frames: i32,
-    /// +0x04 x4_PKFLASH_TIMER2_LOOPFRAMES: the same in the air.
-    pub air_loop_frames: i32,
-    /// +0x08 x8_PKFLASH_GRAVITY_DELAY: frames before the aerial move falls.
-    pub gravity_delay: i32,
-    /// +0x0C xC_PKFLASH_MINCHARGEFRAMES: frames before a released B
-    /// detonates the flash.
-    pub release_delay: i32,
-    /// +0x10 x10_PKFLASH_UNK1.
-    // TODO(meaning): no retail reader found.
-    pub unknown_10: f32,
-    /// +0x14 x14_PKFLASH_FALL_ACCEL.
-    pub fall_acceleration: f32,
-    /// +0x18 x18_PKFLASH_UNK2.
-    // TODO(meaning): no retail reader found.
-    pub unknown_18: f32,
-    /// +0x1C x1C_PKFLASH_LANDING_LAG (0: plain fall).
-    pub landing_lag: f32,
-}
+/// PK Flash (ftnessspecialn.c), shared with Kirby's copy (+0..+1C).
+pub use ft_ness_family::pk_flash::PkFlashAttributes;
 
 /// PK Fire (ftnessspecials.c).
 #[derive(Clone, Debug, PartialEq)]
@@ -168,16 +146,7 @@ impl NessAttributes {
     pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
         let r = Reader::new(archive.reader().slice(offset, NESS_ATTRIBUTES_SIZE)?);
         Ok(Self {
-            pk_flash: PkFlashAttributes {
-                ground_loop_frames: r.s32(0x00)?,
-                air_loop_frames: r.s32(0x04)?,
-                gravity_delay: r.s32(0x08)?,
-                release_delay: r.s32(0x0C)?,
-                unknown_10: r.f32(0x10)?,
-                fall_acceleration: r.f32(0x14)?,
-                unknown_18: r.f32(0x18)?,
-                landing_lag: r.f32(0x1C)?,
-            },
+            pk_flash: PkFlashAttributes::read(&r, 0)?,
             pk_fire: PkFireAttributes {
                 air_angle: r.f32(0x20)?,
                 air_speed: r.f32(0x24)?,

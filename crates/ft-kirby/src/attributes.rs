@@ -46,6 +46,8 @@ pub struct KirbyAttributes {
     /// Warlock Punch as well (ftKb_CaSpecialAirN_IASA reads these for both;
     /// +20C..+220, `specialn_gn_*`, has no reader).
     pub falcon_punch: FalconPunchAttributes,
+    /// +1A0..+1BC (`specialn_ns_*`): the copied PK Flash, Ness's block.
+    pub ness_pk_flash: ft_ness_family::pk_flash::PkFlashAttributes,
     /// +220..+244 (`specialn_fx_*`): the copied Fox Blaster.
     pub fox_blaster: BlasterAttributes,
     /// +244..+268 (`specialn_fc_*`): the copied Falco Blaster.
@@ -297,6 +299,7 @@ impl KirbyAttributes {
             pikachu_thunder_jolt: ThunderJoltAttributes::read(&r, 0x1C0)?,
             pichu_thunder_jolt: ThunderJoltAttributes::read(&r, 0x1DC)?,
             falcon_punch: FalconPunchAttributes::read(Reader::new(r.slice(0x1F8, 0x14)?))?,
+            ness_pk_flash: ft_ness_family::pk_flash::PkFlashAttributes::read(&r, 0x1A0)?,
             fox_blaster: BlasterAttributes::read(Reader::new(r.slice(0x220, 0x24)?))?,
             falco_blaster: BlasterAttributes::read(Reader::new(r.slice(0x244, 0x24)?))?,
             marth_shield_breaker: ShieldBreakerAttributes::read(&r, 0x35C)?,

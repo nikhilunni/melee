@@ -990,3 +990,12 @@ stage = "YoshisStory"
 players = ["Ganondorf", "Fox"]
 stocks = 4
 seed = 3998583921
+
+[[boundary]]
+name = "start_fd_kirby_ness4"
+cold = "start_fd_kirby_ness4_cold"
+savestate = "harness/roms/start_fd_kirby_ness4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Ness"]
+stocks = 4
+seed = 1231480418

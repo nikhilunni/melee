@@ -747,10 +747,35 @@ fails closed.
   edge) and an item caught by the volume (a thrown turnip passes over it
   on the ground and under it in the air); both are Peach's code
   (`peach2_toad_counter_laser`). Witnesses `kirby_copy_toad_*`.
+- **The copied PK Flash** (`ft-kirby` `copied/pk_flash.rs`;
+  ftkirbyspecialness.c): Ness's states, moved into the new
+  `ft-ness-family` (`pk_flash::PkFlashUser`), over rows 435..442 (Start,
+  Hold0, Hold1, End and the aerial four, Ness's start/hold/release/end)
+  with Kirby's block of attributes (+1A0..+1BC, Ness's layout), his
+  WaistN (`fp->parts[5]`, 800FEECC) for the flash's start and
+  It_Kind_Kirby_NessPKFlush / _Explode: the original item code, whose
+  switches on the kind pick Kirby's hold check (ftKb_SpecialNNs_800FEC78:
+  rows 436 / 440), release (800FECBC) and explosion (802AADC4). Unlike
+  Ness's, Kirby's code never clears take_dmg_cb / death2_cb with the flash
+  pointer (800FECBC, the IASA at 800FF444, the end rows' reset at
+  800FF0CC). The flash rises 3 x fp->x34_scale.y above the joint: the
+  player's scale alone, not times the model scaling (Kirby's is 0.92; the
+  port had used the product, which Ness's 1.0 hid). The put-away arm
+  (ftKb_SpecialNNs_800FECE8, a hit or death with the flash out) lets it
+  fly on without him (it_802AAA50); 800F190C clears the pointer. Copy
+  archive `PlKbCpNs.dat`, hat_dynamics[0] (flash) and [1] (explosion),
+  with the articles' DPtcl keys; no effect bank. Evidence: boundary
+  `start_fd_kirby_ness4` and four `kirby_copy_pkflash_*` scenes in
+  `KIRBY_WITNESSES`, exact on their first gate with particles after the
+  two fixes above: a grounded flash let go into the release and end rows,
+  an aerial one landing in the grounded hold, a tap; high in the air, the
+  aerial release and end rows, landing in the grounded end; Ness jabbing Kirby as he holds
+  the flash (it flies on) and a taunt's star; a flash started at the edge
+  sliding off into the aerial rows and death with the ability.
 - Not ported: the copied neutral specials other than the Blaster, the
   Punch, the Shield Breaker, the Rollout, the Chef, the Fireball, the
   Megavitamin, the green Fireball, the Charge Shot, the Giant Punch, the
-  Shadow Ball, the Thunder Jolt and the Toad
+  Shadow Ball, the Thunder Jolt, the Toad and PK Flash
   (`ftKb_Init_803C9DD0`; each kind's entry fails closed with its name),
   item pickup hand poses.
 
@@ -809,7 +834,8 @@ Remaining work, in the order to take it:
    Pikachu's and Pichu's Thunder Jolt (`kirby_copy_thunderjolt_*`,
    `kirby_copy_pichujolt_*`, boundaries `start_fd_kirby_pikachu4`,
    `start_fd_kirby_pichu4`); Peach's Toad (`kirby_copy_toad_*`, boundary
-   `start_fd_kirby_peach4`, the new `ft-peach-family`).
+   `start_fd_kirby_peach4`, the new `ft-peach-family`); Ness's PK Flash
+   (`kirby_copy_pkflash_*`, boundary `start_fd_kirby_ness4`).
    Next: Sheik, then the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,

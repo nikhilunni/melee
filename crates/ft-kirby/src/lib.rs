@@ -71,6 +71,7 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
     place_all(&mut rows, copied::mewtwo::rows());
     place_all(&mut rows, copied::thunder_jolt::rows());
     place_all(&mut rows, copied::toad::rows());
+    place_all(&mut rows, copied::pk_flash::rows());
     rows
 }
 

@@ -107,6 +107,8 @@ melee_it::item_kinds! {
         KirbyPichuTJoltAir: it_pikachu::ThunderJoltCrawler<it_pikachu::KirbyPichu>,
         KirbyPeachToad: it_peach::KirbyPeachToad,
         KirbyPeachToadSpore: it_peach::KirbyPeachToadSpore,
+        KirbyNessPKFlush: it_ness::KirbyNessPkFlash,
+        KirbyNessPKFlushExplode: it_ness::KirbyNessPkFlashExplode,
     }
 }
 
@@ -122,7 +124,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 11] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 12] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -219,6 +221,17 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 11] = [
             (ItemKind::KirbyPeachToadSpore, it_peach::KIRBY_SPORE_SLOT, 1),
         ],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Ness,
+        file: "PlKbCpNs.dat",
+        symbol: "ftDataKirbyCopyNess",
+        // hats[7]->hat_dynamics[0, 1]: the flash's three states and the
+        // explosion's one, as Ness's own.
+        articles: &[
+            (ItemKind::KirbyNessPKFlush, 0, 3),
+            (ItemKind::KirbyNessPKFlushExplode, 1, 1),
+        ],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -266,6 +279,14 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
             &it_peach::spore::ARTICLE_STATES,
             it_peach::spore::SPECIAL_ATTRIBUTES,
         )),
+        ItemKind::KirbyNessPKFlush => Some((
+            &it_ness::pk_flash::FLASH_ARTICLE_STATES,
+            it_ness::pk_flash::FLASH_SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbyNessPKFlushExplode => Some((
+            &it_ness::pk_flash::EXPLODE_ARTICLE_STATES,
+            it_ness::pk_flash::EXPLODE_SPECIAL_ATTRIBUTES,
+        )),
         _ => None,
     }
 }
@@ -304,6 +325,10 @@ fn kirby_copy_article_finish(
                 .read_pose(archive)
                 .map_err(|e| anyhow::anyhow!("Kirby's Thunder Jolt crawler pose: {e}"))?;
         }
+        // The flash's and the explosion's DPtcl keys, as Ness's articles.
+        ItemKind::KirbyNessPKFlush | ItemKind::KirbyNessPKFlushExplode => assets
+            .read_particle_tracks(archive)
+            .map_err(|e| anyhow::anyhow!("Kirby's copied PK Flash particle track: {e}"))?,
         _ => {}
     }
     Ok(())

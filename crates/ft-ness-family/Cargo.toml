@@ -1,0 +1,13 @@
+[package]
+name = "ft-ness-family"
+description = "Ness's PK Flash, shared with Kirby's copy of it (retail ftNs_SpecialN, ftKb_SpecialNNs)"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+gekko-math = { path = "../gekko-math" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-types = { path = "../hsd-types" }
+melee-ft = { path = "../melee-ft" }
+melee-it = { path = "../melee-it" }
+melee-types = { path = "../melee-types" }

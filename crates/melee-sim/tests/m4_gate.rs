@@ -1666,6 +1666,16 @@ fn start_kirby_samus_particle_draw_order() {
     particle_rng_sites_with_ledger("start_fd_kirby_samus4", 600, "ledger600");
 }
 
+/// Kirby vs Ness on Final Destination, for the copied PK Flash: warm,
+/// cold and the particle draw order.
+#[test]
+fn start_fd_kirby_ness_boundary_600() {
+    let name = "start_fd_kirby_ness4";
+    movement_gate_ticks(name, 600);
+    movement_gate_ticks(&format!("{name}_cold"), 600);
+    particle_rng_sites_with_ledger(name, 600, "ledger600");
+}
+
 /// Kirby vs the five fighters whose hats are grafted into his own parts,
 /// on Final Destination, warm and cold, with the particle draw order.
 #[test]

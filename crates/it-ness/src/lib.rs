@@ -12,7 +12,7 @@ pub mod yoyo;
 
 pub use bat::NessBat;
 pub use pk_fire::{NessPkFire, NessPkFirePillar};
-pub use pk_flash::{NessPkFlash, NessPkFlashExplode};
+pub use pk_flash::{KirbyNessPkFlash, KirbyNessPkFlashExplode, NessPkFlash, NessPkFlashExplode};
 pub use pk_thunder::{NessPkThunder, NessPkThunderTrail};
 pub use yoyo::NessYoyo;
 
