@@ -85,6 +85,45 @@ pub enum SoundChannel {
     /// ftAction_80072320: lbAudioAx_800263E8 with a pan direction, on the
     /// handle its command names; no pitch draw.
     Directional,
+    /// ft_80088640: Fighter +2158, AX channel 0x5A + player * 2.
+    Auxiliary,
+    /// ft_80088828: clear the loop handle (+214C).
+    StopLoop,
+    /// ft_80088884: clear the effect handle (+2150).
+    StopEffect,
+    /// ft_800888E0: clear the status effect handle (+2154).
+    StopStatusEffect,
+    /// ft_8008893C: clear the auxiliary handle (+2158).
+    StopAuxiliary,
+}
+impl SoundChannel {
+    /// The sound helper behaviors 0..=6 select in ftAction_80071B50's
+    /// switch (ftaction.c:584-621) and ftAction_80071FC8's (retail
+    /// 0x800721E8..0x800722B0); any other plays nothing.
+    pub fn for_behavior(behavior: u8) -> Option<Self> {
+        Some(match behavior {
+            0 => Self::Ordinary,
+            1 => Self::Action,
+            2 => Self::FighterVoice,
+            3 => Self::Effect,
+            4 => Self::StatusEffect,
+            5 => Self::Auxiliary,
+            6 => Self::OverrideVoice,
+            _ => return None,
+        })
+    }
+    /// ftAction_80071B50's stops (ftaction.c:623-651).
+    fn stop_for_behavior(behavior: u8) -> Option<Self> {
+        Some(match behavior {
+            10 => Self::StopLoop,
+            11 => Self::StopAction,
+            12 => Self::StopEffect,
+            13 => Self::StopStatusEffect,
+            14 => Self::StopAuxiliary,
+            15 => Self::StopOverrideVoice,
+            _ => return None,
+        })
+    }
 }
 
 /// Ordinary ft_PlaySFX request from ftAction_80071B50 (0x80071B50).
@@ -260,9 +299,12 @@ impl CommandState {
     /// disabled one with the fields it kept. Nothing sets x2219_b3.
     pub fn rehit_hitbox(&mut self, id: usize) {
         if self.hitboxes[id].is_none() {
-            let kept = self.disabled_hitboxes[id].take().unwrap_or_else(|| {
-                unimplemented!("lbColl_80008434 on fighter capsule {id}, never made")
-            });
+            // The one caller, Ness's yo-yo rehit (80114F0C), runs only after
+            // its capsule 0 dealt damage in this life (80115C74), so the
+            // capsule was made (docs/COVERAGE_AUDIT.md, wave 13).
+            let kept = self.disabled_hitboxes[id]
+                .take()
+                .expect("lbColl_80008434 revives a capsule a script made");
             self.hitboxes[id] = Some(kept);
             self.revived_hitboxes[id] = !self.hitboxes_registered;
         }
@@ -357,8 +399,7 @@ impl CommandState {
                 | Command::Wait(_)
                 | Command::AtFrame(_)
                 | Command::Call { .. }
-                | Command::Return
-                | Command::Unported(_) => unreachable!("interpreter consumes control flow"),
+                | Command::Return => unreachable!("interpreter consumes control flow"),
                 Command::ItemSound { .. } => unreachable!("item scripts only"),
                 Command::ThrowAccessory => {
                     self.throw_accessory = true;
@@ -608,18 +649,11 @@ impl CommandState {
                     alt_foot,
                 } => {
                     if !seeking {
-                        let channel = match behavior {
-                            0 => SoundChannel::Ordinary,
-                            1 => SoundChannel::Action,
-                            2 => SoundChannel::FighterVoice,
-                            3 => SoundChannel::Effect,
-                            4 => SoundChannel::StatusEffect,
-                            6 => SoundChannel::OverrideVoice,
-                            // ftaction.c:623-651: the one-word stops.
-                            11 => SoundChannel::StopAction,
-                            15 => SoundChannel::StopOverrideVoice,
-                            _ => unimplemented!("ftaction.c:598-651: sound behavior {behavior}"),
-                        };
+                        // melee_cmd's decoder admits only 0..=6 and
+                        // 10..=15, the three-word behaviors.
+                        let channel = SoundChannel::for_behavior(*behavior)
+                            .or_else(|| SoundChannel::stop_for_behavior(*behavior))
+                            .expect("decoded ftAction_80071B50 behavior");
                         let sound = FootstepSound {
                             channel,
                             id: *id,
@@ -975,12 +1009,9 @@ impl super::FighterCore {
     fn draw_random_sound(&mut self, sound: &melee_cmd::RandomSound, rng: &mut gekko_math::HsdRng) {
         assert!((1..=6).contains(&sound.range), "retail random sound range");
         let index = rng.randi(i32::from(sound.range)) as usize;
-        let channel = match sound.behavior {
-            0 => SoundChannel::Ordinary,
-            1 => SoundChannel::Action,
-            2 => SoundChannel::FighterVoice,
-            3 => SoundChannel::Effect,
-            _ => unimplemented!("ftAction_80071FC8 sound behavior {}", sound.behavior),
+        // retail 0x800721E8: cmplwi 6, bgt: behaviors 7..=15 play nothing.
+        let Some(channel) = SoundChannel::for_behavior(sound.behavior) else {
+            return;
         };
         self.commands.footstep_sounds.push(FootstepSound {
             channel,

@@ -127,19 +127,17 @@ fn decoding_preserves_signed_fields_and_relocated_control_targets() {
     ));
     assert!(decode(&[5 << 26, 0], None, 0).is_err());
     assert!(decode(&[11 << 26], None, 0).is_err());
-    assert!(matches!(
-        decode(&[63 << 26], None, 0).unwrap(),
-        Command::Unported(63)
-    ));
-}
-#[test]
-#[should_panic(expected = "subaction opcode 63")]
-fn reaching_an_unported_opcode_names_it() {
-    let code = [Command::Unported(63)];
-    let mut state = ScriptState::default();
-    state.restart(0);
-    state.begin_frame(0.0, 1.0);
-    state.next(&code, 1.0);
+    // Opcodes no fighter script on the disc uses are refused at load.
+    for opcode in [9, 22, 32, 33, 44, 47, 48, 57, 59, 63] {
+        assert!(
+            decode(&[opcode << 26; 7], None, 0).is_err(),
+            "opcode {opcode}"
+        );
+    }
+    // ftAction_80071B50 behaviors outside 0..=6 and 10..=15.
+    for behavior in [7, 9, 16, 255] {
+        assert!(decode(&[17 << 26 | behavior << 18, 0, 0], None, 0).is_err());
+    }
 }
 #[test]
 fn graphics_and_capsules_use_retail_literal_and_signed_halfwords() {

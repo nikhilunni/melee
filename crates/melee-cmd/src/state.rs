@@ -91,9 +91,6 @@ impl ScriptState {
                             .expect("command return without call"),
                     )
                 }
-                Command::Unported(opcode) => {
-                    unimplemented!("ftAction_80073240 (ftaction.c): subaction opcode {opcode}")
-                }
                 command => return Some(command),
             }
         }

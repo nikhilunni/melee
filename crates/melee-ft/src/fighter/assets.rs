@@ -838,8 +838,7 @@ fn read_script(
             .map_err(|error| format!("{error} at {offset:#x}, opcode {opcode}"))?;
         commands.insert(offset, command.clone());
         match command {
-            // An unported opcode's length is unknown; the interpreter stops there.
-            Command::End | Command::Return | Command::Unported(_) => break,
+            Command::End | Command::Return => break,
             Command::Goto(target) => {
                 read_script(archive, target as u32, commands)?;
                 break;

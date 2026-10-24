@@ -1,8 +1,8 @@
 //! Typed decoding of the supported ftaction.c subaction vocabulary.
 use crate::Command;
 pub type Result<T> = std::result::Result<T, &'static str>;
-/// Number of words consumed, including the opcode; an unported code counts
-/// one word and decodes to [`Command::Unported`].
+/// Number of words consumed, including the opcode (ftAction_803C0870 for
+/// opcodes 10..=58); a code `decode` rejects counts one word.
 pub fn word_count(opcode: u32) -> usize {
     match opcode {
         38 => 7,
@@ -187,7 +187,7 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
             duration: (word & 8191) as u16,
         },
         17 | 54 => Command::FootstepSound {
-            behavior: ((word >> 18) & 255) as u8,
+            behavior: footstep_behavior(word)?,
             id: words[1],
             volume: (words[2] >> 8) as u8,
             pan: words[2] as u8,
@@ -207,8 +207,25 @@ pub fn decode(words: &[u32], target: Option<usize>, continuation: usize) -> Resu
                 frame: (word & 2047) as f32,
             }
         }
-        _ => Command::Unported(opcode),
+        // Command_09 (lbBgFlash_80021C48) and ftAction_8007192C (22),
+        // 80071D94 (32), 80071DCC (33), 8007297C (44), 80072ABC (47),
+        // 80072B14 (48), 800730B8 (57); 59 and up index past
+        // ftAction_803C06E8. No script reachable from any fighter's motion
+        // table on the disc holds one (docs/COVERAGE_AUDIT.md, wave 13), so
+        // a file that did is refused at load.
+        _ => return Err("an ftAction opcode no fighter script on the disc uses"),
     })
+}
+/// ftAction_80071B50's behavior field (sound_effect_0.behavior). Behaviors
+/// 0..=6 play and 10..=15 stop a sound, three words each; any other leaves
+/// the stream after two words (ftaction.c:653, its `default`), which no
+/// fighter script on the disc does (docs/COVERAGE_AUDIT.md, wave 13).
+fn footstep_behavior(word: u32) -> Result<u8> {
+    let behavior = ((word >> 18) & 255) as u8;
+    match behavior {
+        0..=6 | 10..=15 => Ok(behavior),
+        _ => Err("an ftAction_80071B50 sound behavior no fighter script on the disc uses"),
+    }
 }
 fn half(words: &[u32], index: usize) -> u16 {
     (words[index / 2] >> if index.is_multiple_of(2) { 16 } else { 0 }) as u16
