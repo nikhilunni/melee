@@ -183,6 +183,10 @@ pub struct ItemAssets {
     /// ItCo common data +F8 (it_8027518C): an explosion's lifetime. Zero
     /// for character articles, which do not explode.
     pub explosion_lifetime: f32,
+    /// ItCo common data +30 (it_804D6D28->x30_lifetime, an int): the
+    /// common item lifetime a lit Bob-omb restarts (it_8027F8E0). Zero
+    /// until `read_common_release`.
+    pub common_lifetime: f32,
     /// ItemAttr xC (spin_spd).
     pub spin_rate: f32,
     /// ItCo common data +68: Item_ApplyFallingPhysics' spin degrees.
@@ -376,6 +380,7 @@ impl ItemAssets {
         let r = archive.reader();
         let common = r.u32(public)?;
         self.explosion_lifetime = r.f32(common + 0xF8)?;
+        self.common_lifetime = r.u32(common + 0x30)? as f32;
         self.fall_spin_degrees = r.f32(common + 0x68)?;
         self.release_box_scale = r.f32(common + 0xE8)?;
         self.landing_spin_degrees = r.f32(common + 0x74)?;
@@ -509,6 +514,7 @@ impl ItemAssets {
             launch_vertical_velocity: r.f32(common + 0x18)?,
             rotation_axis: r.u8(common + 1)? >> 6,
             explosion_lifetime: 0.0,
+            common_lifetime: 0.0,
             spin_rate: r.f32(common + 0xC)?,
             fall_spin_degrees: 0.0,
             release_box_scale: 0.0,

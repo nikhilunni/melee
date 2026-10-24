@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 563] = [
+const MATRIX_WITNESSES: [(&str, usize); 564] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1233,6 +1233,10 @@ const MATRIX_WITNESSES: [(&str, usize); 563] = [
     // and dropped in the air to a hard landing (fn_80280974 detonation).
     ("peach4_pull_bombhei_throw_hit", 700),
     ("peach4_pull_bombhei_air_drop", 700),
+    // A pulled Bob-omb dropped onto a Stadium platform lands softly, walks
+    // and turns at the edges, and when its walk timer runs out lights
+    // itself (it_8027F8E0 with xDE0 clear), burns and explodes.
+    ("peach_pull_bombhei_walk_ps_peach", 1000),
     // The Beam Sword pull: SwordSwing1/3/4 (ftswing.c) with the script's
     // blade command, a smash swing hitting Fox, the Z drop (LightThrowDrop,
     // Item_8026AC74), and a thrown sword bouncing off Fox and landing.

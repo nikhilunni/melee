@@ -2337,6 +2337,7 @@ mod tests {
             launch_vertical_velocity: 0.0,
             rotation_axis: 0,
             explosion_lifetime: 0.0,
+            common_lifetime: 0.0,
             spin_rate: 0.0,
             fall_spin_degrees: 0.0,
             animation_ends: Vec::new(),

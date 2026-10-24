@@ -2,8 +2,10 @@
 //! Death rain's bomb and Peach's rare pull. Ported so far: the rain spawn
 //! (it_8027D670), the lit fuse on the ground, in the air and in a fighter's
 //! hand, the unlit hold, throw and drop of a pulled Bob-omb, landing (a
-//! soft landing starts the walk) and the explosion.
-//! The walk and turn rows themselves are explicit `unimplemented!` rows.
+//! soft landing starts the walk), the walk and turn on the ground, the
+//! walk timer lighting the fuse (it_8027F8E0) and the explosion. Leaving
+//! the ground while walking or turning (states 1, 0, 3 and 12: a moving or
+//! vanishing floor) stays `unimplemented!`.
 use gekko_math::msl::{fabsf, fctiwz};
 use hsd_types::Vec3;
 use melee_it::{desc::ItemAssets, state_change::*, *};
@@ -280,9 +282,10 @@ pub fn rain_spawn(position: Vec3, facing: f32) -> SpawnItem {
     }
 }
 
-/// it_8027D670's tail, it_8027F8E0 (8027F8E0): light the fuse and hold.
-/// `lifetime` is the common item lifetime (it_804D6D28->x30).
-pub fn light(item: &mut ItemCore, assets: &ItemAssets, lifetime: f32) {
+/// it_8027D670's tail, it_8027F8E0 (8027F8E0): stop, light the fuse
+/// (an unlit Bob-omb restarts the common item lifetime, it_804D6D28->x30)
+/// and burn on the ground (state 5).
+pub fn light(item: &mut ItemCore, assets: &ItemAssets) {
     item.velocity.x = 0.0;
     if bomb(item).lit {
         item.grabbable = true;
@@ -297,7 +300,7 @@ pub fn light(item: &mut ItemCore, assets: &ItemAssets, lifetime: f32) {
     state.blink_direction = 1;
     state.fuse = a.fuse_frames();
     state.lit = true;
-    item.life_timer = lifetime;
+    item.life_timer = assets.common_lifetime;
     change(item, motion::LIT, ANIM_UPDATE, assets);
 }
 
@@ -427,7 +430,9 @@ fn lit_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> boo
         if bomb(item).lit {
             change(item, motion::LIT_FALL, UNK_0X1, ctx.assets);
         } else {
-            unimplemented!("fn_8027FCA8: unlit Bob-omb leaving the ground");
+            // State 5 is entered only by it_8027F8E0 and fn_8028007C, both of
+            // which light the fuse (xDE0 = 1) first; nothing clears it.
+            unreachable!("fn_8027FCA8: an unlit Bob-omb in state 5");
         }
     }
     false
@@ -530,19 +535,6 @@ fn start_walking(item: &mut ItemCore, assets: &ItemAssets) {
     );
 }
 
-/// it_8027F8E0 (8027F8E0) for a lit Bob-omb: it stops and burns on the
-/// ground again. An unlit one would first light (see [`light`]).
-fn relight(item: &mut ItemCore, assets: &ItemAssets) {
-    if !bomb(item).lit {
-        // Peach's pulled Bob-omb, thrown to a soft landing: the lighting
-        // branch needs the common lifetime here.
-        unimplemented!("it_8027F8E0: an unlit Bob-omb stops walking (xDE0 == 0)");
-    }
-    item.velocity.x = 0.0;
-    item.grabbable = true;
-    change(item, motion::LIT, UNK_0X1, assets);
-}
-
 /// The walk and turn count down the lit Bob-omb's blink timer (xDD4) and its
 /// whole life (xDEC); the fuse itself does not burn.
 fn count_down_walk(item: &mut ItemCore) -> bool {
@@ -566,7 +558,7 @@ fn animation_ended(item: &ItemCore, assets: &ItemAssets) -> bool {
 /// (inline2_UnkMotion0_Anim) is not modelled.
 fn walk_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     if count_down_walk(item) {
-        relight(item, ctx.assets);
+        light(item, ctx.assets);
     }
     if animation_ended(item, ctx.assets) {
         start_walking(item, ctx.assets);
@@ -610,7 +602,7 @@ fn turn_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
     }
     if count_down_walk(item) {
         item.facing = bomb(item).turn_facing;
-        relight(item, ctx.assets);
+        light(item, ctx.assets);
     }
     false
 }
@@ -655,7 +647,9 @@ fn lit_fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -
             if bomb(item).lit {
                 change(item, motion::LIT, UNK_0X1, ctx.assets);
             } else {
-                unimplemented!("fn_8028007C: unlit Bob-omb landing");
+                // State 6 is entered only by fn_8027FCA8, which lights the
+                // fuse (xDE0 = 1) first; nothing clears it.
+                unreachable!("fn_8028007C: an unlit Bob-omb in state 6");
             }
         }
     }

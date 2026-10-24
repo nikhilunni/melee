@@ -1,0 +1,42 @@
+# Vegetable's rare pull on Pokemon Stadium (start_ps_peach_fox4; the pull
+# tick was found with `melee-sim search` over the down-B tick, 2151
+# candidates, 5 Bob-ombs). Peach pulls an unlit Bob-omb on the left
+# platform at 490, drops through it (540), jumps (600) and double-jumps
+# (614), and at 636, her hand just above the platform, drops it with A + R
+# (it_3F14_Logic6_Dropped, state 9). It lands softly on the platform
+# (fn_80280974: |v| within x20/x24), walks (state 2, it_8027EE04), turns at
+# the platform's edges (it_8027F42C, state 4) and, when its walk timer
+# (x10 = 160 frames) runs out, lights (it_8027F8E0 with xDE0 == 0: the
+# blink, the common item lifetime and the fuse, state 5), burns x8 = 90
+# frames and explodes. Peach drifts right and waits on the ground.
+# Input frames count ticks.
+name = "peach_pull_bombhei_walk_ps_peach"
+input_clock = "tick"
+savestate = "harness/roms/start_ps_peach_fox4.sav"
+frames = 1000
+seed = 1
+stage = "PokemonStadium"
+
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 490, port = 0, buttons = { B = true, StickY = -1.0 }, raw = { button = 512, stickY = -128 } },
+  { frame = 492, port = 0, buttons = {  }, raw = {  } },
+  { frame = 540, port = 0, buttons = { StickY = -1.0 }, raw = { stickY = -128 } },
+  { frame = 543, port = 0, buttons = {  }, raw = {  } },
+  { frame = 600, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 603, port = 0, buttons = {  }, raw = {  } },
+  { frame = 614, port = 0, buttons = { X = true }, raw = { button = 1024 } },
+  { frame = 636, port = 0, buttons = { A = true, R = true, X = true }, raw = { button = 1312 } },
+  { frame = 638, port = 0, buttons = { StickX = 1.0 }, raw = { stickX = 127 } },
+  { frame = 676, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Peach"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

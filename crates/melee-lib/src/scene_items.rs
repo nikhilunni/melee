@@ -1874,9 +1874,8 @@ pub fn spawn_rain_bomb(
         rng,
     );
     if pool.len() > before {
-        let lifetime = pool.common().lifetime;
         let item = pool.iter_mut().last().expect("spawned Bob-omb");
-        it_bombhei::light(item, resources.get(ItemKind::BombHei), lifetime);
+        it_bombhei::light(item, resources.get(ItemKind::BombHei));
     }
 }
 
