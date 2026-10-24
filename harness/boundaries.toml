@@ -927,3 +927,21 @@ stage = "FinalDestination"
 players = ["Kirby", "Luigi"]
 stocks = 4
 seed = 3979937767
+
+[[boundary]]
+name = "start_fd_mario_jigglypuff4"
+cold = "start_fd_mario_jigglypuff4_cold"
+savestate = "harness/roms/start_fd_mario_jigglypuff4.sav"
+stage = "FinalDestination"
+players = ["Mario", "Jigglypuff"]
+stocks = 4
+seed = 920403811
+
+[[boundary]]
+name = "start_fd_mario_yoshi4"
+cold = "start_fd_mario_yoshi4_cold"
+savestate = "harness/roms/start_fd_mario_yoshi4.sav"
+stage = "FinalDestination"
+players = ["Mario", "Yoshi"]
+stocks = 4
+seed = 920403811

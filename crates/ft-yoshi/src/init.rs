@@ -77,8 +77,7 @@ fn knockback_exit(fighter: &mut Fighter, assets: &FighterAssets) {
 
 impl CharacterCallbacks for Yoshi {
     /// fn_8013295C, the egg roll's x21F8 after a cape turnaround.
-    const CAPE_TURN_END: fn(&mut Fighter) =
-        |_| unimplemented!("fn_8013295C (ftyoshispecials.c): Egg Roll after a cape turnaround");
+    const CAPE_TURN_END: fn(&mut Fighter) = crate::special_s::cape_turn_end;
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

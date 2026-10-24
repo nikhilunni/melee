@@ -132,10 +132,8 @@ pub fn deal_damage(f: &mut Fighter, assets: &FighterAssets) {
 
 /// x21F8 after a cape turnaround (ftCo_800C37A0): the copied Rollout's
 /// fn_80105978 is the only one a Kirby row installs.
-pub fn cape_turn_end(_: &mut Fighter) {
-    unimplemented!(
-        "fn_80105978 (ftkirbyspecialpurin.c:1368): the copied Rollout after a cape turnaround"
-    )
+pub fn cape_turn_end(f: &mut Fighter) {
+    ft_purin_family::rollout::cape_turn_end::<rollout::KirbyPurin>(f);
 }
 
 /// accessory4_cb of a copied special's row.

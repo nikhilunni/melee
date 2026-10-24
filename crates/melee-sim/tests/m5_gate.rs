@@ -983,7 +983,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 557] = [
+const MATRIX_WITNESSES: [(&str, usize); 559] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1079,6 +1079,9 @@ const MATRIX_WITNESSES: [(&str, usize); 557] = [
     // after the throw (fn_8012E44C) and the egg bursting on the floor.
     ("yoshi_upb_ground_fd_fox4", 360),
     ("yoshi_upb_air_fd_fox4", 360),
+    // Mario capes Yoshi's Egg Roll: the turnaround ends in SpecialSLoop, so
+    // x21F8 = fn_8013295C turns the roll around.
+    ("yoshi_eggroll_cape_turn_fd_mario4", 300),
     // Falco's down-throw lasers: light non-captor hits keep the grab, and
     // Fox's hitlag holds Falco frozen past its own (x1A5C / x2219_b7).
     ("captured_hit_falco_dthrow_laser_fd", 330),
@@ -1237,6 +1240,9 @@ const MATRIX_WITNESSES: [(&str, usize); 557] = [
     ("puff_rollout_hit_fd_fox4", 360),
     ("puff_rollout_whiff_fd_fox4", 316),
     ("puff_rollout_air_fd_fox4", 360),
+    // Mario capes a rolling Jigglypuff: the turnaround ends in SpecialNRelease,
+    // so x21F8 = ftPr_SpecialN_8014222C turns the roll around.
+    ("puff_rollout_cape_turn_fd_mario4", 300),
     ("puff_pound_shield_fd_fox4", 272),
     // Jigglypuff in each hat costume (ftPr_Init_8013C360; blue and green add
     // hat spring chains, ftCo_8009DC54): Rollout off the edge, KO, respawn,

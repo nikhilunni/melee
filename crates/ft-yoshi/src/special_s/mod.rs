@@ -275,6 +275,26 @@ fn set_hooks(f: &mut Fighter, hooks: Hooks) {
     f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::Character);
 }
 
+/// fn_8013295C (8013295C), x21F8 when a cape turnaround ends in an Egg
+/// Roll state: part 0 faces the new way (pi/2 * facing in double, rounded
+/// once), and the roll's signed speeds, angles and facing are negated.
+pub fn cape_turn_end(f: &mut Fighter) {
+    // 80132974..84: lfd pi/2, fmul by facing_dir, frsp.
+    let rotation = (std::f64::consts::FRAC_PI_2 * f64::from(f.physics.facing)) as f32;
+    f.core
+        .set_part_rotation(0, melee_ft::fighter::part_rotation::Axis::Y, rotation);
+    f.physics.self_velocity.x = -f.physics.self_velocity.x;
+    f.physics.ground_velocity = -f.physics.ground_velocity;
+    f.physics.ground_acceleration = -f.physics.ground_acceleration;
+    let roll = roll(f);
+    roll.turn_speed = -roll.turn_speed;
+    roll.roll_angle = -roll.roll_angle;
+    roll.tilt = -roll.tilt;
+    roll.speed = -roll.speed;
+    roll.turn_acceleration = -roll.turn_acceleration;
+    roll.pending_facing = -roll.pending_facing;
+}
+
 /// The callbacks installed in the current motion, if any: Fighter_ChangeMotionState
 /// clears them (fighter.c:1377-1389), so they belong to the motion that set them.
 pub fn hooks(f: &Fighter) -> Option<Hooks> {

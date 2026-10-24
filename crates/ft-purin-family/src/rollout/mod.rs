@@ -423,6 +423,28 @@ fn install_callbacks<C: RolloutKind>(f: &mut Fighter) {
     f.set_cape_turn_end(melee_ft::fighter::cape_turn::CapeTurnEnd::Character);
 }
 
+/// ftPr_SpecialN_8014222C (8014222C) / fn_80105978 (80105978), x21F8 when a
+/// cape turnaround ends in a Rollout state: TopN faces the new way (pi/2 *
+/// facing in double, rounded once), and every signed speed and direction of
+/// the roll is negated.
+pub fn cape_turn_end<C: RolloutKind>(f: &mut Fighter) {
+    // 80142244..54: lfd pi/2, fmul by facing_dir, frsp.
+    let rotation = (std::f64::consts::FRAC_PI_2 * f64::from(f.physics.facing)) as f32;
+    f.core
+        .set_part_rotation(0, melee_ft::fighter::part_rotation::Axis::Y, rotation);
+    f.physics.self_velocity.x = -f.physics.self_velocity.x;
+    f.physics.ground_velocity = -f.physics.ground_velocity;
+    f.physics.ground_acceleration = -f.physics.ground_acceleration;
+    let roll = scratch::<C>(f);
+    roll.turn_speed = -roll.turn_speed;
+    roll.roll_angle = -roll.roll_angle;
+    roll.speed = -roll.speed;
+    roll.acceleration = -roll.acceleration;
+    roll.pending_facing = -roll.pending_facing;
+    roll.direction = -roll.direction;
+    roll.previous_angle = -roll.previous_angle;
+}
+
 /// A Rollout state change with a retail flag word, installing every
 /// callback. Without SkipHit the change disables the hitboxes, whose
 /// capsule slot 0 remembers its contents (see [`model::remember_hitbox`]).

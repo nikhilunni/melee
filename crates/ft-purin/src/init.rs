@@ -72,11 +72,8 @@ impl CharacterCallbacks for Jigglypuff {
         &melee_ft::fighter::assets::FighterAssets,
     ) = |fighter, _assets| fighter.set_knockback_texture_frames(0.0);
     /// ftPr_SpecialN_8014222C, Rollout's x21F8 after a cape turnaround.
-    const CAPE_TURN_END: fn(&mut melee_ft::fighter::Fighter) = |_| {
-        unimplemented!(
-            "ftPr_SpecialN_8014222C (ftpurinspecialn.c:1447): Rollout after a cape turnaround"
-        )
-    };
+    const CAPE_TURN_END: fn(&mut melee_ft::fighter::Fighter) =
+        ft_purin_family::rollout::cape_turn_end::<Jigglypuff>;
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
