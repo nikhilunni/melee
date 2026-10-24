@@ -209,6 +209,14 @@ pub const fn rows<C: LinkFamily>() -> [MotionRow; FamilyState::COUNT] {
         rows[FamilyState::SpecialNStart.index() + i] = bow[i];
         i += 1;
     }
+    // ftLk_MS_AppealSR/AppealSL (342/343): ftCo_SM_None and five NULL
+    // callbacks in Link's table. Only ftCl_Init_80149318 enters them, from
+    // ftCo_800DEA28's FTKIND_CLINK case (Young Link's milk rows replace
+    // these in `young_rows`); Link's taunt is the common AppealS.
+    rows[FamilyState::AppealSR.index()] =
+        state::empty_row(342, -1, callbacks::camera::hold);
+    rows[FamilyState::AppealSL.index()] =
+        state::empty_row(343, -1, callbacks::camera::hold);
     rows
 }
 

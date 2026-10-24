@@ -13,8 +13,8 @@ pub mod special_s;
 /// ftPe_Init_MotionStateTable: rows 341..370, contiguous from ftCo_MS_Count.
 pub const SPECIAL_ROW_COUNT: usize = 30;
 
-/// ftPe_Init_MotionStateTable (ftpeach.c). ftPe_MS_SpecialSJump (356) has
-/// no callbacks and no entry.
+/// ftPe_Init_MotionStateTable (ftpeach.c). SpecialHiEnd/SpecialAirHiEnd
+/// (362/364) have no entry and fail closed.
 pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT] {
     use melee_ft::fighter::{
         parasol,
@@ -146,6 +146,9 @@ pub const fn special_rows() -> [melee_ft::fighter::MotionRow; SPECIAL_ROW_COUNT]
         special_hi::air_start_physics,
         special_hi::start_collision,
     );
+    // ftPe_MS_SpecialSJump (356), ftPe_SM_SpecialSJump: four NULL state
+    // callbacks; no retail code enters it (the jump is the aerial 360).
+    rows[15] = state::empty_row(356, 304, callbacks::camera::follow_fighter);
     rows[21].anim = special_hi::unreachable_end;
     rows[23].anim = special_hi::unreachable_end;
     // ftPe_MS_SpecialN..SpecialAirNHit (365..368), ftPe_SM 312..315.

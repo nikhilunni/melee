@@ -222,6 +222,15 @@ pub const fn rows<C: PikachuFamily>() -> [MotionRow; FamilyState::COUNT] {
         rows[(up[i].action.0 - FamilyState::SpecialN as u16) as usize] = up[i];
         i += 1;
     }
+    // ftPk_MS_SpecialS1 (345): ftPk_SpecialS1_Anim/IASA/Phys/Coll are each a
+    // lone `blr` (8012590C, 8012594C, 80125954, 801259D4), and no retail
+    // code enters the row (only the aerial launch, 350, is).
+    let s1 = FamilyState::SpecialS1;
+    rows[(s1 as u16 - FamilyState::SpecialN as u16) as usize] = melee_ft::fighter::state::empty_row(
+        s1.action().0,
+        s1.animation(),
+        callbacks::camera::follow_fighter,
+    );
     rows
 }
 

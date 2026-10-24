@@ -35,9 +35,13 @@ impl Mario {
 }
 
 /// ftMr_Init_MotionStateTable: AppealSR/AppealSL (341/342) are Dr. Mario's
-/// taunt rows with no callbacks; Mario never enters them.
-static SPECIAL_ROWS: [MotionRow; ft_mario_family::SPECIAL_ROW_COUNT] =
-    ft_mario_family::rows::<Mario>([melee_ft::fighter::state::unimplemented_row(); 2]);
+/// taunt rows, here with ftCo_SM_None and five NULL callbacks. Only
+/// ftDr_Init_80149910 enters 341/342, from ftCo_800DEA28's FTKIND_DRMARIO
+/// case: Mario never enters them.
+static SPECIAL_ROWS: [MotionRow; ft_mario_family::SPECIAL_ROW_COUNT] = {
+    use melee_ft::fighter::state::{callbacks::camera::hold, empty_row};
+    ft_mario_family::rows::<Mario>([empty_row(341, -1, hold), empty_row(342, -1, hold)])
+};
 pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Mario>();
 

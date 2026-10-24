@@ -79,6 +79,37 @@ pub const fn unimplemented_row() -> MotionRow {
     }
 }
 
+/// A retail row whose four state callbacks are NULL or empty (`blr`): it
+/// plays `animation` and does nothing else. `camera` is retail's fifth
+/// column (`callbacks::camera::hold` for a NULL one). Every such row in the
+/// character tables also has no entry (docs/COVERAGE_AUDIT.md, "Character
+/// rows with no retail entry"), so it is a transcription, not a witness.
+pub const fn empty_row(action: u16, animation: i32, camera: CameraFn) -> MotionRow {
+    MotionRow {
+        action: ActionId(action),
+        id: CommonMotionState::None,
+        animation,
+        anim: empty_anim,
+        iasa: empty_iasa,
+        physics: empty_physics,
+        collision: empty_collision,
+        camera,
+        implemented: true,
+    }
+}
+
+fn empty_anim(_: &mut Fighter, _: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    Ok(None)
+}
+
+fn empty_iasa(_: &mut Fighter, _: InputPhase<'_>) {}
+
+fn empty_physics(_: &mut Fighter, _: PhysicsPhase<'_>) {}
+
+fn empty_collision(_: &mut Fighter, _: CollisionPhase<'_>) -> Result<()> {
+    Ok(())
+}
+
 pub fn unimplemented_anim(
     fighter: &mut Fighter,
     _phase: AnimationPhase<'_>,

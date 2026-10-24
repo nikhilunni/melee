@@ -42,6 +42,13 @@ pub const fn special_rows() -> [MotionRow; SPECIAL_ROW_COUNT] {
         place(&mut rows, lw[i]);
         i += 1;
     }
+    // ftLg_MS_SpecialS2 (345), ftLg_SM_SpecialS2: ftLg_SpecialS2_Anim/IASA/
+    // Phys/Coll are each a lone `blr` (80143B18, 80143B58, 80143B60,
+    // 80143BE0), and no retail code enters the row (only the aerial 351 is).
+    place(
+        &mut rows,
+        state::empty_row(345, 301, state::callbacks::camera::follow_fighter),
+    );
     rows
 }
 

@@ -17,7 +17,7 @@ pub use action::{ActionId, SpecialSlot, COMMON_COUNT};
 pub use common_table::{common_table, COMMON};
 pub use partner_sync::partner_sync;
 pub(crate) use row::unsupported_action;
-pub use row::{unimplemented_anim, unimplemented_row, MotionRow, MotionState};
+pub use row::{empty_row, unimplemented_anim, unimplemented_row, MotionRow, MotionState};
 
 /// Fighter_Create (0x80068E98), fighter.c:897-911, in scheduler order.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

@@ -55,6 +55,14 @@ pub const SPECIAL_ROWS: [MotionRow; SPECIAL_ROW_COUNT] = {
     let blizzard = special_lw::ROWS;
     rows[(special_lw::GROUND.0 - FIRST_ACTION) as usize] = blizzard[0];
     rows[(special_lw::AIR.0 - FIRST_ACTION) as usize] = blizzard[1];
+    // ftPp_MS_SpecialHi_2 / SpecialHi_5 (363 / 366), ftPp_SM_SpecialHi_2 / _5:
+    // four NULL state callbacks in both climbers' tables, and no retail code
+    // enters either (no `li r4, 0x16b` / `0x16e` in ftPopo or ftNana; 366 is
+    // only the top of a range test). SpecialHi_3 (364) has callbacks but no
+    // entry either and stays fail-closed.
+    let follow = state::callbacks::camera::follow_fighter;
+    rows[(363 - FIRST_ACTION) as usize] = state::empty_row(363, 317, follow);
+    rows[(366 - FIRST_ACTION) as usize] = state::empty_row(366, 320, follow);
     rows
 };
 
