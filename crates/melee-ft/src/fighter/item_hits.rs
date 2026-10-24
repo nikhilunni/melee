@@ -19,6 +19,7 @@ impl Fighter {
         item: &mut ItemCore,
         capsules: &HurtCapsules,
         owner_spawn: Option<u32>,
+        spared_by_team: bool,
     ) -> FixedVec<ItemHit, 4> {
         let mut hits = FixedVec::default();
         if capsules.is_empty() {
@@ -29,12 +30,16 @@ impl Fighter {
             return hits;
         }
         // itcoll.c:419-424: a fighter thrown by the item's owner hits it only
-        // once the owner let it go (xDCE b0). The team check (itcoll.c:425-
-        // 433) needs team mode.
+        // once the owner let it go (xDCE b0).
         if self.commands.thrown_by.is_some()
             && self.commands.thrown_by == owner_spawn
             && !item.hurt_by_owner
         {
+            return hits;
+        }
+        // itcoll.c:425-433: a team battle without friendly fire spares the
+        // item's team until the owner lets it go (xDCE b1, set with b0).
+        if spared_by_team && !item.hurt_by_owner {
             return hits;
         }
         let victim = item.hitbox_victim();

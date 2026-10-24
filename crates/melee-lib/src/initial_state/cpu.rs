@@ -11,9 +11,10 @@ const CPU: usize = 0x1A88;
 /// Fighter_x1A88_xFC_t: the ring's entry size.
 const SAMPLE_BYTES: u32 = 0x1C;
 
-/// Restore `raw`'s CpuFighter; `base` is the dump's Fighter address and
-/// `fighters` every dumped Fighter address in list order.
-pub(super) fn restore(raw: &[u8], base: u32, fighters: &[u32]) -> CpuState {
+/// Restore `raw`'s CpuFighter; `base` is the dump's Fighter address,
+/// `fighters` every dumped Fighter address in list order and `items` every
+/// live Item's address (the item GObj list's user data).
+pub(super) fn restore(raw: &[u8], base: u32, fighters: &[u32], items: &[u32]) -> CpuState {
     let at = |offset: usize| CPU + offset;
     let w = |offset: usize| word(raw, at(offset));
     let i = |offset: usize| w(offset) as i32;
@@ -34,11 +35,12 @@ pub(super) fn restore(raw: &[u8], base: u32, fighters: &[u32]) -> CpuState {
         )
     };
     // x4C, x50: items the port cannot name at a boundary. HSD_ObjAlloc
-    // leaves them uncleared for fighters that never chose one, so only a
-    // pointer into MEM1 is a real item.
+    // leaves them uncleared for fighters that never chose one (four Nanas at
+    // a match start hold an earlier allocation's words), so only a pointer
+    // to a live Item is a real target.
     let item = |offset: usize| -> Option<u32> {
         let pointer = w(offset);
-        if (0x8000_0000..0x8180_0000).contains(&pointer) {
+        if items.contains(&pointer) {
             unimplemented!("CpuFighter +{offset:X}: an item target at the boundary");
         }
         None

@@ -179,6 +179,53 @@ const SINGLES_SPAWNS: [(i32, [[f32; 2]; 4]); 6] = [
         [[-40.0, 32.0], [40.0, 32.0], [70.0, 7.0], [-70.0, 7.0]],
     ),
 ];
+/// NeutralSpawnTable's teams rows (every version's): a team's two players
+/// on one side, by team order (`teams_order`).
+const TEAMS_SPAWNS: [(i32, [[f32; 2]; 4]); 6] = [
+    (
+        0x20,
+        [[-60.0, 10.0], [-20.0, 10.0], [60.0, 10.0], [20.0, 10.0]],
+    ),
+    (0x1F, [[-38.8, 35.2], [-38.8, 5.0], [38.8, 35.2], [38.8, 5.0]]),
+    (0x08, [[-42.0, 26.6], [-42.0, 5.0], [42.0, 28.0], [42.0, 5.0]]),
+    (0x1C, [[-46.6, 37.2], [-46.6, 5.0], [47.4, 37.3], [47.4, 5.0]]),
+    (
+        0x02,
+        [[-41.25, 21.0], [-41.25, 5.0], [41.25, 27.0], [41.25, 5.0]],
+    ),
+    (0x03, [[-40.0, 32.0], [-40.0, 5.0], [40.0, 32.0], [40.0, 5.0]]),
+];
+
+/// NeutralSpawn.asm in a team battle (0x8016E5C4-0x8016E6C8): only when
+/// every team has none or two players; then each player's order is its
+/// place among the players sorted by team, then slot. `None` leaves every
+/// player at retail's spawn. `teams` are the players' teams in slot order.
+pub fn teams_order(teams: &[u8]) -> Option<Vec<usize>> {
+    for team in 0..3u8 {
+        let members = teams.iter().filter(|&&t| t == team).count();
+        if members == 1 || members > 2 {
+            return None;
+        }
+    }
+    let mut sorted: Vec<usize> = (0..teams.len()).collect();
+    sorted.sort_by_key(|&player| (teams[player], player));
+    Some(
+        (0..teams.len())
+            .map(|player| sorted.iter().position(|&p| p == player).expect("listed"))
+            .collect(),
+    )
+}
+
+/// NeutralSpawn.asm's teams row for the `order`th player of
+/// [`teams_order`], with the facing SetSpawn stores; `None` for a stage
+/// without a row.
+pub fn neutral_spawn_teams(stage_id: i32, order: usize) -> Option<(hsd_types::Vec3, f32)> {
+    let (_, spawns) = TEAMS_SPAWNS.iter().find(|(id, _)| *id == stage_id)?;
+    let [x, y] = *spawns.get(order)?;
+    let facing = if x > 0.0 { -1.0 } else { 1.0 };
+    Some((hsd_types::Vec3::new(x, y, 0.0), facing))
+}
+
 /// V2019's Dream Land singles spawns for orders 0 and 1 (f32 bits
 /// 0xC23A6666/0x42140000 and 0x423D8E70/0x42140000).
 const DREAM_LAND_2019: [[f32; 2]; 2] = [[-46.6, 37.0], [f32::from_bits(0x423D_8E70), 37.0]];
@@ -216,6 +263,17 @@ mod tests {
 
     fn row(table: NeutralTable, stage_id: i32, order: usize) -> Option<[f32; 2]> {
         neutral_spawn(table, stage_id, order).map(|(spawn, _)| [spawn.x, spawn.y])
+    }
+
+    #[test]
+    fn teams_spawn_by_team_then_slot_only_two_a_side() {
+        assert_eq!(teams_order(&[0, 1, 0, 1]), Some(vec![0, 2, 1, 3]));
+        assert_eq!(teams_order(&[1, 1, 0, 0]), Some(vec![2, 3, 0, 1]));
+        assert_eq!(teams_order(&[0, 0, 0, 1]), None);
+        assert_eq!(teams_order(&[0, 1, 2]), None);
+        let (spawn, facing) = neutral_spawn_teams(0x1F, 1).unwrap();
+        assert_eq!([spawn.x.to_bits(), spawn.y.to_bits()], [0xC21B_3333, 0x40A0_0000]);
+        assert_eq!(facing, 1.0);
     }
 
     #[test]

@@ -378,7 +378,7 @@ fn nearest_target(item: &ItemCore, ctx: &ItemPhysicsContext<'_>) -> Option<Vec3>
     let mut best = None;
     let mut least = f32::MAX;
     for fighter in ctx.targets.fighters.iter() {
-        if Some(fighter.player) == item.owner || fighter.disabled || behind(fighter.position.x) {
+        if !ctx.targets.opposes(fighter, item.owner) || behind(fighter.position.x) {
             continue;
         }
         let dx = position.x - fighter.position.x;

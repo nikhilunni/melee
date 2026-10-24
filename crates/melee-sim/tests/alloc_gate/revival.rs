@@ -45,6 +45,8 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
         damage: 0.0,
         cpu_mode: 4,
         cpu_level: 1,
+        team: None,
+        friendly_fire: false,
     };
     let mut character = C::from_archive(&archive.data).unwrap();
     let costume_bytes = std::fs::read(

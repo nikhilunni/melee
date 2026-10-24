@@ -9,6 +9,9 @@ pub struct PlayerSetup {
     pub stocks: u8,
     /// The player's controller-fix Gecko code (UCF), keyed by its port.
     pub controller_fix: melee_ft::input::ControllerFix,
+    /// PlayerInitData team in a team battle (StartMeleeRules is_teams);
+    /// `None` in a free-for-all. Either every player has one or none does.
+    pub team: Option<u8>,
 }
 impl PlayerSetup {
     pub fn descriptor(&self) -> &'static CharacterDescriptor {
@@ -27,6 +30,8 @@ pub struct Setup {
     /// gm_Scene_SuddenDeath_OnEnter): one stock each at 300%, its own
     /// countdown and the Bob-omb rain.
     pub sudden_death: bool,
+    /// StartMeleeRules friendly_fire: teammates' attacks land.
+    pub friendly_fire: bool,
     /// Slippi codes the recording ran (all off in retail).
     pub slippi: crate::slippi::SlippiCodes,
 }

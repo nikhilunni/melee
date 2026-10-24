@@ -1,0 +1,37 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 1, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_bf_iceclimbers_iceclimbers_iceclimbers_iceclimbers1_cold"
+expected = "start_bf_iceclimbers_iceclimbers_iceclimbers_iceclimbers1"
+frames = 600
+seed = 3710922793
+stage = "Battlefield"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+costume = 0
+stocks = 1
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+costume = 1
+stocks = 1
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "IceClimbers"
+costume = 2
+stocks = 1
+controller = "idle"
+
+[[fighters]]
+slot = 3
+kind = "IceClimbers"
+costume = 3
+stocks = 1
+controller = "idle"

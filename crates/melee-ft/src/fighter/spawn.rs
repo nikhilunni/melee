@@ -108,6 +108,24 @@ pub struct PlayerSlot {
     pub damage: f32,
     pub cpu_mode: i32,
     pub cpu_level: i32,
+    /// fp->team (fighter.c:725, Player_GetTeam: StaticPlayer +47) in a
+    /// team battle (gm_8016B168); `None` in a free-for-all.
+    pub team: Option<u8>,
+    /// StartMeleeRules friendly_fire (gm_8016B0D4): teammates' hits land.
+    pub friendly_fire: bool,
+}
+impl PlayerSlot {
+    /// gm_8016B168() && a->team == b->team: the two fighters fight on one
+    /// team (ftLib_80086198's teammate skip, pl_040D.c:80).
+    pub fn teammate_of(&self, team: Option<u8>) -> bool {
+        self.team.is_some() && self.team == team
+    }
+    /// gm_8016B168() && !gm_8016B0D4() && a->team == b->team: a team
+    /// battle without friendly fire spares a teammate (ftcoll.c:1584,
+    /// 1677, 2032; itcoll.c:347, 432, 561).
+    pub fn spares(&self, team: Option<u8>) -> bool {
+        !self.friendly_fire && self.teammate_of(team)
+    }
 }
 
 /// Fighter_Create's first motion (fighter.c:914-930).

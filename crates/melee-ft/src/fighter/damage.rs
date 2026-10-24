@@ -566,6 +566,8 @@ impl DamageParameters {
 #[derive(Clone, Copy, Debug)]
 pub struct Thrower {
     pub player: u8,
+    /// x119C_teamUnk: the grabber's team (ftColl_8007B8CC).
+    pub team: Option<u8>,
     pub position_x: f32,
 }
 
@@ -593,6 +595,16 @@ pub fn detect_hit(
         None => attacker.core.player.id,
     };
     if victim.core.player.id == excluded_player {
+        return;
+    }
+    // ftcoll.c:1677-1685: a team battle without friendly fire spares the
+    // attacker's teammates; a thrown attacker counts as its grabber's team
+    // (x119C). x2225_b4, which would lift the check, is never set.
+    let attacker_team = match thrower {
+        Some(thrower) => thrower.team,
+        None => attacker.core.player.team,
+    };
+    if victim.core.player.spares(attacker_team) {
         return;
     }
     let mut clank_mask = super::clank::candidates(&victim.core, &attacker.core);
@@ -2833,10 +2845,13 @@ impl Fighter {
         item: &mut melee_it::ItemCore,
         assets: &FighterAssets,
         common: &melee_it::desc::ItemCommonData,
+        spared_by_team: bool,
     ) -> Option<ItemHurtContact> {
         // ftColl_8007925C (ftcoll.c:2026): an owned item misses its owner
-        // unless xDCD b5 lets it through (the Bob-omb blast).
-        if (item.owner == Some(self.player.id) && !item.hits_owner)
+        // unless xDCD b5 lets it through (the Bob-omb blast); in a team
+        // battle without friendly fire it misses the owner's team unless
+        // xDCD b6 (set with b5, it_80275444) does (ftcoll.c:2032-2036).
+        if ((item.owner == Some(self.player.id) || spared_by_team) && !item.hits_owner)
             || item.destroyed
             || self.status.disabled
         {

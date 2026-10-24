@@ -24,7 +24,11 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
     // gm_8016C75C: the player's KO total, the KOs it scored on other
     // players (kos_by_player, which Player_UpdateKOsBySlot counts at a
     // stock loss, ftCo_800D34E0).
-    let player_kills = state.ko_counts.total(state.fighters[index].player.id);
+    let mut teams = [None; 4];
+    for f in &state.fighters {
+        teams[usize::from(f.player.id)] = f.player.team;
+    }
+    let player_kills = state.ko_counts.total(state.fighters[index].player.id, &teams);
     let count = state.fighters.len();
     let deadzone = state.assets.fighters[index]
         .input

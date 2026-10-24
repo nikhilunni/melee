@@ -59,6 +59,8 @@ pub struct Tick(pub u64);
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum MatchOutcome {
     Winner(Port),
+    /// A team battle's last team with stocks (gm_GetTeamBattleOutcome).
+    TeamWinner(u8),
     Draw,
     /// The timer ran out with equal stocks; retail continues with a Sudden
     /// Death match (one stock each at 300%).
@@ -98,12 +100,14 @@ impl Match {
                     character: Character::from_kind(f.kind),
                     costume: Costume(f.player.costume),
                     controller_fix: engine.state().controller_fixes[usize::from(f.player.id)],
+                    team: f.player.team,
                 }
             })
             .collect();
-        let config = MatchConfig::versus(stage, players)
+        let mut config = MatchConfig::versus(stage, players)
             .with_stocks(setup.fighters[0].stocks)
             .with_seed(Seed(setup.seed.unwrap_or(0)));
+        config.rules.friendly_fire = setup.friendly_fire;
         let assets = GameAssets {
             inner: Arc::clone(&engine.state().assets),
             stage,
@@ -241,6 +245,11 @@ impl Match {
             .map(|player| &**state.player_fighter(player).0);
         let port = |f: &melee_ft::fighter::Fighter| Port::from_index(f.player.id);
         if self.engine.state().clock.timed_out() {
+            // Imported countdown matches can reach an unwitnessed team result.
+            // Never rank their players independently as a singles timeout.
+            if fighters().next().is_some_and(|f| f.player.team.is_some()) {
+                return MatchStatus::Faulted;
+            }
             // The results screen ranks a timed-out stock match by stocks;
             // a tie for the most goes to Sudden Death.
             let most = fighters().map(|f| f.player.stocks).max().unwrap_or(0);
@@ -249,6 +258,22 @@ impl Match {
                 (Some(winner), None) => MatchOutcome::Winner(port(winner)),
                 _ => MatchOutcome::SuddenDeath,
             });
+        }
+        if fighters().next().is_some_and(|f| f.player.team.is_some()) {
+            let decided = crate::frame::stock_outcome_decided(
+                fighters().map(|f| (f.player.team, f.player.stocks)),
+            );
+            let survivor = fighters().find(|f| f.player.stocks > 0);
+            return match (decided, survivor) {
+                (true, Some(f)) => MatchStatus::Finished(MatchOutcome::TeamWinner(
+                    f.player.team.expect("a team battle's player"),
+                )),
+                (true, None) => MatchStatus::Finished(MatchOutcome::Draw),
+                _ if state.fighters.iter().any(|f| f.0.status.input_frozen) => {
+                    MatchStatus::Startup
+                }
+                _ => MatchStatus::Playing,
+            };
         }
         let mut alive = fighters().filter(|f| f.player.stocks > 0);
         match (alive.next(), alive.next()) {
@@ -259,7 +284,7 @@ impl Match {
         }
     }
     pub fn observe(&self) -> Result<Observation<'_>, StateError> {
-        if self.engine.is_faulted() {
+        if self.status() == MatchStatus::Faulted {
             return Err(StateError::Faulted);
         }
         Ok(Observation::new(
@@ -291,6 +316,56 @@ fn panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn timed_team_setup_is_rejected_without_ranking_players() {
+        let mut config = MatchConfig::versus(
+            Stage::FinalDestination,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox).with_team(0),
+                PlayerConfig::new(Port::P2, Character::Marth).with_team(1),
+            ],
+        );
+        assert!(config.setup().is_ok());
+        config.rules.time_limit_seconds = Some(60);
+        assert!(matches!(config.setup(), Err(StartError::InvalidConfig(
+            "timed team outcomes need a retail witness"
+        ))));
+    }
+
+    #[test]
+    fn imported_team_timeout_faults_instead_of_selecting_a_player() {
+        let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+            || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+            std::path::PathBuf::from,
+        );
+        let files = root.join("harness/roms/files");
+        if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+            return;
+        }
+        let config = MatchConfig::versus(
+            Stage::FinalDestination,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox).with_team(0),
+                PlayerConfig::new(Port::P2, Character::Marth).with_team(1),
+            ],
+        );
+        let assets = GameAssets::load(files, &config).unwrap();
+        let setup = config.setup().unwrap();
+        let mut state = InitialState::from_assets(&setup, Arc::clone(&assets.inner)).unwrap();
+        state.clock.timer = Some(crate::match_clock::CountdownTimer { seconds: 0, frames: 59 });
+        // One player has a unique stock lead: the old singles ranking picked P1.
+        state.fighters[0].0.player.stocks = 4;
+        state.fighters[1].0.player.stocks = 1;
+        let mut game = Match::from_import(Simulation::new(state.clone()), &setup);
+        assert_eq!(game.status(), MatchStatus::Faulted);
+        assert!(matches!(game.observe(), Err(StateError::Faulted)));
+        assert_eq!(game.step(&Inputs::default()), Err(StepError::Faulted));
+        let mut simulation = Simulation::new(state);
+        let fault = catch_unwind(AssertUnwindSafe(|| simulation.tick_without_snapshot()));
+        let message = panic_message(fault.expect_err("team timeout must fail closed"));
+        assert!(message.contains("fn_80165E7C"), "{message}");
+    }
+
     #[test]
     fn faults_reject_access_and_clone_until_reset_or_replacement() {
         let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");

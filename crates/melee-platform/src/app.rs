@@ -591,7 +591,10 @@ impl App {
                         None => Outcome::Draw,
                     }
                 }
-                MatchOutcome::Draw | MatchOutcome::SuddenDeath => Outcome::Draw,
+                // The app's menus start free-for-all matches only.
+                MatchOutcome::TeamWinner(_) | MatchOutcome::Draw | MatchOutcome::SuddenDeath => {
+                    Outcome::Draw
+                }
             };
             self.results = Some(Results { outcome, hud });
             self.screen = Screen::Results;

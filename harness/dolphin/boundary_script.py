@@ -120,6 +120,16 @@ TOKEN_OFFSET = (2.7, -2.0)   # held token minus hand position
 # (PlayerInitData, 0x24 each: ckind +0, slot_type +1, stocks +2, color +3).
 CSS_PLAYERS, PLAYER_SIZE = 0x70, 0x24
 PKIND_HUMAN = 0
+# A team battle (make_boundary.py --teams): the CSS start rules' is_teams
+# (+8; gm_8016B168 reads lbl_8046B6A0 +24D0) and friendly_fire (+1 bit 0;
+# gm_8016B0D4), and each door's team (mnCharSel_803F0DFC.doors[4], CSSDoor
+# 0x24 bytes, team +0xA), which the CSS copies into the start data's
+# PlayerInitData team (+9) every frame (mncharsel.c:1518).
+CSS_RULES, RULES_IS_TEAMS, RULES_FRIENDLY_FIRE = 0x10, 0x8, 0x1
+PLAYER_TEAM = 0x9
+CSS_DOORS, DOOR_SIZE, DOOR_TEAM = symbols.addr("mnCharSel_803F0DFC"), 0x24, 0xA
+# The match's StartMeleeRules (lbl_8046B6A0 +24C8), read back for the summary.
+MATCH_RULES = symbols.addr("lbl_8046B6A0") + 0x24C8
 
 # mnstagesel.c: SSSData* sss_data (.sbss 0x804D6C90; a .bss symbol shares the
 # name), force_stage_id s8 at +3 (mnStageSel_Scene_OnFrame:766).
@@ -342,6 +352,9 @@ class BoundaryDriver:
         mem.write_u8(GAME_RULES + RULES_MODE, MODE_STOCK)
         mem.write_u8(GAME_RULES + RULES_STOCKS, self.config["stocks"])
         mem.write_u8(GAME_RULES + RULES_STOCK_TIME, self.config.get("time_limit_minutes", 0))
+        if self.config.get("teams"):
+            # GameRules +9 friendly_fire: the match's rules take it from here.
+            mem.write_u8(GAME_RULES + 9, 1 if self.config.get("friendly_fire") else 0)
         mem.write_u8(ITEM_FREQUENCY, self.config.get("item_frequency", ITEMS_OFF) & 0xFF)
 
     def navigate_menu(self) -> dict:
@@ -364,6 +377,8 @@ class BoundaryDriver:
         players = self.config["players"]
         if self.player == len(players) and not self.costumes_done():
             return self.change_costume()
+        if self.player == len(players) and not self.teams_set():
+            return {}
         if self.player == len(players):
             self.css = [self.css_player(p) for p in self.ports]
             if any(p["slot_type"] != PKIND_HUMAN for p in self.css):
@@ -409,6 +424,24 @@ class BoundaryDriver:
         self.pending_press = (port, self.frame + 4)
         return {}
 
+    def teams_set(self) -> bool:
+        """Poke the team battle into the CSS (idempotent); True once the start
+        data reads it back, or at once without --teams."""
+        teams = self.config.get("teams")
+        if not teams:
+            return True
+        css = self.ptr(CSS_DATA_PTR)
+        rules = css + CSS_RULES
+        self.mem.write_u8(rules + RULES_IS_TEAMS, 1)
+        flags = self.mem.read_u8(rules + RULES_FRIENDLY_FIRE)
+        friendly = 1 if self.config.get("friendly_fire") else 0
+        self.mem.write_u8(rules + RULES_FRIENDLY_FIRE, (flags & ~1) | friendly)
+        for port, team in zip(self.ports, teams):
+            self.mem.write_u8(CSS_DOORS + port * DOOR_SIZE + DOOR_TEAM, team)
+            self.mem.write_u8(css + CSS_PLAYERS + port * PLAYER_SIZE + PLAYER_TEAM, team)
+        return all(self.mem.read_u8(css + CSS_PLAYERS + port * PLAYER_SIZE + PLAYER_TEAM) == team
+                   for port, team in zip(self.ports, teams))
+
     def costumes_done(self) -> bool:
         wanted = self.config.get("costumes")
         return wanted is None or all(
@@ -452,6 +485,8 @@ class BoundaryDriver:
         return {"frame": self.frame, "seed": self.mem.read_u32(SEED_ADDR),
                 "css_players": self.css, "fighters": self.read_fighters(),
                 "item_frequency": self.mem.read_s8(ITEM_FREQUENCY),
+                "is_teams": self.mem.read_u8(MATCH_RULES + RULES_IS_TEAMS),
+                "friendly_fire": self.mem.read_u8(MATCH_RULES + RULES_FRIENDLY_FIRE) & 1,
                 **self.creation_seed()}
 
     def creation_seed(self) -> dict:

@@ -996,7 +996,7 @@ pub fn escape(
     // ftCo_800DC920's lb_8000B1CC rebuilds the victim's XRotN, whose
     // constraint reads the carrier's TransN2 in its new damage pose.
     grab_throw::update_constraint(&mut victim.core, &mut carrier.core, va, aa);
-    super::grab_damage::release_pair(carrier, victim, va, map);
+    super::grab_damage::release_pair(carrier, victim, aa, va, map);
     let knockback = va.damage.knockback_for_frame(
         &carrier_record,
         victim.physics.percent,

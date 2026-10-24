@@ -5,6 +5,7 @@
                                                  [--transform PORT ...]
                                                  [--gecko ucf-0.8 neutral-spawn --spawn neutral-2020]
                                                  [--ports 2 4] [--time-limit 8]
+                                                 [--teams 0 1 0 1 [--friendly-fire]]
 
 Sheik is a player name too: the port picks Zelda on the CSS and holds A while
 the match loads (--transform on that port), as a person does.
@@ -56,6 +57,12 @@ A code the port names with a scenario flag (`ps-preload`: `stadium_preload`,
 in both scenarios. The Widescreen
 code changes a CObj as it is loaded, so only a boundary booted with it runs it
 whole: on another boundary's savestate the camera keeps retail's aspect.
+
+`--teams 0 1 0 1` makes a team battle (0 red, 1 blue, 2 green; one team per
+player, two teams at least) and `--friendly-fire` lets teammates' attacks
+land, as tournament doubles plays: the CSS's is_teams, friendly fire and
+each door's team are poked before the match starts, and both scenarios and
+the registry entry name them.
 
 It never overwrites: an existing savestate or scenario of the same name stops
 it before Dolphin starts.
@@ -195,14 +202,17 @@ def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: 
                   costumes: list[int], spawn: str | None = None,
                   codes: list[str] | None = None, slots: list[int] | None = None,
                   time_limit: int = 0, game_start_seed: int | None = None,
-                  spawn_points: list[int] | None = None) -> str:
+                  spawn_points: list[int] | None = None, teams: list[int] | None = None,
+                  friendly_fire: bool = False) -> str:
     slots = slots or list(range(len(players)))
+    team_lines = [f"team = {t}\n" for t in teams] if teams else [""] * len(players)
+    ff_line = "friendly_fire = true\n" if friendly_fire else ""
     timer_line = f"time_limit = {time_limit * 60}\n" if time_limit else ""
     spawn_line = f'spawn = "{spawn}"\n' if spawn else ""
     points = [f"spawn_point = {p}\n" for p in spawn_points] if spawn_points else [""] * len(players)
     fighters = "\n".join(
         f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\ncostume = {costumes[i]}\nstocks = {stocks}\n'
-        f'{points[i]}controller = "idle"\n{fix_line(codes)}' for i, kind in enumerate(players))
+        f'{points[i]}{team_lines[i]}controller = "idle"\n{fix_line(codes)}' for i, kind in enumerate(players))
     return f'''# Parameters only; seed is after stage/fighter creation, before music.
 # Stock {stocks}, items off, normal Versus Entry, human ports, neutral pads.
 name = "{name}_cold"
@@ -211,26 +221,30 @@ frames = 600
 seed = {seed}
 {creation_line(game_start_seed)}stage = "{stage}"
 {gecko.scenario_flag_lines(gecko.scenario_flags(codes))}all_characters_unlocked = true
-{timer_line}{spawn_line}inputs = []
+{timer_line}{spawn_line}{ff_line}inputs = []
 
 {fighters}'''
 
 
 def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed: int,
-                   costumes: list[int] | None = None) -> str:
+                   costumes: list[int] | None = None, teams: list[int] | None = None,
+                   friendly_fire: bool = False) -> str:
     quoted = ", ".join(f'"{p}"' for p in players)
     # Costumes other than each port's first are written out (boundary.rs).
     worn = f"costumes = {list(costumes)}\n" if costumes and any(costumes) else ""
+    team_line = f"teams = {list(teams)}\n" if teams else ""
+    ff_line = "friendly_fire = true\n" if friendly_fire else ""
     return (f'\n[[boundary]]\nname = "{name}"\ncold = "{name}_cold"\n'
             f'savestate = "harness/roms/{name}.sav"\nstage = "{stage}"\nplayers = [{quoted}]\n'
-            f'stocks = {stocks}\nseed = {seed}\n{worn}')
+            f'stocks = {stocks}\nseed = {seed}\n{worn}{team_line}{ff_line}')
 
 
 def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
                    transform: list[int] | None = None, costumes: list[int] | None = None,
                    codes: list[str] | None = None, slots: list[int] | None = None,
                    time_limit: int = 0, game_start_seed: int | None = None,
-                   spawn_points: list[int] | None = None, extra: dict | None = None) -> dict:
+                   spawn_points: list[int] | None = None, teams: list[int] | None = None,
+                   friendly_fire: bool = False, extra: dict | None = None) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary.
     `extra` adds config keys (retail_coverage.py's items and CPU players)."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
@@ -247,6 +261,8 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                                       **({"game_start_seed": game_start_seed}
                                          if game_start_seed is not None else {}),
                                       **({"spawn_points": spawn_points} if spawn_points else {}),
+                                      **({"teams": teams, "friendly_fire": friendly_fire}
+                                         if teams else {}),
                                       **({"costumes": costumes} if costumes else {}),
                                       **(extra or {})}))
         dolphin = dolphin_config.binary()
@@ -310,6 +326,10 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--spawn-points", type=int, nargs="+", metavar="MARKER",
                     help="each player's spawn point (a replay's `spawn_point` per player in "
                          "melee-sim replay --retail-inputs)")
+    ap.add_argument("--teams", type=int, nargs="+", choices=[0, 1, 2],
+                    help="a team battle: each player's team (0 red, 1 blue, 2 green)")
+    ap.add_argument("--friendly-fire", action="store_true",
+                    help="with --teams: teammates' attacks land (tournament doubles)")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
     if (a.gecko or a.spawn or a.ports or a.time_limit or a.game_start_seed is not None
@@ -331,6 +351,10 @@ def main(argv: list[str] | None = None) -> None:
         os.environ[dolphin_config.SI_PORTS_ENV] = ",".join(str(s) for s in slots)
     if a.costumes is not None and len(a.costumes) != len(a.players):
         sys.exit("--costumes needs one costume per player")
+    if a.teams is not None and (len(a.teams) != len(a.players) or len(set(a.teams)) < 2):
+        sys.exit("--teams needs one team per player, two teams at least")
+    if a.friendly_fire and a.teams is None:
+        sys.exit("--friendly-fire belongs to a team battle (--teams)")
     if a.spawn_points is not None and len(a.spawn_points) != len(a.players):
         sys.exit("--spawn-points needs one spawn point per player")
     transform = sorted(set(a.transform) | {i for i, p in enumerate(a.players) if p in TRANSFORMED})
@@ -349,7 +373,7 @@ def main(argv: list[str] | None = None) -> None:
     t0 = time.monotonic()
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
                              a.stocks, a.timeout, transform, a.costumes, a.gecko, slots, a.time_limit,
-                             a.game_start_seed, a.spawn_points)
+                             a.game_start_seed, a.spawn_points, a.teams, a.friendly_fire)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]
@@ -361,11 +385,16 @@ def main(argv: list[str] | None = None) -> None:
     if a.spawn_points is not None:
         print(f"   spawn points {a.spawn_points} (they replaced {summary['spawn_points_replaced']})",
               flush=True)
+    if a.teams is not None:
+        if summary["is_teams"] != 1 or summary["friendly_fire"] != int(a.friendly_fire):
+            sys.exit(f"the match did not start as the team battle asked: {summary}")
+        print(f"   teams {a.teams}, friendly fire {'on' if a.friendly_fire else 'off'}", flush=True)
 
     scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks, a.gecko, slots,
                                        a.game_start_seed))
     cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes, a.spawn, a.gecko,
-                                  slots, a.time_limit, a.game_start_seed, a.spawn_points))
+                                  slots, a.time_limit, a.game_start_seed, a.spawn_points, a.teams,
+                                  a.friendly_fire))
     print(f"== recording {scenario.name}", flush=True)
     # record_many gives the run a private Dolphin user folder, so parallel
     # make_boundary runs (one per agent) never share config or card writes.
@@ -379,13 +408,14 @@ def main(argv: list[str] | None = None) -> None:
     if gate.returncode:
         print(f"== {name} is not registered: the port does not reproduce it yet. Its savestate, scenarios "
               f"and traces stay for that work; register it by rerunning the gate and adding\n"
-              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes)}")
+              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams, a.friendly_fire)}")
         sys.exit(1)
     if a.no_register:
         print(f"== {name} passes; not registered (--no-register)")
         return
     with BOUNDARIES.open("a") as f:
-        f.write(boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes))
+        f.write(boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams,
+                               a.friendly_fire))
     if BACKUP.is_dir():
         for src in (sav, Path(str(sav) + ".json")):
             dst = BACKUP / src.name

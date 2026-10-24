@@ -1,0 +1,31 @@
+# IceClimbers vs IceClimbers vs IceClimbers vs IceClimbers on Battlefield, 1 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_bf_iceclimbers_iceclimbers_iceclimbers_iceclimbers1"
+savestate = "harness/roms/start_bf_iceclimbers_iceclimbers_iceclimbers_iceclimbers1.sav"
+frames = 600
+seed = 1
+stage = "Battlefield"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "IceClimbers"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "IceClimbers"
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "IceClimbers"
+controller = "idle"
+
+[[fighters]]
+slot = 3
+kind = "IceClimbers"
+controller = "idle"

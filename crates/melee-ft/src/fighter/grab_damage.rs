@@ -56,7 +56,7 @@ pub fn resolve_linked_hit(
                 // throw record launches the unhit victim.
                 partner.interrupt_actions(partner_assets);
                 launch_by_captor(partner, fighter, partner_assets, fighter_assets, rng)?;
-                release_pair(fighter, partner, partner_assets, map);
+                release_pair(fighter, partner, fighter_assets, partner_assets, map);
                 fighter.combat.pair_order = Some(PairHitOrder::Launch);
                 return Ok(false);
             }
@@ -66,7 +66,7 @@ pub fn resolve_linked_hit(
             {
                 take_captor_throw_hit(partner, fighter, partner_assets, fighter_assets);
             }
-            release_pair(fighter, partner, partner_assets, map);
+            release_pair(fighter, partner, fighter_assets, partner_assets, map);
             fighter.combat.pair_order = Some(PairHitOrder::Launch);
             partner.combat.pair_order = Some(PairHitOrder::Launch);
         }
@@ -109,7 +109,7 @@ pub fn resolve_linked_hit(
                         matches!(&fighter.combat.pending, Some(h) if h.knockback != 0.0),
                         "ftCo_800DE854: throw record 1 without knockback"
                     );
-                    release_pair(partner, fighter, fighter_assets, map);
+                    release_pair(partner, fighter, partner_assets, fighter_assets, map);
                     fighter.combat.pair_order = Some(PairHitOrder::Launch);
                     partner.combat.pair_order = Some(PairHitOrder::Launch);
                     return Ok(false);
@@ -119,14 +119,14 @@ pub fn resolve_linked_hit(
             if !partner_launched {
                 // ftCo_800DCE34(captor, gobj) and this fighter's launch; then
                 // (after it, `release_captor`) ftCo_800DE2F0 on the captor.
-                release_pair(partner, fighter, fighter_assets, map);
+                release_pair(partner, fighter, partner_assets, fighter_assets, map);
                 fighter.combat.pair_order = Some(PairHitOrder::Launch);
                 fighter.combat.release_captor = Some(partner.spawn_number);
                 return Ok(false);
             }
             // ftCo_800DCE34(captor, gobj), then this fighter's launch; the
             // captor follows x1828 = 1.
-            release_pair(partner, fighter, fighter_assets, map);
+            release_pair(partner, fighter, partner_assets, fighter_assets, map);
             fighter.combat.pair_order = Some(PairHitOrder::Launch);
             partner.combat.pair_order = Some(PairHitOrder::Launch);
         }
@@ -330,12 +330,16 @@ const LIGHT_HIT_DAMAGE: f32 = 6.0;
 
 /// ftCo_800DCE34 (800DCE34) -> ftCo_800DC920 (800DC920): both links go;
 /// a thrown (constrained, x2226_b2) fighter is first set down where its
-/// XRotN points (release_thrown). Then the captured fighter's root takes its
+/// XRotN points (release_thrown). That is the captured fighter, or the
+/// captor when it hangs from its grounded victim (x221B_b7, Falcon Dive:
+/// ftCo_CaptureCut.c:105-110 swaps the roles), which only a third fighter's
+/// hit on the pair parts. Then the captured fighter's root takes its
 /// position. Fighter_UnkSetFlag_8006CFBC only acts on x2219_b7, whose
 /// source (x221A_b0) is unported.
 pub(super) fn release_pair(
     captor: &mut Fighter,
     captured: &mut Fighter,
+    captor_assets: &FighterAssets,
     captured_assets: &FighterAssets,
     map: &mut melee_mp::CollMap,
 ) {
@@ -343,6 +347,8 @@ pub(super) fn release_pair(
     super::capture_kirby::refuse_parting_in_the_pull(&captured.core);
     if captured.combat.thrown_pose.is_some() {
         release_thrown(captor, captured, captured_assets, map);
+    } else if captor.combat.thrown_pose.is_some() {
+        release_thrown(captured, captor, captor_assets, map);
     }
     captured.combat.grab = None;
     let root = captured.animation.root;
@@ -400,7 +406,7 @@ pub fn part_on_lost_floor(
             captor_assets,
         );
     }
-    release_pair(captor, captured, captured_assets, map);
+    release_pair(captor, captured, captor_assets, captured_assets, map);
     match hold {
         LostHold::Catch => {
             captor.change_motion_state(Fall.into(), captor_assets)?;

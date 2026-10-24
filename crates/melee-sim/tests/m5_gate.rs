@@ -4964,7 +4964,7 @@ fn corpus_v2_matches_through_game() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 746] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 770] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6166,6 +6166,42 @@ static CORPUS_V3_MATCHES: [(&str, usize); 746] = [
     ("corpus_v3_kj64_fox_marth4_ea5bcaeb6_p0", 4746),
     ("corpus_v3_kj64_fox_marth4_e6df66885_p0", 6001),
     ("corpus_v3_kj64_fox_marth4_e52b08364_p0", 6001),
+    // Three- and four-player free-for-all (fn_8016DEEC's facing, one HUD
+    // per player, gm_GetFFAOutcome's elimination rule, a player out of
+    // stocks sleeps on): explorer samples from the FFA boundaries.
+    ("corpus_v3_bf_fox_marth_falco2_ef89b3e70_p0", 3011),
+    ("corpus_v3_fd_fox_falco_marth_captainfalcon2_ef89b3e70_p0", 3114),
+    ("corpus_v3_bf_fox_marth_falco1_ec13743d5_p0", 807),
+    ("corpus_v3_bf_fox_marth_falco1_e00f31913_p1", 2300),
+    ("corpus_v3_bf_fox_marth_falco1_e19f8579b_p2", 865),
+    ("corpus_v3_fd_fox_iceclimbers_marth_falco1_ec13743d5_p0", 2309),
+    ("corpus_v3_fd_fox_iceclimbers_marth_falco1_e00f31913_p1", 1876),
+    ("corpus_v3_fd_fox_iceclimbers_marth_falco1_e19f8579b_p2", 4272),
+    ("corpus_v3_bf_fox_marth_falco2_ec13743d5_p0", 2709),
+    ("corpus_v3_bf_fox_marth_falco2_e00f31913_p1", 3244),
+    ("corpus_v3_bf_fox_marth_falco2_e19f8579b_p2", 5955),
+    ("corpus_v3_fd_fox_falco_marth_captainfalcon2_ec13743d5_p1", 2130),
+    ("corpus_v3_fd_fox_falco_marth_captainfalcon2_e00f31913_p1", 2971),
+    // A third fighter's hit parts a Falcon Dive pair whose captor hangs
+    // from its grounded victim: ftCo_800DC920 swaps the roles (x221B_b7)
+    // and sets the captor down.
+    ("corpus_v3_fd_fox_falco_marth_captainfalcon2_ec13743d5_p0", 2107),
+    // A constrained captor's thrown pose leaves with its grab links
+    // (ftCo_800DCE34 -> ftCo_800DC920); no orphaned constrained fighter.
+    ("corpus_v3_fd_kirby_captainfalcon4_e1cda1301_p1", 4097),
+    ("corpus_v3_fd_kirby_captainfalcon4_e2798fef9_p2", 3501),
+    // Team battles: 2v2 without friendly fire on Battlefield (teammates'
+    // hits, grabs and items pass, ftcoll.c:1584/1677/2032, itcoll.c:347-563)
+    // and tournament doubles with it on FD; gm_GetTeamBattleOutcome ends
+    // the match.
+    ("corpus_v3_bf_teams_fox_marth_falco_peach2_e75fb4a9a_p0", 1381),
+    ("corpus_v3_bf_teams_fox_marth_falco_peach2_e89a89d0e_p0", 6001),
+    ("corpus_v3_bf_teams_fox_marth_falco_peach2_edb2b114a_p0", 4112),
+    ("corpus_v3_bf_teams_fox_marth_falco_peach2_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_e75fb4a9a_p0", 3252),
+    ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_e89a89d0e_p0", 3632),
+    ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_edb2b114a_p0", 4265),
+    ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_ef89b3e70_p0", 4504),
 ];
 
 #[test]

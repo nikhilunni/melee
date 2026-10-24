@@ -4,10 +4,11 @@ use gekko_math::HsdRng;
 use melee_ft::fighter::Fighter;
 use melee_types::{CommonMotionState as S, ItemKind};
 
-/// ftCo_IsAlly (0x800A38D4) in a free-for-all (gm_8016B14C): fighters of
-/// one player only.
+/// ftCo_IsAlly (0x800A38D4): fighters of one player, or in a team battle
+/// (gm_8016B168) of one team; a Versus free-for-all (gm_8016B14C) has no
+/// other allies.
 fn ally(a: &Fighter, b: &Fighter) -> bool {
-    a.core.player.id == b.core.player.id
+    a.core.player.id == b.core.player.id || a.core.player.teammate_of(b.core.player.team)
 }
 
 /// ftCo_800A1C44 (0x800A1C44): out of play (x2219_b1), or the star or

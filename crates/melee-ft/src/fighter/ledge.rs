@@ -94,7 +94,8 @@ impl LedgeHolder {
 #[derive(Clone, Debug, Default)]
 pub struct LedgeHolders {
     offered: bool,
-    holders: FixedVec<LedgeHolder, 6>,
+    // Every other fighter of a match: four players and their partners.
+    holders: FixedVec<LedgeHolder, 8>,
 }
 impl LedgeHolders {
     pub fn offer(&mut self, holders: impl Iterator<Item = LedgeHolder>) {

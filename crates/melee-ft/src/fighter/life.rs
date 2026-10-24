@@ -821,7 +821,7 @@ impl Fighter {
                 ),
                 "ftCo_800DC920: a constrained captor's release (Falcon Dive) on its victim's death"
             );
-            super::grab_damage::release_pair(dead, self, assets, map);
+            super::grab_damage::release_pair(dead, self, dead_assets, assets, map);
         }
         self.core.combat.grab = None;
         let state = if self.core.physics.ground_or_air == GroundOrAir::Air {

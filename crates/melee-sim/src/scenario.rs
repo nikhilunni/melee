@@ -68,6 +68,9 @@ pub struct Scenario {
     /// A cold Sudden Death scene (gm_SetupSuddenDeath): one stock at 300%.
     #[serde(default)]
     pub sudden_death: bool,
+    /// A cold team battle's friendly fire (StartMeleeRules friendly_fire).
+    #[serde(default)]
+    pub friendly_fire: bool,
     /// A cold match's counting-down timer, in seconds.
     #[serde(default)]
     pub time_limit: Option<u32>,
@@ -147,6 +150,10 @@ pub struct FighterScenario {
     pub costume: u8,
     #[serde(default = "default_spawn_point")]
     pub spawn_point: i8,
+    /// A cold team battle's team (0 red, 1 blue, 2 green); every fighter
+    /// names one or none does.
+    #[serde(default)]
+    pub team: Option<u8>,
     #[serde(default = "one_stock")]
     pub stocks: u8,
     /// The port's controller-fix Gecko code (`"ucf-0.74"`, `"ucf-0.8"`,
@@ -252,6 +259,18 @@ impl Scenario {
             (2..=4).contains(&self.fighters.len()),
             "requires two to four fighters"
         );
+        let teams: Vec<Option<u8>> = self.fighters.iter().map(|f| f.team).collect();
+        ensure!(
+            teams.iter().all(Option::is_none)
+                || (self.is_cold()
+                    && teams.iter().all(|t| matches!(t, Some(0..=2)))
+                    && teams.iter().any(|t| *t != teams[0])),
+            "a cold team battle gives every fighter a team (0 to 2), two teams at least"
+        );
+        ensure!(
+            !self.friendly_fire || teams[0].is_some(),
+            "friendly_fire belongs to a team battle"
+        );
         let mut previous_port = None;
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
@@ -313,10 +332,11 @@ impl Scenario {
             ensure!(
                 rules.game_mode == 1
                     && matches!(rules.timer_type, 0 | 2)
-                    && !rules.teams
+                    && rules.teams == self.fighters[0].team.is_some()
                     && rules.item_spawn_behavior == -1
                     && rules.damage_ratio.to_bits() == 1.0_f32.to_bits(),
-                "replay requires stock mode, countdown/no timer, singles, items off, normal damage"
+                "replay requires stock mode, countdown/no timer, items off, normal damage, and \
+                 teams exactly when its fighters name them"
             );
         }
         for step in &self.inputs {
@@ -501,6 +521,7 @@ impl Scenario {
                     stocks: f.stocks,
                     spawn_point: f.spawn_point,
                     controller_fix: f.controller_fix().expect("validated controller fix"),
+                    team: f.team,
                 })
                 .collect(),
             stage: self.stage_descriptor(),
@@ -508,6 +529,7 @@ impl Scenario {
             all_characters_unlocked: self.all_characters_unlocked,
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
+            friendly_fire: self.friendly_fire,
             slippi: melee_lib::slippi::SlippiCodes {
                 spawn: self.spawn,
                 stadium_preload: self.stadium_preload,

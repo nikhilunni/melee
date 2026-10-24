@@ -1116,3 +1116,34 @@ stage = "FinalDestination"
 players = ["Fox", "IceClimbers", "Marth", "Falco"]
 stocks = 1
 seed = 3974325777
+
+[[boundary]]
+name = "start_bf_iceclimbers_iceclimbers_iceclimbers_iceclimbers1"
+cold = "start_bf_iceclimbers_iceclimbers_iceclimbers_iceclimbers1_cold"
+savestate = "harness/roms/start_bf_iceclimbers_iceclimbers_iceclimbers_iceclimbers1.sav"
+stage = "Battlefield"
+players = ["IceClimbers", "IceClimbers", "IceClimbers", "IceClimbers"]
+stocks = 1
+seed = 3710922793
+costumes = [0, 1, 2, 3]
+
+[[boundary]]
+name = "start_fd_doubles_ff_fox_falco_marth_captainfalcon2"
+cold = "start_fd_doubles_ff_fox_falco_marth_captainfalcon2_cold"
+savestate = "harness/roms/start_fd_doubles_ff_fox_falco_marth_captainfalcon2.sav"
+stage = "FinalDestination"
+players = ["Fox", "Falco", "Marth", "CaptainFalcon"]
+stocks = 2
+seed = 3466547136
+teams = [0, 1, 0, 1]
+friendly_fire = true
+
+[[boundary]]
+name = "start_bf_teams_fox_marth_falco_peach2"
+cold = "start_bf_teams_fox_marth_falco_peach2_cold"
+savestate = "harness/roms/start_bf_teams_fox_marth_falco_peach2.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth", "Falco", "Peach"]
+stocks = 2
+seed = 1413659151
+teams = [0, 0, 1, 1]

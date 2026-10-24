@@ -231,6 +231,8 @@ pub fn candidate(
     };
     if attacker.status.disabled
         || victim.status.disabled
+        // ftcoll.c:1584-1585: no grabbing a teammate without friendly fire.
+        || attacker.player.spares(victim.player.team)
         || victim.combat.grab.is_some()
         || victim.status.grab_exclusions.0 & category != 0
         || victim.status.ledge_intangibility != 0

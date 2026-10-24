@@ -1,0 +1,41 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 2, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_bf_teams_fox_marth_falco_peach2_cold"
+expected = "start_bf_teams_fox_marth_falco_peach2"
+frames = 600
+seed = 1413659151
+stage = "Battlefield"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 2
+team = 0
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 2
+team = 0
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+costume = 0
+stocks = 2
+team = 1
+controller = "idle"
+
+[[fighters]]
+slot = 3
+kind = "Peach"
+costume = 0
+stocks = 2
+team = 1
+controller = "idle"

@@ -163,6 +163,8 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
             damage: 0.0,
             cpu_mode: 0,
             cpu_level: 9,
+            team: None,
+            friendly_fire: false,
         },
     );
     assert_eq!(

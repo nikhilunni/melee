@@ -134,6 +134,7 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
                     stocks: f.stocks,
                     spawn_point: f.spawn_point,
                     controller_fix: f.controller_fix().expect("validated controller fix"),
+                    team: f.team,
                 })
                 .collect(),
             stage: stage_descriptor(&self.stage).unwrap(),
@@ -141,6 +142,7 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
             all_characters_unlocked: self.all_characters_unlocked,
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
+            friendly_fire: self.friendly_fire,
             slippi: Default::default(),
         })
     }

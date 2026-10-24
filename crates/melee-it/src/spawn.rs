@@ -420,6 +420,8 @@ pub struct LockOnFighter {
     pub player: u8,
     pub disabled: bool,
     pub position: Vec3,
+    /// fp->team in a team battle (ftLib_80086368 skips the owner's team).
+    pub team: Option<u8>,
 }
 
 /// An item an article may lock on to (it_8026C258's candidates, already
@@ -434,6 +436,23 @@ pub struct LockOnItem {
 /// order. Only kinds with [`crate::ItemLogic::LOCKS_ON`] receive them.
 #[derive(Clone, Debug, Default)]
 pub struct LockOnTargets {
-    pub fighters: melee_types::fixed::FixedVec<LockOnFighter, 6>,
+    // Every fighter of a match: four players and their partners.
+    pub fighters: melee_types::fixed::FixedVec<LockOnFighter, 8>,
     pub items: melee_types::fixed::FixedVec<LockOnItem, 64>,
+}
+impl LockOnTargets {
+    /// ftLib_80086368 (ftlib.c:186-192): a fighter the `owner` player's
+    /// article may lock on to: another player's, in play, and in a team
+    /// battle not a teammate's.
+    pub fn opposes(&self, fighter: &LockOnFighter, owner: Option<u8>) -> bool {
+        let owner_team = owner.and_then(|owner| {
+            self.fighters
+                .iter()
+                .find(|f| f.player == owner)
+                .and_then(|f| f.team)
+        });
+        Some(fighter.player) != owner
+            && !fighter.disabled
+            && !(owner_team.is_some() && fighter.team == owner_team)
+    }
 }

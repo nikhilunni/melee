@@ -131,6 +131,8 @@ impl Fixture {
             damage: 0.0,
             cpu_mode: 4,
             cpu_level: 1,
+            team: None,
+            friendly_fire: false,
         }
     }
     pub fn prepared(&self, player: PlayerSlot) -> Fighter {

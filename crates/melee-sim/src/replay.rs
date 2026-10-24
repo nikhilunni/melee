@@ -246,13 +246,29 @@ impl std::fmt::Display for Report {
 pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
     let mut reasons = Vec::new();
     let start = &replay.start;
+    if start.is_teams {
+        // fn_8016B918 stock sharing is unported. A recorded leader's
+        // zero-to-positive stock change requires that capability; refuse
+        // the whole replay rather than admitting an unwitnessed context.
+        // This does not attribute an earlier seed stop to stock sharing.
+        if let Some((port, frame)) = first_stock_return(replay.frames.iter().flat_map(|(&frame, f)| {
+            replay.leader_ports().filter_map(move |port| {
+                f.ports[port].leader.post.as_ref().map(|post| (port, frame, post.stocks))
+            })
+        })) {
+            reasons.push(format!(
+                "port {} returns after elimination at Slippi frame {frame}; stock sharing is unported",
+                port + 1,
+            ));
+        }
+    }
     match melee_lib::Stage::from_st_kind(start.stage) {
         Some(stage) if stage.is_ported() => {}
         Some(stage) => reasons.push(melee_lib::unported_stage(stage)),
         None => reasons.push(format!("stage {} is not a Versus stage", start.stage)),
     }
-    if replay.leader_ports().count() != 2 {
-        reasons.push("requires two leaders".into());
+    if !(2..=4).contains(&replay.leader_ports().count()) {
+        reasons.push("requires two to four leaders".into());
     }
     for port in replay.leader_ports() {
         let p = &start.players[port];
@@ -299,17 +315,31 @@ pub fn unsupported_setup(replay: &Replay, setup: Setup) -> Vec<String> {
     if Online::of(replay).is_some() {
         reasons.extend(Listed::of(replay).err().into_iter().flatten());
     }
-    if start.is_teams
-        || start.game_mode() != 1
+    if start.game_mode() != 1
         || !matches!(start.timer_type(), 0 | 2)
         || start.item_spawn_behavior != -1
         || start.damage_ratio.to_bits() != 1.0_f32.to_bits()
     {
         reasons.push(
-            "requires singles stock mode, items off, normal damage and countdown/no timer".into(),
+            "requires stock mode, items off, normal damage and countdown/no timer".into(),
         );
     }
     reasons
+}
+
+/// Only recorded leader stocks count: absent frames add no sample, and
+/// partners do not own stocks. A missing frame alone is not a stock return.
+fn first_stock_return(
+    samples: impl IntoIterator<Item = (usize, i32, u8)>,
+) -> Option<(usize, i32)> {
+    let mut previous = [None; 4];
+    for (port, frame, stocks) in samples {
+        if previous[port] == Some(0) && stocks > 0 {
+            return Some((port, frame));
+        }
+        previous[port] = Some(stocks);
+    }
+    None
 }
 
 /// The first Slippi version recorded with the Stadium transformation
@@ -683,12 +713,28 @@ fn spawn_rule(replay: &Replay) -> melee_lib::slippi::SpawnRule {
         return SpawnRule::Retail;
     };
     let entry_start = melee_types::CommonMotionState::EntryStart as u16;
+    let stage = i32::from(replay.start.stage);
+    // A team battle spawns by NeutralSpawn's teams rows (two a side).
+    let team_rows = replay.start.is_teams.then(|| {
+        let teams: Vec<u8> = replay
+            .leader_ports()
+            .map(|port| replay.start.players[port].team_id)
+            .collect();
+        melee_lib::slippi::teams_order(&teams)
+    });
     let fits = |table: NeutralTable| {
         replay.leader_ports().enumerate().all(|(order, port)| {
-            let (Some(post), Some((spawn, facing))) = (
-                first.ports[port].leader.post.as_ref(),
-                melee_lib::slippi::neutral_spawn(table, i32::from(replay.start.stage), order),
-            ) else {
+            let (order, row) = match &team_rows {
+                None => (order, melee_lib::slippi::neutral_spawn(table, stage, order)),
+                Some(None) => return false,
+                Some(Some(rows)) => (
+                    rows[order],
+                    melee_lib::slippi::neutral_spawn_teams(stage, rows[order]),
+                ),
+            };
+            let (Some(post), Some((spawn, facing))) =
+                (first.ports[port].leader.post.as_ref(), row)
+            else {
                 return false;
             };
             // A zero entry delay starts EntryStart on the first tick.
@@ -811,6 +857,7 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
         no_display_pass_before: Vec::new(),
         unconsumed_poll_before: Vec::new(),
         sudden_death: false,
+        friendly_fire: cold.friendly_fire,
         time_limit: None,
         spawn: Default::default(),
         stadium_preload: false,
@@ -833,6 +880,7 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
                 spawn_point: fighter.spawn_point,
                 stocks: fighter.stocks,
                 controller_fix: None,
+                team: fighter.team,
             })
             .collect(),
         inputs: Vec::new(),
@@ -1440,8 +1488,10 @@ mod tests {
                     spawn_point: -1,
                     stocks: 4,
                     controller,
+                    team: None,
                 })
                 .collect(),
+            friendly_fire: false,
             replay_rules: slp::cold::ReplayRules {
                 game_start_seed: 0x8000_0001,
                 time_seconds: 480,
@@ -1496,6 +1546,15 @@ mod tests {
             moved.replay_inputs[0].stick[0].to_bits(),
             through_text.replay_inputs[0].stick[0].to_bits()
         );
+    }
+
+    #[test]
+    fn stock_return_requires_a_recorded_eliminated_leader_to_gain_stocks() {
+        assert_eq!(first_stock_return([(0, 1, 4), (0, 2, 0), (0, 20, 1)]), Some((0, 20)));
+        assert_eq!(first_stock_return([(0, 1, 4), (0, 2, 0), (1, 20, 1)]), None);
+        assert_eq!(first_stock_return([(0, 1, 4), (0, 20, 3), (0, 21, 0)]), None);
+        assert_eq!(first_stock_return([(0, 1, 0), (0, 20, 0)]), None);
+        assert_eq!(first_stock_return([(0, 20, 1)]), None);
     }
 
     #[test]

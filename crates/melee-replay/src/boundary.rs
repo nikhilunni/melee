@@ -27,6 +27,12 @@ pub struct Boundary {
     /// --costumes`); absent means every port wears costume 0.
     #[serde(default)]
     pub costumes: Option<Vec<u8>>,
+    /// Team per port in a team battle (`make_boundary.py --teams`).
+    #[serde(default)]
+    pub teams: Option<Vec<u8>>,
+    /// Friendly fire in a team battle.
+    #[serde(default)]
+    pub friendly_fire: bool,
 }
 
 #[derive(Deserialize)]
@@ -68,6 +74,8 @@ impl Boundary {
             seed: self.seed,
             sudden_death: self.sudden_death,
             controller_fixes: None,
+            teams: self.teams.clone(),
+            friendly_fire: self.friendly_fire,
         }
         .decode()
         .map_err(|e| format!("{}: {e}", self.name))
@@ -136,6 +144,8 @@ mod tests {
             seed: 0,
             sudden_death: false,
             costumes: None,
+            teams: None,
+            friendly_fire: false,
         };
         assert!(boundary.config().is_err());
     }

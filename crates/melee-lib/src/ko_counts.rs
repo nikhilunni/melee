@@ -19,13 +19,16 @@ impl KoCounts {
     }
 
     /// gm_8016C75C (0x8016C75C): the standings' x20 for `player`, which
-    /// gm_80166378 sums over every other player (gm_1601.c:3050-3056; the
-    /// team variant is not ported). Its own entry counts as a self-destruct
-    /// instead.
-    pub(crate) fn total(&self, player: u8) -> i32 {
+    /// gm_80166378 sums over every other player (gm_1601.c:3050-3056), or
+    /// in a team battle over the other teams' players (gm_1601.c:3028-3040,
+    /// `teams` by slot). Its own entry, and a teammate's, count as
+    /// self-destructs instead.
+    pub(crate) fn total(&self, player: u8, teams: &[Option<u8>; 4]) -> i32 {
         let row = &self.0[usize::from(player)];
+        let own = teams[usize::from(player)];
         let total: u32 = (0..SLOTS)
             .filter(|&other| other != usize::from(player))
+            .filter(|&other| own.is_none() || teams.get(other).copied().flatten() != own)
             .map(|other| row[other])
             .fold(0, u32::wrapping_add);
         total as i32
@@ -43,8 +46,13 @@ mod tests {
         counts.record(1, 3);
         counts.record(1, 1);
         counts.record(0, 1);
-        assert_eq!(counts.total(1), 2);
-        assert_eq!(counts.total(0), 1);
-        assert_eq!(counts.total(3), 0);
+        let none = [None; 4];
+        assert_eq!(counts.total(1, &none), 2);
+        assert_eq!(counts.total(0, &none), 1);
+        assert_eq!(counts.total(3, &none), 0);
+        // Teams 0/1 against 2/3: player 1's KO of its teammate 0 is a
+        // self-destruct.
+        let teams = [Some(0), Some(0), Some(1), Some(1)];
+        assert_eq!(counts.total(1, &teams), 1);
     }
 }

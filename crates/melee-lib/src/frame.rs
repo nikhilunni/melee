@@ -266,6 +266,8 @@ struct Runtime {
     /// Each player's damage display (ifStatus), in player order.
     interface: Vec<melee_if::PercentDisplay>,
     match_finished: bool,
+    /// Each port's Start button on the previous tick, for its press.
+    start_held: [bool; 4],
     /// Scenario input: retail rendered (and so ran particleSort) between the
     /// previous tick and this one. Live play renders every tick; a recording
     /// that ran behind executes several ticks per VI frame and renders once.
@@ -311,6 +313,7 @@ impl Clone for Runtime {
             particle_draws: self.particle_draws.clone(),
             interface: self.interface.clone(),
             match_finished: self.match_finished,
+            start_held: self.start_held,
             display_pass: self.display_pass,
         }
     }
@@ -1196,20 +1199,34 @@ impl Runtime {
         let mut log = melee_it::hurt::ItemHitLog::default();
         // it_802703E8 returns at once without hurt capsules; it_802706D0
         // still meets other items' hitboxes with this item's.
-        let owner_spawn =
-            crate::scene_items::owner_index(&state.fighters, item.owner, item.owner_secondary)
-                .map(|index| state.fighters[index].spawn_number);
+        let owner =
+            crate::scene_items::owner_index(&state.fighters, item.owner, item.owner_secondary);
+        let owner_spawn = owner.map(|index| state.fighters[index].spawn_number);
+        // x20_team_id: the owner's team (U8_MAX without one).
+        let item_team = owner.and_then(|index| state.fighters[index].player.team);
         if !capsules.is_empty() {
-            for fighter in state.fighters.iter_mut() {
+            let teams: [Option<u8>; MAX_FIGHTERS] = std::array::from_fn(|index| {
+                state.fighters.get(index)
+                    .and_then(|fighter| thrown_hitbox_team(&state.fighters, fighter))
+            });
+            for (fighter, team) in state.fighters.iter_mut().zip(teams) {
+                // itcoll.c:425-433: a team battle without friendly fire
+                // spares the item's team (a thrown fighter counts as its
+                // thrower's) until the owner lets it go (xDCE b1).
+                let spared = fighter.player.team.is_some()
+                    && !fighter.player.friendly_fire
+                    && team.is_some()
+                    && team == item_team;
                 let hits = crate::scene_fighter::with_fighter!(fighter, |f| {
-                    f.strike_item(item, &capsules, owner_spawn)
+                    f.strike_item(item, &capsules, owner_spawn, spared)
                 });
                 for hit in hits {
                     log.push(hit);
                 }
             }
         }
-        item_hits_by_items(&mut state.items, id, &capsules, &mut log);
+        let teams = ItemTeams::of(&state.fighters);
+        item_hits_by_items(&mut state.items, id, &capsules, &teams, &mut log);
         if !log.is_empty() {
             let constants = state.items.common().knockback;
             let item = state.items.get_mut(id).expect("struck item");
@@ -1554,6 +1571,7 @@ impl Runtime {
                                     .expect("the thrower");
                                 melee_ft::fighter::damage::Thrower {
                                     player: thrower.player.id,
+                                    team: thrower.player.team,
                                     position_x: thrower.physics.position.x,
                                 }
                             });
@@ -1584,8 +1602,11 @@ impl Runtime {
                             item.owner_secondary,
                         );
                         let mark = melee_it::ItemPool::group_victim_mark(item);
+                        // ftcoll.c:2032-2036: x20_team_id, the owner's team.
+                        let item_team = owner.and_then(|index| state.fighters[index].player.team);
+                        let spared = state.fighters[player].player.spares(item_team);
                         let hit = with_fighter!(&mut state.fighters[player], |f| {
-                            f.detect_item_hit(item, &assets.fighters[player], common)
+                            f.detect_item_hit(item, &assets.fighters[player], common, spared)
                         });
                         let item_id = item.id;
                         if let Some(mark) = &mark {
@@ -3103,6 +3124,7 @@ impl Simulation {
             state,
             interface,
             match_finished: false,
+            start_held: [false; 4],
             display_pass: DisplayPass::Rendered,
             pads,
             raw_sticks: None,
@@ -3210,18 +3232,45 @@ impl Simulation {
             }
         }
         let runtime = self.runtime.as_mut();
-        // gm_GetFFAOutcome (8016BF74): a stock match ends once every player
-        // but at most one is out of stocks (`eliminated >= players - 1`).
+        // gm_16AE.c:546-590, every scene frame in a team battle: a player
+        // out of stocks whose fighter sleeps takes a teammate's stock on a
+        // Start press (fn_8016B918, ifStock_802F7EFC, Player_LoseStock,
+        // gm_8016C658, fn_8016719C).
+        const START: u32 = 0x1000;
+        for fighter in runtime.state.fighters.iter().filter(|f| !f.0.player.secondary) {
+            let player = &fighter.0.player;
+            let port = usize::from(player.id);
+            let start = runtime.pads[port].buttons.0 & START != 0;
+            if player.team.is_some()
+                && player.stocks == 0
+                && fighter.0.status.disabled
+                && start
+                && !runtime.start_held[port]
+            {
+                unimplemented!("gm_16AE.c:576-586: a team battle's stock steal on a Start press");
+            }
+        }
+        runtime.start_held = runtime.pads.map(|pad| pad.buttons.0 & START != 0);
+        // gm_GetMatchOutcome returns OUTCOME_TIMEOUT before checking teams
+        // (gm_16AE.c:886-891). Team result ranking then uses fn_80165E7C's
+        // team scores and fn_801661E0's subscore tie-break (gm_1601.c:2853-2878,
+        // 2926-2936), not individual stocks. Keep countdown replays runnable
+        // until this unwitnessed result branch is actually reached.
+        if runtime.state.clock.timed_out()
+            && runtime.state.fighters.iter().any(|f| f.0.player.team.is_some())
+        {
+            unimplemented!("fn_80165E7C/fn_801661E0: timed team result ranking needs a retail witness");
+        }
         // The pause takes effect next tick.
-        let (players, eliminated) = runtime
-            .state
-            .fighters
-            .iter()
-            .filter(|fighter| !fighter.0.player.secondary)
-            .fold((0, 0), |(players, eliminated), fighter| {
-                (players + 1, eliminated + usize::from(fighter.0.player.stocks == 0))
-            });
-        let finished = runtime.state.clock.timed_out() || eliminated + 1 >= players;
+        let finished = runtime.state.clock.timed_out()
+            || stock_outcome_decided(
+                runtime
+                    .state
+                    .fighters
+                    .iter()
+                    .filter(|fighter| !fighter.0.player.secondary)
+                    .map(|fighter| (fighter.0.player.team, fighter.0.player.stocks)),
+            );
         if finished && !runtime.match_finished {
             // The GAME! (or TIME!) banner's GObj (classifier 0xE, p_link
             // 14), created by the scene's frame callback before this
@@ -3437,6 +3486,45 @@ fn deliver_owner_request(
     }
 }
 
+/// Whether a stock match is decided, from each player's (team, stocks).
+/// gm_GetFFAOutcome (8016BF74): every player but at most one is out of
+/// stocks. gm_GetTeamBattleOutcome (gm_16AE.c:830-858): every team but at
+/// most one has no stocks left between its players.
+pub(crate) fn stock_outcome_decided(players: impl Iterator<Item = (Option<u8>, u8)>) -> bool {
+    // Each side's stocks: a team's summed, a free-for-all player's own.
+    let mut sides = [(None::<u8>, 0u32); 6];
+    let mut count = 0;
+    for (team, stocks) in players {
+        let side = match team {
+            Some(_) => sides[..count].iter().position(|side| side.0 == team),
+            None => None,
+        };
+        let side = side.unwrap_or_else(|| {
+            sides[count] = (team, 0);
+            count += 1;
+            count - 1
+        });
+        sides[side].1 += u32::from(stocks);
+    }
+    let out = sides[..count].iter().filter(|side| side.1 == 0).count();
+    out + 1 >= count
+}
+
+/// The team a fighter's hitboxes strike items for (itcoll.c:427-431): a
+/// thrown fighter's thrower's (ftLib_80086EB4 of x1064's owner), else its own.
+fn thrown_hitbox_team(
+    fighters: &[crate::scene_fighter::SceneFighter],
+    fighter: &crate::scene_fighter::SceneFighter,
+) -> Option<u8> {
+    match fighter.commands.thrown_by {
+        Some(spawn) => fighters
+            .iter()
+            .find(|f| f.spawn_number == spawn)
+            .and_then(|thrower| thrower.player.team),
+        None => fighter.player.team,
+    }
+}
+
 /// A posed article's bone matrix, its attach bone constrained to its
 /// holder's part as the holder stands now.
 /// Fighter GObjs a Versus match can hold: four players and their partners.
@@ -3543,6 +3631,7 @@ fn lock_on_targets(state: &mut InitialState, targets: &mut melee_it::LockOnTarge
                 player: f.core.player.id,
                 disabled: f.core.status.disabled,
                 position: f.core.camera_bone_position(),
+                team: f.core.player.team,
             });
         });
     }
@@ -4555,10 +4644,31 @@ const CLANK_SPARK: u16 = 0x41C;
 /// (it_802706D0_sub3) records the victim in the hitter's group, sets the
 /// hitter's dealt damage and logs a kind 2 hit for it_80270E30. An inert
 /// touch fails closed; the stats and hit sound are not modelled.
+/// Each port's team in a team battle without friendly fire, for the
+/// items' x20_team_id (their owner's team); empty otherwise.
+struct ItemTeams([Option<u8>; 4]);
+impl ItemTeams {
+    fn of(fighters: &[crate::scene_fighter::SceneFighter]) -> Self {
+        let mut teams = [None; 4];
+        for f in fighters {
+            if !f.player.friendly_fire {
+                teams[usize::from(f.player.id)] = f.player.team;
+            }
+        }
+        Self(teams)
+    }
+    /// itcoll.c:561-563: both items' owners fight on one team.
+    fn allied(&self, a: Option<u8>, b: Option<u8>) -> bool {
+        let team = |owner: Option<u8>| owner.and_then(|port| self.0[usize::from(port)]);
+        team(a).is_some() && team(a) == team(b)
+    }
+}
+
 fn item_hits_by_items(
     items: &mut melee_it::ItemPool,
     victim_id: u32,
     capsules: &melee_it::hurt::HurtCapsules,
+    teams: &ItemTeams,
     log: &mut melee_it::hurt::ItemHitLog,
 ) {
     use melee_coll::geometry::Capsule;
@@ -4593,11 +4703,17 @@ fn item_hits_by_items(
         };
         // Items sharing an owner (or both unowned) pass each other unless
         // the hitter reaches kindred items (xDCD b7) or the victim was
-        // dropped or thrown (xDCE b2). Teams are off. Two owners are one
+        // dropped or thrown (xDCE b2). Two owners are one
         // when their player is (ftLib_80086FD4, itcoll.c:555-560): Popo's
         // and Nana's ice blocks pass each other.
         let kindred = victim.owner == other.owner;
         if kindred && !other.strikes_kindred_items && !victim.hurt_by_owner {
+            continue;
+        }
+        // itcoll.c:561-563: a team battle without friendly fire spares the
+        // hitter's team unless the hitter ignores teams (xDCD b6, set with
+        // b5) or the victim was let go (xDCE b1, set with b0).
+        if teams.allied(victim.owner, other.owner) && !other.hits_owner && !victim.hurt_by_owner {
             continue;
         }
         // it_804D6D1C: this item's hitboxes that may meet the later item's

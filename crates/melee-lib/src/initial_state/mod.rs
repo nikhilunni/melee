@@ -24,6 +24,24 @@ mod stage_oldkongo;
 mod stage_oldyoshi;
 mod stock;
 use hsd_types::Vec3;
+/// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct SavedRules {
+    /// +8 is_teams (gm_8016B168).
+    pub teams: bool,
+    /// +1 bit 0, friendly_fire (gm_8016B0D4: lbz 0x24C9; clrlwi 31).
+    pub friendly_fire: bool,
+}
+impl SavedRules {
+    const ADDRESS: u32 = 0x8046_B6A0 + 0x24C8;
+    pub(crate) fn read(saved: &saved_pose::SavedPose) -> Self {
+        let rules = saved.bytes(Self::ADDRESS, 9);
+        Self {
+            teams: rules[8] == 1,
+            friendly_fire: rules[1] & 1 != 0,
+        }
+    }
+}
 fn word(raw: &[u8], offset: usize) -> u32 {
     u32::from_be_bytes(raw[offset..offset + 4].try_into().unwrap())
 }
@@ -300,6 +318,19 @@ impl InitialState {
                 }
             })
             .collect::<Result<Vec<_>>>()?;
+        // Every live Item (the item GObjs' user data, p_link 9).
+        let items = {
+            let entities = word(saved.bytes(0x804D_782C, 4), 0);
+            let mut gobj = word(saved.bytes(entities + 9 * 4, 4), 0);
+            let mut items = Vec::new();
+            while gobj != 0 {
+                ensure!(items.len() < 256, "cyclic item GObj list");
+                let object = saved.bytes(gobj, 0x30);
+                items.push(word(object, 0x2C));
+                gobj = word(object, 8);
+            }
+            items
+        };
         for (index, fighter) in fighters.iter_mut().enumerate() {
             let unfinished =
                 match_start && word(&bytes[index], 0x10) == 0 && word(&bytes[index], 0x2C) == 0;
@@ -307,7 +338,7 @@ impl InitialState {
             // human's keeps stale words (Peach's savestates hold an old x4C).
             let cpu_driven = fighter.0.input_source() == melee_ft::input::human::InputSource::Cpu;
             if !unfinished && cpu_driven {
-                fighter.0.cpu = cpu::restore(&bytes[index], bases[index], &bases);
+                fighter.0.cpu = cpu::restore(&bytes[index], bases[index], &bases, &items);
             }
             fighter.0.cpu.fighter_address = Some(bases[index]);
         }
@@ -316,6 +347,11 @@ impl InitialState {
                 // Player_GetHandicap, StaticPlayer +4B, stride E90.
                 f.grab_handicap =
                     saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x4B, 1)[0];
+                // Player_GetTeam (StaticPlayer +47) and the team rules.
+                let rules = SavedRules::read(&saved);
+                let team = saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x47, 1)[0];
+                f.player.team = rules.teams.then_some(team);
+                f.player.friendly_fire = rules.friendly_fire;
                 // Player_GetStocks, StaticPlayer stride 0xE90.
                 f.player.stocks =
                     saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8E, 1)[0];

@@ -31,6 +31,8 @@ pub(crate) fn import(
         damage: 0.0,
         cpu_mode: 4,
         cpu_level: 1,
+        team: None,
+        friendly_fire: false,
     };
     player.position = vector(raw, 0xB0);
     player.facing = float(raw, 0x2C);

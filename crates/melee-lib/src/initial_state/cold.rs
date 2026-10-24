@@ -505,15 +505,16 @@ const FACE_DEADBAND: f32 = 5.0;
 /// register carries over from player to player; on entry it is the caller's,
 /// which the three- and four-player boundaries show lies below 38.8 (0.0
 /// here). Within +-5 of the pick the player faces away from the pick's
-/// facing (+1 while the pick has none yet). Teams never pick a teammate
-/// (Versus free-for-all has none).
-fn initial_facings(spawn_x: &[f32]) -> Vec<f32> {
+/// facing (+1 while the pick has none yet). A team battle never picks a
+/// teammate (0x8016DFFC: is_teams, then Player_GetTeam).
+fn initial_facings(spawn_x: &[f32], teams: &[Option<u8>]) -> Vec<f32> {
     let mut facing = vec![0.0f32; spawn_x.len()];
     let mut distance = 0.0f32; // f26
     for i in 0..spawn_x.len() {
         let mut pick: Option<usize> = None;
         let mut farthest = 0.0f32; // f25
-        for j in (0..spawn_x.len()).filter(|&j| j != i) {
+        let opponent = |j: usize| j != i && (teams[i].is_none() || teams[i] != teams[j]);
+        for j in (0..spawn_x.len()).filter(|&j| opponent(j)) {
             if pick.is_some() {
                 // 0x8016E034: fsubs, then fneg below zero.
                 let dx = spawn_x[i] - spawn_x[j];
@@ -564,7 +565,8 @@ fn create_players(
         })
         .collect::<Result<_>>()?;
     let spawn_x: Vec<f32> = positions.iter().map(|p| p.x).collect();
-    let mut facing = initial_facings(&spawn_x);
+    let teams: Vec<Option<u8>> = scenario.fighters.iter().map(|f| f.team).collect();
+    let mut facing = initial_facings(&spawn_x, &teams);
     // fn_8016D8AC (0x8016DA3C): the delay grows by five for every Player slot
     // up to this one, entering or not (ports 2 and 4 enter at 10 and 20).
     let mut entry_delays: Vec<i32> = scenario
@@ -572,7 +574,31 @@ fn create_players(
         .iter()
         .map(|fighter| ENTRY_STAGGER_FRAMES * (i32::from(fighter.slot) + 1))
         .collect();
-    if let crate::slippi::SpawnRule::NeutralTable(table) = scenario.slippi.spawn {
+    let team_order = teams
+        .iter()
+        .copied()
+        .collect::<Option<Vec<u8>>>()
+        .map(|teams| crate::slippi::teams_order(&teams));
+    if let (crate::slippi::SpawnRule::NeutralTable(table), Some(order)) =
+        (scenario.slippi.spawn, &team_order)
+    {
+        // A team battle: NeutralSpawn's teams rows by team order, when every
+        // team has none or two players (0x8016E5C4); else retail's spawns.
+        if let Some(order) = order {
+            for (player, &row) in order.iter().enumerate() {
+                let (position, face) = crate::slippi::neutral_spawn_teams(
+                    assets.stage_descriptor.music_id,
+                    row,
+                )
+                .context("NeutralSpawn: no teams row for this stage")?;
+                positions[player] = position;
+                facing[player] = face;
+                if let Some(delay) = table.entry_delay(row) {
+                    entry_delays[player] = delay;
+                }
+            }
+        }
+    } else if let crate::slippi::SpawnRule::NeutralTable(table) = scenario.slippi.spawn {
         // Slippi's NeutralSpawn (0x8016E510) then overwrites each Player's
         // initial coordinates and facing by spawn order (players ascend by
         // slot); one version also overwrites the entry delay.
@@ -610,6 +636,8 @@ fn create_players(
             },
             cpu_mode: 4,
             cpu_level: 1,
+            team: scenario.fighters[p].team,
+            friendly_fire: scenario.friendly_fire,
         };
         let context = SpawnContext {
             map: &mut *map,

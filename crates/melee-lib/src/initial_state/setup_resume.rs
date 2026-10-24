@@ -83,6 +83,9 @@ pub(super) fn fighter(
         damage: f32::from(i16::from_be_bytes(raw[0x60..0x62].try_into().unwrap())),
         cpu_mode: i32::from(raw[0x4A]),
         cpu_level: i32::from(raw[0x49]),
+        // Player_GetTeam (StaticPlayer +47) in a team battle.
+        team: super::SavedRules::read(saved).teams.then_some(raw[0x47]),
+        friendly_fire: super::SavedRules::read(saved).friendly_fire,
     };
     let mut counter = SpawnCounter(word(saved.bytes(0x804D_64F8, 4), 0));
     SceneFighter::from_parameters(

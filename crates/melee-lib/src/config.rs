@@ -353,6 +353,9 @@ pub struct PlayerConfig {
     /// The controller-fix Gecko code the player's console ran (UCF);
     /// retail is [`ControllerFix::Off`].
     pub controller_fix: ControllerFix,
+    /// The player's team in a team battle (PlayerInitData +9: 0 red, 1 blue,
+    /// 2 green); `None` in a free-for-all. Every player has one or none does.
+    pub team: Option<u8>,
 }
 impl PlayerConfig {
     pub fn new(port: Port, character: Character) -> Self {
@@ -361,7 +364,12 @@ impl PlayerConfig {
             character,
             costume: Costume::default(),
             controller_fix: ControllerFix::Off,
+            team: None,
         }
+    }
+    pub fn with_team(mut self, team: u8) -> Self {
+        self.team = Some(team);
+        self
     }
     pub fn with_controller_fix(mut self, fix: ControllerFix) -> Self {
         self.controller_fix = fix;
@@ -384,6 +392,9 @@ pub struct MatchRules {
     pub sudden_death: bool,
     /// Retail music rule 6 consults the roster unlock state.
     pub all_characters_unlocked: bool,
+    /// StartMeleeRules friendly_fire: in a team battle, teammates' attacks
+    /// land (gm_8016B0D4).
+    pub friendly_fire: bool,
 }
 impl Default for MatchRules {
     fn default() -> Self {
@@ -392,6 +403,7 @@ impl Default for MatchRules {
             time_limit_seconds: None,
             sudden_death: false,
             all_characters_unlocked: true,
+            friendly_fire: false,
         }
     }
 }
@@ -435,6 +447,22 @@ impl MatchConfig {
                 "players must occupy distinct ascending ports",
             ));
         }
+        let teams: Vec<Option<u8>> = self.players.iter().map(|p| p.team).collect();
+        if teams.iter().any(Option::is_some) {
+            if teams.iter().any(|t| !matches!(t, Some(0..=2))) {
+                return Err(StartError::InvalidConfig(
+                    "a team battle gives every player a team, 0 to 2",
+                ));
+            }
+            if self.rules.time_limit_seconds.is_some() {
+                return Err(StartError::InvalidConfig(
+                    "timed team outcomes need a retail witness",
+                ));
+            }
+            if teams.iter().all(|t| *t == teams[0]) {
+                return Err(StartError::InvalidConfig("a team battle needs two teams"));
+            }
+        }
         if self.rules.sudden_death
             && (self.rules.stocks != 1 || self.rules.time_limit_seconds.is_some())
         {
@@ -464,6 +492,7 @@ impl MatchConfig {
                     spawn_point: -1,
                     stocks: self.rules.stocks,
                     controller_fix: player.controller_fix,
+                    team: player.team,
                 })
                 .collect(),
             stage: self.stage.descriptor().ok_or(StartError::UnportedStage(self.stage))?,
@@ -471,6 +500,7 @@ impl MatchConfig {
             all_characters_unlocked: Some(self.rules.all_characters_unlocked),
             time_limit: self.rules.time_limit_seconds,
             sudden_death: self.rules.sudden_death,
+            friendly_fire: self.rules.friendly_fire,
             slippi: Default::default(),
         })
     }

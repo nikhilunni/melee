@@ -19,6 +19,12 @@ pub struct Config {
     /// older recordings and when both are off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) controller_fixes: Option<Vec<String>>,
+    /// Each player's team in a team battle; absent in a free-for-all.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) teams: Option<Vec<u8>>,
+    /// Friendly fire in a team battle.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub(crate) friendly_fire: bool,
 }
 
 const CHARACTERS: [(Character, &str); 26] = [
@@ -84,6 +90,14 @@ impl From<&MatchConfig> for Config {
                         .map(|p| p.controller_fix.name().to_owned())
                         .collect()
                 }),
+            teams: config.players[0].team.map(|_| {
+                config
+                    .players
+                    .iter()
+                    .map(|p| p.team.unwrap_or_default())
+                    .collect()
+            }),
+            friendly_fire: config.rules.friendly_fire,
         }
     }
 }
@@ -109,6 +123,10 @@ impl Config {
                         .and_then(|name| ControllerFix::from_name(name))
                         .ok_or("unknown replay controller fix")?,
                 },
+                team: match &self.teams {
+                    None => None,
+                    Some(teams) => Some(*teams.get(index).ok_or("one team per player")?),
+                },
             })
         };
         let players = (0..self.players.len())
@@ -119,6 +137,7 @@ impl Config {
             .with_seed(Seed(self.seed));
         config.rules.all_characters_unlocked = self.all_characters_unlocked;
         config.rules.sudden_death = self.sudden_death;
+        config.rules.friendly_fire = self.friendly_fire;
         Ok(config)
     }
 }
