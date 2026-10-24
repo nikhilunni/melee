@@ -1719,6 +1719,7 @@ fn start_fd_kirby_copy_wave13_boundaries_600() {
         "start_fd_kirby_zelda4",
         "start_fd_kirby_bowser4",
         "start_fd_kirby_iceclimbers4",
+        "start_fd_kirby_sheik4",
     ];
     for name in BOUNDARIES {
         movement_gate_ticks(name, 600);

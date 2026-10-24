@@ -1071,3 +1071,12 @@ stage = "FinalDestination"
 players = ["Kirby", "IceClimbers"]
 stocks = 4
 seed = 1197273965
+
+[[boundary]]
+name = "start_fd_kirby_sheik4"
+cold = "start_fd_kirby_sheik4_cold"
+savestate = "harness/roms/start_fd_kirby_sheik4.sav"
+stage = "FinalDestination"
+players = ["Kirby", "Sheik"]
+stocks = 4
+seed = 3825146497

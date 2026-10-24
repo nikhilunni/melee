@@ -987,5 +987,11 @@ Remaining work, in the order to take it:
    three-fighter boundary). Done (wave 13): the grounded Inhale rows
    leaving a floor (`kirby_inhale_randall_{start,loop,end}_ys_fox4`).
 
-Giga Bowser's copied Fire Breath entries and rows 538..543 stay fail-closed
-until a retail witness exists (ftKb_Init_803C9DD0/803C9E54).
+### Wave 14 integration verification boundaries
+
+The copied Bowser breath is witnessed; Giga Bowser's copied entries and
+rows 538..543 retain their fail-closed behavior pending a retail witness
+(ftkirbyspecialkoopa.c, ftKb_Init_803C9DD0/803C9E54). Nana's swallowed
+ability is supplied by the Ice Climbers' SWALLOWED_ABILITY callback,
+following ftCo_ThrownKirby.c:57-59. The copied-special boundary gate also
+includes the warm and cold Sheik setup, whose copy itself stays unported.
