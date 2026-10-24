@@ -5,16 +5,43 @@ Legend: `[ ]` todo, `[~]` in progress (add date), `[x]` done, `[!]` blocked
 and what is next. Finished work lives in git history and `docs/PORT_NOTES/`;
 do not keep a session log here.
 
-## Current state (2026-10-19, after the twelfth wave)
+## Current state (2026-10-24, wave 13 closing)
 
+- **Wave 13 chased breadth** (user, 2026-10-24: completeness is the only
+  goal; close fail-closed sites and unported code before chasing single
+  divergences). `docs/PARITY.md` and `harness/parity_inventory.py` measure
+  it per retail function: on main, in-game logic is **42.6% ported or
+  partial, 54.2% with inlined bodies and rows** (41.8 / 52.2 at the wave's
+  start), with **235 fail-closed sites** (331). `harness/retail_coverage.py`
+  (Dolphin Branch Watch, `docs/PORT_NOTES/RETAIL_COVERAGE.md`) measures
+  what retail executes: 7,919 of 19,827 functions across 1,472 recorded
+  scenarios; out-of-scope runs (items on, four players, other stages) add
+  1,513 more, mostly items.
+- **Six wave-13 branches are committed but not merged**, each with a
+  handoff note in `docs/handoffs/` (branch, tip, what is verified, what is
+  WIP, how to merge): CPU players (Versus CPU at any level, 94 witnesses),
+  random items (Item Switch boundaries, the spawner, Capsule/Box/Barrel),
+  Kongo Jungle and Jungle Japes, match flow (3-4 player free-for-all, team
+  battles, doubles replays), grab/throw/common-state edges (Bowser's Klaw
+  on the Stadium windmill), and Kirby's Nayru's Love, Fire Breath and Ice
+  Shot. `docs/handoffs/WAVE13_FOLLOWUPS.md` lists every divergence and open
+  site the wave's agents reported.
+- Gates on main at 03f801e2 (2026-10-24): sweep 3075 exact, 102 not
+  comparable, 0 regressions against 26fee4c7 (55 fixed); the 307 failing
+  and one particle fault are local scenarios not on main (the unmerged
+  branches' recordings, `corpus_v3_ys_ganondorf_fox4_e281b1a7a_p1`).
+  `public-v3.7` replays 108/108 complete; harness pytest 401. The debug
+  workspace gate, `m5_gate` in full, wasm-check and the perf gate were not
+  rerun this wave.
 - **All 26 characters are registered and all six tournament stages run
-  bit-exact.** Kirby (2026-10-12) has his movement, attacks, all four
-  throws, Inhale (catch, mouthful, spit, swallow), Final Cutter, Hammer,
-  Stone, the helmeted jumps and losing an ability, and 8 of the 25
-  copied neutral specials (Fox, Falco, Captain Falcon, Ganondorf, Marth,
-  Roy, Jigglypuff, Mr. Game & Watch; `docs/PORT_NOTES/KIRBY.md`, "Where
-  this stands and how to resume"). Each character has a start boundary vs Fox on FD (`m4_gate`),
-  a witness list in `m5_gate` and, except Kirby, explorer matches.
+  bit-exact; every Versus stage is named** (unported ones fail closed by
+  name) and Yoshi's Island 64 and Kongo Jungle 64 are ported
+  (`docs/PORT_NOTES/N64_STAGES.md`). Kirby has his movement, attacks,
+  throws, Inhale, Final Cutter, Hammer, Stone and 21 of the 25 copied
+  neutral specials on main (all but Zelda's, Bowser's and the Ice
+  Climbers', which are on a handoff branch, and Sheik's, unstarted;
+  `docs/PORT_NOTES/KIRBY.md`). Each character has a start boundary vs Fox
+  on FD (`m4_gate`), a witness list in `m5_gate` and explorer matches.
 - **Slippi replays** (every tick's Pre Frame seed is checked, so a complete
   game has no random-stream drift):
   - `~/melee-data/replays/public-v3.7` (108 games): **108 complete**, every
@@ -108,7 +135,21 @@ do not keep a session log here.
 
 ## Next (recommended order)
 
-1. [~] **Slippi corpus.** 5 games stop in `public-v3.7-b`, each explained:
+1. [ ] **Merge the six wave-13 handoff branches** (`docs/handoffs/*.md`):
+   rebase each onto main, drop or re-guard its WIP commits, then a full
+   sweep and `replay-batch` per branch. Suggested order: grab/common edges,
+   Kirby copies, match flow, random items, Kongo/Japes (reconcile its
+   barrel with main's `barrel.rs`), CPU players (largest; conflicts with
+   the all-stages `make_boundary.py`).
+2. [ ] **Breadth wave 14**, from `docs/PARITY.md` (rerun
+   `parity_inventory.py` after the merges) and `WAVE13_FOLLOWUPS.md`: the
+   item-use fighter rows (HeavyGet, Lift, swing and shooting items), more
+   random item kinds, the 22 Versus stages still unported, Sheik's copy,
+   CPU stage awareness, stamina/coin/handicap/time modes, then the rest of
+   the fail-closed backlog. Record on a quiet machine: under heavy load
+   about 8% of retail recordings differed between runs, with or without
+   the coverage build (`RETAIL_COVERAGE.md`).
+3. [~] **Slippi corpus.** 5 games stop in `public-v3.7-b`, each explained:
    - Kirby + Mr. Game & Watch: the copied Chef is done and it now stops at
      9909: Mr. Game & Watch's x is ~0.008 off in his aerial Fire (374) at
      FoD's left edge beside Kirby; not yet diagnosed;
@@ -135,19 +176,15 @@ do not keep a session log here.
      Mr. Saturn's stage-spawned states 7-10 (need a stage- or
      random-spawned item), Bob-omb's slide, a holding-an-item audit for
      DamageIce and FlyReflectWall, article removers that do not queue the
-     generator-cursor walk (`docs/SLIPPI.md` audit), Bowser's Klaw holder
-     losing its floor (`ftKp_SpecialS_801332C4`; likely reachable on the
-     Stadium windmill like the grab pair, 649b09c1), CatchPull losing its
+     generator-cursor walk (`docs/SLIPPI.md` audit), CatchPull losing its
      floor (same code as CatchWait, unwitnessed);
-   - ported from retail's table but unwitnessed: an item hit by a Dark
-     element (efSync 0x416) or a ReDead element, `melee-it` `hurt.rs`.
-2. [~] **Kirby's copied specials**: 8 of 25 kinds done 2026-10-19 (Blaster
-   x2, Punch x2, Shield Breaker / Flare Blade, Rollout, Chef), each sharing
-   the original's states through a family-crate trait. The checklist per
-   kind is `docs/PORT_NOTES/KIRBY.md` item 2. Next: Sheik, Peach, Samus,
-   then the rest; charge kinds need `ftKb_Init_UnkMotionStates4`. Then
-   inhaling items and pickup hand poses.
-3. [ ] **Match clone below 1 ms**: the floor is the 64 ready slots per
+   - ported from retail's table but unwitnessed: a ReDead element
+     (`melee-it` `hurt.rs`; no loaded script carries one).
+4. [~] **Kirby's copied specials**: 21 of 25 kinds on main, three more on
+   the Zelda/Bowser/Ice Climbers handoff branch; Sheik's Needle Storm is
+   unstarted (its boundary exists; `charge_flash.rs`'s Sheik arm is empty).
+   Then inhaling items and pickup hand poses (`KIRBY.md` item 3).
+5. [ ] **Match clone below 1 ms**: the floor is the 64 ready slots per
    effect model (~12 of 19 MB); shared slots need buffer-reusing copies in
    hsd-anim, or per-model limits proven from retail. Fighter track
    buffers are another 4 MB.
