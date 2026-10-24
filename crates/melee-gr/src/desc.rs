@@ -241,6 +241,66 @@ pub fn read_pupupu_parameters(archive: &Archive) -> ReadResult<crate::pupupu::Pa
         blink_delay: [r.f32(p + 44)? as i32, r.f32(p + 48)? as i32],
     })
 }
+/// grOy_StageData / grDatFiles_801C6038: GrOy.dat. grOy_StageCallbacks[4]
+/// carries flags 0xC0000000, so map 4 selects the lights and fog.
+pub fn read_old_yoshi(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::OldYoshi, 4)
+}
+/// `yakumono_param` as groldyoshi.c reads it (grOldYoshi_8020EC10,
+/// grOldYoshi_8020F088): +0x18 with `lha`.
+pub fn read_old_yoshi_parameters(archive: &Archive) -> ReadResult<crate::oldyoshi::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    Ok(crate::oldyoshi::Parameters {
+        vanish_after: r.s16(p)?,
+        return_after: r.s16(p + 0x2)?,
+        maximum_speed: r.f32(p + 0x4)?,
+        acceleration: r.f32(p + 0x8)?,
+        sink_depth: r.f32(p + 0xC)?,
+        disable_frame: r.s16(p + 0x10)?,
+        enable_frame: r.s16(p + 0x12)?,
+        guest_wait: [r.s16(p + 0x16)?, r.s16(p + 0x14)?],
+        guest_height: r.s16(p + 0x18)?,
+    })
+}
+/// grOk_StageData / grDatFiles_801C6038: GrOk.dat. stage_callbacks[3]
+/// carries flags 0xC0000000, so map 3 selects the lights and fog.
+pub fn read_old_kongo(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::OldKongo, 3)
+}
+/// `grOldKongo_YakumonoParam` (groldkongo.c:27-61) as the asm reads it.
+pub fn read_old_kongo_parameters(archive: &Archive) -> ReadResult<crate::oldkongo::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |offset: u32| r.f32(p + offset);
+    let w = |offset: u32| r.s32(p + offset);
+    let mut aim_weights = [0; 8];
+    for (i, weight) in aim_weights.iter_mut().enumerate() {
+        *weight = r.s16(p + 0x2C + 2 * i as u32)?;
+    }
+    Ok(crate::oldkongo::Parameters {
+        bird_wait: [i32::from(r.s16(p + 0x2)?), i32::from(r.s16(p)?)],
+        bird_height_range: f(0x4)?,
+        shot_delay: [f(0x8)?, f(0xC)?],
+        catch_radius: f(0x10)?,
+        turn_wait: [f(0x18)?, f(0x14)?],
+        turn_acceleration: f(0x1C)?,
+        turn_speed: f(0x20)?,
+        turn_spin: [f(0x28)?, f(0x24)?],
+        aim_weights,
+        stop_interval: [w(0x40)?, w(0x3C)?],
+        move_acceleration: f(0x44)?,
+        move_speed: f(0x48)?,
+        drift_frames: [w(0x50)?, w(0x4C)?],
+        shot_damage: w(0x54)?,
+        shot_angle: w(0x58)?,
+        shot_growth: w(0x5C)?,
+        shot_set_knockback: w(0x60)?,
+        shot_base_knockback: w(0x64)?,
+        shot_element: w(0x68)?,
+        catch_material: w(0x6C)?,
+    })
+}
 /// grIz_StageData / grDatFiles_801C6038: GrIz.dat. grIz_StageCallbacks[3]
 /// carries flags 0xC0000000, so map 3 selects the lights and fog.
 pub fn read_izumi(archive: &Archive) -> ReadResult<StageDesc> {

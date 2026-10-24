@@ -14,3 +14,6 @@ pub mod story;
 pub mod wind;
 
 pub mod pupupu;
+
+pub mod oldyoshi;
+pub mod oldkongo;

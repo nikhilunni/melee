@@ -647,6 +647,8 @@ const STAGE_GRADIENTS = {
   FountainOfDreams: ['#3a2a8a', '#0d0a2e', '#ff8ad8'],
   PokemonStadium: ['#3d8fd8', '#123058', '#5ed27a'],
   YoshisStory: ['#7ccf5a', '#245a2a', '#ffd25a'],
+  YoshisIsland64: ['#8fd0f0', '#2a6a3a', '#f5e070'],
+  KongoJungle64: ['#6a8a3a', '#1e2e10', '#c88a3a'],
 };
 /** A stage's gradient with `children` on it (an emblem, its icon). */
 function stagePlaceholder(id, ...children) {

@@ -109,6 +109,10 @@ pub struct CombatState {
     /// (fighter.c:2856, before ftCo_800DE854's knockback), so the reaction
     /// does not add x1838_percentTemp again.
     pub pending_percent_taken: bool,
+    /// dmg.x1848_kb_angle (an int) as ftCo_Barrel_ApplyKnockback writes it
+    /// before ftCo_8008DCE0: a signed angle no hit record's u16 holds.
+    /// The reaction's angle and meteor test read it, then it clears.
+    pub launch_angle_override: Option<i32>,
     /// x1960_vibrateMult is PlCo +1A4 although the pending hit is no longer
     /// electric: ftCo_800DE854 replaced an electric hit's element with the
     /// captor's throw record's, not the scale ftColl_8007A06C set.
@@ -505,16 +509,18 @@ impl DamageParameters {
     }
     /// ftColl_8007AC68 (8007AC68): a fixed launch angle inside PlCo's meteor
     /// range.
-    fn is_meteor(&self, angle: u16) -> bool {
-        let angle = u32::from(angle);
-        angle != 361 && self.meteor_angles[0] <= angle && angle <= self.meteor_angles[1]
+    fn is_meteor(&self, angle: i32) -> bool {
+        let angle = i64::from(angle);
+        angle != 361
+            && i64::from(self.meteor_angles[0]) <= angle
+            && angle <= i64::from(self.meteor_angles[1])
     }
     /// ftCo_Damage_CalcAngle (8008D7F0): the 361-degree sentinel interpolates on ground.
-    pub(super) fn launch_angle(&self, angle: u16, knockback: f32, ground: GroundOrAir) -> f32 {
+    pub(super) fn launch_angle(&self, angle: i32, knockback: f32, ground: GroundOrAir) -> f32 {
         const DEG_TO_RAD: f32 = std::f32::consts::PI / 180.0;
         if angle != 361 {
             // retail 8008D854: fmuls after integer-to-single conversion.
-            return DEG_TO_RAD * f32::from(angle);
+            return DEG_TO_RAD * angle as f32;
         }
         if ground == GroundOrAir::Air {
             return self.sakurai_air_angle;
@@ -2456,7 +2462,9 @@ impl FighterCore {
             self.physics.percent += hit.percent_damage;
         }
         let angle = assets.damage.launch_angle(
-            hit.descriptor.angle,
+            self.combat
+                .launch_angle_override
+                .unwrap_or(i32::from(hit.descriptor.angle)),
             hit.knockback,
             self.physics.ground_or_air,
         );
@@ -2715,7 +2723,12 @@ impl FighterCore {
             // ftCo_Damage_CalcAngle (8008D7F0) -> ftColl_8007AC68 (8007AC68).
             meteor_cancel: assets
                 .damage
-                .is_meteor(hit.descriptor.angle)
+                .is_meteor(
+                    self.combat
+                        .launch_angle_override
+                        .take()
+                        .unwrap_or(i32::from(hit.descriptor.angle)),
+                )
                 .then_some(assets.damage.meteor_cancel_frames as u8),
             mv_word: 0,
         });

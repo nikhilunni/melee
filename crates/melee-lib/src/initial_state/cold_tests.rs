@@ -96,6 +96,35 @@ fn setup_snapshot(state: &InitialState) -> Record {
                 sink.field("origin_y", &platform.origin_y);
             }
         }
+        SceneStage::OldYoshi(stage) => {
+            for (index, cloud) in stage.clouds.iter().enumerate() {
+                let name = format!("stage.cloud[{index}]");
+                let mut prefix = PrefixSink::new(sink, &name);
+                let sink: &mut dyn SnapshotSink = &mut prefix;
+                sink.field("phase", &(cloud.phase as u8));
+                sink.field("counter", &cloud.counter);
+                sink.field("rest_y", &cloud.rest_y);
+                sink.field("depth", &cloud.depth);
+                sink.field("speed", &cloud.speed);
+            }
+            sink.field("stage.guest.timer", &stage.guest.timer);
+            sink.field("stage.guest.shown", &stage.guest.shown);
+        }
+        SceneStage::OldKongo(stage) => {
+            let barrel = &stage.barrel;
+            sink.field("stage.barrel.turn", &(barrel.turn as u8));
+            sink.field("stage.barrel.catch", &(barrel.catch as u8));
+            sink.field("stage.barrel.drift", &(barrel.drift as u8));
+            sink.field("stage.barrel.turn_timer", &barrel.turn_timer);
+            sink.field("stage.barrel.drift_timer", &barrel.drift_timer);
+            sink.field("stage.barrel.aim", &barrel.aim);
+            sink.field("stage.barrel.target_aim", &barrel.target_aim);
+            sink.field("stage.barrel.spin", &barrel.spin);
+            sink.field("stage.barrel.speed", &barrel.speed);
+            sink.field("stage.bird.timer", &stage.bird.timer);
+            sink.field("stage.cannon", &stage.cannon);
+            sink.field("stage.catch_enabled", &stage.catch_enabled);
+        }
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
             sink.field("stage.shy_timer", &stage.shy_timer);

@@ -1183,6 +1183,19 @@ fn fountain_of_dreams_particle_rng_order() {
     particle_rng_sites_with_ledger("start_fod_fox", 600, "ledger600");
     particle_rng_sites_with_ledger("start_fod_fox_marth4", 600, "ledger600");
 }
+/// The N64 stages' start boundaries (docs/PORT_NOTES/N64_STAGES.md):
+/// Yoshi's Island N64's guest draws every frame; Kongo Jungle N64's barrel
+/// and bird draw at creation.
+#[test]
+fn n64_stage_starts_600() {
+    movement_gate_ticks("start_yi64_fox_marth4", 600);
+    movement_gate_ticks("start_kj64_fox_marth4", 600);
+}
+#[test]
+fn n64_stage_particle_rng_order() {
+    particle_rng_sites_with_ledger("start_yi64_fox_marth4", 600, "ledger600");
+    particle_rng_sites_with_ledger("start_kj64_fox_marth4", 600, "ledger600");
+}
 
 #[test]
 fn idle_fd_puff_600() {

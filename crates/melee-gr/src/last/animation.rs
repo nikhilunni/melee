@@ -161,6 +161,44 @@ impl BackgroundAnimation {
     pub fn first_animation_end_frame(&self) -> Option<f32> {
         self.first_aobj(self.root).map(|a| a.end_frame)
     }
+    /// `grAnime_801C7FF8(gobj, bone, 2, index, 0.0, 1.0)` (0x801C7FF8): the
+    /// material animations of model animation `index` replace those of
+    /// `bone`'s subtree from frame zero; joint animations keep running.
+    pub fn play_material_subtree(&mut self, bone: usize, index: usize) {
+        let end = bone + self.subtree(bone).len();
+        self.play_materials(index, bone, end);
+    }
+    /// `grAnime_801C83D0(gobj, bone, 2)` (0x801C83D0): `HSD_ForeachAnim`
+    /// over `bone`'s subtree, material and texture AObjs only, stops at the
+    /// first one and tests `AOBJ_NO_ANIM`. No AObj reads as not ended.
+    pub fn material_subtree_ended(&self, bone: usize) -> bool {
+        self.first_material_aobj(self.joints[bone])
+            .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0)
+    }
+    fn first_material_aobj(&self, joint: JObjId) -> Option<&hsd_anim::aobj::AObj> {
+        let node = self.tree.get(joint);
+        for object in &node.dobj {
+            if let Some(material) = &object.mobj {
+                if let Some(aobj) = &material.aobj {
+                    return Some(aobj);
+                }
+                if let Some(aobj) = material.textures.iter().find_map(|t| t.animation.as_ref()) {
+                    return Some(aobj);
+                }
+            }
+        }
+        if node.flags & hsd_anim::jobj::JOBJ_INSTANCE != 0 {
+            return None;
+        }
+        let mut child = self.tree.child(joint);
+        while let Some(id) = child {
+            if let Some(aobj) = self.first_material_aobj(id) {
+                return Some(aobj);
+            }
+            child = self.tree.next(id);
+        }
+        None
+    }
     fn first_aobj(&self, joint: JObjId) -> Option<&hsd_anim::aobj::AObj> {
         let node = self.tree.get(joint);
         if let Some(aobj) = &node.aobj {
@@ -226,6 +264,35 @@ impl BackgroundAnimation {
     pub fn set_wrapper_flags_all(&mut self, flags: u32) {
         let joint = self.gobj_joint();
         self.tree.set_flags_all(joint, flags);
+    }
+    /// `HSD_JObjSetRotationZ` on a descendant (Ground_801C3FA4 index).
+    pub fn set_joint_rotation_z(&mut self, bone: usize, z: f32) {
+        let joint = self.joints[bone];
+        self.tree.set_rotation_z(joint, z);
+    }
+    /// `grAnime_801C7A04(gobj, 0, 7, rate)` (0x801C7A04): every joint,
+    /// material and texture AObj of the model plays at `rate`
+    /// (HSD_AObjSetRate).
+    pub fn set_rate(&mut self, rate: f32) {
+        for &joint in &self.joints {
+            if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
+                aobj.set_rate(rate);
+            }
+            if let Some(objects) = self.tree.dobj_mut(joint) {
+                for object in objects {
+                    if let Some(material) = &mut object.mobj {
+                        if let Some(aobj) = &mut material.aobj {
+                            aobj.set_rate(rate);
+                        }
+                        for texture in &mut material.textures {
+                            if let Some(aobj) = &mut texture.animation {
+                                aobj.set_rate(rate);
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
     /// `HSD_JObjAddRotationZ` on a descendant (Ground_801C3FA4 index).
     pub fn add_rotation_z(&mut self, bone: usize, delta: f32) {

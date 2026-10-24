@@ -6093,6 +6093,27 @@ static CORPUS_V3_MATCHES: [(&str, usize); 725] = [
     // enemy (hold kind 4) shows its element's effect (it_80270E30,
     // hit_effect_ids[Dark], efSync 0x416) instead of the plain spark.
     ("corpus_v3_ys_ganondorf_fox4_e1c91f9f7_p0", 1000),
+    // Yoshi's Island N64 (groldyoshi.c): whole Fox-Marth matches. Clouds
+    // carry fighters (fn_8020F2A8), sink, fade with the puff and come back
+    // (grOldYoshi_8020EC10); the guest draws every waiting frame and shows
+    // past its wait (grOldYoshi_8020F088).
+    ("corpus_v3_yi64_fox_marth4_ef89b3e70_p0", 5751),
+    ("corpus_v3_yi64_fox_marth4_edafcfddf_p0", 4179),
+    ("corpus_v3_yi64_fox_marth4_e0fcf0c70_p0", 6001),
+    ("corpus_v3_yi64_fox_marth4_efc6a328f_p0", 4241),
+    ("corpus_v3_yi64_fox_marth4_eeda0d0fc_p2", 5005),
+    ("corpus_v3_yi64_fox_marth4_ee2e29518_p2", 5405),
+    ("corpus_v3_yi64_fox_marth4_ec13743d5_p2", 5169),
+    ("corpus_v3_yi64_fox_marth4_e26ea92b1_p2", 6001),
+    // Kongo Jungle N64 (groldkongo.c): the barrel catches (grOldKongo_80210454,
+    // BarrelWait), A/B fires early (Ground_801C4DD0) and the shot launches
+    // along the aim (ftCo_8009EC70, a negative x1848_kb_angle included).
+    ("corpus_v3_kj64_fox_marth4_edafcfddf_p0", 2777),
+    ("corpus_v3_kj64_fox_marth4_ecdf8887e_p1", 3094),
+    ("corpus_v3_kj64_fox_marth4_e573e2d95_p2", 3390),
+    ("corpus_v3_kj64_fox_marth4_edb2b114a_p0", 3428),
+    ("corpus_v3_kj64_fox_marth4_e4213e6a5_p1", 3537),
+    ("corpus_v3_kj64_fox_marth4_ee133b82f_p0", 3608),
 ];
 
 #[test]

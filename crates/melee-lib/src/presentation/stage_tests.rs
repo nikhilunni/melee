@@ -20,6 +20,8 @@ fn files() -> Option<PathBuf> {
             "GrOp.dat",
             "GrIz.dat",
             "GrPs.dat",
+            "GrOy.dat",
+            "GrOk.dat",
         ]
         .map(|file| files.join(file)),
     )

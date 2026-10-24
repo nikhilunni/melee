@@ -303,6 +303,8 @@ struct StageGradient: View {
         case "FountainOfDreams": [Color(hex: 0x6a3aa8), Color(hex: 0x2b2470), Color(hex: 0x0d0b26)]
         case "PokemonStadium": [Color(hex: 0x3c7fc4), Color(hex: 0x24506e), Color(hex: 0x16301c)]
         case "YoshisStory": [Color(hex: 0xf2b84b), Color(hex: 0x7cc06a), Color(hex: 0x2c5a2e)]
+        case "YoshisIsland64": [Color(hex: 0x8fd0f0), Color(hex: 0x5aa84a), Color(hex: 0x24502a)]
+        case "KongoJungle64": [Color(hex: 0x6a8a3a), Color(hex: 0x2e4a1c), Color(hex: 0x0f1a0a)]
         default: [Color(hex: 0x2b1a6e), Color(hex: 0x10145a), Color(hex: 0x05060f)]
         }
     }

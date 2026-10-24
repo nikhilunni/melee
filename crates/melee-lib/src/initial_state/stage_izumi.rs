@@ -1,6 +1,7 @@
 //! Fountain of Dreams at a saved boundary: Ground owners, the platform
 //! controllers (`GroundVars_izumi3`, gr/types.h:209), their JObjs, and the
-//! collision joints those JObjs move.
+//! collision joints those JObjs move. The saved-Ground helpers here serve
+//! every stage whose controllers move JObjs.
 use super::{float, saved_pose::SavedPose, stage::saved_joints, word};
 use crate::{
     assets::Assets,
@@ -14,45 +15,45 @@ use hsd_particle::system::ParticleSystem;
 use hsd_types::{Mtx, Vec3};
 use melee_ft::fighter::RetailTrig;
 use melee_gr::izumi::{
-    procs::{OBJECT_ORDER, PLATFORMS},
+    procs::PLATFORMS,
     Izumi, Platform, PlatformPhase,
 };
 
 /// `HSD_GObj_Entities`: the p_link list heads.
 const GOBJ_ENTITIES: u32 = 0x804D_782C;
 const GROUND_PLINK: u32 = 5;
+/// More Ground GObjs than any stage creates: a longer list is a cycle.
+const GROUND_BOUND: usize = 32;
 /// `groundCollVtx` (mplib.c), an array of 0x18-byte CollVtx.
 const COLL_VTX: u32 = 0x804D_64B8;
 const COLL_VTX_SIZE: u32 = 0x18;
 /// HSD_JObj fields (jobj.h).
 const JOBJ_CHILD: u32 = 0x10;
-const JOBJ_FLAGS: u32 = 0x14;
+pub(super) const JOBJ_FLAGS: u32 = 0x14;
 const JOBJ_SCALE: u32 = 0x2C;
-const JOBJ_TRANSLATE: u32 = 0x38;
+pub(super) const JOBJ_TRANSLATE: u32 = 0x38;
 const JOBJ_MTX: u32 = 0x44;
 const JOBJ_AOBJ: u32 = 0x7C;
 /// HSD_AObj curr_frame.
 const AOBJ_FRAME: u32 = 0x4;
-const JOBJ_HIDDEN: u32 = 0x10;
+pub(super) const JOBJ_HIDDEN: u32 = 0x10;
 /// Ground map id of the star model (Ground_801C1A20(joint, -1)).
 const STAR_MAP: u32 = u32::MAX;
 
-struct SavedGround {
+pub(super) struct SavedGround {
     /// gobj->hsd_obj: the map-scale wrapper.
-    jobj: u32,
-    ground: u32,
-    map: u32,
+    pub(super) jobj: u32,
+    pub(super) ground: u32,
+    pub(super) map: u32,
 }
 
-fn ground_list(saved: &SavedPose) -> Result<Vec<SavedGround>> {
+/// The Ground GObjs in p_link order.
+pub(super) fn ground_list(saved: &SavedPose) -> Result<Vec<SavedGround>> {
     let entities = word(saved.bytes(GOBJ_ENTITIES, 4), 0);
     let mut gobj = word(saved.bytes(entities + GROUND_PLINK * 4, 4), 0);
     let mut result = Vec::new();
     while gobj != 0 {
-        ensure!(
-            result.len() <= OBJECT_ORDER.len(),
-            "cyclic Fountain of Dreams Ground list"
-        );
+        ensure!(result.len() <= GROUND_BOUND, "cyclic Ground list");
         let object = saved.bytes(gobj, 0x30);
         let ground = word(object, 0x2C);
         if ground != 0 {
@@ -68,7 +69,7 @@ fn ground_list(saved: &SavedPose) -> Result<Vec<SavedGround>> {
 }
 
 /// The model's JObjs in Ground_801C3FA4 (descendant) order.
-fn model_joints(saved: &SavedPose, wrapper: u32) -> Vec<u32> {
+pub(super) fn model_joints(saved: &SavedPose, wrapper: u32) -> Vec<u32> {
     let mut joints = Vec::new();
     saved_joints(
         saved,
@@ -83,7 +84,7 @@ fn saved_vec3(saved: &SavedPose, address: u32) -> Vec3 {
     Vec3::new(float(raw, 0), float(raw, 4), float(raw, 8))
 }
 
-fn saved_mtx(saved: &SavedPose, jobj: u32) -> Mtx {
+pub(super) fn saved_mtx(saved: &SavedPose, jobj: u32) -> Mtx {
     let raw = saved.bytes(jobj + JOBJ_MTX, 48);
     Mtx(std::array::from_fn(|r| {
         std::array::from_fn(|c| float(raw, (r * 4 + c) * 4))
@@ -110,6 +111,17 @@ pub(super) fn restore_collision(saved: &SavedPose, map: &mut melee_mp::CollMap) 
     }
     // The previous positions are the ones before the last transform, which
     // the saved matrices cannot rebuild: import them.
+    restore_vertices(saved, map, "a platform moving")
+}
+
+/// Import every collision vertex's previous position from `groundCollVtx`,
+/// which the saved matrices cannot rebuild, then require the current ones
+/// to match the transforms just applied. `mover` names what may differ.
+pub(super) fn restore_vertices(
+    saved: &SavedPose,
+    map: &mut melee_mp::CollMap,
+    mover: &str,
+) -> Result<()> {
     let base = word(saved.bytes(COLL_VTX, 4), 0);
     for index in 0..map.vertices().len() {
         let raw = saved.bytes(base + index as u32 * COLL_VTX_SIZE, COLL_VTX_SIZE as usize);
@@ -121,8 +133,8 @@ pub(super) fn restore_collision(saved: &SavedPose, map: &mut melee_mp::CollMap) 
         let retail = [8, 12, 16, 20].map(|offset| float(raw, offset));
         ensure!(
             port.map(f32::to_bits) == retail.map(f32::to_bits),
-            "Fountain of Dreams collision vertex {index} {port:?} differs from the saved \
-             {retail:?} (a platform moving at the boundary is not imported)"
+            "collision vertex {index} {port:?} differs from the saved {retail:?} ({mover} \
+             at the boundary is not imported)"
         );
     }
     Ok(())
@@ -130,7 +142,7 @@ pub(super) fn restore_collision(saved: &SavedPose, map: &mut melee_mp::CollMap) 
 
 /// Evaluate a restored model's animation through its saved current frame,
 /// or leave it unanimated when retail removed the animation.
-fn restore_animation(
+pub(super) fn restore_animation(
     saved: &SavedPose,
     animation: &mut melee_gr::last::animation::BackgroundAnimation,
     joints: &[u32],
@@ -147,7 +159,7 @@ fn restore_animation(
             );
             ensure!(
                 clock.is_none_or(|c| c == current),
-                "Fountain of Dreams map {map} animation clocks disagree"
+                "stage map {map} animation clocks disagree"
             );
             clock = Some(current);
         }
@@ -157,7 +169,7 @@ fn restore_animation(
         // models created at setup wait for their first s_link 1 update.
         Some((frame, true)) => ensure!(
             frame == 0.0,
-            "Fountain of Dreams map {map}: unevaluated animation requested at {frame}"
+            "stage map {map}: unevaluated animation requested at {frame}"
         ),
         Some((frame, false)) => animation.restore_frame::<RetailTrig>(frame),
         None => animation.clear_animation(),

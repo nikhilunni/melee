@@ -1026,3 +1026,21 @@ stage = "FinalDestination"
 players = ["Kirby", "YoungLink"]
 stocks = 4
 seed = 2054569899
+
+[[boundary]]
+name = "start_yi64_fox_marth4"
+cold = "start_yi64_fox_marth4_cold"
+savestate = "harness/roms/start_yi64_fox_marth4.sav"
+stage = "YoshisIsland64"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2843096679
+
+[[boundary]]
+name = "start_kj64_fox_marth4"
+cold = "start_kj64_fox_marth4_cold"
+savestate = "harness/roms/start_kj64_fox_marth4.sav"
+stage = "KongoJungle64"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2781696025

@@ -56,11 +56,12 @@ impl Sprites {
             lookup: BTreeMap::new(),
             indexed: BTreeSet::new(),
         };
-        let stage = assets
-            .stage
-            .public("map_texg")
-            .ok_or_else(|| error("stage particle texture bank missing"))?;
-        result.add_bank(30, &assets.stage, stage)?;
+        // Kongo Jungle N64's archive has no particle data at all.
+        if let Some(stage) = assets.stage.public("map_texg") {
+            result.add_bank(30, &assets.stage, stage)?;
+        } else if assets.stage.public("map_ptcl").is_some() {
+            return Err(error("stage particle texture bank missing"));
+        }
         let characters = melee_ef::CHARACTER_EFFECT_FILES
             .iter()
             .zip(&assets.visual_effect_archives[1..])

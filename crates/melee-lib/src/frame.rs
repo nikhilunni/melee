@@ -1319,6 +1319,11 @@ impl Runtime {
                             if let SceneStage::Stadium(stage) = &mut state.stage {
                                 stage.start(state.assets.stage_desc.parameters.map_scale);
                             }
+                            // grOldKongo_8020F4E8: ftCo_800C0764 registers the
+                            // barrel as a catch device.
+                            if let SceneStage::OldKongo(stage) = &mut state.stage {
+                                stage.catch_enabled = true;
+                            }
                             // grStadium_801D4040.
                             crate::scene_stage::stadium::show(
                                 state,
@@ -1426,6 +1431,11 @@ impl Runtime {
                     }
                 }
                 if proc == FighterProc::Grab {
+                    // Fighter_UnkProcessGrab_8006CA5C: the catch devices
+                    // (ftColl_8007BA0C) before the fighter's own grab.
+                    if !state.fighters[player].0.status.disabled {
+                        crate::scene_stage::oldkongo::catch(state, player)?;
+                    }
                     grab_pairs::select(state, player)?;
                 }
                 // Falcon Dive's accessory4 reads the held fighter's position;
@@ -1730,6 +1740,9 @@ impl Runtime {
                     state.pad_buffers[port] = hardware.buffer;
                     state.dween_previous_x[port] = hardware.dween_previous_x;
                     partner_turn(state, player);
+                    // BarrelWait's IASA calls Ground_801C4DD0 at once: the
+                    // barrel's own proc follows at s_link 4.
+                    crate::scene_stage::oldkongo::relay_fire_request(state, player);
                 }
                 // Camera_RequestQuake runs inside the proc that calls it,
                 // whichever fighter asked: a thrown fighter's release hit
@@ -1914,6 +1927,8 @@ impl Runtime {
                     credit_phantom_source(state, player);
                 }
                 if proc == FighterProc::Accessories {
+                    // BarrelWait's accessory1 (ftCo_8009EC44).
+                    crate::scene_stage::oldkongo::ride(state, player);
                     // ft_80082E3C: a tether's climb asks who holds the ledge.
                     offer_ledge_holders(state, player);
                     crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| f
@@ -2193,12 +2208,14 @@ impl Runtime {
                     // lb_800115F4 (dynamics fields' decay and expiry) ends
                     // grLast_8021AAB0, grBattle_GObj6_Callback2 (0x8021A174),
                     // grStory_801E3334 and grIzumi_801CC0D4, and is all of
-                    // grOldPupupu_80210BC0.
+                    // grOldPupupu_80210BC0; it also ends grOldYoshi_8020EA64.
                     if address == 0x8021_AAB0
                         || address == 0x8021_A174
                         || address == 0x8021_0BC0
                         || address == STORY_SHY_GUY_PROC
                         || address == 0x801C_C0D4
+                        || address == melee_gr::oldyoshi::procs::DYNAMICS_PROC
+                        || address == melee_gr::oldkongo::procs::DYNAMICS_PROC
                     {
                         self.radial_forces.tick();
                         // lb_80011ABC reads the state this tick left.
@@ -2229,6 +2246,16 @@ impl Runtime {
                         )?;
                     } else if matches!(state.stage, SceneStage::Izumi(_)) {
                         crate::scene_stage::izumi::run_proc(state, map_id)?;
+                    } else if matches!(state.stage, SceneStage::OldKongo(_)) {
+                        if let Some(shot) = crate::scene_stage::oldkongo::run_proc(state, map_id)? {
+                            crate::scene_stage::oldkongo::fire(state, shot)?;
+                        }
+                    } else if matches!(state.stage, SceneStage::OldYoshi(_)) {
+                        crate::scene_stage::oldyoshi::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                        )?;
                     } else if matches!(state.stage, SceneStage::Stadium(_)) {
                         crate::scene_stage::stadium::run_proc(
                             state,

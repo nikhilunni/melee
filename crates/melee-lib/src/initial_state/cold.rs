@@ -162,8 +162,12 @@ impl InitialState {
             stadium.transformation.frozen = scenario.slippi.stadium_frozen;
         }
         stage.set_frozen_stages(scenario.slippi.frozen_stages);
-        // Fountain of Dreams binds its collision joints during creation.
-        let archive_bindings = !matches!(stage, SceneStage::Izumi(_));
+        // Fountain of Dreams and the N64 stages bind their collision
+        // joints during creation.
+        let archive_bindings = !matches!(
+            stage,
+            SceneStage::Izumi(_) | SceneStage::OldYoshi(_) | SceneStage::OldKongo(_)
+        );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
         }
@@ -280,10 +284,12 @@ fn setup_draws(
         GrKind::OldPupupu => 2,
         // grIzumi_801CC358's first step draws each platform's wait.
         GrKind::Izumi => 2,
-        _ => anyhow::bail!(
-            "cold setup supports FD, Battlefield, Yoshi's Story, Dream Land, Fountain of Dreams \
-             and Pokemon Stadium"
-        ),
+        // grOldYoshi_8020EFCC: the guest's first wait.
+        GrKind::OldYoshi => 1,
+        // stageGObj1_OnInit: the barrel's turn wait and drift;
+        // stageGObj2_OnInit: the bird's wait.
+        GrKind::OldKongo => 3,
+        kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
         .map(|kind| {
@@ -458,6 +464,16 @@ fn initialize_stage(
         GrKind::Izumi => {
             let (stage, animations) =
                 crate::scene_stage::izumi::initialize(assets, codes, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::OldYoshi => {
+            let (stage, animations) = crate::scene_stage::oldyoshi::initialize(assets, rng, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::OldKongo => {
+            let (stage, animations) = crate::scene_stage::oldkongo::initialize(assets, rng, map)?;
             stage_animations = animations;
             stage
         }

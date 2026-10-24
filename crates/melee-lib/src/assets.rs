@@ -203,7 +203,12 @@ impl Assets {
         }
         let stage = archive(stage_descriptor.file)?;
         let stage_desc = (stage_descriptor.read)(&stage).map_err(|e| anyhow::anyhow!("{e}"))?;
-        let particle_bank = ParticleBank::from_archive(&stage, "map_ptcl", "map_texg")?;
+        // Kongo Jungle N64's archive has no particle bank.
+        let particle_bank = if stage.public("map_ptcl").is_some() {
+            ParticleBank::from_archive(&stage, "map_ptcl", "map_texg")?
+        } else {
+            ParticleBank::empty()
+        };
         let stage_forms = if stage_desc.kind == melee_types::GrKind::PStadium {
             STADIUM_FORM_FILES
                 .into_iter()

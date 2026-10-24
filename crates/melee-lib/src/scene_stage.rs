@@ -2,6 +2,8 @@
 pub(crate) mod battle;
 pub(crate) mod izumi;
 pub(crate) mod last;
+pub(crate) mod oldkongo;
+pub(crate) mod oldyoshi;
 pub(crate) mod pupupu;
 pub(crate) mod stadium;
 use anyhow::Result;
@@ -131,6 +133,22 @@ pub const POKEMON_STADIUM: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::PStadium,
     read: melee_gr::desc::read_stadium,
 };
+/// grOy_StageData: GrOy.dat; StageParam row 0x1D (StKind).
+pub const YOSHIS_ISLAND_64: StageDescriptor = StageDescriptor {
+    name: "YoshisIsland64",
+    file: "GrOy.dat",
+    music_id: 0x1D,
+    kind: melee_types::GrKind::OldYoshi,
+    read: melee_gr::desc::read_old_yoshi,
+};
+/// grOk_StageData: GrOk.dat; StageParam row 0x1E (StKind).
+pub const KONGO_JUNGLE_64: StageDescriptor = StageDescriptor {
+    name: "KongoJungle64",
+    file: "GrOk.dat",
+    music_id: 0x1E,
+    kind: melee_types::GrKind::OldKongo,
+    read: melee_gr::desc::read_old_kongo,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -139,6 +157,8 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &DREAM_LAND,
         &FOUNTAIN_OF_DREAMS,
         &POKEMON_STADIUM,
+        &YOSHIS_ISLAND_64,
+        &KONGO_JUNGLE_64,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -151,6 +171,8 @@ pub enum SceneStage {
     Pupupu(melee_gr::pupupu::Pupupu),
     Izumi(melee_gr::izumi::Izumi),
     Stadium(Box<melee_gr::stadium::Stadium>),
+    OldYoshi(melee_gr::oldyoshi::OldYoshi),
+    OldKongo(melee_gr::oldkongo::OldKongo),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -161,7 +183,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -172,6 +194,8 @@ impl SceneStage {
             Self::Pupupu(s) => s.proc_table(),
             Self::Izumi(s) => s.proc_table(),
             Self::Stadium(s) => s.proc_table(),
+            Self::OldYoshi(s) => s.proc_table(),
+            Self::OldKongo(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -196,6 +220,12 @@ impl SceneStage {
             Self::Pupupu(_) => unreachable!("Dream Land callbacks require animation state"),
             Self::Izumi(_) => unreachable!("Fountain of Dreams callbacks require animation state"),
             Self::Stadium(_) => unreachable!("Pokemon Stadium callbacks require animation state"),
+            Self::OldYoshi(_) => {
+                unreachable!("Yoshi's Island N64 callbacks require animation state")
+            }
+            Self::OldKongo(_) => {
+                unreachable!("Kongo Jungle N64 callbacks require animation state")
+            }
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

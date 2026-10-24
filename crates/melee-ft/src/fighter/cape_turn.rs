@@ -83,10 +83,11 @@ impl FighterCore {
         } else {
             parameters.ground_speed
         };
-        let angle =
-            assets
-                .damage
-                .launch_angle(hit.descriptor.angle, knockback, self.physics.ground_or_air);
+        let angle = assets.damage.launch_angle(
+            i32::from(hit.descriptor.angle),
+            knockback,
+            self.physics.ground_or_air,
+        );
         // 800C3600..: separate fmuls.
         let x = speed * gekko_math::msl::cosf(angle);
         let y = speed * gekko_math::msl::sinf(angle);

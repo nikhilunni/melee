@@ -12,6 +12,7 @@ pub mod caches;
 pub mod cape_turn;
 pub mod capture_captain;
 pub mod capture_mewtwo;
+pub mod barrel;
 pub mod bury;
 pub mod capture_kirby;
 pub mod capture_koopa;
@@ -962,6 +963,10 @@ pub struct Status {
     pub camera_shift: Vec2,
     /// x209A, nametag display countdown; Wait entry uses PlCo.x5F0.
     pub name_tag_timer: u16,
+    /// bury_timer_2 (+232C): after a barrel's shot, frames before a barrel
+    /// may catch the fighter again (ftCo_800C0A98 counts it down on the
+    /// Kongo stages; ftCo_800C09B4 clears it at creation and each death).
+    pub barrel_cooldown: u32,
 }
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
@@ -992,6 +997,7 @@ impl Status {
             sword_trail: -1,
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,
+            barrel_cooldown: 0,
         }
     }
     fn require_supported(&self) {
@@ -1190,6 +1196,9 @@ pub struct FighterCore {
     pub offscreen: Offscreen,
     /// Camera_RequestQuake from this tick's procs, for the scene to forward.
     pub quake_request: Option<melee_cm::QuakeKind>,
+    /// BarrelWait's IASA asked the barrel to fire (Ground_801C4DD0), for
+    /// the scene to forward to the stage.
+    pub barrel_fire_request: bool,
     /// ftCo_800D34E0 ran in this proc: the scene hands the player's stock
     /// count and emptied stale table to the player's other fighter.
     pub fell: bool,
@@ -1366,6 +1375,8 @@ pub enum MotionData {
     Capture(grab_escape::CaptureState),
     /// Bury and BuryWait (mv.co.bury and the grab timer).
     Bury(bury::BuryState),
+    /// BarrelWait: no scratch (the barrel holds the state).
+    Barrel,
     /// mv.co.buryjump.x0: frames since the jump out of the ground; mv+4
     /// is still the buried collision box's top.
     BuryJump {

@@ -801,6 +801,11 @@ impl FighterCore {
         if self.status.ledge_cooldown != 0 {
             self.status.ledge_cooldown -= 1;
         }
+        // ftCo_800C0A98 (800C0A98): only a barrel's shot sets the timer on
+        // the stages the port has (bury_grkind Kongo or OldKongo).
+        if self.status.barrel_cooldown != 0 {
+            self.status.barrel_cooldown -= 1;
+        }
         true
     }
     /// The shield's cached position (`shield_hit.skip_update_pos`) is cleared

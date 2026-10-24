@@ -1293,6 +1293,7 @@ impl FighterCore {
             camera: melee_cm::Subject::default(),
             offscreen: Offscreen::default(),
             quake_request: None,
+            barrel_fire_request: false,
             fell: false,
             fall_credit: None,
             fatal_action: super::ActionId(0),

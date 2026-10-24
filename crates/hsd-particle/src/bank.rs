@@ -82,6 +82,16 @@ type Result<T> = std::result::Result<T, BankError>;
 impl ParticleBank {
     /// Read two public banks as `psInitDataBankLocate` (0x80398614) would.
     /// The next public bounds each bank; image data itself is not copied.
+    /// A bank with no programs: the stage archives that carry no particle
+    /// data (GrOk.dat has no `map_ptcl`).
+    pub fn empty() -> Self {
+        Self {
+            version: 0,
+            first_descriptor_id: 0,
+            descriptors: Arc::from(Vec::new()),
+            textures: Arc::from(Vec::new()),
+        }
+    }
     pub fn from_archive(archive: &Archive, commands: &str, textures: &str) -> Result<Self> {
         Self::from_bytes(
             public_bytes(archive, commands)?,

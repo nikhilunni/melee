@@ -1948,6 +1948,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         };
         i += 1;
     }
+    // ftCo_MS_BarrelWait = 293 (ftCo_BarrelWait.c): no animation, the
+    // camera box updated each tick.
+    rows[S::BarrelWait as usize] = MotionRow {
+        action: ActionId(293),
+        id: S::BarrelWait,
+        animation: -1,
+        anim: crate::fighter::barrel::wait_anim,
+        iasa: crate::fighter::barrel::wait_input,
+        physics: crate::fighter::barrel::wait_physics,
+        collision: crate::fighter::barrel::wait_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_Bury..BuryJump = 294..296 (ftCo_Bury.c). The buried rows
     // have no animation; the jump out plays the forward jump's.
     rows[S::Bury as usize] = MotionRow {
