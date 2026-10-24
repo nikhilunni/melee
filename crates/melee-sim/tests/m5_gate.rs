@@ -5949,11 +5949,11 @@ static CORPUS_V3_MATCHES: [(&str, usize); 717] = [
     ("corpus_v3_ys_kirby_fox4_e119262ea_p1", 431),
     // Final Cutter's beam off a floor's end glances off Fox's shield
     // (it_2725_Logic7_ShieldBounced, itkirbycutterbeam.c:205-243).
-    ("corpus_v3_ys_kirby_fox4_ed97ea327_p1", 1600),
+    ("corpus_v3_ys_kirby_fox4_ed97ea327_p1", 1780),
     // Kirby's spat star meets Yoshi's Story's rising slope and bounces off
     // the floor (ftCo_800BDA74, ftCo_ThrownKirby.c:76-77).
-    ("corpus_v3_ys_kirby_fox4_e05625e18_p2", 3274),
-    ("corpus_v3_ys_kirby_fox4_ea4d5d9ec_p1", 5362),
+    ("corpus_v3_ys_kirby_fox4_e05625e18_p2", 3454),
+    ("corpus_v3_ys_kirby_fox4_ea4d5d9ec_p1", 5542),
     // Landing out of Sheik's Vanish air end (360) inherits mv+4, the travel's
     // stick x (ftCo_Landing.c:41-50), Zelda-as-Sheik.
     ("corpus_v3_fod_captainfalcon_zelda4_e5909cbff_p1", 1672),

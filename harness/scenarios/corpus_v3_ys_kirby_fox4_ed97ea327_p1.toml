@@ -5,7 +5,7 @@
 name = "corpus_v3_ys_kirby_fox4_ed97ea327_p1"
 input_clock = "tick"
 savestate = "harness/roms/start_ys_kirby_fox4.sav"
-frames = 1600
+frames = 1780
 render_every_tick = true
 seed = 1
 stage = "YoshisStory"
