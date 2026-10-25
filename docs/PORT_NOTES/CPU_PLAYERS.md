@@ -119,11 +119,6 @@ what retail leaves there, and fails closed where it cannot know.
 
 ## Unreachable here, with the evidence
 
-- ftCo_800A6FC4 (danger.rs): a grounded CPU off camera. The camera bounds
-  are x -170..170, y -80..114 on Final Destination and x -160..160, y
-  -47.2..136 on Battlefield (port's StageCamera, printed at tick 100 of the
-  start boundaries); every floor of either stage lies inside them, and a
-  grounded fighter stands on a floor.
 - ftCo_800AB224's approach (xF9_b1) and ftCo_800ACD5C's ftCo_800BA674 arm
   need xF9_b1, which only ftCo_CpuSetTargetFlags sets, for a star or
   hammer carrier: items.
@@ -132,11 +127,53 @@ what retail leaves there, and fails closed where it cannot know.
   single-player modes set them (ftCo_800A101C's x18 = 0xC for modes 1 and
   25, x20 = 0xB for 3); the Versus CSS leaves CpuKind 4.
 
+## Every supported stage (wave 26)
+
+Boundaries `w26_start_<stage>_fox_cpu9fox4` (a person's Fox against a
+level-9 CPU Fox) on the twelve stages besides Final Destination and
+Battlefield; explorer matches from each gate whole against retail. What
+they reached:
+
+- ftCo_800A1CC4 with ftCo_803C6594's Temple table (`stage_route.rs`,
+  ft_3C61.c list0_*), ftCo_800AAF48's Temple island waypoints, and
+  ftCo_800A9CB4_inline0's air dodge under the Temple's left arch and on
+  Fourside. Great Bay's table stays guarded.
+- ftCo_800A2C80's Fourside height (y < -35); Mushroom Kingdom's stays
+  guarded.
+- ftCo_800B89CC's Kongo Jungle barrel range (|x| <= 25) and behaviour 17,
+  the barrel (ftCo_800AC434: stage_info.x73C, Ground_801C4DA0).
+- ftCo_800AE7AC's grounded arm off camera (Flat Zone's camera is narrower
+  than its floors): ftCo_800A6FC4's island points toward the blast zones'
+  centre, one HSD_Randf per other island, else ftCo_800A75DC.
+- ftCo_800AC5A0's r5 on any stage: mpCheckFloor leaves its own r1 + 0x44
+  after a horizontal line and mpLineIntersection's 0/1 flag (li r5 at
+  8004E98C/8004EAB8) after a sloped one (`melee_mp::SweepR5`), so the
+  stale stick no longer needs all-horizontal floors.
+- The Fighter address of a second fighter after a person's Fox on each
+  stage, and of a CPU Zelda's Sheik on Final Destination (`heap.rs`, read
+  from the boundary recordings).
+
+Not CPU faults, left for their owners (the matches are not registered):
+`w26cpu_ht_ef89b3e70_p2` tick 881 and `w26cpu_rec_luigi_ec3145eb3_p1`
+tick 701, a hit effect's generator a little off where the person's Fox
+enters DamageN2 from a special or a taunt under a jab (keys exact);
+`w26cpu_bd_ef89b3e70_p0` tick 1259, the CPU's landing on Brinstar Depths'
+rotating floor off by 2e-5; DownReflect out of DownDamage (fn_800C7DC4) and
+Kongo Jungle's Klaptrap rider (Ground_801C1CD0) stop some explorer cases.
+A wall tech in hitlag keeps x221A_b3 (`w26cpu_ht_ef89b3e70_p2` tick 829):
+Fighter_ChangeMotionState never clears it.
+
+## Recovery specials (wave 26)
+
+ftCo_800A96B8's per-kind arms are profile data (`Recovery`): Quick Attack
+(Pikachu, Pichu, ftCo_800A92CC), PK Thunder (Ness, ftCo_800A8EB0), Farore's
+Wind (Zelda, ftCo_800A949C), the Green Missile (Luigi), none (Yoshi), and
+the diagonal (Samus, ftCo_800A963C writes the same script). Witnessed by
+`w26cpu_rec_<kind>_*` (explorer cases from `start_fd_fox_cpu9<kind>4`).
+
 ## Still fail-closed
 
-Ported, then put back for want of a witness: ftCo_800A96B8's
-Pikachu/Pichu (ftCo_800A92CC), Yoshi, Ness (ftCo_800A8EB0), Luigi, Zelda
-(ftCo_800A949C) and Samus (ftCo_800A963C) arms; Kirby's mouthful in
+Kirby's mouthful in
 ftCo_800B683C; a shrunk Yoshi's jump (ftCo_800A0508); Nana alone
 (ftCo_800AEFB8, the Versus think from ftCo_800B101C's frame, r1
 0x804EE930).
@@ -146,7 +183,7 @@ Items (work items 10-18): picking up (ftCo_800A3710), heading for an item
 (it_8026B960) and a shooter's ammunition (it_8026B924). Stages (work item
 2): the hazard stages, routes and moving floors listed in PARITY. Two
 players' opponents ranked by gm_8016C6C0 (three or more players).
-ftCo_800AC5A0's r5 on another stage or after an unknown caller.
+ftCo_800AC5A0's r5 after an unknown caller.
 
 
 ### Persistent rapid-jab counter and incomplete warm creation

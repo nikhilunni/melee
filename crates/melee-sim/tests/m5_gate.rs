@@ -2129,6 +2129,82 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_fox_cpu9zelda4", 600),
     ("start_fd_fox_cpu9zelda4_cold", 600),
     ("start_fd_iceclimbers_cpu9fox4_cold", 600),
+    // Wave 26: a person's Fox against a level-9 CPU Fox on every other
+    // supported stage (boundaries, explorer matches: Temple routes and
+    // waypoints, Fourside's height and air dodge, Kongo's barrel, Flat
+    // Zone's off-camera escape, r5 after sloped floors).
+    ("corpus_v3_w26_start_dl_fox_cpu9fox4_e75fb4a9a_p1", 6001),
+    ("corpus_v3_w26_start_dl_fox_cpu9fox4_ef89b3e70_p0", 4943),
+    ("corpus_v3_w26_start_dl_fox_cpu9fox4_ef89b3e70_p2", 3602),
+    ("corpus_v3_w26_start_fod_fox_cpu9fox4_e75fb4a9a_p1", 3085),
+    ("corpus_v3_w26_start_fod_fox_cpu9fox4_ef89b3e70_p0", 4416),
+    ("corpus_v3_w26_start_fod_fox_cpu9fox4_ef89b3e70_p2", 5175),
+    ("corpus_v3_w26_start_fs_fox_cpu9fox4_ef89b3e70_p0", 3787),
+    ("corpus_v3_w26_start_fz_fox_cpu9fox4_ef89b3e70_p2", 424),
+    ("corpus_v3_w26_start_ht_fox_cpu9fox4_ef89b3e70_p0", 1049),
+    ("corpus_v3_w26_start_jj_fox_cpu9fox4_e75fb4a9a_p1", 2735),
+    ("corpus_v3_w26_start_jj_fox_cpu9fox4_ef89b3e70_p0", 2889),
+    ("corpus_v3_w26_start_jj_fox_cpu9fox4_ef89b3e70_p2", 2962),
+    ("corpus_v3_w26_start_kj64_fox_cpu9fox4_e75fb4a9a_p1", 4777),
+    ("corpus_v3_w26_start_kj64_fox_cpu9fox4_ef89b3e70_p0", 3992),
+    ("corpus_v3_w26_start_kj64_fox_cpu9fox4_ef89b3e70_p2", 6001),
+    ("corpus_v3_w26_start_kj_fox_cpu9fox4_e75fb4a9a_p0", 676),
+    ("corpus_v3_w26_start_kj_fox_cpu9fox4_e75fb4a9a_p1", 2202),
+    ("corpus_v3_w26_start_kj_fox_cpu9fox4_ef89b3e70_p0", 3639),
+    ("corpus_v3_w26_start_ps_fox_cpu9fox4_e75fb4a9a_p1", 4409),
+    ("corpus_v3_w26_start_ps_fox_cpu9fox4_ef89b3e70_p0", 4774),
+    ("corpus_v3_w26_start_ps_fox_cpu9fox4_ef89b3e70_p2", 5584),
+    ("corpus_v3_w26_start_yi64_fox_cpu9fox4_e75fb4a9a_p1", 6001),
+    ("corpus_v3_w26_start_yi64_fox_cpu9fox4_ef89b3e70_p0", 5178),
+    ("corpus_v3_w26_start_yi64_fox_cpu9fox4_ef89b3e70_p2", 6001),
+    ("corpus_v3_w26_start_ys_fox_cpu9fox4_ef89b3e70_p0", 2347),
+    ("corpus_v3_w26_start_ys_fox_cpu9fox4_ef89b3e70_p2", 3844),
+    ("w26_start_bd_fox_cpu9fox4", 600),
+    ("w26_start_bd_fox_cpu9fox4_cold", 600),
+    ("w26_start_dl_fox_cpu9fox4", 600),
+    ("w26_start_dl_fox_cpu9fox4_cold", 600),
+    ("w26_start_fod_fox_cpu9fox4", 600),
+    ("w26_start_fod_fox_cpu9fox4_cold", 600),
+    ("w26_start_fs_fox_cpu9fox4", 600),
+    ("w26_start_fs_fox_cpu9fox4_cold", 600),
+    ("w26_start_fz_fox_cpu9fox4", 600),
+    ("w26_start_fz_fox_cpu9fox4_cold", 600),
+    ("w26_start_ht_fox_cpu9fox4", 600),
+    ("w26_start_ht_fox_cpu9fox4_cold", 600),
+    ("w26_start_jj_fox_cpu9fox4", 600),
+    ("w26_start_jj_fox_cpu9fox4_cold", 600),
+    ("w26_start_kj64_fox_cpu9fox4", 600),
+    ("w26_start_kj64_fox_cpu9fox4_cold", 600),
+    ("w26_start_kj_fox_cpu9fox4", 600),
+    ("w26_start_kj_fox_cpu9fox4_cold", 600),
+    ("w26_start_ps_fox_cpu9fox4", 600),
+    ("w26_start_ps_fox_cpu9fox4_cold", 600),
+    ("w26_start_yi64_fox_cpu9fox4", 600),
+    ("w26_start_yi64_fox_cpu9fox4_cold", 600),
+    ("w26_start_ys_fox_cpu9fox4", 600),
+    ("w26_start_ys_fox_cpu9fox4_cold", 600),
+    // Wave 26: matches through the stage branches and a CPU of each kind
+    // recovering (ftCo_800A96B8's Quick Attack, PK Thunder, Farore's
+    // Wind, Green Missile, Yoshi's none, Samus's diagonal).
+    ("w26cpu_bd_ef89b3e70_p2", 4768),
+    ("w26cpu_fz_e75fb4a9a_p2", 3982),
+    ("w26cpu_fz_ef89b3e70_p2", 2476),
+    ("w26cpu_ht_ef89b3e70_p1", 5839),
+    ("w26cpu_kj_e75fb4a9a_p0", 4401),
+    ("w26cpu_rec_luigi_e89a89d0e_p2", 644),
+    ("w26cpu_rec_ness_e50814092_p0", 3130),
+    ("w26cpu_rec_ness_edb2b114a_p1", 2531),
+    ("w26cpu_rec_pichu_e0dee256e_p1", 2415),
+    ("w26cpu_rec_pichu_edafcfddf_p0", 1416),
+    ("w26cpu_rec_pikachu_ec3145eb3_p1", 1255),
+    ("w26cpu_rec_pikachu_edafcfddf_p1", 1967),
+    ("w26cpu_rec_samus_e19f8579b_p0", 759),
+    ("w26cpu_rec_samus_edb2b114a_p1", 2649),
+    ("w26cpu_rec_yoshi_e19f8579b_p2", 682),
+    ("w26cpu_rec_yoshi_edb2b114a_p2", 655),
+    ("w26cpu_rec_zelda_e6af4a7bb_p1", 2998),
+    ("w26cpu_rec_zelda_ec3145eb3_p0", 2525),
+    ("w26cpu_ys_e75fb4a9a_p2", 4052),
 ];
 
 #[test]
@@ -2164,7 +2240,8 @@ fn cpu_players_match_retail() {
     gate_in_parallel_using(CPU_WITNESSES, |name, ticks| {
         // Boundary captures record precisely 600 ticks in ledger600; the
         // explorer recordings use their full-length ledger instead.
-        let suffix = if name.starts_with("start_") { "ledger600" } else { "ledger" };
+        let boundary = name.starts_with("start_") || name.starts_with("w26_start_");
+        let suffix = if boundary { "ledger600" } else { "ledger" };
         combat_gate_ticks_with_ledger(name, ticks, suffix)
     });
 }

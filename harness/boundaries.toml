@@ -1732,3 +1732,134 @@ players = ["Fox", "Marth"]
 stocks = 1
 seed = 2859672677
 special = "stamina"
+
+[[boundary]]
+name = "w26_start_dl_fox_cpu9fox4"
+cold = "w26_start_dl_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_dl_fox_cpu9fox4.sav"
+stage = "DreamLand"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 1737903471
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "w26_start_fod_fox_cpu9fox4"
+cold = "w26_start_fod_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_fod_fox_cpu9fox4.sav"
+stage = "FountainOfDreams"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 1495396711
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "w26_start_ps_fox_cpu9fox4"
+cold = "w26_start_ps_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_ps_fox_cpu9fox4.sav"
+stage = "PokemonStadium"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 1824248682
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "w26_start_yi64_fox_cpu9fox4"
+cold = "w26_start_yi64_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_yi64_fox_cpu9fox4.sav"
+stage = "YoshisIsland64"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 3479746646
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "w26_start_ys_fox_cpu9fox4"
+cold = "w26_start_ys_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_ys_fox_cpu9fox4.sav"
+stage = "YoshisStory"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 650636060
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+
+
+[[boundary]]
+name = "w26_start_bd_fox_cpu9fox4"
+cold = "w26_start_bd_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_bd_fox_cpu9fox4.sav"
+stage = "BrinstarDepths"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 1943282029
+costumes = [0, 1]
+cpu_levels = [0, 9]
+[[boundary]]
+name = "w26_start_fs_fox_cpu9fox4"
+cold = "w26_start_fs_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_fs_fox_cpu9fox4.sav"
+stage = "Fourside"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 3887471159
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "w26_start_fz_fox_cpu9fox4"
+cold = "w26_start_fz_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_fz_fox_cpu9fox4.sav"
+stage = "FlatZone"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 440844049
+costumes = [0, 1]
+cpu_levels = [0, 9]
+[[boundary]]
+name = "w26_start_ht_fox_cpu9fox4"
+cold = "w26_start_ht_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_ht_fox_cpu9fox4.sav"
+stage = "HyruleTemple"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 393357683
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "w26_start_jj_fox_cpu9fox4"
+cold = "w26_start_jj_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_jj_fox_cpu9fox4.sav"
+stage = "JungleJapes"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 3432084628
+costumes = [0, 1]
+cpu_levels = [0, 9]
+
+[[boundary]]
+name = "w26_start_kj64_fox_cpu9fox4"
+cold = "w26_start_kj64_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_kj64_fox_cpu9fox4.sav"
+stage = "KongoJungle64"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 2583863941
+costumes = [0, 1]
+cpu_levels = [0, 9]
+[[boundary]]
+name = "w26_start_kj_fox_cpu9fox4"
+cold = "w26_start_kj_fox_cpu9fox4_cold"
+savestate = "harness/roms/w26_start_kj_fox_cpu9fox4.sav"
+stage = "KongoJungle"
+players = ["Fox", "Fox"]
+stocks = 4
+seed = 1368924368
+costumes = [0, 1]
+cpu_levels = [0, 9]
