@@ -167,12 +167,9 @@ impl Match {
         .map_err(|e| StartError::Initialization(format!("{e:#}")))?;
         // gm_SetupSuddenDeath: only the winners play on (the others' slots
         // go to Gm_PKind_NA).
-        if self.config.rules.mode == crate::MatchKind::Time {
+        {
             let state = self.engine.state();
-            let ranks = crate::standings::time_ranks(
-                &crate::standings::current(state),
-                state.clock.scoring.self_destruct_penalty,
-            );
+            let ranks = crate::standings::current_ranks(state);
             if (0..self.config.players.len())
                 .any(|p| ranks[usize::from(state.player_fighter(p).0.player.id)] != 0)
             {
@@ -273,41 +270,20 @@ impl Match {
             .map(|player| &**state.player_fighter(player).0);
         let port = |f: &melee_ft::fighter::Fighter| Port::from_index(f.player.id);
         if self.engine.state().clock.timed_out() {
-            // Imported countdown matches can reach an unwitnessed team result.
-            // Never rank their players independently as a singles timeout.
-            let time_match = state.clock.scoring.match_kind == crate::MatchKind::Time;
-            if !time_match && fighters().next().is_some_and(|f| f.player.team.is_some()) {
-                return MatchStatus::Faulted;
-            }
-            // A Time match ranks scores (gm_80166378); more than one
-            // winner goes to Sudden Death (gmVsMelee_ExitVs).
-            if time_match {
-                let ranks = crate::standings::time_ranks(
-                    &crate::standings::current(state),
-                    state.clock.scoring.self_destruct_penalty,
-                );
-                // A team battle ranks teams (fn_80165FA4): a lone top team wins.
-                if fighters().next().is_some_and(|f| f.player.team.is_some()) {
-                    let mut top = fighters()
-                        .filter(|f| ranks[usize::from(f.player.id)] == 0)
-                        .filter_map(|f| f.player.team);
-                    let first = top.next();
-                    return MatchStatus::Finished(match first {
-                        Some(team) if top.all(|t| t == team) => MatchOutcome::TeamWinner(team),
-                        _ => MatchOutcome::SuddenDeath,
-                    });
-                }
-                let mut winners = fighters().filter(|f| ranks[usize::from(f.player.id)] == 0);
-                return MatchStatus::Finished(match (winners.next(), winners.next()) {
-                    (Some(winner), None) => MatchOutcome::Winner(port(winner)),
+            // The results rank the standings (gm_80166378: stocks, or a
+            // Time match's score); more than one winner, or winning team
+            // (fn_80165FA4), goes to Sudden Death (gmVsMelee_ExitVs).
+            let ranks = crate::standings::current_ranks(state);
+            let mut top = fighters().filter(|f| ranks[usize::from(f.player.id)] == 0);
+            if fighters().next().is_some_and(|f| f.player.team.is_some()) {
+                let mut teams = top.filter_map(|f| f.player.team);
+                let first = teams.next();
+                return MatchStatus::Finished(match first {
+                    Some(team) if teams.all(|t| t == team) => MatchOutcome::TeamWinner(team),
                     _ => MatchOutcome::SuddenDeath,
                 });
             }
-            // The results screen ranks a timed-out stock match by stocks;
-            // a tie for the most goes to Sudden Death.
-            let most = fighters().map(|f| f.player.stocks).max().unwrap_or(0);
-            let mut leaders = fighters().filter(|f| f.player.stocks == most);
-            return MatchStatus::Finished(match (leaders.next(), leaders.next()) {
+            return MatchStatus::Finished(match (top.next(), top.next()) {
                 (Some(winner), None) => MatchOutcome::Winner(port(winner)),
                 _ => MatchOutcome::SuddenDeath,
             });
@@ -370,7 +346,7 @@ fn panic_message(payload: Box<dyn std::any::Any + Send>) -> String {
 mod tests {
     use super::*;
     #[test]
-    fn timed_team_setup_is_rejected_without_ranking_players() {
+    fn timed_team_setups_are_accepted() {
         let mut config = MatchConfig::versus(
             Stage::FinalDestination,
             [
@@ -378,15 +354,16 @@ mod tests {
                 PlayerConfig::new(Port::P2, Character::Marth).with_team(1),
             ],
         );
-        assert!(config.setup().is_ok());
         config.rules.time_limit_seconds = Some(60);
-        assert!(matches!(config.setup(), Err(StartError::InvalidConfig(
-            "timed team outcomes need a retail witness"
-        ))));
+        assert!(config.setup().is_ok());
+        config.rules.mode = crate::MatchKind::Time;
+        assert!(config.setup().is_ok());
     }
 
+    /// A timed-out team battle ranks teams by fn_80165E7C's scores, not one
+    /// player's stocks.
     #[test]
-    fn imported_team_timeout_faults_instead_of_selecting_a_player() {
+    fn a_team_timeout_ranks_teams() {
         let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
             || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
             std::path::PathBuf::from,
@@ -406,17 +383,15 @@ mod tests {
         let setup = config.setup().unwrap();
         let mut state = InitialState::from_assets(&setup, Arc::clone(&assets.inner)).unwrap();
         state.clock.timer = Some(crate::match_clock::CountdownTimer { seconds: 0, frames: 59 });
-        // One player has a unique stock lead: the old singles ranking picked P1.
-        state.fighters[0].0.player.stocks = 4;
-        state.fighters[1].0.player.stocks = 1;
-        let mut game = Match::from_import(Simulation::new(state.clone()), &setup);
-        assert_eq!(game.status(), MatchStatus::Faulted);
-        assert!(matches!(game.observe(), Err(StateError::Faulted)));
-        assert_eq!(game.step(&Inputs::default()), Err(StepError::Faulted));
+        state.fighters[0].0.player.stocks = 1;
+        state.fighters[1].0.player.stocks = 4;
+        let game = Match::from_import(Simulation::new(state.clone()), &setup);
+        assert_eq!(
+            game.status(),
+            MatchStatus::Finished(MatchOutcome::TeamWinner(1))
+        );
         let mut simulation = Simulation::new(state);
-        let fault = catch_unwind(AssertUnwindSafe(|| simulation.tick_without_snapshot()));
-        let message = panic_message(fault.expect_err("team timeout must fail closed"));
-        assert!(message.contains("fn_80165E7C"), "{message}");
+        simulation.tick_without_snapshot().unwrap();
     }
 
     #[test]

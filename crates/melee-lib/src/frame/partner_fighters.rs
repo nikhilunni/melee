@@ -147,6 +147,12 @@ pub(super) fn share_fall(state: &mut InitialState, index: usize) {
         let fallen = state.fighters[index].player.id;
         state.ko_counts.record(source, fallen);
     }
+    // ftCo_800D34E0: a stock match's player out of stocks
+    // (Player_UpdateMatchFrameCount for its own fighter, set once).
+    let player = &state.fighters[index].player;
+    if player.stock_match() && player.stocks == 0 && !player.secondary {
+        state.eliminated_at[usize::from(player.id)].get_or_insert(state.clock.frame_count);
+    }
     let Some(partner) = partner_of(state, index) else {
         return;
     };

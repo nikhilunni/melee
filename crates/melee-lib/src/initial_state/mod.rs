@@ -151,6 +151,10 @@ pub struct InitialState {
     pub(crate) dween_previous_x: [f32; 4],
     /// StaticPlayer.kos_by_player: no KOs at a match's start.
     pub(crate) ko_counts: crate::ko_counts::KoCounts,
+    /// StaticPlayer.match_frame_count by slot: the match frame a stock
+    /// match took a player's last stock (Player_UpdateMatchFrameCount);
+    /// `None` for retail's -1.
+    pub(crate) eliminated_at: [Option<u32>; 6],
     /// `SlippiCodes::offscreen_damage_by_camera_limits` (match setup, not
     /// saved state).
     pub(crate) offscreen_damage_by_camera_limits: bool,
@@ -825,6 +829,11 @@ impl InitialState {
             pad_buffers: Default::default(),
             dween_previous_x: [0.0; 4],
             ko_counts: Default::default(),
+            // Player_GetMatchFrameCount: StaticPlayer +88, -1 unset.
+            eliminated_at: std::array::from_fn(|slot| {
+                let frame = word(saved.bytes(0x8045_3080 + slot as u32 * 0xE90 + 0x88, 4), 0);
+                (frame != u32::MAX).then_some(frame)
+            }),
             offscreen_damage_by_camera_limits: setup.slippi.offscreen_damage_by_camera_limits,
             radial_forces,
         })

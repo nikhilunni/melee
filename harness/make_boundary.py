@@ -512,17 +512,15 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit("--damage-ratio is 0.5..2.0")
     if a.special and not a.name:
         sys.exit("a Special Melee boundary needs its own --name")
-    if a.special and not a.no_register:
-        sys.exit("a Special Melee boundary is not an explorer boundary: pass --no-register")
-    if a.mode != "stock" and not a.name:
-        sys.exit("a Time or Coin boundary needs its own --name")
-    # A Time or Coin match always runs its timer: the explorer plays it.
-    stock_timer = a.time_limit if a.mode == "stock" else 0
-    if (a.gecko or a.spawn or a.ports or stock_timer or a.game_start_seed is not None
+    if (a.mode != "stock" or a.time_limit) and not a.name:
+        sys.exit("a boundary with a timer needs its own --name")
+    # The explorer plays any rules the registry names (mode, timer,
+    # handicaps, damage ratio, Special Melee).
+    if (a.gecko or a.spawn or a.ports or a.game_start_seed is not None
             or a.spawn_points) and not a.no_register:
         # boundaries.toml describes explorer matches: retail spawns, first
-        # ports, no timer, no codes, the seed the menus left.
-        sys.exit("a boundary with codes, ports, a timer or a Game Start seed is not an explorer "
+        # ports, no codes, the seed the menus left.
+        sys.exit("a boundary with codes, ports or a Game Start seed is not an explorer "
                  "boundary: pass --no-register")
     if a.game_start_seed is not None and not 0 <= a.game_start_seed < 1 << 32:
         sys.exit("--game-start-seed is a 32-bit seed")

@@ -1923,26 +1923,12 @@ impl Runtime {
                 if proc == FighterProc::ProcessHit {
                     grab_pairs::linked_hit(state, player)?;
                     crate::scene_items::offer_redead_source(state, player);
-                    // Player_80033BB8 (ftCo_800C318C's sleep timer): stock
-                    // standings, ties share a rank; a Time match ranks
-                    // scores (gm_8016C5C0).
+                    // Player_80033BB8 (ftCo_800C318C's sleep timer): the
+                    // standings' rank (gm_8016C5C0), ties sharing one; a
+                    // team battle ranks teams.
                     use crate::scene_fighter::with_fighter;
-                    let stocks = with_fighter!(&state.fighters[player], |f| f.player.stocks);
-                    let rank = if state.clock.scoring.match_kind == melee_types::MatchKind::Time {
-                        let slot = with_fighter!(&state.fighters[player], |f| f.player.id);
-                        crate::standings::time_ranks(
-                            &crate::standings::current(state),
-                            state.clock.scoring.self_destruct_penalty,
-                        )[usize::from(slot)]
-                    } else {
-                        state
-                            .fighters
-                            .iter()
-                            .filter(|f| {
-                                with_fighter!(f, |f| !f.player.secondary && f.player.stocks > stocks)
-                            })
-                            .count() as u8
-                    };
+                    let slot = with_fighter!(&state.fighters[player], |f| f.player.id);
+                    let rank = crate::standings::current_ranks(state)[usize::from(slot)];
                     with_fighter!(&mut state.fighters[player], |f| f.core.standing_rank = rank);
                 }
                 // The partner as this proc's callbacks will read it.
@@ -3831,16 +3817,8 @@ impl Simulation {
         }
         runtime.start_held = runtime.pads.map(|pad| pad.buttons.0 & START != 0);
         // gm_GetMatchOutcome returns OUTCOME_TIMEOUT before checking teams
-        // (gm_16AE.c:886-891). Team result ranking then uses fn_80165E7C's
-        // team scores and fn_801661E0's subscore tie-break (gm_1601.c:2853-2878,
-        // 2926-2936), not individual stocks. Keep countdown replays runnable
-        // until this unwitnessed result branch is actually reached.
-        if runtime.state.clock.timed_out()
-            && runtime.state.clock.scoring.match_kind == melee_types::MatchKind::Stock
-            && runtime.state.fighters.iter().any(|f| f.0.player.team.is_some())
-        {
-            unimplemented!("fn_80165E7C/fn_801661E0: timed team result ranking needs a retail witness");
-        }
+        // (gm_16AE.c:886-891); the results rank teams by fn_80165E7C's
+        // team scores (`standings::ranks`, `Match::status`).
         // The pause takes effect next tick.
         let finished = runtime.state.clock.timed_out()
             || stock_outcome_decided(

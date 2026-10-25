@@ -488,11 +488,6 @@ impl MatchConfig {
                     "a team battle gives every player a team, 0 to 2",
                 ));
             }
-            if self.rules.time_limit_seconds.is_some() && self.rules.mode == crate::MatchKind::Stock {
-                return Err(StartError::InvalidConfig(
-                    "timed team outcomes need a retail witness",
-                ));
-            }
             if teams.iter().all(|t| *t == teams[0]) {
                 return Err(StartError::InvalidConfig("a team battle needs two teams"));
             }

@@ -317,6 +317,7 @@ impl InitialState {
             pad_buffers: Default::default(),
             dween_previous_x: [0.0; 4],
             ko_counts: Default::default(),
+            eliminated_at: [None; 6],
             offscreen_damage_by_camera_limits: scenario
                 .slippi
                 .offscreen_damage_by_camera_limits,
