@@ -1863,3 +1863,67 @@ stocks = 4
 seed = 1368924368
 costumes = [0, 1]
 cpu_levels = [0, 9]
+# Items on, the Green Shell alone (make_boundary.py --item-frequency
+# very-high --items G_Shell --no-containers).
+[[boundary]]
+name = "start_fd_items_gshell"
+cold = "start_fd_items_gshell_cold"
+savestate = "harness/roms/start_fd_items_gshell.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1417834207
+item_frequency = 4
+item_mask = "0xfffffff800004000"
+
+# Items on, Freezies alone (make_boundary.py --item-frequency very-high
+# --items Freeze --no-containers).
+[[boundary]]
+name = "start_fd_items_freeze"
+cold = "start_fd_items_freeze_cold"
+savestate = "harness/roms/start_fd_items_freeze.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2903927820
+item_frequency = 4
+item_mask = "0xfffffff800020000"
+
+# Items on, Bob-ombs alone (make_boundary.py --item-frequency very-high
+# --items BombHei --no-containers).
+[[boundary]]
+name = "start_fd_items_bombhei"
+cold = "start_fd_items_bombhei_cold"
+savestate = "harness/roms/start_fd_items_bombhei.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3753090165
+item_frequency = 4
+item_mask = "0xfffffff800000040"
+
+# Items on, Mr. Saturns alone (make_boundary.py --item-frequency very-high
+# --items Dosei --no-containers).
+[[boundary]]
+name = "start_fd_items_dosei"
+cold = "start_fd_items_dosei_cold"
+savestate = "harness/roms/start_fd_items_dosei.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1035126282
+item_frequency = 4
+item_mask = "0xfffffff800000080"
+
+# Items on, Red Shells alone (make_boundary.py --item-frequency very-high
+# --items R_Shell --no-containers).
+[[boundary]]
+name = "start_fd_items_rshell2"
+cold = "start_fd_items_rshell2_cold"
+savestate = "harness/roms/start_fd_items_rshell2.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 401104956
+item_frequency = 4
+item_mask = "0xfffffff800008000"

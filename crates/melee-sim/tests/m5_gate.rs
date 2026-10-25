@@ -7025,6 +7025,89 @@ const RANDOM_ITEM_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_sword_eee14f173_p2", 1974),
 ];
 
+/// Random item kinds, each from a Final Destination boundary with only that
+/// kind on (docs/PORT_NOTES/RANDOM_ITEM_KINDS.md): the boundaries warm and
+/// cold, and explorer matches bridged to retail.
+const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
+    ("start_fd_items_gshell", 600),
+    ("start_fd_items_gshell_cold", 600),
+    ("start_fd_items_rshell2", 600),
+    ("start_fd_items_rshell2_cold", 600),
+    ("start_fd_items_freeze", 600),
+    ("start_fd_items_freeze_cold", 600),
+    ("start_fd_items_bombhei", 600),
+    ("start_fd_items_bombhei_cold", 600),
+    ("start_fd_items_dosei", 600),
+    ("start_fd_items_dosei_cold", 600),
+    // Green Shells: stomped from rest and while sliding (ft_80081A00 ->
+    // it_8028CF68), struck, thrown, dropped, clanking with each other
+    // (it_8026FE68, sparks in call order), bounced off shields, reflected,
+    // ending at the end of their slide lifetime, item hits recorded on the
+    // rehit timer (x41_b4).
+    ("corpus_v3_fd_items_gshell_e0fe4dd03_p0", 424),
+    ("corpus_v3_fd_items_gshell_e26ea92b1_p2", 2279),
+    ("corpus_v3_fd_items_gshell_e0211286e_p2", 2180),
+    ("corpus_v3_fd_items_gshell_e3d24a6e3_p1", 6001),
+    ("corpus_v3_fd_items_gshell_e3ef41ca4_p1", 3841),
+    ("corpus_v3_fd_items_gshell_e8c6ff530_p1", 541),
+    ("corpus_v3_fd_items_gshell_e7af4edc6_p1", 4164),
+    ("corpus_v3_fd_items_gshell_e52b08364_p2", 6001),
+    ("corpus_v3_fd_items_gshell_e3ef41ca4_p0", 6001),
+    ("corpus_v3_fd_items_gshell_ee6ff560c_p2", 3960),
+    ("corpus_v3_fd_items_gshell_ebfeefc0e_p1", 4731),
+    ("corpus_v3_fd_items_gshell_e96ead1ff_p1", 2241),
+    ("corpus_v3_fd_items_gshell_e8a0c79e0_p1", 6001),
+    ("corpus_v3_fd_items_gshell_ef89b3e70_p0", 4737),
+    ("corpus_v3_fd_items_gshell_ee133b82f_p0", 1876),
+    ("corpus_v3_fd_items_gshell_ee98155f3_p0", 3499),
+    // Red Shells: homing drives, turning at edges, rebounding off fighters
+    // (xCB8), struck and kicked, breaking out of hits (including inside
+    // hitlag, its hitbox's victim timers kept while disabled) and ending
+    // at the end of their lifetime; Marth's Dolphin Slash stomp test.
+    ("corpus_v3_fd_items_rshell2_e1502cb40_p0", 4106),
+    ("corpus_v3_fd_items_rshell2_eb17a6598_p1", 6001),
+    ("corpus_v3_fd_items_rshell2_e12d92447_p0", 6001),
+    ("corpus_v3_fd_items_rshell2_e05625e18_p0", 6001),
+    ("corpus_v3_fd_items_rshell2_e05625e18_p1", 1195),
+    ("corpus_v3_fd_items_rshell2_e266e1150_p1", 5656),
+    ("corpus_v3_fd_items_rshell2_e70b3084c_p2", 6001),
+    ("corpus_v3_fd_items_rshell2_e50f774a0_p2", 6001),
+    ("corpus_v3_fd_items_rshell2_edafcfddf_p0", 3773),
+    ("corpus_v3_fd_items_rshell2_ee62c6106_p0", 6001),
+    // Freezies: sliding, falling off the stage, picked up, thrown and
+    // dropped, broken by hits and shields (ice shatter 0x443).
+    ("corpus_v3_fd_items_freeze_e573e2d95_p0", 3269),
+    ("corpus_v3_fd_items_freeze_e09db17e3_p2", 3570),
+    ("corpus_v3_fd_items_freeze_ee133b82f_p0", 4067),
+    ("corpus_v3_fd_items_freeze_e2af099ca_p2", 5668),
+    ("corpus_v3_fd_items_freeze_ef89b3e70_p0", 3043),
+    ("corpus_v3_fd_items_freeze_e8f0de8c6_p0", 6001),
+    ("corpus_v3_fd_items_freeze_ee2e29518_p1", 5181),
+    ("corpus_v3_fd_items_freeze_ef9b6d16d_p0", 6001),
+    // Bob-ombs: the fall, standing wait and turn to face before walking.
+    ("corpus_v3_fd_items_bombhei_ee133b82f_p0", 3424),
+    ("corpus_v3_fd_items_bombhei_ef89b3e70_p0", 2994),
+    ("corpus_v3_fd_items_bombhei_e573e2d95_p0", 3865),
+    // Mr. Saturns: the spawn fall, sitting and looking round.
+    ("corpus_v3_fd_items_dosei_edafcfddf_p0", 3790),
+    ("corpus_v3_fd_items_dosei_e1502cb40_p0", 5124),
+];
+
+#[test]
+fn random_item_kind_witnesses_match_retail() {
+    for &(name, ticks) in RANDOM_ITEM_KIND_WITNESSES {
+        if name.starts_with("start_") {
+            combat_gate_ticks_with_ledger(name, ticks, "ledger600");
+        }
+    }
+    let matches: Vec<_> = RANDOM_ITEM_KIND_WITNESSES
+        .iter()
+        .copied()
+        .filter(|(name, _)| !name.starts_with("start_"))
+        .collect();
+    gate_in_parallel(&matches);
+}
+
 /// One complete retail capture, checked through both savestate and cold creation.
 #[test]
 fn party_ball_left_fall_bounce_and_rest_full_capture() {
