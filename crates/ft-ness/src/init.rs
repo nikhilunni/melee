@@ -104,7 +104,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
 impl CharacterCallbacks for Ness {
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
-        recovery: Recovery::Unwitnessed,
+        recovery: Recovery::PkThunder,
         absorb_item_threats: true,
         ranged: Ranged::RemoteProjectile,
         follow_ups: &[

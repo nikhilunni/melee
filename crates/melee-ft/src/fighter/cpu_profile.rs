@@ -14,11 +14,24 @@ pub struct ExclusionRule {
     /// Airborne, exclude when not over the stage instead of probing ahead.
     pub require_ground_or_stage: bool,
 }
+/// ftCo_800A96B8's arm for the kind.
 #[derive(Clone, Copy, Debug)]
 pub enum Recovery {
+    /// ftCo_CpuRecoverDiagonally (Samus's ftCo_800A963C writes the same).
     Diagonal,
+    /// The up special on the diagonal, then a wait (Fox, Falco).
     TimedSpecial(u8),
-    Unwitnessed,
+    /// The side special level toward the stage, then a wait (Luigi).
+    SideSpecial(u8),
+    /// ftCo_800A92CC: Quick Attack's two legs (Pikachu, Pichu).
+    QuickAttack,
+    /// ftCo_800A8EB0: PK Thunder into Ness at level 9, once under the
+    /// destination.
+    PkThunder,
+    /// ftCo_800A949C: Farore's Wind (Zelda).
+    FaroresWind,
+    /// No special: the up special is no recovery (Yoshi).
+    None,
 }
 #[derive(Clone, Copy, Debug)]
 pub enum Ranged {

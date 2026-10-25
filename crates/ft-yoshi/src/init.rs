@@ -86,7 +86,7 @@ impl CharacterCallbacks for Yoshi {
             scripts: &[0x26],
             require_ground_or_stage: true,
         }],
-        recovery: Recovery::Unwitnessed,
+        recovery: Recovery::None,
         plunge_threat_motions: &[0x16E, 0x170],
         scaled_jump: true,
         ranged: Ranged::RollingAttack,

@@ -80,7 +80,7 @@ impl CharacterCallbacks for Pichu {
             scripts: &[0x1B],
             require_ground_or_stage: false,
         }],
-        recovery: Recovery::Unwitnessed,
+        recovery: Recovery::QuickAttack,
         ..CpuProfile::DEFAULT
     };
 

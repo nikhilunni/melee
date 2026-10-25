@@ -65,7 +65,7 @@ impl CharacterCallbacks for Zelda {
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         transform_on_request: true,
-        recovery: Recovery::Unwitnessed,
+        recovery: Recovery::FaroresWind,
         follow_ups: &[FollowUpRule {
             motions: MotionRange(0x158, 0x15C),
             action: FollowUpAction::SteerOwnedProjectile,

@@ -104,7 +104,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
 impl CharacterCallbacks for Samus {
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
-        recovery: Recovery::Unwitnessed,
+        recovery: Recovery::Diagonal,
         rising_threat: Some((0x161, 30.0)),
         ranged: Ranged::DownwardProjectile(0x26),
         charge: Some(Charge {

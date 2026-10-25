@@ -70,7 +70,7 @@ impl CharacterCallbacks for Luigi {
             scripts: &[0x26],
             require_ground_or_stage: false,
         }],
-        recovery: Recovery::Unwitnessed,
+        recovery: Recovery::SideSpecial(40),
         ..CpuProfile::DEFAULT
     };
 
