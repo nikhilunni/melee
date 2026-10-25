@@ -33,6 +33,31 @@ pub struct ParticleRequest {
     pub matrix: Mtx,
 }
 impl BackgroundAnimation {
+    /// Ground_GetStageGObj (ground.c:835ff), map_id beyond the authored model count:
+    /// an identity joint under the ordinary map-scale wrapper, reserved before birth.
+    pub fn identity_root(archive: &Archive, map_scale: f32) -> crate::desc::ReadResult<Self> {
+        let mut joint = hsd_archive::desc::JObjDesc::default();
+        joint.scale = hsd_archive::desc::Vec3 {
+            x: 1.0,
+            y: 1.0,
+            z: 1.0,
+        };
+        let model = crate::desc::ModelDesc {
+            present: true,
+            joint,
+            animations: Vec::new(),
+            animation_loops: Vec::new(),
+            joint_mappings: Vec::new(),
+            material_animation_offsets: Vec::new(),
+            shape_animation_offsets: Vec::new(),
+            light_list_offset: None,
+            fog_offset: None,
+        };
+        let mut result = Self::load_model(archive, &model)?;
+        result.set_map_scale(map_scale);
+        Ok(result)
+    }
+
     /// Read-only pose source for presentation scratch. Matrix evaluation must
     /// happen in the caller's scratch so rendering cannot affect continuation.
     pub fn pose_tree(&self) -> &JObjTree {
@@ -537,5 +562,45 @@ impl BackgroundAnimation {
         }
         self.play_materials(0, 0, self.joints.len());
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod identity_root_tests {
+    use super::*;
+    #[test]
+    fn dynamic_identity_uses_the_map_wrapper_as_its_actual_gobj_root() {
+        let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+            || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."),
+            std::path::PathBuf::from,
+        );
+        let path = root.join("harness/roms/files/GrKg.dat");
+        assert!(melee_test_support::require_files([&path]));
+        let archive = Archive::parse(&std::fs::read(path).unwrap()).unwrap();
+        let mut model = BackgroundAnimation::identity_root(&archive, 2.0).unwrap();
+        let wrapper = model.tree.parent(model.root).unwrap();
+        assert!(model.tree.parent(wrapper).is_none());
+        assert_eq!(
+            model.tree.scale(model.root),
+            hsd_types::Vec3::new(1.0, 1.0, 1.0)
+        );
+        assert_eq!(
+            model.tree.scale(wrapper),
+            hsd_types::Vec3::new(2.0, 2.0, 2.0)
+        );
+        let position = hsd_types::Vec3::new(3.0, 4.0, 5.0);
+        let rotation = hsd_types::Vec3::new(0.25, 0.5, 0.75);
+        model.set_gobj_translate(position);
+        model.set_gobj_rotation(rotation);
+        assert_eq!(model.gobj_translation(), position);
+        assert_eq!(model.gobj_rotation(), rotation);
+        assert_eq!(model.tree.translation(model.root), hsd_types::Vec3::ZERO);
+        let matrix = model.gobj_matrix();
+        assert_eq!(
+            [matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]],
+            [3.0, 4.0, 5.0]
+        );
+        model.tree.setup_matrix(model.root);
+        assert_eq!(model.tree.get(model.root).mtx, matrix);
     }
 }

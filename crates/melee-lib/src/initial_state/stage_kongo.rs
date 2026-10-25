@@ -265,6 +265,7 @@ pub(super) fn restore(
     let barrel_angle = barrel.angle;
     Ok((
         SceneStage::Kongo(Box::new(Kongo {
+            rider: None,
             parameters,
             bridge: restore_bridge(saved),
             swings,

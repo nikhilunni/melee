@@ -251,6 +251,9 @@ pub struct MonsterState {
 }
 #[derive(Clone, Debug)]
 pub enum MonsterBehavior {
+    Klaptrap {
+        parent: Option<crate::StageParent>,
+    },
     Kuriboh {
         walking_speed: f32,
         spawn_timer: i32,
@@ -1809,10 +1812,29 @@ impl ItemPool {
         gobjs: &mut hsd_gobj::GObjAddresses,
     ) -> Option<u32> {
         assert!(
-            D::logic(spawn.kind).facing_constructor.is_none(),
+            D::logic(spawn.kind).facing_constructor.is_none()
+                && !D::logic(spawn.kind).constructor_reads_map,
             "Item_8026A810: this constructor requires live facing context"
         );
         let mut item = self.prepare_spawn(spawn, assets, stale_multiplier, gobjs)?;
+        item.update_spin(self.common.spawn_spin_degrees);
+        (D::logic(item.kind).spawned)(&mut item, assets);
+        Some(self.finish_spawn(item))
+    }
+
+    /// Item_80267130 -> initial collision, root translation and spin, then
+    /// Item_8026A810. Only table-owned map-reading constructors use this path.
+    pub fn spawn_with_initial_collision<D: ItemDispatch>(
+        &mut self,
+        spawn: SpawnItem,
+        assets: &ItemAssets,
+        gobjs: &mut hsd_gobj::GObjAddresses,
+        map: &mut melee_mp::CollMap,
+    ) -> Option<u32> {
+        assert!(D::logic(spawn.kind).constructor_reads_map);
+        let mut item = self.prepare_spawn(spawn, assets, 1.0, gobjs)?;
+        item.initialize_collision(spawn, assets, map);
+        item.set_root_translation(item.position);
         item.update_spin(self.common.spawn_spin_degrees);
         (D::logic(item.kind).spawned)(&mut item, assets);
         Some(self.finish_spawn(item))
@@ -2321,6 +2343,29 @@ impl ItemPool {
         assets: &ItemAssets,
         rng: Option<&core::cell::Cell<gekko_math::HsdRng>>,
     ) {
+        self.collide_with_stage_parent::<D>(
+            id,
+            owner,
+            stage_contact,
+            map,
+            bounds,
+            assets,
+            rng,
+            None,
+        );
+    }
+    #[allow(clippy::too_many_arguments)]
+    pub fn collide_with_stage_parent<D: ItemDispatch>(
+        &mut self,
+        id: u32,
+        owner: Option<&ItemOwner>,
+        stage_contact: bool,
+        map: &mut melee_mp::CollMap,
+        bounds: &ItemBounds,
+        assets: &ItemAssets,
+        rng: Option<&core::cell::Cell<gekko_math::HsdRng>>,
+        stage_parent: Option<crate::StageParentView>,
+    ) {
         let half_life_scale = self.common.half_life_scale;
         let Some(item) = self.get_mut(id) else {
             return;
@@ -2330,6 +2375,7 @@ impl ItemPool {
         item.destroyed |= (logic.states[item.motion as usize].collision)(
             item,
             &mut ItemCollisionContext {
+                stage_parent,
                 owner,
                 stage_contact,
                 map,

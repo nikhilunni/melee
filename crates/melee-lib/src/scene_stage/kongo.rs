@@ -191,6 +191,7 @@ pub(crate) fn initialize(
     Ok((
         SceneStage::Kongo(Box::new(Kongo {
             parameters,
+            rider: None,
             bridge,
             swings,
             event_timer: -1,
@@ -215,6 +216,11 @@ pub(crate) fn load_reserved(assets: &Assets, animations: &mut Animations) -> Res
         model.set_hidden(true);
         animations.insert(map, model);
     }
+    let mut identity =
+        BackgroundAnimation::identity_root(&assets.stage, assets.stage_desc.parameters.map_scale)
+            .map_err(|e| anyhow::anyhow!("{e}"))?;
+    identity.set_hidden(true);
+    animations.insert(11, identity);
     Ok(())
 }
 
@@ -225,7 +231,23 @@ pub(crate) fn run_proc(
     draws: &mut DrawLog,
     world: &mut hsd_gobj::TaggedWorld,
     objects: &mut crate::scene_stage::StageObjects,
+    item_objects: &mut crate::scene_items::Objects,
 ) -> Result<()> {
+    if map == 11 {
+        let SceneStage::Kongo(stage) = &mut state.stage else {
+            unreachable!()
+        };
+        let rider = stage.rider.as_mut().expect("live map11 rider");
+        let model = state.stage_animations.get_mut(&11).unwrap();
+        let (position, rotation) = rider.advance(
+            &state.assets.stage_desc.splines[rider.spline],
+            stage.parameters.path_speed,
+            model.gobj_translation(),
+        );
+        model.set_gobj_translate(position);
+        model.set_gobj_rotation(rotation);
+        return Ok(());
+    }
     if matches!(map, 1 | 2) {
         return step_log(state, map, world, objects);
     }
@@ -274,6 +296,9 @@ pub(crate) fn run_proc(
                 None => {}
                 Some(melee_gr::kongo::events::Event::Object(id)) => {
                     create_object(state, id, draws, world, objects)?;
+                }
+                Some(melee_gr::kongo::events::Event::Klaptrap) => {
+                    create_rider(state, world, objects, item_objects)?;
                 }
                 Some(event) => {
                     unimplemented!("grKongo_801D7BBC: Kongo Jungle event {event:?} (map 11's path rider)")
@@ -562,14 +587,21 @@ fn step_hold(state: &mut InitialState) -> Result<()> {
 
 /// grKongo_801D8078 (0x801D8078): a Klaptrap item within the catch radius.
 fn klaptrap_in_reach(state: &InitialState) -> bool {
-    let live = state
-        .items
-        .iter()
-        .any(|item| item.kind == melee_types::ItemKind::Klap && !item.destroyed);
-    if live {
-        unimplemented!("grKongo_801D8078: a Klaptrap item on Kongo Jungle");
-    }
-    false
+    let SceneStage::Kongo(stage) = &state.stage else {
+        unreachable!()
+    };
+    let p = stage.barrel_position;
+    let radius = stage.parameters.catch_radius;
+    state.items.iter().any(|item| {
+        if item.kind != melee_types::ItemKind::Klap || item.destroyed {
+            return false;
+        }
+        // retail801D80CC..80FC: separate fsubs/fmuls, ordered additions.
+        let dx = p.x - item.position.x;
+        let dz = p.z - item.position.z;
+        let dy = p.y - item.position.y;
+        (dx * dx + dy * dy) + dz * dz < radius * radius
+    })
 }
 
 /// ftColl_8007BA0C (0x8007BA0C) on Kongo Jungle: the barrel's catch
@@ -658,4 +690,50 @@ pub(crate) fn barrel_reaches(stage: &Kongo, position: Vec3) -> bool {
     let dz = pos.z - position.z;
     let radius = stage.parameters.catch_radius;
     (dx * dx + dy * dy) + dz * dz < radius * radius
+}
+
+/// grKongo_801D5340/651C then the event's it_802E18B4, in retail factory order.
+fn create_rider(
+    state: &mut InitialState,
+    world: &mut hsd_gobj::TaggedWorld,
+    objects: &mut crate::scene_stage::StageObjects,
+    item_objects: &mut crate::scene_items::Objects,
+) -> Result<()> {
+    let SceneStage::Kongo(stage) = &state.stage else {
+        unreachable!()
+    };
+    anyhow::ensure!(stage.rider.is_none(), "grKongo_801D5340: second live map11");
+    let object = world.create(3, 5, 0);
+    state.stage_gobjs.create(&mut state.effects.gobjs, 11);
+    for (index, link) in [1, 4].into_iter().enumerate() {
+        world.add_tagged_proc(object, link, super::last::TAG_BASE + 11 * 3 + index);
+    }
+    objects[11] = Some(object);
+    let rider = melee_gr::kongo::rider::Rider::new(&mut state.rng);
+    let position =
+        hsd_anim::spline::arc_length_point(&state.assets.stage_desc.splines[rider.spline], 0.0)
+            .expect("initial rider point");
+    let model = state.stage_animations.get_mut(&11).unwrap();
+    model.reset_for_creation();
+    model.set_hidden(false);
+    model.set_gobj_translate(position);
+    let SceneStage::Kongo(stage) = &mut state.stage else {
+        unreachable!()
+    };
+    stage.rider = Some(rider);
+    world.add_tagged_proc(object, 4, super::last::TAG_BASE + 11 * 3 + 2);
+    // it_802E18B4: actual Ground root query, then the live fighter-facing query.
+    let matrix = state.stage_animations.get_mut(&11).unwrap().gobj_matrix();
+    let position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
+    let facing =
+        crate::scene_items::facing_toward_fighters(position, &mut state.fighters, &mut state.rng);
+    crate::scene_items::spawn_klaptrap(
+        state,
+        world,
+        item_objects,
+        position,
+        facing,
+        melee_it::StageParent { map: 11, object },
+    );
+    Ok(())
 }

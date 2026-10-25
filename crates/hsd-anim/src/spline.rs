@@ -314,3 +314,66 @@ mod tests {
         arc_length_parameter(&unwitnessed_curve(SplineKind::Cardinal), 0.5);
     }
 }
+
+/// lbShadow_8000E9F0 (lbshadow.c): witnessed B-spline tangent branch.
+/// No endpoint adjustment occurs in retail's B-spline branch; the endpoint
+/// requires an extra control point outside this admitted path interval.
+pub fn bspline_tangent(spline: &Spline, u: f32) -> Vec3 {
+    assert_eq!(
+        spline.kind,
+        SplineKind::BSpline,
+        "lbShadow_8000E9F0: unwitnessed curve tangent"
+    );
+    assert!(
+        (0.0..1.0).contains(&u),
+        "lbShadow_8000E9F0: unwitnessed tangent endpoint"
+    );
+    let scaled = u * (spline.knots as i32 - 1) as f32;
+    let index = gekko_math::msl::fctiwz(scaled) as i16;
+    let t = scaled - f32::from(index);
+    let square = t * t;
+    // retail8000EBC0: fmsubs; EBE8: fmadds; EC00..EC5C: cp1-first blend.
+    let b1 = 0.5 * fmsubs(3.0, square, 4.0 * t);
+    let one_minus = 1.0 - t;
+    let b0 = one_minus * (-0.5 * one_minus);
+    let b2 = 0.5 * (1.0 + fmadds(-3.0, square, 2.0 * t));
+    let b3 = 0.5 * square;
+    blend(&spline.points[index as usize..], [b0, b1, b2, b3])
+}
+
+#[cfg(test)]
+mod tangent_tests {
+    use super::*;
+    fn straight() -> Spline {
+        Spline {
+            kind: SplineKind::BSpline,
+            knots: 2,
+            tension: 0.0,
+            points: (0..4)
+                .map(|i| hsd_archive::desc::Vec3 {
+                    x: (i * 2) as f32,
+                    y: 0.0,
+                    z: 0.0,
+                })
+                .collect(),
+            total_length: 2.0,
+            lengths: vec![0.0, 1.0],
+            polynomials: vec![[0.0; 5]],
+        }
+    }
+    #[test]
+    fn cubic_tangent_preserves_a_straight_control_polygon() {
+        for parameter in [0.0, 0.25, 0.5, 0.75] {
+            assert_eq!(
+                bspline_tangent(&straight(), parameter),
+                Vec3::new(2.0, 0.0, 0.0)
+            );
+        }
+    }
+    #[test]
+    #[cfg(not(target_family = "wasm"))]
+    #[should_panic(expected = "unwitnessed tangent endpoint")]
+    fn tangent_endpoint_requires_the_unrecorded_extra_control_point() {
+        bspline_tangent(&straight(), 1.0);
+    }
+}

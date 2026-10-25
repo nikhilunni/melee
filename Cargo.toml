@@ -24,6 +24,7 @@ members = [
     "crates/it-sword",
     "crates/it-container",
     "crates/it-monsters",
+    "crates/it-klap",
     "crates/it-dosei",
     "crates/it-yoshieggthrow",
     "crates/it-yoshistar",

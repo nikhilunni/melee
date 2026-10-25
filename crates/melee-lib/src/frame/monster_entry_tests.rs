@@ -156,6 +156,9 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
                     assert_eq!(actual.to_bits(), word(offset));
                 }
                 match &base.behavior {
+                    melee_it::MonsterBehavior::Klaptrap { .. } => {
+                        panic!("unexpected Klaptrap in crate birth witness")
+                    }
                     melee_it::MonsterBehavior::Kuriboh {
                         walking_speed,
                         spawn_timer,
@@ -281,6 +284,7 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
                 (logic.states[usize::from(item.motion)].collision)(
                     &mut item,
                     &mut melee_it::ItemCollisionContext {
+                        stage_parent: None,
                         owner: None,
                         stage_contact: false,
                         map: &mut map,

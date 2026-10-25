@@ -238,11 +238,13 @@ impl Effects {
         bone: Option<usize>,
         matrix: Mtx,
         common: &ParticleBank,
+        stage: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
         anyhow::ensure!(
-            (resources::is_character_bank(bank) && id / 1000 == u32::from(bank))
+            (bank == 30 && id / 1000 == 30)
+                || (resources::is_character_bank(bank) && id / 1000 == u32::from(bank))
                 || (bank == 0 && id < 1000 && !COMMON_SPECIAL_PARTICLES.contains(&id)),
             "item joint particle {bank}/{id} outside the default hsd_8039EFAC path"
         );
@@ -253,7 +255,9 @@ impl Effects {
         let mut spawn = SpawnRequest::new(bank, id, 0);
         spawn.joint = Some((joint, matrix));
         self.events.spawn(&spawn, false, false);
-        let particle_bank = if bank == 0 {
+        let particle_bank = if bank == 30 {
+            stage
+        } else if bank == 0 {
             common
         } else {
             resources::character_bank(&self.character_banks, i32::from(bank))?

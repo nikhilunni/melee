@@ -12,6 +12,7 @@ pub mod planks;
 pub mod barrel;
 pub mod events;
 pub mod objects;
+pub mod rider;
 pub use barrel::Barrel;
 pub use planks::{Bridge, Swing};
 
@@ -92,6 +93,7 @@ pub const BARREL: u8 = 5;
 /// Kongo Jungle's stage state.
 #[derive(Clone, Debug)]
 pub struct Kongo {
+    pub rider: Option<rider::Rider>,
     pub parameters: Parameters,
     pub bridge: Bridge,
     /// Map 10's gp+C4..+D8: the left and right platform ends.
@@ -121,6 +123,7 @@ impl Kongo {
     /// Whether event map `map` has a live GObj.
     pub fn live(&self, map: u8) -> bool {
         match map {
+            11 => self.rider.is_some(),
             1 | 2 => self.logs[usize::from(map - 1)].is_some(),
             7..=9 => self.passersby[usize::from(map - 7)],
             _ => false,

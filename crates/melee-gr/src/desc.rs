@@ -71,6 +71,7 @@ pub struct ModelDesc {
 }
 #[derive(Clone, Debug, PartialEq)]
 pub struct StageDesc {
+    pub splines: Vec<hsd_archive::desc::spline::Spline>,
     pub material_scripts: Vec<Vec<hsd_archive::desc::color_animation::ColorCommand>>,
     pub kind: GrKind,
     pub parameters: GroundParam,
@@ -447,6 +448,11 @@ fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadRe
         .map(|&offset| hsd_archive::desc::color_animation::read(archive, offset))
         .collect::<Result<_, _>>()?;
     Ok(StageDesc {
+        splines: if kind == GrKind::Kongo {
+            hsd_archive::desc::spline::Spline::read_stage_bank(archive)?
+        } else {
+            Vec::new()
+        },
         material_scripts,
         kind,
         parameters,

@@ -1364,6 +1364,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-klap"
+version = "0.0.1"
+dependencies = [
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-koopaflame"
 version = "0.0.1"
 dependencies = [
@@ -1866,6 +1875,7 @@ dependencies = [
  "it-gamewatch",
  "it-heiho",
  "it-kirby",
+ "it-klap",
  "it-koopaflame",
  "it-link",
  "it-luigifire",

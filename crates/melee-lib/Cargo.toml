@@ -11,6 +11,7 @@ it-bombhei = { path = "../it-bombhei" }
 it-sword = { path = "../it-sword" }
 it-container = { path = "../it-container" }
 it-monsters = { path = "../it-monsters" }
+it-klap = { path = "../it-klap" }
 it-dosei = { path = "../it-dosei" }
 it-yoshieggthrow = { path = "../it-yoshieggthrow" }
 it-peach = { path = "../it-peach" }

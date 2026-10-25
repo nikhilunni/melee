@@ -22,7 +22,20 @@ pub struct ItemPhysicsContext<'a> {
     /// HSD_Randi / HSD_Randf for callbacks that draw.
     pub rng: &'a core::cell::Cell<gekko_math::HsdRng>,
 }
+/// A concrete Ground object, independent of fighter ownership.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct StageParent {
+    pub map: u8,
+    pub object: hsd_gobj::GObjId,
+}
+#[derive(Clone, Copy, Debug)]
+pub struct StageParentView {
+    pub parent: StageParent,
+    pub translation: hsd_types::Vec3,
+    pub rotation: hsd_types::Vec3,
+}
 pub struct ItemCollisionContext<'a> {
+    pub stage_parent: Option<StageParentView>,
     pub owner: Option<&'a ItemOwner>,
     pub stage_contact: bool,
     pub map: &'a mut melee_mp::CollMap,
@@ -124,6 +137,10 @@ pub trait ItemLogic {
     /// The physics callback looks for a target (Samus's missile,
     /// it_802B64FC): the scene supplies `ItemPhysicsContext::targets`.
     const LOCKS_ON: bool = false;
+    const CONSTRUCTOR_READS_MAP: bool = false;
+    fn stage_parent(_item: &ItemCore) -> Option<StageParent> {
+        None
+    }
     const FACING_CONSTRUCTOR: Option<FacingConstructor> = None;
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     /// The spawning code's own set-up once Item_80268B18 returns (e.g.
@@ -275,6 +292,8 @@ pub trait ItemLogic {
         model_copies: Self::MODEL_COPIES,
         spawned: Self::spawned,
         facing_constructor: Self::FACING_CONSTRUCTOR,
+        constructor_reads_map: Self::CONSTRUCTOR_READS_MAP,
+        stage_parent: Self::stage_parent,
         launched: Self::launched,
         spawned_with_map: Self::spawned_with_map,
         pickup_possible: Self::pickup_possible,
@@ -321,6 +340,8 @@ pub struct ItemLogicRow {
     pub states: &'static [ItemStateRow],
     pub spawned: fn(&mut ItemCore, &ItemAssets),
     pub facing_constructor: Option<FacingConstructor>,
+    pub constructor_reads_map: bool,
+    pub stage_parent: fn(&ItemCore) -> Option<StageParent>,
     pub launched: fn(
         &mut ItemCore,
         &ItemAssets,

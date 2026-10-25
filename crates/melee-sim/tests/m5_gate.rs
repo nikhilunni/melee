@@ -7269,3 +7269,41 @@ fn held_sword_forward_and_up_entries_complete_captures() {
         assert_eq!(draws, expected_draws, "{name} whole raw ledger");
     }
 }
+
+/// Three whole terminal path+item births; no later Ground/item animation is admitted.
+#[test]
+fn kongo_klaptrap_birth_full_fields_particles_and_ordered_rng() {
+    for (name, draws) in [
+        ("corpus_v3_kj_fox_marth4_e0fcbde24_p1", 75544),
+        ("corpus_v3_kj_fox_marth4_e75fb4a9a_p0", 74709),
+        ("corpus_v3_kj_fox_marth4_e89a89d0e_p0", 76326),
+    ] {
+        complete_capture_with_initial_rng_gate(name, 1666);
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        let initial: serde_json::Value = serde_json::from_str(
+            &melee_test_support::trace::read_to_string(
+                &scenario.trace_path("particles.jsonl.initial.jsonl"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(initial["state"]["rng.seed"]["v"], 2146705218_u32);
+        let rows =
+            melee_test_support::trace::read_to_string(&scenario.trace_path("ledger.raw.jsonl"))
+                .unwrap();
+        let actual: usize = rows
+            .lines()
+            .map(|s| {
+                serde_json::from_str::<serde_json::Value>(s).unwrap()["rng_draws"]
+                    .as_array()
+                    .unwrap()
+                    .len()
+            })
+            .sum();
+        assert_eq!(actual, draws);
+    }
+}

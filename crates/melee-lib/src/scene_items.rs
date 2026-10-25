@@ -23,6 +23,7 @@ melee_it::item_kinds! {
         Taru: it_container::Barrel,
         Kusudama: it_container::PartyBall,
         Sword: it_sword::Sword,
+        Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
         Dosei: it_dosei::Dosei,
@@ -1429,6 +1430,16 @@ impl Resources {
                 visual_archives.push((kind, std::sync::Arc::clone(&a)));
             }
         }
+        if let Some(mut klap) =
+            ItemAssets::from_stage_item(stage, ItemKind::Klap, &it_klap::ARTICLE_STATES, 0, &[])?
+        {
+            klap.read_pose(stage)
+                .map_err(|e| anyhow::anyhow!("Klaptrap pose: {e}"))?;
+            klap.read_particle_tracks(stage)
+                .map_err(|e| anyhow::anyhow!("Klaptrap particle tracks: {e}"))?;
+            kinds.push((ItemKind::Klap, klap));
+            visual_archives.push((ItemKind::Klap, std::sync::Arc::new(stage.clone())));
+        }
         // Ground_801C0800 -> it_8026B40C: Yoshi's Story's Shy Guy Article.
         if let Some(mut heiho) = ItemAssets::from_stage_item(
             stage,
@@ -2509,4 +2520,70 @@ fn destroy_object(world: &mut World, objects: &mut Objects, item: u32) {
         .position(|(id, _)| *id == item)
         .expect("item GObj");
     world.destroy(objects.remove(index).1);
+}
+
+/// it_802E18B4 -> it_8027B5B0, normal stage-item construction and proc registration.
+pub(crate) fn spawn_klaptrap(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    position: hsd_types::Vec3,
+    facing: f32,
+    parent: melee_it::StageParent,
+) {
+    let spawn = melee_it::SpawnItem {
+        kind: ItemKind::Klap,
+        hold_kind: 4,
+        owner: None,
+        secondary_owner: None,
+        stale_source: None,
+        attack_from_spawner: false,
+        link_gobjs: 0,
+        spawn_variant: 0,
+        position,
+        previous_position: position,
+        velocity: hsd_types::Vec3::ZERO,
+        facing,
+        damage: 0,
+        auxiliary_damage: 0,
+        spawn_argument: 0,
+        initial_collision: true,
+        auxiliary_flags: [0; 3],
+        ground_or_air: melee_types::GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
+    };
+    let id = state
+        .items
+        .spawn_with_initial_collision::<SceneItems>(
+            spawn,
+            state.assets.items.get(ItemKind::Klap),
+            &mut state.effects.gobjs,
+            &mut state.map,
+        )
+        .expect("Klaptrap birth pool capacity");
+    finish_spawn_request(
+        &mut state.items,
+        &state.assets.items,
+        &mut state.map,
+        world,
+        objects,
+        id,
+        spawn,
+        ItemRequest::Spawn(spawn),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        &mut state.rng,
+        None,
+        None,
+        true,
+    );
+    it_klap::attach_parent(state.items.get_mut(id).unwrap(), parent);
 }

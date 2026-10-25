@@ -227,6 +227,8 @@ fn register(
     }
 }
 struct Runtime {
+    #[cfg(test)]
+    callback_trace: Option<Vec<Registration>>,
     radial_forces: melee_lb::radial_force::RadialForces,
     item_objects: crate::scene_items::Objects,
     /// Registration rows (index, p_link, s_link) whose GObjs
@@ -292,6 +294,8 @@ pub enum DisplayPass {
 impl Clone for Runtime {
     fn clone(&self) -> Self {
         Self {
+            #[cfg(test)]
+            callback_trace: self.callback_trace.clone(),
             radial_forces: self.radial_forces.clone(),
             item_objects: self.item_objects.clone(),
             stage_start_rows: self.stage_start_rows.clone(),
@@ -630,6 +634,7 @@ impl Runtime {
                             (joint != 0).then_some(joint),
                             matrix,
                             &state.assets.common_particle_bank,
+                            &state.assets.particle_bank,
                             &mut state.particles,
                             &mut state.rng,
                         )?;
@@ -1342,7 +1347,23 @@ impl Runtime {
             5 => {
                 let contact = state.items.stage_contact(id, &mut state.map);
                 let rng = std::cell::Cell::new(state.rng);
-                state.items.collide::<SceneItems>(
+                let parent = (<SceneItems as melee_it::ItemDispatch>::logic(kind).stage_parent)(
+                    state.items.get_mut(id).unwrap(),
+                );
+                let parent = parent.map(|parent| {
+                    assert_eq!(
+                        self.stage_objects[usize::from(parent.map)],
+                        Some(parent.object),
+                        "item Ground parent is not live"
+                    );
+                    let model = &state.stage_animations[&parent.map];
+                    melee_it::StageParentView {
+                        parent,
+                        translation: model.gobj_translation(),
+                        rotation: model.gobj_rotation(),
+                    }
+                });
+                state.items.collide_with_stage_parent::<SceneItems>(
                     id,
                     owner.as_ref(),
                     contact,
@@ -1350,6 +1371,7 @@ impl Runtime {
                     &item_bounds(&state.assets),
                     state.assets.items.get(kind),
                     Some(&rng),
+                    parent,
                 );
                 state.rng = rng.get();
             }
@@ -1557,6 +1579,11 @@ impl Runtime {
         if continuation == Continuation::Complete {
             return Ok(());
         }
+        #[cfg(test)]
+        if let Some(trace) = &mut self.callback_trace {
+            trace.push(row);
+        }
+
         // Each of a player's fighters sees the player's stale-move table as
         // the last proc left it.
         partner_fighters::share_stale_tables(&mut self.state);
@@ -2459,6 +2486,10 @@ impl Runtime {
                 // M3.md documents the scope and the constructor's phase guard.
                 0x801C1CD0 => {
                     let map = map.expect("animation map");
+                    if matches!(state.stage, SceneStage::Kongo(_)) {
+                        melee_gr::kongo::procs::require_ground_animation(map);
+                    }
+
                     if let Some(animation) = state.stage_animations.get_mut(&map) {
                         for event in animation.tick::<RetailTrig>() {
                             let mut request =
@@ -2645,6 +2676,7 @@ impl Runtime {
                             &mut self.particle_draws,
                             world,
                             &mut self.stage_objects,
+                            &mut self.item_objects,
                         )?;
                     } else if matches!(state.stage, SceneStage::Garden(_)) {
                         crate::scene_stage::garden::run_proc(
@@ -3500,6 +3532,8 @@ impl Simulation {
             })
             .collect();
         let mut runtime = Box::new(Runtime {
+            #[cfg(test)]
+            callback_trace: None,
             radial_forces: Default::default(),
             item_objects: Default::default(),
             stage_objects: Default::default(),
@@ -5341,3 +5375,6 @@ mod held_f_hi_entry_tests;
 
 #[cfg(test)]
 mod giant_punch_invariant_tests;
+
+#[cfg(test)]
+mod klaptrap_birth_tests;

@@ -317,6 +317,9 @@ impl ItemPose {
             }
             None => &self.rest,
         };
+        if turned.is_none() {
+            return self.matrix_from_locals(source, bone, root);
+        }
         let mut locals = [LocalSrt {
             flags: 0,
             rotate: Quaternion::default(),
@@ -359,6 +362,12 @@ impl ItemPose {
             }
             None => &self.rest,
         };
+        // An unmodified sampled pose does not need the bounded override copy.
+        // Klaptrap's 26-joint model reads this exact path on its birth hitbox;
+        // the arithmetic and parent traversal remain matrix_from_locals.
+        if turned.is_none() && translated.is_none() && scaled.is_none() {
+            return self.matrix_from_locals(source, bone, root);
+        }
         let mut locals = [LocalSrt {
             flags: 0,
             rotate: Quaternion::default(),
@@ -396,5 +405,86 @@ impl ItemPose {
     pub fn bone_position(&self, state: usize, steps: u32, bone: usize, root: RootSrt) -> Vec3 {
         let m = self.bone_matrix(state, steps, bone, root);
         Vec3::new(m.0[0][3], m.0[1][3], m.0[2][3])
+    }
+}
+
+#[cfg(test)]
+mod unmodified_pose_tests {
+    use super::*;
+    fn pose(count: usize) -> ItemPose {
+        let mut locals = vec![
+            LocalSrt {
+                flags: 0,
+                rotate: Quaternion::default(),
+                scale: Vec3::new(1.0, 1.0, 1.0),
+                translate: Vec3::new(2.0, 3.0, 4.0)
+            };
+            count
+        ];
+        locals[0].translate = Vec3::ZERO;
+        ItemPose {
+            parents: (0..count).map(|i| (i != 0).then_some(0)).collect(),
+            root_flags: 0,
+            states: vec![Some(vec![locals.clone()])],
+            rest: locals,
+            looping: vec![],
+        }
+    }
+    fn root() -> RootSrt {
+        RootSrt {
+            translate: Vec3::new(10.0, 20.0, 30.0),
+            rotate: Vec3::ZERO,
+            scale: Vec3::new(1.0, 1.0, 1.0),
+        }
+    }
+    #[test]
+    fn unmodified_large_pose_reads_the_requested_joint_without_override_scratch() {
+        let pose = pose(26);
+        let actual = pose.bone_matrix_posed(0, 1, 25, root(), None, None, None);
+        assert_eq!(actual, pose.bone_matrix(0, 1, 25, root()));
+        assert_eq!(actual, pose.bone_matrix_turned(0, 1, 25, root(), None));
+        assert_eq!(
+            [actual.0[0][3], actual.0[1][3], actual.0[2][3]],
+            [12.0, 23.0, 34.0]
+        );
+    }
+    #[test]
+    fn small_pose_overrides_still_change_the_actual_joint() {
+        let pose = pose(2);
+        let actual = pose.bone_matrix_posed(
+            0,
+            1,
+            1,
+            root(),
+            None,
+            Some((1, Vec3::new(1.0, 2.0, 3.0))),
+            Some((1, Vec3::new(2.0, 3.0, 4.0))),
+        );
+        assert_eq!(
+            [actual.0[0][0], actual.0[1][1], actual.0[2][2]],
+            [2.0, 3.0, 4.0]
+        );
+        assert_eq!(
+            [actual.0[0][3], actual.0[1][3], actual.0[2][3]],
+            [11.0, 22.0, 33.0]
+        );
+    }
+    #[test]
+    #[should_panic(expected = "item pose: too many joints")]
+    fn actual_large_pose_turn_remains_guarded() {
+        pose(26).bone_matrix_turned(0, 1, 1, root(), Some((1, 0.5)));
+    }
+    #[test]
+    #[should_panic(expected = "item pose: too many joints")]
+    fn actual_large_pose_override_remains_guarded() {
+        pose(26).bone_matrix_posed(
+            0,
+            1,
+            1,
+            root(),
+            None,
+            None,
+            Some((1, Vec3::new(2.0, 2.0, 2.0))),
+        );
     }
 }

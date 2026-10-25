@@ -40,6 +40,27 @@ pub struct Spline {
 pub type LinearSpline = Spline;
 
 impl Spline {
+    /// Ground_801C247C: map_head's typed path bank. Layout stays at the archive boundary.
+    pub fn read_stage_bank(archive: &Archive) -> Result<Vec<Self>> {
+        let Some(header) = archive.public("map_head") else {
+            return Ok(Vec::new());
+        };
+        let count = archive.reader().u32(header + 0x14)?;
+        let Some(table) = archive.link(header + 0x10)? else {
+            return Ok(Vec::new());
+        };
+        (0..count)
+            .map(|i| {
+                let at = table + i * 4;
+                let offset = archive.link(at)?.ok_or(DescError::NullPointer {
+                    field: "stage spline",
+                    at,
+                })?;
+                Self::read(archive, offset)
+            })
+            .collect()
+    }
+
     pub fn read(archive: &Archive, offset: u32) -> Result<Self> {
         let r = archive.reader();
         r.slice(offset, 0x18)?;

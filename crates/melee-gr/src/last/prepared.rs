@@ -210,6 +210,24 @@ impl BackgroundAnimation {
         let joint = self.tree.parent(self.root).unwrap_or(self.root);
         self.tree.set_translate(joint, &translate);
     }
+    /// HSD_JObjSetRotation on the actual Ground GObj root (the wrapper).
+    pub fn set_gobj_rotation(&mut self, rotation: hsd_types::Vec3) {
+        let joint = self.tree.parent(self.root).unwrap_or(self.root);
+        self.tree.set_rotation_x(joint, rotation.x);
+        self.tree.set_rotation_y(joint, rotation.y);
+        self.tree.set_rotation_z(joint, rotation.z);
+    }
+    pub fn gobj_rotation(&self) -> hsd_types::Vec3 {
+        let node = self
+            .tree
+            .get(self.tree.parent(self.root).unwrap_or(self.root));
+        hsd_types::Vec3::new(node.rotate.x, node.rotate.y, node.rotate.z)
+    }
+    pub fn gobj_matrix(&mut self) -> hsd_types::Mtx {
+        let joint = self.tree.parent(self.root).unwrap_or(self.root);
+        self.tree.setup_matrix(joint);
+        self.tree.get(joint).mtx
+    }
     /// `HSD_JObjGetTranslation` of the Ground GObj's JObj.
     pub fn gobj_translation(&self) -> hsd_types::Vec3 {
         self.tree
