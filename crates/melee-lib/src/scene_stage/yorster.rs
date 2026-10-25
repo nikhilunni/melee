@@ -33,6 +33,20 @@ pub(crate) fn load(assets: &Assets, map: u8) -> Result<BackgroundAnimation> {
         BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[usize::from(map)])
             .map_err(|e| anyhow::anyhow!("Yoshi's Island map {map}: {e}"))?;
     animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+    if map == STAGE_MAP {
+        // Every grAnime_801C7FF8 switch map 1 makes, decoded at load so the
+        // blocks replay them without allocating.
+        let model = &assets.stage_desc.models[usize::from(map)];
+        let blocks = BLOCK_BONES.into_iter().flat_map(|bone| {
+            [block_animation::SPIN, block_animation::REST, block_animation::BLOCKED]
+                .map(|index| (bone, index))
+        });
+        for (bone, index) in LOOP_BONES.into_iter().map(|bone| (bone, LOOP_ANIMATION)).chain(blocks) {
+            animation
+                .prepare_subtree(&assets.stage, model, bone, index)
+                .map_err(|e| anyhow::anyhow!("Yoshi's Island bone {bone} animation {index}: {e}"))?;
+        }
+    }
     Ok(animation)
 }
 
@@ -64,19 +78,10 @@ pub(crate) fn controller(assets: &Assets) -> Result<YorsterStage> {
     Ok(stage)
 }
 
-/// grAnime_801C7FF8(gobj, bone, 7, index, frame, rate) on map 1.
-fn play(
-    animation: &mut BackgroundAnimation,
-    assets: &Assets,
-    bone: usize,
-    index: usize,
-    frame: f32,
-    rate: f32,
-) -> Result<()> {
-    let model = &assets.stage_desc.models[usize::from(STAGE_MAP)];
-    animation
-        .play_subtree(&assets.stage, model, bone, index, frame, rate)
-        .map_err(|e| anyhow::anyhow!("Yoshi's Island bone {bone} animation {index}: {e}"))
+/// grAnime_801C7FF8(gobj, bone, 7, index, frame, rate) on map 1, from
+/// the switches [`load`] prepared.
+fn play(animation: &mut BackgroundAnimation, bone: usize, index: usize, frame: f32, rate: f32) {
+    animation.play_prepared_subtree_at(bone, index, frame, rate);
 }
 
 /// grYorster_80201FA4 (0x80201FA4): maps 0 and 1. Map 0 has no animation
@@ -112,7 +117,7 @@ pub(crate) fn initialize(
         );
         if map == STAGE_MAP {
             for bone in LOOP_BONES {
-                play(&mut animation, assets, bone, LOOP_ANIMATION, 0.0, 1.0)?;
+                play(&mut animation, bone, LOOP_ANIMATION, 0.0, 1.0);
             }
         }
         animations.insert(map, animation);
@@ -163,7 +168,7 @@ pub(crate) fn start(
         state.map.record_ceiling_events(stage.joints[index], true);
         it_yaku::set_hurt_capsule(item, [Vec3::ZERO; 2], BLOCK_HURT_RADIUS);
         it_yaku::set_hurt_enabled(item, true);
-        play(model, &assets, bone, block_animation::REST, 0.0, 0.0)?;
+        play(model, bone, block_animation::REST, 0.0, 0.0);
         stage.items[index] = Some(id);
     }
     let bindings = &assets.stage_desc.models[usize::from(STAGE_MAP)].joint_mappings;
@@ -176,7 +181,6 @@ pub(crate) fn start(
 struct Blocks<'a> {
     stage: &'a YorsterStage,
     model: &'a mut BackgroundAnimation,
-    assets: &'a Assets,
     items: &'a mut melee_it::ItemPool,
     map: &'a mut melee_mp::CollMap,
     fighters: &'a [crate::scene_fighter::SceneFighter],
@@ -199,9 +203,7 @@ impl BlockEngine for Blocks<'_> {
         self.model.subtree_joint_end_frame(BLOCK_BONES[block])
     }
     fn play(&mut self, block: usize, index: usize, frame: f32, rate: f32) {
-        if let Err(e) = play(self.model, self.assets, BLOCK_BONES[block], index, frame, rate) {
-            self.error.get_or_insert(e);
-        }
+        play(self.model, BLOCK_BONES[block], index, frame, rate);
     }
     fn rewound(&mut self, block: usize) -> bool {
         self.model.subtree_animation_rewound(BLOCK_BONES[block])
@@ -271,7 +273,6 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8) -> Result<()> {
         let mut engine = Blocks {
             stage,
             model,
-            assets: &assets,
             items: &mut state.items,
             map: &mut state.map,
             fighters: &state.fighters,

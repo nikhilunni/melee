@@ -201,13 +201,12 @@ impl LiftEngine for Stage<'_> {
             self.model.set_joint_translate_y(bone + 1, 0.0);
         }
         // mpLib_80055E9C(0x14), (0x15), then mpLib_80057424 on each.
-        let lifts: Vec<_> = self
-            .bindings
-            .iter()
-            .filter(|b| LIFT_JOINTS.contains(&i32::from(b.joint_index)))
-            .cloned()
-            .collect();
-        self.model.update_collision(self.map, &lifts);
+        for binding in self.bindings {
+            if LIFT_JOINTS.contains(&i32::from(binding.joint_index)) {
+                self.model
+                    .update_collision(self.map, std::slice::from_ref(binding));
+            }
+        }
         for joint in LIFT_JOINTS {
             self.map.joint_snapshot_prev_pos(joint);
         }
@@ -226,11 +225,10 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8) -> Result<()> {
     }
     let assets = std::sync::Arc::clone(&state.assets);
     // fn_801FC9AC's calls since the last step.
-    let mut weighed = Vec::new();
-    for joint in LIFT_JOINTS {
-        for event in state.map.take_joint_events(joint).iter() {
-            weighed.push(*event);
-        }
+    // Both joints' calls come from one fixed event list, so they fit in it.
+    let mut weighed = state.map.take_joint_events(LIFT_JOINTS[0]);
+    for event in state.map.take_joint_events(LIFT_JOINTS[1]).iter() {
+        weighed.push(*event);
     }
     let SceneStage::Inishie1(stage) = &mut state.stage else {
         unreachable!()
@@ -240,7 +238,7 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8) -> Result<()> {
         "grinishie1.c:623: `?` blocks are not ported"
     );
     let parameters = stage.parameters;
-    for event in &weighed {
+    for event in weighed.iter() {
         let lift = if event.joint == LIFT_JOINTS[0] { 0 } else { 1 };
         stage.lifts.weigh(lift, event.ground_kind, event.x50, &parameters);
     }

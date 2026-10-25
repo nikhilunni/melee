@@ -39,6 +39,16 @@ pub(crate) fn load(assets: &Assets, map: u8) -> Result<BackgroundAnimation> {
         BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[usize::from(map)])
             .map_err(|e| anyhow::anyhow!("Onett map {map}: {e}"))?;
     animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+    if map == ROOF_MAP {
+        // The roof's grAnime_801C7FF8 switches, decoded at load so the
+        // roof replays them without allocating.
+        let model = &assets.stage_desc.models[usize::from(map)];
+        for index in ROOF_ANIMATIONS {
+            animation
+                .prepare_subtree(&assets.stage, model, 0, index)
+                .map_err(|e| anyhow::anyhow!("Onett roof animation {index}: {e}"))?;
+        }
+    }
     Ok(animation)
 }
 
@@ -75,12 +85,13 @@ fn spawn_keys(
     Ok(())
 }
 
-/// The roof's animation (grAnime_801C7FF8 on bone 0) at `rate`.
-fn play_roof(animation: &mut BackgroundAnimation, assets: &Assets, index: usize, rate: f32) -> Result<()> {
-    let model = &assets.stage_desc.models[usize::from(ROOF_MAP)];
-    animation
-        .play_subtree(&assets.stage, model, 0, index, 0.0, rate)
-        .map_err(|e| anyhow::anyhow!("Onett roof animation {index}: {e}"))
+/// The roof's animations (grOnett_801E3DA0's grAnime_801C7FF8 calls).
+const ROOF_ANIMATIONS: [usize; 5] = [0, 1, 3, 4, 5];
+
+/// The roof's animation (grAnime_801C7FF8 on bone 0) at `rate`, from the
+/// switches [`load`] prepared.
+fn play_roof(animation: &mut BackgroundAnimation, index: usize, rate: f32) {
+    animation.play_prepared_subtree_at(0, index, 0.0, rate);
 }
 
 /// grOnett_801E3738 (0x801E3738): maps 0, 2, 5, 4, 3 with their draws
@@ -114,7 +125,7 @@ pub(crate) fn initialize(
                 // grOnett_801E3CE4: Ground_801C2ED0, animation 0 held at 0.
                 bind(&mut animation, assets, map, collision);
                 animation.clear_animation();
-                play_roof(&mut animation, assets, 0, 0.0)?;
+                play_roof(&mut animation, 0, 0.0);
                 for joint in ROOF_JOINTS {
                     collision.record_joint_events(joint, true);
                 }
@@ -234,7 +245,6 @@ fn spawn_on_bone(
 
 struct RoofModel<'a> {
     model: &'a mut BackgroundAnimation,
-    assets: &'a Assets,
     map: &'a mut melee_mp::CollMap,
     error: Option<anyhow::Error>,
 }
@@ -243,9 +253,7 @@ impl RoofEngine for RoofModel<'_> {
         self.model.first_animation_ended()
     }
     fn play(&mut self, index: usize) {
-        if let Err(e) = play_roof(self.model, self.assets, index, 1.0) {
-            self.error.get_or_insert(e);
-        }
+        play_roof(self.model, index, 1.0);
     }
     fn set_solid(&mut self, joint: i32, solid: bool) {
         if solid {
@@ -271,7 +279,8 @@ struct CarModels<'a> {
     item_assets: &'a melee_it::desc::ItemAssets,
     car_items: [Option<u32>; 4],
     view: (f32, f32, f32),
-    fighters: Vec<(f32, i32)>,
+    fighters: [(f32, i32); crate::frame::MAX_FIGHTERS],
+    fighter_count: usize,
     camera_phase: &'a mut i32,
     rng: &'a mut HsdRng,
     particles: &'a mut ParticleSystem,
@@ -320,7 +329,7 @@ impl CarEngine for CarModels<'_> {
         self.view
     }
     fn fighters(&self) -> &[(f32, i32)] {
-        &self.fighters
+        &self.fighters[..self.fighter_count]
     }
     fn set_camera_phase(&mut self, phase: i32) {
         *self.camera_phase = phase;
@@ -346,23 +355,21 @@ fn step_map(state: &mut InitialState, map: u8, draws: &mut DrawLog) -> Result<()
     match map {
         STREET_MAP => street(state, &assets, draws),
         ROOF_MAP => {
-            let mut landings = Vec::new();
-            for joint in ROOF_JOINTS {
-                for event in state.map.take_joint_events(joint).iter() {
-                    landings.push(*event);
-                }
+            // Both joints' calls come from one fixed event list.
+            let mut landings = state.map.take_joint_events(ROOF_JOINTS[0]);
+            for event in state.map.take_joint_events(ROOF_JOINTS[1]).iter() {
+                landings.push(*event);
             }
             let SceneStage::Onett(stage) = &mut state.stage else {
                 unreachable!()
             };
             let parameters = stage.parameters;
-            for event in &landings {
+            for event in landings.iter() {
                 stage.roof.land(event.ground_kind, &parameters);
             }
             let model = state.stage_animations.get_mut(&ROOF_MAP).unwrap();
             let mut engine = RoofModel {
                 model,
-                assets: &assets,
                 map: &mut state.map,
                 error: None,
             };
@@ -383,7 +390,7 @@ fn step_map(state: &mut InitialState, map: u8, draws: &mut DrawLog) -> Result<()
 /// smoke (801E5538), lane A's subject, then Ground_801C2FE0.
 fn street(state: &mut InitialState, assets: &Assets, draws: &mut DrawLog) -> Result<()> {
     // grOnett_801E54B4's calls since the last step.
-    let mut touches = Vec::new();
+    let mut touches = melee_types::fixed::FixedVec::<(usize, i32), 64>::default();
     for (index, joint) in AWNING_JOINTS.into_iter().enumerate() {
         for event in state.map.take_joint_events(joint).iter() {
             if COUNTED_COLLIDERS.contains(&event.collision_type) {
@@ -395,7 +402,7 @@ fn street(state: &mut InitialState, assets: &Assets, draws: &mut DrawLog) -> Res
         unreachable!()
     };
     let parameters = stage.parameters;
-    for &(index, ground_kind) in &touches {
+    for &(index, ground_kind) in touches.iter() {
         stage.awnings[index].touch(ground_kind, &parameters);
     }
     let steps = [
@@ -457,16 +464,14 @@ fn street(state: &mut InitialState, assets: &Assets, draws: &mut DrawLog) -> Res
 /// cars.
 fn cars(state: &mut InitialState, assets: &Assets, draws: &mut DrawLog) -> Result<()> {
     let view = melee_cm::view::ground_view(&state.rendered_camera);
-    let fighters: Vec<(f32, i32)> = state
-        .fighters
-        .iter()
-        .map(|f| {
-            crate::scene_fighter::with_fighter!(f, |f| (
-                f.physics.position.y,
-                i32::from(f.core.standing_rank)
-            ))
-        })
-        .collect();
+    let mut fighters = [(0.0, 0); crate::frame::MAX_FIGHTERS];
+    for (slot, f) in fighters.iter_mut().zip(&state.fighters) {
+        *slot = crate::scene_fighter::with_fighter!(f, |f| (
+            f.physics.position.y,
+            i32::from(f.core.standing_rank)
+        ));
+    }
+    let fighter_count = state.fighters.len();
     let SceneStage::Onett(stage) = &mut state.stage else {
         unreachable!()
     };
@@ -479,6 +484,7 @@ fn cars(state: &mut InitialState, assets: &Assets, draws: &mut DrawLog) -> Resul
         car_items: stage.car_items,
         view: (view.left, view.center, view.right),
         fighters,
+        fighter_count,
         camera_phase: &mut stage.camera_phase,
         rng: &mut state.rng,
         particles: &mut state.particles,

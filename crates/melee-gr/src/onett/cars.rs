@@ -156,7 +156,8 @@ impl Cars {
                 if self.timer_a != 0 {
                     let count = engine.fighters().len() as i32;
                     self.timer_a -= 1;
-                    for &(y, rank) in engine.fighters().to_vec().iter() {
+                    for fighter in 0..count as usize {
+                        let (y, rank) = engine.fighters()[fighter];
                         if y <= STREET_HEIGHT {
                             if count == 1 || rank == 0 {
                                 self.timer_a = 0;

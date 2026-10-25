@@ -183,6 +183,16 @@ impl BackgroundAnimation {
         self.play_material_subtree(bone, index);
     }
 
+    /// `grAnime_801C7FF8(gobj, bone, 7, index, frame, rate)` (0x801C7FF8)
+    /// from the clocks [`Self::prepare_subtree`] decoded: as
+    /// [`Self::play_subtree`], without reading the archive.
+    pub fn play_prepared_subtree_at(&mut self, bone: usize, index: usize, frame: f32, rate: f32) {
+        self.play_prepared_subtree(bone, index);
+        let root = self.joints[bone];
+        self.tree.req_anim_all(root, frame);
+        self.set_subtree_rate(bone, rate);
+    }
+
     /// What `attach_anim_joint` leaves on each joint, replayed into the
     /// joints' reserved track storage.
     fn replay_attachments(&mut self, attachments: &[PreparedAttachment]) {

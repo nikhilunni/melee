@@ -478,7 +478,16 @@ impl BackgroundAnimation {
         let root = self.joints[bone];
         self.tree.req_anim_all(root, frame);
         self.play_material_subtree(bone, index);
-        for part in self.subtree(bone) {
+        self.set_subtree_rate(bone, rate);
+        Ok(())
+    }
+    /// grAnime_801C752C's HSD_AObjSetRate over `bone`'s subtree: its joint,
+    /// material and texture clocks. The subtree's descendant indices follow
+    /// `bone` in walk order (as in [`Self::play_material_subtree`]).
+    pub(super) fn set_subtree_rate(&mut self, bone: usize, rate: f32) {
+        let mut count = 0;
+        self.tree.walk_tree(self.joints[bone], &mut |_, _| count += 1);
+        for part in bone..bone + count {
             let joint = self.joints[part];
             if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
                 aobj.set_rate(rate);
@@ -498,7 +507,6 @@ impl BackgroundAnimation {
                 }
             }
         }
-        Ok(())
     }
     /// `grAnime_801C84A4(gobj, bone, 7)` (0x801C84A4): the first AObj of
     /// `bone`'s subtree (grAnime_801C8318) wrapped its loop this frame.
