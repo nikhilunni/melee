@@ -443,7 +443,7 @@ pub(super) fn record_throw_hit(
     let descriptor = throw_descriptor(hit);
     let knockback = va.damage.knockback_with_damage(
         &descriptor,
-        victim.physics.percent,
+        victim.knockback_percent(&va.damage),
         va.damage.throw_weight,
         attacker.commands.throw_damage_counts[0],
         // ftCo_Throw.c:540: the thrower's attack ratio, the victim's defense.

@@ -103,6 +103,32 @@ impl FighterCore {
         if self.physics.percent > MAX_PERCENT {
             self.physics.percent = MAX_PERCENT;
         }
+        // Player_SetHPByIndex then ftCo_800C8C84 (fighter.c:2663-2667):
+        // a Stamina fighter whose hit points are gone.
+        if self.stamina_spent() {
+            unimplemented!("ftCo_800C8C84 (ft_0C8C.c:29): a Stamina fighter's KO");
+        }
+    }
+
+    /// ftCo_800C8C84's test (x18F0, the healing timer, is never set in
+    /// the ported modes): a Stamina fighter not yet out whose
+    /// Player_GetRemainingHPByIndex (hit points less the truncated percent,
+    /// floored at 0) is 0.
+    pub fn stamina_spent(&self) -> bool {
+        self.player.stamina.is_some_and(|hp| {
+            let spent = gekko_math::msl::fctiwz(self.physics.percent) as i16;
+            !self.stamina_out && i32::from(hp) - i32::from(spent) <= 0
+        })
+    }
+
+    /// ftColl_GetDamageCount (ftcoll.c:2363): the damage count the knockback
+    /// formula reads: the percent, or a Stamina fighter's PlCo constant.
+    pub(crate) fn knockback_percent(&self, damage: &super::damage::DamageParameters) -> f32 {
+        match (self.player.stamina, self.stamina_out) {
+            (None, _) => self.physics.percent,
+            (Some(_), false) => damage.stamina_count as f32,
+            (Some(_), true) => damage.stamina_out_count as f32,
+        }
     }
 }
 

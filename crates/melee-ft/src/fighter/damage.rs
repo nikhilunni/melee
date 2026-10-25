@@ -364,6 +364,11 @@ pub struct DamageParameters {
     pub phantom_threshold: f32,
     pub large_spark_threshold: f32,
     pub extra_spark_bounds: [i32; 2],
+    /// PlCo +6D4: a Stamina fighter's knockback damage count, in place of
+    /// its percent (ftColl_GetDamageCount, ftcoll.c:2363-2372).
+    pub stamina_count: i32,
+    /// PlCo +6D8: the count once its HP is gone (x2224_b2).
+    pub stamina_out_count: i32,
 }
 impl DamageParameters {
     /// The reaction level (0..=3) of a scaled knockback: the first threshold
@@ -475,6 +480,8 @@ impl DamageParameters {
             phantom_threshold: r.f32(p + 0x7a8)?,
             large_spark_threshold: r.f32(p + 0x3f0)?,
             extra_spark_bounds: [r.s32(p + 0x3f4)?, r.s32(p + 0x3f8)?],
+            stamina_count: r.s32(p + 0x6D4)?,
+            stamina_out_count: r.s32(p + 0x6D8)?,
         })
     }
     pub fn knockback(&self, hit: &HitboxDescriptor, percent: f32, weight: f32) -> f32 {

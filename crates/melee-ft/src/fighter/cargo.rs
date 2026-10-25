@@ -979,7 +979,7 @@ pub fn escape(
         .record(melee_coll::damage_log::HitCredit::Player(carrier.player.id));
     let knockback = aa.damage.knockback_for_frame(
         &victim_record,
-        carrier.physics.percent,
+        carrier.knockback_percent(&aa.damage),
         carrier.combat.frame_damage,
         carrier.attributes.size.weight,
         victim_count,
@@ -1001,7 +1001,7 @@ pub fn escape(
     super::grab_damage::release_pair(carrier, victim, aa, va, map);
     let knockback = va.damage.knockback_for_frame(
         &carrier_record,
-        victim.physics.percent,
+        victim.knockback_percent(&va.damage),
         victim.combat.frame_damage,
         victim.attributes.size.weight,
         carrier_count,

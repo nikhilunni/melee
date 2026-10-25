@@ -1251,6 +1251,9 @@ pub struct FighterCore {
     /// With `fell`: the player ftCo_800D34E0 credits with the KO
     /// (Player_UpdateKOsBySlot), for the scene's KO counts.
     pub fall_credit: Option<u8>,
+    /// x2224_b2: a Stamina fighter whose hit points ran out
+    /// (fn_800C8E74), reset at a revival (fighter.c:483).
+    pub stamina_out: bool,
     /// The motion a death interrupted, which ftCo_800D331C (0x800D34B4)
     /// writes into the motion scratch at fp+236C before the Dead entry.
     pub fatal_action: ActionId,

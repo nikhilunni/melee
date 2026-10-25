@@ -60,10 +60,24 @@ impl PercentDisplay {
     /// While the digits explode (`set_dead`), ifStatus_802F4EDC returns
     /// before starting or advancing a shake, so an increase that tick is lost.
     pub fn tick(&mut self, percent: f32, rng: &mut HsdRng) {
-        let percent = fctiwz(percent).clamp(0, 999);
-        let increased = self.percent != UNKNOWN_PERCENT && percent > self.percent;
+        self.tick_value(fctiwz(percent), false, rng);
+    }
+    /// The same for a Stamina player (MoreFlagsBit2, ifstatus.c:577-593):
+    /// the display reads Player_GetRemainingHP and shakes as it falls.
+    pub fn tick_stamina(&mut self, remaining: i32, rng: &mut HsdRng) {
+        self.tick_value(remaining, true, rng);
+    }
+    fn tick_value(&mut self, value: i32, shakes_falling: bool, rng: &mut HsdRng) {
+        let percent = value.clamp(0, 999);
+        let increased = self.percent != UNKNOWN_PERCENT
+            && if shakes_falling {
+                percent < self.percent
+            } else {
+                percent > self.percent
+            };
         if increased {
-            self.damage_from_last_attack = (percent - self.percent) as u8;
+            // `diff = old - new`, made positive: a u8 store.
+            self.damage_from_last_attack = (percent - self.percent).unsigned_abs() as u8;
         }
         self.percent = percent;
         if self.death_velocity.is_some() {

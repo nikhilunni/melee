@@ -76,7 +76,7 @@ impl FighterCore {
     fn logged_knockback(&self, entry: &LoggedHit, assets: &FighterAssets) -> f32 {
         assets.damage.knockback_for_frame(
             &entry.hit.descriptor,
-            self.physics.percent,
+            self.knockback_percent(&assets.damage),
             self.combat.frame_damage,
             self.attributes.size.weight,
             entry.knockback_damage,

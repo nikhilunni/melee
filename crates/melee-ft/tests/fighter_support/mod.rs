@@ -140,6 +140,7 @@ impl Fixture {
             knockback_ratio: 1.0,
             attack_ratios: [1.0; 6],
             revival_damage: 0.0,
+            stamina: None,
         }
     }
     pub fn prepared(&self, player: PlayerSlot) -> Fighter {

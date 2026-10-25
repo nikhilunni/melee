@@ -2212,6 +2212,14 @@ impl Runtime {
                     grab_pairs::release_from_dead_partner(state, player, index)?;
                 }
                 partner_fighters::share_fall(state, player);
+                // Every Fighter_TakeDamage_8006CC7C ends in ftCo_800C8C84: a
+                // Stamina fighter whose hit points are gone is knocked out.
+                if crate::scene_fighter::with_fighter!(&state.fighters[player], |f| f
+                    .core
+                    .stamina_spent())
+                {
+                    unimplemented!("ftCo_800C8C84 (ft_0C8C.c:29): a Stamina fighter's KO");
+                }
                 if proc == FighterProc::Animation {
                     partner_fighters::complete_death(state, player)?;
                 }
@@ -2802,7 +2810,15 @@ impl Runtime {
                     melee_ft::fighter::MotionData::Life(life) if life.stock_lost()
                 ));
                 self.interface[player].set_dead(dead, &mut state.rng);
-                self.interface[player].tick(percent, &mut state.rng);
+                match with_fighter!(&state.fighters[own], |f| f.player.stamina) {
+                    // Player_GetRemainingHP: the hit points less the HP
+                    // index (Player_SetHPByIndex's truncated percent).
+                    Some(hp) => {
+                        let spent = i32::from(melee_gekko_trunc(percent));
+                        self.interface[player].tick_stamina(i32::from(hp) - spent, &mut state.rng)
+                    }
+                    None => self.interface[player].tick(percent, &mut state.rng),
+                }
                 if let Some(display) = &mut state.stock_displays[player] {
                     let stocks = with_fighter!(&state.fighters[own], |f| f.player.stocks);
                     let tick = display.tick(stocks);
@@ -4030,6 +4046,11 @@ fn steal_stock(state: &mut InitialState, index: usize) -> Result<()> {
         });
     }
     partner_fighters::revive_stolen_stock(state, index)
+}
+
+/// Player_SetHPByIndex's s16 store of the truncated percent.
+fn melee_gekko_trunc(percent: f32) -> i16 {
+    gekko_math::msl::fctiwz(percent) as i16
 }
 
 /// grStory_801E3334: Yoshi's Story's map 3 proc, the Shy Guy spawner.

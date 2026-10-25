@@ -160,7 +160,7 @@ fn launch_by_captor(
     let descriptor = super::grab_throw::throw_descriptor(record);
     let knockback = captured_assets.damage.knockback_for_frame(
         &descriptor,
-        captured.physics.percent,
+        captured.knockback_percent(&captured_assets.damage),
         captured.combat.frame_damage,
         captured.attributes.size.weight,
         captor.commands.throw_damage_counts[1],
@@ -205,7 +205,7 @@ fn take_captor_throw_hit(
     let descriptor = super::grab_throw::throw_descriptor(record);
     let knockback = captured_assets.damage.knockback_for_frame(
         &descriptor,
-        captured.physics.percent,
+        captured.knockback_percent(&captured_assets.damage),
         captured.combat.frame_damage,
         captured.attributes.size.weight,
         captor.commands.throw_damage_counts[1],
@@ -250,7 +250,7 @@ pub fn launch_released_captor(
     let descriptor = super::grab_throw::throw_descriptor(&assets.grab_escape.captor_release_hit);
     let knockback = assets.damage.knockback_for_frame(
         &descriptor,
-        captor.physics.percent,
+        captor.knockback_percent(&assets.damage),
         captor.combat.frame_damage,
         captor.attributes.size.weight,
         fctiwz_damage(descriptor.damage),

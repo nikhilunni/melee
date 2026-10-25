@@ -113,8 +113,15 @@ impl SpecialMelee {
     /// every player at 300%. Giant and Tiny scale every fighter, which
     /// ftCo_800D105C's ftCo_800CF6E8 and the kinds' CalcIndiviParam scale
     /// with (ftchangeparam.c:178-195, guarded in `Fighter::prepare`).
+    /// Stamina plays its hit points (150, the HUD counting them down) and
+    /// knockback's fixed damage count until a fighter's hit points run
+    /// out; that KO (ftCo_800C8C84 and its x2224_b2 state family) is
+    /// guarded.
     pub fn ported(self) -> bool {
-        matches!(self, Self::Lightning | Self::SloMo | Self::SuperSuddenDeath)
+        matches!(
+            self,
+            Self::Lightning | Self::SloMo | Self::SuperSuddenDeath | Self::Stamina
+        )
     }
 
     /// Refuse a mode the port does not play, naming what it changes.

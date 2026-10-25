@@ -169,7 +169,7 @@ impl Fighter {
         // record's integer damage (lbColl_80008D30's unk_count).
         let knockback = assets.damage.knockback_for_frame(
             &descriptor,
-            self.core.physics.percent,
+            self.core.knockback_percent(&assets.damage),
             self.core.combat.frame_damage,
             self.core.attributes.size.weight,
             shot.damage as u32,

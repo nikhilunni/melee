@@ -98,6 +98,7 @@ pub(super) fn fighter(
         knockback_ratio: super::SavedRules::read(saved).knockback_ratio,
         attack_ratios: super::saved_attack_ratios(saved),
         revival_damage: super::saved_revival_damage(saved, raw[0x48]),
+        stamina: super::saved_stamina(saved, raw[0x48]),
     };
     let mut counter = SpawnCounter(word(saved.bytes(0x804D_64F8, 4), 0));
     SceneFighter::from_parameters(

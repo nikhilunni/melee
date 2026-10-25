@@ -821,6 +821,8 @@ fn create_players(
                 }
                 ratios
             },
+            // gmstamina.c:118: 150 hit points (Player_SetOtherStamina).
+            stamina: (scenario.special == Some(crate::SpecialMelee::Stamina)).then_some(150),
             revival_damage: if scenario.sudden_death {
                 SUDDEN_DEATH_DAMAGE
             } else {

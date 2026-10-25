@@ -140,6 +140,9 @@ pub struct PlayerSlot {
     /// starts at (fn_8016719C's Player_SetHPByIndex), 300 in Super Sudden
     /// Death.
     pub revival_damage: f32,
+    /// Player_GetOtherStamina with MoreFlagsBit2 (fp->x2225_b7, fighter.c:701):
+    /// a Stamina match's hit points; `None` outside one.
+    pub stamina: Option<u16>,
 }
 impl PlayerSlot {
     /// ftColl_80079AB0's ratios for a hit on this player by `attack`'s
@@ -1406,6 +1409,7 @@ impl FighterCore {
             quake_request: None,
             barrel_fire_request: false,
             fell: false,
+            stamina_out: false,
             fall_credit: None,
             fatal_action: super::ActionId(0),
             released_link: None,

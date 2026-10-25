@@ -44,6 +44,12 @@ pub(crate) struct SavedRules {
     /// +0x30, the Damage Ratio rule (gm_8016B248).
     pub knockback_ratio: f32,
 }
+/// Player_GetMoreFlagsBit2 (StaticPlayer +AD, 0x20) and
+/// Player_GetOtherStamina (+64): a Stamina player's hit points.
+pub(crate) fn saved_stamina(saved: &saved_pose::SavedPose, slot: u8) -> Option<u16> {
+    let player = saved.bytes(0x8045_3080 + u32::from(slot) * 0xE90, 0xAE);
+    (player[0xAD] & 0x20 != 0).then(|| u16::from_be_bytes([player[0x64], player[0x65]]))
+}
 /// FighterMatchInfo[slot].x6 (lbl_8046B6A0 + 0x38 + slot * 0xE + 6).
 pub(crate) fn saved_revival_damage(saved: &saved_pose::SavedPose, slot: u8) -> f32 {
     let raw = saved.bytes(0x8046_B6A0 + 0x38 + u32::from(slot) * 0xE + 6, 2);
@@ -480,6 +486,7 @@ impl InitialState {
                 f.player.knockback_ratio = rules.knockback_ratio;
                 f.player.attack_ratios = saved_attack_ratios(&saved);
                 f.player.revival_damage = saved_revival_damage(&saved, f.player.id);
+                f.player.stamina = saved_stamina(&saved, f.player.id);
                 // Player_GetSuicideCount: StaticPlayer +8C.
                 let sd = saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8C, 2);
                 f.player.self_destructs = u32::from(u16::from_be_bytes([sd[0], sd[1]]));

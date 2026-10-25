@@ -41,6 +41,7 @@ pub(crate) fn import(
         knockback_ratio: 1.0,
         attack_ratios: [1.0; 6],
         revival_damage: 0.0,
+        stamina: None,
     };
     player.position = vector(raw, 0xB0);
     player.facing = float(raw, 0x2C);
