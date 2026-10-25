@@ -1,7 +1,7 @@
-//! Complete terminal pickup entries; later ownership remains unavailable.
+//! Complete heavy pickup entries against raw retail fighter bytes.
 use super::*;
 use crate::scenario::Scenario;
-use melee_ft::fighter::{item_pickup::PickupCandidate, state::InputPhase, MotionData};
+use melee_ft::fighter::{item_pickup::PickupCandidate, MotionData};
 use std::{io::BufRead, path::PathBuf};
 
 const CASES: [(&str, usize, usize); 5] = [
@@ -30,7 +30,7 @@ fn expect_guard(f: impl FnOnce(), message: &str) {
 }
 
 #[test]
-fn complete_heavy_entries_match_raw_and_refuse_next_animation() {
+fn complete_heavy_entries_match_raw() {
     for (name, ticks, actor) in CASES {
         let scenario =
             Scenario::load(&root().join(format!("harness/scenarios/{name}.toml"))).unwrap();
@@ -108,7 +108,7 @@ fn complete_heavy_entries_match_raw_and_refuse_next_animation() {
                 assert_eq!(f.collision.data.floor.index as u32, word(0x83C));
                 assert_eq!(word(0x2340), 1);
                 assert_eq!(word(0x21DC), 0x8009_74C4);
-                assert!(f.heavy_pickup_damage_armed);
+                assert!(f.heavy_item_damage_armed);
                 assert_eq!(word(0x2210), 0);
                 assert!(
                     !f.commands.grab_release
@@ -160,20 +160,6 @@ fn complete_heavy_entries_match_raw_and_refuse_next_animation() {
             rows += 1;
         }
         assert_eq!((rows, entries), (ticks, 1));
-        let state = simulation.state();
-        let mut fighter = state.fighters[actor].clone();
-        let assets = &state.assets.fighters[actor];
-        let row = melee_ft::fighter::state::COMMON[93];
-        expect_guard(
-            || (row.iasa)(&mut fighter.0, InputPhase { assets }),
-            "ftpickupitem_IASA",
-        );
-        expect_guard(
-            || {
-                simulation.tick_without_snapshot().unwrap();
-            },
-            "HeavyGet continuation",
-        );
     }
 }
 
@@ -250,8 +236,15 @@ fn pickup_entry_clears_every_throw_flag_and_common_damage_owner_replaces_charact
             use_kind: 0,
             damage_multiplier: 1.0,
         });
-        expect_guard(|| f.interrupt_actions(assets), "ftCo_800974C4");
-        f.held_item = None;
+        // ftCo_800974C4: the lifted item drops with xC44 0.
+        f.item_requests.clear();
+        f.interrupt_actions(assets);
+        assert!(f.held_item.is_none());
+        let requests: Vec<_> = f.item_requests.iter().collect();
+        assert!(matches!(
+            requests.as_slice(),
+            [melee_it::ItemRequest::Drop { item: 1, speed, .. }] if *speed == 0.0
+        ));
         f.player.scale = 2.0;
         expect_guard(
             || {

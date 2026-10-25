@@ -39,6 +39,9 @@ struct MotionChange<'a> {
     unclamped_fall: bool,
     /// Ft_MF_SkipColAnim (bit12): the secondary color slot (x488) survives.
     keep_secondary_color: bool,
+    /// Ft_MF_Unk24 (bit24): x221C_u16_y, the ground-IK bits, survive
+    /// (fighter.c:1167).
+    keep_ground_pose: bool,
     /// Ft_MF_SkipParasol (bit10): the parasol step (fighter.c:986-993) is skipped.
     skip_parasol: bool,
     /// Ft_MF_Unk06 (bit6): the entry does not start the KO credit's
@@ -69,6 +72,8 @@ impl MotionEntryFlags {
     pub const SKIP_ITEM_VIS: Self = Self(1 << 18);
     pub const FREEZE_STATE: Self = Self(1 << 21);
     pub const SKIP_MODEL_PART_VIS: Self = Self(1 << 22);
+    /// Ft_MF_Unk24: keep x221C_u16_y (fighter.c:1167).
+    pub const KEEP_GROUND_POSE: Self = Self(1 << 24);
     pub const SKIP_MODEL_FLAGS: Self = Self(1 << 26);
     pub const SKIP_HITSTUN: Self = Self(1 << 28);
     pub const SKIP_ANIM: Self = Self(1 << 29);
@@ -919,6 +924,7 @@ impl Fighter {
                 keep_secondary_color: flags.contains(F::SKIP_COL_ANIM),
                 skip_parasol: flags.contains(F::SKIP_PARASOL),
                 skip_ko_credit_countdown: flags.contains(F::UNK06),
+                keep_ground_pose: flags.contains(F::KEEP_GROUND_POSE),
                 preserve: MotionPreservation {
                     hit_status: flags.contains(F::KEEP_COL_ANIM_HIT_STATUS),
                     hitboxes: flags.contains(F::SKIP_HIT),
@@ -1356,7 +1362,7 @@ impl FighterCore {
             stowed_item: None,
             pickup_pose_pending: false,
             swing_hand_armed: false,
-            heavy_pickup_damage_armed: false,
+            heavy_item_damage_armed: false,
             drop_pose_pending: false,
             pickup_candidates: Default::default(),
             owned_article: None,
@@ -1494,7 +1500,7 @@ impl FighterCore {
         // fighter.c:1377: no supported entry passes Ft_MF_KeepAccessory.
         self.accessory4_armed = false;
         self.swing_hand_armed = false;
-        self.heavy_pickup_damage_armed = false;
+        self.heavy_item_damage_armed = false;
         // fighter.c:1101-1102: entries without Ft_MF_KeepFastFall clear it.
         if !change.preserve.fast_fall
             && !matches!(
@@ -1596,7 +1602,9 @@ impl FighterCore {
                 );
             }
         }
-        self.ground_pose = GroundPoseFlags::default();
+        if !change.keep_ground_pose {
+            self.ground_pose = GroundPoseFlags::default();
+        }
         self.status.sword_trail = -1;
         self.status.camera_shift = Vec2::ZERO;
         self.collision.data.floor_skip = -1;

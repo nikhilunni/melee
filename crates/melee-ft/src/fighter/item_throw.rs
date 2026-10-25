@@ -164,7 +164,7 @@ impl Fighter {
             if !throwable || lr {
                 // The state is unchanged; the aerial catch stays shut until
                 // the next grounded motion entry (x2224_b1).
-                self.core.drop_held_item(held, assets);
+                self.core.drop_held_item(held, 1.0, assets);
                 self.core.item_catch_locked = true;
                 return Ok(true);
             }
@@ -213,6 +213,18 @@ impl Fighter {
     /// ftCo_800957F4 (800957F4): enter a throw state; the accessory runs
     /// once at once to record the hand.
     pub fn enter_item_throw(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
+        self.enter_item_throw_armed(state, assets, false)
+    }
+
+    /// ftCo_800957F4, or with `drops_on_damage` ftCo_800958FC's heavy
+    /// entry, whose take_dmg_cb (ftCo_800974C4) drops the item. The
+    /// callback is installed before the accessory's first run.
+    pub(super) fn enter_item_throw_armed(
+        &mut self,
+        state: S,
+        assets: &FighterAssets,
+        drops_on_damage: bool,
+    ) -> Result<()> {
         let held = self.core.held_item.expect("a throw needs a held item");
         self.core.commands.variables[0] = 0;
         self.core.commands.variables[1] = 0;
@@ -239,6 +251,7 @@ impl Fighter {
             rate,
             entry_facing: self.core.physics.facing,
         });
+        self.core.heavy_item_damage_armed = drops_on_damage;
         self.arm_accessory4();
         self.item_throw_accessory(assets);
         Ok(())
@@ -381,9 +394,8 @@ impl Fighter {
             fmadds(moment, throw.hand.y - hand.y, hand.y),
             0.0,
         );
-        let mut holder = self
-            .core
-            .item_holder(self.core.bones.model.animation_translation, assets);
+        let part = self.core.held_item_part(&held);
+        let mut holder = self.core.item_holder(part, assets);
         let hand = holder.part_matrix();
         let (center, attack) = (holder.center, holder.attack);
         self.core.item_requests.push(melee_it::ItemRequest::Throw {
@@ -479,23 +491,39 @@ impl super::FighterCore {
         self.root_motion_or_friction(friction, assets, map, wind);
     }
 
-    /// The world translation of the held part (ftData x8 +0x10).
+    /// The world translation of the held item's part.
     pub fn held_part_position(&mut self, assets: &FighterAssets) -> Vec3 {
-        let part = self.bones.model.animation_translation;
+        let part = match &self.held_item {
+            Some(held) => self.held_item_part(held),
+            None => self.bones.model.animation_translation,
+        };
         self.item_holder(part, assets).part_position()
+    }
+
+    /// ftpickupitem_800948A8's part: ftData x8 +0x10 for a light item,
+    /// +0x11 for a heavy one (the Warp Star's TopN is not in scope).
+    pub fn held_item_part(&self, held: &super::item_pickup::HeldItem) -> u8 {
+        if held.heavy {
+            self.bones.model.shield
+        } else {
+            self.bones.model.animation_translation
+        }
     }
 }
 
 impl super::FighterCore {
-    /// Item_8026ABD8 from ftCo_80095744 (80095744) or Fighter_8006CDA4: let
-    /// go of the held item at the hand with no push (vec 0, xC44 = 1).
-    /// Parasol states are not in scope.
+    /// Item_8026ABD8: let go of the held item at its part with no push and
+    /// xC44 = `speed` (1 from ftCo_80095744 (80095744) or Fighter_8006CDA4,
+    /// 0 from the heavy item's ftCo_800974C4 and ftCo_80096E68). Parasol
+    /// states are not in scope.
     pub(super) fn drop_held_item(
         &mut self,
         held: super::item_pickup::HeldItem,
+        speed: f32,
         assets: &FighterAssets,
     ) {
-        let mut holder = self.item_holder(self.bones.model.animation_translation, assets);
+        let part = self.held_item_part(&held);
+        let mut holder = self.item_holder(part, assets);
         let position = holder.part_position();
         let hand = holder.part_matrix();
         let (center, attack) = (holder.center, holder.attack);
@@ -503,7 +531,7 @@ impl super::FighterCore {
             item: held.item,
             position,
             hand,
-            speed: 1.0,
+            speed,
             center,
             attack,
         });

@@ -1332,10 +1332,10 @@ impl Fighter {
                     pan: 64,
                 });
         }
-        if self.core.heavy_pickup_damage_armed {
-            // ftpickupitem_80094694 installs ftCo_800974C4 in place of
-            // the character take_dmg_cb, after the entry animation step.
-            self.interrupt_heavy_pickup();
+        if self.core.heavy_item_damage_armed {
+            // HeavyGet, the lift states and the heavy throws install
+            // ftCo_800974C4 in place of the character take_dmg_cb.
+            self.drop_lifted_item(assets);
             return;
         }
         if self.core.swing_hand_armed {
@@ -2619,7 +2619,7 @@ impl FighterCore {
             "ftCo_8008E984: an armoured launch while holding"
         );
         if rng.randi(assets.damage.item_drop_range) < damage {
-            self.drop_held_item(held, assets);
+            self.drop_held_item(held, 1.0, assets);
         }
     }
 

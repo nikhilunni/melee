@@ -1195,7 +1195,7 @@ impl FighterCore {
         });
     }
     /// ft_800881D8(fp, id, 127, 64): one request on the fighter's voice channel.
-    fn push_voice(&mut self, id: u32) {
+    pub(super) fn push_voice(&mut self, id: u32) {
         use super::commands::{FootstepSound, SoundChannel};
         self.commands.footstep_sounds.push(FootstepSound {
             channel: SoundChannel::FighterVoice,

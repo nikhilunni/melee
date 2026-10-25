@@ -996,7 +996,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 567] = [
+const MATRIX_WITNESSES: [(&str, usize); 569] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1951,6 +1951,12 @@ const MATRIX_WITNESSES: [(&str, usize); 567] = [
     ("koopa_klaw_windmill_wall_ps_bowser_ness4", 5560),
     ("koopa_klaw_throw_held_windmill_wall_ps_bowser_ness4", 5560),
     ("koopa_klaw_throw_windmill_wall_ps_bowser_ness4", 5560),
+    // Heavy items (ftCo_Lift.c): Marth's barrel pickup cut by a hit at 301
+    // (HeavyGet's take_dmg_cb with an empty hand), the next lifted at 388
+    // into LiftWait (423); then a forward carry (LiftWalk1 450, LiftWait
+    // 494) and HeavyThrowF (520) whose barrel bounces off the floor.
+    ("w25_heavy_lift_f_600_v01", 600),
+    ("w25_heavy_lift_f_800_v02", 800),
 ];
 
 #[test]

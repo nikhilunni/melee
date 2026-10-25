@@ -186,6 +186,8 @@ impl FighterCore {
             // mv.co.damage.x4: the hit's collision flag (an int).
             MotionData::Damage(damage) => f32::from_bits(damage.mv_word),
             MotionData::EscapeAir(dodge) => dodge.saved_velocity.x,
+            // mv.co.lift.x4: the turn's frames.
+            MotionData::Lift(lift) => super::lift::retained_word(lift)?,
             MotionData::MultiJump(jump) => jump.retained_drop_timer,
             MotionData::CaptureJump(jump) => jump.retained_drop_timer,
             // mv.co.capturewait.x4 (+2344): the mash's fast-animation

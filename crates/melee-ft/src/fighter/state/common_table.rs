@@ -464,18 +464,13 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
-    // ftData_MotionStateList[93]: HeavyGet entry only. The remaining
-    // same-tick phases use retail's shared routines; next Anim/IASA refuse.
+    // ftData_MotionStateList[93]: ftCo_SM_HeavyGet (89), LightGet's
+    // ftpickupitem callbacks.
     rows[S::HeavyGet as usize] = MotionRow {
         action: ActionId(93),
         id: S::HeavyGet,
         animation: 89,
-        anim: crate::fighter::item_pickup::heavy_get_animation_unavailable,
-        iasa: crate::fighter::item_pickup::heavy_get_input_unavailable,
-        physics: callbacks::physics::wait,
-        collision: callbacks::collision::item_get,
-        camera: callbacks::camera::follow_fighter,
-        implemented: true,
+        ..rows[S::LightGet as usize]
     };
     // ftData_MotionStateList[94]: ftCo_SM_LightThrowF (79); the IASA is
     // empty and the physics is ft_80084F3C.
@@ -553,6 +548,66 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         };
         i += 1;
     }
+    // ftData_MotionStateList[104..=107], [116..=119]: the heavy throws,
+    // ftCo_ItemThrow's callbacks with ftCo_HeavyThrow_Coll.
+    const HEAVY_THROWS: [(S, i32); 8] = [
+        (S::HeavyThrowF, 92),
+        (S::HeavyThrowB, 93),
+        (S::HeavyThrowHi, 94),
+        (S::HeavyThrowLw, 95),
+        (S::HeavyThrowF4, 104),
+        (S::HeavyThrowB4, 105),
+        (S::HeavyThrowHi4, 106),
+        (S::HeavyThrowLw4, 107),
+    ];
+    let mut i = 0;
+    while i < HEAVY_THROWS.len() {
+        let (state, animation) = HEAVY_THROWS[i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation,
+            collision: crate::fighter::lift::throw_collision,
+            ..rows[S::LightThrowF as usize]
+        };
+        i += 1;
+    }
+    // ftData_MotionStateList[174..=177] (ftCo_Lift.c): LiftWait and
+    // LiftTurn author no animation; the walks play ftCo_SM_HeavyWalk1/2.
+    rows[S::LiftWait as usize] = MotionRow {
+        action: ActionId(174),
+        id: S::LiftWait,
+        animation: -1,
+        anim: crate::fighter::lift::wait_anim,
+        iasa: crate::fighter::lift::wait_input,
+        physics: callbacks::physics::wait,
+        collision: crate::fighter::lift::ground_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::LiftWalk1 as usize] = MotionRow {
+        action: ActionId(175),
+        id: S::LiftWalk1,
+        animation: 90,
+        anim: crate::fighter::lift::walk_anim,
+        iasa: crate::fighter::lift::throw_input,
+        physics: crate::fighter::lift::walk_physics,
+        ..rows[S::LiftWait as usize]
+    };
+    rows[S::LiftWalk2 as usize] = MotionRow {
+        action: ActionId(176),
+        id: S::LiftWalk2,
+        animation: 91,
+        ..rows[S::LiftWalk1 as usize]
+    };
+    rows[S::LiftTurn as usize] = MotionRow {
+        action: ActionId(177),
+        id: S::LiftTurn,
+        animation: -1,
+        anim: crate::fighter::lift::turn_anim,
+        iasa: crate::fighter::lift::throw_input,
+        ..rows[S::LiftWait as usize]
+    };
     // ftData_MotionStateList[120..=123]: ftCo_SM_SwordSwing1 (108) on,
     // ft_0CD3.c's sword callbacks (ftCo_800CD1BC and its siblings).
     const SWORD_SWINGS: [(S, i32); 4] = [

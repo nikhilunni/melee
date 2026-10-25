@@ -919,7 +919,6 @@ impl ItemCore {
         position: hsd_types::Vec3,
         assets: &ItemAssets,
     ) {
-        assert!(!assets.heavy, "it_80273748: heavy item hand offset");
         // it_80275070 drops the hand constraint; it_8026B6C8's enemy kinds
         // stay unpickable; it_802756E0 lets hits land again.
         self.grabbable = true;
@@ -947,17 +946,17 @@ impl ItemCore {
     }
 
     /// it_80273748's release point for a throw from `position`: an article
-    /// (hold kind 8) hangs from the hand by its attach joint, so the offset
-    /// of that joint's negated translation through `hand` from the hand
-    /// itself is added (fsubs, then fadds). Other light items leave at
-    /// `position`.
+    /// (hold kind 8), or a heavy item outside hold kinds 4 and 6, hangs
+    /// from its part by its attach joint, so the offset of that joint's
+    /// negated translation through `hand` from the part itself is added
+    /// (fsubs, then fadds). Other items leave at `position`.
     pub fn throw_release_point(
         &self,
         position: hsd_types::Vec3,
         hand: &hsd_types::Mtx,
         assets: &ItemAssets,
     ) -> hsd_types::Vec3 {
-        if self.hold_kind != ARTICLE_HOLD_KIND {
+        if !self.hangs_from_attach_joint(assets) {
             return position;
         }
         let hung = self.hung_from(hand, assets);
@@ -969,18 +968,26 @@ impl ItemCore {
         )
     }
 
-    /// it_80273B50's release point for a drop at `hand`: an article's
-    /// attach joint offset through the hand, else the hand itself.
+    /// it_80273B50's release point for a drop at `hand`: the attach joint
+    /// offset through the hand for an article or a heavy item, else the
+    /// hand itself.
     pub fn drop_release_point(
         &self,
         position: hsd_types::Vec3,
         hand: &hsd_types::Mtx,
         assets: &ItemAssets,
     ) -> hsd_types::Vec3 {
-        if self.hold_kind != ARTICLE_HOLD_KIND {
+        if !self.hangs_from_attach_joint(assets) {
             return position;
         }
         self.hung_from(hand, assets)
+    }
+
+    /// it_80273748 / it_80273B50: (itIsHeavy && hold kind not 4 or 6) ||
+    /// hold kind 8.
+    fn hangs_from_attach_joint(&self, assets: &ItemAssets) -> bool {
+        (assets.heavy && self.hold_kind != 4 && self.hold_kind != 6)
+            || self.hold_kind == ARTICLE_HOLD_KIND
     }
 
     /// lb_8000B1CC(hand, -it_80272C90's translation).
@@ -1026,7 +1033,7 @@ impl ItemCore {
 
     /// it_80275BC8 (80275BC8): the box in use is saved (xC0C = xC1C), the
     /// kind's box (xBFC) at the common release scale takes its place
-    /// (it_80275D5C, as xDCE b7 is set at creation), then an airborne pass
+    /// (it_80275D5C, when xDCE b7 is set), then an airborne pass
     /// from the holder's centre to the hand (it_80276100).
     fn sweep_from_holder(
         &mut self,
@@ -1037,14 +1044,18 @@ impl ItemCore {
         let box_scale = assets.release_box_scale;
         let b = assets.collision_box;
         self.saved_collision_box = self.collision_box;
-        self.collision_box = melee_types::mp::ItEcb {
-            top: b.top * box_scale,
-            bottom: b.bottom * box_scale,
-            right: b.right * box_scale,
-            left: b.left * box_scale,
-        };
         self.collision.as_mut().expect("item map collision").cur_pos = self.position;
-        self.apply_collision_box();
+        // xDCE b7: a kind whose ECB stays upright (the Barrel, the Box)
+        // keeps its box.
+        if self.ecb_follows_rotation {
+            self.collision_box = melee_types::mp::ItEcb {
+                top: b.top * box_scale,
+                bottom: b.bottom * box_scale,
+                right: b.right * box_scale,
+                left: b.left * box_scale,
+            };
+            self.apply_collision_box();
+        }
         let mut collision = self.collision.take().expect("item map collision");
         collision.last_pos = center;
         melee_mp::mark_ecb_clear(&mut collision);

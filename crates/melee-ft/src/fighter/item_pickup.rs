@@ -1,5 +1,5 @@
 //! Items in reach and in hand: ftpickupitem.c (80094150..80094E2C) and the
-//! LightGet state and the witnessed HeavyGet entry.
+//! LightGet and HeavyGet states.
 //!
 //! The scene offers the grabbable items to the fighter procs that can pick
 //! one up (input and animation); the search is retail's box test over them.
@@ -137,8 +137,23 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 159] = [
+const HELD_ITEM_STATES: [S; 172] = [
     S::LightGet,
+    // ftpickupitem.c and ftCo_Lift.c: a heavy item is lifted, carried,
+    // turned and thrown (ftCo_ItemThrow.c); every one drops it when hit.
+    S::HeavyGet,
+    S::LiftWait,
+    S::LiftWalk1,
+    S::LiftWalk2,
+    S::LiftTurn,
+    S::HeavyThrowF,
+    S::HeavyThrowB,
+    S::HeavyThrowHi,
+    S::HeavyThrowLw,
+    S::HeavyThrowF4,
+    S::HeavyThrowB4,
+    S::HeavyThrowHi4,
+    S::HeavyThrowLw4,
     S::Wait,
     // ftCo_AppealS: the taunt never reads the item; its IASA throws it.
     S::AppealSR,
@@ -636,24 +651,6 @@ impl FighterCore {
     }
 }
 
-/// ftpickupitem_Anim (ftpickupitem.c:298-329): only HeavyGet's entry is
-/// witnessed; hand attachment and the later heavy carry entry stay refused.
-pub(super) fn heavy_get_animation_unavailable(
-    _fighter: &mut Fighter,
-    _phase: super::state::AnimationPhase<'_>,
-) -> Result<Option<crate::anim::WaitChoice>> {
-    unimplemented!("ftpickupitem_Anim (ftpickupitem.c:298-329): HeavyGet continuation");
-}
-
-/// ftpickupitem_IASA (ftpickupitem.c:332): the terminal entry does not
-/// establish another input tick, even though retail's callback is empty.
-pub(super) fn heavy_get_input_unavailable(
-    _fighter: &mut Fighter,
-    _phase: super::state::InputPhase<'_>,
-) {
-    unimplemented!("ftpickupitem_IASA (ftpickupitem.c:332): HeavyGet continuation");
-}
-
 impl Fighter {
     /// ftpickupitem_80094790 (80094790), before a jab or tilt: pick up an
     /// item in reach instead. True when LightGet or HeavyGet began.
@@ -687,17 +684,8 @@ impl Fighter {
             heavy: state == S::HeavyGet,
             retained_word,
         };
-        self.core.heavy_pickup_damage_armed = state == S::HeavyGet;
+        self.core.heavy_item_damage_armed = state == S::HeavyGet;
         Ok(())
-    }
-
-    /// ftCo_800974C4 (ftCo_Lift.c:189): HeavyGet's take_dmg_cb replaces
-    /// the character callback. Empty hands do nothing; a held-item drop is
-    /// outside the terminal-entry witnesses.
-    pub(super) fn interrupt_heavy_pickup(&mut self) {
-        if self.core.held_item.is_some() {
-            unimplemented!("ftCo_800974C4 (ftCo_Lift.c:193): HeavyGet held-item drop");
-        }
     }
 
     /// ftpickupitem_Anim (80094A14): the script's throw flag closes the
@@ -717,8 +705,12 @@ impl Fighter {
             }
         }
         if !self.core.animation.frames_remaining(&self.core.skeleton) {
-            if let Some(held) = self.core.held_item {
-                assert!(!held.heavy, "ftCo_80096D9C: HeavyWait");
+            if self.core.held_item.is_some() && self.core.motion_state.id == S::HeavyGet {
+                // ftpickupitem.c:319-323: x2222_b0's carry, else LiftWait.
+                if self.carries_cargo() {
+                    unimplemented!("ftDk_MS_341_800DF980 (ftpickupitem.c:320): x2222_b0 lift");
+                }
+                return self.enter_lift_wait(assets);
             }
             // ftpickupitem_8009447C: kinds with use kind 5 are consumed, and
             // the Warp Star and hammer take over; none is a supported kind.
@@ -898,23 +890,31 @@ impl FighterCore {
             damage_multiplier: item.damage_multiplier,
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
-        // Fighter_OnItemPickup (ft/inlines.h:143).
-        self.pose_hand_for_item(item.hand_hold_kind, assets);
-        let hand = assets
-            .item_hand
-            .expect("ftData_OnItemPickupExt for this kind");
-        // ftAnim_80070C48: apply the shown slot's selection.
-        super::commands::show_part_selection(
-            &mut self.animation,
-            &mut self.skeleton,
-            assets,
-            hand.shown,
-        );
-        // Item_8026AB54 at the light item part (ftData x8 +0x10).
+        // Fighter_OnItemPickup (ft/inlines.h:143) and the Kirby and Purin
+        // variants, light items only.
+        if !item.heavy {
+            self.pose_hand_for_item(item.hand_hold_kind, assets);
+            let hand = assets
+                .item_hand
+                .expect("ftData_OnItemPickupExt for this kind");
+            // ftAnim_80070C48: apply the shown slot's selection.
+            super::commands::show_part_selection(
+                &mut self.animation,
+                &mut self.skeleton,
+                assets,
+                hand.shown,
+            );
+        }
+        // Item_8026AB54 at the item part (ftData x8 +0x10, +0x11 if heavy).
+        let held = self.held_item.expect("just taken");
         self.item_requests.push(melee_it::ItemRequest::PickUp {
             item: item.item,
-            part: self.bones.model.animation_translation,
+            part: self.held_item_part(&held),
         });
+        if item.heavy {
+            // ft_800881D8(fp, x4C_sfx->x2C, 127, 64).
+            self.push_voice(assets.lift.lift_sound);
+        }
     }
 }
 

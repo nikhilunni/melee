@@ -195,6 +195,7 @@ pub struct FighterAssets {
     pub motion_table_offset: u32,
     pub life: super::life::LifeParameters,
     pub teeter: super::teeter::TeeterParameters,
+    pub lift: super::lift::LiftParameters,
     pub revival_platform: super::life::RevivalPlatform,
     /// PlCo's color-animation table (Fighter_804D653C): each id's priority,
     /// slot and decoded program.
@@ -739,6 +740,15 @@ impl FighterAssets {
                 sound: {
                     let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
                     data.reader().u32(sound_table + 0x18)?
+                },
+            },
+            lift: super::lift::LiftParameters {
+                walk_threshold: common.reader().f32(common_data + 0x228)?,
+                turn_threshold: common.reader().f32(common_data + 0x22C)?,
+                turn_frames: common.reader().f32(common_data + 0x230)?,
+                lift_sound: {
+                    let sound_table = data.link(root + 0x4C)?.ok_or("missing fighter SFX")?;
+                    data.reader().u32(sound_table + 0x2C)?
                 },
             },
             color_overlays,

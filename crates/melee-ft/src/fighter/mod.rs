@@ -51,6 +51,7 @@ pub mod ko_source;
 pub mod landing;
 pub mod ledge;
 pub mod life;
+pub mod lift;
 pub mod multi_jump;
 pub mod offscreen;
 pub mod overlap;
@@ -1299,9 +1300,10 @@ pub struct FighterCore {
     /// take_dmg_cb = ft_800CD31C while a swing runs; every
     /// Fighter_ChangeMotionState disarms it (fighter.c:1376-1389).
     pub swing_hand_armed: bool,
-    /// take_dmg_cb = ftCo_800974C4 after HeavyGet entry; every motion
-    /// change clears this common callback before entry commands run.
-    pub heavy_pickup_damage_armed: bool,
+    /// take_dmg_cb = ftCo_800974C4 after the entry of HeavyGet, a lift
+    /// state or a heavy throw; every motion change clears this common
+    /// callback before entry commands run.
+    pub heavy_item_damage_armed: bool,
     /// x2224_b1: an item was just dropped or caught in the air, so the
     /// aerial catch waits for the next grounded motion entry.
     pub item_catch_locked: bool,
@@ -1415,6 +1417,8 @@ pub enum MotionData {
     /// frozen flag retained through a following Wait.
     Throw,
     ItemThrow(item_throw::ItemThrowState),
+    /// mv.co.lift: LiftWait, LiftWalk1/2 and LiftTurn.
+    Lift(lift::LiftState),
     /// SwordSwing1..SwordSwingDash (mv.co.swing).
     Swing(item_swing::SwingState),
     Capture(grab_escape::CaptureState),
