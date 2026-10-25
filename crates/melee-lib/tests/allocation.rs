@@ -114,12 +114,19 @@ fn step_after_clone_and_clone_from_allocates_nothing() {
 #[test]
 fn random_item_spawns_and_container_capture_allocate_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
     let mut seen = [false; 3];
     for name in [
         "corpus_v3_fd_items_sword_e9af22990_p0",
         "corpus_v3_bf_items_sword_e49783a03_p1",
         "corpus_v3_fd_items_taru_ece1e43b7_p2",
+        // Complete recorded lifecycles include three Box and two Barrel
+        // blasts, including their deferred script/effect continuation.
+        "corpus_v3_fd_items_sword_e7254fba4_p2",
+        "corpus_v3_fd_items_taru_ee6ff560c_p0",
     ] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),

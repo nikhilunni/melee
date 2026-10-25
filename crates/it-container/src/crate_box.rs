@@ -29,6 +29,8 @@ mod motion {
     pub const DROPPED: u16 = 4;
     /// Sliding down a floor (itBox_UnkMotion5).
     pub const SLIDE: u16 = 5;
+    /// Broken empty: the explosion's article animation (it_80286AA4).
+    pub const BLAST: u16 = 6;
     /// Broken open: gone after its despawn timer (it_80286BA0).
     pub const OPENED: u16 = 7;
 }
@@ -254,7 +256,7 @@ fn try_open(item: &mut ItemCore) {
         id: BOARDS_EFFECT,
         position: item.position,
     });
-    item.events.push(ItemEvent::Resume(TRY_OPEN));
+    item.defer_callback(TRY_OPEN);
 }
 
 
@@ -302,8 +304,15 @@ fn open(item: &mut ItemCore, assets: &ItemAssets) {
 /// the blast effect (it_80272C08), taking no hits, not grabbable, the
 /// explosion lifetime (it_8027518C), still, opened with its despawn
 /// timer, hitting its owner and kin (it_80275444), a gust, state 6.
-fn blast(_item: &mut ItemCore, _assets: &ItemAssets) {
-    unimplemented!("it_80286AA4: a Box broken empty (itbox.c:342), its blast hitbox not yet as retail's")
+fn blast(item: &mut ItemCore, assets: &ItemAssets) {
+    crate::explode(item, assets);
+    item.velocity.x = 0.0;
+    item.velocity.y = 0.0;
+    let state = container_mut(item);
+    state.opened = true;
+    state.despawn_timer = DESPAWN_FRAMES;
+    // retail 0x80286B58: Item_80268E5C(gobj, 6, 2).
+    change(item, motion::BLAST, ANIM_UPDATE, assets);
 }
 
 /// itBox_UnkMotion0_Anim: with one frame of life left, effect 0x421

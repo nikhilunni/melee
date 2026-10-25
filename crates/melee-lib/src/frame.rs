@@ -453,7 +453,11 @@ impl Runtime {
                     | melee_it::ItemEvent::CrateContents { .. }) => {
                         return Ok(Some((item.id, release)));
                     }
-                    melee_it::ItemEvent::Resume(step) => {
+                    melee_it::ItemEvent::Resume {
+                        step,
+                        past_hitbox_refresh,
+                        efasync_immediate,
+                    } => {
                         // What the callback pushes now precedes what it
                         // had pushed after this point.
                         let mut rest = melee_types::fixed::FixedVec::<melee_it::ItemEvent, 8>::default();
@@ -463,7 +467,11 @@ impl Runtime {
                         let logic = <crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
                             item.kind,
                         );
+                        let previous = (item.past_hitbox_refresh, item.efasync_immediate);
+                        item.past_hitbox_refresh = past_hitbox_refresh;
+                        item.efasync_immediate = efasync_immediate;
                         (logic.resumed)(item, step, state.assets.items.get(item.kind), &mut state.rng);
+                        (item.past_hitbox_refresh, item.efasync_immediate) = previous;
                         while !rest.is_empty() {
                             item.events.push(rest.remove(0));
                         }
@@ -4772,6 +4780,9 @@ mod falco_bones;
 mod recovery;
 #[cfg(test)]
 mod reflection;
+
+#[cfg(test)]
+mod item_continuation;
 
 #[cfg(test)]
 mod falcon_bones;

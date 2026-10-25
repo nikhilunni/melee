@@ -6613,6 +6613,17 @@ const RANDOM_ITEM_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_sword_e98e8f6a6_p0", 3780),
     ("corpus_v3_fd_items_sword_e9e9fbd4d_p2", 3267),
     ("corpus_v3_fd_items_sword_ebac668de_p2", 3205),
+    // Empty Box/Barrel blasts (80286AA4/802885C8): the deferred callback
+    // retains its issuing phase, so late script capsules are positioned
+    // immediately by it_802790C0 -> it_8027129C (8027952C).
+    ("corpus_v3_bf_items_sword_e958d1f9b_p1", 4336),
+    ("corpus_v3_fd_items_sword_e254e0913_p0", 4170),
+    ("corpus_v3_fd_items_sword_e3d24a6e3_p2", 3042),
+    ("corpus_v3_fd_items_sword_e49783a03_p0", 4379),
+    ("corpus_v3_fd_items_sword_e7254fba4_p2", 4711),
+    ("corpus_v3_fd_items_sword_e8c6ff530_p1", 4926),
+    ("corpus_v3_fd_items_taru_ee6ff560c_p0", 4669),
+    ("corpus_v3_fd_items_taru_efc83a559_p2", 3987),
 
 ];
 

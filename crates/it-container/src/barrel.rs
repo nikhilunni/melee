@@ -32,6 +32,8 @@ mod motion {
     pub const THROWN: u16 = 3;
     /// Rolling on the ground (itTaru_UnkMotion5).
     pub const ROLLING: u16 = 5;
+    /// Broken empty: the explosion's article animation (it_802885C8).
+    pub const BLAST: u16 = 6;
     /// Broken open: gone after its despawn timer (it_802886C4).
     pub const OPENED: u16 = 7;
 }
@@ -334,7 +336,7 @@ fn break_open(item: &mut ItemCore) {
         id: BOARDS_EFFECT,
         position: item.position,
     });
-    item.events.push(ItemEvent::Resume(BREAK));
+    item.defer_callback(BREAK);
 }
 
 /// it_8027236C: xCEC names a fighter hit; xCF0 names the striking
@@ -393,8 +395,15 @@ fn open(item: &mut ItemCore, assets: &ItemAssets) {
 }
 
 /// it_802885C8 (802885C8): broken empty, the blast (as the Box's).
-fn blast(_item: &mut ItemCore, _assets: &ItemAssets) {
-    unimplemented!("it_802885C8: a Barrel broken empty (ittaru.c:507), its blast hitbox not yet as retail's")
+fn blast(item: &mut ItemCore, assets: &ItemAssets) {
+    crate::explode(item, assets);
+    item.velocity.x = 0.0;
+    item.velocity.y = 0.0;
+    let state = barrel_mut(item);
+    state.opened = true;
+    state.despawn_timer = DESPAWN_FRAMES;
+    // retail 0x8028867C: Item_80268E5C(gobj, 6, 2).
+    change(item, motion::BLAST, ANIM_UPDATE, assets);
 }
 
 /// itTaru_UnkMotion0_Anim: with one frame of life left, effect 0x421.

@@ -61,16 +61,44 @@ team/item options without starting Dolphin.
   before going on resumes through `ItemLogic::resumed`.
 - Heavy items push each other apart (it_80271F78).
 
+## Empty Box and Barrel blasts (wave 15)
+
+The deferred continuation after the boards retains the originating item
+callback's phase. Retail `it_802790C0` checks the current scheduler object's
+`s_link > 11` (8027951C), then immediately positions a newly created hitbox
+through `it_8027129C` (8027952C). That sets its current and previous positions
+and advances state 1 to 2. The port's normal script path already does this;
+the Box/Barrel continuation previously lost the late callback context before
+running its blast script. Capsule runs its blast inline and was unaffected.
+
+`ItemEvent::Resume` now carries both hitbox-refresh and immediate efAsync
+context. The scene restores the issuing context only while executing the
+continuation, then restores the drain's previous context. The original
+Effect 0x427, resume/empty-roll, Effect 0x410 and script event order remains.
+A regression exercises early and late issuers under opposite drain contexts,
+including first-position initialization and restoration of both flags.
+
+Box `it_80286AA4` and Barrel `it_802885C8` hide, become intangible and
+ungrabbable, set their explosion lifetime, zero x/y velocity, set
+opened/despawn fields, enable owner/kindred hits, issue the gust, and enter
+motion 6 with flags 2 (retail 80286B58 / 8028867C). They use the existing
+common explosion machinery; no hitbox phase is assigned by kind code.
+
+The complete primary recordings contain three Box blasts across 4,711 ticks
+(`corpus_v3_fd_items_sword_e7254fba4_p2`) and two Barrel blasts across 4,669
+ticks (`corpus_v3_fd_items_taru_ee6ff560c_p0`). Eight complete recordings are
+registered in `RANDOM_ITEM_WITNESSES`. They start from warm match boundaries;
+they do not claim import of an already exploding item. Existing warm/cold
+start witnesses remain independent construction coverage. The separate
+`...sword_e17844051_p1` and `...sword_eee14f173_p2` recordings progress past
+their blast, then still stop at the held-item AttackHi4 audit guard.
+
 ## Fail closed (follow-up worklist)
 
 - Item Switch setups outside two-player Final Destination and Battlefield
   remain fail-closed until recorded, including saved-state imports whose
   scenario does not explicitly name the saved item rules.
 
-- Box / Barrel broken empty (it_80286AA4, it_802885C8): the blast hitbox's
-  state is 1 in the port where retail has 2 (explorer cases
-  corpus_v3_fd_items_sword_e7254fba4_p2, corpus_v3_fd_items_taru_ee6ff560c_p0).
-  The Capsule's blast (it_8027CFE8) is exact.
 - Thrown / dropped Box (reached only through HeavyGet), sliding Capsule and
   Box, barrel state 4 (entered by nothing).
 - A barrel struck by an item (it_8027236C's xCF0 owner).

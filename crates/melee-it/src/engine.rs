@@ -174,7 +174,13 @@ pub enum ItemEvent {
     },
     /// The rest of the item's callback, which the scene runs through
     /// `ItemLogic::resumed` once the effects before it are made.
-    Resume(u8),
+    Resume {
+        step: u8,
+        /// it_802790C0 (8027951C): the originating proc's s_link is past 11.
+        past_hitbox_refresh: bool,
+        /// Preserve an animation callback's immediate efAsync dispatch too.
+        efasync_immediate: bool,
+    },
 }
 
 /// The model root's first child in depth-first order, the joint
@@ -1080,6 +1086,16 @@ pub struct ItemCore {
     pub hitbox_trace: [(Vec3, Vec3); 4],
 }
 impl ItemCore {
+    /// Continue this callback after its preceding synchronous effects run.
+    /// The scene drains later, but retail still observes this proc's phase.
+    pub fn defer_callback(&mut self, step: u8) {
+        self.events.push(ItemEvent::Resume {
+            step,
+            past_hitbox_refresh: self.past_hitbox_refresh,
+            efasync_immediate: self.efasync_immediate,
+        });
+    }
+
     /// lb_8000B804 on the model: back to its authored rotation.
     pub fn reset_model_rotation(&mut self, assets: &ItemAssets) {
         self.rotation = rest_rotation(assets);
