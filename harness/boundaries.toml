@@ -1724,6 +1724,46 @@ seed = 801516016
 special = "slomo"
 
 [[boundary]]
+name = "start_fd_sp_single_button_fox_marth4"
+cold = "start_fd_sp_single_button_fox_marth4_cold"
+savestate = "harness/roms/start_fd_sp_single_button_fox_marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 787582590
+special = "single-button"
+
+[[boundary]]
+name = "start_fd_sp_invisible_fox_marth4"
+cold = "start_fd_sp_invisible_fox_marth4_cold"
+savestate = "harness/roms/start_fd_sp_invisible_fox_marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4036365808
+special = "invisible"
+
+[[boundary]]
+name = "start_fd_sp_giant_fox_marth4"
+cold = "start_fd_sp_giant_fox_marth4_cold"
+savestate = "harness/roms/start_fd_sp_giant_fox_marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1112388972
+special = "giant"
+
+[[boundary]]
+name = "start_fd_sp_tiny_fox_marth4"
+cold = "start_fd_sp_tiny_fox_marth4_cold"
+savestate = "harness/roms/start_fd_sp_tiny_fox_marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1630936213
+special = "tiny"
+
+[[boundary]]
 name = "start_fd_stamina_fox_marth"
 cold = "start_fd_stamina_fox_marth_cold"
 savestate = "harness/roms/start_fd_stamina_fox_marth.sav"

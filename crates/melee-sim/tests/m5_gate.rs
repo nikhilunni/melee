@@ -6660,6 +6660,24 @@ static CORPUS_V3_MATCHES: [(&str, usize); 866] = [
     // 0.4 slowdown for 100 ticks, a prone hit with PlCo +6D8 and the
     // match's end 100 ticks after (fn_801B96E8).
     ("corpus_v3_fd_stamina_fox_marth_ef89b3e70_p0", 4042),
+    // Single Button: A alone on the pad (fighter.c:1875), no C-stick
+    // battering throw or ledge drop (gm_8016B0FC).
+    ("corpus_v3_fd_sp_single_button_fox_marth4_ef89b3e70_p0", 4928),
+    ("corpus_v3_fd_sp_single_button_fox_marth4_e89a89d0e_p0", 5944),
+    ("corpus_v3_fd_sp_single_button_fox_marth4_e9943b4ab_p0", 3630),
+    // Invisible: the permanent cloak changes only what is drawn.
+    ("corpus_v3_fd_sp_invisible_fox_marth4_ef89b3e70_p0", 3311),
+    ("corpus_v3_fd_sp_invisible_fox_marth4_e89a89d0e_p0", 6001),
+    ("corpus_v3_fd_sp_invisible_fox_marth4_e9943b4ab_p0", 6001),
+    // Giant and Tiny: scaled attributes (ftCo_800CF6E8), knockback, hitbox
+    // and item damage, the Illusion's owner scale (it_80274594), the throw
+    // rate from the dat's weight, Dolphin Slash's ftCommon_8007CF58.
+    ("corpus_v3_fd_sp_giant_fox_marth4_ef89b3e70_p0", 2425),
+    ("corpus_v3_fd_sp_giant_fox_marth4_e89a89d0e_p0", 2426),
+    ("corpus_v3_fd_sp_giant_fox_marth4_e9943b4ab_p0", 2585),
+    ("corpus_v3_fd_sp_tiny_fox_marth4_ef89b3e70_p0", 4584),
+    ("corpus_v3_fd_sp_tiny_fox_marth4_e89a89d0e_p0", 5166),
+    ("corpus_v3_fd_sp_tiny_fox_marth4_e9943b4ab_p0", 5867),
     // Jungle Japes: the Klaptrap's bite lands (the stage material item's
     // ALDYakuAll hitbox, 30 damage) and KOs through the river, whose
     // current still carries a dead body (DeadDown's procUpdate tail).
