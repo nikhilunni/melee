@@ -205,6 +205,10 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     const ENTER_AERIAL: fn(&mut Fighter, &assets::FighterAssets) -> assets::Result<()> =
         attack::aerial::enter;
 
+    /// Whether ordinary common Down Air keeps the common Animation owner.
+    /// Link's family replaces it; held-entry proof must not admit that body.
+    const USES_COMMON_DOWN_AIR_ANIMATION: bool = true;
+
     /// Character-owned table (retail's per-kind MotionState table), indexed
     /// from action 341. Specials will form its bulk; existing multijumps and
     /// character shield states also live here.

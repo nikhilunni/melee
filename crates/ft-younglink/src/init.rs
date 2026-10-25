@@ -93,6 +93,7 @@ impl CharacterCallbacks for YoungLink {
     /// ftLk_AttackAir_Enter (ftCo_AttackAir.c decideFighter).
     const ENTER_AERIAL: fn(&mut Fighter, &FighterAssets) -> melee_ft::fighter::assets::Result<()> =
         ft_link_family::attack_air::enter::<Self>;
+    const USES_COMMON_DOWN_AIR_ANIMATION: bool = false;
     /// ft_8008A348 / the SquatWait entry: the Hylian shield.
     const WAIT_ENTERED: fn(&mut Fighter) = ft_link_family::hylian::raise::<Self>;
     const ITEM_DEFENSE_CONTACT: Option<melee_ft::fighter::ItemDefenseContact> =

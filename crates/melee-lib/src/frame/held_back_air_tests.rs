@@ -309,7 +309,7 @@ fn existing_aerial_catch_preserves_entry_context_but_reentry_owns_current_hand()
                     ..
                 }
             ));
-            for action in [S::AttackAirF, S::AttackAirB, S::AttackAirHi] {
+            for action in [S::AttackAirF, S::AttackAirB, S::AttackAirHi, S::AttackAirLw] {
                 let mut entered = fighter.clone();
                 assert!(matches!(
                     entered.state_data,

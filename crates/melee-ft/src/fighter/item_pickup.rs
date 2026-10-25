@@ -537,11 +537,17 @@ impl FighterCore {
         action: ActionId,
         state: S,
         special: Option<bool>,
+        common_down_air_animation: bool,
     ) {
-        if self
-            .held_item
-            .is_some_and(|item| !held_item_state_is_audited(item.kind, action, state, special))
-        {
+        if self.held_item.is_some_and(|item| {
+            !held_item_state_is_audited(
+                item.kind,
+                action,
+                state,
+                special,
+                common_down_air_animation,
+            )
+        }) {
             unimplemented!("holding an item: motion state {state:?} is not audited");
         }
     }
@@ -549,13 +555,14 @@ impl FighterCore {
 
 /// A private character row can share a common identity but run different
 /// callbacks (Game & Watch's Manhole is row 345, identity AttackLw3). Only
-/// the actual common down-tilt/up-smash rows and F/B/Hi aerial entries
+/// the actual common down-tilt/up-smash rows and F/B/Hi/Lw aerial entries
 /// have Sword witnesses.
 fn held_item_state_is_audited(
     kind: melee_types::ItemKind,
     action: ActionId,
     state: S,
     special: Option<bool>,
+    common_down_air_animation: bool,
 ) -> bool {
     match special {
         Some(keeps_item) => keeps_item,
@@ -563,7 +570,14 @@ fn held_item_state_is_audited(
             HELD_ITEM_STATES.contains(&state)
                 || (kind == melee_types::ItemKind::Sword
                     && action == ActionId(state as u16)
-                    && matches!(state, S::AttackLw3 | S::AttackHi4 | S::AttackAirF | S::AttackAirB | S::AttackAirHi))
+                    && (matches!(
+                        state,
+                        S::AttackLw3
+                            | S::AttackHi4
+                            | S::AttackAirF
+                            | S::AttackAirB
+                            | S::AttackAirHi
+                    ) || (state == S::AttackAirLw && common_down_air_animation)))
         }
     }
 }
@@ -911,7 +925,7 @@ mod held_state_tests {
     #[test]
     fn sword_audit_admits_common_aerial_entries_but_not_private_or_other_aerial_rows() {
         use melee_types::ItemKind;
-        // Common down tilt/up smash and F/B/Hi aerial entries are witnessed;
+        // Common down tilt/up smash and F/B/Hi/Lw aerial entries are witnessed;
         // private and other aerial rows keep their guards, even with the
         // same common identity. Back Air's callbacks separately refuse.
         for (action, state, expected) in [
@@ -925,39 +939,66 @@ mod held_state_tests {
             (65, S::AttackAirN, false),
             (66, S::AttackAirF, true),
             (68, S::AttackAirHi, true),
-            (69, S::AttackAirLw, false),
+            (69, S::AttackAirLw, true),
             (349, S::AttackAirHi, false), // Game & Watch's private up aerial.
+            (349, S::AttackAirLw, false), // Private action is not common69.
             (345, S::AttackAirF, false), // Private action/common identity mismatch.
             (71, S::LandingAirF, false),
             (73, S::LandingAirHi, false),
             (72, S::LandingAirB, false),
         ] {
             assert_eq!(
-                held_item_state_is_audited(ItemKind::Sword, ActionId(action), state, None),
+                held_item_state_is_audited(ItemKind::Sword, ActionId(action), state, None, true),
                 expected,
                 "action {action}, identity {state:?}"
             );
         }
+        for (action, state) in [(66, S::AttackAirF), (67, S::AttackAirB), (68, S::AttackAirHi)] {
+            assert!(held_item_state_is_audited(ItemKind::Sword, ActionId(action), state, None, false));
+        }
+        assert!(!held_item_state_is_audited(
+            ItemKind::Sword,
+            ActionId(69),
+            S::AttackAirLw,
+            None,
+            false,
+        ));
+        assert!(!held_item_state_is_audited(
+            ItemKind::Dosei,
+            ActionId(69),
+            S::AttackAirLw,
+            None,
+            true,
+        ));
         assert!(!held_item_state_is_audited(
             ItemKind::Sword,
             ActionId(57),
             S::AttackLw3,
             Some(false),
+            true,
         ));
         assert!(!held_item_state_is_audited(
             ItemKind::Dosei,
             ActionId(67),
             S::AttackAirB,
             None,
+            true,
         ));
         for (action, state) in [(66, S::AttackAirF), (68, S::AttackAirHi)] {
-            assert!(!held_item_state_is_audited(ItemKind::Dosei, ActionId(action), state, None));
+            assert!(!held_item_state_is_audited(
+                ItemKind::Dosei,
+                ActionId(action),
+                state,
+                None,
+                true
+            ));
         }
         assert!(!held_item_state_is_audited(
             ItemKind::Dosei,
             ActionId(57),
             S::AttackLw3,
             None,
+            true,
         ));
     }
 }

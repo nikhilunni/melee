@@ -49,7 +49,7 @@ pub fn select(input: &FighterInput, common: &InputCommonData, facing: f32) -> S 
 }
 
 /// ftCo_AttackAir_EnterFromCStick / EnterFromMsid (8008CF70 / 8008CFAC).
-/// The character table supplies decideFighter's entry. Sword common F/B/Hi aerial
+/// The character table supplies decideFighter's entry. Sword common F/B/Hi/Lw aerial
 /// is witnessed through entry; other unaudited held rows remain refused.
 pub fn enter(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     let state = select(
@@ -83,7 +83,7 @@ pub fn enter_action(fighter: &mut Fighter, assets: &FighterAssets, action: Actio
     Ok(())
 }
 
-/// Complete witnesses end after common F/B/Hi entry's direct step.
+/// Complete witnesses end after common F/B/Hi/Lw entry's direct step.
 /// The next actual callbacks remain unsupported, independent of frame/timer.
 fn held_aerial_entry_only(fighter: &Fighter) -> bool {
     let action = fighter.motion_state.action;
@@ -93,7 +93,8 @@ fn held_aerial_entry_only(fighter: &Fighter) -> bool {
     )
         && (action == S::AttackAirF.into()
             || action == S::AttackAirB.into()
-            || action == S::AttackAirHi.into())
+            || action == S::AttackAirHi.into()
+            || action == S::AttackAirLw.into())
         && fighter
             .held_item
             .is_some_and(|item| item.kind == melee_types::ItemKind::Sword)
@@ -133,7 +134,7 @@ pub fn finish_animation(fighter: &mut Fighter, assets: &FighterAssets) -> Result
 /// unlike Fall_IASA it has no special, air-dodge or Peach float predicates.
 pub fn input(fighter: &mut Fighter, phase: InputPhase<'_>) {
     if held_aerial_entry_only(fighter) {
-        unimplemented!("ftCo_AttackAir_IASA (ftCo_AttackAir.c:147-175): held Sword aerial entry continuation");
+        unimplemented!("ftCo_AttackAir_IASA (ftCo_AttackAir.c:147-179): held Sword aerial entry continuation");
     }
     if !fighter.core.commands.allow_interrupt {
         return;

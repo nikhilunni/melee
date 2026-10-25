@@ -37,7 +37,7 @@ impl Default for DownAir {
     }
 }
 
-/// ftLk_AttackAir_Enter (800EB400): the common aerial, and for the down
+/// ftLk_AttackAir_Enter (800EB42C): the common aerial, and for the down
 /// aerial its own damage and animation callbacks.
 pub fn enter<C: LinkFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     aerial::enter(f, assets)?;

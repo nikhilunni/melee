@@ -7307,3 +7307,35 @@ fn kongo_klaptrap_birth_full_fields_particles_and_ordered_rng() {
         assert_eq!(actual, draws);
     }
 }
+
+/// Original whole Down Air captures end at entry; continuation is refused.
+#[test]
+fn held_sword_down_entries_complete_captures() {
+    for (name, frames, expected_draws) in [
+        ("corpus_v3_fd_items_sword_e45a17231_p2", 1634, 68690),
+        ("corpus_v3_fd_items_sword_e9fa97e1e_p0", 442, 22436),
+        ("corpus_v3_fd_items_sword_nocont_e0ac13e8e_p1", 1344, 55422),
+        ("corpus_v3_fd_items_sword_nocont_ecdf8887e_p1", 966, 40431),
+        ("corpus_v3_fd_items_taru_e5935012b_p2", 1383, 59023),
+    ] {
+        complete_capture_with_initial_rng_gate(name, frames);
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        let ledger =
+            melee_test_support::trace::read_to_string(&scenario.trace_path("ledger.raw.jsonl"))
+                .unwrap();
+        let draws = ledger
+            .lines()
+            .map(|line| {
+                serde_json::from_str::<serde_json::Value>(line).unwrap()["rng_draws"]
+                    .as_array()
+                    .unwrap()
+                    .len()
+            })
+            .sum::<usize>();
+        assert_eq!(draws, expected_draws, "{name} whole raw ledger");
+    }
+}

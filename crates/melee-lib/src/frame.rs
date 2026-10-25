@@ -5378,3 +5378,6 @@ mod giant_punch_invariant_tests;
 
 #[cfg(test)]
 mod klaptrap_birth_tests;
+
+#[cfg(test)]
+mod held_down_entry_tests;
