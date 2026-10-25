@@ -2,8 +2,18 @@ use melee_lib::*;
 use std::{
     alloc::{GlobalAlloc, Layout, System},
     cell::Cell,
-    path::Path,
+    path::{Path, PathBuf},
 };
+
+/// The checkout holding harness data: `MELEE_DATA_ROOT` (a worktree reads
+/// the main checkout's data in place), else this one.
+fn data_root() -> PathBuf {
+    std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        PathBuf::from,
+    )
+}
+
 thread_local! {
     static ENABLED: Cell<bool> = const { Cell::new(false) };
     static COUNT: Cell<usize> = const { Cell::new(0) };
@@ -77,7 +87,7 @@ fn measure(game: &mut Match, inputs: &Inputs) -> usize {
 #[test]
 fn step_after_clone_and_clone_from_allocates_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = data_root();
     for name in ["match_fd_foxmarth", "match2_fd_foxmarth"] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),
@@ -114,10 +124,7 @@ fn step_after_clone_and_clone_from_allocates_nothing() {
 #[test]
 fn random_item_spawns_and_container_capture_allocate_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let mut seen = [false; 4];
     for name in [
         "start_fd_items_kusudama",
@@ -178,10 +185,7 @@ fn random_item_spawns_and_container_capture_allocate_nothing() {
 
 #[test]
 fn moving_kongo_barrel_catch_hold_launch_and_capture_allocate_nothing() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/corpus_v3_kj_fox_marth4_ef5e3e043_p0.toml"),
     )
@@ -221,10 +225,7 @@ fn moving_kongo_barrel_catch_hold_launch_and_capture_allocate_nothing() {
 /// The last retail tick exercises the new floor callback; no later tick is invented.
 #[test]
 fn revival_floor_full_capture_step_observe_and_presentation_allocate_nothing() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/corpus_v3_kj_fox_marth4_e0c8363c7_p1.toml"),
     )
@@ -258,10 +259,7 @@ fn revival_floor_full_capture_step_observe_and_presentation_allocate_nothing() {
 
 #[test]
 fn kongo_log_contact_and_capture_allocate_nothing() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/corpus_v3_kj_fox_marth4_e8be4d273_p2.toml"),
     )
@@ -302,7 +300,7 @@ fn kongo_log_contact_and_capture_allocate_nothing() {
 
 #[test]
 fn imported_item_rules_survive_clone_and_reset_when_the_scenario_omits_them() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = data_root();
     let mut scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/corpus_v3_fd_items_sword_e9af22990_p0.toml"),
     )
@@ -324,7 +322,7 @@ fn imported_item_rules_survive_clone_and_reset_when_the_scenario_omits_them() {
 
 #[test]
 fn imported_warm_team_rules_survive_clone_and_reset_without_metadata() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/start_fd_doubles_ff_fox_falco_marth_captainfalcon2.toml"),
     )
@@ -359,7 +357,7 @@ fn imported_warm_team_rules_survive_clone_and_reset_without_metadata() {
 
 #[test]
 fn cold_match_step_and_observe_allocate_nothing() {
-    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    let files = data_root().join("harness/roms/files");
     if !melee_test_support::require_files([files.join("PlCo.dat")]) {
         return;
     }
@@ -388,10 +386,7 @@ fn versus_cpu_think_attack_and_recovery_allocate_nothing() {
     use ft_fox_family::FamilyState as FoxState;
     use melee_diff::Value;
     use melee_types::CommonMotionState as Common;
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/corpus_v3_fd_fox_cpu9fox4_edb2b114a_p0.toml"),
     ).unwrap();
@@ -418,7 +413,7 @@ fn versus_cpu_think_attack_and_recovery_allocate_nothing() {
 
 #[test]
 fn dropping_matches_and_assets_releases_every_owned_allocation() {
-    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    let files = data_root().join("harness/roms/files");
     if !melee_test_support::require_files([files.join("PlCo.dat")]) {
         return;
     }
@@ -464,7 +459,7 @@ fn dropping_matches_and_assets_releases_every_owned_allocation() {
 
 #[test]
 fn presentation_capture_allocates_nothing_and_does_not_change_simulation() {
-    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    let files = data_root().join("harness/roms/files");
     if !melee_test_support::require_files([files.join("PlCo.dat")]) {
         return;
     }
@@ -570,7 +565,7 @@ fn presentation_capture_allocates_nothing_and_does_not_change_simulation() {
 
 #[test]
 fn presentation_captures_both_complete_matches_without_allocating() {
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = data_root();
     for name in ["match_fd_foxmarth", "match2_fd_foxmarth"] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),
@@ -607,7 +602,7 @@ fn presentation_captures_both_complete_matches_without_allocating() {
 
 #[test]
 fn light_animation_depends_on_match_tick_not_capture_frequency() {
-    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    let files = data_root().join("harness/roms/files");
     if !melee_test_support::require_files([files.join("PlCo.dat")]) {
         return;
     }
@@ -658,7 +653,7 @@ fn light_animation_depends_on_match_tick_not_capture_frequency() {
 
 #[test]
 fn material_animation_uses_match_state_and_prepared_images() {
-    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    let files = data_root().join("harness/roms/files");
     if !melee_test_support::require_files([files.join("PlCo.dat")]) {
         return;
     }
@@ -732,7 +727,7 @@ fn material_animation_uses_match_state_and_prepared_images() {
 #[test]
 fn stage_cycles_preserve_allocation_free_step_clone_and_capture() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
-    let files = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    let files = data_root().join("harness/roms/files");
     if !melee_test_support::require_files([files.join("GrNLa.dat")]) {
         return;
     }
@@ -830,23 +825,22 @@ impl Choices {
 /// Every stage, and every character at least once, steps without touching
 /// the heap once the match exists: stage animations, articles, effects and
 /// item pools are all prepared at load (AGENTS.md, "no heap allocation after
-/// initialization"). Characters pair in select-screen order; the stages
-/// cycle so each hosts at least two matches.
+/// initialization"). Characters pair in select-screen order and the stages
+/// cycle; the matrix runs until every pair and every stage has played.
 #[test]
 fn every_stage_and_character_steps_without_allocating() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
     // MELEE_DATA_ROOT: a checkout with harness data (for worktrees).
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let files = root.join("harness/roms/files");
     if !melee_test_support::require_files([files.join("PlCo.dat")]) {
         return;
     }
     const TICKS: usize = 3600;
     let mut failures = Vec::new();
-    for (index, pair) in Character::ALL.chunks(2).enumerate() {
+    let pairs: Vec<&[Character]> = Character::ALL.chunks(2).collect();
+    for index in 0..pairs.len().max(Stage::PORTED.len()) {
+        let pair = pairs[index % pairs.len()];
         let stage = Stage::PORTED[index % Stage::PORTED.len()];
         let config = MatchConfig::versus(
             stage,
@@ -896,10 +890,7 @@ fn every_stage_and_character_steps_without_allocating() {
 /// then steps both independent copies through its delayed command and End.
 #[test]
 fn retained_item_program_step_capture_and_clone_allocate_nothing() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     for (name, drop_tick) in [
         ("corpus_v3_bf_items_sword_e5993e1bc_p2", 375),
         ("corpus_v3_fd_items_taru_e17844051_p1", 353),
@@ -949,10 +940,7 @@ fn retained_item_program_step_capture_and_clone_allocate_nothing() {
 
 #[test]
 fn pinned_mouth_death_live_clone_step_and_capture_allocate_nothing() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/kirby_inhale_randall_pit_ys_fox4.toml"),
     )
@@ -1025,10 +1013,7 @@ fn pinned_mouth_death_live_clone_step_and_capture_allocate_nothing() {
 /// Clone creation is outside the measured step/capture allocation windows.
 #[test]
 fn stone_contact_step_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     for (name, contact, ticks) in [
         ("kirby_stone_phantom_fd_fox4", 276, 360),
         ("corpus_v3_ys_kirby_fox4_e45211ed5_p0", 513, 699),
@@ -1089,16 +1074,40 @@ fn stone_contact_step_and_capture_allocate_nothing_after_live_clone() {
 /// entries and their public step/observe/presentation capture allocate nothing.
 #[test]
 fn heavy_pickup_terminal_entry_step_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
-    for (name, ticks, actor) in [
-        ("corpus_v3_bf_items_sword_e5993e1bc_p0", 259, Port::P2),
-        ("corpus_v3_fd_items_sword_e5de865a8_p1", 257, Port::P1),
-        ("corpus_v3_fd_items_sword_e6af4a7bb_p2", 240, Port::P1),
-        ("corpus_v3_fd_items_sword_efc6a328f_p2", 241, Port::P1),
-        ("corpus_v3_fd_items_taru_e1895a33d_p0", 295, Port::P2),
+    let root = data_root();
+    // The lift's end with neutral pads: LiftWait, or the opponent's hit
+    // (ftCo_800974C4 drops the barrel) six ticks into the lift.
+    for (name, ticks, actor, lift_end) in [
+        (
+            "corpus_v3_bf_items_sword_e5993e1bc_p0",
+            259,
+            Port::P2,
+            LIFT_WAIT,
+        ),
+        (
+            "corpus_v3_fd_items_sword_e5de865a8_p1",
+            257,
+            Port::P1,
+            LIFT_WAIT,
+        ),
+        (
+            "corpus_v3_fd_items_sword_e6af4a7bb_p2",
+            240,
+            Port::P1,
+            LIFT_WAIT,
+        ),
+        (
+            "corpus_v3_fd_items_sword_efc6a328f_p2",
+            241,
+            Port::P1,
+            LIFT_WAIT,
+        ),
+        (
+            "corpus_v3_fd_items_taru_e1895a33d_p0",
+            295,
+            Port::P2,
+            DAMAGE_N3,
+        ),
     ] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),
@@ -1148,25 +1157,57 @@ fn heavy_pickup_terminal_entry_step_and_capture_allocate_nothing_after_live_clon
         assert_eq!(view.fighter(actor).unwrap().action(), ActionId(93));
         assert_eq!(view.items().count(), 1);
         assert!(view.items().all(|item| item.owner().is_none()));
-        assert!(branch.is_some());
-        // No later retail continuation is claimed: the actual public next
-        // step must report the deliberately unported animation callback.
-        let error = game.step(&Inputs::default()).unwrap_err();
-        assert!(
-            error.to_string().contains("HeavyGet continuation"),
-            "{error}"
-        );
+        // The ported lift (ftpickupitem_Anim, 0x80094A14) finishes HeavyGet
+        // into LiftWait (ftCo_80096D9C) with the item in hand, unless a hit
+        // ends it first: the live match and its clone step through it
+        // without allocating.
+        let (cloned, cloned_capture) = branch.as_mut().unwrap();
+        let mut ended = None;
+        for tick in 0..HEAVY_LIFT_TICKS {
+            let inputs = Inputs::default();
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} lift{tick}");
+            assert_eq!(measure(cloned, &inputs), 0, "{name} clone lift{tick}");
+            for (game, capture) in [(&game, &mut capture), (&*cloned, cloned_capture)] {
+                COUNT.with(|v| v.set(0));
+                ENABLED.with(|v| v.set(true));
+                let result = capture.capture(game);
+                ENABLED.with(|v| v.set(false));
+                result.unwrap();
+                assert_eq!(COUNT.with(Cell::get), 0, "{name} lift capture{tick}");
+            }
+            assert_eq!(
+                diagnostics::inspect(&game).unwrap(),
+                diagnostics::inspect(cloned).unwrap()
+            );
+            let view = game.observe().unwrap();
+            let action = view.fighter(actor).unwrap().action();
+            if action != ActionId(HEAVY_GET) {
+                // The lifted item is in the actor's hands; a hit drops it.
+                let held = view
+                    .items()
+                    .filter(|item| item.owner() == Some(actor))
+                    .count();
+                assert_eq!(held, usize::from(action == ActionId(LIFT_WAIT)), "{name}");
+                ended = Some(action);
+                break;
+            }
+        }
+        assert_eq!(ended, Some(ActionId(lift_end)), "{name}: HeavyGet's end");
     }
 }
+
+/// `ftCo_MS_HeavyGet`, `ftCo_MS_LiftWait` and `ftCo_MS_DamageN3`.
+const HEAVY_GET: u16 = 93;
+const LIFT_WAIT: u16 = 174;
+const DAMAGE_N3: u16 = 80;
+/// A bound on HeavyGet's remaining animation frames after the entry.
+const HEAVY_LIFT_TICKS: usize = 120;
 
 /// Clone creation is unmeasured. Both independent full public continuations
 /// reach the terminal entry with allocation-free step/observe/capture.
 #[test]
 fn held_back_air_entry_step_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/corpus_v3_fd_items_sword_nocont_e8f0de8c6_p2.toml"),
     )
@@ -1231,13 +1272,10 @@ fn held_back_air_entry_step_and_capture_allocate_nothing_after_live_clone() {
 
 #[test]
 fn monster_constructor_step_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     for (name, ticks, kind) in [
         ("corpus_v3_fd_items_sword_e266e1150_p1", 1874, ItemKind(43)),
-        ("corpus_v3_fd_items_sword_e4abe72ec_p2", 297, ItemKind(44)),
+        ("corpus_v3_fd_items_sword_e4abe72ec_p2", 297, REDEAD),
         ("corpus_v3_fd_items_sword_e5ca12c3b_p0", 595, ItemKind(43)),
         ("corpus_v3_fd_items_taru_eae02b66b_p2", 285, ItemKind(43)),
     ] {
@@ -1349,19 +1387,45 @@ fn monster_constructor_step_and_capture_allocate_nothing_after_live_clone() {
             &capture.instances()[range.start as usize..range.end as usize],
             &cloned_capture.instances()[range.start as usize..range.end as usize]
         );
-        // No later retail continuation is claimed: the actual public next
+        if kind == REDEAD {
+            // The ReDead's lifecycle is ported (w25_redead_fall_700_v01
+            // gates it) and this birth faces left (it_802E8BCC): the live
+            // match and its clone run on without allocating.
+            let (cloned, cloned_capture) = branch.as_mut().unwrap();
+            for tick in 0..REDEAD_CONTINUATION_TICKS {
+                let inputs = Inputs::default();
+                assert_eq!(measure(&mut game, &inputs), 0, "{name} continue{tick}");
+                assert_eq!(measure(cloned, &inputs), 0, "{name} clone continue{tick}");
+                for (game, capture) in [(&game, &mut capture), (&*cloned, cloned_capture)] {
+                    COUNT.with(|v| v.set(0));
+                    ENABLED.with(|v| v.set(true));
+                    let result = capture.capture(game);
+                    ENABLED.with(|v| v.set(false));
+                    result.unwrap();
+                    assert_eq!(COUNT.with(Cell::get), 0, "{name} continue capture{tick}");
+                }
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(cloned).unwrap()
+                );
+            }
+            continue;
+        }
+        // No later Goomba continuation is claimed: the actual public next
         // step must report the deliberately unported animation callback.
         let error = game.step(&Inputs::default()).unwrap_err();
         assert!(error.to_string().contains("monster Animation"), "{error}");
     }
 }
 
+/// `It_Kind_Leadead` (0x2C).
+const REDEAD: ItemKind = ItemKind(44);
+/// Ticks a born ReDead runs on past its birth in the allocation test.
+const REDEAD_CONTINUATION_TICKS: usize = 60;
+
 #[test]
 fn held_forward_and_up_entry_step_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     for (name, frames, actor, action) in [
         ("corpus_v3_bf_items_sword_ea3ec9208_p1", 314, 1, 66),
         ("corpus_v3_fd_items_sword_e00f31913_p2", 1502, 1, 68),
@@ -1443,10 +1507,7 @@ fn held_forward_and_up_entry_step_and_capture_allocate_nothing_after_live_clone(
 
 #[test]
 fn klaptrap_birth_step_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     for (name, ticks, kind) in [
         ("corpus_v3_kj_fox_marth4_e0fcbde24_p1", 1666, ItemKind(218)),
         ("corpus_v3_kj_fox_marth4_e75fb4a9a_p0", 1666, ItemKind(218)),
@@ -1574,10 +1635,7 @@ fn klaptrap_birth_step_and_capture_allocate_nothing_after_live_clone() {
 
 #[test]
 fn held_down_entry_step_observe_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     for (name, frames, actor, action) in [
         ("corpus_v3_fd_items_sword_e45a17231_p2", 1634, 1, 69),
         ("corpus_v3_fd_items_sword_e9fa97e1e_p0", 442, 1, 69),
@@ -1653,10 +1711,7 @@ fn held_down_entry_step_observe_and_capture_allocate_nothing_after_live_clone() 
 
 #[test]
 fn sealed_effect_teardown_step_and_capture_allocate_nothing_after_live_clone() {
-    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
-        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
-        std::path::PathBuf::from,
-    );
+    let root = data_root();
     let scenario = melee_sim::scenario::Scenario::load(
         &root.join("harness/scenarios/corpus_v3_ys_ganondorf_fox4_e281b1a7a_p1.toml"),
     )

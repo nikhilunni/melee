@@ -353,3 +353,37 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
         );
     }
 }
+
+/// it_802E8BCC (itleadead.c:145-152): the witnessed ReDead birth faces left;
+/// the same birth facing right has no retail witness and stays refused.
+#[test]
+fn right_facing_redead_birth_stays_refused() {
+    let (name, ticks, _) = CASES[1];
+    let scenario = Scenario::load(&root().join(format!("harness/scenarios/{name}.toml"))).unwrap();
+    let raw = scenario.trace_path("tick.raw.jsonl");
+    let pads = crate::trace::pad_script(&scenario)
+        .unwrap()
+        .with_display_from(&raw)
+        .unwrap();
+    let mut simulation = TestSimulation::with_inputs(
+        InitialState::from_savestate_traces(&scenario).unwrap(),
+        pads,
+    );
+    for frame in 0..ticks as u64 {
+        let display = simulation.pads.display_pass(frame);
+        simulation.engine.set_display_pass(display);
+        simulation.tick_without_snapshot().unwrap();
+    }
+    let state = simulation.state();
+    let redead = state.items.iter().find(|i| i.hold_kind == 6).unwrap();
+    assert_eq!(redead.kind, melee_types::ItemKind::Leadead);
+    assert_eq!(redead.facing, -1.0, "the witnessed birth faces left");
+    let mut right = redead.clone();
+    right.facing = 1.0;
+    let logic = crate::scene_items::SceneItems::logic(right.kind);
+    let assets = state.assets.items.get(right.kind);
+    expect_guard(
+        || (logic.facing_constructor.unwrap().after_query)(&mut right, assets),
+        "right-facing ReDead",
+    );
+}
