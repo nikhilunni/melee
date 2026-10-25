@@ -35,7 +35,7 @@ pub struct Island {
 }
 
 /// `mpIsland_80458E88`: list heads, tails and free lists.
-#[derive(Clone, Debug, Default, PartialEq)]
+#[derive(Debug, Default, PartialEq)]
 pub struct Islands {
     pub nodes: Vec<Island>,
     /// `+0`: the floor islands.
@@ -57,6 +57,16 @@ pub struct Islands {
 
 /// `mpIsland_8005A728`'s `u8 visited[0x600]`.
 const MAX_LINES: usize = 0x600;
+
+/// A fork keeps the node pool's load-time reservation.
+impl Clone for Islands {
+    fn clone(&self) -> Self {
+        Self {
+            nodes: hsd_types::storage::clone_vec(&self.nodes),
+            ..*self
+        }
+    }
+}
 
 impl Islands {
     fn alloc(&mut self, island: Island) -> usize {
@@ -141,6 +151,17 @@ impl CollMap {
                 islands.ceiling_tail = previous;
             }
         }
+        // mpIsland_8005B004 builds at most one dynamic island per dynamic
+        // line and recycles its own spare nodes first, so the static
+        // islands plus every joint's dynamic lines bound the pool: reserve
+        // it here rather than grow it mid-match.
+        let dynamic_lines: usize = self
+            .data
+            .joints
+            .iter()
+            .map(|joint| usize::try_from(joint.dynamic_count).unwrap_or(0))
+            .sum();
+        islands.nodes.reserve_exact(dynamic_lines);
         self.islands = islands;
     }
 

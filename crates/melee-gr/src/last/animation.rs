@@ -11,7 +11,7 @@ use hsd_types::Mtx;
 pub struct BackgroundAnimation {
     pub overlay: melee_lb::color_overlay::ColorOverlay,
     pub overlay_script: Option<usize>,
-    rest: std::sync::Arc<JObjTree>,
+    pub(super) rest: std::sync::Arc<JObjTree>,
     pub(super) tree: JObjTree,
     pub(super) root: JObjId,
     // Animation replacement preserves the model hierarchy and these identities.
@@ -22,6 +22,8 @@ pub struct BackgroundAnimation {
     pub(super) subtree_ends: Vec<usize>,
     /// Every model animation decoded at load for `select_animation`.
     pub(super) selections: super::selection::PreparedSelections,
+    /// Subtree switches decoded at load for `play_prepared_subtree`.
+    pub(super) subtrees: super::selection::PreparedSubtrees,
 }
 /// grLib_801C99C0 (grlib.c:151-158): DPtcl calls hsd_8039EFAC
 /// with link 0 and the animation's bank, kind and attachment joint.
@@ -105,8 +107,12 @@ impl BackgroundAnimation {
             prepared_materials: Vec::new(),
             subtree_ends: Vec::new(),
             selections,
+            subtrees: std::sync::Arc::from([]),
         };
-        result.reserve_events(super::selection::maximum_tracks(&result.selections));
+        result.reserve_events(super::selection::maximum_tracks(
+            &result.selections,
+            &result.subtrees,
+        ));
         result.prepare_material_switches(archive, model)?;
         result.play_materials(0, 0, result.joints.len());
         Ok(result)
@@ -226,8 +232,9 @@ impl BackgroundAnimation {
     /// material animations of model animation `index` replace those of
     /// `bone`'s subtree from frame zero; joint animations keep running.
     pub fn play_material_subtree(&mut self, bone: usize, index: usize) {
-        let end = bone + self.subtree(bone).len();
-        self.play_materials(index, bone, end);
+        let mut count = 0;
+        self.tree.walk_tree(self.joints[bone], &mut |_, _| count += 1);
+        self.play_materials(index, bone, bone + count);
     }
     /// `grAnime_801C83D0(gobj, bone, 2)` (0x801C83D0): `HSD_ForeachAnim`
     /// over `bone`'s subtree, material and texture AObjs only, stops at the
@@ -445,7 +452,10 @@ impl BackgroundAnimation {
         self.tree.req_anim_all(root, 0.0);
         // A load-time attachment brings fresh track storage; keep it
         // reserved for the prepared switches that later reuse it.
-        self.reserve_events(super::selection::maximum_tracks(&self.selections));
+        self.reserve_events(super::selection::maximum_tracks(
+            &self.selections,
+            &self.subtrees,
+        ));
         Ok(())
     }
     /// Ground_801C2FE0 -> mpLib_80055E9C: bind each model's collision
@@ -538,6 +548,7 @@ impl Clone for BackgroundAnimation {
             prepared_materials: self.prepared_materials.clone(),
             rest: std::sync::Arc::clone(&self.rest),
             selections: std::sync::Arc::clone(&self.selections),
+            subtrees: std::sync::Arc::clone(&self.subtrees),
             overlay: self.overlay,
             overlay_script: self.overlay_script,
         }

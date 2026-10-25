@@ -43,6 +43,14 @@ pub(crate) fn load(assets: &Assets, map: u8) -> Result<BackgroundAnimation> {
         BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[usize::from(map)])
             .map_err(|e| anyhow::anyhow!("Brinstar Depths map {map}: {e}"))?;
     animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+    if map == STAGE_MAP {
+        let model = &assets.stage_desc.models[usize::from(STAGE_MAP)];
+        for (bone, index) in SUBTREE_SWITCHES {
+            animation
+                .prepare_subtree(&assets.stage, model, bone, index)
+                .map_err(|e| anyhow::anyhow!("Brinstar Depths map {map}: {e}"))?;
+        }
+    }
     Ok(animation)
 }
 
@@ -52,15 +60,17 @@ fn world_position(animation: &mut BackgroundAnimation, bone: usize) -> Vec3 {
     Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3])
 }
 
+/// Map 3's grAnime_801C7FF8 switches: the idle loop and both turn poses,
+/// decoded at load so the turn replays them without allocating.
+const SUBTREE_SWITCHES: [(usize, usize); 3] = [
+    (IDLE_BONE, IDLE_ANIMATION),
+    (SHAKE_BONE, melee_gr::kraid::SHAKE),
+    (SHAKE_BONE, melee_gr::kraid::STILL),
+];
+
 /// grAnime_801C7FF8(gobj, `bone`, 7, `index`, 0.0, 1.0) on map 3.
-fn play_subtree(animation: &mut BackgroundAnimation, assets: &Assets, bone: usize, index: usize) {
-    let model = &assets.stage_desc.models[usize::from(STAGE_MAP)];
-    let subtree = melee_gr::desc::animation_subtree(&assets.stage, model, index, bone as u32)
-        .expect("a Brinstar Depths animation");
-    animation
-        .attach_subtree(&assets.stage, bone, &subtree, model.animation_loops[index])
-        .expect("a Brinstar Depths animation");
-    animation.play_material_subtree(bone, index);
+fn play_subtree(animation: &mut BackgroundAnimation, bone: usize, index: usize) {
+    animation.play_prepared_subtree(bone, index);
 }
 
 /// The particles a model's frame-zero evaluation asks for, at once.
@@ -128,7 +138,7 @@ pub(crate) fn initialize(
                     &mut DrawLog::default(),
                 )?;
                 if key == STAGE_MAP {
-                    play_subtree(&mut animation, assets, IDLE_BONE, IDLE_ANIMATION);
+                    play_subtree(&mut animation, IDLE_BONE, IDLE_ANIMATION);
                 }
             }
         }
@@ -146,14 +156,13 @@ pub(crate) fn initialize(
 
 struct Stage<'a> {
     animation: &'a mut BackgroundAnimation,
-    assets: &'a Assets,
     quakes: &'a mut crate::quake::Quakes,
     camera: &'a mut melee_cm::GameCamera,
     gobjs: &'a mut hsd_gobj::GObjAddresses,
 }
 impl TurnEngine for Stage<'_> {
     fn play_shake(&mut self, index: usize) {
-        play_subtree(self.animation, self.assets, SHAKE_BONE, index);
+        play_subtree(self.animation, SHAKE_BONE, index);
     }
     fn shake_ended(&self) -> bool {
         self.animation.subtree_animation_ended(SHAKE_BONE)
@@ -202,7 +211,6 @@ pub(crate) fn run_proc(
     pads: &[PadSample; 4],
     draws: &mut DrawLog,
 ) -> Result<()> {
-    let assets = std::sync::Arc::clone(&state.assets);
     match key {
         EFFECTS_MAP => {
             // grKraid_801FE2D0: debug code left in retail. The second
@@ -230,7 +238,6 @@ pub(crate) fn run_proc(
             let animation = state.stage_animations.get_mut(&key).unwrap();
             let mut engine = Stage {
                 animation,
-                assets: &assets,
                 quakes: &mut state.quakes,
                 camera: &mut state.camera,
                 gobjs: &mut state.effects.gobjs,

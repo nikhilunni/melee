@@ -31,6 +31,16 @@ pub(crate) fn load(assets: &Assets, map: u8) -> Result<BackgroundAnimation> {
         BackgroundAnimation::load_model(&assets.stage, &assets.stage_desc.models[usize::from(map)])
             .map_err(|e| anyhow::anyhow!("Kongo Jungle N64 map {map}: {e}"))?;
     animation.set_map_scale(assets.stage_desc.parameters.map_scale);
+    if map == BARREL_MAP {
+        // The shot and the catch replay their subtree switches without
+        // decoding the archive in the tick.
+        let model = &assets.stage_desc.models[usize::from(map)];
+        for index in [SHOT_ANIMATION, CATCH_ANIMATION] {
+            animation
+                .prepare_subtree(&assets.stage, model, SHOT_BONE, index)
+                .map_err(|e| anyhow::anyhow!("Kongo Jungle N64 map {map}: {e}"))?;
+        }
+    }
     Ok(animation)
 }
 
@@ -101,7 +111,6 @@ pub(crate) fn initialize(
 /// The barrel step's engine half over map 1's model.
 struct BarrelModel<'a> {
     animation: &'a mut BackgroundAnimation,
-    assets: &'a Assets,
 }
 impl BarrelEngine for BarrelModel<'_> {
     fn aim_cannon(&mut self, aim: f32) -> Vec3 {
@@ -112,7 +121,7 @@ impl BarrelEngine for BarrelModel<'_> {
         self.animation.set_rate(rate);
     }
     fn start_shot_animation(&mut self) {
-        play_subtree(self.animation, self.assets, SHOT_ANIMATION);
+        play_subtree(self.animation, SHOT_ANIMATION);
     }
     fn holds_fighter(&self, _fighter: usize) -> bool {
         // Fighter GObjs never leave p_link 8 during a match.
@@ -153,7 +162,7 @@ pub(crate) fn catch(state: &mut InitialState, player: usize) -> Result<()> {
     }
     // Ground_801C5440(gp, 0, 0x129): the catch sound only plays.
     let animation = state.stage_animations.get_mut(&BARREL_MAP).unwrap();
-    play_subtree(animation, &state.assets, CATCH_ANIMATION);
+    play_subtree(animation, CATCH_ANIMATION);
     // grMaterial_801C9604(gobj, x6C, 0): a material colour script that
     // only draws.
     state.effects.spawn_positional::<RetailTrig>(
@@ -171,19 +180,8 @@ pub(crate) fn catch(state: &mut InitialState, player: usize) -> Result<()> {
 }
 
 /// grAnime_801C7FF8(gobj, 2, 7, `index`, 0.0, 1.0) on the barrel model.
-fn play_subtree(animation: &mut BackgroundAnimation, assets: &Assets, index: usize) {
-    let model = &assets.stage_desc.models[usize::from(BARREL_MAP)];
-    let subtree = melee_gr::desc::animation_subtree(&assets.stage, model, index, SHOT_BONE as u32)
-        .expect("a barrel animation");
-    animation
-        .attach_subtree(
-            &assets.stage,
-            SHOT_BONE,
-            &subtree,
-            model.animation_loops[index],
-        )
-        .expect("a barrel animation");
-    animation.play_material_subtree(SHOT_BONE, index);
+fn play_subtree(animation: &mut BackgroundAnimation, index: usize) {
+    animation.play_prepared_subtree(SHOT_BONE, index);
 }
 
 /// The scene's accessory1 for a fighter in BarrelWait (ftCo_8009EC44) and
@@ -265,7 +263,6 @@ pub(crate) fn run_proc(state: &mut InitialState, key: u8) -> Result<Option<Shot>
         BARREL_MAP => {
             let mut engine = BarrelModel {
                 animation: state.stage_animations.get_mut(&BARREL_MAP).unwrap(),
-                assets: &state.assets,
             };
             let (cannon, shot) = stage
                 .barrel

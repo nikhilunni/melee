@@ -59,8 +59,8 @@ pub trait TurnEngine {
 }
 
 /// Animation 1 shakes the stage while it turns; 0 is the still pose.
-const SHAKE: usize = 1;
-const STILL: usize = 0;
+pub const SHAKE: usize = 1;
+pub const STILL: usize = 0;
 /// `3.14159265f / 180` (0x801FE5D0's constant; 3.14159265f is
 /// `f32::consts::PI`).
 const DEGREES: f32 = core::f32::consts::PI / 180.0;
