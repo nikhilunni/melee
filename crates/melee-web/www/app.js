@@ -45,6 +45,22 @@ function svgUse(symbol, className) {
 const characterName = (id) => cat.characters[id]?.name ?? '';
 const randomSeed = () => crypto.getRandomValues(new Uint32Array(1))[0];
 const portClass = (port) => `port-${Math.min(port, 3)}`;
+const SLOTS = 4;
+const TEAMS = ['Red', 'Blue', 'Green'];
+const CONTROLLER = { off: 0, human: 1, cpu: 2 };
+const SPECIALS = ['Off', 'Super Sudden Death', 'Lightning', 'Slo-Mo'];
+const FREQUENCIES = ['Off', 'Very low', 'Low', 'Medium', 'High', 'Very high'];
+/** The players in the match, in port order. */
+const activePlayers = (selection) => selection.players
+  .map((slot, player) => ({ ...slot, player })).filter((slot) => slot.controller !== CONTROLLER.off);
+/** "4 stock, teams, items": what the rules add up to. */
+function rulesSummary(rules) {
+  const parts = [rules.mode === 1 ? `Time ${rules.timeMinutes} min` : `${rules.stocks} stock${rules.stocks === 1 ? '' : 's'}`];
+  if (rules.teams) parts.push('teams');
+  if (rules.itemFrequency >= 0) parts.push('items');
+  if (rules.special) parts.push(SPECIALS[rules.special]);
+  return parts.join(', ');
+}
 
 function message(title, text, actions = [], tone = 'neutral') {
   const dialog = $('message');
@@ -459,6 +475,7 @@ function buildCharacters() {
     const portrait = el('img', { className: 'main slide-in', alt: '' });
     panel.append(
       el('div', { className: 'panel-tag', textContent: `P${player + 1}`, ariaHidden: 'true' }),
+      el('div', { className: 'slot-controls', onclick: (e) => e.stopPropagation() }),
       el('p', { className: 'panel-status', textContent: 'Choosing' }),
       el('div', { className: 'panel-emblem mask' }),
       el('div', { className: 'panel-portrait' }, svgUse('emblem', 'placeholder'),
@@ -478,17 +495,54 @@ function buildCharacters() {
   }
 }
 
+/** A panel's HMN/CPU/OFF switch, CPU level, team and handicap. */
+function slotControls(player, slot, rules) {
+  const step = (label, value, min, max, name, set) => el('div', { className: 'slot-step' },
+    el('span', { textContent: label }),
+    el('button', { textContent: '−', ariaLabel: `Lower P${player + 1} ${name}`, disabled: value <= min,
+      onclick: () => { attempt(() => set(value - 1)); updateCharacters(); } }),
+    el('output', { textContent: value === 0 ? '–' : String(value) }),
+    el('button', { textContent: '+', ariaLabel: `Raise P${player + 1} ${name}`, disabled: value >= max,
+      onclick: () => { attempt(() => set(value + 1)); updateCharacters(); } }));
+  const nodes = [el('div', { className: 'segmented', role: 'radiogroup', ariaLabel: `Player ${player + 1}` },
+    ...[['HMN', CONTROLLER.human], ['CPU', CONTROLLER.cpu], ['OFF', CONTROLLER.off]].map(([label, value]) => {
+      const button = el('button', { className: slot.controller === value ? 'on' : '', textContent: label, role: 'radio',
+        ariaChecked: String(slot.controller === value),
+        onclick: () => { attempt(() => app.set_controller(player, value)); updateCharacters(); } });
+      button.dataset.controller = value;
+      return button;
+    }))];
+  if (slot.controller === CONTROLLER.cpu) {
+    nodes.push(step('LV', slot.cpuLevel, 1, 9, 'CPU level', (v) => app.set_cpu_level(player, v)));
+  }
+  if (slot.controller !== CONTROLLER.off && rules.teams) {
+    nodes.push(el('button', { className: 'team-chip', textContent: TEAMS[slot.team] ?? '?',
+      ariaLabel: `Player ${player + 1} team ${TEAMS[slot.team]}`,
+      onclick: () => { attempt(() => app.set_team(player, (slot.team + 1) % TEAMS.length)); updateCharacters(); } }));
+  }
+  if (slot.controller !== CONTROLLER.off && handicapShown()) {
+    nodes.push(step('HC', slot.handicap, 0, 9, 'handicap', (v) => app.set_handicap(player, v)));
+  }
+  return nodes;
+}
+let handicapRule = false;
+const handicapShown = () => handicapRule || app.selection().players.some((p) => p.handicap > 0);
+
 function updateCharacters(entered) {
   const selection = app.selection();
+  const rules = app.rules();
   const ready = selection.ready;
-  $('stocks').textContent = selection.stocks;
+  const timed = rules.mode === 1;
+  $('stocks').textContent = timed ? `${rules.timeMinutes}′` : rules.stocks;
+  $('stocks-label').textContent = timed ? 'Time' : 'Stock';
   const grid = $('character-grid');
   grid.dataset.active = picking;
   for (const tile of tiles) {
     const id = Number(tile.dataset.id);
-    const by = [0, 1].filter((p) => selection.players[p].character === id);
-    tile.classList.toggle('taken-p1', by.includes(0));
-    tile.classList.toggle('taken-p2', by.includes(1));
+    const by = [0, 1, 2, 3].filter((p) => selection.players[p].controller !== CONTROLLER.off
+      && selection.players[p].character === id);
+    tile.classList.toggle('taken-p1', by.includes(0) || by.includes(2));
+    tile.classList.toggle('taken-p2', by.includes(1) || by.includes(3));
     const coins = tile.querySelector('.coins');
     const want = by.map((p) => `p${p + 1}`).join();
     if (coins.dataset.by !== want) {
@@ -501,10 +555,19 @@ function updateCharacters(entered) {
   for (const panel of document.querySelectorAll('.player-panel')) {
     const player = Number(panel.dataset.player);
     const slot = selection.players[player];
-    const other = selection.players[1 - player];
-    const id = slot.character;
+    const others = selection.players.filter((p, i) => i !== player && p.controller !== CONTROLLER.off);
+    const off = slot.controller === CONTROLLER.off;
+    const id = off ? -1 : slot.character;
     const character = cat.characters[id];
     panel.classList.toggle('active', picking === player && !ready);
+    panel.classList.toggle('off', off);
+    if (rules.teams && !off) panel.dataset.team = slot.team; else delete panel.dataset.team;
+    const controls = panel.querySelector('.slot-controls');
+    const controlSignature = JSON.stringify([slot, rules.teams, handicapShown()]);
+    if (controls.dataset.signature !== controlSignature) {
+      controls.dataset.signature = controlSignature;
+      controls.replaceChildren(...slotControls(player, slot, rules));
+    }
     panel.setAttribute('aria-label', `Player ${player + 1}${character ? `: ${character.name}` : ''}`);
     panel.querySelector('.panel-portrait .main').dataset.art = character ? `${ART.portrait}:${id}:${slot.costume}` : '';
     panel.querySelector('.stock-hero').dataset.art = character ? `${ART.stock}:${id}:${slot.costume}` : '';
@@ -513,15 +576,17 @@ function updateCharacters(entered) {
     const name = panel.querySelector('.panel-name');
     name.textContent = character?.name ?? 'Choose a fighter';
     name.classList.toggle('empty', !character);
-    panel.querySelector('.panel-sub').textContent = character
-      ? `Costume ${slot.costume + 1} of ${character.costumes}`
-      : picking === player ? 'Click a fighter or press Enter' : 'Waiting…';
+    if (off) name.textContent = 'Not playing';
+    panel.querySelector('.panel-sub').textContent = off ? 'Pick a fighter or set HMN/CPU to join'
+      : character ? `Costume ${slot.costume + 1} of ${character.costumes}`
+        : picking === player ? 'Click a fighter or press Enter' : 'Waiting…';
     const chips = panel.querySelector('.chips');
-    const signature = character ? `${id}/${slot.costume}/${other.character === id ? other.costume : -1}` : '';
+    const takenCostumes = others.filter((o) => o.character === id).map((o) => o.costume);
+    const signature = character ? `${id}/${slot.costume}/${takenCostumes}` : '';
     if (chips.dataset.signature !== signature) {
       chips.dataset.signature = signature;
       chips.replaceChildren(...Array.from({ length: character?.costumes ?? 0 }, (_, costume) => {
-        const taken = other.character === id && other.costume === costume;
+        const taken = takenCostumes.includes(costume);
         const chip = el('button', {
           className: `chip ${slot.costume === costume ? 'on' : ''}`, role: 'radio', tabIndex: -1,
           ariaChecked: String(slot.costume === costume), ariaLabel: `Costume ${costume + 1}${taken ? ' (taken)' : ''}`,
@@ -538,7 +603,9 @@ function updateCharacters(entered) {
   const wasReady = slot.classList.contains('ready');
   slot.classList.toggle('ready', ready);
   const tag = `<b class="p${picking + 1}">P${picking + 1}</b>`;
-  $('pick-hint').innerHTML = ready ? '' : `${tag} &middot; choose your fighter`;
+  const waiting = selection.players[picking].controller !== CONTROLLER.off && selection.players[picking].character < 0;
+  $('pick-hint').innerHTML = ready ? '' : waiting || !selection.notReady ? `${tag} &middot; choose your fighter`
+    : `${tag} &middot; ${selection.notReady}`;
   if (ready && !wasReady) $('ready-banner').focus({ preventScroll: true });
   if (!ready && document.activeElement === $('ready-banner')) tiles[characterCursor]?.focus({ preventScroll: true });
   if (entered) {
@@ -551,8 +618,45 @@ function updateCharacters(entered) {
 }
 function choose(id) {
   attempt(() => app.choose_character(picking, id));
-  if (app.selection().players[1 - picking].character < 0) picking = 1 - picking;
+  // On to the next player in the match who still needs a pick.
+  const players = app.selection().players;
+  for (let step = 1; step < SLOTS; step++) {
+    const next = (picking + step) % SLOTS;
+    if (players[next].controller !== CONTROLLER.off && players[next].character < 0) { picking = next; break; }
+  }
   updateCharacters();
+}
+
+// ---- Rules.
+
+function buildRules() {
+  const rules = app.rules();
+  const set = (change) => { attempt(() => app.set_rules(change)); buildRules(); updateCharacters(); };
+  const options = (labels, selected, pick) => el('div', { className: 'options', role: 'radiogroup' },
+    ...labels.map((label, i) => el('button', { className: i === selected ? 'on' : '', textContent: label, role: 'radio',
+      ariaChecked: String(i === selected), onclick: () => pick(i) })));
+  const number = (value, min, max, show, pick) => el('div', { className: 'number' },
+    el('button', { textContent: '◀', ariaLabel: 'Less', disabled: value <= min, onclick: () => pick(value - 1) }),
+    el('output', { textContent: show(value) }),
+    el('button', { textContent: '▶', ariaLabel: 'More', disabled: value >= max, onclick: () => pick(value + 1) }));
+  const rows = [
+    ['Mode', options(['Stock', 'Time'], rules.mode, (i) => set({ mode: i, timeMinutes: i === 1 && !rules.timeMinutes ? 2 : rules.timeMinutes }))],
+  ];
+  if (rules.mode === 0) rows.push(['Stocks', number(rules.stocks, 1, 99, String, (v) => set({ stocks: v }))]);
+  rows.push([rules.mode === 1 ? 'Time' : 'Time limit', number(rules.timeMinutes, rules.mode === 1 ? 1 : 0, 99,
+    (v) => (v ? `${v} min` : 'None'), (v) => set({ timeMinutes: v }))]);
+  rows.push(['Teams', options(['Off', 'On'], rules.teams ? 1 : 0, (i) => set({ teams: i === 1 }))]);
+  if (rules.teams) rows.push(['Friendly fire', options(['Off', 'On'], rules.friendlyFire ? 1 : 0, (i) => set({ friendlyFire: i === 1 }))]);
+  rows.push(['Items', options(FREQUENCIES, rules.itemFrequency + 1, (i) => set({ itemFrequency: i - 1 }))]);
+  rows.push(['Damage ratio', number(rules.damageRatio, 5, 20, (v) => `${(v / 10).toFixed(1)}×`, (v) => set({ damageRatio: v }))]);
+  rows.push(['Handicap', options(['Off', 'On'], handicapShown() ? 1 : 0, (i) => {
+    handicapRule = i === 1;
+    if (!handicapRule) app.selection().players.forEach((p, player) => { if (p.handicap) attempt(() => app.set_handicap(player, 0)); });
+    buildRules();
+    updateCharacters();
+  })]);
+  rows.push(['Special', options(SPECIALS, rules.special, (i) => set({ special: i }))]);
+  $('rules-rows').replaceChildren(...rows.flatMap(([label, control]) => [el('span', { className: 'label', textContent: label }), control]));
 }
 /** Arrow keys over the grid: the nearest tile in that direction. */
 function moveCursor(dx, dy) {
@@ -613,13 +717,17 @@ function markStageCursor() {
   stageTiles.forEach((tile, i) => tile.classList.toggle('current', i === stageCursor));
 }
 function startStage(id) {
+  const reason = app.stage_unavailable(id);
+  if (reason) return message(cat.stages[id].name, `Not with these players and rules: ${reason}.`);
   chosenStage = id;
   attempt(() => app.choose_stage(id, randomSeed()));
 }
 /** RANDOM: a quick shuffle across the stages, then the pick. */
 function shuffleStage() {
   if (shuffling) return;
-  const pick = Math.floor(Math.random() * cat.stages.length);
+  const playable = cat.stages.filter((s) => !app.stage_unavailable(s.id));
+  if (!playable.length) return;
+  const pick = playable[Math.floor(Math.random() * playable.length)].id;
   if (reducedMotion.matches) return startStage(pick);
   shuffling = true;
   let step = 0;
@@ -688,18 +796,28 @@ function showHero(id) {
 }
 function updateStages(entered) {
   const selection = app.selection();
+  const rules = app.rules();
   const matchup = $('matchup');
-  const signature = JSON.stringify(selection);
+  const signature = JSON.stringify([selection, rules]);
   if (matchup.dataset.signature !== signature) {
     matchup.dataset.signature = signature;
-    const side = (p, i) => {
+    const players = activePlayers(selection);
+    const side = (p, order) => {
       const icon = el('img', { alt: '' });
       icon.dataset.art = `${ART.stock}:${p.character}:${p.costume}`;
-      return [icon, el('span', { className: `p${i + 1}-text`, textContent: characterName(p.character) })];
+      const name = players.length > 2 ? '' : characterName(p.character);
+      return [...(order ? [el('span', { className: 'vs-small', textContent: 'vs' })] : []), icon,
+        el('span', { className: `p${p.player + 1}-text`, textContent: `${name}${p.controller === CONTROLLER.cpu ? ` CPU ${p.cpuLevel}` : ''}` })];
     };
-    matchup.replaceChildren(...side(selection.players[0], 0), el('span', { className: 'vs-small', textContent: 'vs' }),
-      ...side(selection.players[1], 1),
-      el('span', { className: 'stocks-note', textContent: `${selection.stocks} stock${selection.stocks === 1 ? '' : 's'}` }));
+    matchup.replaceChildren(...players.flatMap(side),
+      el('span', { className: 'stocks-note', textContent: rulesSummary(rules) }));
+    for (const tile of stageTiles) {
+      const id = tile.dataset.stage;
+      if (id === undefined || id === RANDOM) continue;
+      const reason = app.stage_unavailable(Number(id));
+      tile.classList.toggle('unavailable', !!reason);
+      tile.title = reason ? `Not with these players and rules: ${reason}` : '';
+    }
   }
   if (entered) {
     heroShown = null;
@@ -732,14 +850,19 @@ function updateLoading(entered) {
   if (entered || loadingSignature === '') {
     const selection = app.selection();
     loadingSignature = JSON.stringify(selection);
-    for (const side of document.querySelectorAll('.versus-side')) {
-      const i = Number(side.dataset.side);
-      const p = selection.players[i];
+    const players = activePlayers(selection);
+    const versus = $('versus');
+    versus.classList.toggle('many', players.length > 2);
+    versus.replaceChildren(...players.flatMap((p, order) => {
       const portrait = el('img', { alt: '' });
       portrait.dataset.art = `${ART.portrait}:${p.character}:${p.costume}`;
-      side.replaceChildren(portrait, el('p', { className: 'vs-name' },
-        el('span', { className: 'vs-tag', textContent: `P${i + 1}` }), characterName(p.character)));
-    }
+      const side = el('div', { className: `versus-side ${order % 2 ? 'mirrored' : ''}` }, portrait,
+        el('p', { className: 'vs-name' },
+          el('span', { className: 'vs-tag', textContent: p.controller === CONTROLLER.cpu ? 'CPU' : `P${p.player + 1}` }),
+          characterName(p.character)));
+      side.dataset.side = p.player;
+      return order ? [el('div', { className: 'vs display', ariaHidden: 'true' }, el('span', { textContent: 'VS' })), side] : [side];
+    }));
     const background = $('loading-bg');
     if (chosenStage !== null) {
       const preview = el('img', { alt: '' });
@@ -797,32 +920,47 @@ function updateMatch() {
   const hud = app.hud();
   const players = hud?.players ?? [];
   const container = $('hud');
-  const signature = players.map((p) => `${p.port}:${p.character}:${p.costume}`).join();
+  const signature = players.map((p) => `${p.port}:${p.character}:${p.costume}:${p.team}`).join();
   if (signature !== hudPlayers) {
     hudPlayers = signature;
     hudValues = [];
+    container.classList.toggle('many', players.length > 2);
     container.replaceChildren(...players.map((p) => {
-      const plate = el('div', { className: `plate ${portClass(p.port)}`, role: 'group',
-        ariaLabel: `P${p.port + 1} ${characterName(p.character)}` });
+      const plate = el('div', { className: `plate ${portClass(p.port)} ${p.team >= 0 ? `team-${p.team}` : ''}`, role: 'group',
+        ariaLabel: `${p.cpu ? 'CPU' : `P${p.port + 1}`} ${characterName(p.character)}` });
       plate.append(el('div', { className: 'plate-stocks' }),
         el('div', { className: 'plate-body' }, faceCrop(p, 'plate-face'),
-          el('span', { className: 'plate-tag', textContent: `P${p.port + 1}` }),
+          el('span', { className: 'plate-tag', textContent: p.cpu ? 'CPU' : `P${p.port + 1}` }),
           el('div', { className: 'plate-percent', ariaLive: 'off' })));
       return plate;
     }));
+  }
+  const timer = $('match-timer');
+  const clock = hud?.secondsLeft == null ? ''
+    : `${Math.floor(hud.secondsLeft / 60)}:${String(hud.secondsLeft % 60).padStart(2, '0')}`;
+  const timerSignature = `${clock}/${hud?.suddenDeath}`;
+  if (timer.dataset.signature !== timerSignature) {
+    timer.dataset.signature = timerSignature;
+    timer.replaceChildren(...(clock ? [el('span', { className: hud.secondsLeft <= 10 ? 'low' : '', textContent: clock })] : []),
+      ...(hud?.suddenDeath ? [el('span', { className: 'sudden', textContent: 'Sudden Death' })] : []));
   }
   let changed = false;
   players.forEach((p, i) => {
     const percent = Math.floor(p.percent);
     const before = hudValues[i];
-    if (before?.percent === percent && before?.stocks === p.stocks) return;
-    hudValues[i] = { percent, stocks: p.stocks };
+    if (before?.percent === percent && before?.stocks === p.stocks && before?.score === p.score) return;
+    hudValues[i] = { percent, stocks: p.stocks, score: p.score };
     changed = true;
     const plate = container.children[i];
     const text = plate.querySelector('.plate-percent');
     text.replaceChildren(String(percent), el('small', { textContent: '%' }));
     text.style.setProperty('--pct', percentColour(percent));
-    if (before?.stocks !== p.stocks) stockIcons(plate.querySelector('.plate-stocks'), p, 5);
+    if (hud.timedScores) {
+      if (before?.score !== p.score) {
+        plate.querySelector('.plate-stocks').replaceChildren(
+          el('span', { className: 'plate-score', textContent: p.score > 0 ? `+${p.score}` : String(p.score) }));
+      }
+    } else if (before?.stocks !== p.stocks) stockIcons(plate.querySelector('.plate-stocks'), p, 5);
     if (before && percent > before.percent && !reducedMotion.matches) {
       const kick = Math.min(6, 2 + (percent - before.percent) / 4);
       text.animate([{ transform: 'translate(0,0)' }, { transform: `translate(${kick}px,${-kick}px)` },
@@ -848,19 +986,21 @@ function updateResults(entered) {
   $('hud').replaceChildren();
   hudPlayers = '';
   const players = results.hud.players;
-  const winner = players[results.winner];
+  const team = results.winningTeam ?? -1;
+  const winner = players[results.winner] ?? (team >= 0 ? players.find((p) => p.team === team) : undefined);
   const view = $('screen-results').querySelector('.results');
   view.classList.remove('port-0', 'port-1', 'port-2', 'port-3', 'draw');
   view.classList.add(winner ? portClass(winner.port) : 'draw');
-  $('results-kicker').textContent = winner ? `Player ${winner.port + 1}` : 'Draw';
+  $('results-kicker').textContent = team >= 0 ? `${TEAMS[team]} team` : winner ? (winner.cpu ? 'CPU' : `Player ${winner.port + 1}`) : 'Draw';
   $('results-title').textContent = winner ? 'Winner' : 'No contest';
-  $('results-name').replaceChildren(...(winner ? [el('span', { textContent: characterName(winner.character) })] : []));
+  $('results-name').replaceChildren(...(winner && team < 0 ? [el('span', { textContent: characterName(winner.character) })] : []));
   const portrait = $('results-portrait');
   portrait.dataset.art = winner ? `${ART.portrait}:${winner.character}:${winner.costume}` : '';
   $('results-emblem').dataset.art = winner ? `${ART.characterEmblem}:${winner.character}:0` : '';
   $('results-table').replaceChildren(...players.map((p, i) => {
     const icons = el('div', { className: 'stock-icons' });
-    if (p.stocks > 0) stockIcons(icons, p, 4);
+    if (results.hud.timedScores) icons.append(el('span', { textContent: p.score > 0 ? `+${p.score}` : String(p.score) }));
+    else if (p.stocks > 0) stockIcons(icons, p, 4);
     else icons.append(el('span', { className: 'none', textContent: 'out' }));
     return el('div', { className: `result-row ${portClass(p.port)} ${i === results.winner ? 'winner' : ''}`, role: 'row' },
       el('span', { className: 'tag', textContent: `P${p.port + 1}` }),
@@ -887,11 +1027,19 @@ function saveReplay() {
 
 // ---- Buttons with data-action.
 
+/** The top bar's stepper: stocks, or a Time match's minutes. */
+function stepStocks(step) {
+  const rules = app.rules();
+  if (rules.mode === 1) app.set_rules({ timeMinutes: Math.min(99, Math.max(1, rules.timeMinutes + step)) });
+  else app.set_rules({ stocks: Math.min(99, Math.max(1, rules.stocks + step)) });
+}
 const ACTIONS_BY_NAME = {
   back: () => { loadToken++; app.back(); },
   confirm: () => app.confirm_characters(),
-  'stocks-down': () => app.set_stocks(Math.max(1, app.selection().stocks - 1)),
-  'stocks-up': () => app.set_stocks(Math.min(99, app.selection().stocks + 1)),
+  'stocks-down': () => stepStocks(-1),
+  'stocks-up': () => stepStocks(1),
+  rules: () => { buildRules(); $('rules').showModal(); },
+  'rules-done': () => { $('rules').close(); updateCharacters(); },
   resume: () => { app.set_paused(false); lastFrame = null; },
   restart: () => { app.restart(); lastFrame = null; },
   quit: () => app.quit_to_menu(),
@@ -938,7 +1086,7 @@ function menuKey(e, screen) {
         }
         return true;
       }
-      if (e.code === 'Tab') { picking = 1 - picking; updateCharacters(); return true; }
+      if (e.code === 'Tab') { picking = (picking + (e.shiftKey ? SLOTS - 1 : 1)) % SLOTS; updateCharacters(); return true; }
       if (e.code === 'Enter') {
         // Ready: Enter starts from the grid too (like Start); other buttons keep their own Enter.
         const onGrid = document.activeElement?.classList.contains('tile') || onBanner;
@@ -954,10 +1102,6 @@ function menuKey(e, screen) {
       }
       if (e.code === 'Backspace' || e.code === 'Delete') {
         if (selection.players[picking].character >= 0) attempt(() => app.choose_character(picking, -1));
-        else if (selection.players[1 - picking].character >= 0) {
-          picking = 1 - picking;
-          attempt(() => app.choose_character(picking, -1));
-        }
         return true;
       }
       if (e.code === 'Minus' || e.code === 'Equal') {
@@ -992,7 +1136,7 @@ function menuKey(e, screen) {
   }
 }
 document.addEventListener('keydown', (e) => {
-  if ($('message').open || !app || e.metaKey || e.ctrlKey || e.altKey) return;
+  if ($('message').open || $('rules').open || !app || e.metaKey || e.ctrlKey || e.altKey) return;
   const screen = devView ?? SCREENS[app.screen()];
   if (screen === 'match') {
     if (e.code === 'Escape') {
@@ -1054,10 +1198,34 @@ const perf = new URLSearchParams(location.search).has('perf') ? {
     Object.assign(this, { frames: 0, busy: 0, since: performance.now(), tick });
   },
 } : null;
+// Gamepads (the Gamepad API, standard mapping) as GameCube controllers:
+// pad n drives the match's nth human player; Start pauses.
+const PAD = { a: 1, b: 2, x: 4, y: 8, z: 16, l: 32, r: 64, left: 128, right: 256, down: 512, up: 1024 };
+let padsReported = 0, padStart = [];
+function pollGamepads() {
+  const pads = [...(navigator.getGamepads?.() ?? [])].filter((p) => p && p.connected && p.mapping === 'standard');
+  pads.forEach((pad, device) => {
+    const pressed = (i) => pad.buttons[i]?.pressed;
+    const value = (i) => pad.buttons[i]?.value ?? 0;
+    let buttons = 0;
+    for (const [i, bit] of [[0, PAD.a], [1, PAD.b], [2, PAD.x], [3, PAD.y], [4, PAD.z], [5, PAD.z],
+      [12, PAD.up], [13, PAD.down], [14, PAD.left], [15, PAD.right]]) if (pressed(i)) buttons |= bit;
+    if (value(6) >= 0.95) buttons |= PAD.l;
+    if (value(7) >= 0.95) buttons |= PAD.r;
+    const axis = (i) => pad.axes[i] ?? 0;
+    app.gamepad(device, buttons, axis(0), -axis(1), axis(2), -axis(3), value(6), value(7));
+    if (pressed(9) && !padStart[device] && !app.faulted()) { app.set_paused(!app.is_paused()); lastFrame = null; render(); }
+    padStart[device] = pressed(9);
+  });
+  for (let device = pads.length; device < padsReported; device++) app.gamepad_lost(device);
+  padsReported = pads.length;
+}
+
 function frame(now) {
   if (window.meleeCrashed) return;
   requestAnimationFrame(frame);
   const screen = app.screen();
+  if (screen === 4) pollGamepads();
   const size = fitCanvas();
   const resized = size !== sized;
   if (screen === 4 || (screen === 5 && resized)) {

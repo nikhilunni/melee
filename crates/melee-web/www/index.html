@@ -69,11 +69,14 @@
     <header class="topbar enter">
       <button data-action="back" class="btn pill ghost back" aria-label="Back to the disc screen"><span>&lsaquo; Back</span></button>
       <h1 id="characters-title" class="display title">Choose your character</h1>
-      <div class="stepper" role="group" aria-label="Stocks">
-        <span class="stepper-label">Stock</span>
-        <button data-action="stocks-down" class="stepper-arrow" aria-label="Fewer stocks">&#x25C0;</button>
-        <output id="stocks" class="stepper-value" aria-live="polite">4</output>
-        <button data-action="stocks-up" class="stepper-arrow" aria-label="More stocks">&#x25B6;</button>
+      <div class="topbar-end">
+        <div class="stepper" role="group" aria-label="Stocks">
+          <span id="stocks-label" class="stepper-label">Stock</span>
+          <button data-action="stocks-down" class="stepper-arrow" aria-label="Fewer">&#x25C0;</button>
+          <output id="stocks" class="stepper-value" aria-live="polite">4</output>
+          <button data-action="stocks-up" class="stepper-arrow" aria-label="More">&#x25B6;</button>
+        </div>
+        <button data-action="rules" class="btn pill ghost" aria-haspopup="dialog"><span>Rules</span></button>
       </div>
     </header>
     <div id="character-grid" class="character-grid enter" style="--i:1" role="grid" aria-label="Characters"></div>
@@ -86,17 +89,28 @@
     <div class="players enter" style="--i:3">
       <div class="player-panel" data-player="0"></div>
       <div class="player-panel" data-player="1"></div>
+      <div class="player-panel" data-player="2"></div>
+      <div class="player-panel" data-player="3"></div>
     </div>
     <footer class="legend enter" style="--i:4">
       <p class="keys"><kbd>&larr;</kbd><kbd>&rarr;</kbd><kbd>&uarr;</kbd><kbd>&darr;</kbd> Move <kbd>Enter</kbd> Pick <kbd>Tab</kbd> Player
         <kbd>Q</kbd><kbd>E</kbd> Costume <kbd>&#x232B;</kbd> Clear <kbd>Esc</kbd> Back</p>
       <p id="art-status" class="art-status" hidden></p>
       <div class="match-keys" aria-label="Match controls">
-        <p><b class="p1">P1</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move <kbd>K</kbd> attack <kbd>J</kbd> special <kbd>Space</kbd> jump <kbd>L</kbd> shield <kbd>I</kbd> grab</p>
-        <p><b class="p2">P2</b> <kbd>&larr;&uarr;&darr;&rarr;</kbd> move <kbd>N</kbd> attack <kbd>M</kbd> special <kbd>,</kbd> jump <kbd>.</kbd> shield <kbd>/</kbd> grab</p>
+        <p class="pads-note">Keyboards and gamepads drive the human players in port order</p>
+        <p><b class="p1">1st</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move <kbd>K</kbd> attack <kbd>J</kbd> special <kbd>Space</kbd> jump <kbd>L</kbd> shield <kbd>I</kbd> grab</p>
+        <p><b class="p2">2nd</b> <kbd>&larr;&uarr;&darr;&rarr;</kbd> move <kbd>N</kbd> attack <kbd>M</kbd> special <kbd>,</kbd> jump <kbd>.</kbd> shield <kbd>/</kbd> grab</p>
       </div>
     </footer>
   </section>
+
+  <!-- Rules: one row per setting, so modes the simulator gains add a row each. -->
+  <dialog id="rules" class="card glass rules-card" aria-labelledby="rules-title">
+    <h1 id="rules-title" class="display title">Rules</h1>
+    <div id="rules-rows" class="rules-rows"></div>
+    <p class="rules-note">Items and CPU players are offered where the simulator is verified; stage select says where.</p>
+    <div class="rules-buttons"><button data-action="rules-done" class="btn accent"><span>Done</span></button></div>
+  </dialog>
 
   <!-- Stage select -->
   <section id="screen-stages" class="screen select-screen" hidden aria-labelledby="stages-title">
@@ -126,11 +140,7 @@
   <!-- Loading -->
   <section id="screen-loading" class="screen loading-screen" hidden aria-label="Loading the match">
     <div id="loading-bg" class="loading-bg" aria-hidden="true"></div>
-    <div class="versus">
-      <div class="versus-side" data-side="0"></div>
-      <div class="vs display" aria-hidden="true"><span>VS</span></div>
-      <div class="versus-side" data-side="1"></div>
-    </div>
+    <div id="versus" class="versus"></div>
     <div class="load-track" role="progressbar" aria-label="Loading" aria-valuemin="0" aria-valuemax="100"><div id="load-fill" class="load-fill"></div></div>
     <p id="load-detail" class="load-detail"></p>
     <button data-action="back" class="btn pill ghost"><span>Cancel</span></button>
@@ -138,6 +148,7 @@
 
   <!-- Match HUD, pause and results float over the canvas. -->
   <section id="screen-match" class="overlay-screen" hidden aria-label="Match">
+    <div id="match-timer" class="match-timer" aria-live="off"></div>
     <div id="hud" class="hud"></div>
     <div id="pause" class="scrim" hidden>
       <div class="card glass menu-card" role="dialog" aria-modal="true" aria-labelledby="pause-title">
