@@ -1,9 +1,9 @@
 # Function-level parity inventory
 
 How far the port is from all of retail Melee, measured per retail function.
-Measured 2026-10-25 after wave 23 was integrated
-(production source `914421b4`). Evidence is in
-`target/parity/wave23-integrated/`. The objective here is breadth: every
+Measured 2026-10-25 after wave 24 was integrated
+(production source `f570da10`). Evidence is in
+`target/parity/wave24-combined/`. The objective here is breadth: every
 function retail runs, not only what the gate exercises. The current full
 release checkpoint passes; runtime gates and performance budget results
 are tracked separately in `TRACKER.md`.
@@ -76,25 +76,25 @@ does not name them; `gm_1601.c` (match flow), `gm_16AE.c`, `gmmain_lib.c`
 (save data and rules) and the unnamed `hsd_3A94`/`hsd_3B*` files stay in game
 logic.
 
-**Fail-closed sites.** The current inventory has **299 sites**: 280
+**Fail-closed sites.** The current inventory has **297 sites**: 278
 `unimplemented!` and 19 `bail!`. The tool also detects `todo!` in non-test,
 non-tooling code and `Error::UnsupportedFeature` in `hsd-particle`; neither
 adds a current site. `bail!` is counted in simulation crates and `melee-lib`,
 while other crates' input validation is excluded. `unreachable!` is an
 invariant, not a gap, and is left out. A site resolves by a symbol/address
 or C line in its message/comment, then its enclosing Rust function's doc.
-Current resolution: 235 by message/C line, 18 by enclosing context, 46
+Current resolution: 233 by message/C line, 18 by enclosing context, 46
 unresolved dispatch/import sites. New explicit guards can increase this
 count even while more retail behavior is ported.
 
 ## Accuracy
 
-**Citations.** 24,320 of 25,181 function-citation candidates resolve to
+**Citations.** 24,322 of 25,184 function-citation candidates resolve to
 retail functions (96.6%); 547 name decomp inline helpers without their own
-retail symbol, and 314 names remain unresolved. Stale names include
+retail symbol, and 315 names remain unresolved. Stale names include
 `Fighter_ProcessHit`, `Fighter_UnkProcessDeath` and `Fighter_UnkInitReset`;
 other unresolved tokens are state names or fields rather than functions.
-Not counted as function citations: 483 data references and 2,594 other
+Not counted as function citations: 483 data references and 2,595 other
 decomp identifiers. Counts come from the current generated summary, not
 the earlier calibration sample below.
 
@@ -125,7 +125,7 @@ undercount most.
 
 ## Current totals
 
-All functions (19,827; 3,783 KiB): **4,211 ported, 225 partial, 1,372 body,
+All functions (19,827; 3,783 KiB): **4,212 ported, 224 partial, 1,372 body,
 1,381 row, 231 referenced, 12,407 not started**. By retail bytes,
 **29.4% ported/partial, 38.1% with body/row**.
 
@@ -133,12 +133,11 @@ The historical in-game measurement group (14,399 functions; 2,432 KiB) is
 **45.2% / 57.2%**. The remaining 5,428 functions are still in scope; their
 reporting groups appear below. These figures count citations and code bytes,
 not directly witnessed branches or a percentage of gameplay completeness.
-Function counts and fail-closed site totals are unchanged from wave 22.
-Five complete common Sword Down Air entry captures and the complete 700-tick
-teardown-order correction now match, with six sweep fixes and no regressions.
-These are additional witnessed cases in already counted functions, not a
-function-inventory percentage increase. Acceptance and limits are in
-`docs/PORT_NOTES/WAVE23_BREADTH.md`.
+Two command-owner guards become proven invariants in wave 24. One already
+counted function moves from partial to ported; ported-plus-partial and byte
+coverage are unchanged. No new gameplay is admitted. The complete sweep and
+both replay corpora retain every prior result. Acceptance and limits are in
+`docs/PORT_NOTES/WAVE24_BREADTH.md`.
 
 | area | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -146,7 +145,7 @@ function-inventory percentage increase. Acceptance and limits are in
 | ft characters | 3672 | 1716 | 34 | 411 | 921 | 53 | 537 | 445 | 62.5% | 87.5% |
 | gr | 1760 | 150 | 11 | 88 | 0 | 27 | 1484 | 340 | 18.4% | 20.8% |
 | ft common states | 1471 | 512 | 84 | 190 | 322 | 8 | 355 | 248 | 62.0% | 77.8% |
-| ft engine | 1108 | 338 | 30 | 213 | 21 | 42 | 464 | 237 | 54.9% | 69.4% |
+| ft engine | 1108 | 339 | 29 | 213 | 21 | 42 | 464 | 237 | 54.9% | 69.4% |
 | HSD (sysdolphin) | 499 | 141 | 2 | 27 | 0 | 15 | 314 | 180 | 35.4% | 45.4% |
 | mp | 229 | 212 | 1 | 2 | 0 | 2 | 12 | 102 | 92.5% | 92.9% |
 | gm | 617 | 15 | 2 | 28 | 0 | 6 | 566 | 98 | 6.0% | 13.9% |
@@ -157,13 +156,13 @@ function-inventory percentage increase. Acceptance and limits are in
 | cm | 127 | 21 | 1 | 13 | 0 | 4 | 88 | 35 | 30.2% | 37.5% |
 | pl | 191 | 9 | 1 | 19 | 0 | 6 | 156 | 29 | 8.5% | 17.4% |
 | MSL | 9 | 4 | 0 | 5 | 0 | 0 | 0 | 1 | 82.0% | 100.0% |
-| **total** | 14399 | 4133 | 224 | 1328 | 1381 | 218 | 7115 | 2432 | 45.2% | 57.2% |
+| **total** | 14399 | 4134 | 223 | 1328 | 1381 | 218 | 7115 | 2432 | 45.2% | 57.2% |
 
 ### Every reporting group remains in scope
 
 | scope | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| in-game | 14399 | 4133 | 224 | 1328 | 1381 | 218 | 7115 | 2432 | 45.2% | 57.2% |
+| in-game | 14399 | 4134 | 223 | 1328 | 1381 | 218 | 7115 | 2432 | 45.2% | 57.2% |
 | single-player and modes | 1520 | 5 | 0 | 2 | 0 | 1 | 1512 | 278 | 0.1% | 0.2% |
 | menus | 530 | 1 | 0 | 10 | 0 | 2 | 517 | 260 | 0.1% | 4.8% |
 | rendering | 795 | 43 | 1 | 11 | 0 | 6 | 734 | 206 | 5.0% | 14.0% |
@@ -176,7 +175,7 @@ function-inventory percentage increase. Acceptance and limits are in
 | debug | 153 | 0 | 0 | 2 | 0 | 0 | 151 | 37 | 0.0% | 0.5% |
 | cutscenes | 84 | 0 | 0 | 0 | 0 | 0 | 84 | 20 | 0.0% | 0.0% |
 | pause | 36 | 0 | 0 | 0 | 0 | 0 | 36 | 7 | 0.0% | 0.0% |
-| **total** | 19827 | 4211 | 225 | 1372 | 1381 | 231 | 12407 | 3783 | 29.4% | 38.1% |
+| **total** | 19827 | 4212 | 224 | 1372 | 1381 | 231 | 12407 | 3783 | 29.4% | 38.1% |
 
 Character-family percentages are sensitive to shared code and citation
 style: Fox/Falco, Marth/Roy and other family crates can implement behavior
@@ -228,7 +227,8 @@ the older copy-ability percentages as the current state.
    complete 700-tick Yoshi's Story capture. Link/YoungLink normal entry and
    direct bounce restart refusals are preserved. New call sites need
    direct retail witnesses; terminal captures do not prove later callbacks.
-   No new recordings are authorized in this task.
+   Fresh captures and required boundaries are authorized by the user
+   (2026-10-25); existing data and strict expectations remain protected.
 
 The current `summary.md` and `inventory.tsv` list not-started source files
 and functions; `fail_closed.tsv` lists exact current guards. The historical
@@ -236,8 +236,8 @@ packet map below is a discovery aid only.
 
 ## Current fail-closed backlog
 
-**299 current sites** are enumerated in
-`target/parity/wave23-integrated/fail_closed.tsv` (280 unimplemented,
+**297 current sites** are enumerated in
+`target/parity/wave24-combined/fail_closed.tsv` (278 unimplemented,
 19 bail). A site may guard an entire family of motion rows or setup states;
 site count is not branch count. Do not infer current row totals or agent
 scope from the older packets below. Check current source and complete
@@ -248,7 +248,7 @@ recordings before enabling anything.
 The following map was measured at `969a065e`: **331 historical sites**,
 including 258 unimplemented motion rows counted through shared dispatch.
 Its counts, line numbers, capability descriptions and reachability are
-historical and are not reconciled to the 299-site inventory above. Several
+historical and are not reconciled to the 297-site inventory above. Several
 packets have now landed partly or fully (CPU, copied specials, match flow,
 random items, Kongo/Japes and common grab edges). Keep it as an index of
 retail families, not a current assignment list or completion claim.

@@ -4,8 +4,13 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 23 integrated)
+## Current state (2026-10-25, wave 24 integrated)
 
+- **Original command-owner invariants are verified at source `f570da10`:**
+  Swing42 and Smash42 missing static rows are proven retail assertions,
+  with original asset ownership, entry/reset and asynchronous-writer proofs.
+  Both still panic on malformed ownership; no new gameplay is admitted.
+  Complete live controls and limits: `docs/PORT_NOTES/WAVE24_BREADTH.md`.
 - **Common held Sword Down Air entry and ordered effect teardown are
   integrated at checkpoint source `914421b4`:** five original whole Sword
   captures (5,769 ticks) match through actual common row 69 entry. A static
@@ -17,41 +22,46 @@ and `docs/PORT_NOTES/`.
   `docs/PORT_NOTES/WAVE23_BREADTH.md`.
 - **Fresh combined sweep:** 3,490 scenarios, **3,354 particle-exact**, 115
   not comparable, 21 existing local failures and **zero particle faults**.
-  **Zero regressions, six fixes** against `f1288878`; **287 fixes** against
+  **Zero changed rows** against wave 23 (`55fe9480`); **287 fixes** against
   startup `0a99db31`. Missing/incomplete recordings, startup limitations and
   existing depth stops do not authorize divergent behavior. Fresh source,
-  executable and scenario provenance is under `target/wave23/main/`;
+  executable and scenario provenance is under `target/wave24/final-main/`;
   canonical baseline is
-  `target/sweeps/914421b4169a774bf4dda72e72f1812c98d0344d.*`.
+  `target/sweeps/f570da10b93561b33a35501bc0e6c9ac01d81562.*`.
 - **Fresh replay corpora remain unchanged:** `public-v3.7` completes
   **108/108** (964,782 matched frames); `public-v3.7-b` completes **486/502**
   (5,102,652 frames), preserving every path/category/matched/total-frame
   tuple. CPU replay setup and stock sharing remain refused capabilities.
-- **Parity inventory** (`target/parity/wave23-integrated/`,
-  `docs/PARITY.md`) is unchanged: all retail **29.4% ported/partial, 38.1%
+- **Parity inventory** (`target/parity/wave24-combined/`,
+  `docs/PARITY.md`): all retail **29.4% ported/partial, 38.1%
   with body/row**; historical in-game subtotal **45.2% / 57.2%**. Of 19,827
-  functions: 4,211 ported, 225 partial, 1,372 body, 1,381 row, 231 referenced
-  and 12,407 not started. **299 fail-closed sites**: 280 unimplemented,
-  19 bail. This wave verifies guarded cases and fixes ordering in already
-  counted functions. Counts are not witnessed branch coverage; every
+  functions: 4,212 ported, 224 partial, 1,372 body, 1,381 row, 231 referenced
+  and 12,407 not started. **297 fail-closed sites**: 278 unimplemented,
+  19 bail. Two guards become proven invariants; one already counted function
+  moves from partial to ported, with no covered-byte increase. Counts are not
+  witnessed branch coverage; every
   reporting group remains in scope.
-- **Combined release checkpoint passes:** 2,016 workspace tests, zero
+- **Combined release checkpoint passes:** 2,020 workspace tests, zero
   failures, one existing ignore; m4 345 and m5 314. Workspace all-target
   clippy is clean; harness 407 and schema zero layout violations. WASM pure
   suites, **five expected spline traps**, 6,003 identical native/WASM hash
-  lines and the release web check pass. All nine library and two character
-  worktree data-path failures pass in MAIN without optout. Actual API
+  lines and the release web check pass. All nine library worktree data-path
+  failures pass again in MAIN without optout; the prior character-path resolutions remain recorded. Actual API
   step/observe/capture is allocation-free with independent before-event
   clones; clone creation is outside measured windows. Active draw ranges
   agree; unused presentation backing capacity is not active geometry.
   Release only; no debug run.
-- **Quiet performance retains existing budget failures:** at `914421b4`,
-  time passes (18.401 ms per 600 ticks; 55.676 ms load). Stripped size is
-  7,675,616 bytes and text size 6,897,664 bytes, above unchanged ceilings;
-  Kirby's one duplicate label still exceeds baseline zero. Shared-code
-  duplication passes: 20 melee-ft labels, 94 across crates. Stripped size
-  decreases by 16 bytes versus wave 22; text is unchanged. Full report is
-  appended to `docs/PERF.md`; no budget was increased.
+- **Quiet performance retains existing budget failures:** at `f570da10`,
+  time passes (18.552 ms per 600 ticks; 56.702 ms load). Stripped size is
+  7,675,616 bytes and text size 6,897,664 bytes, unchanged from wave 23 and
+  above unchanged ceilings. Kirby's one duplicate label exceeds baseline
+  zero; shared duplication passes (20 melee-ft, 94 across crates).
+  `docs/PERF.md` preserves the complete report; no budget was increased.
+- **New captures are authorized (user, 2026-10-25):** create the evidence
+  needed for 100% parity without asking again. Ness is first in the quiet
+  capture queue; heavy carry/throws, Sword/monster callbacks, copied Sheik
+  and Flat Zone are being prepared. Use fresh names, retain existing data,
+  and keep game data out of Git.
 
 ## Next (breadth before individual replay fixes)
 
@@ -69,28 +79,25 @@ and `docs/PORT_NOTES/`.
    Sink/Remove and second-live-log paths remain guarded.
 5. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
    actual floor transition on its last tick. No later floor-exit proof.
-6. [!] **Ness current yo-yo binding:** overlapping instances are observed,
-   but the original 4,775-tick capture has only 3,340 particle/meta ticks.
-   A concrete single add-only proposal is ready at
-   `target/wave23/ness-recording-proposal/proposal.md`: same full setup and
-   inputs, fresh `w24_ness_yoyo_overlap_v01` prefix, existing savestate
-   read-only and longer per-pass timeout. **Explicit recording permission
-   remains required**. Preserve the old recording; never truncate it.
+6. [~] **Ness current yo-yo binding:** the original 4,775-tick capture has
+   only 3,340 particle/meta ticks. A full fresh capture with the original
+   setup and inputs is authorized and being launched with a longer timeout.
+   Preserve all old and failed-attempt files; validate every complete stream
+   before enabling current-instance binding.
 7. [x] **Common held Sword F/B/Hi/Lw terminal entry and sealed-effect
    ordering:** complete original witnesses, callback/identity controls,
    allocation checks and root checkpoint pass. Link/YoungLink direct
    restart remains refused. Peach's private float policy is pre-existing
    and outside the new common-row proof. Later held callbacks stay guarded.
-8. [!] **Further breadth needs fresh evidence:** the bounded cached-data
-   audit established no next eligible unowned capture or new invariant
-   (`target/wave23/next-breadth/plan.md`), not an exhaustive impossibility.
-   Continue heavy carry/throws, item-use rows and random kinds, **19
-   remaining Versus stages**, copied Sheik Needle Storm, wider CPU stage
-   awareness, modes, retail menus/results/single-player and pause. Nothing
-   is out of scope. Second-log data ends at creation without coexistence
-   proof. **No new recordings are authorized in the current task**; both
-   the single Ness proposal and broader scratch pack await permission.
-9. [ ] Replay depth after breadth: five existing stops remain in the second
+8. [x] **Original command-owner invariants:** Swing42 and Smash42 source,
+   asset, writer and complete live controls pass; neither admits gameplay.
+9. [~] **Further breadth with fresh evidence:** prepare heavy carry/throws,
+   held-item and monster callbacks, copied Sheik Needle Storm and Flat Zone.
+   All 19 remaining Versus stages, wider CPU awareness, modes, retail
+   menus/results/single-player and pause remain in scope. The bounded
+   third-invariant audit found no eligible candidate; it proves no general
+   impossibility. Second-log data still lacks coexistence proof.
+10. [ ] Replay depth after breadth: five existing stops remain in the second
    corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
    unconsumed controller polls; two one-ulp Nana positions). Other
    unfinished games are refused capabilities. Preserve replay/retail
@@ -117,7 +124,8 @@ Sword swings are ported. Random spawning and Capsule/Box/Barrel, including
 empty blasts, are witnessed for two-player FD/Battlefield setups. Ground
 Sword admissions add only common AttackLw3 (57), AttackHi4 (63) and their
 witnessed throw routing. Common F/B/Hi/Lw aerials additionally admit only
-recorded held entry; neutral/Down/private aerials, Hi3 and Lw4 stay guarded.
+recorded held entry; neutral/private aerial entries, Hi3 and Lw4 stay guarded; later common
+aerial callbacks remain guarded.
 Barrel ownership adds only a primary article owner to an unowned REST
 barrel; other ownership contexts remain guarded. Party Ball now has bounded neutral left-facing FALL/REST coverage;
 its other states, other random kinds and later heavy fighter rows remain backlog.
@@ -157,7 +165,7 @@ checkpoints are preserved in `ee769ee9:TRACKER.md` and `docs/PERF.md`.
   No existing protected data is replaced or moved in this task.
 - `Match` allocation checks cover step/observe/capture, including CPU and
   container behavior. Clone below 1 ms remains a separate backlog item.
-- User-owned open decisions: performance budgets; old dump re-recording;
+- User-owned open decisions: performance budgets;
   Slippi Dolphin unfused math policy; default lag-frame inference; pushing
   main/first CI run. No push is authorized.
 - Fresh retail branch coverage is separate from the citation inventory;
@@ -168,6 +176,7 @@ checkpoints are preserved in `ee769ee9:TRACKER.md` and `docs/PERF.md`.
 
 | Date | Decision |
 |---|---|
+| 2026-10-25 | Fresh captures and required new boundaries are authorized for 100% parity. No further capture approval is needed; preserve existing data and never commit game data. |
 | 2026-09-08 | Layered workspace: one crate per subsystem and per character (build time). |
 | 2026-09-08 | Internal state need not match retail layout; `Snapshot` plus `harness/schema/` handle comparison. Traces compare floats by bit pattern. |
 | 2026-09-08 | The oracle reads retail memory through Felk's Dolphin scripting fork; never a modified DOL. |
