@@ -3012,6 +3012,22 @@ impl Fighter {
             }
             // ftColl_80077C60 (ftcoll.c:1158): the victim's damage scale.
             descriptor.damage *= self.received_damage_scale();
+            if !self.combat.phantom_log.is_empty() {
+                // Retail 0x800780B4 (ftcoll.c:1233) clears the pending
+                // phantom log before these ordinary early returns. Their
+                // combined response has no complete retail witness yet.
+                if invincible {
+                    unimplemented!("ftColl_80077C60 (ftcoll.c:1233, 1271): ordinary invincible item contact replacing a pending phantom log");
+                }
+                // Guard-only lookahead: retail 0x80078200 fsubs, in the
+                // same order as through_shell. Include zero/unordered
+                // results; only a negative result reaches normal logging.
+                #[allow(clippy::neg_cmp_op_on_partial_ord)] // Literal unordered shell-held branch.
+                if self.combat.shell_active && !(self.combat.shell_health - descriptor.damage < 0.0)
+                {
+                    unimplemented!("ftColl_80077C60 (ftcoll.c:1233, 1286-1307): ordinary shell-held item contact replacing a pending phantom log");
+                }
+            }
             if invincible {
                 item.record_fighter_victim(id, descriptor.group, self.spawn_number);
                 self.effects

@@ -5285,3 +5285,6 @@ mod stone_contact_tests;
 
 #[cfg(test)]
 mod heavy_entry_tests;
+
+#[cfg(test)]
+mod item_phantom_guard_tests;
