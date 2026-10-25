@@ -143,6 +143,10 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
             seed: self.seed,
             all_characters_unlocked: self.all_characters_unlocked,
             mode: self.match_kind()?,
+            special: self
+                .special
+                .as_deref()
+                .map(|name| crate::SpecialMelee::from_name(name).expect("a Special Melee mode")),
             damage_ratio: self.damage_ratio.unwrap_or(1.0),
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,

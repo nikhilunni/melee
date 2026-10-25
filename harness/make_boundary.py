@@ -232,6 +232,8 @@ def rule_lines(rules: dict | None) -> str:
     out = ""
     if rules.get("mode", "stock") != "stock":
         out += f'mode = "{rules["mode"]}"\n'
+    if rules.get("special"):
+        out += f'special = "{rules["special"]}"\n'
     if rules.get("damage_ratio", 1.0) != 1.0:
         out += f"damage_ratio = {rules['damage_ratio']!r}\n"
     return out
@@ -597,6 +599,8 @@ def main(argv: list[str] | None = None) -> None:
         print(f"   teams {a.teams}, friendly fire {'on' if a.friendly_fire else 'off'}", flush=True)
 
     rules = {"mode": MODE_NAMES[summary["match_kind"]], "damage_ratio": summary["damage_ratio"]}
+    if a.special:
+        rules["special"] = a.special
     if summary["match_kind"] != MODES[a.mode] or (
             a.time_limit and summary["time_limit"] != a.time_limit * 60):
         sys.exit(f"the match did not start with the rules asked: {summary}")

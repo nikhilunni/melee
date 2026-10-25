@@ -136,6 +136,10 @@ pub struct PlayerSlot {
     /// Every slot's Player_GetAttackRatio, for hits whose attacker is an
     /// item's owner.
     pub attack_ratios: [f32; 6],
+    /// FighterMatchInfo.x6 (PlayerInitData x12): the damage a revival
+    /// starts at (fn_8016719C's Player_SetHPByIndex), 300 in Super Sudden
+    /// Death.
+    pub revival_damage: f32,
 }
 impl PlayerSlot {
     /// ftColl_80079AB0's ratios for a hit on this player by `attack`'s

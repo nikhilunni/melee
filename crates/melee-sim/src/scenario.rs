@@ -78,6 +78,9 @@ pub struct Scenario {
     /// (default) or `"time"` (KOs score; `time_limit` ends the match).
     #[serde(default)]
     pub mode: Option<String>,
+    /// A Special Melee mode (`make_boundary.py --special`), e.g. `"lightning"`.
+    #[serde(default)]
+    pub special: Option<String>,
     /// The Damage Ratio rule as the match holds it (StartMeleeRules x30),
     /// 1.0 when absent.
     #[serde(default)]
@@ -296,6 +299,7 @@ impl Scenario {
         );
         self.item_rules()?;
         self.match_kind()?;
+        self.special_melee()?;
         let mut previous_port = None;
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
@@ -393,6 +397,16 @@ impl Scenario {
             }
             _ => anyhow::bail!("item_frequency and item_mask go together"),
         }
+    }
+    /// The Special Melee mode `special` names.
+    pub fn special_melee(&self) -> Result<Option<melee_lib::SpecialMelee>> {
+        self.special
+            .as_deref()
+            .map(|name| {
+                melee_lib::SpecialMelee::from_name(name)
+                    .with_context(|| format!("unknown Special Melee mode {name:?}"))
+            })
+            .transpose()
     }
     /// The match's rules (`mode`), Stock when absent.
     pub fn match_kind(&self) -> Result<melee_lib::MatchKind> {
@@ -594,6 +608,7 @@ impl Scenario {
             seed: self.seed,
             all_characters_unlocked: self.all_characters_unlocked,
             mode: self.match_kind().expect("validated match mode"),
+            special: self.special_melee().expect("validated Special Melee mode"),
             damage_ratio: self.damage_ratio.unwrap_or(1.0),
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,

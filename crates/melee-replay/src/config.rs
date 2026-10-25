@@ -45,6 +45,9 @@ pub struct Config {
     /// The Damage Ratio rule in tenths; absent at 1.0x.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) damage_ratio_tenths: Option<u8>,
+    /// A Special Melee mode (`SpecialMelee::name`); absent for Melee.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) special: Option<String>,
 }
 
 /// A match mode's spelling in recordings, scenarios and the boundary
@@ -167,6 +170,7 @@ impl From<&MatchConfig> for Config {
             }),
             damage_ratio_tenths: (config.rules.damage_ratio_tenths != 10)
                 .then_some(config.rules.damage_ratio_tenths),
+            special: config.rules.special.map(|mode| mode.name().to_owned()),
         }
     }
 }
@@ -224,6 +228,10 @@ impl Config {
         config.rules.mode = parse_mode(self.mode.as_deref())?;
         config.rules.time_limit_seconds = self.time_limit;
         config.rules.damage_ratio_tenths = self.damage_ratio_tenths.unwrap_or(10);
+        config.rules.special = match &self.special {
+            None => None,
+            Some(name) => Some(SpecialMelee::from_name(name).ok_or("unknown Special Melee mode")?),
+        };
         if let Some((frequency, mask)) = self.items {
             config.rules.items = ItemRules { frequency, mask };
         }

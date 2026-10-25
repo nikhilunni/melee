@@ -45,6 +45,22 @@ impl PlayerSetup {
         self.descriptor
     }
 }
+impl Setup {
+    /// Player `p`'s attack and defense ratios: a Giant or Tiny match's,
+    /// else the handicap's.
+    pub fn ratios(&self, p: usize) -> (f32, f32) {
+        match self.special.and_then(crate::SpecialMelee::player_size) {
+            Some((_, attack, defense)) => (attack, defense),
+            None => self.fighters[p].handicap_ratios(),
+        }
+    }
+    /// Player_GetModelScale for every player.
+    pub fn model_scale(&self) -> f32 {
+        self.special
+            .and_then(crate::SpecialMelee::player_size)
+            .map_or(1.0, |(scale, ..)| scale)
+    }
+}
 #[derive(Clone)]
 pub struct Setup {
     pub fighters: Vec<PlayerSetup>,
@@ -56,6 +72,8 @@ pub struct Setup {
     pub mode: melee_types::MatchKind,
     /// A counting-down match timer, in seconds.
     pub time_limit: Option<u32>,
+    /// A Special Melee mode's scene instead of Melee's.
+    pub special: Option<crate::SpecialMelee>,
     /// StartMeleeRules x30 (gm_8016B248), the Damage Ratio rule:
     /// 0.1f * the rule's tenths.
     pub damage_ratio: f32,

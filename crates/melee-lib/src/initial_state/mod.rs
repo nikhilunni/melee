@@ -44,6 +44,11 @@ pub(crate) struct SavedRules {
     /// +0x30, the Damage Ratio rule (gm_8016B248).
     pub knockback_ratio: f32,
 }
+/// FighterMatchInfo[slot].x6 (lbl_8046B6A0 + 0x38 + slot * 0xE + 6).
+pub(crate) fn saved_revival_damage(saved: &saved_pose::SavedPose, slot: u8) -> f32 {
+    let raw = saved.bytes(0x8046_B6A0 + 0x38 + u32::from(slot) * 0xE + 6, 2);
+    f32::from(u16::from_be_bytes([raw[0], raw[1]]))
+}
 /// Every slot's Player_GetAttackRatio (StaticPlayer +54, stride 0xE90).
 pub(crate) fn saved_attack_ratios(saved: &saved_pose::SavedPose) -> [f32; 6] {
     std::array::from_fn(|slot| float(saved.bytes(0x8045_3080 + slot as u32 * 0xE90 + 0x54, 4), 0))
@@ -468,6 +473,7 @@ impl InitialState {
                 f.player.defense_ratio = float(ratios, 4);
                 f.player.knockback_ratio = rules.knockback_ratio;
                 f.player.attack_ratios = saved_attack_ratios(&saved);
+                f.player.revival_damage = saved_revival_damage(&saved, f.player.id);
                 // Player_GetSuicideCount: StaticPlayer +8C.
                 let sd = saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8C, 2);
                 f.player.self_destructs = u32::from(u16::from_be_bytes([sd[0], sd[1]]));
@@ -498,8 +504,19 @@ impl InitialState {
         // scenes of their own, with rules the VS scene never sets.
         const GM_VS: u8 = 2;
         let major = saved.bytes(0x8047_9D30, 1)[0];
-        if major != GM_VS {
-            unimplemented!("GameModeKind {major:#x}: a Special Melee mode needs a retail witness");
+        let special = match major {
+            GM_VS => None,
+            other => Some(crate::SpecialMelee::from_game_mode(other).unwrap_or_else(|| {
+                unimplemented!("GameModeKind {other:#x}: a match outside VS. Mode")
+            })),
+        };
+        ensure!(
+            special == setup.special,
+            "the scenario names Special Melee {:?}, the savestate runs {special:?}",
+            setup.special
+        );
+        if let Some(mode) = special {
+            mode.require_ported();
         }
         let rules = SavedRules::read(&saved);
         ensure!(
@@ -508,14 +525,14 @@ impl InitialState {
             setup.damage_ratio,
             rules.knockback_ratio
         );
-        for player in &setup.fighters {
+        for (p, player) in setup.fighters.iter().enumerate() {
             let saved_ratios = saved.bytes(0x8045_3080 + u32::from(player.slot) * 0xE90 + 0x54, 8);
             let saved_ratios = (float(saved_ratios, 0), float(saved_ratios, 4));
             ensure!(
-                saved_ratios == player.handicap_ratios(),
+                saved_ratios == setup.ratios(p),
                 "port {}: the scenario's handicap gives ratios {:?}, the savestate runs {saved_ratios:?}",
                 player.slot,
-                player.handicap_ratios()
+                setup.ratios(p)
             );
         }
         if matches!(

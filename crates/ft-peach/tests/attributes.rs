@@ -171,6 +171,7 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
             defense_ratio: 1.0,
             knockback_ratio: 1.0,
             attack_ratios: [1.0; 6],
+            revival_damage: 0.0,
         },
     );
     assert_eq!(

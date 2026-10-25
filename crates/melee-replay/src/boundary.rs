@@ -55,6 +55,9 @@ pub struct Boundary {
     /// The Damage Ratio rule as the match holds it (StartMeleeRules x30).
     #[serde(default)]
     pub damage_ratio: Option<f32>,
+    /// A Special Melee mode (`make_boundary.py --special`).
+    #[serde(default)]
+    pub special: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -115,6 +118,7 @@ impl Boundary {
             mode: self.mode.clone(),
             time_limit: self.time_limit,
             handicaps: self.handicaps.clone(),
+            special: self.special.clone(),
             damage_ratio_tenths: match self.damage_ratio {
                 None => None,
                 Some(ratio) => Some(
@@ -200,6 +204,7 @@ mod tests {
             time_limit: None,
             handicaps: None,
             damage_ratio: None,
+            special: None,
         };
         assert!(boundary.config().is_err());
     }

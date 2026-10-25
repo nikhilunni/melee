@@ -860,6 +860,7 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
         friendly_fire: cold.friendly_fire,
         time_limit: None,
         mode: None,
+        special: None,
         damage_ratio: None,
         item_frequency: None,
         item_mask: None,

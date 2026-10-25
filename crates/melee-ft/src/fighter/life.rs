@@ -297,7 +297,7 @@ impl Fighter {
         } else {
             1.0
         };
-        self.core.player.damage = 0.0;
+        self.core.player.damage = self.core.player.revival_damage;
         platform
     }
     /// ftCo_800D4FF4 (800D4FF4) at `platform`, after Fighter_UnkProcessDeath.

@@ -423,6 +423,8 @@ pub struct MatchRules {
     /// The Damage Ratio rule in tenths, 5..=20 (1.0x is 10): it scales
     /// every launch (StartMeleeRules x30).
     pub damage_ratio_tenths: u8,
+    /// A Special Melee mode instead of Melee (only the ported ones).
+    pub special: Option<crate::SpecialMelee>,
 }
 impl Default for MatchRules {
     fn default() -> Self {
@@ -435,6 +437,7 @@ impl Default for MatchRules {
             friendly_fire: false,
             items: ItemRules::OFF,
             damage_ratio_tenths: 10,
+            special: None,
         }
     }
 }
@@ -521,6 +524,11 @@ impl MatchConfig {
         if self.rules.items.validate().is_err() {
             return Err(StartError::InvalidConfig("item frequency must be in -1..=4"));
         }
+        if self.rules.special.is_some_and(|mode| !mode.ported()) {
+            return Err(StartError::InvalidConfig(
+                "this Special Melee mode needs a retail witness",
+            ));
+        }
         if !(5..=20).contains(&self.rules.damage_ratio_tenths) {
             return Err(StartError::InvalidConfig("the damage ratio is 0.5..=2.0"));
         }
@@ -558,6 +566,7 @@ impl MatchConfig {
             seed: Some(self.seed.0),
             all_characters_unlocked: Some(self.rules.all_characters_unlocked),
             mode: self.rules.mode,
+            special: self.rules.special,
             // gm_80167BC8: 0.1f * damage_ratio (gm_1601.c:3643).
             damage_ratio: 0.1 * f32::from(self.rules.damage_ratio_tenths),
             time_limit: self.rules.time_limit_seconds,

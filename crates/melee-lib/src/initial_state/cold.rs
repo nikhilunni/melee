@@ -234,6 +234,9 @@ impl InitialState {
         ));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
+        if let Some(mode) = scenario.special {
+            mode.require_ported();
+        }
         effects.score_popups = super::score_popups(
             crate::match_clock::Scoring {
                 match_kind: scenario.mode,
@@ -791,11 +794,11 @@ fn create_players(
             falls: 0,
             position: positions[p],
             facing: facing[p],
-            scale: 1.0,
+            scale: scenario.model_scale(),
             damage: if scenario.sudden_death {
                 SUDDEN_DEATH_DAMAGE
             } else {
-                0.0
+                scenario.special.map_or(0.0, crate::SpecialMelee::starting_damage)
             },
             cpu_mode: 4,
             // A human retains the CSS default level 1.
@@ -804,15 +807,20 @@ fn create_players(
             friendly_fire: scenario.friendly_fire,
             match_kind: scenario.mode,
             self_destructs: 0,
-            attack_ratio: scenario.fighters[p].handicap_ratios().0,
-            defense_ratio: scenario.fighters[p].handicap_ratios().1,
+            attack_ratio: scenario.ratios(p).0,
+            defense_ratio: scenario.ratios(p).1,
             knockback_ratio: scenario.damage_ratio,
             attack_ratios: {
                 let mut ratios = [1.0; 6];
-                for f in &scenario.fighters {
-                    ratios[usize::from(f.slot)] = f.handicap_ratios().0;
+                for (i, f) in scenario.fighters.iter().enumerate() {
+                    ratios[usize::from(f.slot)] = scenario.ratios(i).0;
                 }
                 ratios
+            },
+            revival_damage: if scenario.sudden_death {
+                SUDDEN_DEATH_DAMAGE
+            } else {
+                scenario.special.map_or(0.0, crate::SpecialMelee::starting_damage)
             },
         };
         let context = SpawnContext {

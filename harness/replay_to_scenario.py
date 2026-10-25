@@ -81,11 +81,11 @@ def boundary_for(config: dict) -> dict:
     layout = [b for b in tomllib.loads(BOUNDARIES.read_text())["boundary"]
               if (b["stage"], b["players"], b["stocks"], b.get("sudden_death", False),
                   boundary_items(b), b.get("mode", "stock"), b.get("time_limit"),
-                  b.get("handicaps"), boundary_damage_tenths(b))
+                  b.get("handicaps"), boundary_damage_tenths(b), b.get("special"))
               == (config["stage"], players, config["stocks"], sudden_death,
                   list(items) if items else None, config.get("mode", "stock"),
                   config.get("time_limit"), config.get("handicaps"),
-                  config.get("damage_ratio_tenths"))]
+                  config.get("damage_ratio_tenths"), config.get("special"))]
     if not layout:
         raise SystemExit(f"no boundary in {BOUNDARIES.name} for {config['stage']} {players} "
                          f"{config['stocks']} stocks")
@@ -191,6 +191,8 @@ def write_scenario(recording: dict, name: str, ticks: int | None,
     # savestate's rules.
     if boundary.get("mode", "stock") != "stock":
         items += f'mode = "{boundary["mode"]}"\n'
+    if boundary.get("special"):
+        items += f'special = "{boundary["special"]}"\n'
     if boundary.get("damage_ratio") is not None:
         items += f'damage_ratio = {boundary["damage_ratio"]!r}\n'
     path = data_root.SCENARIOS / f"{name}.toml"

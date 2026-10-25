@@ -118,6 +118,7 @@ impl Match {
         config.rules.friendly_fire = engine.state().player_fighter(0).0.player.friendly_fire;
         config.rules.items = engine.state().item_rules;
         config.rules.mode = engine.state().clock.scoring.match_kind;
+        config.rules.special = setup.special;
         let assets = GameAssets {
             inner: Arc::clone(&engine.state().assets),
             stage,
