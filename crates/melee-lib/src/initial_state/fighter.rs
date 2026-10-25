@@ -42,8 +42,12 @@ pub(crate) fn import(
         attack_ratios: [1.0; 6],
         revival_damage: 0.0,
         stamina: None,
+        single_button: false,
+        invisible: false,
     };
     player.position = vector(raw, 0xB0);
+    // Fighter x34_scale.y: Player_GetModelScale (Giant and Tiny Melee).
+    player.scale = float(raw, 0x38);
     player.facing = float(raw, 0x2C);
     player.damage = float(raw, 0x1830);
     player.costume = raw[0x619];
@@ -302,12 +306,14 @@ fn import_input(raw: &[u8]) -> FighterInput {
     input
 }
 
-/// Fighter.x34 is the player model scale, separate from animated joint scale.
-/// Unit player scale is supported; the typed OnLoad depth override is separate.
+/// Fighter.x34 is the player model scale, separate from animated joint
+/// scale: x the player's (fighter.c:693), y copied from it at each spawn
+/// (fighter.c:255) and z 1 unless OnLoad flattened the model. A Mushroom
+/// growing or shrinking a fighter (x and y apart) is not supported.
 fn require_supported_model_scale(raw: &[u8], model_width: Option<f32>) {
     let scale = vector(raw, 0x34);
     assert!(
-        scale.x == 1.0 && scale.y == 1.0 && scale.z == model_width.unwrap_or(1.0),
+        scale.x == scale.y && scale.z == model_width.unwrap_or(1.0),
         "unsupported imported fighter model scale: {scale:?}"
     );
 }
@@ -315,7 +321,7 @@ fn require_supported_model_scale(raw: &[u8], model_width: Option<f32>) {
 #[cfg(test)]
 mod scale_tests {
     #[test]
-    fn warm_boundary_refuses_nonunit_model_scale_on_each_axis() {
+    fn warm_boundary_takes_a_uniform_scale_and_refuses_a_growing_one() {
         let mut raw = [0u8; 0x40];
         for axis in [0x34, 0x38, 0x3C] {
             raw[axis..axis + 4].copy_from_slice(&1.0f32.to_be_bytes());
@@ -325,6 +331,10 @@ mod scale_tests {
         let mut flattened = raw;
         flattened[0x3C..0x40].copy_from_slice(&0.01f32.to_be_bytes());
         super::require_supported_model_scale(&flattened, Some(0.01));
+        // Giant Melee: x and y at the player's scale.
+        let mut giant = raw;
+        giant[0x34..0x3C].copy_from_slice(&[1.8f32.to_be_bytes(), 1.8f32.to_be_bytes()].concat());
+        super::require_supported_model_scale(&giant, None);
         for axis in [0x34, 0x38, 0x3C] {
             let mut scaled = raw;
             scaled[axis..axis + 4].copy_from_slice(&2.0f32.to_be_bytes());

@@ -113,14 +113,26 @@ impl SpecialMelee {
     /// every player at 300%. Giant and Tiny scale every fighter, which
     /// ftCo_800D105C's ftCo_800CF6E8 and the kinds' CalcIndiviParam scale
     /// with (ftchangeparam.c:178-195, guarded in `Fighter::prepare`).
-    /// Stamina plays its hit points (150, the HUD counting them down) and
-    /// knockback's fixed damage count until a fighter's hit points run
-    /// out; that KO (ftCo_800C8C84 and its x2224_b2 state family) is
-    /// guarded.
+    /// Stamina plays its hit points (150, the HUD counting them down),
+    /// knockback's fixed damage count and the KO when they run out
+    /// (ftCo_800C8C84, gm_801B97C4). Single Button keeps A alone
+    /// (fighter.c:1875) and drops the C-stick's battering-item throw and
+    /// ledge drop (gm_8016B0FC). Invisible's permanent Cloaking Device
+    /// (x2226_b3/b4) changes only what is drawn: its color slot (x508,
+    /// PlCo table 7) plays cloak toggles and sounds without draws, and
+    /// Fighter_TakeDamage_8006CC7C still takes damage (x2226_b3); a CPU's
+    /// targeting (ftCo_800A0F00) is guarded.
     pub fn ported(self) -> bool {
         matches!(
             self,
-            Self::Lightning | Self::SloMo | Self::SuperSuddenDeath | Self::Stamina
+            Self::Lightning
+                | Self::SloMo
+                | Self::SuperSuddenDeath
+                | Self::Stamina
+                | Self::SingleButton
+                | Self::Invisible
+                | Self::Giant
+                | Self::Tiny
         )
     }
 

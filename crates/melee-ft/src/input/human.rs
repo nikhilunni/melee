@@ -192,8 +192,13 @@ fn sample_input(
     }
     let mut held = pad.buttons;
     if context.single_button_mode {
+        // fighter.c:1875-1881: a CPU keeps its jumps (A | XY).
         trigger = 0.0;
-        held.0 &= Buttons::A.0;
+        held.0 &= if context.cpu_controlled {
+            Buttons::A.0 | Buttons::XY.0
+        } else {
+            Buttons::A.0
+        };
     } else {
         if held.intersects(Buttons::DIGITAL_SHOULDERS) {
             held |= Buttons::SHIELD;

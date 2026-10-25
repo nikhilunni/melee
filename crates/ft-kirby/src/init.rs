@@ -261,6 +261,8 @@ fn throw_traits(throw: melee_types::CommonMotionState) -> ThrowTraits {
 }
 
 impl CharacterCallbacks for Kirby {
+    /// ftCo_800D0CBC: the multi-jump table (x2D0).
+    const SCALES_SPECIAL_ATTRIBUTES: bool = true;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         copy_exclusions: true,

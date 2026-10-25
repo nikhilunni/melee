@@ -45,6 +45,8 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Link>();
 
 impl CharacterCallbacks for Link {
+    /// ftLk_Init_LoadSpecialAttrs (ftlink.c:404-406).
+    const SCALES_SPECIAL_ATTRIBUTES: bool = true;
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }

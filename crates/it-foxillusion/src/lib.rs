@@ -65,7 +65,7 @@ macro_rules! ghost {
                 // radius: the 1 / scl of the hitbox command is undone, so
                 // the Phantasm's capsule (scl 1.1) is 1.1 times the
                 // command's in contact tests.
-                let scale = item.scale;
+                let scale = item.scale * item.owner_model_scale();
                 item.rescale(scale);
             }
         }

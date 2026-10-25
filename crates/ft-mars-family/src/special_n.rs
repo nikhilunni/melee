@@ -320,7 +320,7 @@ pub fn end<C: ShieldBreaker>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<O
         let a = C::attributes(f);
         let charge_ticks = C::scratch_ref(f).charge_ticks;
         let damage = a.base_damage + charge_ticks / 30 * a.damage_per_level;
-        crate::set_enabled_hit_damage(f, damage as u32);
+        crate::set_enabled_hit_damage(f, damage as u32, p.assets);
     }
     // inlineA0 (80136F94): the release's gust on animation frame 9.
     if C::GUSTS && f.animation.frame == RELEASE_GUST_FRAME {

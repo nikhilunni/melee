@@ -65,7 +65,7 @@ pub fn hit_anim<C: MarsFamily>(f: &mut Fighter, p: AnimationPhase<'_>) -> Result
     // on every enabled hitbox; Marth's keeps its script damage.
     let damage = f.character.get::<C>().specials_ref().special_lw.damage;
     if damage > 0 && C::COUNTER_SETS_HIT_DAMAGE {
-        crate::set_enabled_hit_damage(f, damage as u32);
+        crate::set_enabled_hit_damage(f, damage as u32, p.assets);
     }
     if !f.animation.frames_remaining(&f.skeleton) {
         finish(f, p.assets)?;

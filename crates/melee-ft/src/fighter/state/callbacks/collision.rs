@@ -97,7 +97,7 @@ fn fall_collision(
     ) {
         if special_landing {
             fighter.land_from_special_fall(assets)?;
-        } else if fighter.core.physics.self_velocity.y > assets.soft_landing_speed {
+        } else if fighter.core.physics.self_velocity.y > fighter.core.soft_landing_speed(assets) {
             fighter.land();
             fighter.change_motion_state(melee_types::CommonMotionState::Wait.into(), assets)?;
         } else {
@@ -404,7 +404,7 @@ pub fn air_catch_hit(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result
         &mut fighter.core.skeleton,
         fighter.core.animation.root,
     ) {
-        if fighter.core.physics.self_velocity.y > assets.soft_landing_speed {
+        if fighter.core.physics.self_velocity.y > fighter.core.soft_landing_speed(assets) {
             fighter.land();
             fighter.change_motion_state(melee_types::CommonMotionState::Wait.into(), assets)?;
         } else {

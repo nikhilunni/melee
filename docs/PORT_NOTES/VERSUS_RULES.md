@@ -74,27 +74,71 @@ is its own major scene (GameModeKind), which the importer maps to
   validator and pad schedule check accept such rows (the pad is dequeued,
   the game's status not renewed). Ported; explorer witnesses exact.
 - Stamina (`gmstamina.c`): one stock and 150 hit points
-  (Player_SetOtherStamina, MoreFlagsBit2 -> fp->x2225_b7). Ported: the
-  HUD shows Player_GetRemainingHP and shakes as it falls (ifstatus.c:577),
-  and knockback reads PlCo +6D4 instead of the percent
-  (ftColl_GetDamageCount, ftcoll.c:2363). Guarded: the KO when the hit
-  points run out (ftCo_800C8C84 -> fn_800C8E74, ft_0C8C.c), which sets
-  x2224_b2 and sends the fighter into DamageFall / DownSpot from a dozen
-  states (ftCo_Damage.c:1003/1096, ftCo_Fall.c:34, ftCo_Wait.c:37,
-  ftCo_DownBound.c:304, ftCo_DownDamage.c:31-57, ftCo_DamageIce.c, ledge
-  grabs off in ft_081B.c, grabs off in ftcoll.c:1589), uses +6D8 for
-  knockback, and slows the game to 0.4 for 100 ticks (gm_801B97C4,
-  fn_801B96E8; `crate::frame_timer` takes the request). Witness to resume
-  from: `corpus_v3_fd_stamina_fox_marth_ef89b3e70_p0` (KO at tick 3678,
-  EscapeN to DamageFall); exact witness `..._e89a89d0e_p0` (a blast-zone
-  KO).
-- Giant and Tiny scale every fighter (1.8 / 0.35): ftCo_800D105C's
-  ftCo_800CF6E8 and the kinds' CalcIndiviParam (ftchangeparam.c:178-195)
-  are not ported; guarded in `Fighter::prepare`.
+  (Player_SetOtherStamina, MoreFlagsBit2 -> fp->x2225_b7). The HUD shows
+  Player_GetRemainingHP and shakes as it falls (ifstatus.c:577), and
+  knockback reads PlCo +6D4 instead of the percent (ftColl_GetDamageCount,
+  ftcoll.c:2363), +6D8 once the fighter is out.
+  The KO (`melee_ft::fighter::stamina`): every Fighter_TakeDamage_8006CC7C
+  ends in ftCo_800C8C84, which marks a fighter whose hit points are gone
+  (x2224_b3). With a knockback hit applying (dmg.kb_applied) fn_800C8_inline
+  knocks it out at once (x2224_b2: Fighter_ResetInputData, color animation
+  0x7A, the x4C_sfx->xC cry, gm_80167470); the port checks that hit before
+  its reaction, on the percent it will leave. Otherwise ProcessHit's
+  ftCo_800C8D00 (fighter.c:2963) does, and then drops the fighter:
+  ftCommon_8007DB58, a heavy item dropped (ftCo_8009750C), DamageFall in the
+  air. Out, the fighter reads no input (fighter.c:1784), takes no ledge
+  (ft_081B.c:138), lies in DownWait / DownDamage without counting down,
+  takes any prone hit in DownDamage (ftCo_8009F0F0), gets 0x7A back when its
+  primary color slot empties (ftcolanim.c:254) and is no CPU target.
+  The scene (`melee_lib::stamina`): gm_801B97C4 slows the game to 0.4
+  (Player_UpdateMatchFrameCount first); fn_801B96E8 (the last proc, s_link
+  0x15) returns it to 1.0 after 100 ticks and, 100 ticks after at most one
+  player (team) is left, ends the match (gm_8016B328: OUTCOME_TERMINATED,
+  then the ordinary GAME! freeze). A proc's gm_SetGameSpeed reaches the
+  frame timer at the next pass's lb_80019894 (`FrameTimer::request`). A
+  match-start boundary predates fn_801B9850 (gm_804975F8 still zero), so the
+  import starts the rules fresh; a later one reads gm_804975F8 (0x1C bytes:
+  the counter, four MSL `bool` ints, four u16 slow-motion counters).
+  Guarded (no witness): DownSpot (a grounded KO, ft_08A1.c:74),
+  ftCo_Damage_Anim / Coll's branches (ftCo_Damage.c:1003/1096), DownDamage
+  ending airborne, a KO with a grab link or by an unlaunched hit (inlineB2),
+  and a knocked-out fighter entering any state outside DamageFall, Damage*,
+  DownBound/Wait/Damage (`run_stamina_rules`), which covers Wait, Fall,
+  FallSpecial, ledges and grabs. Witnesses:
+  `corpus_v3_fd_stamina_fox_marth_ef89b3e70_p0` (an EscapeN hit to
+  DamageFall at tick 3678, the slowdown, a prone hit, the end at 3927) and
+  `..._e89a89d0e_p0` (a blast-zone KO).
+- Giant and Tiny (`melee_ft::fighter::model_scale`): every fighter at
+  Player_GetModelScale 1.8 / 0.35. ftCo_800D105C's ftCo_800CF6E8 scales the
+  attributes along PlCo's curves (Fighter_804D6524, ftCo_CalcYScaledKnockback
+  in `melee_coll::damage::y_scaled`), the ECB weight included (ft_80081B38);
+  knockback (ftCo_Damage.c:139), hitbox damage including throw boxes
+  (ftColl_8007ABD0), Walk's acceleration (ftCo_Walk.c:65), the soft-landing
+  speed (ftCo_800D0EC8) and fighter-owned item counts (it_80272460) follow
+  the scale, and it_80274594 scales the Illusion and held articles by the
+  owner's. The throw rate reads the dat's weight, not the scaled one
+  (ftCo_Throw.c:168-172). Marth's Dolphin Slash startup is
+  ftCommon_8007CF58 (over-drift friction above the drift maximum), which a
+  Tiny Marth reaches. Kinds whose LoadSpecialAttrs, multi-jump table or
+  cargo attributes also scale (Link, Mewtwo, Pikachu, Samus, Kirby,
+  Jigglypuff, Donkey Kong) are refused (`SCALES_SPECIAL_ATTRIBUTES`), as are
+  a scaled HeavyGet, scaled pickup boxes and the per-kind scale guards in
+  the specials. Witnesses: `corpus_v3_fd_sp_giant_fox_marth4_*` and
+  `corpus_v3_fd_sp_tiny_fox_marth4_*` (three explorer samples each).
 - Invisible sets x2226_b3, a permanent Cloaking Device (x2226_b4 at every
-  spawn, ftCo_800C89A0), whose readers (ftlib.c:807, ftcolanim.c,
-  ft_0892.c, fighter.c:1202/1562) are not ported; Single Button remaps
-  input (gm_8016B0FC, ft_0DF1.c). Both boundaries gate idle; guarded.
+  spawn, ftCo_800C89A0). Its readers change only what is drawn: the cloak's
+  color slot x508 runs PlCo table 7 (0x7B..0x80: opcode 23 toggles x2226_b5
+  and the x2134 alpha, read by ftmaterial.c / ftdrawcommon.c / lbshadow.c;
+  sounds 299/300 draw nothing), x2084_b4 feeds the bonus tally, ftlib.c:807
+  the shadow, ftLib_80086F4C the name tag, and Fighter_TakeDamage_8006CC7C
+  still takes damage (`!b4 || b3`). A CPU's targeting reads the slot
+  (ftCo_800A0F00 via ft_80087A18) and stays guarded. Witnesses:
+  `corpus_v3_fd_sp_invisible_fox_marth4_*`.
+- Single Button (gm_8016B0FC, StartMeleeRules +2 bit 4): the pad keeps A
+  alone and no analog shield (fighter.c:1875; a CPU keeps A and X/Y), and
+  the C-stick neither throws a battering item (ftCo_800DF50C) nor drops
+  from a ledge (ftCo_800DF72C). Witnesses:
+  `corpus_v3_fd_sp_single_button_fox_marth4_*`.
 - Camera mode: the boundary driver could not reach its CSS (likely locked
   in the boundary's save data).
 
@@ -105,8 +149,8 @@ slomo, super_sudden_death, giant, tiny, invisible, single_button, and
 ## Still guarded
 
 Coin and Bonus matches (`gm_8016B0B4`: coins from hits, the coin item, the
-coin HUD; boundary `start_fd_coin1_fox_marth`), the Special Melee modes
-above, and a Sudden Death among some players.
+coin HUD; boundary `start_fd_coin1_fox_marth`), Camera mode, and a Sudden
+Death among some players.
 
 ## Standings and timed team battles
 

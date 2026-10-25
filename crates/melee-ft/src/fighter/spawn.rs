@@ -143,6 +143,13 @@ pub struct PlayerSlot {
     /// Player_GetOtherStamina with MoreFlagsBit2 (fp->x2225_b7, fighter.c:701):
     /// a Stamina match's hit points; `None` outside one.
     pub stamina: Option<u16>,
+    /// StartMeleeRules single_button (gm_8016B0FC, Single Button Melee):
+    /// A is the only button and the C-stick neither throws a battering
+    /// item nor drops from a ledge.
+    pub single_button: bool,
+    /// Player_GetFlagsBit6 (StaticPlayer +AC, 0x2; Invisible Melee):
+    /// x2226_b3, a permanent Cloaking Device.
+    pub invisible: bool,
 }
 impl PlayerSlot {
     /// ftColl_80079AB0's ratios for a hit on this player by `attack`'s
@@ -443,8 +450,12 @@ impl Fighter {
             "character callbacks must match their assets"
         );
         assert!(player.facing == 1.0 || player.facing == -1.0);
-        if player.scale != 1.0 {
-            unimplemented!("ftchangeparam.c:178-195: scaled fighter attribute modifiers");
+        if player.scale != 1.0 && character.table().scales_special_attributes {
+            unimplemented!(
+                "ftKindCalcIndiviParamTable (ftchangeparam.c:236): {:?}'s scaled special \
+                 attributes",
+                assets.kind
+            );
         }
         let mut capabilities = Capabilities::default();
         // Fighter_80068E64 (0x80068E64), before the kind's OnLoad: every
@@ -1361,12 +1372,23 @@ impl FighterCore {
             pinned: false,
         });
         skeleton.set_scale(root, &Vec3::new(model_scale, model_scale, model_scale));
+        // ftCo_800D105C (0x800D105C): the dat's attributes, then
+        // ftCo_800CF6E8 for a fighter whose x34_scale.y is not 1. The kinds
+        // whose LoadSpecialAttrs scales more are refused in `Fighter::prepare`.
+        let attributes = {
+            let mut attributes = assets.attributes.clone();
+            assets
+                .scale_curves
+                .scale_attributes(&mut attributes, player.scale);
+            attributes
+        };
+        // ft_80081B38: CollData x50 is co_attrs.weight, scaled.
         let data = ecb::initialize(
             map,
             position,
             &assets.bones.ecb,
             player.scale,
-            assets.attributes.size.weight,
+            attributes.size.weight,
         );
         Self {
             dynamics,
@@ -1380,7 +1402,7 @@ impl FighterCore {
             animation,
             input: FighterInput::default(),
             collision: EnvironmentCollision::new(data, map.grkind()),
-            attributes: assets.attributes.clone(),
+            attributes,
             bones: assets.bones.clone(),
             skeleton,
             motion_state,
@@ -1399,7 +1421,10 @@ impl FighterCore {
             capabilities,
             cpu: CpuState::prepared(player.cpu_mode, player.cpu_level),
             status: Status::reset(assets.shield_health),
-            commands: commands::CommandState::default(),
+            commands: commands::CommandState {
+                model_scale: (player.scale != 1.0).then_some(player.scale),
+                ..Default::default()
+            },
             ground_pose: GroundPoseFlags::default(),
             dynamics_first_bone: vec![0x100; assets.bones.dynamics_roots.len()],
             stage_wind: Default::default(),

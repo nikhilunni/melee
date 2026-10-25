@@ -258,6 +258,7 @@ impl InitialState {
             scenario.fighters.iter().map(|f| (f.slot, f.team)),
         );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
+        items.fighter_scale = super::fighter_scale(&fighters, &assets);
         // grOnett_801E41C8: the cars' material items.
         crate::scene_stage::onett::spawn_items(
             &mut stage,
@@ -888,6 +889,10 @@ fn create_players(
             },
             // gmstamina.c:118: 150 hit points (Player_SetOtherStamina).
             stamina: (scenario.special == Some(crate::SpecialMelee::Stamina)).then_some(150),
+            // gmsinglebutton.c:141 (rules.single_button) and gminvisible.c
+            // (PlayerInitData vs_invisible -> Player_SetFlagsBit6).
+            single_button: scenario.special == Some(crate::SpecialMelee::SingleButton),
+            invisible: scenario.special == Some(crate::SpecialMelee::Invisible),
             revival_damage: if scenario.sudden_death {
                 SUDDEN_DEATH_DAMAGE
             } else {

@@ -667,7 +667,7 @@ fn cut_air_collision(
     if landed {
         if captured {
             f.land();
-        } else if f.physics.self_velocity.y > assets.soft_landing_speed {
+        } else if f.physics.self_velocity.y > f.soft_landing_speed(assets) {
             f.land();
             f.change_motion_state(S::Wait.into(), assets)?;
         } else {

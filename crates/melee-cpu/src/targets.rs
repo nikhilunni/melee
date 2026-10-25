@@ -22,6 +22,11 @@ fn unavailable(f: &Fighter) -> bool {
 /// cloaking device flickering (ftCo_800A0F00: needs the item) or a death
 /// motion (ftLib_8008732C).
 fn not_targetable(f: &Fighter) -> bool {
+    if f.core.player.invisible {
+        // ft_80087A18 reads the x508 color slot's id and x2226_b5, which
+        // the cloak's programs (PlCo table 7, opcode 23) toggle.
+        unimplemented!("ftCo_800A0F00 (ftCo_0A01.c:611): a CPU against an Invisible Melee fighter");
+    }
     f.core.status.disabled
         || f.core.stamina_out
         || f.core.motion_state.action.0 <= S::DeadUpFallHitCameraIce as u16

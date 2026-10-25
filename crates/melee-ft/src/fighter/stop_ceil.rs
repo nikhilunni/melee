@@ -63,7 +63,7 @@ impl Fighter {
 
     /// ft_80082B1C, also the landing arm of ft_80082D40.
     fn stop_ceil_land(&mut self, assets: &FighterAssets) -> Result<()> {
-        if self.physics.self_velocity.y > assets.soft_landing_speed {
+        if self.physics.self_velocity.y > self.soft_landing_speed(assets) {
             self.land();
             self.change_motion_state(S::Wait.into(), assets)
         } else {

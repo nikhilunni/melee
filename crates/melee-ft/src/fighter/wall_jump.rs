@@ -481,7 +481,7 @@ pub fn collision(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()>
         )
     };
     if landed {
-        if fighter.core.physics.self_velocity.y > assets.soft_landing_speed {
+        if fighter.core.physics.self_velocity.y > fighter.core.soft_landing_speed(assets) {
             fighter.land();
             fighter.change_motion_state(S::Wait.into(), assets)?;
         } else {

@@ -977,6 +977,10 @@ pub struct ItemCore {
     pub stale_source: Option<melee_types::combat::AttackInstance>,
     /// Current owner factor used only when authoring/re-authoring a hitbox.
     pub stale_multiplier: f32,
+    /// The match's fighters' model scale and PlCo's damage curve
+    /// (Fighter_804D6524 x4) when the scale is not 1 (Giant and Tiny
+    /// Melee): it_80272460 scales a fighter-owned item's hitbox count.
+    pub fighter_scale: Option<(f32, f32)>,
     pub pending_reflection: Option<PendingReflection>,
     /// xC90_absorbGObj: the fighter whose absorbing bubble took a hitbox
     /// this frame (ftColl_8007925C), for the kind's absorbed callback.
@@ -1770,9 +1774,28 @@ impl ItemCore {
         self.push_box_base.right *= scale;
         self.push_box_base.left *= scale;
     }
+    /// ftLib_80086A0C of the owner (x34_scale.y): a fighter owner's model
+    /// scale, 1 for an item no fighter owns.
+    pub fn owner_model_scale(&self) -> f32 {
+        match (self.owner, self.fighter_scale) {
+            (Some(_), Some((scale, _))) => scale,
+            _ => 1.0,
+        }
+    }
+    /// it_80272460's first step (itcoll.c:1408-1412): a fighter-owned
+    /// item's count along the owner's model scale, rounded up from 0.999.
+    pub fn owner_scaled_count(&self, count: u32) -> u32 {
+        match (self.owner, self.fighter_scale) {
+            (Some(_), Some((scale, curve))) => {
+                (0.999 + melee_coll::damage::y_scaled(count as f32, scale, curve)) as u32
+            }
+            _ => count,
+        }
+    }
     /// it_80272460 (80272460) for an existing hitbox `id`: its count and
     /// the damage restaled for the item's attack (ft_80089228).
     pub fn set_hitbox_damage(&mut self, id: usize, damage: u32) {
+        let damage = self.owner_scaled_count(damage);
         if let Some(hit) = &mut self.hitboxes[id] {
             hit.knockback_damage = damage;
             hit.descriptor.damage = damage as f32 * self.stale_multiplier;
@@ -1852,6 +1875,10 @@ impl ItemCore {
                             gekko_math::msl::fctiwz(descriptor.damage * self.hitbox_damage_scale)
                                 as f32;
                     }
+                    if self.owner.is_some() && self.fighter_scale.is_some() {
+                        descriptor.damage =
+                            self.owner_scaled_count(descriptor.damage as u32) as f32;
+                    }
                     melee_coll::hitbox::spawn(&mut self.hitboxes, *id, &descriptor);
                     let hit = self.hitboxes[*id].as_mut().unwrap();
                     // it_8026FCF8 (8026FCF8): outside a hit group
@@ -1881,8 +1908,9 @@ impl ItemCore {
                     }
                 }
                 Command::SetHitboxDamage { id, damage } => {
+                    let count = self.owner_scaled_count(gekko_math::msl::fctiwz(*damage) as u32);
                     if let Some(hit) = &mut self.hitboxes[*id] {
-                        hit.knockback_damage = gekko_math::msl::fctiwz(*damage) as u32;
+                        hit.knockback_damage = count;
                         hit.descriptor.damage = hit.knockback_damage as f32 * self.stale_multiplier;
                     }
                 }
@@ -1944,6 +1972,10 @@ pub struct ItemPool {
     next_id: u32,
     /// it_804D6D14: Item_8026AE60's hit group counter.
     pub(crate) next_hit_group: u32,
+    /// Every fighter's model scale and PlCo's damage curve when the match
+    /// scales fighters (Giant and Tiny Melee), for new items
+    /// (`ItemCore::fighter_scale`).
+    pub fighter_scale: Option<(f32, f32)>,
     /// The id Item_8026AE60 last gave each fighter that asked for one
     /// (ItemRequest::NewHitGroup), keyed by owner slot and fighter; the
     /// fighter keeps it in its motion scratch (Bowser's mv.kp.specials.x4).
@@ -1977,6 +2009,7 @@ impl ItemPool {
             fighter_push: Default::default(),
             freed_rest_lines: Vec::with_capacity(ITEM_CAPACITY),
             destroy_order: Default::default(),
+            fighter_scale: None,
         }
     }
     /// it_804D6D28: ItCo's common item data.
@@ -2136,6 +2169,7 @@ impl ItemPool {
             owner_secondary: false,
             stale_source: spawn.stale_source,
             stale_multiplier,
+            fighter_scale: self.fighter_scale,
             pending_reflection: None,
             pending_absorb: None,
             reflection_direction: 0.0,
@@ -2842,6 +2876,7 @@ impl Clone for ItemPool {
             fighter_push: self.fighter_push,
             freed_rest_lines: hsd_types::storage::clone_vec(&self.freed_rest_lines),
             destroy_order: self.destroy_order.clone(),
+            fighter_scale: self.fighter_scale,
         }
     }
 }

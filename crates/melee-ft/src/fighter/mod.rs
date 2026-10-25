@@ -53,6 +53,7 @@ pub mod landing;
 pub mod ledge;
 pub mod life;
 pub mod lift;
+pub mod model_scale;
 pub mod multi_jump;
 pub mod offscreen;
 pub mod overlap;
@@ -302,6 +303,12 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// the down bound's face-up/face-down choice from HipN is inverted
     /// (ftCo_8009794C, ftCo_DownBound.c:129-131).
     const DOWN_BOUND_INVERTED: bool = false;
+    /// The kind's attributes follow a model scale other than 1 beyond
+    /// ftCo_800CF6E8's common ones: its LoadSpecialAttrs scales special
+    /// attributes (Link, Mewtwo, Pikachu, Samus), its multi-jump table
+    /// (x2D0, Kirby and Jigglypuff: ftCo_800D0CBC) or its cargo
+    /// attributes (x2222_b0, Donkey Kong), none of them ported.
+    const SCALES_SPECIAL_ATTRIBUTES: bool = false;
     /// ftCo_800D331C: death2/death3/death1 callbacks before a death entry.
     const DEATH: Option<fn(&mut Fighter)> = None;
     /// The character's own parasol while it hangs on fp->item_gobj

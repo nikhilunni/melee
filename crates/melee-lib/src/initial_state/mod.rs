@@ -46,6 +46,8 @@ pub(crate) struct SavedRules {
     pub self_destruct_penalty: i8,
     /// +0x30, the Damage Ratio rule (gm_8016B248).
     pub knockback_ratio: f32,
+    /// +2 bit 4, single_button (gm_8016B0FC: lbz 0x24CA; extrwi 1, 27).
+    pub single_button: bool,
 }
 /// Player_GetMoreFlagsBit2 (StaticPlayer +AD, 0x20) and
 /// Player_GetOtherStamina (+64): a Stamina player's hit points.
@@ -73,6 +75,7 @@ impl SavedRules {
                 .unwrap_or_else(|_| unimplemented!("match_kind {}", rules[0] >> 5)),
             self_destruct_penalty: rules[0xC] as i8,
             knockback_ratio: float(rules, 0x30),
+            single_button: rules[2] >> 4 & 1 != 0,
         }
     }
 }
@@ -177,6 +180,19 @@ pub struct InitialState {
     /// The dynamics field pool (lb_804D63B0) as the stage's creation or the
     /// saved boundary left it; the runtime owns it from the first tick.
     pub(crate) radial_forces: melee_lb::radial_force::RadialForces,
+}
+/// Giant and Tiny Melee scale every fighter alike: their scale and PlCo's
+/// damage curve for fighter-owned items (it_80272460).
+pub(crate) fn fighter_scale(
+    fighters: &[SceneFighter],
+    assets: &crate::assets::Assets,
+) -> Option<(f32, f32)> {
+    let scale = fighters.first()?.player.scale;
+    assert!(
+        fighters.iter().all(|f| f.player.scale == scale),
+        "it_80272460: fighters of different model scales"
+    );
+    (scale != 1.0).then(|| (scale, assets.fighters[0].scale_curves.damage()))
 }
 /// The HUD's score popups (if_2F72.c) for a match with these rules: a
 /// Versus match shows them unless it is a stock match (x2_5, which
@@ -503,6 +519,10 @@ impl InitialState {
                 f.player.attack_ratios = saved_attack_ratios(&saved);
                 f.player.revival_damage = saved_revival_damage(&saved, f.player.id);
                 f.player.stamina = saved_stamina(&saved, f.player.id);
+                f.player.single_button = rules.single_button;
+                // Player_GetFlagsBit6: StaticPlayer +AC, extrwi 1, 30.
+                f.player.invisible =
+                    saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0xAC, 1)[0] & 2 != 0;
                 // Player_GetSuicideCount: StaticPlayer +8C.
                 let sd = saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8C, 2);
                 f.player.self_destructs = u32::from(u16::from_be_bytes([sd[0], sd[1]]));
@@ -795,6 +815,7 @@ impl InitialState {
             fighters.iter().map(|f| (f.player.id, f.player.team)),
         );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
+        items.fighter_scale = fighter_scale(&fighters, &assets);
         // Onett's cars' material items, rebuilt on their bones.
         crate::scene_stage::onett::spawn_items(
             &mut stage,

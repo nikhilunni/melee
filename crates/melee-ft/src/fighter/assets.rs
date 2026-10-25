@@ -139,11 +139,15 @@ pub struct FighterAssets {
     pub conditional_parts: Vec<crate::desc::ConditionalPart>,
     pub common: CommonFighterData,
     pub input: InputCommonData,
+    /// Fighter_804D6524: PlCo's model-scale curves (ftchangeparam.c).
+    pub scale_curves: super::model_scale::ScaleCurves,
     pub shield_health: f32,
     pub shield: super::shield::ShieldParameters,
     pub guard_pose: Vec<hsd_anim::jobj::JObj>,
     pub entry: super::entry::EntryParameters,
-    pub soft_landing_speed: f32,
+    /// PlCo +310: the fall speed below which a landing lags, before
+    /// ftCo_800D0EC8 negates and scales it.
+    pub soft_landing_base: f32,
     /// PlCo x6CC / x6D0: a stomp's blend frames and upward speed
     /// (ftCo_800C703C).
     pub stomp_bounce_frames: i32,
@@ -489,12 +493,13 @@ impl FighterAssets {
             conditional_parts: crate::desc::read_conditional_parts(common, descriptor.kind)?,
             common: read_common_data(common)?,
             input: InputCommonData::read(common)?,
+            scale_curves: super::model_scale::ScaleCurves::read(common)?,
             entry: super::entry::EntryParameters {
                 grow_frames: common.reader().s32(common_data + 0x6BC)?,
                 shrink_frames: common.reader().s32(common_data + 0x6C0)?,
                 initial_scale_y: common.reader().f32(common_data + 0x6C4)?,
             },
-            soft_landing_speed: -common.reader().f32(common_data + 0x310)?,
+            soft_landing_base: common.reader().f32(common_data + 0x310)?,
             stomp_bounce_frames: common.reader().s32(common_data + 0x6CC)?,
             stomp_bounce_speed: common.reader().f32(common_data + 0x6D0)?,
             shield: super::shield::ShieldParameters::read(common, common_data)?,

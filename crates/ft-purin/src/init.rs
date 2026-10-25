@@ -61,6 +61,8 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Jigglypuff>();
 
 impl CharacterCallbacks for Jigglypuff {
+    /// ftCo_800D0CBC: the multi-jump table (x2D0).
+    const SCALES_SPECIAL_ATTRIBUTES: bool = true;
     /// ftPr_Init_OnKnockbackEnter/Exit: Fighter_OnKnockbackEnter/Exit(gobj, 1), the damage
     /// texture frames only.
     const KNOCKBACK_ENTER: fn(

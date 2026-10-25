@@ -7,7 +7,7 @@ use melee_ft::{
         state::{callbacks, AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
         Fighter,
     },
-    physics::airborne,
+    physics::{airborne, friction},
 };
 use melee_types::GroundOrAir;
 
@@ -89,8 +89,15 @@ pub fn physics<C: MarsFamily>(f: &mut Fighter, p: PhysicsPhase<'_>) {
             f.attributes.air.gravity,
             f.attributes.air.terminal_velocity,
         );
-        f.physics.animation_velocity.x =
-            airborne::drift_acceleration(f.physics.self_velocity.x, 0.0, 0.0, &f.attributes.air);
+        // ftCommon_8007CF58: PlCo +1FC above the drift maximum (a slower
+        // drift maximum, Tiny Melee's, takes it), aerial friction below.
+        let air = &f.attributes.air;
+        f.physics.animation_velocity.x = friction::air_drift_friction_acceleration(
+            f.physics.self_velocity.x,
+            air.aerial_friction,
+            air.air_drift_max,
+            p.assets.common.over_drift_air_friction,
+        );
     } else if f.commands.variables[2] == 0 {
         let offset = f
             .animation

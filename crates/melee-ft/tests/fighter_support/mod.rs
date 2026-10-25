@@ -141,6 +141,8 @@ impl Fixture {
             attack_ratios: [1.0; 6],
             revival_damage: 0.0,
             stamina: None,
+            single_button: false,
+            invisible: false,
         }
     }
     pub fn prepared(&self, player: PlayerSlot) -> Fighter {

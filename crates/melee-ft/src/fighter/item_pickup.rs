@@ -429,6 +429,11 @@ impl FighterCore {
             self.pickup_candidates.offered,
             "ftpickupitem_800942A0: the scene offered no items to this proc"
         );
+        if self.player.scale != 1.0 && !self.pickup_candidates.items.is_empty() {
+            unimplemented!(
+                "ftCo_800D105C (ftchangeparam.c:200-215): a scaled fighter's itPickup boxes"
+            );
+        }
         // ftCo_800A2040 && cpu.xC == 28 only concerns CPU fighters. x2222_b4
         // (a heal restriction) is never set for the supported kinds.
         let light = if self.physics.ground_or_air == GroundOrAir::Ground {

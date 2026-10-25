@@ -1139,8 +1139,11 @@ impl FighterCore {
         // Fighter_UnkInitReset (80067C98) does not write cmd_vars (+2200..220C).
         // Later motion commands own initialization; retain them across stocks.
         let command_variables = self.commands.variables;
+        let model_scale = self.commands.model_scale;
         self.commands = super::commands::CommandState::default();
         self.commands.variables = command_variables;
+        // x34_scale.y takes x34_scale.x again (fighter.c:255).
+        self.commands.model_scale = model_scale;
         self.ground_pose = crate::collision::pose::GroundPoseFlags::default();
         self.dynamics_use_floor_plane = false;
         self.player_position = position;

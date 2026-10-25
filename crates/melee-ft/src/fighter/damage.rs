@@ -3311,9 +3311,14 @@ impl FighterCore {
         {
             knockback *= parameters.smash_charge_knockback_scale;
         }
-        // x34_scale.y copies Player_GetModelScale (fighter.c:255).
+        // ftCo_Damage.c:139-141: x34_scale.y copies Player_GetModelScale
+        // (fighter.c:255).
         if self.player.scale != 1.0 {
-            unimplemented!("ftCo_CalcYScaledKnockback: model-scaled victim");
+            knockback = super::model_scale::scaled(
+                knockback,
+                self.player.scale,
+                assets.scale_curves.knockback(),
+            );
         }
         // 8008D9E0..8008DA18: max(armor0, armor1) by fcmpo, plus PlCo +6F0
         // when metal (no supported mode makes a fighter metal), then fsubs.

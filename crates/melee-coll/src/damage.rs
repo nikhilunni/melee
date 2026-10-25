@@ -118,3 +118,27 @@ pub fn tick_hitlag(remaining: &mut f32) -> bool {
     }
     false
 }
+
+/// ftCo_CalcYScaledKnockback (0x800CF594, ftchangeparam.c): `value` for
+/// a fighter of model scale `scale` along one of PlCo's scale curves
+/// (Fighter_804D6524): linear in the scale, or, for a fighter smaller than
+/// 1 along a curve above 1, the shrink divided by the curve; a negative
+/// curve inverts the relation.
+pub fn y_scaled(value: f32, scale: f32, curve: f32) -> f32 {
+    assert!(scale != 0.0, "ftchangeparam.c:30: a zero scale");
+    if curve == 0.0 {
+        return value;
+    }
+    if curve < 0.0 {
+        // 800CF614..800CF688: the inlined call for 1.0 along -curve, then
+        // fdivs.
+        return value / y_scaled(1.0, scale, -curve);
+    }
+    if scale >= 1.0 || curve <= 1.0 {
+        // retail 0x800CF670..78 / 0x800CF6B0..B8: fsubs, fmuls, fmadds.
+        fmadds(curve, (scale - 1.0) * value, value)
+    } else {
+        // 0x800CF6C0: fmuls, fdivs.
+        value * scale / curve
+    }
+}

@@ -849,8 +849,14 @@ impl ItemCore {
     /// times `scale`, truncated to its count and restaled for the owner.
     fn scale_hitbox_damage(&mut self, scale: f32) {
         let stale = self.stale_multiplier;
-        for hit in self.hitboxes.iter_mut().flatten() {
-            hit.knockback_damage = gekko_math::msl::fctiwz(hit.descriptor.damage * scale) as u32;
+        for id in 0..self.hitboxes.len() {
+            let Some(hit) = &self.hitboxes[id] else {
+                continue;
+            };
+            let count = gekko_math::msl::fctiwz(hit.descriptor.damage * scale) as u32;
+            let count = self.owner_scaled_count(count);
+            let hit = self.hitboxes[id].as_mut().expect("live hitbox");
+            hit.knockback_damage = count;
             hit.descriptor.damage = hit.knockback_damage as f32 * stale;
         }
     }

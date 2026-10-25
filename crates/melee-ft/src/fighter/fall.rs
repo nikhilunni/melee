@@ -220,7 +220,8 @@ impl Fighter {
         let MotionData::FallSpecial(fall) = &self.core.state_data else {
             panic!("special fall scratch missing")
         };
-        if fall.force_landing_lag || self.core.physics.self_velocity.y < assets.soft_landing_speed {
+        let soft_landing_speed = self.core.soft_landing_speed(assets);
+        if fall.force_landing_lag || self.core.physics.self_velocity.y < soft_landing_speed {
             self.enter_special_landing(assets, fall.allow_interrupt, fall.landing_lag)
         } else {
             self.land();

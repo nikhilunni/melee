@@ -46,6 +46,8 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Pikachu>();
 
 impl CharacterCallbacks for Pikachu {
+    /// ftPk_Init_LoadSpecialAttrs (ftpikachu.c:406-414).
+    const SCALES_SPECIAL_ATTRIBUTES: bool = true;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         exclusions: &[ExclusionRule {

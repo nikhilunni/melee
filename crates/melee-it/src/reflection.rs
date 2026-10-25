@@ -159,7 +159,10 @@ impl ItemCore {
         if self.destroyed {
             return;
         }
-        for hit in self.hitboxes.iter_mut().flatten() {
+        for id in 0..self.hitboxes.len() {
+            let Some(hit) = &self.hitboxes[id] else {
+                continue;
+            };
             // Item_80269F14,8026A034: fmadds before positive unsigned truncation.
             let rounded =
                 gekko_math::fma::fmadds(hit.descriptor.damage, pending.damage_multiplier, 0.99);
@@ -167,7 +170,9 @@ impl ItemCore {
                 (0.0..4294967296.0).contains(&rounded),
                 "reflected damage unsigned domain"
             );
-            let base = (rounded as u32).min(cap);
+            // it_80272460 for the reflector, now the owner.
+            let base = self.owner_scaled_count((rounded as u32).min(cap));
+            let hit = self.hitboxes[id].as_mut().expect("live hitbox");
             hit.knockback_damage = base;
             hit.descriptor.damage = base as f32 * stale;
         }

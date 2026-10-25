@@ -216,6 +216,14 @@ pub enum OverlayCommand {
     ClearColor,
     /// Opcodes 13-17: lighting only, renderer state.
     Light,
+    /// Opcode 23, ftAction_800730B8 -> ftCo_800C8B60 (or, from a secondary
+    /// slot behind a busy primary, ftAction_80073108's skip): the
+    /// Cloaking Device's x2226_b5 and x2134 alpha, read only by the
+    /// renderer (ftmaterial.c, ftdrawcommon.c, lbshadow.c).
+    Cloak {
+        visible: bool,
+        alpha: u8,
+    },
     End,
 }
 #[derive(Clone, Debug, Default)]
@@ -265,7 +273,7 @@ impl ChargeOverlay {
                     self.loops.pop();
                 }
                 OverlayCommand::ClearColor => self.color = None,
-                OverlayCommand::Light => {}
+                OverlayCommand::Light | OverlayCommand::Cloak { .. } => {}
                 OverlayCommand::End => return true,
             }
             self.instruction += 1;
@@ -320,6 +328,11 @@ fn read_overlay_inner(
             }
             // lb_80013F78 / lb_80013FF0: light rotation and light off.
             16 | 17 => OverlayCommand::Light,
+            // struct unk21: bit 25, then eight bits from 17.
+            23 => OverlayCommand::Cloak {
+                visible: word >> 25 & 1 != 0,
+                alpha: (word >> 17) as u8,
+            },
             7 => {
                 let target = archive.link(offset + 4)?.ok_or("overlay goto")?;
                 commands.push(OverlayCommand::Goto(

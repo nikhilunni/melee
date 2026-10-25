@@ -67,6 +67,8 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<DonkeyKong>();
 
 impl CharacterCallbacks for DonkeyKong {
+    /// ftCo_800D105C (ftchangeparam.c:240-248): x2222_b0.
+    const SCALES_SPECIAL_ATTRIBUTES: bool = true;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         attacking_from: 0x171,

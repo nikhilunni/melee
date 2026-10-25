@@ -208,16 +208,17 @@ pub const fn rows<C: MarsFamily>() -> [MotionRow; SPECIAL_COUNT] {
 
 /// ftColl_8007ABD0 (8007ABD0) on every enabled hitbox: the integer
 /// knockback damage, then the damage staled by ft_80089228.
-pub(crate) fn set_enabled_hit_damage(f: &mut Fighter, damage: u32) {
-    if f.player.scale != 1.0 {
-        unimplemented!("ftColl_8007ABD0: ftCo_CalcYScaledKnockback for a scaled fighter");
-    }
+pub(crate) fn set_enabled_hit_damage(
+    f: &mut Fighter,
+    damage: u32,
+    assets: &melee_ft::fighter::assets::FighterAssets,
+) {
     // ftCo_800DEEB8 scales only a released smash charge.
     assert!(
         f.commands.smash_charge.is_none(),
         "ftCo_800DEEB8: charged family special"
     );
-    let damage = damage as f32;
+    let damage = f.commands.scaled_hit_damage(damage as f32, assets);
     let staled = f.commands.stale_damage(damage);
     for hit in f.commands.hitboxes.iter_mut().flatten() {
         if hit.phase == melee_coll::hitbox::CapsulePhase::Enabled {

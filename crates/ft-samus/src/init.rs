@@ -102,6 +102,8 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Samus>();
 
 impl CharacterCallbacks for Samus {
+    /// ftSs_Init_LoadSpecialAttrs (ftsamus.c:327-333).
+    const SCALES_SPECIAL_ATTRIBUTES: bool = true;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         recovery: Recovery::Diagonal,

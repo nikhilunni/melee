@@ -39,6 +39,7 @@ pub struct CharacterTable {
     pub specials_keep_held_item: bool,
     pub ko_countdown_rows: &'static [u16],
     pub down_bound_inverted: bool,
+    pub scales_special_attributes: bool,
     pub special_moves: &'static [Option<melee_types::combat::StaleMove>],
     /// MotionState.x9_b0 of the character's rows (see `state::partner_sync`).
     pub special_partner_sync: &'static [bool],
@@ -193,6 +194,7 @@ impl CharacterTable {
             specials_keep_held_item: C::SPECIALS_KEEP_HELD_ITEM,
             ko_countdown_rows: C::KO_COUNTDOWN_ROWS,
             down_bound_inverted: C::DOWN_BOUND_INVERTED,
+            scales_special_attributes: C::SCALES_SPECIAL_ATTRIBUTES,
             special_moves: C::SPECIAL_MOVES,
             special_partner_sync: C::SPECIAL_PARTNER_SYNC,
             enter_aerial: C::ENTER_AERIAL,

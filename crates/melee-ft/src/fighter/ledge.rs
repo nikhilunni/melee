@@ -313,9 +313,9 @@ impl Fighter {
         if self.core.input.pressed.intersects(Buttons::A | Buttons::B) || cstick_attack {
             return self.enter_cliff_option(assets, S::CliffAttackQuick);
         }
-        // gm_8016B0FC is false in the supported versus-match rules.
-        let cstick_escape = self.core.physics.facing * previous_cstick.x
-            < assets.ledge.cstick_escape_threshold
+        // ftCo_800DF72C: never in Single Button Melee (gm_8016B0FC).
+        let cstick_escape = !self.core.player.single_button
+            && self.core.physics.facing * previous_cstick.x < assets.ledge.cstick_escape_threshold
             && self.core.physics.facing * current_cstick.x >= assets.ledge.cstick_escape_threshold;
         if self.core.input.pressed.intersects(Buttons::SHIELD) || cstick_escape {
             return self.enter_cliff_option(assets, S::CliffEscapeQuick);
@@ -504,7 +504,7 @@ impl Fighter {
                     | S::CliffJumpSlow1
             ) {
                 self.land();
-            } else if self.core.physics.self_velocity.y > assets.soft_landing_speed {
+            } else if self.core.physics.self_velocity.y > self.core.soft_landing_speed(assets) {
                 self.land();
                 self.change_motion_state(S::Wait.into(), assets)?;
             } else {

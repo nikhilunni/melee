@@ -2117,9 +2117,9 @@ fn finish_spawn_request(
         );
         if scale_by_owner {
             // it_80274594: scl times ftLib_80086A0C, the owner's model
-            // scale (1 in every supported mode), through the model,
-            // hitbox radii, grab range and boxes again.
-            let scale = item.scale;
+            // scale, through the model, hitbox radii, grab range and
+            // boxes again.
+            let scale = item.scale * item.owner_model_scale();
             item.rescale(scale);
         }
     }

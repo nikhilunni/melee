@@ -173,6 +173,8 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
             attack_ratios: [1.0; 6],
             revival_damage: 0.0,
             stamina: None,
+            single_button: false,
+            invisible: false,
         },
     );
     assert_eq!(

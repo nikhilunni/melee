@@ -393,7 +393,7 @@ impl FighterCore {
         let AnimationPhase { assets, .. } = phase;
         self.step_animation(assets);
         self.advance_smash_charge(assets);
-        self.walk_animation(assets);
+        self.walk_animation();
         Ok(None)
     }
     fn animation_squat_wait(&mut self, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {

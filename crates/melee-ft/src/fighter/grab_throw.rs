@@ -148,7 +148,7 @@ pub fn enter_throw(
     // Preserve the predecessor's untouched mv+14/+18 before replacing
     // its typed scratch at the retail throw reset.
     attacker.keep_scratch_tail();
-    let rate = prepare_throw(throw, &victim.core, &mut attacker.core, aa);
+    let rate = prepare_throw(throw, va, &mut attacker.core, aa);
     attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
     enter_thrown(
@@ -585,18 +585,19 @@ pub(super) fn throw_descriptor(
 }
 
 /// ftCo_800DD4B0: weight-dependent playback rate before captor motion entry.
+/// Both read ft_data->x0, the dat's attributes, not a scaled fighter's
+/// co_attrs (ftCo_Throw.c:168-172).
 fn prepare_throw(
     throw: &Throw,
-    victim: &FighterCore,
+    va: &FighterAssets,
     attacker: &mut FighterCore,
     aa: &FighterAssets,
 ) -> f32 {
     // 800DD4B0 --fused: separate weight multiplication, reciprocal division.
-    let rate = if attacker.attributes.combat.weight_independent_throws_mask & throw.weight_mask != 0
-    {
+    let rate = if aa.attributes.combat.weight_independent_throws_mask & throw.weight_mask != 0 {
         1.0
     } else {
-        1.0 / (victim.attributes.size.weight * aa.throw_weight_scale)
+        1.0 / (va.attributes.size.weight * aa.throw_weight_scale)
     };
     attacker.commands.variables[0] = 0;
     attacker.combat.throw_flight = super::throw_flight::ThrowFlight::default();

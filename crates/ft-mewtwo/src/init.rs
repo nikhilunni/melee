@@ -128,6 +128,8 @@ fn death_callback(f: &mut Fighter) {
 }
 
 impl CharacterCallbacks for Mewtwo {
+    /// ftMt_Init_LoadSpecialAttrs (ftmewtwo.c:345-348).
+    const SCALES_SPECIAL_ATTRIBUTES: bool = true;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         charge: Some(Charge {

@@ -147,6 +147,9 @@ pub enum SoundDraw {
 
 #[derive(Clone, Debug, Default)]
 pub struct CommandState {
+    /// x34_scale.y when it is not 1 (Giant and Tiny Melee): hitbox damage
+    /// follows it (ftColl_8007ABD0).
+    pub model_scale: Option<f32>,
     pub smash_charge: Option<melee_cmd::SmashCharge>,
     pub airborne_changes: FixedVec<melee_cmd::AirborneMode, COMMAND_REQUEST_CAPACITY>,
     /// ftAction_80072894 requests, applied by the character's parasol hook.
@@ -313,6 +316,14 @@ impl CommandState {
         hit.phantom_victims = Default::default();
         hit.phase = melee_coll::hitbox::CapsulePhase::Enabled;
     }
+    /// ftColl_8007ABD0's first step (ftcoll.c:2995-2998): a scaled
+    /// fighter's hitbox damage, before any smash charge and staling.
+    pub fn scaled_hit_damage(&self, damage: f32, assets: &FighterAssets) -> f32 {
+        match self.model_scale {
+            Some(scale) => super::model_scale::scaled(damage, scale, assets.scale_curves.damage()),
+            None => damage,
+        }
+    }
     /// ft_80089228 (80089228): stale a hitbox's damage for the current move.
     /// The motion's multiplier applies only when it differs from 1 (retail
     /// 8008927C fmuls); without a staled move, a hit this instance already
@@ -427,6 +438,8 @@ impl CommandState {
                     // ftAction_80071F0C skips these records when seeking.
                     if !seeking {
                         let mut descriptor = descriptor.clone();
+                        // ftAction_8007192C -> ftColl_8007ABD0.
+                        descriptor.damage = self.scaled_hit_damage(descriptor.damage, assets);
                         self.throw_damage_counts[*id] =
                             gekko_math::msl::fctiwz(descriptor.damage) as u32;
                         descriptor.damage = self.stale_damage(descriptor.damage);
@@ -443,6 +456,7 @@ impl CommandState {
                             );
                             descriptor.common_bone = false;
                         }
+                        descriptor.damage = self.scaled_hit_damage(descriptor.damage, assets);
                         if let Some(charge) = &self.smash_charge {
                             descriptor.damage = charge.scale_damage(descriptor.damage);
                         }
@@ -487,11 +501,11 @@ impl CommandState {
                     // ftAction_8007162C -> ftColl_8007ABD0 (no fused ops):
                     // charge-scaled damage, its integer knockback copy, then
                     // staling. Seeking skips the word (ftAction_8007168C).
-                    // Fighter y-scale is always 1 here (8007AC0C branch).
                     if !seeking {
+                        let damage = self.scaled_hit_damage(*damage, assets);
                         let damage = match &self.smash_charge {
-                            Some(charge) => charge.scale_damage(*damage),
-                            None => *damage,
+                            Some(charge) => charge.scale_damage(damage),
+                            None => damage,
                         };
                         let staled = self.stale_damage(damage);
                         if let Some(hit) = &mut self.hitboxes[*id] {

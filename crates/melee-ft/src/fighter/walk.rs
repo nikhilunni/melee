@@ -67,8 +67,17 @@ impl Fighter {
 
     /// ftCo_Walk_Enter (0x800C9528) -> ftWalkCommon_800DFCA4 (0x800DFCA4).
     pub(super) fn enter_walk(&mut self, assets: &FighterAssets, frame: f32) -> Result<()> {
-        // Scaled-player modifiers are rejected during Fighter::prepare.
-        let multiplier = 1.0;
+        // ftCo_Walk.c:57-70: 1, along the scale's walk curve for a scaled
+        // fighter (Metal and the Bunny Hood are not ported).
+        let multiplier = if self.core.player.scale != 1.0 {
+            super::model_scale::scaled(
+                1.0,
+                self.core.player.scale,
+                assets.scale_curves.walk_acceleration(),
+            )
+        } else {
+            1.0
+        };
         let state = walk_state(
             self.core.physics.ground_velocity,
             self.core.attributes.walking.walk_max_vel,
@@ -206,7 +215,7 @@ impl Fighter {
 }
 impl FighterCore {
     /// ftCo_Walk_Anim (0x800C95F4) -> ftWalkCommon_800DFDDC (0x800DFDDC).
-    pub(super) fn walk_animation(&mut self, assets: &FighterAssets) {
+    pub(super) fn walk_animation(&mut self) {
         let MotionData::Walk(walk) = &self.state_data else {
             panic!("walk data missing")
         };
@@ -223,7 +232,8 @@ impl FighterCore {
         let rate = if speed * self.physics.facing <= 0.0 {
             0.0
         } else {
-            let attrs = &assets.attributes.walking;
+            // fp->co_attrs: scaled for a scaled fighter (ftCo_800CF6E8).
+            let attrs = &self.attributes.walking;
             // retail 800DFE50..: switch (motion_id - mv.co.walk.msid).
             let tier = i32::from(self.motion_state.id as u16).wrapping_sub(walk.base_motion);
             let divisor = match tier {

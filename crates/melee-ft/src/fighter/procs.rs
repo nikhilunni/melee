@@ -769,6 +769,8 @@ impl FighterCore {
                 save_and_clear: self.status.input_frozen,
                 // fighter.c:1784: a Stamina fighter knocked out reads nothing.
                 freeze_sample: self.stamina_out,
+                // fighter.c:1875: gm_8016B0FC, Single Button Melee.
+                single_button_mode: self.player.single_button,
                 hitlag,
                 cpu_controlled,
                 // UCF 0.84: lwz 0x4 == 19 (Zelda), lwz 0x10 == 349.
