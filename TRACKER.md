@@ -4,62 +4,61 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 19 integrated)
+## Current state (2026-10-25, wave 20 integrated)
 
-- **Shared contact ordering is integrated at production `72aa5d9a`:**
-  an ordinary fighter hit clears pending phantom damage before invincibility
-  or shell absorption can return. Two complete retail captures now match;
-  phantom-only behavior remains exact. `docs/PORT_NOTES/STONE_CONTACT_ORDER.md`
-  records the retail order and proof. The five preceding stage/entry/item
-  capabilities remain integrated (`docs/PORT_NOTES/WAVE17_18_BREADTH.md`).
-- **Fresh combined sweep:** 3,490 scenarios, **3,316 particle-exact**, 115
-  not comparable, 58 existing local failures and one existing particle
-  fault. **Zero regressions, two fixes** against `2c10dd58`; **249 fixes**
+- **HeavyGet terminal entry and item-contact refusal are integrated at
+  production `f3c7f2f5`:** five original whole captures (1,292 ticks) now
+  match through entry and remaining same-tick phases. Later Animation/IASA,
+  possession, attachment and carry remain guarded. Typed throw scratch,
+  callback lifetime and scale-import boundaries follow retail. Unsupported
+  mixed phantom/item early-return contexts now refuse explicitly; no new
+  item contact behavior is admitted. Details: `docs/PORT_NOTES/WAVE20_BREADTH.md`.
+- **Fresh combined sweep:** 3,490 scenarios, **3,321 particle-exact**, 115
+  not comparable, 53 existing local failures and one existing particle
+  fault. **Zero regressions, five fixes** against `72aa5d9a`; **254 fixes**
   against startup `0a99db31`. Incomplete recordings and local failures are
   not accepted divergences. Source, executable and scenario provenance are
-  under `target/wave19/main/`; canonical baseline is
-  `target/sweeps/72aa5d9a43d9c64d16e1f66b7a7e1e45f65cc75f.*`.
+  under `target/wave20/main/`; canonical fresh baseline is
+  `target/sweeps/f3c7f2f5542d9cefbaf44fc4762970c2685f66ce.*`.
 - **Fresh replay corpora remain unchanged:** `public-v3.7` completes
   **108/108** (964,782 matched frames); `public-v3.7-b` completes **486/502**
-  (5,102,652 frames), retaining every path's category and matched count.
+  (5,102,652 frames), preserving every path's category and matched count.
   CPU replay setup and stock sharing remain refused capabilities.
-- **Parity inventory** (`target/parity/wave19-integrated/`,
+- **Parity inventory** (`target/parity/wave20-integrated/`,
   `docs/PARITY.md`): all retail **29.3% ported/partial, 38.0% with body/row**;
   historical in-game subtotal **45.0% / 57.0%**. Of 19,827 functions:
-  4,209 ported, 201 partial, 1,363 body, 1,381 row, 229 referenced and
-  12,444 not started. **268 fail-closed sites**: 249 unimplemented, 19 bail.
-  Citations and retail bytes are a proxy for progress, not witnessed branch
+  4,206 ported, 207 partial, 1,361 body, 1,381 row, 228 referenced and
+  12,444 not started. **273 fail-closed sites**: 254 unimplemented, 19 bail.
+  Ported plus partial grows by three functions; additional guards make
+  unsupported contexts explicit. Citation counts are not witnessed branch
   coverage; every reporting group remains in scope.
-- **Combined release checkpoint passes:** 1,974 workspace tests, zero
-  failures, one existing ignore; m4 345 and m5 305. Workspace all-target
+- **Combined release checkpoint passes:** 1,983 workspace tests, zero
+  failures, one existing ignore; m4 345 and m5 307. Workspace all-target
   clippy is clean; harness 407 and schema zero layout violations. WASM pure
   suites, four expected spline traps, 6,003 identical native/WASM hash lines
   and the release web check pass. Actual API step/observe/capture remains
-  allocation-free; live Stone, pinned and suspended-item clones continue
-  independently. Clone creation is not included in those allocation counts.
+  allocation-free; clones taken before terminal HeavyGet entry continue
+  independently. Clone creation is outside the measured windows.
   Release only; no debug run.
-- **Quiet performance retains existing budget failures:** at `72aa5d9a`,
-  time passes (18.351 ms per 600 ticks; 55.080 ms load). Stripped size is
-  7,640,128 bytes and text size 6,881,280 bytes, above unchanged ceilings;
+- **Quiet performance retains existing budget failures:** at `f3c7f2f5`,
+  time passes (19.147 ms per 600 ticks; 54.736 ms load). Stripped size is
+  7,640,288 bytes and text size 6,881,280 bytes, above unchanged ceilings;
   Kirby's one duplicate label still exceeds baseline zero. Shared-code
-  duplication passes: 20 melee-ft labels, 94 across crates. The complete
-  report is appended to `docs/PERF.md`; no budget was increased.
+  duplication passes: 20 melee-ft labels, 94 across crates. The full report
+  is appended to `docs/PERF.md`; no budget was increased.
 
 ## Next (breadth before individual replay fixes)
 
 1. [x] **Shared ordinary-contact handling:** both complete 360/699-tick
    captures, genuine phantom controls, raw state, API and full checkpoint
-   pass. The item analogue remains separately unverified.
-2. [~] **HeavyGet terminal entry:** five original complete captures (1,292
-   ticks total) support entry plus remaining same-tick shared phases, with
-   next Animation/IASA, attachment, carry and throws guarded. Isolated work
-   includes required throw-scratch/callback-ownership and scale-boundary
-   corrections; it is not integrated. Plan:
-   `target/wave19/heavy-entry-search/plan.md`.
-3. [~] **Item mixed-contact refusal:** separately make the source-proven
-   missing phantom-clear early-return paths fail explicitly until witnessed;
-   this admits no item behavior. The bounded 45-scene search found no eligible
-   whole mixed-contact witness. `target/wave20/item-phantom-search/plan.md`.
+   pass. The item analogue now refuses unsupported mixed early returns.
+2. [x] **HeavyGet terminal entry:** five original complete captures, raw
+   scratch/flags/ownership, genuine RNG and strict whole particles pass.
+   Next Animation/IASA, attachment, carry and throws remain guarded.
+3. [x] **Item mixed-contact refusal:** source-proven missing-clear
+   early-return paths now refuse until witnessed. Four complete ordinary
+   item controls remain exact. The bounded 45-scene search found no eligible
+   whole mixed-contact witness; this change admits no item behavior.
 4. [x] **Kongo log-standing:** complete 2,829-tick warm/cold witness;
    Sink/Remove and second-live-log paths remain guarded.
 5. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
@@ -69,7 +68,9 @@ and `docs/PORT_NOTES/`.
    ticks and only 3,340 particle/meta ticks. Whole acceptance requires an
    add-only new recording; approval remains pending. Do not truncate it.
    Evidence: `target/wave18/yoyo-witness-search/plan.md`.
-7. [ ] Continue heavy pickup/carry/throws, other item-use rows and random
+7. [~] **Next bounded ports:** crate-monster constructors and held Sword
+   common back-air entry, using existing complete recordings. Their later
+   callbacks remain guarded. Continue heavy pickup/carry/throws, item-use rows and random
    kinds, **19 remaining Versus stages**, copied Sheik Needle Storm, wider
    CPU stage awareness, modes, retail menus/results/single-player and pause.
    Monster births, heavy entries and held aerial entries do not prove
@@ -106,7 +107,8 @@ Sword admissions add only common AttackLw3 (57), AttackHi4 (63) and their
 witnessed throw routing; private, aerial, Hi3 and Lw4 rows stay guarded.
 Barrel ownership adds only a primary article owner to an unowned REST
 barrel; other ownership contexts remain guarded. Party Ball now has bounded neutral left-facing FALL/REST coverage;
-its other states, other random kinds and heavy fighter rows remain backlog.
+its other states, other random kinds and later heavy fighter rows remain backlog.
+HeavyGet terminal entry is integrated, with no ownership/carry continuation claim.
 Running Barrel scripts retain their original program across witnessed rolling
 drops; this adds no new item kind or heavy/aerial fighter admission. Entry-only recordings do not
 prove later callbacks.
