@@ -549,8 +549,8 @@ impl FighterCore {
 
 /// A private character row can share a common identity but run different
 /// callbacks (Game & Watch's Manhole is row 345, identity AttackLw3). Only
-/// the actual common down-tilt/up-smash rows and Back Air entry have
-/// Sword witnesses.
+/// the actual common down-tilt/up-smash rows and F/B/Hi aerial entries
+/// have Sword witnesses.
 fn held_item_state_is_audited(
     kind: melee_types::ItemKind,
     action: ActionId,
@@ -563,7 +563,7 @@ fn held_item_state_is_audited(
             HELD_ITEM_STATES.contains(&state)
                 || (kind == melee_types::ItemKind::Sword
                     && action == ActionId(state as u16)
-                    && matches!(state, S::AttackLw3 | S::AttackHi4 | S::AttackAirB))
+                    && matches!(state, S::AttackLw3 | S::AttackHi4 | S::AttackAirF | S::AttackAirB | S::AttackAirHi))
         }
     }
 }
@@ -909,9 +909,9 @@ mod held_state_tests {
     use super::*;
 
     #[test]
-    fn sword_audit_admits_common_back_air_entry_but_not_private_or_other_aerial_rows() {
+    fn sword_audit_admits_common_aerial_entries_but_not_private_or_other_aerial_rows() {
         use melee_types::ItemKind;
-        // Common down tilt/up smash and Back Air entry are witnessed;
+        // Common down tilt/up smash and F/B/Hi aerial entries are witnessed;
         // private and other aerial rows keep their guards, even with the
         // same common identity. Back Air's callbacks separately refuse.
         for (action, state, expected) in [
@@ -923,9 +923,13 @@ mod held_state_tests {
             (67, S::AttackAirB, true), // Entry only; next Anim/IASA refuse.
             (348, S::AttackAirB, false), // Game & Watch's Turtle row.
             (65, S::AttackAirN, false),
-            (66, S::AttackAirF, false),
-            (68, S::AttackAirHi, false),
+            (66, S::AttackAirF, true),
+            (68, S::AttackAirHi, true),
             (69, S::AttackAirLw, false),
+            (349, S::AttackAirHi, false), // Game & Watch's private up aerial.
+            (345, S::AttackAirF, false), // Private action/common identity mismatch.
+            (71, S::LandingAirF, false),
+            (73, S::LandingAirHi, false),
             (72, S::LandingAirB, false),
         ] {
             assert_eq!(
@@ -946,6 +950,9 @@ mod held_state_tests {
             S::AttackAirB,
             None,
         ));
+        for (action, state) in [(66, S::AttackAirF), (68, S::AttackAirHi)] {
+            assert!(!held_item_state_is_audited(ItemKind::Dosei, ActionId(action), state, None));
+        }
         assert!(!held_item_state_is_audited(
             ItemKind::Dosei,
             ActionId(57),

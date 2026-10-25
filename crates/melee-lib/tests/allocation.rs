@@ -1224,7 +1224,7 @@ fn held_back_air_entry_step_and_capture_allocate_nothing_after_live_clone() {
     assert!(
         error
             .to_string()
-            .contains("held Sword Back Air continuation"),
+            .contains("held Sword aerial entry continuation"),
         "{error}"
     );
     let error = branch
@@ -1236,7 +1236,7 @@ fn held_back_air_entry_step_and_capture_allocate_nothing_after_live_clone() {
     assert!(
         error
             .to_string()
-            .contains("held Sword Back Air continuation"),
+            .contains("held Sword aerial entry continuation"),
         "{error}"
     );
 }
@@ -1365,5 +1365,101 @@ fn monster_constructor_step_and_capture_allocate_nothing_after_live_clone() {
         // step must report the deliberately unported animation callback.
         let error = game.step(&Inputs::default()).unwrap_err();
         assert!(error.to_string().contains("monster Animation"), "{error}");
+    }
+}
+
+#[test]
+fn held_forward_and_up_entry_step_and_capture_allocate_nothing_after_live_clone() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    for (name, frames, actor, action) in [
+        ("corpus_v3_bf_items_sword_ea3ec9208_p1", 314, 1, 66),
+        ("corpus_v3_fd_items_sword_e00f31913_p2", 1502, 1, 68),
+        ("corpus_v3_fd_items_sword_e1502cb40_p0", 1116, 1, 66),
+        ("corpus_v3_fd_items_sword_edb13a9c3_p2", 568, 1, 66),
+        ("corpus_v3_fd_items_sword_edb4b01fd_p1", 1073, 1, 68),
+        ("corpus_v3_fd_items_sword_ee92d4a97_p0", 834, 0, 66),
+        ("corpus_v3_fd_items_sword_eecfcf1ea_p2", 776, 1, 68),
+        ("corpus_v3_fd_items_sword_nocont_e05625e18_p2", 1384, 0, 68),
+        ("corpus_v3_fd_items_sword_nocont_e89a89d0e_p2", 727, 0, 66),
+        ("corpus_v3_fd_items_sword_nocont_ea4d5d9ec_p2", 880, 1, 66),
+        ("corpus_v3_fd_items_sword_nocont_ee62c6106_p1", 1052, 0, 68),
+        ("corpus_v3_fd_items_taru_e8d30e8ed_p1", 1160, 1, 68),
+        ("corpus_v3_fd_items_taru_ea9c3e366_p1", 1247, 1, 68),
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        assert!(melee_test_support::require_files(scenario.required_files()));
+        assert_eq!(scenario.frames, frames);
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut capture = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        let mut branch = None;
+        for tick in 0..frames {
+            if tick + 1 == frames {
+                // Clone and presentation construction are intentionally unmeasured.
+                let cloned = game.clone();
+                let capture = presentation::Presentation::new(&cloned).unwrap();
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(&cloned).unwrap()
+                );
+                branch = Some((cloned, capture));
+            }
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(tick, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "step{tick}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let observed = game.observe().map(|view| view.fighters().count());
+            let result = capture.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            assert_eq!(observed.unwrap(), 2);
+            result.unwrap();
+            assert_eq!(COUNT.with(Cell::get), 0, "capture{tick}");
+            if let Some((cloned, capture)) = &mut branch {
+                assert_eq!(measure(cloned, &inputs), 0, "cloned entry");
+                COUNT.with(|v| v.set(0));
+                ENABLED.with(|v| v.set(true));
+                let result = capture.capture(cloned);
+                ENABLED.with(|v| v.set(false));
+                result.unwrap();
+                assert_eq!(COUNT.with(Cell::get), 0, "cloned entry capture");
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(cloned).unwrap()
+                );
+            }
+        }
+        let view = game.observe().unwrap();
+        assert_eq!(
+            view.fighter([Port::P1, Port::P2][actor]).unwrap().action(),
+            ActionId(action)
+        );
+        assert!(view.items().count() > 0);
+        assert!(branch.is_some());
+        // The callback refusal is intentionally outside allocation measurement.
+        let error = game.step(&Inputs::default()).unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("held Sword aerial entry continuation"),
+            "{error}"
+        );
+        let error = branch
+            .as_mut()
+            .unwrap()
+            .0
+            .step(&Inputs::default())
+            .unwrap_err();
+        assert!(
+            error
+                .to_string()
+                .contains("held Sword aerial entry continuation"),
+            "{error}"
+        );
     }
 }

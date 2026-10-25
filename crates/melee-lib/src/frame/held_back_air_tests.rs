@@ -232,7 +232,7 @@ fn complete_back_air_entry_keeps_raw_held_identity_and_refuses_later_callbacks()
             if animation {
                 "ftCo_AttackAir_Anim"
             } else {
-                "ftCo_AttackAirB_IASA"
+                "ftCo_AttackAir_IASA"
             },
         );
         assert_eq!(fighter.0.animation.frame.to_bits(), frame);
@@ -249,7 +249,7 @@ fn complete_back_air_entry_keeps_raw_held_identity_and_refuses_later_callbacks()
         || {
             simulation.tick_without_snapshot().unwrap();
         },
-        "held Sword Back Air continuation",
+        "held Sword aerial entry continuation",
     );
 }
 
@@ -309,60 +309,62 @@ fn existing_aerial_catch_preserves_entry_context_but_reentry_owns_current_hand()
                     ..
                 }
             ));
-            let mut entered = fighter.clone();
-            assert!(matches!(
-                entered.state_data,
-                melee_ft::fighter::MotionData::Aerial {
-                    held_on_entry: false,
-                    ..
-                }
-            ));
-            melee_ft::fighter::attack::aerial::enter_action(
-                &mut entered,
-                &state.assets.fighters[1],
-                S::AttackAirB.into(),
-            )
-            .unwrap();
-            assert!(
-                entered.item_catch_locked,
-                "airtime lock survives the new entry"
-            );
-            assert!(matches!(
-                entered.state_data,
-                melee_ft::fighter::MotionData::Aerial {
-                    held_on_entry: true,
-                    ..
-                }
-            ));
-            let mut map = state.map.clone();
-            let mut rng = state.rng;
-            let entry_frame = entered.animation.frame.to_bits();
-            expect_guard(
-                || {
-                    (melee_ft::fighter::state::COMMON[67].anim)(
-                        &mut entered,
-                        AnimationPhase {
-                            assets: &state.assets.fighters[1],
-                            map: &mut map,
-                            rng: &mut rng,
-                        },
-                    )
-                    .unwrap();
-                },
-                "held Sword Back Air continuation",
-            );
-            assert_eq!(entered.animation.frame.to_bits(), entry_frame);
-            expect_guard(
-                || {
-                    (melee_ft::fighter::state::COMMON[67].iasa)(
-                        &mut entered,
-                        InputPhase {
-                            assets: &state.assets.fighters[1],
-                        },
-                    );
-                },
-                "held Sword Back Air continuation",
-            );
+            for action in [S::AttackAirF, S::AttackAirB, S::AttackAirHi] {
+                let mut entered = fighter.clone();
+                assert!(matches!(
+                    entered.state_data,
+                    melee_ft::fighter::MotionData::Aerial {
+                        held_on_entry: false,
+                        ..
+                    }
+                ));
+                melee_ft::fighter::attack::aerial::enter_action(
+                    &mut entered,
+                    &state.assets.fighters[1],
+                    action.into(),
+                )
+                .unwrap();
+                assert!(
+                    entered.item_catch_locked,
+                    "airtime lock survives the new entry"
+                );
+                assert!(matches!(
+                    entered.state_data,
+                    melee_ft::fighter::MotionData::Aerial {
+                        held_on_entry: true,
+                        ..
+                    }
+                ));
+                let mut map = state.map.clone();
+                let mut rng = state.rng;
+                let entry_frame = entered.animation.frame.to_bits();
+                expect_guard(
+                    || {
+                        (melee_ft::fighter::state::COMMON[action as usize].anim)(
+                            &mut entered,
+                            AnimationPhase {
+                                assets: &state.assets.fighters[1],
+                                map: &mut map,
+                                rng: &mut rng,
+                            },
+                        )
+                        .unwrap();
+                    },
+                    "held Sword aerial entry continuation",
+                );
+                assert_eq!(entered.animation.frame.to_bits(), entry_frame);
+                expect_guard(
+                    || {
+                        (melee_ft::fighter::state::COMMON[action as usize].iasa)(
+                            &mut entered,
+                            InputPhase {
+                                assets: &state.assets.fighters[1],
+                            },
+                        );
+                    },
+                    "held Sword aerial entry continuation",
+                );
+            }
         }
         rows += 1;
     }

@@ -7228,3 +7228,44 @@ fn crate_monster_constructors_full_fields_particles_and_ordered_rng() {
         }
     }
 }
+
+
+/// Original whole Forward/Up Air captures end at entry; continuation is refused.
+#[test]
+fn held_sword_forward_and_up_entries_complete_captures() {
+    for (name, frames, expected_draws) in [
+        ("corpus_v3_bf_items_sword_ea3ec9208_p1", 314, 5_771),
+        ("corpus_v3_fd_items_sword_e00f31913_p2", 1502, 61_901),
+        ("corpus_v3_fd_items_sword_e1502cb40_p0", 1116, 46_529),
+        ("corpus_v3_fd_items_sword_edb13a9c3_p2", 568, 24_940),
+        ("corpus_v3_fd_items_sword_edb4b01fd_p1", 1073, 42_328),
+        ("corpus_v3_fd_items_sword_ee92d4a97_p0", 834, 37_299),
+        ("corpus_v3_fd_items_sword_eecfcf1ea_p2", 776, 34_963),
+        ("corpus_v3_fd_items_sword_nocont_e05625e18_p2", 1384, 54_738),
+        ("corpus_v3_fd_items_sword_nocont_e89a89d0e_p2", 727, 30_162),
+        ("corpus_v3_fd_items_sword_nocont_ea4d5d9ec_p2", 880, 36_473),
+        ("corpus_v3_fd_items_sword_nocont_ee62c6106_p1", 1052, 41_107),
+        ("corpus_v3_fd_items_taru_e8d30e8ed_p1", 1160, 47_255),
+        ("corpus_v3_fd_items_taru_ea9c3e366_p1", 1247, 53_263),
+    ] {
+        complete_capture_with_initial_rng_gate(name, frames);
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        let ledger =
+            melee_test_support::trace::read_to_string(&scenario.trace_path("ledger.raw.jsonl"))
+                .unwrap();
+        let draws = ledger
+            .lines()
+            .map(|line| {
+                serde_json::from_str::<serde_json::Value>(line).unwrap()["rng_draws"]
+                    .as_array()
+                    .unwrap()
+                    .len()
+            })
+            .sum::<usize>();
+        assert_eq!(draws, expected_draws, "{name} whole raw ledger");
+    }
+}

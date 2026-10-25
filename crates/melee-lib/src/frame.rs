@@ -5335,3 +5335,6 @@ mod item_phantom_guard_tests;
 
 #[cfg(test)]
 mod held_back_air_tests;
+
+#[cfg(test)]
+mod held_f_hi_entry_tests;

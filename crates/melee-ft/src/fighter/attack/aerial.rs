@@ -49,7 +49,7 @@ pub fn select(input: &FighterInput, common: &InputCommonData, facing: f32) -> S 
 }
 
 /// ftCo_AttackAir_EnterFromCStick / EnterFromMsid (8008CF70 / 8008CFAC).
-/// The character table supplies decideFighter's entry. Sword common Back Air
+/// The character table supplies decideFighter's entry. Sword common F/B/Hi aerial
 /// is witnessed through entry; other unaudited held rows remain refused.
 pub fn enter(fighter: &mut Fighter, assets: &FighterAssets) -> Result<()> {
     let state = select(
@@ -83,14 +83,17 @@ pub fn enter_action(fighter: &mut Fighter, assets: &FighterAssets, action: Actio
     Ok(())
 }
 
-/// The complete witness ends after common Back Air entry's direct step.
+/// Complete witnesses end after common F/B/Hi entry's direct step.
 /// The next actual callbacks remain unsupported, independent of frame/timer.
-fn held_back_air_entry_only(fighter: &Fighter) -> bool {
+fn held_aerial_entry_only(fighter: &Fighter) -> bool {
+    let action = fighter.motion_state.action;
     matches!(
         fighter.state_data,
         MotionData::Aerial { held_on_entry: true, .. }
     )
-        && fighter.motion_state.action == S::AttackAirB.into()
+        && (action == S::AttackAirF.into()
+            || action == S::AttackAirB.into()
+            || action == S::AttackAirHi.into())
         && fighter
             .held_item
             .is_some_and(|item| item.kind == melee_types::ItemKind::Sword)
@@ -101,8 +104,8 @@ pub fn animation(
     fighter: &mut Fighter,
     phase: AnimationPhase<'_>,
 ) -> Result<Option<crate::anim::WaitChoice>> {
-    if held_back_air_entry_only(fighter) {
-        unimplemented!("ftCo_AttackAir_Anim (ftCo_AttackAir.c:135-144): held Sword Back Air continuation");
+    if held_aerial_entry_only(fighter) {
+        unimplemented!("ftCo_AttackAir_Anim (ftCo_AttackAir.c:135-144): held Sword aerial entry continuation");
     }
     fighter.step_animation(phase.assets);
     finish_animation(fighter, phase.assets)?;
@@ -129,8 +132,8 @@ pub fn finish_animation(fighter: &mut Fighter, assets: &FighterAssets) -> Result
 /// Its item-free branch admits another aerial or an air jump after script unlock;
 /// unlike Fall_IASA it has no special, air-dodge or Peach float predicates.
 pub fn input(fighter: &mut Fighter, phase: InputPhase<'_>) {
-    if held_back_air_entry_only(fighter) {
-        unimplemented!("ftCo_AttackAirB_IASA (ftCo_AttackAir.c:147-169): held Sword Back Air continuation");
+    if held_aerial_entry_only(fighter) {
+        unimplemented!("ftCo_AttackAir_IASA (ftCo_AttackAir.c:147-175): held Sword aerial entry continuation");
     }
     if !fighter.core.commands.allow_interrupt {
         return;
