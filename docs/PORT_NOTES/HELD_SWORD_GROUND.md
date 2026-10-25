@@ -43,4 +43,5 @@ existing particle fault. Both replay corpora retain their exact path sets,
 completion categories and matched frames: 108 complete/964,782 frames and
 486 complete/5,102,652 frames. Runtime verification preceded a rebase over
 the documentation-only checkpoint 3d443649; runtime source was unchanged
-by that checkpoint. Evidence remains in the worktree's target/held-sword.
+by that checkpoint. Evidence was preserved under `target/wave15/held-sword/` before the
+merged worktree was removed.

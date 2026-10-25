@@ -1,11 +1,12 @@
 # Function-level parity inventory
 
 How far the port is from all of retail Melee, measured per retail function.
-Measured 2026-10-24 after all six handoffs were integrated on main
-(`bf98d61d`, including the shared-callback cleanup). Evidence is in
-`target/parity/wave14-integrated/`, refreshed after the full release checkpoint. The objective here is breadth: every function
-retail runs, not only what the gate exercises. Runtime gates and their
-checkpoint results are tracked separately in `TRACKER.md`.
+Measured 2026-10-24 after the three wave-15 breadth picks were integrated
+(production source `af5f2587`). Evidence is in
+`target/parity/wave15-integrated/`. The objective here is breadth: every
+function retail runs, not only what the gate exercises. The current full
+release checkpoint passes; runtime gates and performance budget results
+are tracked separately in `TRACKER.md`.
 
 ```sh
 cargo run -q --release -p melee-lib --example motion_rows > target/parity/motion_rows.tsv
@@ -75,25 +76,25 @@ does not name them; `gm_1601.c` (match flow), `gm_16AE.c`, `gmmain_lib.c`
 (save data and rules) and the unnamed `hsd_3A94`/`hsd_3B*` files stay in game
 logic.
 
-**Fail-closed sites.** The current inventory has **253 sites**: 234
+**Fail-closed sites.** The current inventory has **252 sites**: 233
 `unimplemented!` and 19 `bail!`. The tool also detects `todo!` in non-test,
 non-tooling code and `Error::UnsupportedFeature` in `hsd-particle`; neither
 adds a current site. `bail!` is counted in simulation crates and `melee-lib`,
 while other crates' input validation is excluded. `unreachable!` is an
 invariant, not a gap, and is left out. A site resolves by a symbol/address
 or C line in its message/comment, then its enclosing Rust function's doc.
-Current resolution: 202 by message/C line, 13 by enclosing context, 38
+Current resolution: 201 by message/C line, 11 by enclosing context, 40
 unresolved dispatch/import sites. New explicit guards can increase this
 count even while more retail behavior is ported.
 
 ## Accuracy
 
-**Citations.** 24,062 of 24,915 function-citation candidates resolve to
+**Citations.** 24,085 of 24,939 function-citation candidates resolve to
 retail functions (96.6%); 546 name decomp inline helpers without their own
-retail symbol, and 307 names remain unresolved. Stale names include
+retail symbol, and 308 names remain unresolved. Stale names include
 `Fighter_ProcessHit`, `Fighter_UnkProcessDeath` and `Fighter_UnkInitReset`;
 other unresolved tokens are state names or fields rather than functions.
-Not counted as function citations: 473 data references and 2,595 other
+Not counted as function citations: 473 data references and 2,594 other
 decomp identifiers. Counts come from the current generated summary, not
 the earlier calibration sample below.
 
@@ -124,22 +125,24 @@ undercount most.
 
 ## Current totals
 
-All functions (19,827; 3,783 KiB): **4,200 ported, 204 partial, 1,361 body,
-1,378 row, 221 referenced, 12,463 not started**. By retail bytes,
+All functions (19,827; 3,783 KiB): **4,202 ported, 201 partial, 1,361 body,
+1,378 row, 221 referenced, 12,464 not started**. By retail bytes,
 **29.2% ported/partial, 37.9% with body/row**.
 
 The historical in-game measurement group (14,399 functions; 2,432 KiB) is
 **44.9% / 56.9%**. The remaining 5,428 functions are still in scope; their
 reporting groups appear below. These figures count citations and code bytes,
 not directly witnessed branches or a percentage of gameplay completeness.
+Small classification shifts include changed comments and guard attribution;
+they are not runtime regressions, and the rounded percentages are unchanged.
 
 | area | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| it items | 3802 | 798 | 22 | 132 | 114 | 30 | 2706 | 473 | 39.0% | 44.5% |
+| it items | 3802 | 800 | 20 | 132 | 114 | 30 | 2706 | 473 | 39.0% | 44.5% |
 | ft characters | 3672 | 1715 | 35 | 411 | 921 | 53 | 537 | 445 | 62.5% | 87.5% |
 | gr | 1760 | 148 | 9 | 89 | 0 | 28 | 1486 | 340 | 17.9% | 20.6% |
-| ft common states | 1471 | 513 | 82 | 190 | 322 | 8 | 356 | 248 | 62.0% | 77.8% |
-| ft engine | 1108 | 340 | 26 | 214 | 21 | 43 | 464 | 237 | 54.7% | 69.3% |
+| ft common states | 1471 | 513 | 81 | 191 | 322 | 8 | 356 | 248 | 62.0% | 77.8% |
+| ft engine | 1108 | 340 | 26 | 213 | 21 | 43 | 465 | 237 | 54.7% | 69.2% |
 | HSD (sysdolphin) | 499 | 141 | 2 | 27 | 0 | 15 | 314 | 180 | 35.4% | 45.4% |
 | mp | 229 | 212 | 1 | 2 | 0 | 2 | 12 | 102 | 92.5% | 92.9% |
 | gm | 617 | 15 | 2 | 28 | 0 | 6 | 566 | 98 | 6.0% | 13.9% |
@@ -150,13 +153,13 @@ not directly witnessed branches or a percentage of gameplay completeness.
 | cm | 127 | 21 | 1 | 13 | 0 | 4 | 88 | 35 | 30.2% | 37.5% |
 | pl | 191 | 9 | 1 | 19 | 0 | 6 | 156 | 29 | 8.5% | 17.4% |
 | MSL | 9 | 4 | 0 | 5 | 0 | 0 | 0 | 1 | 82.0% | 100.0% |
-| **total** | 14399 | 4123 | 203 | 1317 | 1378 | 208 | 7170 | 2432 | 44.9% | 56.9% |
+| **total** | 14399 | 4125 | 200 | 1317 | 1378 | 208 | 7171 | 2432 | 44.9% | 56.9% |
 
 ### Every reporting group remains in scope
 
 | scope | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| in-game | 14399 | 4123 | 203 | 1317 | 1378 | 208 | 7170 | 2432 | 44.9% | 56.9% |
+| in-game | 14399 | 4125 | 200 | 1317 | 1378 | 208 | 7171 | 2432 | 44.9% | 56.9% |
 | single-player and modes | 1520 | 5 | 0 | 2 | 0 | 1 | 1512 | 278 | 0.1% | 0.2% |
 | menus | 530 | 1 | 0 | 10 | 0 | 2 | 517 | 260 | 0.1% | 4.8% |
 | rendering | 795 | 42 | 1 | 11 | 0 | 6 | 735 | 206 | 4.5% | 13.6% |
@@ -169,7 +172,7 @@ not directly witnessed branches or a percentage of gameplay completeness.
 | debug | 153 | 0 | 0 | 2 | 0 | 0 | 151 | 37 | 0.0% | 0.5% |
 | cutscenes | 84 | 0 | 0 | 0 | 0 | 0 | 84 | 20 | 0.0% | 0.0% |
 | pause | 36 | 0 | 0 | 0 | 0 | 0 | 36 | 7 | 0.0% | 0.0% |
-| **total** | 19827 | 4200 | 204 | 1361 | 1378 | 221 | 12463 | 3783 | 29.2% | 37.9% |
+| **total** | 19827 | 4202 | 201 | 1361 | 1378 | 221 | 12464 | 3783 | 29.2% | 37.9% |
 
 Character-family percentages are sensitive to shared code and citation
 style: Fox/Falco, Marth/Roy and other family crates can implement behavior
@@ -187,10 +190,12 @@ the older copy-ability percentages as the current state.
    historical in-game `gr` group is 17.9% / 20.6% by bytes.
 2. **Items:** 2,706 of 3,802 item-kind functions are not started; the group
    is 39.0% / 44.5%. Capsule/Box/Barrel and random spawning are integrated
-   within witnessed setup bounds. Party Ball, other random kinds,
-   shooting items, heavy carry/throws, stage/enemy items and many fighter
-   use rows remain. The first proposed slice is 23 existing ground Sword
-   witnesses, admitting only held AttackLw3 (57) and AttackHi4 (63).
+   within witnessed setup bounds, now including whole empty Box/Barrel
+   blasts and narrow primary-article owner transfer to an unowned REST
+   Barrel. Twenty-three ground Sword recordings admit only common held
+   AttackLw3 (57), AttackHi4 (63) and witnessed throws; they end at entry.
+   Party Ball, other random kinds, shooting items, heavy carry/throws,
+   stage/enemy items and many fighter use rows remain.
 3. **Modes, menus and match shell:** the historical in-game `gm` group is
    6.0% / 13.9%; other mode, menu, results and pause families are reported
    separately above. FFA and witnessed teams/doubles are integrated;
@@ -206,12 +211,14 @@ the older copy-ability percentages as the current state.
    profiles and 95 registered witnesses. Remaining CPU stage, command,
    item and recovery paths stay explicit guards; CPU replay setup lacks
    a recorded level. The CPU crate still has 39 fail-closed sites.
-6. **Shared engine sequencing:** the next prepared work includes narrow
-   primary-owner transfer to an unowned REST Barrel, Party Ball FALL/REST
-   from an existing left-facing 600-tick capture, and the container Resume
-   phase correction. New call sites need direct retail branch witnesses;
-   the 25 held aerial entry captures do not authorize the missing later
-   throw-first IASA branch. No new recordings are authorized in this task.
+6. **Shared engine sequencing:** the container Resume phase correction is
+   integrated, with 37 strict random-item witnesses including combined
+   Sword/container cases. Next are Party Ball FALL/REST from an existing
+   left-facing 600-tick capture and Kongo saved AObj/controller-clock
+   restoration plus actual held/launch witnesses. New call sites need
+   direct retail branch witnesses; monster births, heavy entries and the
+   25 held aerial entry captures do not authorize later continuations.
+   No new recordings are authorized in this task.
 
 The current `summary.md` and `inventory.tsv` list not-started source files
 and functions; `fail_closed.tsv` lists exact current guards. The historical
@@ -219,8 +226,8 @@ packet map below is a discovery aid only.
 
 ## Current fail-closed backlog
 
-**253 current sites** are enumerated in
-`target/parity/wave14-integrated/fail_closed.tsv` (234 unimplemented,
+**252 current sites** are enumerated in
+`target/parity/wave15-integrated/fail_closed.tsv` (233 unimplemented,
 19 bail). A site may guard an entire family of motion rows or setup states;
 site count is not branch count. Do not infer current row totals or agent
 scope from the older packets below. Check current source and complete
@@ -231,7 +238,7 @@ recordings before enabling anything.
 The following map was measured at `969a065e`: **331 historical sites**,
 including 258 unimplemented motion rows counted through shared dispatch.
 Its counts, line numbers, capability descriptions and reachability are
-historical and are not reconciled to the 253-site inventory above. Several
+historical and are not reconciled to the 252-site inventory above. Several
 packets have now landed partly or fully (CPU, copied specials, match flow,
 random items, Kongo/Japes and common grab edges). Keep it as an index of
 retail families, not a current assignment list or completion claim.

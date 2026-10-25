@@ -4,75 +4,67 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-24, wave 14 integrated)
+## Current state (2026-10-24, wave 15 integrated; functional checkpoint complete)
 
-- **All six handoff branches are on main at `09b60d97`:** grab/common
-  edges; Kirby's Nayru's Love, Fire Breath and Ice Shot; match flow;
-  random items and Capsule/Box/Barrel; Kongo Jungle/Jungle Japes; and
-  guarded Versus CPU players. The incoming notes in `docs/handoffs/` are
-  historical. Integration evidence is under `target/wave14/`; the acceptance summary
-  is `docs/PORT_NOTES/WAVE14_INTEGRATION.md`.
-- **Full sweep:** 3,485 scenarios, **3,255 particle-exact**, 115 not
-  comparable, 114 existing local failures and one existing particle fault.
-  **Zero regressions, 193 fixes** against startup `0a99db31`. A local
-  failure or incomplete recording is not an accepted divergence in a
-  registered witness.
-- **Replay corpora:** `public-v3.7` completes **108/108**, with 964,782
-  matched frames; `public-v3.7-b` completes **486/502**, with 5,102,652
-  matched frames. Every startup completion and matched frame is retained;
-  the second corpus gains two completions and 21,572 frames. Unsupported
-  stock-sharing, CPU replay setup and other unproved capabilities remain
-  refused; Slippi does not record the CPU level needed for admission.
-- **Parity inventory** (`target/parity/wave14-integrated/`,
+- **Three breadth slices are integrated:** narrow primary-article owner
+  transfer to an unowned REST Barrel, held Sword ground inputs/entries,
+  and whole Box/Barrel empty blasts with deferred callback phase retained.
+  Production source is `af5f2587`; later commits through `58118743` add
+  regression coverage. Scope and evidence: `docs/PORT_NOTES/WAVE15_BREADTH.md`.
+  The six earlier handoffs are historical (`WAVE14_INTEGRATION.md`).
+- **Combined sweep:** 3,485 scenarios, **3,290 particle-exact**, 115 not
+  comparable, 79 existing local failures and one existing particle fault.
+  **Zero regressions, 35 fixes** against `bf98d61d`; **228 fixes** against
+  startup `0a99db31`. Incomplete recordings and local failures are not
+  accepted divergences in registered witnesses.
+- **Replay corpora remain unchanged:** `public-v3.7` completes **108/108**
+  (964,782 matched frames); `public-v3.7-b` completes **486/502**
+  (5,102,652 frames), retaining every path's category and matched count.
+  CPU replay setup, stock sharing and other unsupported capabilities stay
+  refused. Slippi does not record the CPU levels needed for admission.
+- **Parity inventory** (`target/parity/wave15-integrated/`,
   `docs/PARITY.md`): all retail **29.2% ported/partial, 37.9% with body/row**;
-  historical in-game subtotal **44.9% / 56.9%**. Of 19,827 functions:
-  4,200 ported, 204 partial, 1,361 body, 1,378 row, 221 referenced and
-  12,463 not started. **253 fail-closed sites**: 234 unimplemented and 19
-  bail sites. These citation/byte estimates are not a retail-proof score.
-- **Combined release checkpoint at `bf98d61d`:** 1,935 workspace tests
-  pass, zero fail, one existing ignore; m4 345, m5 295, API allocation 13.
-  Release workspace clippy is clean and harness pytest passes 407 tests.
-  WASM pure suites and all four guarded spline subprocess checks pass;
-  native/WASM match hashes are identical over 6,003 lines. The release web
-  check and refreshed inventory also pass. Schema checks report no layout
-  violations. Release builds only;
-  no debug checkpoint is claimed.
-- **Performance gate remains blocked on user-owned budgets:** time passes
-  (18.618 ms per 600 ticks; 57.191 ms load), while stripped size 7,605,760
-  bytes and text size 6,848,512 bytes exceed their ceilings. `ft-kirby`
-  has one duplicate label against baseline zero. No thresholds or
-  baselines have been raised; user approval remains pending (`docs/PERF.md`).
+  historical in-game subtotal **44.9% / 56.9%**, unchanged when rounded.
+  Of 19,827 functions: 4,202 ported, 201 partial, 1,361 body, 1,378 row,
+  221 referenced and 12,464 not started. **252 fail-closed sites**:
+  233 unimplemented and 19 bail sites. Citation shifts include changed
+  comments and guard attribution; these code-byte estimates are not a retail-proof score.
+- **Combined release checkpoint passes:** 1,940 workspace tests, zero
+  failures, one existing ignore; m4 345, m5 297 and harness 407. Workspace
+  clippy is clean. Schema checks report zero layout violations; WASM pure
+  suites, four guarded spline subprocess checks, 6,003 identical native/WASM
+  hash lines and the release web build pass. Expanded actual API allocation
+  and capture checks pass; the 37-case strict random-item group includes
+  the two combined Sword/container witnesses. Release only; no debug run.
+- **Performance gate: existing budget failures remain.** At `58118743`,
+  time passes (18.368 ms per 600 ticks; 55.729 ms load). Stripped size is
+  7,605,840 bytes and text size 6,848,512 bytes, above unchanged ceilings;
+  Kirby's one duplicate label still exceeds baseline zero. Shared-code
+  duplication passes: 20 labels in melee-ft, 94 across crates. The report
+  is appended to `docs/PERF.md`; no threshold or baseline was increased.
 
 ## Next (breadth before individual replay fixes)
 
-1. [x] Close the six-branch integration checkpoint at runtime source
-   `bf98d61d`. Full-sweep/replay baseline and provenance are published under
-   `target/sweeps/bf98d61d227f916fd01ab5b74a8f94ad20dde183.*`. Completed
-   integration worktrees have been removed.
-2. [~] **Ground Sword input/entry:** 23 existing complete witnesses:
-   six side C-stick throws, seven vertical-smash routing cases, seven
-   down-tilt routing cases and three direct up-smash entries. Only held
-   Sword **AttackLw3 (57)** and **AttackHi4 (63)** admissions are proposed.
-   Held aerials, LandingAir, AttackHi3 and AttackLw4 remain guarded. The
-   25 aerial traces end at entry and do not prove the missing aerial
-   throw-first IASA call. Plan: `target/wave14/held-sword-implementation-plan.md`.
-3. [~] **Barrel ownership:** give an unowned REST barrel the primary
-   fighter owner of the article that struck it; preserve secondary
-   owner, team and stale attribution boundaries. Use the existing retail
-   witnesses and the typed owner representation, not item-id-as-player.
-4. [~] **Container explosions:** preserve the originating scheduler phase
-   across deferred Resume, then prove empty Box/Barrel blasts against
-   complete existing captures. Keep ownership changes separate.
-   **Party Ball follows:** FALL/REST from the existing 600-tick left-facing
-   capture; opening/content branches remain guarded.
-5. [ ] Continue the breadth inventory: heavy pickup/carry/throws and other
-   item-use rows, remaining random item kinds, **19 remaining Versus
-   stages**, Kirby's copied Sheik ability, wider CPU stage awareness,
-   stamina/coin/handicap/time modes, retail menus/results/single-player,
-   pause and the rest of the fail-closed backlog. Nothing is out of scope.
+1. [x] Close the wave 15 functional checkpoint and quiet performance
+   measurement. Full-sweep/replay evidence and provenance are under
+   `target/sweeps/58118743*`; completed worktrees have been removed.
+   Performance budgets still require the user decision above.
+2. [ ] **Party Ball:** bounded FALL/REST from the existing left-facing
+   600-tick capture, following the integrated Resume phase correction.
+   Opening, contents and other unproved continuations remain guarded.
+3. [ ] **Kongo moving barrel:** restore the saved live AObj clock
+   independently of the controller's future rate, then prove actual
+   held-position and launch behavior against complete existing captures.
+   Keep entry-only, second-live-log and other hazard limits explicit.
+   Plan: `target/wave14/kongo-search/moving-barrel-implementation-plan.md`.
+4. [ ] Continue heavy pickup/carry/throws, other item-use rows and random
+   kinds, **19 remaining Versus stages**, copied Sheik Needle Storm, wider
+   CPU stage awareness, modes, retail menus/results/single-player and pause.
+   Monster births, heavy entries and held aerial entries do not prove
+   later callbacks; keep them guarded. Nothing is out of scope.
    **No new recordings are authorized in the current task**; use existing
-   protected data in place and keep unwitnessed branches guarded.
-6. [ ] Replay depth after breadth: five existing stops remain in the second
+   protected data in place.
+5. [ ] Replay depth after breadth: five existing stops remain in the second
    corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
    unconsumed controller polls; two one-ulp Nana positions). The other
    unfinished games are refused capabilities. Preserve the distinction
@@ -95,10 +87,14 @@ Stadium form-archive read completion is a recorded external input; ordinary
 runs use documented default latency (`docs/APP.md`).
 
 **Items:** shared engine and character articles, Peach's rare pulls and
-Sword swings are ported. Random spawning and Capsule/Box/Barrel are
-witnessed for two-player FD/Battlefield setups. Other setups, Party Ball,
-other random kinds, heavy fighter rows and unwitnessed container blasts
-remain guarded. Entry-only recordings do not prove later callbacks.
+Sword swings are ported. Random spawning and Capsule/Box/Barrel, including
+empty blasts, are witnessed for two-player FD/Battlefield setups. Ground
+Sword admissions add only common AttackLw3 (57), AttackHi4 (63) and their
+witnessed throw routing; private, aerial, Hi3 and Lw4 rows stay guarded.
+Barrel ownership adds only a primary article owner to an unowned REST
+barrel; other ownership contexts remain guarded. Party Ball, other random
+kinds and heavy fighter rows remain backlog. Entry-only recordings do not
+prove later callbacks.
 
 **CPU:** Nana follow/recovery behavior remains. Versus CPU players are now
 admitted in the witnessed FD/Battlefield envelope, with character-owned

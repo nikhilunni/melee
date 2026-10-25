@@ -90,18 +90,21 @@ ticks (`corpus_v3_fd_items_taru_ee6ff560c_p0`). Eight complete recordings are
 registered in `RANDOM_ITEM_WITNESSES`. They start from warm match boundaries;
 they do not claim import of an already exploding item. Existing warm/cold
 start witnesses remain independent construction coverage. The separate
-`...sword_e17844051_p1` and `...sword_eee14f173_p2` recordings progress past
-their blast, then still stop at the held-item AttackHi4 audit guard.
+`...sword_e17844051_p1` and `...sword_eee14f173_p2` recordings also pass in
+full after the held-Sword ground entry integration. Both are registered;
+the strict random-item family now contains 37 complete witnesses.
 
 ## Fail closed (follow-up worklist)
 
 - Item Switch setups outside two-player Final Destination and Battlefield
-  remain fail-closed until recorded, including saved-state imports whose
-  scenario does not explicitly name the saved item rules.
+  remain fail-closed until recorded. Warm imports preserve the actual saved
+  item rules even when scenario metadata omits them; clone/reset retains
+  those rules.
 
 - Thrown / dropped Box (reached only through HeavyGet), sliding Capsule and
   Box, barrel state 4 (entered by nothing).
-- A barrel struck by an item (it_8027236C's xCF0 owner).
+- Barrel article-owner transfers outside the witnessed primary-owner to
+  unowned REST recipient case (`BARREL_OWNER_TRANSFER.md`).
 - Monsters from crates (it_8026F6BC, 1 in ItCo +124).
 - Poke Balls (it_8026C704 / Item_804A0C64.x1C).
 - Party Ball (itkusudama.c): ported then withdrawn. Its fall matches; on the
@@ -111,8 +114,9 @@ their blast, then still stop at the held-item AttackHi4 audit guard.
 - Egg: weight 0 on FD and Battlefield (COVERAGE_AUDIT).
 - Fighter side, the bulk of explorer faults: HeavyGet / LiftWait / LiftWalk /
   LiftTurn / HeavyThrow (ftCo_Lift.c, ftCo_ItemThrow.c) for crates and
-  barrels; Beam Sword smashes, tilts, aerials and C-stick smashes with a
-  battering item (attack.rs, item_pickup.rs HELD_ITEM_STATES).
+  barrels; held Sword aerials/landings, ordinary Hi3/Lw4 and private rows,
+  plus unproved battering-item kinds. The witnessed common ground rows
+  57/63 and Sword C-stick throws are admitted (`HELD_SWORD_GROUND.md`).
 - Every other random item kind fails closed by name at its spawn
   (scene_items::spawn_random_item / spawn_released_item).
 - `command return without call` in the item script engine on a barrel
