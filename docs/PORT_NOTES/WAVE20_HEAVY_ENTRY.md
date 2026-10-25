@@ -80,3 +80,18 @@ preserved every Rust/Cargo source hash. Coordinator integration checks remain
 the coordinator's responsibility. Detailed logs and final provenance live under
 `target/wave20/heavy-entry/sourceportnote/`; superseded failed fixture/compile
 attempts remain there and are not final acceptance evidence.
+
+## Wave 26: the carry and the throws
+
+HeavyGet now runs on: the item attaches at ftData x8+0x11 with the lift
+voice, and the animation's end enters LiftWait (`melee-ft/src/fighter/lift.rs`,
+ftCo_Lift.c). LiftWalk1/2, LiftTurn and all eight heavy throws are ported;
+each installs ftCo_800974C4, so a hit drops the item (Item_8026ABD8 with
+xC44 0). On the item side a heavy item leaves from its attach joint like an
+article (it_80273748/it_80273B50), and a kind with xDCE b7 clear (Barrel,
+Box) keeps its own box at release (it_80275BC8). The Box's thrown and
+dropped collisions (itbox.c:331, 354) are ported.
+
+Still guarded: x2222_b0's carry (Donkey Kong, ftpickupitem.c:320,
+ftCo_ItemThrow.c:370), HeavyGet leaving the ground (ftpickupitem_80094D90),
+a scaled HeavyGet and the Box's slide (itbox.c:566).

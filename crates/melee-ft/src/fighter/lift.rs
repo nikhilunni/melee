@@ -241,9 +241,8 @@ impl Fighter {
             self.core.drop_held_item(held, 0.0, assets);
             self.enter_damage_fall(assets)
         } else {
-            // ftCo_Fall_Enter: airborne (ftCommon_8007D5D4), then Fall.
-            self.leave_ground();
-            self.change_motion_state(S::Fall.into(), assets)
+            // A heavy throw past its release leaving the floor: unwitnessed.
+            unimplemented!("ftCo_80096E68 (ftCo_Lift.c:59): ftCo_Fall_Enter with an empty hand")
         }
     }
 

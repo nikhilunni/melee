@@ -72,6 +72,10 @@ impl Attributes<'_> {
     fn upright_angle(&self) -> f32 {
         self.0[6]
     }
+    /// x1C: a dropped crate landing faster than this breaks (unwitnessed).
+    fn break_speed(&self) -> f32 {
+        self.0[7]
+    }
 }
 
 static STATES: [ItemStateRow; 9] = [
@@ -367,16 +371,34 @@ fn fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
     }
 }
 
-/// itBox_UnkMotion3_Coll: thrown, a floor (it_8026DA08) breaks it; a
-/// ceiling (it_802763E0) stops it rising; a wall (it_80276308) breaks it.
-fn thrown_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
-    unimplemented!("itBox_UnkMotion3_Coll: a thrown Box (itbox.c:322), unwitnessed")
+/// itBox_UnkMotion3_Coll (itbox.c:331): thrown, a floor (it_8026DA08)
+/// breaks it. A ceiling (it_802763E0) would stop it rising and a wall
+/// (it_80276308) break it; neither is witnessed (Final Destination).
+fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if item.air_pass(ctx.map) {
+        try_open(item);
+    } else if item.ceiling_bits() != 0 {
+        unimplemented!("itBox_UnkMotion3_Coll (itbox.c:338): a thrown Box under a ceiling");
+    } else if item.wall_bits() != 0 {
+        unimplemented!("itBox_UnkMotion3_Coll (itbox.c:342): a thrown Box into a wall");
+    }
+    false
 }
 
-/// itBox_UnkMotion4_Coll: dropped onto a floor faster than x1C it breaks;
-/// slower it lands (it_802762B0) and rests.
-fn dropped_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
-    unimplemented!("itBox_UnkMotion4_Coll: a dropped Box (itbox.c:342), unwitnessed")
+/// itBox_UnkMotion4_Coll (itbox.c:354): dropped onto a floor faster than
+/// x1C it breaks; slower it lands (it_802762B0), grabbable and still, at
+/// rest.
+fn dropped_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if item.air_pass(ctx.map) {
+        let speed = gekko_math::msl::fabsf(item.velocity.y);
+        if speed > Attributes(&ctx.assets.special_attributes).break_speed() {
+            unimplemented!("itBox_UnkMotion4_Coll (itbox.c:364): a dropped Box landing hard");
+        } else {
+            item.land_on_floor();
+            rest(item, ctx.assets);
+        }
+    }
+    false
 }
 
 /// itBox_UnkMotion5_Coll -> it_8026E8C4: a stopped slide rests, off the

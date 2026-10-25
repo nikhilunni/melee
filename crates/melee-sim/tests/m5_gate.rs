@@ -996,7 +996,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 569] = [
+const MATRIX_WITNESSES: [(&str, usize); 588] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1957,6 +1957,45 @@ const MATRIX_WITNESSES: [(&str, usize); 569] = [
     // 494) and HeavyThrowF (520) whose barrel bounces off the floor.
     ("w25_heavy_lift_f_600_v01", 600),
     ("w25_heavy_lift_f_800_v02", 800),
+    // Wave 26 heavy carries (ftCo_Lift.c, ftCo_ItemThrow.c, itbox.c).
+    // Marth's barrel: HeavyThrowB (back stick and A).
+    ("w26_heavy_taru_throwb_v01", 700),
+    // HeavyThrowHi, the stick held before A.
+    ("w26_heavy_taru_throwhi_v01", 700),
+    // HeavyThrowLw; the barrel breaks open on the floor.
+    ("w26_heavy_taru_throwlw_v01", 700),
+    // HeavyThrowF4 (smash forward).
+    ("w26_heavy_taru_throwf4_v01", 700),
+    // HeavyThrowB4.
+    ("w26_heavy_taru_throwb4_v01", 700),
+    // HeavyThrowHi4.
+    ("w26_heavy_taru_throwhi4_v01", 700),
+    // HeavyThrowLw4.
+    ("w26_heavy_taru_throwlw4_v01", 700),
+    // A C-stick flick throws without A (HeavyThrowF4).
+    ("w26_heavy_taru_cstick_v01", 700),
+    // B with a neutral stick: HeavyThrowF.
+    ("w26_heavy_taru_bthrow_v01", 700),
+    // LiftTurn, LiftWalk1 then 2, HeavyThrowF4 at Fox.
+    ("w26_heavy_taru_turn_v01", 800),
+    // A throw from LiftWalk1 (its IASA).
+    ("w26_heavy_taru_walkthrow_v01", 700),
+    // Fox's dash attack: ftCo_800974C4 drops the barrel, which breaks.
+    ("w26_heavy_taru_hit_v01", 700),
+    // Fox's crate: HeavyThrowF; it breaks empty on the floor.
+    ("w26_heavy_box_throwf_v01", 600),
+    // HeavyThrowB; the crate breaks open.
+    ("w26_heavy_box_throwb_v01", 600),
+    // HeavyThrowHi4.
+    ("w26_heavy_box_throwhi4_v01", 600),
+    // HeavyThrowLw; the crate's blast hits Fox.
+    ("w26_heavy_box_throwlw_v01", 600),
+    // LiftWalk, LiftTurn, a B throw.
+    ("w26_heavy_box_walkturn_v01", 700),
+    // Marth's dash attack drops the crate, which lands and rests.
+    ("w26_heavy_box_hit_v01", 600),
+    // Walked off the edge: ftCo_80096E68 drops the crate, DamageFall.
+    ("w26_heavy_box_walkoff_v01", 960),
 ];
 
 #[test]
