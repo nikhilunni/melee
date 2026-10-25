@@ -1,9 +1,9 @@
 # Function-level parity inventory
 
 How far the port is from all of retail Melee, measured per retail function.
-Measured 2026-10-25 after wave 22 was integrated
-(production source `f1288878`). Evidence is in
-`target/parity/wave22-integrated/`. The objective here is breadth: every
+Measured 2026-10-25 after wave 23 was integrated
+(production source `914421b4`). Evidence is in
+`target/parity/wave23-integrated/`. The objective here is breadth: every
 function retail runs, not only what the gate exercises. The current full
 release checkpoint passes; runtime gates and performance budget results
 are tracked separately in `TRACKER.md`.
@@ -89,12 +89,12 @@ count even while more retail behavior is ported.
 
 ## Accuracy
 
-**Citations.** 24,316 of 25,175 function-citation candidates resolve to
+**Citations.** 24,320 of 25,181 function-citation candidates resolve to
 retail functions (96.6%); 547 name decomp inline helpers without their own
-retail symbol, and 312 names remain unresolved. Stale names include
+retail symbol, and 314 names remain unresolved. Stale names include
 `Fighter_ProcessHit`, `Fighter_UnkProcessDeath` and `Fighter_UnkInitReset`;
 other unresolved tokens are state names or fields rather than functions.
-Not counted as function citations: 482 data references and 2,594 other
+Not counted as function citations: 483 data references and 2,594 other
 decomp identifiers. Counts come from the current generated summary, not
 the earlier calibration sample below.
 
@@ -133,12 +133,12 @@ The historical in-game measurement group (14,399 functions; 2,432 KiB) is
 **45.2% / 57.2%**. The remaining 5,428 functions are still in scope; their
 reporting groups appear below. These figures count citations and code bytes,
 not directly witnessed branches or a percentage of gameplay completeness.
-Since wave 21, ported plus partial grows by twelve functions. Net thirteen
-additional explicit guards expose unsupported contexts. Thirteen complete
-Sword forward/up-air entries and three complete Klaptrap birth windows now
-match. A paired-hitbox invariant is source/data-proven for Donkey Kong and
-Kirby without new behavior admission. Acceptance and limits are in
-`docs/PORT_NOTES/WAVE22_BREADTH.md`.
+Function counts and fail-closed site totals are unchanged from wave 22.
+Five complete common Sword Down Air entry captures and the complete 700-tick
+teardown-order correction now match, with six sweep fixes and no regressions.
+These are additional witnessed cases in already counted functions, not a
+function-inventory percentage increase. Acceptance and limits are in
+`docs/PORT_NOTES/WAVE23_BREADTH.md`.
 
 | area | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -198,7 +198,7 @@ the older copy-ability percentages as the current state.
    blasts and narrow primary-article owner transfer to an unowned REST
    Barrel. Twenty-three ground Sword recordings admit only common held
    AttackLw3 (57), AttackHi4 (63) and witnessed throws; they end at entry.
-   Common held Sword F/B/Hi aerials additionally admit only recorded entry.
+   Common held Sword F/B/Hi/Lw aerials additionally admit only recorded entry.
    Party Ball now has neutral left-facing FALL/REST coverage; its other
    states, other random kinds, shooting items, heavy carry/throws,
    stage/enemy items and many fighter use rows remain.
@@ -217,16 +217,17 @@ the older copy-ability percentages as the current state.
    profiles and 95 registered witnesses. Remaining CPU stage, command,
    item and recovery paths stay explicit guards; CPU replay setup lacks
    a recorded level. The CPU crate still has 39 fail-closed sites.
-6. **Shared engine sequencing:** the container Resume phase correction is
+6. **Shared engine sequencing:** the container Resume correction is
    integrated, with 37 strict random-item witnesses including combined
-   Sword/container cases. Party Ball FALL/REST and Kongo saved AObj/controller-clock
-   restoration with complete held/launch witnesses are integrated. Log-standing,
-   revival-floor entry, held Sword F/B/Hi entry and bounded crate-monster births
-   are integrated. Klaptrap admits actual coupled birth-tick path/item work,
-   including its stage-bank particle and narrow DFS1 matrix proof. Next is
-   common Sword Down Air entry with a static capability preserving Link's
-   dynamic callback boundary. New call sites need direct retail witnesses;
-   terminal monster/heavy/aerial captures do not prove later continuations.
+   Sword/container cases. Party Ball FALL/REST and Kongo saved controller
+   restoration have complete held/launch witnesses. Log-standing,
+   revival-floor entry, held Sword F/B/Hi/Lw terminal entry and bounded
+   crate-monster births are integrated. Klaptrap admits coupled birth-tick
+   path/item work, its stage-bank particle and narrow DFS1 matrix proof.
+   Shared teardown-before-sealed-effect ordering is witnessed by the
+   complete 700-tick Yoshi's Story capture. Link/YoungLink normal entry and
+   direct bounce restart refusals are preserved. New call sites need
+   direct retail witnesses; terminal captures do not prove later callbacks.
    No new recordings are authorized in this task.
 
 The current `summary.md` and `inventory.tsv` list not-started source files
@@ -236,7 +237,7 @@ packet map below is a discovery aid only.
 ## Current fail-closed backlog
 
 **299 current sites** are enumerated in
-`target/parity/wave22-integrated/fail_closed.tsv` (280 unimplemented,
+`target/parity/wave23-integrated/fail_closed.tsv` (280 unimplemented,
 19 bail). A site may guard an entire family of motion rows or setup states;
 site count is not branch count. Do not infer current row totals or agent
 scope from the older packets below. Check current source and complete

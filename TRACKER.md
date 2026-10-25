@@ -4,89 +4,93 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 22 integrated)
+## Current state (2026-10-25, wave 23 integrated)
 
-- **Held Sword F66/Hi68 entry and coupled Klaptrap birth are integrated at
-  checkpoint source `f1288878`:** thirteen original whole Sword captures
-  (12,633 ticks) and three Klaptrap captures (4,998 ticks) match through
-  actual entry/birth and remaining same-tick phases. Existing back-air and
-  midair catches stay exact. Klaptrap includes its real path/tangent/Euler
-  work, live parent, pose/script/hitbox and stage-bank particle; next actual
-  Ground Animation/item Animation and unsupported contexts stay guarded.
-  A source/data-proven Giant Punch hitbox invariant adds no gameplay
-  behavior. Details: `docs/PORT_NOTES/WAVE22_BREADTH.md`.
-- **Fresh combined sweep:** 3,490 scenarios, **3,348 particle-exact**, 115
-  not comparable, 26 existing local failures and one existing particle
-  fault. **Zero regressions, sixteen fixes** against `6d0c850e`; **281 fixes**
-  against startup `0a99db31`. Incomplete recordings and local failures are
-  not accepted divergences. Source, executable and scenario provenance are
-  under `target/wave22/main/`; canonical fresh baseline is
-  `target/sweeps/f1288878be775815aa6b31c39d1b2c8586a703b6.*`.
+- **Common held Sword Down Air entry and ordered effect teardown are
+  integrated at checkpoint source `914421b4`:** five original whole Sword
+  captures (5,769 ticks) match through actual common row 69 entry. A static
+  character-table capability preserves Link/YoungLink's normal entry and
+  direct bounce-restart refusals. Later common callbacks stay guarded;
+  immutable entry history remains separate from a midair catch. The shared
+  effect drain now runs prior teardown before motion-sealed effects, fixing
+  the complete 700-tick Yoshi's Story capture. Details and limits:
+  `docs/PORT_NOTES/WAVE23_BREADTH.md`.
+- **Fresh combined sweep:** 3,490 scenarios, **3,354 particle-exact**, 115
+  not comparable, 21 existing local failures and **zero particle faults**.
+  **Zero regressions, six fixes** against `f1288878`; **287 fixes** against
+  startup `0a99db31`. Missing/incomplete recordings, startup limitations and
+  existing depth stops do not authorize divergent behavior. Fresh source,
+  executable and scenario provenance is under `target/wave23/main/`;
+  canonical baseline is
+  `target/sweeps/914421b4169a774bf4dda72e72f1812c98d0344d.*`.
 - **Fresh replay corpora remain unchanged:** `public-v3.7` completes
   **108/108** (964,782 matched frames); `public-v3.7-b` completes **486/502**
   (5,102,652 frames), preserving every path/category/matched/total-frame
   tuple. CPU replay setup and stock sharing remain refused capabilities.
-- **Parity inventory** (`target/parity/wave22-integrated/`,
-  `docs/PARITY.md`): all retail **29.4% ported/partial, 38.1% with body/row**;
-  historical in-game subtotal **45.2% / 57.2%**. Of 19,827 functions:
-  4,211 ported, 225 partial, 1,372 body, 1,381 row, 231 referenced and
-  12,407 not started. **299 fail-closed sites**: 280 unimplemented, 19 bail.
-  Ported plus partial grows by twelve functions; net thirteen additional
-  guards expose unsupported contexts. Citation counts are not witnessed
-  branch coverage; every reporting group remains in scope.
-- **Combined release checkpoint passes:** 2,006 workspace tests, zero
-  failures, one existing ignore; m4 345 and m5 312. Workspace all-target
+- **Parity inventory** (`target/parity/wave23-integrated/`,
+  `docs/PARITY.md`) is unchanged: all retail **29.4% ported/partial, 38.1%
+  with body/row**; historical in-game subtotal **45.2% / 57.2%**. Of 19,827
+  functions: 4,211 ported, 225 partial, 1,372 body, 1,381 row, 231 referenced
+  and 12,407 not started. **299 fail-closed sites**: 280 unimplemented,
+  19 bail. This wave verifies guarded cases and fixes ordering in already
+  counted functions. Counts are not witnessed branch coverage; every
+  reporting group remains in scope.
+- **Combined release checkpoint passes:** 2,016 workspace tests, zero
+  failures, one existing ignore; m4 345 and m5 314. Workspace all-target
   clippy is clean; harness 407 and schema zero layout violations. WASM pure
   suites, **five expected spline traps**, 6,003 identical native/WASM hash
-  lines and the release web check pass. All nine worktree data-path failures
-  pass in MAIN without optout. Actual API step/observe/capture is allocation-
-  free with independent before-entry clones; clone creation is outside
-  measured windows. Klaptrap's matrix proof is only each recorded birth
-  DFS1 SRT and twelve world-matrix words, not whole bones/cache/pixels.
+  lines and the release web check pass. All nine library and two character
+  worktree data-path failures pass in MAIN without optout. Actual API
+  step/observe/capture is allocation-free with independent before-event
+  clones; clone creation is outside measured windows. Active draw ranges
+  agree; unused presentation backing capacity is not active geometry.
   Release only; no debug run.
-- **Quiet performance retains existing budget failures:** at `f1288878`,
-  time passes (18.417 ms per 600 ticks; 55.485 ms load). Stripped size is
-  7,675,632 bytes and text size 6,897,664 bytes, above unchanged ceilings;
+- **Quiet performance retains existing budget failures:** at `914421b4`,
+  time passes (18.401 ms per 600 ticks; 55.676 ms load). Stripped size is
+  7,675,616 bytes and text size 6,897,664 bytes, above unchanged ceilings;
   Kirby's one duplicate label still exceeds baseline zero. Shared-code
   duplication passes: 20 melee-ft labels, 94 across crates. Stripped size
-  grows by 1,248 bytes versus wave 21; text is unchanged. Full report is
+  decreases by 16 bytes versus wave 22; text is unchanged. Full report is
   appended to `docs/PERF.md`; no budget was increased.
 
 ## Next (breadth before individual replay fixes)
 
 1. [x] **Shared ordinary-contact handling:** both complete 360/699-tick
    captures, genuine phantom controls, raw state, API and full checkpoint
-   pass. The item analogue now refuses unsupported mixed early returns.
+   pass. The item analogue refuses unsupported mixed early returns.
 2. [x] **HeavyGet terminal entry:** five original complete captures, raw
    scratch/flags/ownership, genuine RNG and strict whole particles pass.
    Next Animation/IASA, attachment, carry and throws remain guarded.
 3. [x] **Item mixed-contact refusal:** source-proven missing-clear
-   early-return paths now refuse until witnessed. Four complete ordinary
-   item controls remain exact. The bounded 45-scene search found no eligible
-   whole mixed-contact witness; this change admits no item behavior.
+   early-return paths refuse until witnessed. Four complete ordinary item
+   controls stay exact; the bounded 45-scene search found no eligible whole
+   mixed-contact witness. No new item behavior is admitted.
 4. [x] **Kongo log-standing:** complete 2,829-tick warm/cold witness;
    Sink/Remove and second-live-log paths remain guarded.
 5. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
    actual floor transition on its last tick. No later floor-exit proof.
-6. [!] **Ness current yo-yo binding:** raw data proves overlapping old/new
-   instances, but the only overlap capture has 4,775 expected/raw/ledger
-   ticks and only 3,340 particle/meta ticks. Whole acceptance requires an
-   add-only new recording; approval remains pending. Do not truncate it.
-   Evidence: `target/wave18/yoyo-witness-search/plan.md`.
-7. [~] **Next bounded port:** common held Sword Down Air entry, using five
-   original whole captures. A semantic static character-table capability
-   must preserve both Link/YoungLink's normal entry and direct bounce
-   restart refusals; private rows, midair catches and immutable entry
-   ownership remain distinct. F/B/Hi entries and bounded Klaptrap/monster
-   births are integrated; later callbacks stay guarded. Continue heavy
-   carry/throws, item-use rows and random kinds, **19 remaining Versus
-   stages**, copied Sheik Needle Storm, wider CPU stage awareness, modes,
-   retail menus/results/single-player and pause. CPU audit found no eligible
-   additional branch in existing complete configured-CPU recordings.
-   Nothing is out of scope. **No new recordings are authorized in the
-   current task**; the concrete scratch recording pack awaits permission.
-   Second-log data ends at creation without coexistence/lifecycle proof.
-8. [ ] Replay depth after breadth: five existing stops remain in the second
+6. [!] **Ness current yo-yo binding:** overlapping instances are observed,
+   but the original 4,775-tick capture has only 3,340 particle/meta ticks.
+   A concrete single add-only proposal is ready at
+   `target/wave23/ness-recording-proposal/proposal.md`: same full setup and
+   inputs, fresh `w24_ness_yoyo_overlap_v01` prefix, existing savestate
+   read-only and longer per-pass timeout. **Explicit recording permission
+   remains required**. Preserve the old recording; never truncate it.
+7. [x] **Common held Sword F/B/Hi/Lw terminal entry and sealed-effect
+   ordering:** complete original witnesses, callback/identity controls,
+   allocation checks and root checkpoint pass. Link/YoungLink direct
+   restart remains refused. Peach's private float policy is pre-existing
+   and outside the new common-row proof. Later held callbacks stay guarded.
+8. [!] **Further breadth needs fresh evidence:** the bounded cached-data
+   audit established no next eligible unowned capture or new invariant
+   (`target/wave23/next-breadth/plan.md`), not an exhaustive impossibility.
+   Continue heavy carry/throws, item-use rows and random kinds, **19
+   remaining Versus stages**, copied Sheik Needle Storm, wider CPU stage
+   awareness, modes, retail menus/results/single-player and pause. Nothing
+   is out of scope. Second-log data ends at creation without coexistence
+   proof. **No new recordings are authorized in the current task**; both
+   the single Ness proposal and broader scratch pack await permission.
+9. [ ] Replay depth after breadth: five existing stops remain in the second
    corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
    unconsumed controller polls; two one-ulp Nana positions). Other
    unfinished games are refused capabilities. Preserve replay/retail
@@ -112,7 +116,7 @@ runs use documented default latency (`docs/APP.md`).
 Sword swings are ported. Random spawning and Capsule/Box/Barrel, including
 empty blasts, are witnessed for two-player FD/Battlefield setups. Ground
 Sword admissions add only common AttackLw3 (57), AttackHi4 (63) and their
-witnessed throw routing. Common F/B/Hi aerials additionally admit only
+witnessed throw routing. Common F/B/Hi/Lw aerials additionally admit only
 recorded held entry; neutral/Down/private aerials, Hi3 and Lw4 stay guarded.
 Barrel ownership adds only a primary article owner to an unowned REST
 barrel; other ownership contexts remain guarded. Party Ball now has bounded neutral left-facing FALL/REST coverage;
