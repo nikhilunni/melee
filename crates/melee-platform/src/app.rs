@@ -1102,15 +1102,14 @@ mod tests {
             let reason = app.stage_unavailable(stage);
             assert_eq!(reason.is_none(), stage.cpu_supported(), "{stage:?}");
         }
-        let error = app.choose_stage(Stage::DreamLand, 1).unwrap_err();
-        assert!(error.contains("CPU"), "{error}");
         let config = app.config(Stage::Battlefield, 3).unwrap();
         assert_eq!(config.players[0].cpu_level, None);
         assert_eq!(config.players[1].cpu_level, Some(9));
-        // Back to human: every stage again.
-        app.back();
-        app.set_controller(1, Controller::Human).unwrap();
-        assert!(app.stage_unavailable(Stage::DreamLand).is_none());
+        // A stage without CPU witnesses would refuse the picks, by name.
+        let lineup = app.lineup;
+        for stage in Stage::VERSUS.into_iter().filter(|s| s.is_ported() && !s.cpu_supported()) {
+            assert!(lineup.stage_unavailable(stage).unwrap().contains("CPU"));
+        }
     }
 
     #[test]

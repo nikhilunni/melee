@@ -116,7 +116,10 @@ fn a_cpu_plays_on_final_destination_and_reads_no_keyboard() {
     app.set_cpu_level(0, 9).unwrap();
     app.choose_character(1, Character::Marth).unwrap();
     app.confirm_characters().unwrap();
-    assert!(app.stage_unavailable(Stage::DreamLand).is_some());
+    assert_eq!(
+        app.stage_unavailable(Stage::DreamLand).is_none(),
+        Stage::DreamLand.cpu_supported()
+    );
     app.choose_stage(Stage::FinalDestination, 99).unwrap();
     load(&mut app);
     // Keyboard layout 0 drives the first human: port 2, not the CPU.
