@@ -812,3 +812,14 @@ dialog::backdrop { background: rgba(5, 6, 15, 0.6); -webkit-backdrop-filter: blu
 .rules-note { font: 500 0.8125rem var(--ui); color: var(--text-dim); }
 .rules-buttons { display: flex; justify-content: flex-end; margin-top: 1rem; }
 .pads-note { font: 500 0.75rem var(--ui); color: var(--text-dim); }
+
+/* Four panels across: the portrait fills the panel behind its name, so a
+   narrow panel keeps a readable name row. */
+.player-panel, .player-panel:is([data-player="1"], [data-player="3"]) { grid-template-columns: minmax(0, 1fr); overflow: visible; }
+.player-panel .panel-portrait, .player-panel:is([data-player="1"], [data-player="3"]) .panel-portrait {
+  position: absolute; bottom: 0; right: 0.75rem; left: auto; height: 100%; max-height: none; margin-top: 0; z-index: -1;
+}
+.player-panel:is([data-player="1"], [data-player="3"]) .panel-portrait { right: auto; left: 0.75rem; }
+.player-panel .panel-info, .player-panel:is([data-player="1"], [data-player="3"]) .panel-info { grid-column: 1; z-index: 1; }
+.panel-name { font-size: clamp(1.1rem, 1.9vw, 2.1rem); text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 22px var(--glow); }
+.panel-sub { text-shadow: 0 1px 3px #000; }
