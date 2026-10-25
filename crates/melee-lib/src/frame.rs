@@ -5227,3 +5227,6 @@ mod barrel_owner_tests;
 
 #[cfg(test)]
 mod kongo_barrel_tests;
+
+#[cfg(test)]
+mod kongo_log_tests;

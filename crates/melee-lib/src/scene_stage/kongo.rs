@@ -442,7 +442,9 @@ fn step_log(
         .as_mut()
         .expect("a live log");
     if stood {
-        unimplemented!("fn_801D7E60 (grkongo.c:1282): a fighter standing on a log needs a retail witness");
+        // Retail 0x801D7E68..0x801D7E70: C6 = (s16)(C8 + 1).
+        // Repeated callbacks before this step all assign the same value.
+        log.stood_on();
     }
     let step = log.step(&parameters, ended, || {
         melee_gr::kongo::objects::crowded(position, positions[..count].iter().copied())

@@ -219,6 +219,50 @@ fn moving_kongo_barrel_catch_hold_launch_and_capture_allocate_nothing() {
 }
 
 #[test]
+fn kongo_log_contact_and_capture_allocate_nothing() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    let scenario = melee_sim::scenario::Scenario::load(
+        &root.join("harness/scenarios/corpus_v3_kj_fox_marth4_e8be4d273_p2.toml"),
+    )
+    .unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    let mut game = diagnostics::import_match(&scenario).unwrap();
+    let mut presentation = presentation::Presentation::new(&game).unwrap();
+    let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+    let mut contact_ticks = 0;
+    for frame in 0..scenario.frames {
+        let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+        assert_eq!(measure(&mut game, &inputs), 0, "log tick {frame}");
+        COUNT.with(|v| v.set(0));
+        ENABLED.with(|v| v.set(true));
+        let result = presentation.capture(&game);
+        ENABLED.with(|v| v.set(false));
+        result.unwrap();
+        assert_eq!(COUNT.with(Cell::get), 0, "log capture {frame}");
+        let fox = game.observe().unwrap().fighter(Port::P1).unwrap();
+        if (2638..=2669).contains(&frame) {
+            assert!(fox.grounded(), "recorded contact {frame}");
+            contact_ticks += 1;
+        }
+        if frame == 2638 {
+            assert_eq!(fox.action(), ActionId(257));
+            let position = fox.position();
+            assert_eq!(position.x.to_bits(), 109.094_55_f32.to_bits());
+            assert_eq!(position.y.to_bits(), (-14.925_915_f32).to_bits());
+        }
+        if frame == 2670 {
+            assert!(!fox.grounded(), "recorded departure");
+        }
+    }
+    assert_eq!(contact_ticks, 32, "exercise the actual log contact");
+}
+
+#[test]
 fn imported_item_rules_survive_clone_and_reset_when_the_scenario_omits_them() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut scenario = melee_sim::scenario::Scenario::load(

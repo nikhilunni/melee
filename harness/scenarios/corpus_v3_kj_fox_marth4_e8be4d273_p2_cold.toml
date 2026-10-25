@@ -1,0 +1,24 @@
+# Parameters-only twin; shares the warm scenario's existing retail capture.
+# Same match-start seed, Fox/Marth ports and costumes; replay recorded pads.
+name = "corpus_v3_kj_fox_marth4_e8be4d273_p2_cold"
+expected = "corpus_v3_kj_fox_marth4_e8be4d273_p2"
+frames = 2829
+seed = 2146705218
+stage = "KongoJungle"
+all_characters_unlocked = true
+render_every_tick = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "scripted"
