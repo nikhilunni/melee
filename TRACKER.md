@@ -4,42 +4,42 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, waves 17–18 integrated)
+## Current state (2026-10-25, wave 19 integrated)
 
-- **Five capabilities are integrated at production `2c10dd58`:** Kongo
-  log-standing, script color installation timing, revival-platform floor
-  entry, retained running-item program identity, and pinned mouth-victim
-  bottom death with its required cache and immediate-effect ordering fixes.
-  Evidence and admission limits: `docs/PORT_NOTES/WAVE17_18_BREADTH.md`
-  and the individual feature notes.
-- **Fresh combined sweep:** 3,490 scenarios, **3,314 particle-exact**, 115
-  not comparable, 60 existing local failures and one existing particle
-  fault. **Zero regressions, five fixes** against `77c3ef37`; **247 fixes**
+- **Shared contact ordering is integrated at production `72aa5d9a`:**
+  an ordinary fighter hit clears pending phantom damage before invincibility
+  or shell absorption can return. Two complete retail captures now match;
+  phantom-only behavior remains exact. `docs/PORT_NOTES/STONE_CONTACT_ORDER.md`
+  records the retail order and proof. The five preceding stage/entry/item
+  capabilities remain integrated (`docs/PORT_NOTES/WAVE17_18_BREADTH.md`).
+- **Fresh combined sweep:** 3,490 scenarios, **3,316 particle-exact**, 115
+  not comparable, 58 existing local failures and one existing particle
+  fault. **Zero regressions, two fixes** against `2c10dd58`; **249 fixes**
   against startup `0a99db31`. Incomplete recordings and local failures are
   not accepted divergences. Source, executable and scenario provenance are
-  under `target/wave18/main/final/`; canonical baseline is
-  `target/sweeps/2c10dd58b7e090c91045df8ae95146128a0b2a21.*`.
+  under `target/wave19/main/`; canonical baseline is
+  `target/sweeps/72aa5d9a43d9c64d16e1f66b7a7e1e45f65cc75f.*`.
 - **Fresh replay corpora remain unchanged:** `public-v3.7` completes
   **108/108** (964,782 matched frames); `public-v3.7-b` completes **486/502**
   (5,102,652 frames), retaining every path's category and matched count.
   CPU replay setup and stock sharing remain refused capabilities.
-- **Parity inventory** (`target/parity/wave17-18-integrated/`,
+- **Parity inventory** (`target/parity/wave19-integrated/`,
   `docs/PARITY.md`): all retail **29.3% ported/partial, 38.0% with body/row**;
   historical in-game subtotal **45.0% / 57.0%**. Of 19,827 functions:
   4,209 ported, 201 partial, 1,363 body, 1,381 row, 229 referenced and
   12,444 not started. **268 fail-closed sites**: 249 unimplemented, 19 bail.
   Citations and retail bytes are a proxy for progress, not witnessed branch
   coverage; every reporting group remains in scope.
-- **Combined release checkpoint passes:** 1,971 workspace tests, zero
-  failures, one existing ignore; m4 345 and m5 304. Workspace all-target
+- **Combined release checkpoint passes:** 1,974 workspace tests, zero
+  failures, one existing ignore; m4 345 and m5 305. Workspace all-target
   clippy is clean; harness 407 and schema zero layout violations. WASM pure
   suites, four expected spline traps, 6,003 identical native/WASM hash lines
   and the release web check pass. Actual API step/observe/capture remains
-  allocation-free; live pinned and suspended-item clones continue
+  allocation-free; live Stone, pinned and suspended-item clones continue
   independently. Clone creation is not included in those allocation counts.
   Release only; no debug run.
-- **Quiet performance retains existing budget failures:** at `2c10dd58`,
-  time passes (18.373 ms per 600 ticks; 56.350 ms load). Stripped size is
+- **Quiet performance retains existing budget failures:** at `72aa5d9a`,
+  time passes (18.351 ms per 600 ticks; 55.080 ms load). Stripped size is
   7,640,128 bytes and text size 6,881,280 bytes, above unchanged ceilings;
   Kirby's one duplicate label still exceeds baseline zero. Shared-code
   duplication passes: 20 melee-ft labels, 94 across crates. The complete
@@ -47,31 +47,38 @@ and `docs/PORT_NOTES/`.
 
 ## Next (breadth before individual replay fixes)
 
-1. [~] **Shared ordinary-contact handling:** clear pending phantom damage
-   before invincibility/shell early returns, as retail does. Two complete
-   existing captures (360/699 ticks) witness the same ordering defect.
-   Implementation/review is isolated; it is not part of this checkpoint.
-   Plans: `target/wave18/stone-phantom-search/plan.md` and
-   `target/wave18/kirby-ys-collision-search/plan.md`.
-2. [x] **Kongo log-standing:** complete 2,829-tick warm/cold witness;
+1. [x] **Shared ordinary-contact handling:** both complete 360/699-tick
+   captures, genuine phantom controls, raw state, API and full checkpoint
+   pass. The item analogue remains separately unverified.
+2. [~] **HeavyGet terminal entry:** five original complete captures (1,292
+   ticks total) support entry plus remaining same-tick shared phases, with
+   next Animation/IASA, attachment, carry and throws guarded. Isolated work
+   includes required throw-scratch/callback-ownership and scale-boundary
+   corrections; it is not integrated. Plan:
+   `target/wave19/heavy-entry-search/plan.md`.
+3. [~] **Item mixed-contact refusal:** separately make the source-proven
+   missing phantom-clear early-return paths fail explicitly until witnessed;
+   this admits no item behavior. The bounded 45-scene search found no eligible
+   whole mixed-contact witness. `target/wave20/item-phantom-search/plan.md`.
+4. [x] **Kongo log-standing:** complete 2,829-tick warm/cold witness;
    Sink/Remove and second-live-log paths remain guarded.
-3. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
+5. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
    actual floor transition on its last tick. No later floor-exit proof.
-4. [!] **Ness current yo-yo binding:** raw data proves overlapping old/new
+6. [!] **Ness current yo-yo binding:** raw data proves overlapping old/new
    instances, but the only overlap capture has 4,775 expected/raw/ledger
    ticks and only 3,340 particle/meta ticks. Whole acceptance requires an
    add-only new recording; approval remains pending. Do not truncate it.
    Evidence: `target/wave18/yoyo-witness-search/plan.md`.
-5. [ ] Continue heavy pickup/carry/throws, other item-use rows and random
+7. [ ] Continue heavy pickup/carry/throws, other item-use rows and random
    kinds, **19 remaining Versus stages**, copied Sheik Needle Storm, wider
    CPU stage awareness, modes, retail menus/results/single-player and pause.
    Monster births, heavy entries and held aerial entries do not prove
    later callbacks. CPU audit found no eligible additional branch in
    existing complete configured-CPU recordings. Nothing is out of scope.
    **No new recordings are authorized in the current task**; the concrete
-   scratch recording pack awaits permission. Second-log lifetime evidence
-   is being checked separately; creation alone is insufficient.
-6. [ ] Replay depth after breadth: five existing stops remain in the second
+   scratch recording pack awaits permission. The second-log audit
+   found only terminal creation, with no later coexistence/lifecycle ticks.
+8. [ ] Replay depth after breadth: five existing stops remain in the second
    corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
    unconsumed controller polls; two one-ulp Nana positions). Other
    unfinished games are refused capabilities. Preserve replay/retail

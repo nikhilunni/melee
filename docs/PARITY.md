@@ -1,9 +1,9 @@
 # Function-level parity inventory
 
 How far the port is from all of retail Melee, measured per retail function.
-Measured 2026-10-25 after waves 17–18 were integrated
-(production source `2c10dd58`). Evidence is in
-`target/parity/wave17-18-integrated/`. The objective here is breadth: every
+Measured 2026-10-25 after wave 19 was integrated
+(production source `72aa5d9a`). Evidence is in
+`target/parity/wave19-integrated/`. The objective here is breadth: every
 function retail runs, not only what the gate exercises. The current full
 release checkpoint passes; runtime gates and performance budget results
 are tracked separately in `TRACKER.md`.
@@ -89,7 +89,7 @@ count even while more retail behavior is ported.
 
 ## Accuracy
 
-**Citations.** 24,161 of 25,015 function-citation candidates resolve to
+**Citations.** 24,165 of 25,019 function-citation candidates resolve to
 retail functions (96.6%); 546 name decomp inline helpers without their own
 retail symbol, and 308 names remain unresolved. Stale names include
 `Fighter_ProcessHit`, `Fighter_UnkProcessDeath` and `Fighter_UnkInitReset`;
@@ -230,7 +230,7 @@ packet map below is a discovery aid only.
 ## Current fail-closed backlog
 
 **268 current sites** are enumerated in
-`target/parity/wave17-18-integrated/fail_closed.tsv` (249 unimplemented,
+`target/parity/wave19-integrated/fail_closed.tsv` (249 unimplemented,
 19 bail). A site may guard an entire family of motion rows or setup states;
 site count is not branch count. Do not infer current row totals or agent
 scope from the older packets below. Check current source and complete
