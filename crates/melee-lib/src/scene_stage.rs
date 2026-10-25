@@ -1,5 +1,6 @@
 //! Composition root for stage-specific resources and callbacks.
 pub(crate) mod battle;
+pub(crate) mod fourside;
 pub(crate) mod garden;
 pub(crate) mod izumi;
 pub(crate) mod kongo;
@@ -176,6 +177,14 @@ pub const HYRULE_TEMPLE: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Shrine,
     read: melee_gr::desc::read_shrine,
 };
+/// grFs_StageData: GrFs.dat; StageParam row 0x12 (StKind).
+pub const FOURSIDE: StageDescriptor = StageDescriptor {
+    name: "Fourside",
+    file: "GrFs.dat",
+    music_id: 0x12,
+    kind: melee_types::GrKind::Fourside,
+    read: melee_gr::desc::read_fourside,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -189,6 +198,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &JUNGLE_JAPES,
         &KONGO_JUNGLE,
         &HYRULE_TEMPLE,
+        &FOURSIDE,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -206,6 +216,7 @@ pub enum SceneStage {
     Garden(melee_gr::garden::Garden),
     Kongo(Box<melee_gr::kongo::Kongo>),
     Shrine(melee_gr::shrine::Shrine),
+    Fourside(Box<melee_gr::fourside::Fourside>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -216,7 +227,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -232,6 +243,7 @@ impl SceneStage {
             Self::Garden(s) => s.proc_table(),
             Self::Kongo(s) => s.proc_table(),
             Self::Shrine(s) => s.proc_table(),
+            Self::Fourside(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -265,6 +277,7 @@ impl SceneStage {
             Self::Garden(_) => unreachable!("Jungle Japes callbacks require animation state"),
             Self::Kongo(_) => unreachable!("Kongo Jungle callbacks require animation state"),
             Self::Shrine(_) => unreachable!("Hyrule Temple callbacks run in scene_stage::shrine"),
+            Self::Fourside(_) => unreachable!("Fourside callbacks run in scene_stage::fourside"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

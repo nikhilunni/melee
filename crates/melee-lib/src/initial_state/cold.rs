@@ -179,7 +179,11 @@ impl InitialState {
         // joints during creation.
         let archive_bindings = !matches!(
             stage,
-            SceneStage::Izumi(_) | SceneStage::OldYoshi(_) | SceneStage::OldKongo(_) | SceneStage::Kongo(_)
+            SceneStage::Izumi(_)
+                | SceneStage::OldYoshi(_)
+                | SceneStage::OldKongo(_)
+                | SceneStage::Kongo(_)
+                | SceneStage::Fourside(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -355,6 +359,9 @@ fn setup_draws(
         GrKind::Kongo => 4,
         // grShrine_80201C64 draws nothing (GrSh.dat has no particle keys).
         GrKind::Shrine => 0,
+        // grFourside_801F3154 and 801F3C40: the crane's and the
+        // helicopter's first waits.
+        GrKind::Fourside => 2,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -579,6 +586,11 @@ fn initialize_stage(
                 particles,
                 map,
             )?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Fourside => {
+            let (stage, animations) = crate::scene_stage::fourside::initialize(assets, rng, map)?;
             stage_animations = animations;
             stage
         }

@@ -19,6 +19,7 @@ mod scene_flow;
 pub(crate) mod scheduler_resume;
 mod setup_resume;
 pub(crate) mod stage;
+mod stage_fourside;
 mod stage_garden;
 mod stage_izumi;
 mod stage_oldkongo;
@@ -343,6 +344,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::Izumi {
             stage_izumi::restore_collision(&saved, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::Fourside {
+            stage_fourside::restore_collision(&saved, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::OldYoshi {
             stage_oldyoshi::restore_collision(&saved, &assets, &mut map)?;

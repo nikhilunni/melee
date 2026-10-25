@@ -1210,6 +1210,14 @@ fn start_ht_fox_marth4_600() {
     movement_gate_ticks("start_ht_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_ht_fox_marth4", 600, "ledger600");
 }
+/// Fourside's start boundary: the crane and the helicopter draw their
+/// first waits at creation (grFourside_801F3154, 801F3C40).
+#[test]
+fn start_fs_fox_marth4_600() {
+    movement_gate_ticks("start_fs_fox_marth4", 600);
+    movement_gate_ticks("start_fs_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_fs_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

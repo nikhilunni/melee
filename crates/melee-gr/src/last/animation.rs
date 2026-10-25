@@ -344,6 +344,30 @@ impl BackgroundAnimation {
             }
         }
     }
+    /// `grAnime_801C7B24(gobj, 0, 7, frame)` (0x801C7B24): every joint,
+    /// material and texture AObj of the model is requested at `frame`
+    /// (HSD_JObjReqAnimAllByFlags).
+    pub fn request_frame(&mut self, frame: f32) {
+        for &joint in &self.joints {
+            if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
+                aobj.req_anim(frame);
+            }
+            if let Some(objects) = self.tree.dobj_mut(joint) {
+                for object in objects {
+                    if let Some(material) = &mut object.mobj {
+                        if let Some(aobj) = &mut material.aobj {
+                            aobj.req_anim(frame);
+                        }
+                        for texture in &mut material.textures {
+                            if let Some(aobj) = &mut texture.animation {
+                                aobj.req_anim(frame);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
     /// `HSD_JObjAddRotationZ` on a descendant (Ground_801C3FA4 index).
     pub fn add_rotation_z(&mut self, bone: usize, delta: f32) {
         let joint = self.joints[bone];

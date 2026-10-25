@@ -242,6 +242,37 @@ pub fn read_pupupu_parameters(archive: &Archive) -> ReadResult<crate::pupupu::Pa
         blink_delay: [r.f32(p + 44)? as i32, r.f32(p + 48)? as i32],
     })
 }
+/// grFs_StageData / grDatFiles_801C6038: GrFs.dat. grFs_StageCallbacks[6]
+/// carries flags 0xC0000000, so map 6 selects the lights and fog.
+pub fn read_fourside(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Fourside, 6)
+}
+/// `grFourside_YakumonoParam` (grfourside.c:28-50) as the asm reads it.
+pub fn read_fourside_parameters(archive: &Archive) -> ReadResult<crate::fourside::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let w = |offset: u32| r.s32(p + offset);
+    let f = |offset: u32| r.f32(p + offset);
+    Ok(crate::fourside::Parameters {
+        heli_wait: w(0x0)?,
+        heli_wait_add: w(0x4)?,
+        crane_wait: w(0xC)?,
+        crane_wait_add: w(0x10)?,
+        crane_iron_wait: w(0x14)?,
+        crane_iron_wait_add: w(0x18)?,
+        crane_iron_up: [f(0x1C)?, f(0x20)?],
+        crane_iron_down: [f(0x24)?, f(0x28)?],
+        crane_iron_speed: f(0x2C)?,
+        crane_iron_stop_acceleration: f(0x30)?,
+        ufo_wait: w(0x34)?,
+        ufo_camera_offset: f(0x38)?,
+        ufo_stay_time: w(0x3C)?,
+        ufo_stay_time_add: w(0x40)?,
+        ufo_challenge: r.s16(p + 0x44)?,
+        ufo_standing_odds: r.s16(p + 0x46)?,
+        ufo_challenged_odds: r.s16(p + 0x48)?,
+    })
+}
 /// grSh_StageData / grDatFiles_801C6038: GrSh.dat. grSh_StageCallbacks[2]
 /// carries flags 0xC0000000, so map 2 selects the lights and fog.
 pub fn read_shrine(archive: &Archive) -> ReadResult<StageDesc> {

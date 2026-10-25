@@ -1738,6 +1738,8 @@ impl Runtime {
                 // creation order.
                 let stage_subject = match &mut state.stage {
                     SceneStage::Stadium(stage) => stage.screen.subject.as_mut(),
+                    // grFourside_801F3894: the arriving UFO.
+                    SceneStage::Fourside(stage) => stage.ufo.subject.as_mut(),
                     _ => None,
                 };
                 let items = state.items.iter_mut().rev().filter_map(|i| i.camera.as_mut());
@@ -2628,6 +2630,7 @@ impl Runtime {
                         || address == melee_gr::oldyoshi::procs::DYNAMICS_PROC
                         || address == melee_gr::oldkongo::procs::DYNAMICS_PROC
                         || address == melee_gr::shrine::procs::DYNAMICS_PROC
+                        || address == melee_gr::fourside::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                     {
@@ -2679,6 +2682,8 @@ impl Runtime {
                             &mut self.stage_objects,
                             &mut self.item_objects,
                         )?;
+                    } else if matches!(state.stage, SceneStage::Fourside(_)) {
+                        crate::scene_stage::fourside::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and

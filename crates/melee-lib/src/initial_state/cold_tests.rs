@@ -156,6 +156,12 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.barrel_position.y", &stage.barrel_position.y);
         }
         SceneStage::Shrine(_) => {}
+        SceneStage::Fourside(stage) => {
+            sink.field("stage.crane.timer", &stage.crane.timer);
+            sink.field("stage.crane.y", &stage.crane.y);
+            sink.field("stage.heli.timer", &stage.heli.timer);
+            sink.field("stage.ufo.timer", &stage.ufo.timer);
+        }
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
             sink.field("stage.shy_timer", &stage.shy_timer);
@@ -337,6 +343,11 @@ fn cold_run_reads_only_dat_assets() {
 #[test]
 fn start_kj_fox_marth4_cold_600() {
     verify("start_kj_fox_marth4");
+}
+
+#[test]
+fn start_fs_fox_marth4_cold_600() {
+    verify("start_fs_fox_marth4");
 }
 
 #[test]

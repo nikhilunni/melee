@@ -1570,3 +1570,12 @@ stage = "HyruleTemple"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2428156546
+
+[[boundary]]
+name = "start_fs_fox_marth4"
+cold = "start_fs_fox_marth4_cold"
+savestate = "harness/roms/start_fs_fox_marth4.sav"
+stage = "Fourside"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2338566608
