@@ -84,7 +84,8 @@ pub fn enter(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
     if let Some(root) = &mut f.animation.root_motion {
         root.primary_history.offset.y = 0.0;
     }
-    // x2223_b4 disables ft_80081A00's item landing, which is not modelled.
+    // x2223_b4: no stomping (ft_80081A00).
+    f.collision.stomp.disabled = true;
 }
 
 /// ftYs_SpecialLw_Anim (8012E7F8): the start becomes the descent at frame 20.

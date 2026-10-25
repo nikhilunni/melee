@@ -114,7 +114,10 @@ fn finish_kuriboh(item: &mut ItemCore, assets: &ItemAssets) {
     );
     item.hurt_intangible = false; // it_802756E0
     item.change_motion_with(0, -1, ANIM_UPDATE, assets);
-    item.jumped_on = Some(unavailable_jumped_on); // it_802D848C, after state change.
+    // it_802D848C, after the state change: it_80274CAC (stompable), then
+    // the callback, which fails closed if a fighter lands on it.
+    item.stompable = true;
+    item.jumped_on = Some(unavailable_jumped_on);
 }
 
 /// it_802E8BCC (802E8BCC), after the facing query: turned to its facing
@@ -152,7 +155,7 @@ fn finish_redead(item: &mut ItemCore, assets: &ItemAssets) {
 }
 
 /// it_802D8098 (802D8098, itoldkuri.c:429), installed by it_802D848C.
-fn unavailable_jumped_on(_: &mut ItemCore) -> bool {
+fn unavailable_jumped_on(_: &mut ItemCore, _: &melee_it::ItemEventContext<'_>) -> bool {
     unimplemented!("it_802D8098: jumped-on monster lifecycle is not witnessed")
 }
 /// it_2725_Logic9_Destroyed (8027C8B0, itzako.c:494) /

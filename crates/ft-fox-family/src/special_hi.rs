@@ -167,6 +167,8 @@ fn launch<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Result<()> {
         std::f32::consts::FRAC_PI_2
     };
     f.change_motion_state(S::SpecialAirHi.into(), assets)?;
+    // ftfoxspecialhi.c:519: x2223_b4, no stomping (ft_80081A00).
+    f.collision.stomp.disabled = true;
     let scratch = f.character.get_mut::<C>().special_hi();
     scratch.angle = angle;
     scratch.travel_frames = duration;
@@ -326,6 +328,8 @@ fn travel_ground_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>)
                 ..Default::default()
             },
         )?;
+        // ftfoxspecialhi.c:414: x2223_b4.
+        f.collision.stomp.disabled = true;
         f.character.get_mut::<C>().special_hi().pending_effect = Some(0x48C);
         f.arm_accessory4();
     } else if f.collision.data.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK != 0 {
@@ -405,6 +409,9 @@ fn travel_air_collision<C: FoxFamily>(f: &mut Fighter, p: CollisionPhase<'_>) ->
     c.physics.position = cd.cur_pos;
     c.skeleton
         .set_translate(c.animation.root, &c.physics.position);
+    // ft_CheckGroundAndLedge's ft_80081A00 (x2223_b4 is set here).
+    let landed = !melee_ft::collision::stomp::land_on_items(&mut c.physics, &mut c.collision)
+        && landed;
     let a = &f.character.get::<C>().attributes().fire_fox;
     // 800E7958/5C: fadds then fmuls, not FMA.
     let threshold = 0.017453292 * (90.0 + a.bound_angle);
@@ -472,6 +479,9 @@ fn end_air_collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
     c.physics.position = cd.cur_pos;
     c.skeleton
         .set_translate(c.animation.root, &c.physics.position);
+    // ft_CheckGroundAndLedge's ft_80081A00: a stomp does not land.
+    let landed = !melee_ft::collision::stomp::land_on_items(&mut c.physics, &mut c.collision)
+        && landed;
     let assets = p.assets.expect("Fire Fox ending landing");
     if landed {
         f.land();
@@ -544,6 +554,8 @@ fn launch_ground<C: FoxFamily>(f: &mut Fighter, assets: &FighterAssets) -> Resul
         -1.0
     };
     f.change_motion_state(S::SpecialHi.into(), assets)?;
+    // ftfoxspecialhi.c:456: x2223_b4.
+    f.collision.stomp.disabled = true;
     let a = &f.character.get::<C>().attributes().fire_fox;
     let (duration, speed) = (fctiwz(a.duration), a.speed);
     let s = f.character.get_mut::<C>().special_hi();

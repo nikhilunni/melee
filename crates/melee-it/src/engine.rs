@@ -7,6 +7,24 @@ use melee_cmd::{Command, ScriptState};
 use melee_coll::hitbox::HitCapsule;
 use melee_types::{GroundOrAir, ItemKind};
 
+/// xCB8 (ftcoll.c:1252-1268, itcoll.c:497-508): moving, the way the item
+/// moves; all but still (under ItCo +D4), away from the victim at
+/// `victim_x`.
+pub fn out_damage_direction(velocity_x: f32, position_x: f32, still_speed: f32, victim_x: f32) -> f32 {
+    let speed = if velocity_x < 0.0 { -velocity_x } else { velocity_x };
+    if speed < still_speed {
+        if position_x > victim_x {
+            -1.0
+        } else {
+            1.0
+        }
+    } else if velocity_x < 0.0 {
+        -1.0
+    } else {
+        1.0
+    }
+}
+
 /// Checked port storage budget. Retail Item_8026784C does NOT cap hold-kind 8;
 /// unlike the admission limits this is deliberately not called a retail bound.
 pub const ITEM_CAPACITY: usize = 128;
@@ -238,6 +256,9 @@ pub enum ItemScratch {
     KirbyHammer(KirbyHammerState),
     Container(ContainerState),
     Barrel(BarrelState),
+    Shell(ShellState),
+    RedShell(RedShellState),
+    Freeze(FreezeState),
     Monster(MonsterState),
     Yaku(YakuAnchor),
     /// One float of a projectile's xDD4 scratch: the Star Rod star's spin
@@ -332,6 +353,60 @@ pub struct BarrelState {
     /// xDE4: the roll's signed speed.
     pub roll_speed: f32,
     /// xDE8: the normal of the floor it rolls on.
+    pub floor_normal: Vec3,
+}
+/// itGShell_ItemVars / itRShell_ItemVars: a Green or Red Shell.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct ShellState {
+    /// xDD4: frames left while it slides empty-handed (it ends at zero).
+    pub lifetime: f32,
+    /// xDD8: frames before its hits reach its owner again (it_80275444).
+    pub owner_grace: f32,
+    /// xDDC: frames to the next roll spark (efAsync 0x405).
+    pub spark_timer: f32,
+    /// xDE0: frames its first hitbox stays unable to clank.
+    pub clank_timer: f32,
+    /// xDE4: frames before a bounced shell may be stomped again.
+    pub stomp_timer: f32,
+    /// xDE8: the bounces a hit may still send it on before it lies still.
+    pub bounces: i32,
+    /// xDEC b0: it has been bounced (by a hit or a stomp) before.
+    pub bounced_before: bool,
+    /// xDEC b1: the clank timer is running.
+    pub clank_pending: bool,
+    /// xDEC b2: when the clank timer ends its hurtboxes take hits again.
+    pub restore_hurtbox: bool,
+    /// xDEC b3: the stomp timer is running.
+    pub stomp_pending: bool,
+}
+/// itRShell_ItemVars: a Red Shell.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct RedShellState {
+    /// xDD4: frames left while it drives (it ends at zero).
+    pub lifetime: f32,
+    /// xDD8: frames before its hits reach its owner again.
+    pub owner_grace: f32,
+    /// xDDC: frames to the next spark.
+    pub spark_timer: f32,
+    /// xDE0: the homing's push toward its target, per frame.
+    pub acceleration: f32,
+    /// xDE4: frames to the next choice of target.
+    pub retarget_timer: f32,
+    /// xDE8: bounces left (a fall with none ends it on landing).
+    pub bounces: i32,
+    /// xDEC: hits it may still take.
+    pub hits_left: i32,
+    /// xDF0: out of hits, it breaks.
+    pub broken: bool,
+    /// xDF4 b0: it has rebounded before.
+    pub bounced_before: bool,
+}
+/// itFreeze_ItemVars: a Freezie's slide.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FreezeState {
+    /// x0: the slide's signed speed along the floor.
+    pub speed: f32,
+    /// x4: the normal of the floor it slides on.
     pub floor_normal: Vec3,
 }
 /// it_80286248's roll: one in `same_kind_odds` lets out one kind only,
@@ -995,9 +1070,36 @@ pub struct ItemCore {
     pub script_source_motion: Option<u16>,
     pub command_variables: [u32; 4],
     pub hitboxes: [Option<HitCapsule>; 4],
+    /// The capsules a full clear (it_802725D4, a state change) disabled:
+    /// retail only marks a slot disabled, so it_80272674 can enable the
+    /// same capsule again.
+    pub disabled_hitboxes: [Option<HitCapsule>; 4],
+    /// The disabled capsules' victim timers (retail keeps them inside the
+    /// capsule, where a disabled one does not count down).
+    pub disabled_history: [melee_types::fixed::FixedVec<RehitVictim, 12>; 4],
+    /// xCB8: the side this frame's hit went toward (ftcoll.c:1268,
+    /// itcoll.c:508): by the item's speed, or its place against the victim
+    /// when all but still.
+    pub out_damage_direction: f32,
+    /// it_804D6D28 +D4, for `aim_out_damage`.
+    pub direction_still_speed: f32,
     pub scratch: ItemScratch,
-    /// Item.jumped_on: constructor-owned callback; no stomp gameplay is admitted.
-    pub jumped_on: Option<fn(&mut ItemCore) -> bool>,
+    /// Item.jumped_on: what a fighter's stomp does (Item_80269B60, item
+    /// link 11), for kinds that set it.
+    pub jumped_on: Option<fn(&mut ItemCore, &ItemEventContext<'_>) -> bool>,
+    /// xDD0 b0 (it_80274CAC / it_80274C88): fighters landing on it stomp
+    /// it (ft_80081A00).
+    pub stompable: bool,
+    /// xCFC: the fighter that stomped it this frame, cleared after the
+    /// link 11 proc reads it.
+    pub stomped_by: Option<u8>,
+    /// The stomper is its player's second fighter.
+    pub stomped_by_secondary: bool,
+    /// xCD0: the side the stomp came from (-1 when the item is right of
+    /// the stomper's position, else +1).
+    pub stomp_direction: f32,
+    /// xB54: the box a stomp lands on (it_8027574C).
+    pub stomp_box: crate::stomp::StompBox,
     pub hit_flags: [desc::ItemHitFlags; 4],
     /// x378_itemColl, created by it_80275E98 at spawn.
     pub collision: Option<melee_types::mp::CollData>,
@@ -1330,6 +1432,8 @@ impl ItemCore {
         self.spawn_intangible_frames = None;
         // it_8026B3A8.
         self.grabbable = false;
+        // it_80274C88 (it_2725.c:1012): no longer stompable.
+        self.stompable = false;
         // The pickup (it_26B1.c:597) clears xDC8 x14.
         self.speed_damage = false;
         if (self.kind as u32) < ItemKind::LGunRay as u32 {
@@ -1460,7 +1564,7 @@ impl ItemCore {
             1.0
         };
         if flags & state_change::HIT_PRESERVE == 0 && self.hitboxes.iter().any(Option::is_some) {
-            self.hitboxes.fill(None);
+            self.park_hitboxes();
             for history in &mut self.reflection_history {
                 history.clear();
             }
@@ -1508,6 +1612,46 @@ impl ItemCore {
             if !self.keeps_intangible {
                 self.hurt_intangible = false;
             }
+        }
+    }
+    /// xCB8 for a hit on something at `victim_x` ([`out_damage_direction`]).
+    pub fn aim_out_damage(&mut self, victim_x: f32) {
+        self.out_damage_direction = out_damage_direction(
+            self.velocity.x,
+            self.position.x,
+            self.direction_still_speed,
+            victim_x,
+        );
+    }
+    /// Every live hitbox disabled, its capsule kept for it_80272674.
+    pub(crate) fn park_hitboxes(&mut self) {
+        for id in 0..self.hitboxes.len() {
+            self.park_hitbox(id);
+        }
+    }
+    fn park_hitbox(&mut self, id: usize) {
+        if let Some(hit) = self.hitboxes[id].take() {
+            self.disabled_hitboxes[id] = Some(hit);
+            self.disabled_history[id] = core::mem::take(&mut self.reflection_history[id]);
+        }
+    }
+    /// it_80272674 (80272674): hitbox `id`, disabled, is enabled again
+    /// (lbColl_80008434) and placed at once (prev = current, state 2).
+    pub fn restore_hitbox(&mut self, id: usize, assets: &ItemAssets) {
+        let mut hit = self.disabled_hitboxes[id]
+            .take()
+            .unwrap_or_else(|| unimplemented!("it_80272674: a slot no hitbox ever used"));
+        hit.phase = melee_coll::hitbox::CapsulePhase::Enabled;
+        self.hitboxes[id] = Some(hit);
+        self.reflection_history[id] = core::mem::take(&mut self.disabled_history[id]);
+        self.update_hitbox(id, assets);
+    }
+    /// it_8027570C / it_8027572C: hitbox `id`'s clank flag (HitCapsule x40
+    /// b0). A cleared slot keeps nothing: the next script hitbox there
+    /// writes its own flag.
+    pub fn set_hitbox_clank(&mut self, id: usize, clank: bool) {
+        if let Some(hit) = &mut self.hitboxes[id] {
+            hit.descriptor.clank = clank;
         }
     }
     /// it_8027137C / it_8027129C: refresh world capsules at item s-link 11.
@@ -1583,6 +1727,13 @@ impl ItemCore {
         if let Some(id) = effect {
             self.events.push(ItemEvent::DestroyEffect { id, root });
         }
+    }
+    /// Item_80268DD4 (80268DD4): the joint animation requested at `frame`
+    /// and stepped once (HSD_JObjReqAnimAll, HSD_JObjAnimAll); the script
+    /// is left as it is.
+    pub fn jump_animation_to(&mut self, frame: f32) {
+        self.animation_frame = frame;
+        self.pose_steps += 1;
     }
     /// it_80273670(item, 0, frame) (80273670): the model posed at article
     /// state 0's `frame`; its joint animation and script are removed, so no
@@ -1741,13 +1892,13 @@ impl ItemCore {
                     }
                 }
                 Command::ClearHitbox(id) => {
-                    self.hitboxes[*id] = None;
+                    self.park_hitbox(*id);
                     self.reflection_history[*id].clear();
                     // it_80272560 updates every surviving capsule immediately.
                     self.update_hitboxes(assets);
                 }
                 Command::ClearHitboxes => {
-                    self.hitboxes.fill(None);
+                    self.park_hitboxes();
                     for history in &mut self.reflection_history {
                         history.clear();
                     }
@@ -2047,8 +2198,17 @@ impl ItemPool {
             script_source_motion: None,
             command_variables: [0; 4],
             hitboxes: std::array::from_fn(|_| None),
+            disabled_hitboxes: std::array::from_fn(|_| None),
+            disabled_history: Default::default(),
+            out_damage_direction: 0.0,
+            direction_still_speed: self.common.direction_still_speed,
             scratch: ItemScratch::None,
             jumped_on: None,
+            stompable: false,
+            stomped_by: None,
+            stomped_by_secondary: false,
+            stomp_direction: 0.0,
+            stomp_box: Default::default(),
             hit_flags: [desc::ItemHitFlags::default(); 4],
             collision: None,
             collision_box: assets.collision_box,
@@ -2263,6 +2423,37 @@ impl ItemPool {
         item.pending_shield_hitlag = 0.0;
         item.pending_clank_damage = 0;
         item.hitlag_damage = 0;
+        item.out_damage_direction = 0.0;
+        // Item_80269CC4: xCFC and xCD0.
+        item.stomped_by = None;
+        item.stomped_by_secondary = false;
+        item.stomp_direction = 0.0;
+    }
+    /// Item_80269B60 (item link 11)'s head: an item a fighter stomped this
+    /// frame (xCFC) runs its jumped_on callback, which may end it.
+    pub fn run_stomp(
+        &mut self,
+        id: u32,
+        assets: &ItemAssets,
+        rng: &core::cell::Cell<gekko_math::HsdRng>,
+    ) {
+        let common = self.common.clone();
+        let Some(item) = self.get_mut(id) else {
+            return;
+        };
+        let (Some(_), Some(jumped_on)) = (item.stomped_by, item.jumped_on) else {
+            return;
+        };
+        let context = ItemEventContext {
+            rng: Some(rng),
+            ..ItemEventContext::new(assets, &common)
+        };
+        if jumped_on(item, &context) && !item.destroyed {
+            // destroy_type 2, Item_8026A8EC: the rest of the item's procs
+            // do not run.
+            item.destroyed = true;
+            item.queue_destroy_effect(assets.event_destroy_effect, None);
+        }
     }
     /// Item_802693E4 (802693E4), item link 0: count hitlag down and resume.
     pub fn advance_hitlag(&mut self, id: u32) {
@@ -2504,6 +2695,7 @@ impl ItemPool {
             // hand the display left it at.
             item.set_root_translation(item.position);
             item.held_display_root = None;
+            item.update_stomp_box();
         }
     }
     /// Item_8026A8EC (8026A8EC) outside the item procs: remove `id` now and
@@ -2682,6 +2874,7 @@ mod tests {
             rotation_axis: 0,
             explosion_lifetime: 0.0,
             common_lifetime: 0.0,
+            half_life_scale: 0.0,
             spin_rate: 0.0,
             fall_spin_degrees: 0.0,
             animation_ends: Vec::new(),
@@ -2738,6 +2931,7 @@ mod tests {
             camera_extents: [0.0; 4],
             push_speed: 0.0,
             release_floor_depth: 0.0,
+            direction_still_speed: 0.0,
             slide_rule: crate::desc::SlideRule::NEVER,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
@@ -2787,6 +2981,7 @@ mod tests {
             camera_extents: [0.0; 4],
             push_speed: 0.0,
             release_floor_depth: 0.0,
+            direction_still_speed: 0.0,
             slide_rule: crate::desc::SlideRule::NEVER,
         });
         let spawn = SpawnItem::held(

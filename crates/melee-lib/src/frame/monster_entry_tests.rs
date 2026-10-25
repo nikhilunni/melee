@@ -340,7 +340,7 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
         if let Some(jumped_on) = item.jumped_on {
             expect_guard(
                 || {
-                    jumped_on(&mut item);
+                    jumped_on(&mut item, &context);
                 },
                 "it_802D8098",
             );

@@ -514,15 +514,27 @@ impl Runtime {
                         for _ in 0..3 {
                             state.rng.randf();
                         }
-                        // block_4FC rows take the item's facing.
-                        state.effects.spawn_positional_facing::<RetailTrig>(
-                            id,
-                            root.or(held_root).unwrap_or(item.root_translation),
-                            item.facing,
-                            &state.assets.common_particle_bank,
-                            &mut state.particles,
-                            &mut state.rng,
-                        )?;
+                        let position = root.or(held_root).unwrap_or(item.root_translation);
+                        if id == ICE_SHATTER {
+                            // block_4FC: efSync_Spawn(id, gobj, &pos, &facing), 0x1F1 scaled.
+                            state.effects.spawn_ice_shatter::<RetailTrig>(
+                                position,
+                                item.facing,
+                                &state.assets.common_particle_bank,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )?;
+                        } else {
+                            // block_4FC rows take the item's facing.
+                            state.effects.spawn_positional_facing::<RetailTrig>(
+                                id,
+                                position,
+                                item.facing,
+                                &state.assets.common_particle_bank,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )?;
+                        }
                     }
                     melee_it::ItemEvent::OwnEffect { id } => {
                         let mut matrix = hsd_types::Mtx::default();
@@ -1466,7 +1478,15 @@ impl Runtime {
                 );
             }
             11 => {
+                let rng = std::cell::Cell::new(state.rng);
+                state
+                    .items
+                    .run_stomp(id, state.assets.items.get(kind), &rng);
+                state.rng = rng.get();
                 let item = state.items.get_mut(id).unwrap();
+                if item.destroyed {
+                    return Ok(());
+                }
                 item.update_hitboxes(state.assets.items.get(kind));
                 item.decay_reflection_history();
             }
@@ -1867,6 +1887,7 @@ impl Runtime {
                 }
                 if proc == FighterProc::Map {
                     grab_pairs::map_capture(state, player)?;
+                    offer_stomp_targets(state, player);
                 }
                 // ft_80082E3C reads the other fighters' ledges from the map
                 // proc and from a tether article's climb (accessory2).
@@ -2035,6 +2056,12 @@ impl Runtime {
                                 }
                             }
                             // ftColl_80077C60 records contact; Item_8026A294 runs the callback at link 14.
+                            // ftcoll.c:1250-1268: a new strongest hit
+                            // takes xCB8.
+                            if contact.damage > item.pending_damage_dealt as f32 {
+                                let victim_x = state.fighters[player].physics.position.x;
+                                item.aim_out_damage(victim_x);
+                            }
                             item.record_damage_dealt(contact.damage);
                         }
                     }
@@ -2131,6 +2158,7 @@ impl Runtime {
                     }
                 }
                 if proc == FighterProc::Map {
+                    deliver_stomps(state, player);
                     // fn_800DD568 / fn_800DD5EC: a thrower's landing resumes
                     // the fighter it holds within its collision callback.
                     grab_pairs::thrown_request(state, player);
@@ -4056,6 +4084,78 @@ fn melee_gekko_trunc(percent: f32) -> i16 {
 /// grStory_801E3334: Yoshi's Story's map 3 proc, the Shy Guy spawner.
 const STORY_SHY_GUY_PROC: u32 = 0x801E_3334;
 
+/// ft_80081A00 walks HSD_GObj_Entities->items for those with xDD0 b0:
+/// the stompable items, in list order, before the fighter's map proc.
+fn offer_stomp_targets(state: &mut InitialState, player: usize) {
+    use melee_ft::collision::stomp::STOMP_TARGETS;
+    let mut targets =
+        melee_types::fixed::FixedVec::<melee_it::stomp::StompTarget, STOMP_TARGETS>::default();
+    for item in state.items.iter().filter(|i| !i.destroyed && i.stompable) {
+        assert!(
+            targets.len() < STOMP_TARGETS,
+            "ft_80081A00: more stompable items than the port tests"
+        );
+        targets.push(melee_it::stomp::StompTarget {
+            item: item.id,
+            position_x: item.position.x,
+            stomp_box: item.stomp_box,
+        });
+    }
+    let assets = &state.assets.fighters[player];
+    let fighter = &mut state.fighters[player];
+    let out_of_play = fighter.0.out_of_play();
+    let previous = fighter.previous_collision_bounds;
+    let foot_offset = fighter.attributes.camera.damage_camera_y_offset;
+    let airborne = fighter.physics.ground_or_air == melee_types::GroundOrAir::Air;
+    let stomp = &mut fighter.collision.stomp;
+    stomp.targets = targets;
+    stomp.stomped.clear();
+    stomp.tested = false;
+    stomp.airborne_before = airborne;
+    stomp.out_of_play = out_of_play;
+    stomp.previous = melee_it::stomp::StompBounds {
+        left: previous.x,
+        right: previous.y,
+        bottom: previous.z,
+    };
+    stomp.foot_offset = foot_offset;
+    stomp.bounce_frames = assets.stomp_bounce_frames;
+    stomp.bounce_speed = assets.stomp_bounce_speed;
+}
+
+/// After the map proc: each stomped item learns its stomper (xCFC, xCB0)
+/// and side (xCD0), which its link 11 proc reads (Item_80269B60). A later
+/// fighter's stomp overwrites an earlier one's. An airborne fighter whose
+/// state's collision did not run ft_80081A00 but came down onto an item
+/// fails closed: that collision path is not ported with the stomp.
+fn deliver_stomps(state: &mut InitialState, player: usize) {
+    let fighter = &mut state.fighters[player];
+    let (id, secondary) = (fighter.player.id, fighter.player.secondary);
+    let position_y = fighter.physics.position.y;
+    let stomp = &mut fighter.collision.stomp;
+    let targets = core::mem::take(&mut stomp.targets);
+    let stomped = core::mem::take(&mut stomp.stomped);
+    if !stomp.tested && stomp.airborne_before && !stomp.out_of_play && !stomp.disabled {
+        let current = melee_ft::collision::stomp::current_bounds(&fighter.collision, position_y);
+        let previous = fighter.collision.stomp.previous;
+        if targets
+            .iter()
+            .any(|t| melee_it::stomp::lands_on(previous, current, t.stomp_box))
+        {
+            unimplemented!(
+                "ft_80081A00: a stomp from an airborne collision path without it (action {:?}, previous {:?}, current {:?}, now {:?})",
+                fighter.motion_state.action, previous, current, fighter.physics.ground_or_air
+            );
+        }
+    }
+    for &(item, side) in stomped.iter() {
+        let item = state.items.get_mut(item).expect("a stomped item");
+        item.stomped_by = Some(id);
+        item.stomped_by_secondary = secondary;
+        item.stomp_direction = side;
+    }
+}
+
 /// The other fighters holding ledges, offered to `player`'s proc for
 /// ft_80082E3C (retail walks the live fighter list).
 fn offer_ledge_holders(state: &mut InitialState, player: usize) {
@@ -5283,6 +5383,7 @@ fn item_clank(
                 id: u32,
                 hit: usize,
                 opponent: u32,
+                opponent_x: f32,
                 damage: f32,
                 meets: Option<&mut [bool; 4]>| {
         let item = items.get_mut(id).expect("clanking item");
@@ -5307,22 +5408,38 @@ fn item_clank(
         let clank_damage = gekko_math::msl::fctiwz(damage);
         if clank_damage > item.pending_clank_damage {
             item.pending_clank_damage = clank_damage;
+            // itcoll.c:265-286 / 300-323: xCB8 against the opponent.
+            item.aim_out_damage(opponent_x);
         }
-        item.events.push(melee_it::ItemEvent::Effect {
-            id: CLANK_SPARK,
-            position: midpoint,
-        });
         if let Some(mark) = &mark {
             items.share_group_victims(id, mark);
         }
+        // efSync_Spawn makes the spark at once, inside the running item's
+        // link 13 proc: the sparks of every clank it meets come in call
+        // order, so they go with that item's events.
+        items
+            .get_mut(victim_id)
+            .expect("struck item")
+            .events
+            .push(melee_it::ItemEvent::Effect {
+                id: CLANK_SPARK,
+                position: midpoint,
+            });
     };
+    let (victim_x, other_x) = (
+        items.iter().find(|i| i.id == victim_id).expect("struck item").position.x,
+        items.iter().nth(other_index).expect("listed item").position.x,
+    );
     if gekko_math::msl::fctiwz(victim_damage) - gap < gekko_math::msl::fctiwz(other_damage) {
-        stop(items, victim_id, victim_hit, other_tag, victim_damage, Some(meets));
+        stop(items, victim_id, victim_hit, other_tag, other_x, victim_damage, Some(meets));
     }
     if gekko_math::msl::fctiwz(other_damage) - gap < gekko_math::msl::fctiwz(victim_damage) {
-        stop(items, other_id, other_hit, victim_tag, other_damage, None);
+        stop(items, other_id, other_hit, victim_tag, victim_x, other_damage, None);
     }
 }
+
+/// it_80278800's 0x443: the ice shattering (a Freezie's destroy effect).
+const ICE_SHATTER: u16 = 0x443;
 
 /// efSync_Spawn 0x41C: the spark of two clanking hitboxes.
 const CLANK_SPARK: u16 = 0x41C;
@@ -5541,12 +5658,20 @@ fn item_hits_by_items(
         let hit = hitter.hitboxes[landing.hit].clone().expect("landing hit");
         let desc = &hit.descriptor;
         // it_8026FAC4 -> it_8026FA2C: the hit's group remembers the victim.
-        melee_coll::detection::record_victim(&mut hitter.hitboxes, desc.group, tag);
+        // it_802706D0_sub3: mode 8 (the rehit timer) with x41_b4, else 0.
+        if hitter.hit_flags[landing.hit].item_rehit {
+            hitter.record_timed_victim(desc.group, tag);
+        } else {
+            melee_coll::detection::record_victim(&mut hitter.hitboxes, desc.group, tag);
+        }
         if let Some(mark) = &mark {
             items.share_group_victims(landing.hitter, mark);
         }
+        let victim_x = items.get_mut(victim_id).expect("struck item").position.x;
         let hitter = items.get_mut(landing.hitter).expect("hitting item");
         let damage = gekko_math::msl::fctiwz(desc.damage);
+        // it_802706D0_sub3: xCB8, then xC34.
+        hitter.aim_out_damage(victim_x);
         hitter.pending_damage_dealt = damage;
         let source = melee_it::hurt::ItemHitSource::Item {
             owner: hitter.owner,

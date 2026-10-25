@@ -90,7 +90,8 @@ pub fn enter(f: &mut Fighter, airborne: bool, assets: &FighterAssets) {
     if let Some(root) = &mut f.animation.root_motion {
         root.primary_history.offset.y = 0.0;
     }
-    // x2223_b4 disables ft_80081A00's item landing, which is not modelled.
+    // x2223_b4: no stomping (ft_80081A00).
+    f.collision.stomp.disabled = true;
 }
 
 /// ftKp_SpecialLw_Anim (8013474C): at the hop's end, ftKp_SpecialLw_80134988

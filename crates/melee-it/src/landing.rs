@@ -117,7 +117,7 @@ impl ItemCore {
     /// it_802725D4 (802725D4): every hitbox goes.
     pub fn clear_hitboxes(&mut self) {
         if self.hitboxes.iter().any(Option::is_some) {
-            self.hitboxes.fill(None);
+            self.park_hitboxes();
             for history in &mut self.reflection_history {
                 history.clear();
             }

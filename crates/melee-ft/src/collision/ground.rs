@@ -29,6 +29,8 @@ pub struct EnvironmentCollision {
     pub teeter_disabled: bool,
     /// `stage_info.grkind`: the terrain tables' stage.
     pub stage: melee_types::GrKind,
+    /// ft_80081A00's inputs and results.
+    pub stomp: super::stomp::StompContext,
 }
 impl EnvironmentCollision {
     pub fn new(data: CollData, stage: melee_types::GrKind) -> Self {
@@ -38,6 +40,7 @@ impl EnvironmentCollision {
             collision_flag: false,
             teeter_disabled: false,
             stage,
+            stomp: Default::default(),
         }
     }
     /// `ft_80084A80` (0x80084A80)'s guard: the floor line's `lo_flags` while

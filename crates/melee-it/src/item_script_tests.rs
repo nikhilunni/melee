@@ -32,6 +32,7 @@ fn item(assets: &ItemAssets) -> ItemCore {
         camera_extents: [0.0; 4],
         push_speed: 0.0,
         release_floor_depth: 0.0,
+        direction_still_speed: 0.0,
         slide_rule: crate::desc::SlideRule::NEVER,
     });
     let id = pool

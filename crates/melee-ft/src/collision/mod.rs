@@ -4,5 +4,6 @@ pub mod air;
 pub mod ecb;
 pub mod ground;
 pub mod pose;
+pub mod stomp;
 #[cfg(test)]
 mod tests;

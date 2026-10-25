@@ -166,6 +166,8 @@ pub fn collision<C: MarsFamily>(f: &mut Fighter, p: CollisionPhase<'_>) -> Resul
         c.physics.position = cd.cur_pos;
         c.skeleton
             .set_translate(c.animation.root, &c.physics.position);
+        // ft_80082578's ft_80081A00 (its result is not read here).
+        melee_ft::collision::stomp::land_on_items(&mut c.physics, &mut c.collision);
     } else if melee_ft::collision::air::collide_fall_filtered(
         &mut c.physics,
         &mut c.collision,

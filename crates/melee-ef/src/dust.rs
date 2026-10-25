@@ -46,6 +46,30 @@ impl Effects {
         self.spawn_dust_generator::<T>(id, position, facing, bank, particles, rng)
     }
 
+    /// efSync_Spawn(0x443, item, &pos, &facing) -> efAsync_Dispatch
+    /// (efasync.c:786-799): the ice shattering, generator 0x1F1 whose
+    /// AppSRT takes `position` and the second argument as a uniform scale
+    /// (an item passes its facing, it_80278800's block_4FC).
+    pub fn spawn_ice_shatter<T: InverseTrig>(
+        &mut self,
+        position: Vec3,
+        scale: f32,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let mut spawn = SpawnRequest::new(0, 0x1F1, 0);
+        spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+            translation: position,
+            scale: Vec3::new(scale, scale, scale),
+            status: 1,
+            ..Default::default()
+        });
+        self.events.spawn(&spawn, false, false);
+        spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+        Ok(())
+    }
+
     /// efSync_Spawn(0x3E8, item, &pos, &damage) -> efAsync_Dispatch: the
     /// plain hit spark an item shows when a hit lands on it (it_80270E30).
     /// One of two spark models at random, scaled by the damage.

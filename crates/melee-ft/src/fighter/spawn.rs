@@ -1084,6 +1084,9 @@ impl Fighter {
         change: MotionChange<'_>,
     ) -> Result<()> {
         let source = change.source;
+        // fighter.c:1024-1026: x2223_b4 goes unless Ft_MF_SkipMetalB, which
+        // no change out of a state that sets it passes.
+        self.collision.stomp.disabled = false;
         self.keep_scratch_tail();
         let row = self.row(state);
         // Wait writes no scratch (ft_8008A348): out of a character's special

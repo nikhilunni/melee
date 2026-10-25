@@ -45,6 +45,9 @@ pub struct ItemCommonData {
     /// +F0: how far above a floor a released enemy may be set down on it
     /// (it_802759DC).
     pub release_floor_depth: f32,
+    /// +D4: under this speed a hit's direction (xCB8) is the item's side
+    /// of its victim rather than its motion.
+    pub direction_still_speed: f32,
     pub slide_rule: SlideRule,
     /// What the random item spawner reads (itspawn.c).
     pub random_items: RandomItemData,
@@ -178,6 +181,7 @@ impl ItemCommonData {
             ],
             push_speed: r.f32(base + 0x7C)?,
             release_floor_depth: r.f32(base + 0xF0)?,
+            direction_still_speed: r.f32(base + 0xD4)?,
             slide_rule: SlideRule {
                 minimum_slope: r.f32(base + 0xC0)?,
                 rearm_turn: r.f32(base + 0xC4)?,
@@ -274,6 +278,8 @@ pub struct ItemAssets {
     /// common item lifetime a lit Bob-omb restarts (it_8027F8E0). Zero
     /// until `read_common_release`.
     pub common_lifetime: f32,
+    /// ItCo +4C: it_80275158's half-life as a share of a lifetime.
+    pub half_life_scale: f32,
     /// ItemAttr xC (spin_spd).
     pub spin_rate: f32,
     /// ItCo common data +68: Item_ApplyFallingPhysics' spin degrees.
@@ -511,6 +517,7 @@ impl ItemAssets {
         let common = r.u32(public)?;
         self.explosion_lifetime = r.f32(common + 0xF8)?;
         self.common_lifetime = r.u32(common + 0x30)? as f32;
+        self.half_life_scale = r.f32(common + 0x4C)?;
         self.fall_spin_degrees = r.f32(common + 0x68)?;
         self.release_box_scale = r.f32(common + 0xE8)?;
         self.landing_spin_degrees = r.f32(common + 0x74)?;
@@ -722,6 +729,7 @@ impl ItemAssets {
             rotation_axis: c.u8(common + 1)? >> 6,
             explosion_lifetime: 0.0,
             common_lifetime: 0.0,
+            half_life_scale: 0.0,
             spin_rate: c.f32(common + 0xC)?,
             fall_spin_degrees: 0.0,
             release_box_scale: 0.0,
@@ -1140,6 +1148,10 @@ fn decode_hitbox(w: [u32; 6]) -> HitboxDescriptor {
 #[derive(Clone, Copy, Debug, Default)]
 pub struct ItemHitFlags {
     pub rehit_rate: u8,
+    /// x41_b4: a landing on another item's hurt capsules records it with
+    /// the rehit timer (it_802706D0_sub3's mode 8), so the hitbox may land
+    /// on it again.
+    pub item_rehit: bool,
     pub reflectable: bool,
     pub defense_interaction: bool,
     pub damage_without_hitlag: bool,
@@ -1164,6 +1176,7 @@ impl ItemHitFlags {
     fn decode(last: u32, extra: u32) -> Self {
         Self {
             rehit_rate: (extra >> 24) as u8,
+            item_rehit: extra & (1 << 23) != 0,
             reflectable: extra & (1 << 20) != 0,
             defense_interaction: extra & (1 << 15) != 0,
             damage_without_hitlag: extra & (1 << 22) != 0,

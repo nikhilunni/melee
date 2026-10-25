@@ -216,8 +216,9 @@ fn begin_zip<C: PikachuFamily>(
     f.step_animation(assets);
     // ftAnim_SetAnimRate(0): x2223_b0 was cleared by the change.
     f.core.animation.set_rate(&mut f.core.skeleton, 0.0, false);
-    // x2223_b4 (ft_80081A00's item landing) and x21F8 (a cape turnaround's
-    // ftPk_SpecialHi_UpdateVel) are not modelled.
+    // x2223_b4: no stomping (ft_80081A00). x21F8 (a cape turnaround's
+    // ftPk_SpecialHi_UpdateVel) is not modelled.
+    f.collision.stomp.disabled = true;
     Ok(())
 }
 
@@ -553,6 +554,8 @@ fn zip_ground_collision<C: PikachuFamily>(
             0.0,
             assets,
         )?;
+        // ftpikachuspecialhi.c:415: x2223_b4.
+        f.collision.stomp.disabled = true;
         pose_along_velocity::<C>(f, assets);
         return Ok(());
     }

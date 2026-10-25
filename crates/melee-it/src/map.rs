@@ -100,6 +100,8 @@ impl ItemCore {
         }
         self.position = collision.cur_pos;
         self.collision = Some(collision);
+        // Item_80268B18: it_80274DAC after it_80275E98.
+        self.reset_stomp_box();
     }
 
     /// it_80276214 (80276214): the pass starts from the last resolved
@@ -528,7 +530,7 @@ impl ItemCore {
     /// otherwise a pull that has turned against last frame's for ItCo +38
     /// frames ends it. No fused operation (asm.py it_80277040 --fused).
     #[allow(clippy::neg_cmp_op_on_partial_ord)] // retail's fcmpo / cror: a NaN slope does not slide.
-    pub(crate) fn slides(&mut self, assets: &ItemAssets) -> bool {
+    pub fn slides(&mut self, assets: &ItemAssets) -> bool {
         use hsd_types::Vec3;
         if gekko_math::msl::fabsf(assets.slide_speed) < 0.00001 {
             self.slide_acceleration.x = 0.0;
@@ -1023,6 +1025,8 @@ impl ItemCore {
         self.land_count = 0;
         self.enter_air();
         self.sweep_from_holder(center, map, assets);
+        // it_80273F34: it_80274DAC after it_80275BC8.
+        self.reset_stomp_box();
         self.face_spin_axis();
         self.stale_source = attack;
         self.enter_air();

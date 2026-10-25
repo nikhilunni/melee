@@ -989,6 +989,11 @@ impl Fighter {
             self.core
                 .skeleton
                 .set_translate(self.core.animation.root, &self.core.physics.position);
+            // ft_80081DD4's ft_80081A00 runs after the hitlag clamp too.
+            crate::collision::stomp::land_on_items(
+                &mut self.core.physics,
+                &mut self.core.collision,
+            );
             return None;
         }
         let ledge_height = self.core.collision.data.ledge_snap_height;
@@ -1905,6 +1910,13 @@ impl FighterCore {
         if damage > item.pending_damage_dealt {
             item.pending_shield_damage = damage;
             item.pending_shield_owner = Some(self.player.id);
+            // ftcoll.c:892-906: xCB8.
+            item.out_damage_direction = melee_it::out_damage_direction(
+                item.velocity.x,
+                item.position.x,
+                item.direction_still_speed,
+                self.physics.position.x,
+            );
             item.pending_shield_deflection = if item.hit_flags[id].shield_bounce {
                 let volume = &self.shield.hit;
                 let joint = self.animation.parts[volume.bone].joint;
@@ -1983,8 +1995,14 @@ impl FighterCore {
         };
         if damage > item.pending_damage_dealt {
             item.pending_shield_damage = damage;
-            // inlineItemA1: xCF4 = the volume's fighter.
+            // inlineItemA1: xCF4 = the volume's fighter, then xCB8.
             item.pending_shield_owner = Some(self.player.id);
+            item.out_damage_direction = melee_it::out_damage_direction(
+                item.velocity.x,
+                item.position.x,
+                item.direction_still_speed,
+                self.physics.position.x,
+            );
             let bounces = item.hit_flags[id].shield_bounce && !volume.no_bounce;
             item.pending_shield_deflection = bounces.then(|| {
                 let deflection = melee_lb::shield::deflection(

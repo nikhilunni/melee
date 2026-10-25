@@ -443,12 +443,14 @@ pub(super) fn item_contact(
         }
         if priority.stop_first {
             // inlineItemA1: it_8026FAC4 records the fighter, then xC48 keeps
-            // the strongest clank. (xCF4 and the knockback direction xCB8
-            // have no reader among the supported items.)
+            // the strongest clank and its direction (xCB8). (xCF4 has no
+            // reader among the supported items.)
             item.record_clank_victim(id, a.descriptor.group, fighter.spawn_number);
             let damage = truncated_damage(a.descriptor.damage);
             if damage > item.pending_clank_damage {
                 item.pending_clank_damage = damage;
+                // ftcoll.c:1062-1076: xCB8.
+                item.aim_out_damage(fighter.physics.position.x);
             }
             fighter
                 .effects

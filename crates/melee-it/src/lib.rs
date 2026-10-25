@@ -18,6 +18,7 @@ pub mod particle_track;
 pub use map::AirContact;
 pub mod pose;
 pub mod random_spawn;
+pub mod stomp;
 mod spawn;
 pub use engine::*;
 pub use logic::*;

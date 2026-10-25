@@ -224,7 +224,7 @@ fn speed(f: &Fighter, magnitude: f32) -> f32 {
 }
 
 /// Enter a travel row at frame 35 and freeze it (ftAnim_SetAnimRate 0);
-/// then the frames, every jump spent, x2223_b4 (not modelled), the body
+/// then the frames, every jump spent, x2223_b4 (no stomping), the body
 /// intangible (ftColl_8007B62C(gobj, 2)) and Zelda hidden.
 fn enter_travel(f: &mut Fighter, state: ActionId, assets: &FighterAssets) -> Result<()> {
     f.change_motion_state_with_flags(state, assets, MotionEntryFlags(0), TRAVEL_FRAME, 1.0)?;
@@ -233,6 +233,7 @@ fn enter_travel(f: &mut Fighter, state: ActionId, assets: &FighterAssets) -> Res
     let frames = attributes(f).travel_frames;
     scratch(f).travel_frames = frames;
     f.physics.jumps_used = f.attributes.jumping.max_jumps as u8;
+    f.collision.stomp.disabled = true;
     f.core.set_body_hurt_status(HurtStatus::Intangible);
     f.effect_state.invisible = true;
     Ok(())
@@ -394,6 +395,8 @@ pub fn travel_ground_collision(f: &mut Fighter, mut p: CollisionPhase<'_>) -> Re
         }
         let frame = f.animation.frame;
         f.change_motion_state_with_flags(AIR_TRAVEL, assets, TRANSITION_FLAGS, frame, 0.0)?;
+        // ftzeldaspecialhi.c:344: x2223_b4.
+        f.collision.stomp.disabled = true;
         f.effect_state.invisible = true;
         return Ok(());
     }

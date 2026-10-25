@@ -1,5 +1,5 @@
 //! ft_081B.c fighter wrappers around melee-mp's airborne collision.
-use super::{ecb::EcbPose, ground::EnvironmentCollision};
+use super::{ecb::EcbPose, ground::EnvironmentCollision, stomp::land_on_items};
 use crate::physics::FighterPhysics;
 use hsd_anim::jobj::{JObjId, JObjTree};
 use melee_mp::{set_facing_dir, CollMap};
@@ -62,7 +62,9 @@ pub fn collide_fall_filtered(
     };
     state.position = cd.cur_pos;
     tree.set_translate(root, &state.position);
-    landed
+    // ft_80081A00: a stomp does not land.
+    let stomped = land_on_items(state, environment);
+    landed && !stomped
 }
 
 /// [`collide_fall_filtered`] with every platform solid, as though the stick
@@ -90,12 +92,17 @@ pub fn collide_entry(
     let cd = &mut environment.data;
     cd.last_pos = cd.cur_pos;
     cd.cur_pos = state.position;
-    let landed = if state.ground_or_air == melee_types::GroundOrAir::Air {
+    let airborne = state.ground_or_air == melee_types::GroundOrAir::Air;
+    let landed = if airborne {
         map.air_collide_box(cd, &ecb)
     } else {
         map.ground_collide_box(cd, &ecb)
     };
     state.position = cd.cur_pos;
+    // ft_80083E64_inline's ft_80081A00 (the airborne pass only).
+    if airborne && land_on_items(state, environment) {
+        return false;
+    }
     landed
 }
 
@@ -110,7 +117,7 @@ pub fn facing_box(mut ecb: FtCollisionBox, facing: f32) -> FtCollisionBox {
 }
 
 /// ft_800824A0 (800824A0): an airborne pass with a fixed box
-/// (mpColl_8004730C). The item landing (ft_80081A00) is not modelled.
+/// (mpColl_8004730C). A stomp (ft_80081A00) does not land.
 pub fn collide_box(
     state: &mut FighterPhysics,
     environment: &mut EnvironmentCollision,
@@ -126,12 +133,14 @@ pub fn collide_box(
     let landed = map.air_collide_box(cd, &ecb);
     state.position = cd.cur_pos;
     tree.set_translate(root, &state.position);
-    landed
+    // ft_80081A00: a stomp does not land.
+    let stomped = land_on_items(state, environment);
+    landed && !stomped
 }
 
 /// ft_80082638 (80082638): an airborne pass with a fixed box that stays
 /// airborne (mpColl_80047A08); true when it touches a floor
-/// (Collide_FloorMask). The item landing (ft_80081A00) is not modelled.
+/// (Collide_FloorMask). A stomp (ft_80081A00) does not land.
 pub fn collide_stay_box(
     state: &mut FighterPhysics,
     environment: &mut EnvironmentCollision,
@@ -147,13 +156,16 @@ pub fn collide_stay_box(
     map.air_collide_stay_box(cd, &ecb);
     state.position = cd.cur_pos;
     tree.set_translate(root, &state.position);
-    cd.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK != 0
+    let floor = cd.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK != 0;
+    // ft_80081A00: a stomp reads as no floor.
+    let stomped = land_on_items(state, environment);
+    floor && !stomped
 }
 
 /// ft_8008239C (8008239C): an airborne pass with a fixed box that, when
 /// `can_grab_ledge` (no ledge cooldown), catches ledges on the `direction`
-/// side (mpColl_800475F4); otherwise mpColl_8004730C. The item landing
-/// (ft_80081A00) is not modelled.
+/// side (mpColl_800475F4); otherwise mpColl_8004730C. A stomp
+/// (ft_80081A00) does not land.
 #[allow(clippy::too_many_arguments)]
 pub fn collide_box_catching_ledges(
     state: &mut FighterPhysics,
@@ -177,7 +189,9 @@ pub fn collide_box_catching_ledges(
     };
     state.position = cd.cur_pos;
     tree.set_translate(root, &state.position);
-    landed
+    // ft_80081A00: a stomp does not land.
+    let stomped = land_on_items(state, environment);
+    landed && !stomped
 }
 
 /// ft_80082C74 -> ft_80081D0C (80081D0C): air dodge uses ordinary airborne
@@ -196,7 +210,9 @@ pub fn collide_air_dodge(
     let landed = map.air_collide_pass(cd, Some(&|i| pose.position(i)));
     state.position = cd.cur_pos;
     tree.set_translate(root, &state.position);
-    landed
+    // ft_80081A00: a stomp does not land.
+    let stomped = land_on_items(state, environment);
+    landed && !stomped
 }
 
 /// ftCo_Pass_Coll -> ft_80082F28 -> ft_CheckGroundAndLedge (0x800822A4).
@@ -221,5 +237,7 @@ pub fn collide_pass(
     };
     state.position = cd.cur_pos;
     tree.set_translate(root, &state.position);
-    landed
+    // ft_80081A00: a stomp does not land.
+    let stomped = land_on_items(state, environment);
+    landed && !stomped
 }

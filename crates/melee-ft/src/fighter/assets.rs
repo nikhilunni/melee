@@ -144,6 +144,10 @@ pub struct FighterAssets {
     pub guard_pose: Vec<hsd_anim::jobj::JObj>,
     pub entry: super::entry::EntryParameters,
     pub soft_landing_speed: f32,
+    /// PlCo x6CC / x6D0: a stomp's blend frames and upward speed
+    /// (ftCo_800C703C).
+    pub stomp_bounce_frames: i32,
+    pub stomp_bounce_speed: f32,
     pub name_tag_duration: u16,
     pub thrown_hitbox: super::caches::ThrownHitbox,
     pub damage: super::damage::DamageParameters,
@@ -491,6 +495,8 @@ impl FighterAssets {
                 initial_scale_y: common.reader().f32(common_data + 0x6C4)?,
             },
             soft_landing_speed: -common.reader().f32(common_data + 0x310)?,
+            stomp_bounce_frames: common.reader().s32(common_data + 0x6CC)?,
+            stomp_bounce_speed: common.reader().f32(common_data + 0x6D0)?,
             shield: super::shield::ShieldParameters::read(common, common_data)?,
             guard_pose: read_guard_pose(data, root)?,
             shield_health: common.reader().f32(common_data + 0x260)?,
