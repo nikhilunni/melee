@@ -6624,7 +6624,10 @@ const RANDOM_ITEM_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_sword_e8c6ff530_p1", 4926),
     ("corpus_v3_fd_items_taru_ee6ff560c_p0", 4669),
     ("corpus_v3_fd_items_taru_efc83a559_p2", 3987),
-
+    // Both merged paths: an empty container blast, then an ordinary
+    // held-Sword up-smash entry. Full field, particle and RNG witnesses.
+    ("corpus_v3_fd_items_sword_e17844051_p1", 1713),
+    ("corpus_v3_fd_items_sword_eee14f173_p2", 1974),
 ];
 
 #[test]
