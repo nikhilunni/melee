@@ -61,3 +61,27 @@ and the last buttons as stage state; warm boundaries import both.
 
 Warm boundaries for all three stages import their controllers at the
 creation phases only; a boundary inside a moving phase fails closed.
+
+## Yoshi's Island (gryorster.c)
+
+Maps 0 and 1, no draws. Map 1 binds its archive joints from the bind pose,
+plays animation 4 and animation 3 on bones 23 and 26 (a tick behind, so a
+warm boundary replays the clocks rather than restoring one). The nine
+blocks (bones 10..18, collision joints 1..9) are created by the deferred
+grYorster_80202160 when the countdown releases the stage (Ground_801C0FB8
+runs on_start, the deferred list, then Ground_801C0C2C's GObj): one stage
+material item each, with grMaterial_801C8DE0's radius-5 capsule.
+
+- A hit on a block's item reaches grYorster_80202428 (yaku.x18) once the
+  item's DmgReceived ran: the attacking fighter gets dmg.x1958 (a freeze
+  request ProcessHit turns into dmg.x1954, `CombatState::freeze_request`),
+  the block gathers the damage.
+- A bump from below reaches grYorster_802024F0 through the joint's ceiling
+  callback (cb_1). The port records ceiling calls (`record_ceiling_events`)
+  and applies them when the collider's proc returns, because the callback
+  reads the fighter's `pos_delta.y`. An item's bump past the threshold
+  (it_8026B718) fails closed.
+- grLib_801C9EE8's PointInsideColl (fmadds halves) decides whether a
+  block may come back.
+
+Warm boundaries are imported only before the stage starts (xC4 = 1).

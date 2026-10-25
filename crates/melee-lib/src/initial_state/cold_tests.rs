@@ -156,6 +156,9 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.barrel_position.y", &stage.barrel_position.y);
         }
         SceneStage::Shrine(_) => {}
+        SceneStage::Yorster(stage) => {
+            sink.field("stage.yorster.waiting", &u32::from(stage.waiting));
+        }
         SceneStage::Kraid(stage) => {
             sink.field("stage.kraid.timer", &stage.kraid.timer);
             sink.field("stage.kraid.leftmost", &stage.kraid.leftmost);
@@ -373,6 +376,11 @@ fn start_bd_fox_marth4_cold_600() {
 #[test]
 fn start_fs_fox_marth4_cold_600() {
     verify("start_fs_fox_marth4");
+}
+
+#[test]
+fn start_yi_fox_marth4_cold_600() {
+    verify("start_yi_fox_marth4");
 }
 
 #[test]

@@ -5389,7 +5389,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 841] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 847] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6745,6 +6745,16 @@ static CORPUS_V3_MATCHES: [(&str, usize); 841] = [
     ("corpus_v3_fz_fox_marth4_e0ac13e8e_p0", 6001),
     ("corpus_v3_fz_fox_marth4_ecdf8887e_p2", 6001),
     ("corpus_v3_fz_fox_marth4_ef89b3e70_p1", 6001),
+    // Yoshi's Island (gryorster.c): the nine blocks hit by fighters and
+    // Fox's lasers (grYorster_80202428), bumped from below past and short of
+    // bump_full (grYorster_802024F0, the bumper frozen through dmg.x1958),
+    // spinning, blocked and wobbling, and back.
+    ("corpus_v3_yi_fox_marth4_ef89b3e70_p0", 2947),
+    ("corpus_v3_yi_fox_marth4_e89a89d0e_p0", 2470),
+    ("corpus_v3_yi_fox_marth4_e9943b4ab_p0", 1245),
+    ("corpus_v3_yi_fox_marth4_ec13743d5_p0", 6001),
+    ("corpus_v3_yi_fox_marth4_e19f8579b_p0", 5140),
+    ("corpus_v3_yi_fox_marth4_e573e2d95_p0", 1866),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

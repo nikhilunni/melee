@@ -193,6 +193,9 @@ c_enum! {
 impl MpLibGroundEnum {
     /// The unnamed `3` passed by `mpLib_8005811C` when a ledge is grabbed.
     pub const LEDGE: i32 = 3;
+    /// `mpLib_GroundEnum_Unk0`: the ceiling callback (`cb_1`, mpCollEnd and
+    /// mpColl_80043558).
+    pub const CEILING: i32 = 0;
 }
 
 c_enum! {

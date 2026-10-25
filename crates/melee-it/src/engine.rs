@@ -1225,6 +1225,9 @@ pub struct ItemCore {
     pub past_hitbox_refresh: bool,
     /// xD0C == 2 (it_802756D0 / it_802756E0): hurtboxes take no hits.
     pub hurt_intangible: bool,
+    /// xACC (the first hurt capsule) as a stage rewrote it
+    /// (grMaterial_801C8DE0): its two offsets and radius.
+    pub hurt_override: Option<([Vec3; 2], f32)>,
     /// xD40 with xDD0 b6 (item.c foobar): creation's intangible frames
     /// still to run, counted down in Item_80269528.
     pub spawn_intangible_frames: Option<f32>,
@@ -2261,6 +2264,7 @@ impl ItemPool {
             hitbox_damage_scale: 1.0,
             past_hitbox_refresh: false,
             hurt_intangible: false,
+            hurt_override: None,
             spawn_intangible_frames: None,
             keeps_intangible: false,
             speed_damage: false,

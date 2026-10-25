@@ -43,6 +43,10 @@ pub struct JointCallbacks {
     /// is recorded in [`CollMap::joint_events`] instead (see
     /// [`CollMap::record_joint_events`]).
     pub recorded: bool,
+    /// The same for the ceiling callback (`cb_1`): a stage that reads the
+    /// collider's own state (Yoshi's Island's blocks read a fighter's
+    /// `pos_delta`) applies each call once the collider's proc returns.
+    pub recorded_ceiling: bool,
 }
 
 /// One recorded joint callback: what a stage callback reads of its call.
@@ -55,6 +59,9 @@ pub struct JointEvent {
     pub collision_type: u8,
     /// `coll->cur_pos.x`.
     pub x: f32,
+    /// The callback's `delta_y` (`cur_pos.y - last_pos.y` from mpCollEnd,
+    /// 0 from mpColl_80043558).
+    pub delta_y: f32,
 }
 /// Joint callbacks recorded between two stage steps; a frame's fighters
 /// and items land a handful at most.
@@ -1036,8 +1043,47 @@ impl CollMap {
                 ground_kind,
                 collision_type: coll.x34_flags.b1234,
                 x: coll.cur_pos.x,
+                delta_y: 0.0,
             });
         }
+    }
+
+    /// Record a joint's ceiling callback (`cb_1`) calls for
+    /// [`Self::take_ceiling_events`].
+    pub fn record_ceiling_events(&mut self, joint_id: i32, recorded: bool) {
+        self.joint_cbs[joint_id as usize].recorded_ceiling = recorded;
+    }
+
+    /// Record a call of a recorded ceiling callback (`ground_kind` 0).
+    pub(crate) fn record_ceiling_event(&mut self, joint_id: i32, coll: &CollData, delta_y: f32) {
+        if self.joint_cbs[joint_id as usize].recorded_ceiling {
+            self.joint_events.push(JointEvent {
+                joint: joint_id,
+                ground_kind: MpLibGroundEnum::CEILING,
+                collision_type: coll.x34_flags.b1234,
+                x: coll.cur_pos.x,
+                delta_y,
+            });
+        }
+    }
+
+    /// Every recorded ceiling call since the last take, oldest first.
+    pub fn take_ceiling_events(
+        &mut self,
+    ) -> melee_types::fixed::FixedVec<JointEvent, JOINT_EVENT_CAPACITY> {
+        let mut taken = melee_types::fixed::FixedVec::default();
+        let mut index = 0;
+        while index < self.joint_events.len() {
+            let event = *self.joint_events.iter().nth(index).unwrap();
+            if event.ground_kind == MpLibGroundEnum::CEILING
+                && self.joint_cbs[event.joint as usize].recorded_ceiling
+            {
+                taken.push(self.joint_events.remove(index));
+            } else {
+                index += 1;
+            }
+        }
+        taken
     }
 
     /// `mpJointClearCb1` (retail `0x800580E0`).

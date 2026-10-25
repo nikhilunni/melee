@@ -33,9 +33,9 @@ pub(super) const JOBJ_FLAGS: u32 = 0x14;
 const JOBJ_SCALE: u32 = 0x2C;
 pub(super) const JOBJ_TRANSLATE: u32 = 0x38;
 const JOBJ_MTX: u32 = 0x44;
-const JOBJ_AOBJ: u32 = 0x7C;
+pub(super) const JOBJ_AOBJ: u32 = 0x7C;
 /// HSD_AObj curr_frame.
-const AOBJ_FRAME: u32 = 0x4;
+pub(super) const AOBJ_FRAME: u32 = 0x4;
 pub(super) const JOBJ_HIDDEN: u32 = 0x10;
 /// Ground map id of the star model (Ground_801C1A20(joint, -1)).
 const STAR_MAP: u32 = u32::MAX;

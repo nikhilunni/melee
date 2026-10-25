@@ -1539,6 +1539,20 @@ impl Runtime {
                     }
                 }
                 crate::scene_items::release_redead_on_hit(state, id);
+                // A stage material item's DmgReceived calls its stage's
+                // hit-taken callback (yaku.x18) with xCEC and xCA0.
+                let material_hit = state
+                    .items
+                    .get_mut(id)
+                    .filter(|item| {
+                        kind == melee_types::ItemKind::PokemonRandom
+                            && (item.pending_knockback != 0.0 || item.pending_damage_taken != 0)
+                    })
+                    .map(|item| {
+                        let fighter = (!item.struck_by_item)
+                            .then_some((item.hit_by, item.hit_by_secondary));
+                        (item.pending_damage_taken, fighter)
+                    });
                 let rng = std::cell::Cell::new(state.rng);
                 state.items.process_events_with_stale::<SceneItems>(
                     id,
@@ -1549,6 +1563,12 @@ impl Runtime {
                     Some(state.camera.transform.position),
                 );
                 state.rng = rng.get();
+                if let Some((damage, fighter)) = material_hit {
+                    let fighter = fighter.and_then(|(slot, secondary)| {
+                        crate::scene_items::owner_index(&state.fighters, slot, secondary)
+                    });
+                    crate::scene_stage::yorster::material_hit(state, id, fighter, damage);
+                }
             }
             13 => self.detect_item_hurts(id),
             12 | 16 => {}
@@ -1755,12 +1775,21 @@ impl Runtime {
                                 state,
                                 melee_gr::stadium::ScreenMode::CountdownEnd,
                             );
-                            let gobjs = &mut state.effects.gobjs;
-                            // Ground_801C0FB8: the stage's on_start, then
-                            // Ground_801C0C2C's own GObj (ground.c:708).
-                            for &class in state.stage.start_gobjs() {
-                                gobjs.create(class);
+                            // Ground_801C0FB8: the stage's on_start, the
+                            // deferred callbacks (Ground_801C10B8's list),
+                            // then Ground_801C0C2C's own GObj (ground.c:708).
+                            let [on_start, ground] = *state.stage.start_gobjs();
+                            state.effects.gobjs.create(on_start);
+                            if matches!(state.stage, SceneStage::Yorster(_)) {
+                                // grYorster_80202160: the blocks.
+                                crate::scene_stage::yorster::start(
+                                    state,
+                                    world,
+                                    &mut self.item_objects,
+                                )?;
                             }
+                            state.effects.gobjs.create(ground);
+                            let gobjs = &mut state.effects.gobjs;
                             // ifStatus_802F6EA4(4, ..., fn_8016B784): GO.
                             // Its GObj joins this s_link 0 pass after the
                             // countdown's, so it takes its first step now.
@@ -2702,6 +2731,7 @@ impl Runtime {
                         || address == melee_gr::shrine::procs::DYNAMICS_PROC
                         || address == melee_gr::fourside::procs::DYNAMICS_PROC
                         || address == melee_gr::kraid::procs::DYNAMICS_PROC
+                        || address == melee_gr::yorster::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -2763,6 +2793,8 @@ impl Runtime {
                         )?;
                     } else if matches!(state.stage, SceneStage::Fourside(_)) {
                         crate::scene_stage::fourside::run_proc(state, map_id)?;
+                    } else if matches!(state.stage, SceneStage::Yorster(_)) {
+                        crate::scene_stage::yorster::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and
@@ -2987,6 +3019,13 @@ impl Runtime {
                 .particles
                 .proc_aux::<RetailTrig>(&mut state.rng, &mut self.particle_draws)?,
         }
+        // grYorster_802024F0: the ceiling calls this proc's collision made.
+        let collider = match row.callback {
+            Callback::Fighter { player, .. } => crate::scene_stage::yorster::Collider::Fighter(player),
+            Callback::Item { .. } => crate::scene_stage::yorster::Collider::Item,
+            _ => crate::scene_stage::yorster::Collider::Other,
+        };
+        crate::scene_stage::yorster::apply_bumps(&mut self.state, collider)?;
         let state = &mut self.state;
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {

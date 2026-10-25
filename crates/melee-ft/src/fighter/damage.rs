@@ -21,6 +21,9 @@ use melee_types::{CommonMotionState as S, FighterKind, GroundOrAir};
 pub struct CombatState {
     /// dmg.x18F4 / x1954 / x2220_b4: a cape's turnaround.
     pub cape_turn: super::cape_turn::CapeTurn,
+    /// dmg.x1958: a freeze a stage asked for (ftLib_80086A4C), applied by
+    /// the next Fighter_ProcessHit as a floor under dmg.x1954.
+    pub freeze_request: f32,
     /// Fighter.dmg.armor1 (+18B4), reset on motion change.
     pub armor: f32,
     /// x221C_b4: while set, a hit's damage comes off `shell_health` and
@@ -1336,6 +1339,17 @@ impl Fighter {
                     // fighter.c:2982: bool4 -> x189C = the phantom's hitlag.
                     self.core.combat.phantom_lockout = self.core.combat.hitlag_remaining;
                 }
+            }
+        }
+        // fighter.c:2993-3006: a stage's freeze request (dmg.x1958) enters
+        // hitlag (Fighter_UnkRecursiveFunc_8006D044, x2219_b5: the freeze
+        // itself keeps the fighter in hitlag) and raises dmg.x1954 to it.
+        // x221A_b0, the other trigger, has no ported source.
+        if self.core.combat.freeze_request != 0.0 {
+            let request = std::mem::take(&mut self.core.combat.freeze_request);
+            let turn = &mut self.core.combat.cape_turn;
+            if request > turn.freeze {
+                turn.freeze = request;
             }
         }
         self.core.combat.minimum_hitlag = 0.0;

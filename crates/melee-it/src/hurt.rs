@@ -117,7 +117,13 @@ impl ItemCore {
         assets
             .hurtboxes
             .iter()
-            .map(|hurtbox| {
+            .enumerate()
+            .map(|(index, hurtbox)| {
+                let mut hurtbox = *hurtbox;
+                if let (0, Some((offsets, radius))) = (index, self.hurt_override) {
+                    hurtbox.offsets = offsets;
+                    hurtbox.radius = radius;
+                }
                 if hurtbox.bone != 0 {
                     // A capsule on a joint below the root (Sheik's needle):
                     // lb_8000B1CC through that joint's world matrix.

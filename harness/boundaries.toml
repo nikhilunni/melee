@@ -1927,3 +1927,12 @@ stocks = 4
 seed = 401104956
 item_frequency = 4
 item_mask = "0xfffffff800008000"
+
+[[boundary]]
+name = "start_yi_fox_marth4"
+cold = "start_yi_fox_marth4_cold"
+savestate = "harness/roms/start_yi_fox_marth4.sav"
+stage = "YoshisIsland"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2879833795

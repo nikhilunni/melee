@@ -186,6 +186,7 @@ impl InitialState {
                 | SceneStage::Fourside(_)
                 | SceneStage::Kraid(_)
                 | SceneStage::FlatZone(_)
+                | SceneStage::Yorster(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -397,6 +398,8 @@ fn setup_draws(
         // The controller's event wait (grFlatzone_8021707C), then the
         // platforms' variant wait (grFlatzone_80218060(1)).
         GrKind::Flatzone => 2,
+        // grYorster_80201FA4 draws nothing (GrYt.dat has no particle keys).
+        GrKind::Yorster => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -647,6 +650,11 @@ fn initialize_stage(
                 map,
                 melee_gr::flatzone::BOOT_STALE_EVENT,
             )?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Yorster => {
+            let (stage, animations) = crate::scene_stage::yorster::initialize(assets, map)?;
             stage_animations = animations;
             stage
         }

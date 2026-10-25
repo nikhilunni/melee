@@ -458,6 +458,67 @@ impl BackgroundAnimation {
         ));
         Ok(())
     }
+    /// `grAnime_801C7FF8(gobj, bone, 7, index, frame, rate)` (0x801C7FF8):
+    /// model animation `index`'s joint and material tracks replace those
+    /// of `bone`'s subtree (grAnime_801C7C1C with every type), requested at
+    /// `frame` (HSD_JObjReqAnimAllByFlags) and played at `rate`
+    /// (grAnime_801C752C's HSD_AObjSetRate). Material clocks start at zero:
+    /// they only affect drawing.
+    pub fn play_subtree(
+        &mut self,
+        archive: &Archive,
+        model: &crate::desc::ModelDesc,
+        bone: usize,
+        index: usize,
+        frame: f32,
+        rate: f32,
+    ) -> crate::desc::ReadResult<()> {
+        let subtree = crate::desc::animation_subtree(archive, model, index, bone as u32)?;
+        self.attach_subtree(archive, bone, &subtree, model.animation_loops[index])?;
+        let root = self.joints[bone];
+        self.tree.req_anim_all(root, frame);
+        self.play_material_subtree(bone, index);
+        for part in self.subtree(bone) {
+            let joint = self.joints[part];
+            if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
+                aobj.set_rate(rate);
+            }
+            if let Some(objects) = self.tree.dobj_mut(joint) {
+                for object in objects {
+                    if let Some(material) = &mut object.mobj {
+                        if let Some(aobj) = &mut material.aobj {
+                            aobj.set_rate(rate);
+                        }
+                        for texture in &mut material.textures {
+                            if let Some(aobj) = &mut texture.animation {
+                                aobj.set_rate(rate);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        Ok(())
+    }
+    /// `grAnime_801C84A4(gobj, bone, 7)` (0x801C84A4): the first AObj of
+    /// `bone`'s subtree (grAnime_801C8318) wrapped its loop this frame.
+    pub fn subtree_animation_rewound(&self, bone: usize) -> bool {
+        self.first_aobj(self.joints[bone])
+            .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_REWINDED != 0)
+    }
+    /// `lbGetJObjEndFrame` on a bone: the end frame of the first joint
+    /// AObj lbFindJObjWithAObj meets (the bone, its children, then its
+    /// next siblings), else 0.
+    pub fn subtree_joint_end_frame(&self, bone: usize) -> f32 {
+        fn find(tree: &JObjTree, joint: Option<JObjId>) -> Option<f32> {
+            let joint = joint?;
+            if let Some(aobj) = &tree.get(joint).aobj {
+                return Some(aobj.end_frame);
+            }
+            find(tree, tree.child(joint)).or_else(|| find(tree, tree.next(joint)))
+        }
+        find(&self.tree, Some(self.joints[bone])).unwrap_or(0.0)
+    }
     /// Ground_801C2FE0 -> mpLib_80055E9C: bind each model's collision
     /// joint to its animated descendant, preserving hidden state and history.
     pub fn update_collision(

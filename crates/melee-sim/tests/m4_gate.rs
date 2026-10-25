@@ -1226,6 +1226,14 @@ fn start_bd_fox_marth4_600() {
     movement_gate_ticks("start_bd_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_bd_fox_marth4", 600, "ledger600");
 }
+/// Yoshi's Island's start boundary: map 1's model loop and bones 23 and
+/// 26's, the blocks deferred to the countdown's end (grYorster_80202160).
+#[test]
+fn start_yi_fox_marth4_600() {
+    movement_gate_ticks("start_yi_fox_marth4", 600);
+    movement_gate_ticks("start_yi_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_yi_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

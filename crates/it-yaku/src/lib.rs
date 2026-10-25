@@ -4,9 +4,11 @@
 //! scripts; the stage switches state (grMaterial_801C8D98 or a direct
 //! Item_80268E5C) and the item follows the JObj every physics step.
 //!
-//! Jungle Japes' Klaptrap is the one creator in the ported stages. Its
-//! callbacks (yaku.x14 grGarden_80203498, x18 and x1C null) do nothing, so
-//! a hit dealt, a hit taken or a touch runs no stage code.
+//! Jungle Japes' Klaptrap carries its bite this way; its callbacks
+//! (yaku.x14 grGarden_80203498, x18 and x1C null) do nothing. Yoshi's
+//! Island's nine blocks take hits on a capsule the stage sets
+//! (grMaterial_801C8DE0); their hit-taken callback (x18,
+//! grYorster_80202428) runs in the scene once this kind's DmgReceived has.
 use hsd_types::Vec3;
 use melee_it::{desc::YAKU_STATES, *};
 use melee_types::{GroundOrAir, ItemKind};
@@ -35,6 +37,15 @@ impl ItemLogic for Yaku {
     const STATES: &'static [ItemStateRow] = &STATES;
 
     fn pickup_possible(_item: &ItemCore) -> bool {
+        false
+    }
+
+    /// it_2E6A_Logic117_DmgReceived (802E6F7C): the percent resets
+    /// (xC9C = 0) and it_8027B798 turns the item to face the hit
+    /// (xCCC); the velocity it computes is only the stage callback's.
+    fn damage_received(item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
+        item.damage_percent = 0;
+        item.facing = item.hit_direction;
         false
     }
 
@@ -90,6 +101,23 @@ pub fn set_anchor(item: &mut ItemCore, anchor: YakuAnchor) {
 /// Item_80268E5C(item, state, ITEM_ANIM_UPDATE) from the stage.
 pub fn change_state(item: &mut ItemCore, state: u16, assets: &melee_it::desc::ItemAssets) {
     item.change_motion_with(state, i32::from(state), state_change::ANIM_UPDATE, assets);
+}
+
+/// grMaterial_801C8DE0 (0x801C8DE0): the first hurt capsule's offsets
+/// and radius.
+pub fn set_hurt_capsule(item: &mut ItemCore, offsets: [Vec3; 2], radius: f32) {
+    item.hurt_override = Some((offsets, radius));
+}
+
+/// grMaterial_801C8E08 / 801C8E28 (it_802756E0 / it_802756D0): the
+/// capsules take hits again, or stop.
+pub fn set_hurt_enabled(item: &mut ItemCore, enabled: bool) {
+    item.hurt_intangible = !enabled;
+}
+
+/// grMaterial_801C8E68 (0x801C8E68): `ground_or_air` as the stage sets it.
+pub fn set_ground_or_air(item: &mut ItemCore, ground_or_air: GroundOrAir) {
+    item.ground_or_air = ground_or_air;
 }
 
 fn no_animation(_item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {

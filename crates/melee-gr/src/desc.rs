@@ -278,6 +278,26 @@ pub fn read_fourside_parameters(archive: &Archive) -> ReadResult<crate::fourside
 pub fn read_shrine(archive: &Archive) -> ReadResult<StageDesc> {
     read_stage(archive, GrKind::Shrine, 2)
 }
+/// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
+/// carries flags 0xC0000000, so map 1 selects the lights and fog.
+pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Yorster, 1)
+}
+/// `YorsterParams` (gryorster.c:57-66) as the asm reads it.
+pub fn read_yorster_parameters(archive: &Archive) -> ReadResult<crate::yorster::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    Ok(crate::yorster::Parameters {
+        bump_speed: r.f32(p)?,
+        bump_full: r.f32(p + 0x4)?,
+        damage_threshold: r.f32(p + 0x8)?,
+        damage_full: r.f32(p + 0xC)?,
+        bump_freeze: r.s32(p + 0x10)?,
+        hit_freeze: r.s32(p + 0x14)?,
+        flip_delay: r.s32(p + 0x18)?,
+        spin_end_frame: r.s32(p + 0x1C)?,
+    })
+}
 /// grOy_StageData / grDatFiles_801C6038: GrOy.dat. grOy_StageCallbacks[4]
 /// carries flags 0xC0000000, so map 4 selects the lights and fog.
 pub fn read_old_yoshi(archive: &Archive) -> ReadResult<StageDesc> {

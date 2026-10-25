@@ -964,6 +964,7 @@ impl CollMap {
     fn notify_ceiling_joint(&mut self, cd: &mut CollData, line_id: i32, dy: f32) {
         let joint_id = self.joint_from_line(line_id);
         if joint_id != NO_ID {
+            self.record_ceiling_event(joint_id, cd, dy);
             let (cb, _) = self.joint_get_cb2(joint_id);
             if let Some(cb) = cb {
                 cb(&mut self.joint_cbs[joint_id as usize].cb_data_1, joint_id, cd, cd.x50 as i32, 0, dy);
@@ -1019,6 +1020,7 @@ impl CollMap {
         } else if kind == line_kind::CEILING {
             let joint_id = self.joint_from_line(line_id);
             if joint_id != NO_ID {
+                self.record_ceiling_event(joint_id, cd, 0.0);
                 let (cb, _) = self.joint_get_cb2(joint_id);
                 if let Some(cb) = cb {
                     cb(&mut self.joint_cbs[joint_id as usize].cb_data_1, joint_id, cd, cd.x50 as i32, 0, 0.0);

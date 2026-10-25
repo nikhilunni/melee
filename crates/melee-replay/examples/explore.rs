@@ -83,6 +83,9 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::BrinstarDepths => (70.0, 45.0),
         // The main floor ends at about x -63 and 63.
         Stage::FlatZone => (58.0, 33.0),
+        // The left ledge at x -97.8; the blocks fill the middle gap
+        // (an approximation for the policies).
+        Stage::YoshisIsland => (90.0, 60.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

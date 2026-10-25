@@ -17,6 +17,7 @@ pub mod shrine;
 pub mod stadium;
 
 pub mod story;
+pub mod yorster;
 pub mod wind;
 
 pub mod pupupu;

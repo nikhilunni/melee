@@ -12,6 +12,7 @@ pub(crate) mod oldyoshi;
 pub(crate) mod pupupu;
 pub(crate) mod shrine;
 pub(crate) mod stadium;
+pub(crate) mod yorster;
 use anyhow::Result;
 use gekko_math::HsdRng;
 use hsd_archive::Archive;
@@ -203,6 +204,14 @@ pub const FLAT_ZONE: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Flatzone,
     read: melee_gr::desc::read_flatzone,
 };
+/// grYt_StageData: GrYt.dat; StageParam row 0x10 (StKind).
+pub const YOSHIS_ISLAND: StageDescriptor = StageDescriptor {
+    name: "YoshisIsland",
+    file: "GrYt.dat",
+    music_id: 0x10,
+    kind: melee_types::GrKind::Yorster,
+    read: melee_gr::desc::read_yorster,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -219,6 +228,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &FOURSIDE,
         &BRINSTAR_DEPTHS,
         &FLAT_ZONE,
+        &YOSHIS_ISLAND,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -239,6 +249,7 @@ pub enum SceneStage {
     Fourside(Box<melee_gr::fourside::Fourside>),
     Kraid(Box<melee_gr::kraid::procs::KraidStage>),
     FlatZone(Box<melee_gr::flatzone::FlatZone>),
+    Yorster(Box<melee_gr::yorster::procs::YorsterStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -249,7 +260,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -268,6 +279,7 @@ impl SceneStage {
             Self::Fourside(s) => s.proc_table(),
             Self::Kraid(s) => s.proc_table(),
             Self::FlatZone(s) => s.proc_table(),
+            Self::Yorster(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -275,7 +287,7 @@ impl SceneStage {
     /// countdown ends, in order: the stage's on_start (each tournament
     /// stage's is grZakoGenerator_801CAE04 alone), then the GObj of
     /// Ground_801C0C2C's proc.
-    pub fn start_gobjs(&self) -> &'static [hsd_gobj::GObjClass] {
+    pub fn start_gobjs(&self) -> &'static [hsd_gobj::GObjClass; 2] {
         &[
             hsd_gobj::GObjClass::EnemyGenerator,
             hsd_gobj::GObjClass::Stage,
@@ -304,6 +316,7 @@ impl SceneStage {
             Self::Fourside(_) => unreachable!("Fourside callbacks run in scene_stage::fourside"),
             Self::Kraid(_) => unreachable!("Brinstar Depths callbacks run in scene_stage::kraid"),
             Self::FlatZone(_) => unreachable!("Flat Zone callbacks require animation state"),
+            Self::Yorster(_) => unreachable!("Yoshi's Island callbacks run in scene_stage::yorster"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

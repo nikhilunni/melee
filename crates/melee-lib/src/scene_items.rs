@@ -2625,6 +2625,29 @@ pub(crate) fn spawn_yaku(
     id
 }
 
+/// grMaterial_801C8CFC during the match (Yoshi's Island's blocks, at the
+/// stage's start): [`spawn_yaku`] with its scheduler object.
+pub(crate) fn spawn_yaku_live(
+    pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    anchor: melee_it::YakuAnchor,
+) -> u32 {
+    let id = spawn_yaku(pool, gobjs, resources, map, anchor);
+    let item = pool.get_mut(id).unwrap();
+    item.past_hitbox_refresh = false;
+    item.efasync_immediate = false;
+    let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
+    for phase in melee_it::ITEM_PROCESS_LINKS {
+        world.add_tagged_proc(object, phase, tag(id, phase));
+    }
+    objects.push((id, object));
+    id
+}
+
 /// The scheduler objects of the items a scene began with (a stage's
 /// material item), in pool order.
 pub(crate) fn register_existing(pool: &ItemPool, world: &mut World, objects: &mut Objects) {
@@ -2637,7 +2660,7 @@ pub(crate) fn register_existing(pool: &ItemPool, world: &mut World, objects: &mu
     }
 }
 
-/// The stage material item (kind 0xA0); a stage creates one at most.
+/// Jungle Japes' one stage material item (kind 0xA0).
 fn yaku_mut(pool: &mut ItemPool) -> &mut melee_it::ItemCore {
     pool.iter_mut()
         .find(|item| item.kind == ItemKind::PokemonRandom && !item.destroyed)
