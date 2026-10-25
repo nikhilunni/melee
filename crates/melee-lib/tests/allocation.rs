@@ -1240,3 +1240,130 @@ fn held_back_air_entry_step_and_capture_allocate_nothing_after_live_clone() {
         "{error}"
     );
 }
+
+#[test]
+fn monster_constructor_step_and_capture_allocate_nothing_after_live_clone() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    for (name, ticks, kind) in [
+        ("corpus_v3_fd_items_sword_e266e1150_p1", 1874, ItemKind(43)),
+        ("corpus_v3_fd_items_sword_e4abe72ec_p2", 297, ItemKind(44)),
+        ("corpus_v3_fd_items_sword_e5ca12c3b_p0", 595, ItemKind(43)),
+        ("corpus_v3_fd_items_taru_eae02b66b_p2", 285, ItemKind(43)),
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        assert!(melee_test_support::require_files(scenario.required_files()));
+        assert_eq!(scenario.frames, ticks);
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut capture = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        let mut branch = None;
+        let mut empty_before_birth = Vec::new();
+        for tick in 0..ticks {
+            if tick + 1 == ticks {
+                empty_before_birth = capture
+                    .meshes()
+                    .iter()
+                    .map(|mesh| mesh.instance_group)
+                    .filter(|group| capture.instance_range(*group).is_empty())
+                    .collect();
+                empty_before_birth.sort_unstable();
+                empty_before_birth.dedup();
+                let cloned = game.clone();
+                let capture = presentation::Presentation::new(&cloned).unwrap();
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(&cloned).unwrap()
+                );
+                branch = Some((cloned, capture));
+            }
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(tick, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} step{tick}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let observed = game.observe().map(|v| v.fighters().count());
+            let result = capture.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            assert_eq!(observed.unwrap(), 2);
+            result.unwrap();
+            assert_eq!(COUNT.with(Cell::get), 0, "{name} capture{tick}");
+            if let Some((cloned, capture)) = &mut branch {
+                assert_eq!(measure(cloned, &inputs), 0, "{name} clone entry");
+                COUNT.with(|v| v.set(0));
+                ENABLED.with(|v| v.set(true));
+                let result = capture.capture(cloned);
+                ENABLED.with(|v| v.set(false));
+                result.unwrap();
+                assert_eq!(COUNT.with(Cell::get), 0, "{name} clone capture");
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(cloned).unwrap()
+                );
+            }
+        }
+        let view = game.observe().unwrap();
+        assert_eq!(view.items().filter(|item| item.kind() == kind).count(), 1);
+        assert!(view
+            .items()
+            .find(|item| item.kind() == kind)
+            .unwrap()
+            .owner()
+            .is_none());
+        // Identify the newly born free model through public draw data, rather
+        // than treating a successful capture as evidence that it was rendered.
+        let position = view
+            .items()
+            .find(|item| item.kind() == kind)
+            .unwrap()
+            .position();
+        let assert_born_draw = |capture: &presentation::Presentation| {
+            let groups: Vec<_> = empty_before_birth
+                .iter()
+                .copied()
+                .filter(|group| {
+                    let range = capture.instance_range(*group);
+                    if range.len() != 1 {
+                        return false;
+                    }
+                    let matrix = capture.instances()[range.start as usize];
+                    matrix[3][..3] == [position.x, position.y, position.z]
+                        && capture.meshes().iter().zip(capture.visibility()).any(
+                            |(mesh, visible)| {
+                                mesh.instance_group == *group
+                                    && *visible
+                                    && !mesh.vertices.is_empty()
+                                    && !mesh.indices.is_empty()
+                            },
+                        )
+                })
+                .collect();
+            assert_eq!(
+                groups.len(),
+                1,
+                "{name}: born monster has one visible model group"
+            );
+            groups[0]
+        };
+        let group = assert_born_draw(&capture);
+        let (_, cloned_capture) = branch.as_ref().unwrap();
+        assert_eq!(group, assert_born_draw(cloned_capture));
+        assert_eq!(
+            capture.instance_range(group),
+            cloned_capture.instance_range(group)
+        );
+        let range = capture.instance_range(group);
+        assert_eq!(
+            &capture.instances()[range.start as usize..range.end as usize],
+            &cloned_capture.instances()[range.start as usize..range.end as usize]
+        );
+        // No later retail continuation is claimed: the actual public next
+        // step must report the deliberately unported animation callback.
+        let error = game.step(&Inputs::default()).unwrap_err();
+        assert!(error.to_string().contains("monster Animation"), "{error}");
+    }
+}

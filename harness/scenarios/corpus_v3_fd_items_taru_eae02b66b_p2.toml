@@ -1,0 +1,75 @@
+# Original complete retail capture: 285 sequential ticks (0..284).
+# Final tick: Barrel -> Kuriboh birth, right-facing, unowned, zero later rows.
+# Constructor-only witness: no walking, damage, pickup or later lifecycle proof.
+# Archive: explorer originally stopped at it_8026F6BC on this final tick.
+name = "corpus_v3_fd_items_taru_eae02b66b_p2"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_items_taru.sav"
+frames = 285
+render_every_tick = true
+seed = 1
+item_frequency = 4
+item_mask = "0xfffffff800001004"
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = { B = true, StickX = 0.44009765624999997, StickY = -0.44173828125000003 }, raw = { button = 512, stickX = 56, stickY = -56 } },
+  { frame = 1, port = 1, buttons = { L = true, A = true, TriggerLeft = 0.5732421875 }, raw = { button = 320, triggerL = 140 } },
+  { frame = 2, port = 1, buttons = { B = true, StickY = 0.64224609375 }, raw = { button = 512, stickY = 80 } },
+  { frame = 9, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 36, port = 1, buttons = { CStickX = -0.44173828125000003, CStickY = 0.44009765624999997 }, raw = { substickX = -56, substickY = 56 } },
+  { frame = 43, port = 0, buttons = { L = true, A = true, TriggerLeft = 0.5732421875 }, raw = { button = 320, triggerL = 140 } },
+  { frame = 44, port = 1, buttons = { B = true, StickX = 0.44009765624999997, StickY = 0.44009765624999997 }, raw = { button = 512, stickX = 56, stickY = 56 } },
+  { frame = 51, port = 0, buttons = { CStickX = -0.44173828125000003, CStickY = 0.44009765624999997 }, raw = { substickX = -56, substickY = 56 } },
+  { frame = 52, port = 0, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 52, port = 1, buttons = { Z = true }, raw = { button = 16 } },
+  { frame = 57, port = 0, buttons = { B = true, X = true, StickY = 0.64224609375 }, raw = { button = 1536, stickY = 80 } },
+  { frame = 59, port = 0, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 65, port = 1, buttons = { CStickX = -0.64388671875 }, raw = { substickX = -80 } },
+  { frame = 67, port = 0, buttons = { A = true, StickY = -0.31478515625000003 }, raw = { button = 256, stickY = -40 } },
+  { frame = 69, port = 0, buttons = { B = true, StickX = -0.44173828125000003, StickY = 0.44009765624999997 }, raw = { button = 512, stickX = -56, stickY = 56 } },
+  { frame = 82, port = 0, buttons = {  }, raw = {  } },
+  { frame = 99, port = 1, buttons = {  }, raw = {  } },
+  { frame = 104, port = 1, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 107, port = 1, buttons = { B = true, StickX = 0.44009765624999997, StickY = -0.44173828125000003 }, raw = { button = 512, stickX = 56, stickY = -56 } },
+  { frame = 108, port = 1, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 119, port = 0, buttons = { CStickX = 0.44009765624999997, CStickY = 0.44009765624999997 }, raw = { substickX = 56, substickY = 56 } },
+  { frame = 140, port = 0, buttons = { B = true, StickY = -0.64388671875 }, raw = { button = 512, stickY = -80 } },
+  { frame = 142, port = 1, buttons = { A = true, StickX = -0.64388671875 }, raw = { button = 256, stickX = -80 } },
+  { frame = 153, port = 0, buttons = { CStickY = 0.64224609375 }, raw = { substickY = 80 } },
+  { frame = 154, port = 0, buttons = { B = true, StickY = 0.64224609375 }, raw = { button = 512, stickY = 80 } },
+  { frame = 155, port = 1, buttons = { L = true, StickX = -0.64388671875, TriggerLeft = 0.5732421875 }, raw = { button = 64, stickX = -80, triggerL = 140 } },
+  { frame = 157, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 163, port = 1, buttons = { B = true, StickX = -0.44173828125000003, StickY = -0.44173828125000003 }, raw = { button = 512, stickX = -56, stickY = -56 } },
+  { frame = 166, port = 1, buttons = { A = true, StickX = -0.64388671875 }, raw = { button = 256, stickX = -80 } },
+  { frame = 171, port = 1, buttons = { CStickY = 0.64224609375 }, raw = { substickY = 80 } },
+  { frame = 191, port = 0, buttons = { L = true, A = true, TriggerLeft = 0.5732421875 }, raw = { button = 320, triggerL = 140 } },
+  { frame = 194, port = 0, buttons = { A = true, StickY = 0.64224609375 }, raw = { button = 256, stickY = 80 } },
+  { frame = 197, port = 0, buttons = { Z = true }, raw = { button = 16 } },
+  { frame = 200, port = 0, buttons = { A = true, StickY = 0.64224609375 }, raw = { button = 256, stickY = 80 } },
+  { frame = 205, port = 1, buttons = { A = true, StickY = -0.31478515625000003 }, raw = { button = 256, stickY = -40 } },
+  { frame = 213, port = 0, buttons = { B = true, StickX = -0.64388671875 }, raw = { button = 512, stickX = -80 } },
+  { frame = 216, port = 0, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 218, port = 1, buttons = { A = true, StickY = 0.64224609375 }, raw = { button = 256, stickY = 80 } },
+  { frame = 224, port = 0, buttons = { A = true, StickY = 0.64224609375 }, raw = { button = 256, stickY = 80 } },
+  { frame = 226, port = 1, buttons = { B = true, X = true, StickY = 0.64224609375 }, raw = { button = 1536, stickY = 80 } },
+  { frame = 239, port = 1, buttons = { A = true, StickY = 0.64224609375 }, raw = { button = 256, stickY = 80 } },
+  { frame = 245, port = 0, buttons = { Z = true }, raw = { button = 16 } },
+  { frame = 252, port = 1, buttons = { Up = true }, raw = { button = 8 } },
+  { frame = 253, port = 1, buttons = { A = true, StickX = -0.64388671875 }, raw = { button = 256, stickX = -80 } },
+  { frame = 274, port = 1, buttons = {  }, raw = {  } },
+  { frame = 276, port = 1, buttons = { B = true }, raw = { button = 512 } },
+  { frame = 279, port = 0, buttons = { L = true, StickX = 0.44009765624999997, StickY = -0.44173828125000003, TriggerLeft = 0.5732421875 }, raw = { button = 64, stickX = 56, stickY = -56, triggerL = 140 } },
+  { frame = 282, port = 0, buttons = { A = true, StickY = -0.31478515625000003 }, raw = { button = 256, stickY = -40 } },
+  { frame = 284, port = 0, buttons = { CStickX = -0.64388671875 }, raw = { substickX = -80 } },
+  { frame = 284, port = 1, buttons = { L = true, A = true, TriggerLeft = 0.5732421875 }, raw = { button = 320, triggerL = 140 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

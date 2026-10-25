@@ -906,7 +906,49 @@ impl Runtime {
                 if (monsters as i32) < common.monster_limit
                     && state.rng.randi(common.monster_odds) == 0
                 {
-                    unimplemented!("it_8026F6BC: a monster from a crate (it_8026C65C on it_804A0E60)");
+                    let spawner = state.item_spawner.expect("the random item tables");
+                    let kind = spawner
+                        .monsters
+                        .pick(false, &mut state.rng)
+                        .expect("it_804A0E60 monster table");
+                    let facing = crate::scene_items::facing_toward_fighters(
+                        previous_position,
+                        &mut state.fighters,
+                        &mut state.rng,
+                    );
+                    let attack = state
+                        .items
+                        .get_mut(container)
+                        .expect("the container")
+                        .stale_source;
+                    let spawned = crate::scene_items::spawn_released_monster(
+                        &mut state.items,
+                        &mut state.effects.gobjs,
+                        &state.assets.items,
+                        &mut state.map,
+                        world,
+                        &mut self.item_objects,
+                        crate::scene_items::Released {
+                            kind,
+                            position,
+                            previous_position,
+                            facing,
+                            attack,
+                        },
+                        &mut state.fighters,
+                        &mut state.rng,
+                    );
+                    if let Some(id) = spawned {
+                        // retail 0x8026F760/76C/770: fsubs then two separate fmuls.
+                        let random = state.rng.randf();
+                        let velocity = hsd_types::Vec3::new(
+                            common.release_spread * (2.0 * (random - 0.5)),
+                            state.assets.items.get(kind).launch_vertical_velocity,
+                            0.0,
+                        );
+                        state.items.get_mut(id).expect("the monster").velocity = velocity;
+                        return Ok(());
+                    }
                 }
                 let Some(melee_it::CrateRoll {
                     weights: [one, two, three],
@@ -5285,6 +5327,8 @@ mod stone_contact_tests;
 
 #[cfg(test)]
 mod heavy_entry_tests;
+#[cfg(test)]
+mod monster_entry_tests;
 
 #[cfg(test)]
 mod item_phantom_guard_tests;

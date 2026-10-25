@@ -7154,3 +7154,77 @@ fn held_sword_common_back_air_entry_complete_captures() {
 fn sword_catch_during_existing_back_air_complete_capture() {
     complete_capture_with_initial_rng_gate("corpus_v3_fd_items_sword_e0144d061_p1", 1344);
 }
+
+/// Crate monsters are observed only at construction; retain every original row,
+/// full particles, ordered particle sites and genuine setup-seed edges.
+#[test]
+fn crate_monster_constructors_full_fields_particles_and_ordered_rng() {
+    for (name, ticks, incoming) in [
+        (
+            "corpus_v3_fd_items_sword_e266e1150_p1",
+            1874,
+            4_067_602_209_u32,
+        ),
+        ("corpus_v3_fd_items_sword_e4abe72ec_p2", 297, 4_067_602_209),
+        ("corpus_v3_fd_items_sword_e5ca12c3b_p0", 595, 4_067_602_209),
+        ("corpus_v3_fd_items_taru_eae02b66b_p2", 285, 2_394_518_020),
+    ] {
+        assert!(combat_gate_ticks(name, ticks).is_some());
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        assert!(
+            !scenario.is_cold()
+                && scenario.boundary_seed.is_none()
+                && scenario.online_rng_offset.is_none()
+        );
+        let read = |path: std::path::PathBuf| {
+            serde_json::from_str::<serde_json::Value>(
+                &melee_test_support::trace::read_to_string(&path).unwrap(),
+            )
+            .unwrap()
+        };
+        let initial = read(scenario.trace_path("particles.jsonl.initial.jsonl"));
+        let metadata = read(scenario.trace_path("particles.jsonl.initial.jsonl.meta.json"));
+        let boundary = read(scenario.boundary_path("particles.jsonl.initial.jsonl"));
+        assert_eq!(metadata["sampling"], "savestate_loaded_before_first_tick");
+        assert_eq!(initial["state"]["rng.seed"]["v"], incoming);
+        assert_eq!(metadata["particles"]["seed"], incoming);
+        assert_eq!(boundary["state"]["rng.seed"]["v"], incoming);
+        let ledger = scenario.trace_path("ledger.raw.jsonl");
+        let rows = melee_test_support::trace::read_to_string(&ledger).unwrap();
+        assert_eq!(rows.lines().count(), ticks);
+        let mut rng = gekko_math::HsdRng::new(incoming);
+        let mut simulation = trace::simulation_displayed_as(&scenario, &ledger).unwrap();
+        for (tick, line) in rows.lines().enumerate() {
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"], tick);
+            assert_eq!(row["phase"], "frame_end");
+            let draws = row["rng_draws"].as_array().unwrap();
+            if tick == 0 {
+                assert_eq!(draws.len(), 1, "genuine setup draw is retained");
+                assert_eq!(draws[0]["lr"], 0x801C_26B0_u32);
+            }
+            for draw in draws {
+                assert!(matches!(
+                    draw["pc"].as_u64().unwrap(),
+                    0x8038_054C | 0x8038_059C
+                ));
+                rng.rand();
+                assert_eq!(
+                    u64::from(rng.seed),
+                    draw["seed"].as_u64().unwrap(),
+                    "{name} tick{tick} raw LCG edge"
+                );
+            }
+            assert_eq!(u64::from(rng.seed), row["seed"].as_u64().unwrap());
+            assert_eq!(
+                simulation.tick().unwrap().state["rng.seed"],
+                melee_diff::Value::UInt(u64::from(rng.seed)),
+                "{name} tick{tick} ledger cadence seed"
+            );
+        }
+    }
+}

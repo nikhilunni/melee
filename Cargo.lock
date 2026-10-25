@@ -1428,6 +1428,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-monsters"
+version = "0.0.1"
+dependencies = [
+ "hsd-types",
+ "melee-it",
+ "melee-mp",
+ "melee-types",
+]
+
+[[package]]
 name = "it-ness"
 version = "0.0.1"
 dependencies = [
@@ -1862,6 +1872,7 @@ dependencies = [
  "it-mariocape",
  "it-mariofire",
  "it-mewtwo",
+ "it-monsters",
  "it-ness",
  "it-peach",
  "it-pikachu",

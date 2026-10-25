@@ -186,12 +186,20 @@ impl ItemCommonData {
     }
 }
 
+/// The constructor-owned typed fields in itLeadeadAttributes.
+#[derive(Clone, Copy, Debug)]
+pub struct ReDeadConstructorAttributes {
+    pub horizontal_scale: f32,
+    pub release_timer: i32,
+}
+
 #[derive(Clone, Debug)]
 pub struct ItemAssets {
     pub visual: hsd_archive::desc::item_visual::ItemVisual,
     pub scripts: Vec<Vec<Command>>,
     pub hit_flags: Vec<Vec<Option<ItemHitFlags>>>,
     pub special_attributes: Vec<f32>,
+    pub redead_constructor: Option<ReDeadConstructorAttributes>,
     pub scale: f32,
     pub model: u32,
     pub rotate_to_facing: bool,
@@ -465,6 +473,39 @@ impl ItemAssets {
         Ok(())
     }
 
+    /// it_804D6D38 (itPublicData +8): the separate monster article bank.
+    pub fn from_monster(
+        archive: &Archive,
+        public: u32,
+        kind: melee_types::ItemKind,
+        article_states: &[i32],
+        special_attributes: u32,
+    ) -> hsd_archive::desc::Result<Self> {
+        let index = (kind as u32)
+            .checked_sub(melee_types::ItemKind::Kuriboh as u32)
+            .filter(|index| *index < 4)
+            .expect("a monster bank kind");
+        let articles = archive.reader().u32(public + 8)?;
+        let mut assets = Self::from_article_slot_states(
+            archive,
+            articles + index * 4,
+            article_states,
+            special_attributes,
+        )?;
+        assets.read_common_release(archive, public)?;
+        if kind == melee_types::ItemKind::Leadead {
+            let reader = archive.reader();
+            let article = reader.u32(articles + index * 4)?;
+            let special = reader.u32(article + 4)?;
+            // itCommonItems.h: xC is f32; x1C is signed16 amid packed fields.
+            assets.redead_constructor = Some(ReDeadConstructorAttributes {
+                horizontal_scale: reader.f32(special + 0xC)?,
+                release_timer: i32::from(reader.s16(special + 0x1C)?),
+            });
+        }
+        Ok(assets)
+    }
+
     /// it_804D6D24 (itPublicData +4)[kind]: a common item's Article in ItCo.
     /// `article_states` is the kind's ItemStateTable anim_id column: the
     /// article state each motion state plays, or -1 for none.
@@ -640,6 +681,7 @@ impl ItemAssets {
             pose: None,
             particle_tracks: None,
             special_pointees: Vec::new(),
+            redead_constructor: None,
         })
     }
 

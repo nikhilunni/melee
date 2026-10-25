@@ -236,8 +236,34 @@ pub enum ItemScratch {
     KirbyHammer(KirbyHammerState),
     Container(ContainerState),
     Barrel(BarrelState),
+    Monster(MonsterState),
     Yaku(YakuAnchor),
     None,
+}
+/// it_8027B730: shared monster constructor scratch. Later behavior remains guarded.
+#[derive(Clone, Debug)]
+pub struct MonsterState {
+    pub joint: Option<usize>,
+    pub joint_index: i32,
+    pub floor_normal: Vec3,
+    pub interpolation: Vec3,
+    pub behavior: MonsterBehavior,
+}
+#[derive(Clone, Debug)]
+pub enum MonsterBehavior {
+    Kuriboh {
+        walking_speed: f32,
+        spawn_timer: i32,
+    },
+    ReDead {
+        target: Option<u8>,
+        attack_timer: i32,
+        release_timer: i32,
+        attempts: i32,
+        hurt_offsets: [Vec3; 2],
+        hurt_radius: f32,
+        collision_box: melee_types::mp::ItEcb,
+    },
 }
 /// itTaru_ItemVars (ittaru.c): a barrel.
 #[derive(Clone, Copy, Debug, Default)]
@@ -917,6 +943,8 @@ pub struct ItemCore {
     pub command_variables: [u32; 4],
     pub hitboxes: [Option<HitCapsule>; 4],
     pub scratch: ItemScratch,
+    /// Item.jumped_on: constructor-owned callback; no stomp gameplay is admitted.
+    pub jumped_on: Option<fn(&mut ItemCore) -> bool>,
     pub hit_flags: [desc::ItemHitFlags; 4],
     /// x378_itemColl, created by it_80275E98 at spawn.
     pub collision: Option<melee_types::mp::CollData>,
@@ -1780,6 +1808,48 @@ impl ItemPool {
         stale_multiplier: f32,
         gobjs: &mut hsd_gobj::GObjAddresses,
     ) -> Option<u32> {
+        assert!(
+            D::logic(spawn.kind).facing_constructor.is_none(),
+            "Item_8026A810: this constructor requires live facing context"
+        );
+        let mut item = self.prepare_spawn(spawn, assets, stale_multiplier, gobjs)?;
+        item.update_spin(self.common.spawn_spin_degrees);
+        (D::logic(item.kind).spawned)(&mut item, assets);
+        Some(self.finish_spawn(item))
+    }
+
+    /// Item_8026A810: initial collision precedes the constructor's live
+    /// facing query (it_802D73F0 / it_802E8BCC). Ordinary kinds keep their
+    /// original spawn path and never evaluate this query.
+    pub fn spawn_with_facing_constructor<D: ItemDispatch>(
+        &mut self,
+        spawn: SpawnItem,
+        assets: &ItemAssets,
+        gobjs: &mut hsd_gobj::GObjAddresses,
+        map: &mut melee_mp::CollMap,
+        query: impl FnOnce(Vec3) -> f32,
+    ) -> Option<u32> {
+        let constructor = D::logic(spawn.kind)
+            .facing_constructor
+            .expect("a table-owned constructor requiring live facing context");
+        let mut item = self.prepare_spawn(spawn, assets, 1.0, gobjs)?;
+        item.initialize_collision(spawn, assets, map);
+        item.set_root_translation(item.position);
+        item.update_spin(self.common.spawn_spin_degrees);
+        (constructor.before_query)(&mut item, assets);
+        item.facing = query(item.position);
+        (constructor.after_query)(&mut item, assets);
+        Some(self.finish_spawn(item))
+    }
+
+    // Concrete shared initialization, compiled once rather than per query closure.
+    fn prepare_spawn(
+        &mut self,
+        spawn: SpawnItem,
+        assets: &ItemAssets,
+        stale_multiplier: f32,
+        gobjs: &mut hsd_gobj::GObjAddresses,
+    ) -> Option<ItemCore> {
         if let Some(limit) = self.common.hold_limits[usize::from(spawn.hold_kind)] {
             if self
                 .items
@@ -1797,7 +1867,7 @@ impl ItemPool {
         );
         let id = self.next_id;
         self.next_id += 1;
-        let mut item = ItemCore {
+        let item = ItemCore {
             ground_or_air: spawn.ground_or_air,
             id,
             gobj: gobjs.create(hsd_gobj::GObjClass::Item),
@@ -1875,6 +1945,7 @@ impl ItemPool {
             command_variables: [0; 4],
             hitboxes: std::array::from_fn(|_| None),
             scratch: ItemScratch::None,
+            jumped_on: None,
             hit_flags: [desc::ItemHitFlags::default(); 4],
             collision: None,
             collision_box: assets.collision_box,
@@ -1950,12 +2021,14 @@ impl ItemPool {
             article_state: 0,
             hitbox_trace: Default::default(),
         };
-        // Item_80267130 -> it_80274658(x6C) before the kind's spawn callback.
-        item.update_spin(self.common.spawn_spin_degrees);
-        (D::logic(item.kind).spawned)(&mut item, assets);
+        Some(item)
+    }
+
+    fn finish_spawn(&mut self, mut item: ItemCore) -> u32 {
         item.begin_spawn_intangibility(self.common.spawn_intangible_frames);
+        let id = item.id;
         self.items.push(item);
-        Some(id)
+        id
     }
     /// ftColl_80077C60 records xC34_damageDealt; item callbacks run at s-link14.
     pub fn record_damage_dealt(&mut self, id: u32, damage: f32) {
@@ -2439,6 +2512,7 @@ mod tests {
             scripts: Vec::new(),
             hit_flags: Vec::new(),
             special_attributes: Vec::new(),
+            redead_constructor: None,
             scale: 1.0,
             model: 0,
             rotate_to_facing: false,
@@ -2599,3 +2673,7 @@ mod tests {
 #[cfg(test)]
 #[path = "item_script_tests.rs"]
 mod item_script_tests;
+
+#[cfg(test)]
+#[path = "constructor_tests.rs"]
+mod constructor_tests;

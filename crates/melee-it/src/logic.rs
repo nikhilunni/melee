@@ -78,6 +78,13 @@ pub struct ItemStateRow {
     pub physics: fn(&mut ItemCore, &ItemPhysicsContext<'_>),
     pub collision: fn(&mut ItemCore, &mut ItemCollisionContext<'_>) -> bool,
 }
+/// Item_8026A810 constructors which query live fighter positions between
+/// their shared setup and kind-specific setup. Both halves are required.
+#[derive(Clone, Copy)]
+pub struct FacingConstructor {
+    pub before_query: fn(&mut ItemCore, &ItemAssets),
+    pub after_query: fn(&mut ItemCore, &ItemAssets),
+}
 /// `it/kinds/types.h:26`: one implementation per ItemLogicTable row.
 pub trait ItemLogic {
     const KIND: ItemKind;
@@ -117,6 +124,7 @@ pub trait ItemLogic {
     /// The physics callback looks for a target (Samus's missile,
     /// it_802B64FC): the scene supplies `ItemPhysicsContext::targets`.
     const LOCKS_ON: bool = false;
+    const FACING_CONSTRUCTOR: Option<FacingConstructor> = None;
     fn spawned(_item: &mut ItemCore, _assets: &ItemAssets) {}
     /// The spawning code's own set-up once Item_80268B18 returns (e.g.
     /// it_802BE2E8 for Toad's spores), which may draw from the RNG.
@@ -266,6 +274,7 @@ pub trait ItemLogic {
         model_pose: Self::model_pose,
         model_copies: Self::MODEL_COPIES,
         spawned: Self::spawned,
+        facing_constructor: Self::FACING_CONSTRUCTOR,
         launched: Self::launched,
         spawned_with_map: Self::spawned_with_map,
         pickup_possible: Self::pickup_possible,
@@ -311,6 +320,7 @@ pub struct ItemLogicRow {
     pub model_pose: fn(&ItemCore, &mut hsd_anim::jobj::JObjTree, usize) -> bool,
     pub states: &'static [ItemStateRow],
     pub spawned: fn(&mut ItemCore, &ItemAssets),
+    pub facing_constructor: Option<FacingConstructor>,
     pub launched: fn(
         &mut ItemCore,
         &ItemAssets,

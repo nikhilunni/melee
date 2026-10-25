@@ -23,6 +23,8 @@ melee_it::item_kinds! {
         Taru: it_container::Barrel,
         Kusudama: it_container::PartyBall,
         Sword: it_sword::Sword,
+        Kuriboh: it_monsters::Kuriboh,
+        Leadead: it_monsters::ReDead,
         Dosei: it_dosei::Dosei,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
         YoshiStar: it_yoshistar::YoshiStar,
@@ -464,7 +466,7 @@ impl Resources {
         launch: melee_it::hurt::ItemLaunch,
     ) -> Result<Self> {
         let archive = |file| -> Result<Archive> { Ok(Archive::parse(&read(file)?)?) };
-        let common_archive = archive("ItCo.dat")?;
+        let common_archive = std::sync::Arc::new(archive("ItCo.dat")?);
         let public = common_archive
             .public("itPublicData")
             .context("itPublicData")?;
@@ -479,6 +481,26 @@ impl Resources {
                     ItemKind::BombHei,
                     &it_bombhei::ARTICLE_STATES,
                     it_bombhei::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Kuriboh,
+                ItemAssets::from_monster(
+                    &common_archive,
+                    public,
+                    ItemKind::Kuriboh,
+                    &it_monsters::KURIBOH_ARTICLE_STATES,
+                    it_monsters::KURIBOH_SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Leadead,
+                ItemAssets::from_monster(
+                    &common_archive,
+                    public,
+                    ItemKind::Leadead,
+                    &it_monsters::REDEAD_ARTICLE_STATES,
+                    it_monsters::REDEAD_SPECIAL_ATTRIBUTES,
                 )?,
             ),
             // Random items' containers.
@@ -544,7 +566,12 @@ impl Resources {
                 )?,
             ),
         ];
-        let mut visual_archives = Vec::new();
+        // Free monster instances use the common archive through ItemPose, not
+        // fighter-owned article copies. Archive ownership is established here.
+        let mut visual_archives = vec![
+            (ItemKind::Kuriboh, std::sync::Arc::clone(&common_archive)),
+            (ItemKind::Leadead, std::sync::Arc::clone(&common_archive)),
+        ];
         let mut article_skeletons = Vec::new();
         for (file, symbol, laser, blaster, ghost, ghost_index) in [
             (
@@ -1803,133 +1830,153 @@ pub fn request(
         }
     };
     let assets = resources.get(spawn.kind);
-    if let Some(id) =
-        pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier, gobjs)
-    {
-        let item = pool.get_mut(id).unwrap();
-        item.owner_secondary = owner.secondary && spawn.owner == owner.slot;
-        if SceneItems::logic(spawn.kind).new_hit_group {
-            // SpawnItem.x40 = Item_8026AE60(): xAC4 before the first script.
-            let group = pool.allocate_hit_group();
-            pool.get_mut(id).unwrap().hit_group = group;
-        }
-        let item = pool.get_mut(id).unwrap();
-        item.initialize_collision(spawn, assets, map);
-        item.past_hitbox_refresh = owner.after_hitbox_refresh;
-        // A spawner at s_link 9 or later (an owner's accessory4): the new
-        // item's efAsync_Spawn dispatches at once, ahead of the next
-        // fighter's link 9 flush (efasync.c:1458, retail 800679B0).
-        item.efasync_immediate = owner.efasync_immediate;
-        if let Some((angle, speed, motion)) = ray {
-            it_foxlaser::initialize_laser(pool.get_mut(id).unwrap(), assets, angle, speed, motion);
-        }
-        // The spawner's own set-up after Item_80268B18 (it_802BE2E8,
-        // it_802BD4AC's turnip fields before its Item_8026AB54).
-        let common = pool.common().clone();
-        // A launch whose draws the spawner reserved (SpawnItem::launch_seed)
-        // makes them from the stream's position at the request.
-        let mut reserved = spawn.launch_seed.map(|seed| gekko_math::HsdRng { seed });
-        (SceneItems::logic(spawn.kind).launched)(
-            pool.get_mut(id).unwrap(),
-            assets,
-            &common,
-            &spawn,
-            reserved.as_mut().unwrap_or(rng),
-        );
-        (SceneItems::logic(spawn.kind).spawned_with_map)(
-            pool.get_mut(id).unwrap(),
-            assets,
-            &common,
-            &spawn,
-            map,
-        );
-        if let ItemRequest::SpawnInGroup(_) = request {
-            // Item_80268B18: xAC4_ignoreItemID = SpawnItem.x40, the id the
-            // spawning fighter holds. The hitboxes the first script step
-            // made take the group's history (it_8026FCF8), as a chain
-            // member's do.
-            let slot = owner.slot.expect("a grouped spawn from a fighter");
-            let group = pool.owner_hit_group(slot, owner.secondary);
-            pool.join_hit_group(id, group);
-        }
-        if SceneItems::logic(spawn.kind).procs_at_spawn {
-            let bounds = owner.bounds.expect("it_802750F8 from a fighter's spawn");
-            // it_802750F8: physics and collision now, without Item_802696CC's
-            // blast-zone test (xDCC b3 cleared, then set again).
-            pool.get_mut(id).unwrap().blast_zone_checked = false;
-            let cell = std::cell::Cell::new(*rng);
-            pool.physics::<SceneItems>(id, None, &Default::default(), bounds, assets, map, &cell);
-            *rng = cell.get();
-            let contact = pool.stage_contact(id, map);
-            pool.collide::<SceneItems>(id, None, contact, map, bounds, assets, Some(&cell));
-            *rng = cell.get();
-            if let Some(item) = pool.get_mut(id) {
-                item.blast_zone_checked = true;
-            }
-        }
-        if let ItemRequest::SpawnInHand {
-            part,
-            scale_by_owner,
-            ..
-        } = request
-        {
-            // Item_8026AB54: it_802742F4's attachment, then the kind's
-            // pickup callback.
-            let lifetime = pool.common().lifetime;
-            let half_life_scale = pool.common().half_life_scale;
-            let item = pool.get_mut(id).unwrap();
-            item.attach_to_holder(
-                owner.slot.expect("held by a fighter"),
-                part,
-                assets,
-                lifetime,
-                half_life_scale,
-            );
-            (SceneItems::logic(spawn.kind).picked_up)(
-                item,
-                &mut ItemAnimationContext {
-                    // Sampled only for kinds with PICKUP_READS_OWNER.
-                    owner: owner.held_item,
-                    holder: None,
-                    map,
-                    assets,
-                    partner: None,
-                    rng: None,
-                },
-            );
-            if scale_by_owner {
-                // it_80274594: scl times ftLib_80086A0C, the owner's model
-                // scale (1 in every supported mode), through the model,
-                // hitbox radii, grab range and boxes again.
-                let scale = item.scale;
-                item.rescale(scale);
-            }
-        }
-        if let Some(owner) = held_owner {
-            // Item_8026AB54 invokes the kind's pickup callback after attachment.
-            (SceneItems::logic(spawn.kind).picked_up)(
-                pool.get_mut(id).unwrap(),
-                &mut ItemAnimationContext {
-                    owner: Some(owner),
-                    holder: None,
-                    map,
-                    assets,
-                    partner: None,
-                    rng: None,
-                },
-            );
-        }
-        let item = pool.get_mut(id).unwrap();
-        item.past_hitbox_refresh = false;
-        item.efasync_immediate = false;
-        let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
-        for phase in melee_it::ITEM_PROCESS_LINKS {
-            world.add_tagged_proc(object, phase, tag(id, phase));
-        }
-        objects.push((id, object));
-        return Some(id);
+    let id = pool.spawn_with_stale::<SceneItems>(spawn, assets, owner.stale_multiplier, gobjs)?;
+    finish_spawn_request(pool, resources, map, world, objects, id, spawn, request,
+        owner, rng, ray, held_owner, false);
+    Some(id)
+}
+
+/// The common work after Item_8026A810, shared by ordinary and live-facing constructors.
+#[allow(clippy::too_many_arguments)]
+fn finish_spawn_request(
+    pool: &mut ItemPool,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    id: u32,
+    spawn: melee_it::SpawnItem,
+    request: ItemRequest,
+    owner: RequestOwner<'_>,
+    rng: &mut gekko_math::HsdRng,
+    ray: Option<(f32, f32, u16)>,
+    held_owner: Option<&melee_it::ItemOwner>,
+    collision_initialized: bool,
+) {
+    let assets = resources.get(spawn.kind);
+    let item = pool.get_mut(id).unwrap();
+    item.owner_secondary = owner.secondary && spawn.owner == owner.slot;
+    if SceneItems::logic(spawn.kind).new_hit_group {
+        // SpawnItem.x40 = Item_8026AE60(): xAC4 before the first script.
+        let group = pool.allocate_hit_group();
+        pool.get_mut(id).unwrap().hit_group = group;
     }
-    None
+    let item = pool.get_mut(id).unwrap();
+    if !collision_initialized {
+        item.initialize_collision(spawn, assets, map);
+    }
+    item.past_hitbox_refresh = owner.after_hitbox_refresh;
+    // A spawner at s_link 9 or later (an owner's accessory4): the new
+    // item's efAsync_Spawn dispatches at once, ahead of the next
+    // fighter's link 9 flush (efasync.c:1458, retail 800679B0).
+    item.efasync_immediate = owner.efasync_immediate;
+    if let Some((angle, speed, motion)) = ray {
+        it_foxlaser::initialize_laser(pool.get_mut(id).unwrap(), assets, angle, speed, motion);
+    }
+    // The spawner's own set-up after Item_80268B18 (it_802BE2E8,
+    // it_802BD4AC's turnip fields before its Item_8026AB54).
+    let common = pool.common().clone();
+    // A launch whose draws the spawner reserved (SpawnItem::launch_seed)
+    // makes them from the stream's position at the request.
+    let mut reserved = spawn.launch_seed.map(|seed| gekko_math::HsdRng { seed });
+    (SceneItems::logic(spawn.kind).launched)(
+        pool.get_mut(id).unwrap(),
+        assets,
+        &common,
+        &spawn,
+        reserved.as_mut().unwrap_or(rng),
+    );
+    (SceneItems::logic(spawn.kind).spawned_with_map)(
+        pool.get_mut(id).unwrap(),
+        assets,
+        &common,
+        &spawn,
+        map,
+    );
+    if let ItemRequest::SpawnInGroup(_) = request {
+        // Item_80268B18: xAC4_ignoreItemID = SpawnItem.x40, the id the
+        // spawning fighter holds. The hitboxes the first script step
+        // made take the group's history (it_8026FCF8), as a chain
+        // member's do.
+        let slot = owner.slot.expect("a grouped spawn from a fighter");
+        let group = pool.owner_hit_group(slot, owner.secondary);
+        pool.join_hit_group(id, group);
+    }
+    if SceneItems::logic(spawn.kind).procs_at_spawn {
+        let bounds = owner.bounds.expect("it_802750F8 from a fighter's spawn");
+        // it_802750F8: physics and collision now, without Item_802696CC's
+        // blast-zone test (xDCC b3 cleared, then set again).
+        pool.get_mut(id).unwrap().blast_zone_checked = false;
+        let cell = std::cell::Cell::new(*rng);
+        pool.physics::<SceneItems>(id, None, &Default::default(), bounds, assets, map, &cell);
+        *rng = cell.get();
+        let contact = pool.stage_contact(id, map);
+        pool.collide::<SceneItems>(id, None, contact, map, bounds, assets, Some(&cell));
+        *rng = cell.get();
+        if let Some(item) = pool.get_mut(id) {
+            item.blast_zone_checked = true;
+        }
+    }
+    if let ItemRequest::SpawnInHand {
+        part,
+        scale_by_owner,
+        ..
+    } = request
+    {
+        // Item_8026AB54: it_802742F4's attachment, then the kind's
+        // pickup callback.
+        let lifetime = pool.common().lifetime;
+        let half_life_scale = pool.common().half_life_scale;
+        let item = pool.get_mut(id).unwrap();
+        item.attach_to_holder(
+            owner.slot.expect("held by a fighter"),
+            part,
+            assets,
+            lifetime,
+            half_life_scale,
+        );
+        (SceneItems::logic(spawn.kind).picked_up)(
+            item,
+            &mut ItemAnimationContext {
+                // Sampled only for kinds with PICKUP_READS_OWNER.
+                owner: owner.held_item,
+                holder: None,
+                map,
+                assets,
+                partner: None,
+                rng: None,
+            },
+        );
+        if scale_by_owner {
+            // it_80274594: scl times ftLib_80086A0C, the owner's model
+            // scale (1 in every supported mode), through the model,
+            // hitbox radii, grab range and boxes again.
+            let scale = item.scale;
+            item.rescale(scale);
+        }
+    }
+    if let Some(owner) = held_owner {
+        // Item_8026AB54 invokes the kind's pickup callback after attachment.
+        (SceneItems::logic(spawn.kind).picked_up)(
+            pool.get_mut(id).unwrap(),
+            &mut ItemAnimationContext {
+                owner: Some(owner),
+                holder: None,
+                map,
+                assets,
+                partner: None,
+                rng: None,
+            },
+        );
+    }
+    let item = pool.get_mut(id).unwrap();
+    item.past_hitbox_refresh = false;
+    item.efasync_immediate = false;
+    let object = world.create(6, melee_it::ITEM_GOBJ_LINK, melee_it::ITEM_GOBJ_PRIORITY);
+    for phase in melee_it::ITEM_PROCESS_LINKS {
+        world.add_tagged_proc(object, phase, tag(id, phase));
+    }
+    objects.push((id, object));
 }
 
 /// One member of an [`ItemRequest::SpawnChain`], spawned as an ordinary
@@ -2138,28 +2185,7 @@ pub fn spawn_released_item(
             released.kind
         );
     }
-    let spawn = melee_it::SpawnItem {
-        owner: None,
-        stale_source: released.attack,
-        attack_from_spawner: true,
-        link_gobjs: 0,
-        secondary_owner: None,
-        kind: released.kind,
-        hold_kind: 0,
-        spawn_variant: 0,
-        position: released.position,
-        previous_position: released.previous_position,
-        velocity: hsd_types::Vec3::ZERO,
-        facing: released.facing,
-        damage: 0,
-        auxiliary_damage: 0,
-        spawn_argument: 0,
-        initial_collision: true,
-        auxiliary_flags: [0; 3],
-        ground_or_air: melee_types::GroundOrAir::Air,
-        launch_draws: 0,
-        launch_seed: None,
-    };
+    let spawn = released_spawn(released, 0);
     let id = request(
         pool,
         gobjs,
@@ -2181,6 +2207,86 @@ pub fn spawn_released_item(
     )?;
     let spin = pool.common().random_items.release_spin_degrees;
     pool.get_mut(id).expect("the released item").update_spin(spin);
+    Some(id)
+}
+
+fn released_spawn(released: Released, hold_kind: u8) -> melee_it::SpawnItem {
+    melee_it::SpawnItem {
+        owner: None,
+        stale_source: released.attack,
+        attack_from_spawner: true,
+        link_gobjs: 0,
+        secondary_owner: None,
+        kind: released.kind,
+        hold_kind,
+        spawn_variant: 0,
+        position: released.position,
+        previous_position: released.previous_position,
+        velocity: hsd_types::Vec3::ZERO,
+        facing: released.facing,
+        damage: 0,
+        auxiliary_damage: 0,
+        spawn_argument: 0,
+        initial_collision: true,
+        auxiliary_flags: [0; 3],
+        ground_or_air: melee_types::GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
+    }
+}
+
+/// it_8026F5C8 for a monster: two independent facing queries surround the
+/// ordinary initial collision and the constructor's shared monster setup.
+#[allow(clippy::too_many_arguments)]
+pub fn spawn_released_monster(
+    pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    world: &mut World,
+    objects: &mut Objects,
+    released: Released,
+    fighters: &mut [crate::scene_fighter::SceneFighter],
+    rng: &mut gekko_math::HsdRng,
+) -> Option<u32> {
+    let spawn = released_spawn(released, 6);
+    let assets = resources.try_get(spawn.kind).unwrap_or_else(|| {
+        unimplemented!(
+            "it_8026F6BC: unwitnessed monster constructor {:?}",
+            spawn.kind
+        )
+    });
+    let id =
+        pool.spawn_with_facing_constructor::<SceneItems>(spawn, assets, gobjs, map, |position| {
+            facing_toward_fighters(position, fighters, rng)
+        })?;
+    finish_spawn_request(
+        pool,
+        resources,
+        map,
+        world,
+        objects,
+        id,
+        spawn,
+        ItemRequest::Spawn(spawn),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        rng,
+        None,
+        None,
+        true,
+    );
+    let spin = pool.common().random_items.release_spin_degrees;
+    pool.get_mut(id)
+        .expect("the released monster")
+        .update_spin(spin);
     Some(id)
 }
 
