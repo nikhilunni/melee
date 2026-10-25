@@ -1351,6 +1351,7 @@ impl FighterCore {
             stowed_item: None,
             pickup_pose_pending: false,
             swing_hand_armed: false,
+            heavy_pickup_damage_armed: false,
             drop_pose_pending: false,
             pickup_candidates: Default::default(),
             owned_article: None,
@@ -1488,6 +1489,7 @@ impl FighterCore {
         // fighter.c:1377: no supported entry passes Ft_MF_KeepAccessory.
         self.accessory4_armed = false;
         self.swing_hand_armed = false;
+        self.heavy_pickup_damage_armed = false;
         // fighter.c:1101-1102: entries without Ft_MF_KeepFastFall clear it.
         if !change.preserve.fast_fall
             && !matches!(

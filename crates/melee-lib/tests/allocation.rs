@@ -1084,3 +1084,77 @@ fn stone_contact_step_and_capture_allocate_nothing_after_live_clone() {
         assert_eq!(continued, ticks - contact);
     }
 }
+
+/// Clone construction is outside the counter; both independent terminal
+/// entries and their public step/observe/presentation capture allocate nothing.
+#[test]
+fn heavy_pickup_terminal_entry_step_capture_and_clone_allocate_nothing() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    for (name, ticks, actor) in [
+        ("corpus_v3_bf_items_sword_e5993e1bc_p0", 259, Port::P2),
+        ("corpus_v3_fd_items_sword_e5de865a8_p1", 257, Port::P1),
+        ("corpus_v3_fd_items_sword_e6af4a7bb_p2", 240, Port::P1),
+        ("corpus_v3_fd_items_sword_efc6a328f_p2", 241, Port::P1),
+        ("corpus_v3_fd_items_taru_e1895a33d_p0", 295, Port::P2),
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        assert!(melee_test_support::require_files(scenario.required_files()));
+        assert_eq!(scenario.frames, ticks);
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut capture = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        let mut branch = None;
+        for tick in 0..ticks {
+            if tick + 1 == ticks {
+                let cloned = game.clone();
+                let capture = presentation::Presentation::new(&cloned).unwrap();
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(&cloned).unwrap()
+                );
+                branch = Some((cloned, capture));
+            }
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(tick, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} step{tick}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let observed = game.observe().map(|v| v.fighters().count());
+            let result = capture.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            assert_eq!(observed.unwrap(), 2);
+            result.unwrap();
+            assert_eq!(COUNT.with(Cell::get), 0, "{name} capture{tick}");
+            if let Some((cloned, capture)) = &mut branch {
+                assert_eq!(measure(cloned, &inputs), 0, "{name} clone entry");
+                COUNT.with(|v| v.set(0));
+                ENABLED.with(|v| v.set(true));
+                let result = capture.capture(cloned);
+                ENABLED.with(|v| v.set(false));
+                result.unwrap();
+                assert_eq!(COUNT.with(Cell::get), 0, "{name} clone capture");
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(cloned).unwrap()
+                );
+            }
+        }
+        let view = game.observe().unwrap();
+        assert_eq!(view.fighter(actor).unwrap().action(), ActionId(93));
+        assert_eq!(view.items().count(), 1);
+        assert!(view.items().all(|item| item.owner().is_none()));
+        assert!(branch.is_some());
+        // No later retail continuation is claimed: the actual public next
+        // step must report the deliberately unported animation callback.
+        let error = game.step(&Inputs::default()).unwrap_err();
+        assert!(
+            error.to_string().contains("HeavyGet continuation"),
+            "{error}"
+        );
+    }
+}

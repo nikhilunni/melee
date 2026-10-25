@@ -5282,3 +5282,6 @@ mod entry_graphics_tests;
 
 #[cfg(test)]
 mod stone_contact_tests;
+
+#[cfg(test)]
+mod heavy_entry_tests;

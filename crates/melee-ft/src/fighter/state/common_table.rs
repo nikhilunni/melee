@@ -464,6 +464,19 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftData_MotionStateList[93]: HeavyGet entry only. The remaining
+    // same-tick phases use retail's shared routines; next Anim/IASA refuse.
+    rows[S::HeavyGet as usize] = MotionRow {
+        action: ActionId(93),
+        id: S::HeavyGet,
+        animation: 89,
+        anim: crate::fighter::item_pickup::heavy_get_animation_unavailable,
+        iasa: crate::fighter::item_pickup::heavy_get_input_unavailable,
+        physics: callbacks::physics::wait,
+        collision: callbacks::collision::item_get,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftData_MotionStateList[94]: ftCo_SM_LightThrowF (79); the IASA is
     // empty and the physics is ft_80084F3C.
     rows[S::LightThrowF as usize] = MotionRow {

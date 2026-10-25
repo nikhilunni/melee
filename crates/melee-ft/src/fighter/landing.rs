@@ -244,6 +244,8 @@ impl FighterCore {
                 super::cargo::CargoState::Carry { retained_word }
                 | super::cargo::CargoState::Throw { retained_word, .. },
             ) => (*retained_word)?,
+            // ftCo_Throw.c:139,279: integer mv.co.throw.x4.
+            MotionData::Throw => f32::from_bits(u32::from(self.combat.throw_flight.frozen)),
             // mv.co.itemthrow4.anim_spd (ftCo_800957F4 writes it first).
             MotionData::ItemThrow(throw) => throw.rate,
             // mv.co.swing.x4: the swing's input (an int).

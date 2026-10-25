@@ -40,6 +40,7 @@ pub(crate) fn import(
     player.costume = raw[0x619];
     let (tree, root) = archive.model(player.costume);
     let mut f = Fighter::prepare(player, character, assets, tree, root, map);
+    require_supported_model_scale(raw, f.capabilities.model_width);
     // prepare places the fighter at the Player position plus the kind's
     // spawn offset (x40); the dump already holds the final position.
     let position = vector(raw, 0xB0);
@@ -290,4 +291,38 @@ fn import_input(raw: &[u8]) -> FighterInput {
     input.buttons.previous_jump = raw[0x68A];
     input.buttons.previous_special_up = raw[0x68B];
     input
+}
+
+/// Fighter.x34 is the player model scale, separate from animated joint scale.
+/// Unit player scale is supported; the typed OnLoad depth override is separate.
+fn require_supported_model_scale(raw: &[u8], model_width: Option<f32>) {
+    let scale = vector(raw, 0x34);
+    assert!(
+        scale.x == 1.0 && scale.y == 1.0 && scale.z == model_width.unwrap_or(1.0),
+        "unsupported imported fighter model scale: {scale:?}"
+    );
+}
+
+#[cfg(test)]
+mod scale_tests {
+    #[test]
+    fn warm_boundary_refuses_nonunit_model_scale_on_each_axis() {
+        let mut raw = [0u8; 0x40];
+        for axis in [0x34, 0x38, 0x3C] {
+            raw[axis..axis + 4].copy_from_slice(&1.0f32.to_be_bytes());
+        }
+        super::require_supported_model_scale(&raw, None);
+        // OnLoad may deliberately flatten depth through CharacterTable data.
+        let mut flattened = raw;
+        flattened[0x3C..0x40].copy_from_slice(&0.01f32.to_be_bytes());
+        super::require_supported_model_scale(&flattened, Some(0.01));
+        for axis in [0x34, 0x38, 0x3C] {
+            let mut scaled = raw;
+            scaled[axis..axis + 4].copy_from_slice(&2.0f32.to_be_bytes());
+            let error = std::panic::catch_unwind(|| {
+                super::require_supported_model_scale(&scaled, None)
+            });
+            assert!(error.is_err(), "axis {axis:x}");
+        }
+    }
 }

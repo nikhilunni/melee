@@ -1248,6 +1248,9 @@ pub struct FighterCore {
     /// take_dmg_cb = ft_800CD31C while a swing runs; every
     /// Fighter_ChangeMotionState disarms it (fighter.c:1376-1389).
     pub swing_hand_armed: bool,
+    /// take_dmg_cb = ftCo_800974C4 after HeavyGet entry; every motion
+    /// change clears this common callback before entry commands run.
+    pub heavy_pickup_damage_armed: bool,
     /// x2224_b1: an item was just dropped or caught in the air, so the
     /// aerial catch waits for the next grounded motion entry.
     pub item_catch_locked: bool,
@@ -1357,6 +1360,9 @@ pub enum MotionData {
         /// mv+4 as the predecessor left it (`None` where not modelled).
         retained_word: Option<f32>,
     },
+    /// mv.co.throw.x4 is owned by combat.throw_flight, including its
+    /// frozen flag retained through a following Wait.
+    Throw,
     ItemThrow(item_throw::ItemThrowState),
     /// SwordSwing1..SwordSwingDash (mv.co.swing).
     Swing(item_swing::SwingState),

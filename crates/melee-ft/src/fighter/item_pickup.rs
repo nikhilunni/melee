@@ -1,5 +1,5 @@
 //! Items in reach and in hand: ftpickupitem.c (80094150..80094E2C) and the
-//! LightGet state.
+//! LightGet state and the witnessed HeavyGet entry.
 //!
 //! The scene offers the grabbable items to the fighter procs that can pick
 //! one up (input and animation); the search is retail's box test over them.
@@ -621,6 +621,24 @@ impl FighterCore {
     }
 }
 
+/// ftpickupitem_Anim (ftpickupitem.c:298-329): only HeavyGet's entry is
+/// witnessed; hand attachment and the later heavy carry entry stay refused.
+pub(super) fn heavy_get_animation_unavailable(
+    _fighter: &mut Fighter,
+    _phase: super::state::AnimationPhase<'_>,
+) -> Result<Option<crate::anim::WaitChoice>> {
+    unimplemented!("ftpickupitem_Anim (ftpickupitem.c:298-329): HeavyGet continuation");
+}
+
+/// ftpickupitem_IASA (ftpickupitem.c:332): the terminal entry does not
+/// establish another input tick, even though retail's callback is empty.
+pub(super) fn heavy_get_input_unavailable(
+    _fighter: &mut Fighter,
+    _phase: super::state::InputPhase<'_>,
+) {
+    unimplemented!("ftpickupitem_IASA (ftpickupitem.c:332): HeavyGet continuation");
+}
+
 impl Fighter {
     /// ftpickupitem_80094790 (80094790), before a jab or tilt: pick up an
     /// item in reach instead. True when LightGet or HeavyGet began.
@@ -629,27 +647,42 @@ impl Fighter {
         let Some(item) = self.core.find_pickup(&assets.pickup, PickupWeights::ANY) else {
             return Ok(false);
         };
-        if item.heavy {
-            unimplemented!("ftpickupitem_80094694: HeavyGet");
-        }
-        self.enter_item_get(S::LightGet, assets)?;
+        let state = if item.heavy { S::HeavyGet } else { S::LightGet };
+        self.enter_item_get(state, assets)?;
         Ok(true)
     }
 
     /// ftpickupitem_80094694 (80094694) without its loop mode: clear the
     /// throw flags, enter the state and play its first frame.
     fn enter_item_get(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
-        self.core.commands.take_throw_flag_b3();
+        if state == S::HeavyGet && self.core.player.scale != 1.0 {
+            unimplemented!("ftpickupitem.c:213: scaled HeavyGet animation rate");
+        }
+        // 800946CC calls CalcYScaledKnockback(1, scale.y, common.x8).
+        // Supported setups have unit scale: its 800CF6B8 fmadds returns 1.
+        self.core.commands.clear_throw_flags();
         let retained_word = self.inherited_scratch_word();
         self.change_motion_state(state.into(), assets)?;
         self.step_animation(assets);
-        // mv.co.itemget.x0 only; take_dmg_cb = ftpickupitem_80094DF8 only
-        // concerns consumables.
+        // 80094754..60 publishes mv.co.itemget.x0, then take_dmg_cb.
+        // Publish the explicit common callback owner after this scratch write;
+        // interrupt_actions uses it instead of the character hook. Other
+        // mv words survive.
         self.core.state_data = MotionData::ItemGet {
             heavy: state == S::HeavyGet,
             retained_word,
         };
+        self.core.heavy_pickup_damage_armed = state == S::HeavyGet;
         Ok(())
+    }
+
+    /// ftCo_800974C4 (ftCo_Lift.c:189): HeavyGet's take_dmg_cb replaces
+    /// the character callback. Empty hands do nothing; a held-item drop is
+    /// outside the terminal-entry witnesses.
+    pub(super) fn interrupt_heavy_pickup(&mut self) {
+        if self.core.held_item.is_some() {
+            unimplemented!("ftCo_800974C4 (ftCo_Lift.c:193): HeavyGet held-item drop");
+        }
     }
 
     /// ftpickupitem_Anim (80094A14): the script's throw flag closes the

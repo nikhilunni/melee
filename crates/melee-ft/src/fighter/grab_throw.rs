@@ -145,6 +145,9 @@ pub fn enter_throw(
 ) -> Result<()> {
     attacker.character.throw_variant();
     let traits = (attacker.character.table().throw_traits)(throw.state);
+    // Preserve the predecessor's untouched mv+14/+18 before replacing
+    // its typed scratch at the retail throw reset.
+    attacker.keep_scratch_tail();
     let rate = prepare_throw(throw, &victim.core, &mut attacker.core, aa);
     attacker.change_motion_state_with_rate(throw.state.into(), aa, 0.0, rate)?;
     attacker.step_animation(aa);
@@ -595,6 +598,8 @@ fn prepare_throw(
     };
     attacker.commands.variables[0] = 0;
     attacker.combat.throw_flight = super::throw_flight::ThrowFlight::default();
+    // 800DD3E4..E8: mv+4/+8 clear before motion entry (3F4) and step (3FC).
+    attacker.state_data = super::MotionData::Throw;
     attacker.commands.grab_release = false;
     attacker.commands.throw_reverse = false;
     attacker.commands.throw_accessory = false;

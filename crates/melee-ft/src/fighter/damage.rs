@@ -1332,6 +1332,12 @@ impl Fighter {
                     pan: 64,
                 });
         }
+        if self.core.heavy_pickup_damage_armed {
+            // ftpickupitem_80094694 installs ftCo_800974C4 in place of
+            // the character take_dmg_cb, after the entry animation step.
+            self.interrupt_heavy_pickup();
+            return;
+        }
         if self.core.swing_hand_armed {
             // take_dmg_cb = ft_800CD31C (retail 0x8007DB98 blrl ->
             // 0x800CD33C bl ftCommon_8007E7E4): the hand takes the held item
