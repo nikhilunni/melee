@@ -127,6 +127,15 @@ fn random_item_spawns_and_container_capture_allocate_nothing() {
         // blasts, including their deferred script/effect continuation.
         "corpus_v3_fd_items_sword_e7254fba4_p2",
         "corpus_v3_fd_items_taru_ee6ff560c_p0",
+        // Article contacts transfer the primary fighter owner and create
+        // the rolling hitbox in the same callback.
+        "corpus_v3_bf_items_sword_e44c79d87_p2",
+        "corpus_v3_fd_items_sword_e3b85eba6_p1",
+        // Ground Sword throw, down-tilt and up-smash entries retain their
+        // ordinary item synchronization and presentation capture paths.
+        "corpus_v3_bf_items_sword_edb13a9c3_p2",
+        "corpus_v3_fd_items_sword_e1611c835_p0",
+        "corpus_v3_fd_items_sword_ece1e43b7_p0",
     ] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),
