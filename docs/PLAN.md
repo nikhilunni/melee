@@ -10,15 +10,15 @@ every step. `TRACKER.md` holds the current focus and backlog.
 | 3 | One fighter idle | `idle_fd_fox` 600 ticks bit-exact | Done. |
 | 4 | Movement | Movement scenes per character | Done for all 26 characters. |
 | 5 | Combat, two fighters | Hits, shields, grabs, KOs | Done for Fox vs Marth on FD: two recorded human matches bit-exact; full interaction coverage including Sudden Death (`docs/MATCHUP_COMPLETENESS.md`). Every registered character's combat is exact on its explorer batches vs Fox and on ten cross-matchups. |
-| 6 | Breadth | Every character and stage, idle to full matchup | In progress: ten supported Versus stages, with unwitnessed hazards guarded; 19 remain. All 26 characters are registered; Kirby has 24/25 copied neutrals (Sheik remains unported). Guarded FD/Battlefield CPU players, random containers, narrow Barrel owner transfer, ground Sword entries and empty Box/Barrel blasts are integrated. Moving Kongo barrel use, neutral Party Ball FALL/REST, log-standing, revival-floor entry, retained running-item program identity and pinned mouth-victim bottom cleanup are integrated. Each admission has complete recordings or explicit entry-only limits. Shared Stone contact handling and terminal HeavyGet entry are integrated; unsupported mixed item-contact paths refuse explicitly, while Ness yo-yo instance binding awaits complete particle evidence (`TRACKER.md`). |
+| 6 | Breadth | Every character and stage, idle to full matchup | In progress: ten supported Versus stages, with unwitnessed hazards guarded; 19 remain. All 26 characters are registered; Kirby has 24/25 copied neutrals (Sheik remains unported). Guarded FD/Battlefield CPU players, random containers, narrow Barrel owner transfer, ground Sword entries and empty Box/Barrel blasts are integrated. Moving Kongo barrel use, neutral Party Ball FALL/REST, log-standing, revival-floor entry, retained running-item program identity and pinned mouth-victim bottom cleanup are integrated. Each admission has complete recordings or explicit entry-only limits. Shared Stone contact handling, terminal HeavyGet entry, held Sword common back-air entry and bounded Kuriboh/ReDead births are integrated; unsupported mixed item-contact paths refuse explicitly, while Ness yo-yo instance binding awaits complete particle evidence (`TRACKER.md`). |
 | 7 | Slippi replay corpus | Zero divergence over thousands of replays | In progress. `melee-sim replay-batch` runs a corpus with the Slippi codes each game was recorded with: 108 of 108 games complete on `public-v3.7` (964,782 matched frames), 486 of 502 on `public-v3.7-b` (5,102,652 matched frames). Five games stop; unsupported setups remain refused, including CPU levels absent from Slippi and stock-sharing teams. Lag inference and Slippi Online retain their documented comparison boundaries. Open: the remaining stops by kind (`TRACKER.md`), then a wider corpus. |
-| 8 | Platform | Native app | In progress (`docs/APP.md`). A shared core (`melee-platform`) under a macOS host and a web host, with the disc image as the only input; the wave-20 checkpoint matches native/WASM over 6,003 hash lines and passes the release web build. Open: render-to-texture (FoD reflection, Stadium screen), gamepads and the other items in `TRACKER.md`. |
+| 8 | Platform | Native app | In progress (`docs/APP.md`). A shared core (`melee-platform`) under a macOS host and a web host, with the disc image as the only input; the wave-21 checkpoint matches native/WASM over 6,003 hash lines and passes the release web build. Open: render-to-texture (FoD reflection, Stadium screen), gamepads and the other items in `TRACKER.md`. |
 
 The six incoming handoffs and subsequent breadth slices are integrated.
-Production source `f3c7f2f5` retains both replay corpora and has a fresh
-3,490-scenario sweep with zero regressions and five fixes against `72aa5d9a`
-(254 fixes against startup `0a99db31`). The combined release workspace passes
-1,983 tests; clippy, harness, schema, WASM and web pass. `TRACKER.md` records
+Production source `6d0c850e` retains both replay corpora and has a fresh
+3,490-scenario sweep with zero regressions and eleven fixes against `f3c7f2f5`
+(265 fixes against startup `0a99db31`). The combined release workspace passes
+1,992 tests; clippy, harness, schema, WASM and web pass. `TRACKER.md` records
 current counts and source provenance; performance retains unchanged budgets.
 
 The objective is 100% retail parity, with no scope exclusions (user,
@@ -35,10 +35,13 @@ come first when they unblock several characters, items or stages. Use the
 function inventory and explorer faults to choose work; chase individual
 replay divergences after the breadth backlog.
 
-The next isolated implementations are crate-monster constructor-only births
-(Kuriboh and left-facing ReDead) and held Sword common back-air entry. Existing
-complete recordings can prove those bounded slices; later callbacks remain
-guarded. HeavyGet entry and the mixed item-contact refusal are integrated.
+The next isolated candidates are common Sword forward/up-air entry and
+Klaptrap's real coupled birth-tick Ground path and item callbacks. Existing
+complete recordings can potentially prove these bounded slices; later
+callbacks remain guarded. Sword Down Air remains separate because of dynamic
+character callback replacement. Klaptrap requires stage-bank DPtcl routing
+and literal path/orientation math, not a constructor-only shortcut. The
+previous crate-monster and held Sword back-air slices are integrated.
 Ness's current yo-yo instance binding lacks whole-capture particles and awaits
 add-only recording authorization.
 
@@ -48,8 +51,8 @@ is likewise on the final tick of its capture, without coexistence proof.
 Party Ball's one 600-tick warm/cold capture admits only neutral left-facing
 FALL/REST. Kongo barrel use has three complete captures and six warm/cold
 scenarios; log-standing adds one whole warm/cold capture. Ground Sword work
-admits actual common rows 57/63 and witnessed throws; private/aerial/Hi3/Lw4
-rows stay guarded. Entry-only monster, heavy and aerial data do not prove
+admits actual common rows 57/63 and witnessed throws; private/other aerial/Hi3/Lw4
+rows stay guarded; common back-air admits only the witnessed entry. Entry-only monster, heavy and aerial data do not prove
 later lifecycles. The CPU audit found no eligible additional branch in
 existing complete configured-CPU recordings.
 No new recordings are authorized in the current task.

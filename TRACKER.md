@@ -4,45 +4,48 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 20 integrated)
+## Current state (2026-10-25, wave 21 integrated)
 
-- **HeavyGet terminal entry and item-contact refusal are integrated at
-  production `f3c7f2f5`:** five original whole captures (1,292 ticks) now
-  match through entry and remaining same-tick phases. Later Animation/IASA,
-  possession, attachment and carry remain guarded. Typed throw scratch,
-  callback lifetime and scale-import boundaries follow retail. Unsupported
-  mixed phantom/item early-return contexts now refuse explicitly; no new
-  item contact behavior is admitted. Details: `docs/PORT_NOTES/WAVE20_BREADTH.md`.
-- **Fresh combined sweep:** 3,490 scenarios, **3,321 particle-exact**, 115
-  not comparable, 53 existing local failures and one existing particle
-  fault. **Zero regressions, five fixes** against `72aa5d9a`; **254 fixes**
+- **Held Sword back-air entry and crate-monster births are integrated at
+  production `6d0c850e`:** seven original whole Sword captures (7,893 ticks)
+  and four monster captures (3,051 ticks) now match through the actual
+  terminal entry/birth and remaining same-tick phases. Immutable entry
+  ownership preserves the existing 1,344-tick midair Sword catch. Kuriboh
+  and left-facing ReDead constructors preserve both live facing queries,
+  typed attributes and ordinary callbacks; both models draw through the
+  existing pose route. Later callbacks and unsupported contexts remain
+  guarded. Details: `docs/PORT_NOTES/WAVE21_BREADTH.md`.
+- **Fresh combined sweep:** 3,490 scenarios, **3,332 particle-exact**, 115
+  not comparable, 42 existing local failures and one existing particle
+  fault. **Zero regressions, eleven fixes** against `f3c7f2f5`; **265 fixes**
   against startup `0a99db31`. Incomplete recordings and local failures are
   not accepted divergences. Source, executable and scenario provenance are
-  under `target/wave20/main/`; canonical fresh baseline is
-  `target/sweeps/f3c7f2f5542d9cefbaf44fc4762970c2685f66ce.*`.
+  under `target/wave21/main/`; canonical fresh baseline is
+  `target/sweeps/6d0c850e8d495a1d50ce0a334b480bd18ee806ec.*`.
 - **Fresh replay corpora remain unchanged:** `public-v3.7` completes
   **108/108** (964,782 matched frames); `public-v3.7-b` completes **486/502**
-  (5,102,652 frames), preserving every path's category and matched count.
-  CPU replay setup and stock sharing remain refused capabilities.
-- **Parity inventory** (`target/parity/wave20-integrated/`,
-  `docs/PARITY.md`): all retail **29.3% ported/partial, 38.0% with body/row**;
-  historical in-game subtotal **45.0% / 57.0%**. Of 19,827 functions:
-  4,206 ported, 207 partial, 1,361 body, 1,381 row, 228 referenced and
-  12,444 not started. **273 fail-closed sites**: 254 unimplemented, 19 bail.
-  Ported plus partial grows by three functions; additional guards make
-  unsupported contexts explicit. Citation counts are not witnessed branch
-  coverage; every reporting group remains in scope.
-- **Combined release checkpoint passes:** 1,983 workspace tests, zero
-  failures, one existing ignore; m4 345 and m5 307. Workspace all-target
+  (5,102,652 frames), preserving every path/category/matched/total-frame
+  tuple. CPU replay setup and stock sharing remain refused capabilities.
+- **Parity inventory** (`target/parity/wave21-integrated/`,
+  `docs/PARITY.md`): all retail **29.3% ported/partial, 38.1% with body/row**;
+  historical in-game subtotal **45.0% / 57.1%**. Of 19,827 functions:
+  4,206 ported, 218 partial, 1,374 body, 1,380 row, 232 referenced and
+  12,417 not started. **286 fail-closed sites**: 267 unimplemented, 19 bail.
+  Ported plus partial grows by eleven functions; additional guards expose
+  unsupported contexts. Citation counts are not witnessed branch coverage;
+  every reporting group remains in scope.
+- **Combined release checkpoint passes:** 1,992 workspace tests, zero
+  failures, one existing ignore; m4 345 and m5 310. Workspace all-target
   clippy is clean; harness 407 and schema zero layout violations. WASM pure
   suites, four expected spline traps, 6,003 identical native/WASM hash lines
-  and the release web check pass. Actual API step/observe/capture remains
-  allocation-free; clones taken before terminal HeavyGet entry continue
-  independently. Clone creation is outside the measured windows.
+  and the release web check pass. All nine worktree data-path failures pass
+  in MAIN without optout. Actual API step/observe/capture is allocation-free;
+  independent clones and actual new monster model draws are checked. Clone
+  creation is outside measured windows. No retail pixel/bone equality claim.
   Release only; no debug run.
-- **Quiet performance retains existing budget failures:** at `f3c7f2f5`,
-  time passes (19.147 ms per 600 ticks; 54.736 ms load). Stripped size is
-  7,640,288 bytes and text size 6,881,280 bytes, above unchanged ceilings;
+- **Quiet performance retains existing budget failures:** at `6d0c850e`,
+  time passes (18.139 ms per 600 ticks; 56.502 ms load). Stripped size is
+  7,674,384 bytes and text size 6,897,664 bytes, above unchanged ceilings;
   Kirby's one duplicate label still exceeds baseline zero. Shared-code
   duplication passes: 20 melee-ft labels, 94 across crates. The full report
   is appended to `docs/PERF.md`; no budget was increased.
@@ -68,17 +71,19 @@ and `docs/PORT_NOTES/`.
    ticks and only 3,340 particle/meta ticks. Whole acceptance requires an
    add-only new recording; approval remains pending. Do not truncate it.
    Evidence: `target/wave18/yoyo-witness-search/plan.md`.
-7. [~] **Next bounded ports:** crate-monster constructors and held Sword
-   common back-air entry, using existing complete recordings. Their later
-   callbacks remain guarded. Continue heavy pickup/carry/throws, item-use rows and random
-   kinds, **19 remaining Versus stages**, copied Sheik Needle Storm, wider
-   CPU stage awareness, modes, retail menus/results/single-player and pause.
-   Monster births, heavy entries and held aerial entries do not prove
-   later callbacks. CPU audit found no eligible additional branch in
+7. [~] **Next bounded ports:** common Sword forward/up-air entry and
+   Klaptrap's real coupled birth-tick Ground path/item callbacks, using
+   existing complete recordings. Back-air entry and Kuriboh/ReDead births
+   are integrated; their later callbacks stay guarded. Klaptrap requires
+   stage-bank DPtcl emission and literal tangent/orientation math; a
+   constructor-only activation is insufficient. Continue heavy carry/throws,
+   item-use rows and random kinds, **19 remaining Versus stages**, copied
+   Sheik Needle Storm, wider CPU stage awareness, modes, retail menus/results/
+   single-player and pause. CPU audit found no eligible additional branch in
    existing complete configured-CPU recordings. Nothing is out of scope.
    **No new recordings are authorized in the current task**; the concrete
-   scratch recording pack awaits permission. The second-log audit
-   found only terminal creation, with no later coexistence/lifecycle ticks.
+   scratch recording pack awaits permission. The second-log audit found only
+   terminal creation, with no later coexistence/lifecycle ticks.
 8. [ ] Replay depth after breadth: five existing stops remain in the second
    corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
    unconsumed controller polls; two one-ulp Nana positions). Other
