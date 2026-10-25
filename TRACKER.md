@@ -67,46 +67,36 @@ and `docs/PORT_NOTES/`.
 
 ## Status by area
 
-**Characters:** all 26 are registered. Movement, combat and character
-specials have recorded witness families. Kirby has **24/25 copied neutral
-specials**; copied Sheik Needle Storm remains unported, with a complete
-ground charge/release capture now available (`docs/PORT_NOTES/KIRBY.md`). Pinned mouth-victim bottom cleanup is witnessed; other Inhale/item and
-hand-pose gaps remain. Character differences use static tables and family crates.
+**Characters:** all 26 are registered, with recorded witness families for
+movement, combat and specials. Kirby has **all 25 copied neutral specials**
+(`docs/PORT_NOTES/KIRBY.md`); other Inhale/item and hand-pose gaps remain.
+Character differences use static tables and family crates.
 
-**Stages:** ten supported Versus stages: the six tournament stages, Yoshi's
-Island 64, Kongo Jungle 64, Kongo Jungle and Jungle Japes. Supported does
-not mean every hazard is enabled: Kongo barrel/log Sink/Remove, second-log and other
-unwitnessed branches retain explicit guards. Klaptrap admits only its real
-coupled birth tick; next Ground Animation/item lifecycle remains guarded. Nineteen stages remain.
-Stadium form-archive read completion is a recorded external input; ordinary
-runs use documented default latency (`docs/APP.md`).
+**Stages:** 17 supported Versus stages: the six tournament stages, Yoshi's
+Island 64, Kongo Jungle 64, Kongo Jungle, Jungle Japes, Hyrule Temple,
+Fourside, Brinstar Depths, Flat Zone, Yoshi's Island, Mushroom Kingdom and
+Onett (`docs/PORT_NOTES/WAVE26_STAGES.md`, `FLAT_ZONE.md`, `N64_STAGES.md`).
+Supported does not mean every branch is: Kongo's second log, the Klaptrap's
+later motions and a savestate taken mid-hazard stay guarded. Twelve remain.
+Stadium form-archive read completion is a recorded external input.
 
-**Items:** shared engine and character articles, Peach's rare pulls and
-Sword swings are ported. Random spawning and Capsule/Box/Barrel, including
-empty blasts, are witnessed for two-player FD/Battlefield setups. Ground
-Sword admissions add only common AttackLw3 (57), AttackHi4 (63) and their
-witnessed throw routing. Common F/B/Hi/Lw aerials additionally admit only
-recorded held entry; neutral/private aerial entries, Hi3 and Lw4 stay guarded; later common
-aerial callbacks remain guarded.
-Barrel ownership adds only a primary article owner to an unowned REST
-barrel; other ownership contexts remain guarded. Party Ball now has bounded neutral left-facing FALL/REST coverage;
-its other states, other random kinds and later heavy fighter rows remain backlog.
-HeavyGet terminal entry is integrated, with no ownership/carry continuation claim.
-Running Barrel scripts retain their original program across witnessed rolling
-drops; this adds no new item kind or heavy/aerial fighter admission. Entry-only recordings do not
-prove later callbacks. Kuriboh and left-facing ReDead constructors and the
-coupled Klaptrap birth slice add only their explicit witnessed contexts.
+**Items:** shared engine, character articles and Peach's rare pulls; random
+spawning with Capsule, Box, Barrel and Party Ball (fall/rest); swing items
+(Beam Sword, Home-Run Bat, Fan, Star Rod); heavy carry and throws; Green and
+Red Shells, Freezie, Bob-omb, Mr. Saturn, Motion-Sensor Bomb, Heart
+Container, Maxim Tomato, Food, Warp Star (fall/rest); ReDead with
+CaptureLeadead; fighters stomp items (`docs/PORT_NOTES/RANDOM_ITEMS.md`).
+Items are witnessed for two-player FD/Battlefield; more players and stages
+are on a handoff branch.
 
-**CPU:** Nana follow/recovery behavior remains. Versus CPU players are now
-admitted in the witnessed FD/Battlefield envelope, with character-owned
-static profiles and 95 registered witnesses. Recovery, command and item
-branches outside that envelope fail closed. A partially created primary
-fighter cannot be warm-imported; its cold scenario remains supported.
-CPU replay admission is still refused because Slippi lacks CPU levels.
+**CPU:** Versus CPU players on all 17 stages, every recovery special, in
+two-player matches (`Stage::cpu_supported()`, `CPU_MAX_PLAYERS = 2`); 3-4
+player CPUs are on a handoff branch. CPU replay admission is still refused
+because Slippi lacks CPU levels.
 
-**Match flow:** FFA and witnessed teams/doubles are integrated. Stock
-sharing and timed-team ranking remain guarded. Keep successful team
-completion proof distinct from refusing an unsupported stock-return setup.
+**Match flow:** FFA, teams/doubles, the team stock steal, Time (two-player
+Sudden Death), Stamina, handicap, Damage Ratio and the Special Melee modes
+except Camera; Coin mode is on a handoff branch (`docs/PORT_NOTES/VERSUS_RULES.md`).
 
 **App:** native macOS and web hosts share `melee-platform`; the disc is the
 only game-data input. The app's own menus do not count as retail menu
