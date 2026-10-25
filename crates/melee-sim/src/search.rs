@@ -343,7 +343,9 @@ impl Search<'_> {
     fn finish(&self, mut sim: Simulation, edits: Vec<Edit>) -> Result<()> {
         self.tried.fetch_add(1, Ordering::Relaxed);
         let mut reached = Vec::new();
-        while sim.frame() < self.max_ticks && reached.len() < self.reach.len() {
+        // A fault goal keeps ticking once every reach condition holds.
+        let wants_fault = self.spec.goal.fault.is_some();
+        while sim.frame() < self.max_ticks && (reached.len() < self.reach.len() || wants_fault) {
             let frame = sim.frame();
             let ticked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| sim.tick()));
             let mut record = match ticked {
