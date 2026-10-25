@@ -477,3 +477,21 @@ particle claim or ordinary corpus registration can be made. A separate named
 m5 test retains all 2038 field ticks and strictly compares the 1489-row RNG
 prefix, asserting both lengths without changing the full-ledger helper. No
 recording was changed.
+
+
+### Original Swing42 command-owner invariant (wave24)
+
+The missing static Swing42 row in `fighter/item_swing.rs` is an explicit
+invariant panic, not newly implemented gameplay. All six item-class swing
+entries clear the entire throw word before installing the actor's own script
+(retail `0x800CD170..800CD17C`). The sole followup caller is the shared swing
+IASA: b3 plus continuously held A selects input3. Across all33 original
+ordinary ftData owners, all792 common swing script graphs (744 nonnull) have
+only six b3 writers: Captain animations110/114/118/122/126/130. Captain owns
+private rows341..346; all other original owners cannot request this arm.
+The committed asset test reproduces this with the existing archive and command
+loaders, including all25 copy-data roots as a separate ownership domain.
+Nana/Popo fallback, prior borrowed commands and the demo no-Input/link3 fence
+are documented in [the proof](PORT_NOTES/SWING42_COMMAND_OWNER_INVARIANT.md).
+Custom or corrupted state still panics; unsupported item kinds remain guarded.
+No gameplay, function-count or recording gain is claimed.

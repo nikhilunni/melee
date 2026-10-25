@@ -94,7 +94,12 @@ impl Fighter {
                     .character
                     .table()
                     .swing42_first_row
-                    .unwrap_or_else(|| unimplemented!("ftswing.c:97: no swing42 motion"));
+                    .unwrap_or_else(|| {
+                        // retail 0x800CD034..800CD080: only Captain owns Swing42.
+                        // Entry clears all throw flags; among all 33 original
+                        // command owners only Captain's six smash scripts set b3.
+                        unreachable!("ftswing.c:97: retail Swing42 requires a static motion")
+                    });
                 super::ActionId(first.0 + row as u16)
             }
         };

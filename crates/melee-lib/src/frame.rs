@@ -5383,3 +5383,6 @@ mod held_down_entry_tests;
 
 #[cfg(test)]
 mod particle_order_tests;
+
+#[cfg(test)]
+mod swing42_invariant_tests;

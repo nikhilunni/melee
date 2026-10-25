@@ -945,3 +945,6 @@ fn read_sfx_array(data: &Archive, root: u32, offset: u32) -> Result<Vec<u32>> {
         .map(|i| data.reader().u32(ids + i * 4).map_err(Into::into))
         .collect()
 }
+
+#[cfg(test)]
+mod swing42_asset_tests;

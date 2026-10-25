@@ -189,3 +189,17 @@ fn read_pointer(archive: &Archive, slot: u32) -> Result<Option<u32>, AnimationDe
     }
     Ok(pointer)
 }
+
+// Test-only access keeps the Fighter_WaitAnimData layout in its descriptor owner.
+#[cfg(test)]
+impl FighterAnimations {
+    pub(crate) fn script_pointer(
+        &self,
+        archive: &Archive,
+        index: usize,
+    ) -> Result<Option<u32>, AnimationDescError> {
+        assert!(index < self.entries.len());
+        let base = self.table_offset.ok_or(AnimationDescError::NullTable)?;
+        read_pointer(archive, add_offset(base, index as u32 * ANIMATION_ROW_SIZE + 0x0C)?)
+    }
+}
