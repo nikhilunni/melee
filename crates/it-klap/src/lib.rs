@@ -1,4 +1,5 @@
-//! it/kinds/itklap.c: attached Kongo Klaptrap birth. Later lifecycle is guarded.
+//! it/kinds/itklap.c: the attached Kongo Klaptrap riding its log. Its looping
+//! bite never ends, so the row switch and the falls stay guarded.
 use hsd_types::Vec3;
 use melee_it::{
     desc::ItemAssets, ItemAnimationContext, ItemCollisionContext, ItemCore, ItemEventContext,
@@ -12,9 +13,9 @@ pub const ARTICLE_STATES: [i32; 5] = [0, 1, 2, 3, 2];
 /// Attached body lies five units below the Ground root (itklap.c:131).
 const PARENT_HEIGHT_OFFSET: f64 = 5.0;
 
-/// itKlap_UnkMotion1_Anim (802E1968, itklap.c:101): no postbirth witness.
+/// itKlap_UnkMotion1_Anim (802E1968, itklap.c:101): never ends the item.
 fn animation(_: &mut ItemCore, _: &mut ItemAnimationContext<'_>) -> bool {
-    unimplemented!("itKlap_UnkMotion1_Anim: Klaptrap Animation after birth")
+    false
 }
 /// itKlap_UnkMotion1_Phys (802E1970, itklap.c:106).
 fn physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {

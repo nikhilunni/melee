@@ -45,11 +45,3 @@ impl Kongo {
         rows
     }
 }
-
-/// Ground_801C1CD0 for map11 has no postbirth witness. This is a static
-/// callback capability boundary, never a tick/progress/invocation-count test.
-pub fn require_ground_animation(map: u8) {
-    if map == 11 {
-        unimplemented!("Ground_801C1CD0: Klaptrap rider Ground Animation after birth");
-    }
-}

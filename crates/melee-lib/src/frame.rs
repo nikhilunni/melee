@@ -2559,9 +2559,6 @@ impl Runtime {
                 // M3.md documents the scope and the constructor's phase guard.
                 0x801C1CD0 => {
                     let map = map.expect("animation map");
-                    if matches!(state.stage, SceneStage::Kongo(_)) {
-                        melee_gr::kongo::procs::require_ground_animation(map);
-                    }
 
                     if let Some(animation) = state.stage_animations.get_mut(&map) {
                         for event in animation.tick::<RetailTrig>() {

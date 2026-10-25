@@ -332,22 +332,18 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
         let state = simulation.state();
         let mut copy = item.clone();
         let mut map = state.map.clone();
-        guard(
-            || {
-                (crate::scene_items::SceneItems::logic(copy.kind).states[0].animation)(
-                    &mut copy,
-                    &mut melee_it::ItemAnimationContext {
-                        owner: None,
-                        holder: None,
-                        map: &mut map,
-                        assets: state.assets.items.get(item.kind),
-                        partner: None,
-                        rng: None,
-                    },
-                );
+        // itKlap_UnkMotion1_Anim never ends the item.
+        assert!(!(crate::scene_items::SceneItems::logic(copy.kind).states[0].animation)(
+            &mut copy,
+            &mut melee_it::ItemAnimationContext {
+                owner: None,
+                holder: None,
+                map: &mut map,
+                assets: state.assets.items.get(item.kind),
+                partner: None,
+                rng: None,
             },
-            "Klaptrap Animation",
-        );
+        ));
         // The ordinary constructor must refuse missing map context before
         // creating a falsely complete live object or allocating a GObj identity.
         let mut pool = state.items.clone();
@@ -569,11 +565,7 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
             },
             "it_2725_Logic10_DmgReceived",
         );
-        guard(
-            || {
-                simulation.tick_without_snapshot().unwrap();
-            },
-            "Ground_801C1CD0: Klaptrap rider",
-        );
+        // The rider's Ground animation runs on (Ground_801C1CD0).
+        simulation.tick_without_snapshot().unwrap();
     }
 }

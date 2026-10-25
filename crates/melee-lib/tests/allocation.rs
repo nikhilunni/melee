@@ -1621,15 +1621,9 @@ fn klaptrap_birth_step_and_capture_allocate_nothing_after_live_clone() {
             &capture.instances()[range.start as usize..range.end as usize],
             &cloned_capture.instances()[range.start as usize..range.end as usize]
         );
-        // No later retail continuation is claimed: the actual public next
-        // step must report the deliberately unported animation callback.
-        let error = game.step(&Inputs::default()).unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .contains("Ground_801C1CD0: Klaptrap rider"),
-            "{error}"
-        );
+        // The rider and its Klaptrap step on (Ground_801C1CD0,
+        // itKlap_UnkMotion1_Anim).
+        game.step(&Inputs::default()).unwrap();
     }
 }
 

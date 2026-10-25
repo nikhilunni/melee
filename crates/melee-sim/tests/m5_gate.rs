@@ -2153,6 +2153,9 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_w26_start_kj_fox_cpu9fox4_e75fb4a9a_p0", 676),
     ("corpus_v3_w26_start_kj_fox_cpu9fox4_e75fb4a9a_p1", 2202),
     ("corpus_v3_w26_start_kj_fox_cpu9fox4_ef89b3e70_p0", 3639),
+    // The Klaptrap rider and its Klaptrap after birth (Ground_801C1CD0,
+    // itKlap_UnkMotion1_Anim).
+    ("corpus_v3_w26_start_kj_fox_cpu9fox4_ef89b3e70_p1", 3622),
     ("corpus_v3_w26_start_ps_fox_cpu9fox4_e75fb4a9a_p1", 4409),
     ("corpus_v3_w26_start_ps_fox_cpu9fox4_ef89b3e70_p0", 4774),
     ("corpus_v3_w26_start_ps_fox_cpu9fox4_ef89b3e70_p2", 5584),
