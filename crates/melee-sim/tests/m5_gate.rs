@@ -2194,6 +2194,9 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
     ("w26cpu_ht_ef89b3e70_p1", 5839),
     ("w26cpu_kj_e75fb4a9a_p0", 4401),
     ("w26cpu_rec_luigi_e89a89d0e_p2", 644),
+    // An attacker's legs keep their last ground pose through hitlag
+    // (ft_80089B08 skips the leg IK under x2219_b5).
+    ("w26cpu_rec_luigi_ec3145eb3_p1", 737),
     ("w26cpu_rec_ness_e50814092_p0", 3130),
     ("w26cpu_rec_ness_edb2b114a_p1", 2531),
     ("w26cpu_rec_pichu_e0dee256e_p1", 2415),

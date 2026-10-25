@@ -638,7 +638,8 @@ impl FighterCore {
     }
     /// Fighter_8006C5F4 (0x8006C5F4), s_link 7, fighter.c:2518-2525.
     pub fn proc_pose(&mut self, assets: &FighterAssets, map: &CollMap) {
-        if self.status.disabled {
+        // ft_80089B08 (ft_0899.c:92): no leg IK while in hitlag (x2219_b5).
+        if self.status.disabled || self.in_hitlag() {
             return;
         }
         let pose = GroundPose {
