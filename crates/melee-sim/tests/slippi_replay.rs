@@ -44,7 +44,7 @@ fn fixture_matched_frame_counts_never_decrease() {
         (
             "v3.13.slp",
             "FinalDestination",
-            "requires singles stock mode",
+            "requires stock mode, items off, normal damage and countdown/no timer",
             0,
         ),
         (
