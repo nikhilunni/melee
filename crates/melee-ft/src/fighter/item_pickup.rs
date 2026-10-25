@@ -9,7 +9,7 @@
 //! fails closed at the motion change.
 use super::{
     assets::{FighterAssets, Result},
-    Fighter, FighterCore, MotionData,
+    ActionId, Fighter, FighterCore, MotionData,
 };
 use gekko_math::fma::fmadds;
 use hsd_types::Vec2;
@@ -532,13 +532,37 @@ impl FighterCore {
     /// Keep a held item inside the audited states (see HELD_ITEM_STATES).
     /// Character special rows pass `special` with the table's
     /// `specials_keep_held_item` audit instead.
-    pub(super) fn require_held_item_state(&self, state: S, special: Option<bool>) {
-        let audited = match special {
-            Some(keeps_item) => keeps_item,
-            None => HELD_ITEM_STATES.contains(&state),
-        };
-        if self.held_item.is_some() && !audited {
+    pub(super) fn require_held_item_state(
+        &self,
+        action: ActionId,
+        state: S,
+        special: Option<bool>,
+    ) {
+        if self
+            .held_item
+            .is_some_and(|item| !held_item_state_is_audited(item.kind, action, state, special))
+        {
             unimplemented!("holding an item: motion state {state:?} is not audited");
+        }
+    }
+}
+
+/// A private character row can share a common identity but run different
+/// callbacks (Game & Watch's Manhole is row 345, identity AttackLw3). Only
+/// the actual common down-tilt/up-smash rows have held-Sword witnesses.
+fn held_item_state_is_audited(
+    kind: melee_types::ItemKind,
+    action: ActionId,
+    state: S,
+    special: Option<bool>,
+) -> bool {
+    match special {
+        Some(keeps_item) => keeps_item,
+        None => {
+            HELD_ITEM_STATES.contains(&state)
+                || (kind == melee_types::ItemKind::Sword
+                    && action == ActionId(state as u16)
+                    && matches!(state, S::AttackLw3 | S::AttackHi4))
         }
     }
 }
@@ -843,5 +867,44 @@ impl FighterCore {
             item: item.item,
             part: self.bones.model.animation_translation,
         });
+    }
+}
+
+#[cfg(test)]
+mod held_state_tests {
+    use super::*;
+
+    #[test]
+    fn sword_ground_audit_does_not_admit_private_or_unwitnessed_rows() {
+        use melee_types::ItemKind;
+        // Common down tilt/up smash are witnessed; private rows and other
+        // ordinary attacks retain their guards, even with the same identity.
+        for (action, state, expected) in [
+            (57, S::AttackLw3, true),
+            (63, S::AttackHi4, true),
+            (345, S::AttackLw3, false), // Game & Watch's Manhole callbacks.
+            (56, S::AttackHi3, false),
+            (64, S::AttackLw4, false),
+            (67, S::AttackAirB, false),
+            (72, S::LandingAirB, false),
+        ] {
+            assert_eq!(
+                held_item_state_is_audited(ItemKind::Sword, ActionId(action), state, None),
+                expected,
+                "action {action}, identity {state:?}"
+            );
+        }
+        assert!(!held_item_state_is_audited(
+            ItemKind::Sword,
+            ActionId(57),
+            S::AttackLw3,
+            Some(false),
+        ));
+        assert!(!held_item_state_is_audited(
+            ItemKind::Dosei,
+            ActionId(57),
+            S::AttackLw3,
+            None,
+        ));
     }
 }

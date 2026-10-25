@@ -1049,7 +1049,7 @@ impl Fighter {
             && row.id == CommonMotionState::None)
             .then(|| self.character.table().specials_keep_held_item);
         let state = row.id;
-        self.core.require_held_item_state(state, special);
+        self.core.require_held_item_state(row.action, state, special);
         if !change.skip_parasol {
             self.parasol_motion_change();
         }

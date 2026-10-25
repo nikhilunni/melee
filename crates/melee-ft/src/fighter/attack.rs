@@ -56,13 +56,9 @@ impl Fighter {
         }
         self.enter_jab_or_combo(assets)
     }
-    /// Wait's attack checks with an item in hand. A smash with A is already
-    /// ftCo_Catch_CheckInput's throw, so these are C-stick smashes: side
-    /// (ftCo_AttackS4.c checkItemThrow) throws LightThrowF4/B4 by the stick's
-    /// sign, up and down (ftCo_AttackHi4/Lw4_CheckInput with ftCo_800DF30C /
-    /// ftCo_800DF3DC) LightThrowHi4/Lw4. Tilts throw LightThrowF/Hi/Lw
-    /// (ftCo_AttackS3/Hi3/Lw3_CheckInput); ftCo_Attack1_CheckInput
-    /// (8008A9F8) throws a throwable item forward.
+    /// ftCo_AttackS4/Hi4/Lw4 and AttackS3/Hi3/Lw3_CheckInput with an
+    /// item in hand. Throwable items and shoulder+A throw; C-stick smash
+    /// edges also throw a Sword. Main-stick vertical attacks retain it.
     fn enter_held_item_attack(
         &mut self,
         held: super::item_pickup::HeldItem,
@@ -77,17 +73,36 @@ impl Fighter {
                 let (sign, main) = self.side_smash_sign(assets);
                 return self.enter_side_smash_with_item(held, sign, main, assets);
             }
-            if held.use_kind != 0 {
-                unimplemented!(
-                    "ftCo_AttackHi4/Lw4_CheckInput: a smash with a held item of kind {}",
-                    held.use_kind
-                );
-            }
-            let state = match predicate {
-                P::SmashUp => S::LightThrowHi4,
-                _ => S::LightThrowLw4,
+            // retail 0x8008C8D0..8008C8F4 / 0x8008CBE4..8008CC08:
+            // ftCo_80094E54 or the independent C-stick edge throws;
+            // otherwise the normal vertical attack keeps the item.
+            let input = &self.core.input;
+            let cstick_throw = if predicate == P::SmashUp {
+                input.previous.cstick.y < assets.input.up_smash_threshold
+                    && input.current.cstick.y >= assets.input.up_smash_threshold
+            } else {
+                input.previous.cstick.y > assets.input.down_smash_threshold
+                    && input.current.cstick.y <= assets.input.down_smash_threshold
             };
-            return self.enter_item_throw(state, assets);
+            if held.use_kind == 0 || held.kind == melee_types::ItemKind::Sword {
+                let up = predicate == P::SmashUp;
+                if self.core.item_throw_pressed() || cstick_throw {
+                    return self.enter_item_throw(
+                        if up {
+                            S::LightThrowHi4
+                        } else {
+                            S::LightThrowLw4
+                        },
+                        assets,
+                    );
+                }
+                return self
+                    .enter_simple_attack(if up { S::AttackHi4 } else { S::AttackLw4 }, assets);
+            }
+            unimplemented!(
+                "ftCo_AttackHi4/Lw4_CheckInput: a smash with a held item of kind {}",
+                held.use_kind
+            );
         }
         for predicate in [P::TiltSide, P::TiltUp, P::TiltDown] {
             if self.first_ground_transition(assets, context, &[predicate]) == T::None {
@@ -103,6 +118,12 @@ impl Fighter {
                 return self.enter_item_swing(super::item_swing::SwingInput::Tilt, assets);
             }
             if !throws {
+                // retail ftCo_AttackLw3_CheckInput 0x8008BBB0..8008BBF0:
+                // a Sword is not throwable by A alone. The ordinary entry
+                // retains its pickup check and repeat/new-attack ordering.
+                if predicate == P::TiltDown && held.kind == melee_types::ItemKind::Sword {
+                    return self.enter_simple_attack(S::AttackLw3, assets);
+                }
                 unimplemented!(
                     "a tilt with a non-throwable held item of kind {}",
                     held.use_kind
@@ -144,14 +165,22 @@ impl Fighter {
         assets: &FighterAssets,
     ) -> Result<()> {
         let shoulder = self.core.input.current.held.intersects(Buttons::SHIELD);
-        if held.use_kind == 2 && !shoulder {
+        let input = &self.core.input;
+        let threshold = assets.input.thresholds.dash_smash_stick_threshold;
+        // retail 0x8008C29C: ftCo_800DF21C tests the C-stick independently
+        // even when main-stick+A supplied the direction. Versus has no
+        // single-button mode (canUseCstick). Other swing items stay guarded.
+        let cstick_throw = held.kind == melee_types::ItemKind::Sword
+            && gekko_math::msl::fabsf(input.previous.cstick.x) < threshold
+            && gekko_math::msl::fabsf(input.current.cstick.x) >= threshold;
+        if held.use_kind == 2 && !shoulder && !cstick_throw {
             if !main {
                 unimplemented!("checkItemThrow: a C-stick smash with a swing item");
             }
             self.core.physics.facing = sign;
             return self.enter_item_swing(super::item_swing::SwingInput::Smash, assets);
         }
-        if held.use_kind != 0 && !shoulder {
+        if held.use_kind != 0 && !shoulder && !cstick_throw {
             unimplemented!(
                 "checkItemThrow: a smash with a held item of kind {}",
                 held.use_kind

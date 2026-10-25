@@ -5111,6 +5111,39 @@ fn corpus_v2_matches_through_game() {
     gate_in_parallel(&CORPUS_MATCHES);
 }
 
+/// Held Beam Sword ground input only: retail checkItemThrow (8008C22C),
+/// vertical smash throw checks (8008C830/8008CB44), and down-tilt entry
+/// (8008BB44). The full captures end on the newly entered ground motion;
+/// held aerial/landing and other ordinary attack admissions stay guarded.
+#[test]
+fn sword_ground_inputs_and_entries_match_retail() {
+    gate_in_parallel(&[
+        ("corpus_v3_bf_items_sword_edb13a9c3_p2", 714),
+        ("corpus_v3_fd_items_sword_e44cbc906_p1", 829),
+        ("corpus_v3_fd_items_sword_ef689d636_p0", 694),
+        ("corpus_v3_fd_items_sword_ef9b6d16d_p1", 596),
+        ("corpus_v3_fd_items_sword_nocont_e12d92447_p1", 405),
+        ("corpus_v3_fd_items_sword_nocont_e6cc80d32_p2", 352),
+        ("corpus_v3_fd_items_taru_ebf1d3d3e_p1", 689),
+        ("corpus_v3_fd_items_sword_e0144d061_p1", 1344),
+        ("corpus_v3_fd_items_sword_e1895a33d_p1", 1079),
+        ("corpus_v3_fd_items_sword_e19f8579b_p2", 2038),
+        ("corpus_v3_fd_items_sword_e5ca12c3b_p1", 836),
+        ("corpus_v3_fd_items_sword_nocont_e09db17e3_p0", 847),
+        ("corpus_v3_fd_items_sword_nocont_eae52f0ea_p1", 920),
+        ("corpus_v3_fd_items_sword_e1611c835_p0", 457),
+        ("corpus_v3_fd_items_sword_e24fdee66_p2", 499),
+        ("corpus_v3_fd_items_sword_eae02b66b_p1", 391),
+        ("corpus_v3_fd_items_sword_ec0a10b25_p2", 966),
+        ("corpus_v3_fd_items_sword_ef689d636_p1", 794),
+        ("corpus_v3_fd_items_sword_nocont_e1502cb40_p2", 547),
+        ("corpus_v3_fd_items_sword_nocont_e8089e993_p2", 558),
+        ("corpus_v3_fd_items_sword_ece1e43b7_p0", 1226),
+        ("corpus_v3_fd_items_sword_nocont_e50814092_p0", 2905),
+        ("corpus_v3_fd_items_sword_nocont_eb17a6598_p1", 1706),
+    ]);
+}
+
 /// Corpus version 3 (`explore <dir> <count>`, seeds from a xorshift of
 /// 0x00C0FFEE): the matches that faulted the port. Together they exposed
 /// that a motion change ends the attack interaction, that grabs and throws
