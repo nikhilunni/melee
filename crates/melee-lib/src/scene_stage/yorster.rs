@@ -310,9 +310,6 @@ pub(crate) enum Collider {
 /// with `pos_delta.y` at least `bump_speed` is frozen `bump_freeze`
 /// frames (ftLib_80086A4C), and the block gathers the bump.
 pub(crate) fn apply_bumps(state: &mut InitialState, collider: Collider) -> Result<()> {
-    if !matches!(state.stage, SceneStage::Yorster(_)) {
-        return Ok(());
-    }
     let events = state.map.take_ceiling_events();
     if events.is_empty() {
         return Ok(());
@@ -369,7 +366,7 @@ pub(crate) fn material_hit(
     damage: i32,
 ) {
     let SceneStage::Yorster(stage) = &mut state.stage else {
-        return;
+        unreachable!()
     };
     if let Some(index) = fighter {
         let freeze = stage.parameters.hit_freeze as f32;

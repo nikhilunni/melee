@@ -161,7 +161,7 @@ impl InitialState {
         let item_spawner = create_item_spawner(scenario, &assets, &mut rng);
         let mut particles = ParticleSystem::default();
         let (mut stage, mut stage_animations) =
-            initialize_stage(&assets, &scenario.slippi, &mut rng, &mut particles, &mut map)?;
+            initialize_stage(&assets, &scenario.slippi, item_spawner.is_some(), &mut rng, &mut particles, &mut map)?;
         if let SceneStage::Stadium(stadium) = &mut stage {
             if scenario.slippi.stadium_preload {
                 // Init isLoaded Bool.asm (0x801D14C8), in map 2's init.
@@ -187,6 +187,7 @@ impl InitialState {
                 | SceneStage::Kraid(_)
                 | SceneStage::FlatZone(_)
                 | SceneStage::Yorster(_)
+                | SceneStage::Inishie1(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -256,6 +257,15 @@ impl InitialState {
             scenario.fighters.iter().map(|f| (f.slot, f.team)),
         );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
+        // grInishie1_801FAD84: the bricks' material items.
+        crate::scene_stage::inishie1::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
         if matches!(stage, SceneStage::Garden(_)) {
             // grGarden_802031A4: the Klaptrap's material item on its jaw.
             let anchor = crate::scene_stage::garden::klaptrap_jaw(&mut stage_animations);
@@ -400,6 +410,8 @@ fn setup_draws(
         GrKind::Flatzone => 2,
         // grYorster_80201FA4 draws nothing (GrYt.dat has no particle keys).
         GrKind::Yorster => 0,
+        // grInishie1_801FAD84 draws only with items on (the `?` blocks).
+        GrKind::Inishie1 => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -482,6 +494,7 @@ fn live_spawn_position(
 fn initialize_stage(
     assets: &Assets,
     codes: &crate::slippi::SlippiCodes,
+    items_on: bool,
     rng: &mut HsdRng,
     particles: &mut ParticleSystem,
     map: &mut melee_mp::CollMap,
@@ -655,6 +668,12 @@ fn initialize_stage(
         }
         GrKind::Yorster => {
             let (stage, animations) = crate::scene_stage::yorster::initialize(assets, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Inishie1 => {
+            let (stage, animations) =
+                crate::scene_stage::inishie1::initialize(assets, map, items_on)?;
             stage_animations = animations;
             stage
         }

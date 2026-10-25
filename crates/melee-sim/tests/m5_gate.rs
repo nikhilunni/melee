@@ -5389,7 +5389,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 847] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 855] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6755,6 +6755,22 @@ static CORPUS_V3_MATCHES: [(&str, usize); 847] = [
     ("corpus_v3_yi_fox_marth4_ec13743d5_p0", 6001),
     ("corpus_v3_yi_fox_marth4_e19f8579b_p0", 5140),
     ("corpus_v3_yi_fox_marth4_e573e2d95_p0", 1866),
+    // Mushroom Kingdom (grinishie1.c): bricks broken by hits
+    // (fn_801FBF6C) and bumps (fn_801FBEB8), their effect and quake,
+    // waiting for room and flickering back; the lifts weighed, tipping past
+    // lift_max_offset, falling (a fighter KO'd standing on one still rides
+    // it, mpGetSpeed in procUpdate's tail), away and settling back.
+    ("corpus_v3_mk_fox_marth4_e3e74affa_p0", 2223),
+    ("corpus_v3_mk_fox_marth4_e7ff378da_p0", 3000),
+    ("corpus_v3_mk_fox_marth4_ee133b82f_p0", 1895),
+    ("corpus_v3_mk_fox_marth4_e50814092_p0", 3327),
+    ("corpus_v3_mk_fox_marth4_eeda0d0fc_p0", 3562),
+    // A dead fighter on a floor is not pushed (ftCommon_8007E0E4, x2219_b1).
+    ("corpus_v3_mk_fox_marth4_e1611c835_p0", 2730),
+    // Off screen before GO ends: nothing is magnified until the HUD shows
+    // (ifMagnify_IsHUDVisible, hud_enabled).
+    ("corpus_v3_mk_fox_marth4_e00f31913_p0", 452),
+    ("corpus_v3_mk_fox_marth4_e9943b4ab_p1", 205),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

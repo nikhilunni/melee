@@ -62,6 +62,8 @@ pub struct JointEvent {
     /// The callback's `delta_y` (`cur_pos.y - last_pos.y` from mpCollEnd,
     /// 0 from mpColl_80043558).
     pub delta_y: f32,
+    /// The callback's `coll_x50` (`(int) coll->x50`).
+    pub x50: i32,
 }
 /// Joint callbacks recorded between two stage steps; a frame's fighters
 /// and items land a handful at most.
@@ -1044,6 +1046,7 @@ impl CollMap {
                 collision_type: coll.x34_flags.b1234,
                 x: coll.cur_pos.x,
                 delta_y: 0.0,
+                x50: coll.x50 as i32,
             });
         }
     }
@@ -1063,6 +1066,7 @@ impl CollMap {
                 collision_type: coll.x34_flags.b1234,
                 x: coll.cur_pos.x,
                 delta_y,
+                x50: coll.x50 as i32,
             });
         }
     }

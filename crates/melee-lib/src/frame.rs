@@ -1567,7 +1567,7 @@ impl Runtime {
                     let fighter = fighter.and_then(|(slot, secondary)| {
                         crate::scene_items::owner_index(&state.fighters, slot, secondary)
                     });
-                    crate::scene_stage::yorster::material_hit(state, id, fighter, damage);
+                    crate::scene_stage::material_hit(state, id, fighter, damage)?;
                 }
             }
             13 => self.detect_item_hurts(id),
@@ -2732,6 +2732,7 @@ impl Runtime {
                         || address == melee_gr::fourside::procs::DYNAMICS_PROC
                         || address == melee_gr::kraid::procs::DYNAMICS_PROC
                         || address == melee_gr::yorster::procs::DYNAMICS_PROC
+                        || address == melee_gr::inishie1::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -2795,6 +2796,8 @@ impl Runtime {
                         crate::scene_stage::fourside::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Yorster(_)) {
                         crate::scene_stage::yorster::run_proc(state, map_id)?;
+                    } else if matches!(state.stage, SceneStage::Inishie1(_)) {
+                        crate::scene_stage::inishie1::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and
@@ -3025,7 +3028,7 @@ impl Runtime {
             Callback::Item { .. } => crate::scene_stage::yorster::Collider::Item,
             _ => crate::scene_stage::yorster::Collider::Other,
         };
-        crate::scene_stage::yorster::apply_bumps(&mut self.state, collider)?;
+        crate::scene_stage::apply_ceiling_events(&mut self.state, collider)?;
         let state = &mut self.state;
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {
@@ -4553,13 +4556,16 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
 /// order (render priority): the magnifier camera (0) before the main camera
 /// (2), so the magnifier sees the previous pass's off-screen flags.
 fn render_cameras(state: &mut InitialState) {
-    // ifMagnify_802FBBDC: the HUD is visible in a running Versus match.
+    // ifMagnify_802FBBDC (ifMagnify_IsHUDVisible): nothing is magnified
+    // before fn_8016B784 enables the HUD when GO ends (hud_enabled); the
+    // HUD is never hidden otherwise in a running Versus match.
+    let hud = state.clock.hud_enabled;
     for fighter in &mut state.fighters {
         let f = &mut fighter.0;
         // ftLib_80086ED0: invisible, x221E_b2 (the dead, star, screen and
         // revival states) and x2220_b7 hide the fighter.
         let drawn = !f.effect_state.invisible && !f.hidden_by_life_state();
-        f.offscreen.magnified = f.offscreen.outside_camera && drawn;
+        f.offscreen.magnified = hud && f.offscreen.outside_camera && drawn;
     }
     // fn_800301D0 -> Camera_8002A4AC, then each fighter's render callback
     // (ftDrawCommon_80080E18 -> ftLib_80086A8C -> Camera_80030CD8).

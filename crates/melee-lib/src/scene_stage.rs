@@ -3,6 +3,7 @@ pub(crate) mod battle;
 pub(crate) mod fourside;
 pub(crate) mod flatzone;
 pub(crate) mod garden;
+pub(crate) mod inishie1;
 pub(crate) mod izumi;
 pub(crate) mod kraid;
 pub(crate) mod kongo;
@@ -212,6 +213,14 @@ pub const YOSHIS_ISLAND: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Yorster,
     read: melee_gr::desc::read_yorster,
 };
+/// grI1_StageData: GrI1.dat; StageParam row 0x13 (StKind).
+pub const MUSHROOM_KINGDOM: StageDescriptor = StageDescriptor {
+    name: "MushroomKingdom",
+    file: "GrI1.dat",
+    music_id: 0x13,
+    kind: melee_types::GrKind::Inishie1,
+    read: melee_gr::desc::read_inishie1,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -229,6 +238,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &BRINSTAR_DEPTHS,
         &FLAT_ZONE,
         &YOSHIS_ISLAND,
+        &MUSHROOM_KINGDOM,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -250,6 +260,7 @@ pub enum SceneStage {
     Kraid(Box<melee_gr::kraid::procs::KraidStage>),
     FlatZone(Box<melee_gr::flatzone::FlatZone>),
     Yorster(Box<melee_gr::yorster::procs::YorsterStage>),
+    Inishie1(Box<melee_gr::inishie1::procs::Inishie1Stage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -260,7 +271,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -280,6 +291,7 @@ impl SceneStage {
             Self::Kraid(s) => s.proc_table(),
             Self::FlatZone(s) => s.proc_table(),
             Self::Yorster(s) => s.proc_table(),
+            Self::Inishie1(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -317,6 +329,7 @@ impl SceneStage {
             Self::Kraid(_) => unreachable!("Brinstar Depths callbacks run in scene_stage::kraid"),
             Self::FlatZone(_) => unreachable!("Flat Zone callbacks require animation state"),
             Self::Yorster(_) => unreachable!("Yoshi's Island callbacks run in scene_stage::yorster"),
+            Self::Inishie1(_) => unreachable!("Mushroom Kingdom callbacks run in scene_stage::inishie1"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -329,5 +342,36 @@ impl SceneStage {
             }
         }
         Ok(false)
+    }
+}
+
+/// The stage callbacks a collider's proc made on joint ceilings
+/// (`mpJointSetCb2`): Yoshi's Island's blocks and Mushroom Kingdom's
+/// bricks apply them once the proc returns.
+pub(crate) fn apply_ceiling_events(
+    state: &mut crate::initial_state::InitialState,
+    collider: yorster::Collider,
+) -> Result<()> {
+    match state.stage {
+        SceneStage::Yorster(_) => yorster::apply_bumps(state, collider),
+        SceneStage::Inishie1(_) => inishie1::apply_bumps(state),
+        _ => Ok(()),
+    }
+}
+
+/// A stage material item's hit-taken callback (yaku.x18).
+pub(crate) fn material_hit(
+    state: &mut crate::initial_state::InitialState,
+    item: u32,
+    fighter: Option<usize>,
+    damage: i32,
+) -> Result<()> {
+    match state.stage {
+        SceneStage::Yorster(_) => {
+            yorster::material_hit(state, item, fighter, damage);
+            Ok(())
+        }
+        SceneStage::Inishie1(_) => inishie1::material_hit(state, item),
+        _ => Ok(()),
     }
 }

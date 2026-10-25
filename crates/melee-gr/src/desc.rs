@@ -278,6 +278,38 @@ pub fn read_fourside_parameters(archive: &Archive) -> ReadResult<crate::fourside
 pub fn read_shrine(archive: &Archive) -> ReadResult<StageDesc> {
     read_stage(archive, GrKind::Shrine, 2)
 }
+/// grI1_StageData / grDatFiles_801C6038: GrI1.dat. grI1_StageCallbacks[3]
+/// carries flags 0xC0000000, so map 3 selects the lights and fog.
+pub fn read_inishie1(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Inishie1, 3)
+}
+/// `grInishie1_YakumonoParam` (grinishie1.c:117-136) as the asm reads it.
+pub fn read_inishie1_parameters(archive: &Archive) -> ReadResult<crate::inishie1::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    Ok(crate::inishie1::Parameters {
+        hatena1_wait: [r.f32(p)?, r.f32(p + 0x4)?],
+        hatena2_wait: [r.f32(p + 0x8)?, r.f32(p + 0xC)?],
+        all_hatena_cooldown: r.f32(p + 0x10)?,
+        all_hatena_window: r.s16(p + 0x14)?,
+        hatena_flicker: r.s16(p + 0x16)?,
+        return_flicker: r.u16(p + 0x18)?,
+        respawn_wait: [r.s16(p + 0x1A)?, r.s16(p + 0x1C)?],
+        lift_max_offset: r.f32(p + 0x20)?,
+        lift_acceleration: r.f32(p + 0x24)?,
+        lift_max_speed: r.f32(p + 0x28)?,
+        lift_damping_both: r.f32(p + 0x2C)?,
+        lift_damping_one: r.f32(p + 0x30)?,
+        lift_friction: r.f32(p + 0x34)?,
+        lift_return_speed: r.f32(p + 0x38)?,
+        lift_free_weight: r.f32(p + 0x3C)?,
+        lift_standing_weight: r.f32(p + 0x40)?,
+        lift_fall_acceleration: r.f32(p + 0x44)?,
+        lift_fall_speed: r.f32(p + 0x48)?,
+        lift_away_ticks: r.f32(p + 0x4C)?,
+        lift_settle_speed: r.f32(p + 0x50)?,
+    })
+}
 /// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
 /// carries flags 0xC0000000, so map 1 selects the lights and fog.
 pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {

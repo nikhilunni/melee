@@ -86,6 +86,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         // The left ledge at x -97.8; the blocks fill the middle gap
         // (an approximation for the policies).
         Stage::YoshisIsland => (90.0, 60.0),
+        // The main floor's ends (an approximation for the policies).
+        Stage::MushroomKingdom => (80.0, 55.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

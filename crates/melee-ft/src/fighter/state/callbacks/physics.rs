@@ -12,11 +12,27 @@ pub fn capture(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 /// no retail callback; Fighter_procUpdate's tail still runs, so a stage
 /// device (Jungle Japes' river) still carries the body.
 pub fn dead(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
-    let PhysicsPhase {
-        assets,
-        map: _,
-        wind,
-    } = phase;
+    let PhysicsPhase { assets, map, wind } = phase;
+    if fighter.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+        // A fighter KO'd while standing (Mushroom Kingdom's falling lift
+        // carries it past the blast zone): procUpdate's tail still rides
+        // the floor (fighter.c:2380-2390, mpGetSpeed).
+        let physics = &fighter.core.physics;
+        assert!(
+            physics.knockback_velocity.x == 0.0
+                && physics.knockback_velocity.y == 0.0
+                && physics.shield_knockback_velocity.x == 0.0
+                && physics.shield_knockback_velocity.y == 0.0,
+            "fighter.c:2209-2232: a grounded dead fighter's knockback friction"
+        );
+        crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
+        let speed = map.line_speed(
+            fighter.core.collision.data.floor.index,
+            &fighter.core.physics.position,
+        );
+        crate::physics::integrate::integrate_environment(&mut fighter.core.physics, speed, wind);
+        return;
+    }
     fighter.core.free_flight_physics(assets, wind)
 }
 

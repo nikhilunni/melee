@@ -1936,3 +1936,12 @@ stage = "YoshisIsland"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2879833795
+
+[[boundary]]
+name = "start_mk_fox_marth4"
+cold = "start_mk_fox_marth4_cold"
+savestate = "harness/roms/start_mk_fox_marth4.sav"
+stage = "MushroomKingdom"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2539962926

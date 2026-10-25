@@ -85,3 +85,29 @@ material item each, with grMaterial_801C8DE0's radius-5 capsule.
   block may come back.
 
 Warm boundaries are imported only before the stage starts (xC4 = 1).
+
+## Mushroom Kingdom (grinishie1.c)
+
+Maps 0 and 3; with items off nothing draws at creation (the `?` blocks of
+grInishie1_801FAD84 and grInishie1_801FB3F0 need items on and stay
+fail-closed). Map 3 binds the archive's joints and grI1_803E48C8's
+(joints 13..19), makes nineteen brick material items at creation (capsule
+(0,-1,0)-(0,1,0), radius 6) and records the bricks' ceiling calls and the
+lifts' floor calls.
+
+- A brick breaks on any hit on its item (fn_801FBF6C) or a ceiling contact
+  faster than 0.7 (fn_801FBEB8, compared in double): wait drawn by
+  `rand_range(400, 500)`, JObj hidden (its joint drops out at the next
+  Ground_801C2FE0), dust 0x442 (efLib_CreateGenerator 0x1DC) and a Small
+  quake. It returns when nothing is within 15 of it (grLib_801C9EE8), then
+  flickers. Phases 3 and 4 of grInishie1_801FB3F0 have no writer.
+- The lifts (joints 0x14, 0x15) sum their callers' weights (fn_801FC9AC:
+  `x50 * 8` standing, 0x801FC9F4 fmadds), tip (0x801FC230 fmadds), fall
+  past the blast zone at lift_max_offset, stay away 180 ticks and settle.
+- Generic fixes the stage exposed: a fighter KO'd standing on a falling
+  lift rides it (procUpdate's mpGetSpeed in the dead states); a fighter in
+  x2219_b1 is not pushed (ftCommon_8007E0E4); nothing is magnified before
+  the HUD shows (ifMagnify_IsHUDVisible).
+- Open: corpus_v3_mk_fox_marth4_e19f8579b_p0 diverges at tick 238 by
+  0.0015 in y as Fox's Illusion carries him off a descending lift (pos_delta
+  and the lift match retail); a moving-floor collision case, not stage code.
