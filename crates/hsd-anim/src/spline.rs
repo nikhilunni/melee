@@ -371,8 +371,14 @@ mod tangent_tests {
         }
     }
     #[test]
-    #[cfg(not(target_family = "wasm"))]
-    #[should_panic(expected = "unwitnessed tangent endpoint")]
+    #[cfg_attr(
+        not(target_family = "wasm"),
+        should_panic(expected = "unwitnessed tangent endpoint")
+    )]
+    #[cfg_attr(
+        target_family = "wasm",
+        ignore = "wasm-check.sh runs this as an expected-trap subprocess"
+    )]
     fn tangent_endpoint_requires_the_unrecorded_extra_control_point() {
         bspline_tangent(&straight(), 1.0);
     }

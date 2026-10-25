@@ -94,7 +94,19 @@ for curve in bezier cardinal; do
         fi
     done
 done
-echo 'verified: four WASI spline guards trap with their expected diagnostics'
+test_name=tangent_endpoint_requires_the_unrecorded_extra_control_point
+log_file="$out/$test_name.log"
+if $wasmtime run "$spline_test_binary" --ignored --exact \
+    "spline::tangent_tests::$test_name" --nocapture >"$log_file" 2>&1; then
+    echo "expected a WASI trap from $test_name" >&2
+    exit 1
+fi
+if ! grep -Fq 'unwitnessed tangent endpoint' "$log_file"; then
+    cat "$log_file" >&2
+    echo "missing spline guard diagnostic from $test_name" >&2
+    exit 1
+fi
+echo 'verified: five WASI spline guards trap with their expected diagnostics'
 [[ $tests_only == 1 ]] && exit 0
 
 files=$data_root/harness/roms/files
