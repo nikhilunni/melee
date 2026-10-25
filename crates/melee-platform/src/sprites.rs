@@ -30,12 +30,16 @@ impl Sprites {
         camera: &wgpu::Buffer,
         scene: &Presentation,
     ) -> Result<Self, String> {
-        let (pixels, coordinates) = atlas(scene.sprite_textures())?;
+        let Atlas {
+            pixels,
+            coordinates,
+            size: atlas_size,
+        } = atlas(scene.sprite_textures())?;
         let texture = device.create_texture(&wgpu::TextureDescriptor {
             label: Some("Particle atlas"),
             size: wgpu::Extent3d {
-                width: ATLAS_SIZE,
-                height: ATLAS_SIZE,
+                width: atlas_size,
+                height: atlas_size,
                 depth_or_array_layers: 1,
             },
             mip_level_count: 1,
@@ -50,8 +54,8 @@ impl Sprites {
             &pixels,
             wgpu::TexelCopyBufferLayout {
                 offset: 0,
-                bytes_per_row: Some(ATLAS_SIZE * 4),
-                rows_per_image: Some(ATLAS_SIZE),
+                bytes_per_row: Some(atlas_size * 4),
+                rows_per_image: Some(atlas_size),
             },
             texture.size(),
         );
@@ -287,53 +291,91 @@ impl Sprites {
         }
     }
 }
-const ATLAS_SIZE: u32 = 2048;
-type Atlas = (Vec<u8>, Vec<[f32; 4]>);
+/// Atlas sides tried in turn: the smallest square that holds every
+/// distinct image. 8192 is WebGPU's default `maxTextureDimension2D`; stages
+/// with many effect textures (Dream Land, Pokemon Stadium, Brinstar Depths)
+/// outgrow 2048.
+const ATLAS_SIZES: [u32; 3] = [2048, 4096, 8192];
+struct Atlas {
+    pixels: Vec<u8>,
+    /// Per input texture: its rectangle in normalized atlas coordinates.
+    coordinates: Vec<[f32; 4]>,
+    size: u32,
+}
+/// Shelf packing, tallest images first, each with a one-texel extruded
+/// border so linear filtering never samples a neighbour.
 fn atlas(textures: &[Arc<Texture>]) -> Result<Atlas, String> {
-    let mut pixels = vec![0; (ATLAS_SIZE * ATLAS_SIZE * 4) as usize];
-    let mut coordinates = Vec::with_capacity(textures.len());
-    let mut cache = BTreeMap::new();
-    let (mut x, mut y, mut row_height) = (0, 0, 0);
-    for image in textures {
-        let key = Arc::as_ptr(image) as usize;
-        if let Some(&uv) = cache.get(&key) {
-            coordinates.push(uv);
+    let mut distinct: Vec<&Arc<Texture>> = Vec::new();
+    let mut index_of = BTreeMap::new();
+    let slots: Vec<usize> = textures
+        .iter()
+        .map(|image| {
+            *index_of.entry(Arc::as_ptr(image) as usize).or_insert_with(|| {
+                distinct.push(image);
+                distinct.len() - 1
+            })
+        })
+        .collect();
+    let mut order: Vec<usize> = (0..distinct.len()).collect();
+    // Stable: equal heights keep their first-use order.
+    order.sort_by_key(|&i| std::cmp::Reverse(distinct[i].height));
+    for size in ATLAS_SIZES {
+        let Some(places) = pack(&distinct, &order, size) else {
             continue;
+        };
+        let mut pixels = vec![0; (size * size * 4) as usize];
+        let mut rects = vec![[0.0; 4]; distinct.len()];
+        for (&i, &(x, y)) in order.iter().zip(&places) {
+            let image = distinct[i];
+            let (w, h) = (u32::from(image.width), u32::from(image.height));
+            for dy in 0..h + 2 {
+                for dx in 0..w + 2 {
+                    let sx = dx.saturating_sub(1).min(w - 1);
+                    let sy = dy.saturating_sub(1).min(h - 1);
+                    let src = ((sy * w + sx) * 4) as usize;
+                    let dst = (((y + dy) * size + x + dx) * 4) as usize;
+                    pixels[dst..dst + 4].copy_from_slice(&image.rgba[src..src + 4]);
+                }
+            }
+            let side = size as f32;
+            rects[i] = [
+                (x + 1) as f32 / side,
+                (y + 1) as f32 / side,
+                (x + 1 + w) as f32 / side,
+                (y + 1 + h) as f32 / side,
+            ];
         }
-        let (w, h) = (u32::from(image.width), u32::from(image.height));
-        if w + 2 > ATLAS_SIZE || h + 2 > ATLAS_SIZE {
-            return Err("particle image exceeds atlas size".into());
+        return Ok(Atlas {
+            pixels,
+            coordinates: slots.iter().map(|&i| rects[i]).collect(),
+            size,
+        });
+    }
+    Err("particle atlas capacity exceeded".into())
+}
+/// Top-left corners for `order`'s images on shelves `size` wide, or `None`
+/// when they do not fit.
+fn pack(images: &[&Arc<Texture>], order: &[usize], size: u32) -> Option<Vec<(u32, u32)>> {
+    let (mut x, mut y, mut row_height) = (0, 0, 0);
+    let mut places = Vec::with_capacity(order.len());
+    for &i in order {
+        let (w, h) = (u32::from(images[i].width) + 2, u32::from(images[i].height) + 2);
+        if w > size || h > size {
+            return None;
         }
-        if x + w + 2 > ATLAS_SIZE {
+        if x + w > size {
             x = 0;
             y += row_height;
             row_height = 0;
         }
-        if y + h + 2 > ATLAS_SIZE {
-            return Err("particle atlas capacity exceeded".into());
+        if y + h > size {
+            return None;
         }
-        // Extrude one texel so linear filtering never samples a neighbor image.
-        for dy in 0..h + 2 {
-            for dx in 0..w + 2 {
-                let sx = dx.saturating_sub(1).min(w - 1);
-                let sy = dy.saturating_sub(1).min(h - 1);
-                let src = ((sy * w + sx) * 4) as usize;
-                let dst = (((y + dy) * ATLAS_SIZE + x + dx) * 4) as usize;
-                pixels[dst..dst + 4].copy_from_slice(&image.rgba[src..src + 4]);
-            }
-        }
-        let uv = [
-            (x + 1) as f32 / ATLAS_SIZE as f32,
-            (y + 1) as f32 / ATLAS_SIZE as f32,
-            (x + 1 + w) as f32 / ATLAS_SIZE as f32,
-            (y + 1 + h) as f32 / ATLAS_SIZE as f32,
-        ];
-        coordinates.push(uv);
-        cache.insert(key, uv);
-        x += w + 2;
-        row_height = row_height.max(h + 2);
+        places.push((x, y));
+        x += w;
+        row_height = row_height.max(h);
     }
-    Ok((pixels, coordinates))
+    Some(places)
 }
 #[cfg(test)]
 mod tests {
@@ -354,7 +396,12 @@ mod tests {
             height: 1,
             rgba: vec![0, 0, 255, 255],
         });
-        let (pixels, uv) = atlas(&[red.clone(), red, blue]).unwrap();
+        let Atlas {
+            pixels,
+            coordinates: uv,
+            size,
+        } = atlas(&[red.clone(), red, blue]).unwrap();
+        assert_eq!(size, 2048);
         assert_eq!(uv[0], uv[1]);
         assert_ne!(uv[0], uv[2]);
         assert_eq!(
@@ -362,5 +409,24 @@ mod tests {
             &[255, 0, 0, 255, 255, 0, 0, 255, 255, 0, 0, 255]
         );
         assert_eq!(&pixels[12..16], &[0, 0, 255, 255]);
+    }
+    #[test]
+    fn a_full_atlas_grows_to_the_next_size() {
+        let square = |side: u16, value: u8| {
+            Arc::new(Texture {
+                mipmaps: Vec::new(),
+                lod_range: [0.0; 2],
+                width: side,
+                height: side,
+                rgba: vec![value; usize::from(side) * usize::from(side) * 4],
+            })
+        };
+        // Five 1000-texel images need more than one 2048 square.
+        let images: Vec<_> = (0..5).map(|i| square(1000, i)).collect();
+        let atlas = atlas(&images).unwrap();
+        assert_eq!(atlas.size, 4096);
+        let distinct: std::collections::BTreeSet<_> =
+            atlas.coordinates.iter().map(|r| r.map(f32::to_bits)).collect();
+        assert_eq!(distinct.len(), 5);
     }
 }

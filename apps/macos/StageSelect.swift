@@ -315,6 +315,12 @@ struct StageGradient: View {
         case "YoshisStory": [Color(hex: 0xf2b84b), Color(hex: 0x7cc06a), Color(hex: 0x2c5a2e)]
         case "YoshisIsland64": [Color(hex: 0x8fd0f0), Color(hex: 0x5aa84a), Color(hex: 0x24502a)]
         case "KongoJungle64": [Color(hex: 0x6a8a3a), Color(hex: 0x2e4a1c), Color(hex: 0x0f1a0a)]
+        case "KongoJungle": [Color(hex: 0xe0a040), Color(hex: 0x7a5a2a), Color(hex: 0x2a1a08)]
+        case "JungleJapes": [Color(hex: 0x7fd0e0), Color(hex: 0x3a7a4a), Color(hex: 0x123020)]
+        case "HyruleTemple": [Color(hex: 0x8fc0f0), Color(hex: 0x5a7aa0), Color(hex: 0x3a5a3a)]
+        case "Fourside": [Color(hex: 0x2a3070), Color(hex: 0x10143a), Color(hex: 0x05061a)]
+        case "BrinstarDepths": [Color(hex: 0xf08030), Color(hex: 0xa03a10), Color(hex: 0x2a0808)]
+        case "FlatZone": [Color(hex: 0xd8e4c0), Color(hex: 0x9aa88a), Color(hex: 0x3a3a32)]
         default: [Color(hex: 0x2b1a6e), Color(hex: 0x10145a), Color(hex: 0x05060f)]
         }
     }

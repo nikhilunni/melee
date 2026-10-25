@@ -757,6 +757,12 @@ const STAGE_GRADIENTS = {
   YoshisStory: ['#7ccf5a', '#245a2a', '#ffd25a'],
   YoshisIsland64: ['#8fd0f0', '#2a6a3a', '#f5e070'],
   KongoJungle64: ['#6a8a3a', '#1e2e10', '#c88a3a'],
+  KongoJungle: ['#7a5a2a', '#2a1a08', '#e0a040'],
+  JungleJapes: ['#3a7a4a', '#123020', '#7fd0e0'],
+  HyruleTemple: ['#8fc0f0', '#3a5a3a', '#f0f0e0'],
+  Fourside: ['#2a3070', '#05061a', '#f0d060'],
+  BrinstarDepths: ['#a03a10', '#2a0808', '#f08030'],
+  FlatZone: ['#c8d8b0', '#3a3a32', '#7a8a6a'],
 };
 /** A stage's gradient with `children` on it (an emblem, its icon). */
 function stagePlaceholder(id, ...children) {
