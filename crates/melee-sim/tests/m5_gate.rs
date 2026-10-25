@@ -996,7 +996,10 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 596] = [
+const MATRIX_WITNESSES: [(&str, usize); 597] = [
+    // A doubles stock steal (fn_8016B918): Fox out of stocks presses Start
+    // and takes Marth's spare stock; the icon flies (ifStock_802F8298).
+    ("teams_steal_fd_fox_marth", 1100),
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -5292,7 +5295,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 821] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 831] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6530,6 +6533,21 @@ static CORPUS_V3_MATCHES: [(&str, usize); 821] = [
     ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_e89a89d0e_p0", 3632),
     ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_edb2b114a_p0", 4265),
     ("corpus_v3_fd_doubles_ff_fox_falco_marth_captainfalcon2_ef89b3e70_p0", 4504),
+    // Time matches (match_kind 0) to TIME!: no stock is lost, falls score
+    // (gm_80166378), the HUD's score popups take GObj addresses; two to
+    // four players and a 2v2 (docs/PORT_NOTES/VERSUS_RULES.md).
+    ("corpus_v3_fd_time1_fox_marth_ef89b3e70_p0", 3725),
+    ("corpus_v3_fd_time1_fox_marth_e75fb4a9a_p1", 3725),
+    ("corpus_v3_fd_time1_fox_marth_e89a89d0e_p2", 3725),
+    ("corpus_v3_fd_time1_fox_marth_falco_captainfalcon_ef89b3e70_p0", 3725),
+    ("corpus_v3_fd_time1_fox_marth_falco_captainfalcon_e89a89d0e_p0", 3725),
+    ("corpus_v3_fd_time1_teams_fox_marth_falco_captainfalcon_ef89b3e70_p0", 3725),
+    ("corpus_v3_fd_time1_teams_fox_marth_falco_captainfalcon_e89a89d0e_p0", 3725),
+    // Handicaps 9 and 1 with a 1.5 Damage Ratio: every launch scaled by
+    // x30 and the players' attack and defense ratios (ftColl_80079AB0).
+    ("corpus_v3_fd_handicap9_1_ratio15_fox_marth4_ef89b3e70_p0", 1855),
+    ("corpus_v3_fd_handicap9_1_ratio15_fox_marth4_e75fb4a9a_p1", 3938),
+    ("corpus_v3_fd_handicap9_1_ratio15_fox_marth4_e89a89d0e_p2", 4966),
     // Jungle Japes: the Klaptrap's bite lands (the stage material item's
     // ALDYakuAll hitbox, 30 damage) and KOs through the river, whose
     // current still carries a dead body (DeadDown's procUpdate tail).

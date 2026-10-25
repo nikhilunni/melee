@@ -1,0 +1,26 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock, 4 stocks, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fd_handicap9_1_ratio15_fox_marth4_cold"
+expected = "start_fd_handicap9_1_ratio15_fox_marth4"
+frames = 600
+seed = 212953582
+damage_ratio = 1.5
+stage = "FinalDestination"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+handicap = 9
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+handicap = 1
+controller = "idle"

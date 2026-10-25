@@ -1,0 +1,24 @@
+# Fox vs Marth on FinalDestination, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# every stage unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_fd_handicap9_1_ratio15_fox_marth4"
+savestate = "harness/roms/start_fd_handicap9_1_ratio15_fox_marth4.sav"
+frames = 600
+seed = 1
+damage_ratio = 1.5
+stage = "FinalDestination"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+handicap = 9
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+handicap = 1
+controller = "idle"

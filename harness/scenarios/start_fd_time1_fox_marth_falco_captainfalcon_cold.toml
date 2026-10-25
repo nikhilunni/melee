@@ -1,0 +1,39 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Time, 4 stocks, items off, normal Versus Entry, human ports, neutral pads.
+name = "start_fd_time1_fox_marth_falco_captainfalcon_cold"
+expected = "start_fd_time1_fox_marth_falco_captainfalcon"
+frames = 600
+seed = 173180166
+mode = "time"
+stage = "FinalDestination"
+all_characters_unlocked = true
+time_limit = 60
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 3
+kind = "CaptainFalcon"
+costume = 0
+stocks = 4
+controller = "idle"
