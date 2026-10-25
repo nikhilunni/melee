@@ -354,6 +354,12 @@ impl Stage {
     pub fn is_ported(self) -> bool {
         self.descriptor().is_some()
     }
+    /// Whether the Item Switch is witnessed for `players` players on the
+    /// stage (it_8026D018's weights scale with the player count); starting
+    /// elsewhere with items on fails closed. The single list menus read.
+    pub fn items_supported(self, players: usize) -> bool {
+        players == 2 && matches!(self, Self::FinalDestination | Self::Battlefield)
+    }
     pub(crate) fn descriptor(self) -> Option<&'static crate::scene_stage::StageDescriptor> {
         crate::scene_stage::descriptor(self.name())
     }
@@ -419,6 +425,31 @@ impl PlayerConfig {
 }
 pub use melee_ft::input::ControllerFix;
 use crate::ItemRules;
+
+/// The Item Switch kinds whose it/kinds files the port registers
+/// (`scene_items::Resources::load`, common items); a random spawn of any
+/// other kind fails closed (`spawn_random_item`). Containers draw their
+/// contents through the same switch, so these alone keep a match inside
+/// the port. Party Ball's monsters (Goomba, ReDead) are registered too.
+pub const PORTED_RANDOM_ITEMS: [melee_types::ItemKind; 10] = {
+    use melee_types::ItemKind::*;
+    [
+        Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen,
+    ]
+};
+/// An Item Switch at `frequency` (0 Very Low .. 4 Very High) with only
+/// [`PORTED_RANDOM_ITEMS`] on. Bits from [`melee_it::random_spawn::PICKABLE_KINDS`]
+/// up stay set, as on the retail switch (gm_1601.c:3534).
+pub fn ported_item_switch(frequency: u8) -> ItemRules {
+    let unpickable = !((1u64 << melee_it::random_spawn::PICKABLE_KINDS) - 1);
+    let mask = PORTED_RANDOM_ITEMS
+        .iter()
+        .fold(unpickable, |mask, &kind| mask | 1 << kind as i32);
+    ItemRules {
+        frequency: frequency as i8,
+        mask,
+    }
+}
 
 /// Supported Versus rules: singles, stock, normal damage; an optional
 /// timer and items.

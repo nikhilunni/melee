@@ -197,7 +197,7 @@ pub(crate) fn item_weight_scale(players: usize) -> f32 {
     }
 }
 
-/// Item Switch witnesses cover two-player FD and Battlefield. Check the
+/// Item Switch witnesses cover [`crate::Stage::items_supported`]. Check the
 /// actual saved rules on warm import as well as the requested cold setup.
 fn require_item_witness(
     rules: melee_it::random_spawn::ItemRules,
@@ -205,11 +205,10 @@ fn require_item_witness(
     stage: melee_types::GrKind,
     players: usize,
 ) {
-    if rules.enabled()
-        && !sudden_death
-        && (players != 2
-            || !matches!(stage, melee_types::GrKind::Last | melee_types::GrKind::Battle))
-    {
+    let witnessed = crate::Stage::VERSUS.into_iter().any(|versus| {
+        versus.descriptor().is_some_and(|d| d.kind == stage) && versus.items_supported(players)
+    });
+    if rules.enabled() && !sudden_death && !witnessed {
         unimplemented!(
             "it_8026D018: random items on {stage:?} with {players} players need a retail witness"
         );

@@ -32,7 +32,8 @@ pub use assets::FileSource;
 pub use melee_it::random_spawn::ItemRules;
 pub use melee_types::MatchKind;
 pub use config::{
-    Character, ControllerFix, Costume, MatchConfig, MatchRules, PlayerConfig, Port, Seed, Stage,
+    ported_item_switch, Character, ControllerFix, Costume, MatchConfig, MatchRules, PlayerConfig,
+    Port, Seed, Stage, PORTED_RANDOM_ITEMS,
 };
 pub use error::{unported_stage, StartError, StateError, StepError};
 pub use events::{ConsumedEvents, ExternalEvents, StageRead};
