@@ -251,12 +251,14 @@ fn pickup_entry_clears_every_throw_flag_and_common_damage_owner_replaces_charact
             requests.as_slice(),
             [melee_it::ItemRequest::Drop { item: 1, speed, .. }] if *speed == 0.0
         ));
+        // A scaled fighter is refused at its pickup boxes (ftCo_800D105C),
+        // before the scaled HeavyGet rate is ever reached.
         f.player.scale = 2.0;
         expect_guard(
             || {
                 f.try_item_pickup(assets).unwrap();
             },
-            "scaled HeavyGet",
+            "a scaled fighter's itPickup boxes",
         );
     }
 }
