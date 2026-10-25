@@ -5232,4 +5232,7 @@ mod kongo_barrel_tests;
 mod kongo_log_tests;
 
 #[cfg(test)]
+mod revival_floor_tests;
+
+#[cfg(test)]
 mod script_color_tests;

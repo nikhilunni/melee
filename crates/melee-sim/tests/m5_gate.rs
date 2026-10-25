@@ -5151,7 +5151,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 789] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 791] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6408,6 +6408,10 @@ static CORPUS_V3_MATCHES: [(&str, usize); 789] = [
     ("corpus_v3_kj_fox_marth4_e726cfdde_p1", 1666),
     // Saved barrel AObj rate precedes gp+E8: complete moving catches,
     // held x730 positions and DamageFlyRoll launches, plus all later ticks.
+    // fn_800D5A30's final-tick floor entry: resolved position, protection,
+    // color9 then ordinary Wait. This capture has no post-entry ticks.
+    ("corpus_v3_kj_fox_marth4_e0c8363c7_p1", 1679),
+    ("corpus_v3_kj_fox_marth4_e0c8363c7_p1_cold", 1679),
     ("corpus_v3_kj_fox_marth4_ef5e3e043_p0", 1666),
     ("corpus_v3_kj_fox_marth4_e41b2c2b8_p1", 2726),
     ("corpus_v3_kj_fox_marth4_e7254fba4_p0", 3580),
@@ -6487,6 +6491,17 @@ fn kongo_log_standing_whole_warm_and_cold_fields_particles_and_rng() {
         "corpus_v3_kj_fox_marth4_e8be4d273_p2_cold",
     ] {
         complete_rng_ledger_gate(name, 2829);
+    }
+}
+
+/// The complete capture ends on the floor callback, not a later Wait lifecycle.
+#[test]
+fn revival_floor_full_capture_and_ledger_cadence_seeds() {
+    for name in [
+        "corpus_v3_kj_fox_marth4_e0c8363c7_p1",
+        "corpus_v3_kj_fox_marth4_e0c8363c7_p1_cold",
+    ] {
+        complete_rng_ledger_gate(name, 1679);
     }
 }
 

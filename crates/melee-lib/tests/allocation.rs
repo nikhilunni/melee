@@ -218,6 +218,44 @@ fn moving_kongo_barrel_catch_hold_launch_and_capture_allocate_nothing() {
     );
 }
 
+/// The last retail tick exercises the new floor callback; no later tick is invented.
+#[test]
+fn revival_floor_full_capture_step_observe_and_presentation_allocate_nothing() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    let scenario = melee_sim::scenario::Scenario::load(
+        &root.join("harness/scenarios/corpus_v3_kj_fox_marth4_e0c8363c7_p1.toml"),
+    )
+    .unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    assert_eq!(scenario.frames, 1679);
+    let mut game = diagnostics::import_match(&scenario).unwrap();
+    let mut presentation = presentation::Presentation::new(&game).unwrap();
+    let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+    for frame in 0..scenario.frames {
+        let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+        assert_eq!(
+            measure(&mut game, &inputs),
+            0,
+            "revival tick/observe {frame}"
+        );
+        COUNT.with(|v| v.set(0));
+        ENABLED.with(|v| v.set(true));
+        let result = presentation.capture(&game);
+        ENABLED.with(|v| v.set(false));
+        result.unwrap();
+        assert_eq!(COUNT.with(Cell::get), 0, "revival capture {frame}");
+        if frame >= 1677 {
+            let action = game.observe().unwrap().fighters().nth(1).unwrap().action();
+            assert_eq!(action, ActionId(if frame == 1677 { 12 } else { 14 }));
+        }
+    }
+}
+
 #[test]
 fn kongo_log_contact_and_capture_allocate_nothing() {
     let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(

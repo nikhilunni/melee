@@ -85,6 +85,17 @@ pub enum LifeState {
     },
 }
 impl FighterCore {
+    /// ftColl_8007B7A4 (8007B7A4): signed max at 8007B7B8 preserves
+    /// longer protection; color 9 is installed at 8007B7E8. Callers retain
+    /// their own ordering relative to the motion change.
+    pub(super) fn grant_revival_invincibility(&mut self, assets: &FighterAssets) {
+        self.status.revival_invincibility = self
+            .status
+            .revival_invincibility
+            .max(assets.life.invincibility_duration);
+        self.install_color_overlay_now(9, assets);
+    }
+
     /// x2219_b1: a death entry (ftCo_800D3680..ftCo_800D481C), the respawn
     /// wait (ftCo_800D4F24) or the match entry (ftCo_800C61B0 and the
     /// Entry states after it, ft_0C31.c:43,99,263) sets it after its motion
@@ -932,12 +943,7 @@ impl Fighter {
         }
         // ftColl_8007B7A4(gobj, p_ftCommonData->x5D8): x1994 = max(x1994, dur); the x198C
         // flash-type selector is renderer state and is not modelled.
-        self.core.status.revival_invincibility = self
-            .core
-            .status
-            .revival_invincibility
-            .max(assets.life.invincibility_duration);
-        self.core.install_color_overlay_now(9, assets);
+        self.core.grant_revival_invincibility(assets);
         // pl_80040374: stamps the stale-move table's platform-exit frame (xD60);
         // it feeds no compared key or RNG draw.
         Ok(())
@@ -968,12 +974,7 @@ impl Fighter {
                 if *remaining == 0 {
                     // 800D5738 precedes Fall entry at800D5740. Unlike input
                     // exit, timeout does not call pl_80040374.
-                    self.core.status.revival_invincibility = self
-                        .core
-                        .status
-                        .revival_invincibility
-                        .max(assets.life.invincibility_duration);
-                    self.core.install_color_overlay_now(9, assets);
+                    self.core.grant_revival_invincibility(assets);
                     self.change_motion_state(S::Fall.into(), assets)?;
                 }
             }

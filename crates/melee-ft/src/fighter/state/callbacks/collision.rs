@@ -117,7 +117,20 @@ fn fall_collision(
 }
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).
 pub fn revival(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
-    fighter.core.collision_revival(phase)
+    let assets = phase.assets.expect("airborne map needs proc_map_with_assets");
+    if fighter.core.collision_revival(phase) {
+        // fn_800D5A30: protection/color at 800D5A4C precedes neutral entry
+        // at 800D5A54. The resolved map position was copied before either.
+        fighter.core.grant_revival_invincibility(assets);
+        // ft_8008A348: the Hammer selects ftCo_800C4ED8 instead of Wait.
+        // Its item kind/states are not supported by this floor-entry slice.
+        if fighter.held_item.as_ref().is_some_and(|held| held.kind == melee_types::ItemKind::Hammer) {
+            unimplemented!("ft_8008A348 (ft_08A1.c:77): revival floor exit holding the Hammer");
+        }
+        fighter.land();
+        fighter.change_motion_state(melee_types::CommonMotionState::Wait.into(), assets)?;
+    }
+    Ok(())
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadDown (0), ftCo_MS_ThrownB (240).
@@ -440,7 +453,7 @@ pub fn jump(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 }
 
 impl FighterCore {
-    fn collision_revival(&mut self, phase: CollisionPhase<'_>) -> Result<()> {
+    fn collision_revival(&mut self, phase: CollisionPhase<'_>) -> bool {
         let CollisionPhase { assets, map } = phase;
         let _assets = assets.expect("airborne map needs proc_map_with_assets");
 
@@ -456,13 +469,16 @@ impl FighterCore {
         let pose =
             crate::collision::ecb::EcbPose::read(&mut self.skeleton, self.animation.root, cd);
         let position = |i| pose.position(i);
-        if self.motion_state.id == melee_types::CommonMotionState::Rebirth {
+        let landed = if self.motion_state.id == melee_types::CommonMotionState::Rebirth {
             map.air_collide_stay_ecb5(cd, Some(&position));
-        } else if map.air_collide_ecb5(cd, Some(&position)) {
-            unimplemented!("ftCoD5A30: revival platform reaches floor");
-        }
+            false
+        } else {
+            map.air_collide_ecb5(cd, Some(&position))
+        };
+        // ft_80083844, retail 800838AC..B8: publish the resolved position
+        // before fn_800D5A30 grants protection and enters neutral.
         self.physics.position = cd.cur_pos;
-        Ok(())
+        landed
     }
     fn collision_thrown(&mut self, phase: CollisionPhase<'_>) -> Result<()> {
         let CollisionPhase { assets, map: _ } = phase;
