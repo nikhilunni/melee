@@ -2142,7 +2142,7 @@ impl ItemPool {
     /// Multiple hits accumulate a maximum; one callback runs in this slot.
     pub fn process_events<D: ItemDispatch>(&mut self, id: u32, assets: &ItemAssets) {
         let rng = core::cell::Cell::new(gekko_math::HsdRng::default());
-        self.process_events_with_stale::<D>(id, 1.0, assets, &rng, None);
+        self.process_events_with_stale::<D>(id, 1.0, assets, &rng, None, None);
     }
     pub fn process_events_with_stale<D: ItemDispatch>(
         &mut self,
@@ -2151,6 +2151,7 @@ impl ItemPool {
         assets: &ItemAssets,
         rng: &core::cell::Cell<gekko_math::HsdRng>,
         map: Option<&melee_mp::CollMap>,
+        camera_position: Option<Vec3>,
     ) {
         let cap = self.common.maximum_reflected_damage;
         // retail 80269E18/20: add then multiply, no FMA or double promotion.
@@ -2170,6 +2171,7 @@ impl ItemPool {
             let context = ItemEventContext {
                 rng: Some(rng),
                 map,
+                camera_position,
                 ..ItemEventContext::new(assets, &common)
             };
             item.destroyed |= (D::logic(item.kind).damage_received)(item, &context);

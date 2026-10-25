@@ -1524,6 +1524,7 @@ impl Runtime {
                     state.assets.items.get(kind),
                     &rng,
                     Some(&state.map),
+                    Some(state.camera.transform.position),
                 );
                 state.rng = rng.get();
             }

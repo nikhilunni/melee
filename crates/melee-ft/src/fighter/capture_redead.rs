@@ -171,23 +171,15 @@ impl Fighter {
 
     /// fn_800C74CC (800C74CC) / fn_800C7568 (800C7568), the hold's
     /// take_dmg_cb and death2_cb: the ReDead lets go (it_802EADD8). Every
-    /// motion change disarms them; the scratch outlives the state.
+    /// motion change disarms them. No witness hits or KOs a held fighter
+    /// without hitting the ReDead first (a search of Marth's attacks on the
+    /// held Fox found none), so the shake-off stays refused.
     pub(super) fn shake_off_redead(&mut self) {
-        if self.core.motion_state.id != S::CaptureLeadead {
-            return;
+        if self.core.motion_state.id == S::CaptureLeadead {
+            unimplemented!(
+                "fn_800C74CC / fn_800C7568 (ftCo_800C7434.c:44,68): a held fighter hit or KO'd shakes the ReDead off (it_802EADD8)"
+            );
         }
-        let MotionData::CaptureReDead(state) = &self.core.state_data else {
-            return;
-        };
-        let item = state.item;
-        let view = self.core.redead_view();
-        self.core
-            .item_requests
-            .push(melee_it::ItemRequest::ReDeadRelease {
-                item,
-                view,
-                timed_out: false,
-            });
     }
 
     /// ftCo_800C7800 (800C7800): stepping back out of the hold at PlCo
@@ -249,11 +241,7 @@ pub fn capture_animation(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Optio
     let view = f.core.redead_view();
     f.core
         .item_requests
-        .push(melee_it::ItemRequest::ReDeadRelease {
-            item,
-            view,
-            timed_out: true,
-        });
+        .push(melee_it::ItemRequest::ReDeadRelease { item, view });
     f.leave_redead(p.assets)?;
     Ok(None)
 }

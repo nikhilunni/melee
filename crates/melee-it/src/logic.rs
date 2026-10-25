@@ -70,6 +70,8 @@ pub struct ItemEventContext<'a> {
     pub half_life_scale: f32,
     /// The stage, for callbacks that read it (the ReDead's it_802EA804).
     pub map: Option<&'a melee_mp::CollMap>,
+    /// Camera_GetTransformPosition: the game camera's eye (it_8027BA54).
+    pub camera_position: Option<hsd_types::Vec3>,
 }
 impl<'a> ItemEventContext<'a> {
     pub fn new(assets: &'a ItemAssets, common: &crate::desc::ItemCommonData) -> Self {
@@ -84,6 +86,7 @@ impl<'a> ItemEventContext<'a> {
             victim_bounce: common.victim_bounce,
             half_life_scale: common.half_life_scale,
             map: None,
+            camera_position: None,
         }
     }
 }

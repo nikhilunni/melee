@@ -202,13 +202,11 @@ pub enum ItemRequest {
         item: u32,
         part: u8,
     },
-    /// The held fighter lets the ReDead go: its timer ran out
-    /// (ftCo_CaptureLeadead_Anim -> it_802EAE80, `timed_out`), or it was
-    /// hit or died (fn_800C74CC / fn_800C7568 -> it_802EADD8).
+    /// The held fighter's timer ran out: the ReDead lets go
+    /// (ftCo_CaptureLeadead_Anim -> it_802EAE80).
     ReDeadRelease {
         item: u32,
         view: crate::CaptiveView,
-        timed_out: bool,
     },
     /// An item in hand stowed under an article (ftPe_SpecialHi_8011D424:
     /// it_8026BB44 hides it, it_8026B724 sets xDC8 x3, which freezes it) or

@@ -57,6 +57,8 @@ pub(crate) mod motion {
     pub const THROWN: u16 = 14;
     /// it_802EA2A0: killed, tumbling away.
     pub const TUMBLE: u16 = 15;
+    /// it_802EA334: killed, flying at the screen.
+    pub const SCREEN: u16 = 16;
 }
 
 /// it_802E8CD8's it_802EA804(gobj, 15.0): the floor a heavy hit needs
@@ -171,6 +173,13 @@ pub(crate) static STATES: [ItemStateRow; 18] = {
         animation: no_animation,
         physics: no_physics,
         collision: tumble_collision,
+    };
+    // itLeadead_UnkMotion16_Coll -> it_8027C794: no map pass.
+    rows[motion::SCREEN as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[16],
+        animation: no_animation,
+        physics: screen_physics,
+        collision: no_collision,
     };
     // it_803F8EB0[11]: UnkMotion11_Anim with UnkMotion12's Phys and Coll.
     rows[motion::REEL as usize] = ItemStateRow {
@@ -937,22 +946,6 @@ pub fn release_on_hit(
     true
 }
 
-/// it_802EADD8 (802EADD8), the fighter's take_dmg_cb (fn_800C74CC) and
-/// death2_cb (fn_800C7568): let go, then settle on the floor or fall.
-pub fn shake_off(
-    item: &mut ItemCore,
-    map: &mut melee_mp::CollMap,
-    assets: &ItemAssets,
-    release_floor_depth: f32,
-) {
-    unclasp(item, map, assets, release_floor_depth);
-    if item.ground_or_air == GroundOrAir::Ground {
-        settle(item, assets);
-    } else {
-        start_fall(item, assets);
-    }
-}
-
 // --- Damage ---------------------------------------------------------------
 
 /// it_802E8CD8 (802E8CD8): a hit frees a held fighter (ftCo_800C7800, the
@@ -993,9 +986,10 @@ pub(crate) fn damage_received(item: &mut ItemCore, context: &ItemEventContext<'_
             start_knockdown(item, context.assets);
         } else if redead(item).staggers > 1 && draw_randi(context, 2) == 0 {
             if draw_randf(context) < common.screen_chance {
-                unimplemented!("it_802E8CD8 (itleadead.c:206): a staggered ReDead flying at the screen (it_802EA334)");
+                start_screen_flight(item, context);
+            } else {
+                start_tumble(item, context, &common);
             }
-            start_tumble(item, context, &common);
         } else {
             item.velocity.x *= 1.5;
             redead_mut(item).staggers += 1;
@@ -1022,9 +1016,10 @@ fn die(item: &mut ItemCore, context: &ItemEventContext<'_>, common: &MonsterComm
         offset: Vec3::ZERO,
     });
     if draw_randf(context) < common.screen_chance {
-        unimplemented!("it_802E8CD8 (itleadead.c:189): a ReDead flying at the screen (it_802EA334)");
+        start_screen_flight(item, context);
+    } else {
+        start_tumble(item, context, common);
     }
-    start_tumble(item, context, common);
 }
 
 /// it_802EA2A0 (802EA2A0): airborne (it_802762BC), launched (it_8027B964),
@@ -1035,6 +1030,30 @@ fn start_tumble(item: &mut ItemCore, context: &ItemEventContext<'_>, common: &Mo
     item.facing = redead(item).facing_before_hit;
     monster_mut(item).bounces = 0;
     change(item, motion::TUMBLE, UNK_0X1 | ANIM_UPDATE, context.assets);
+}
+
+/// it_802EA334 (802EA334): airborne, flying at 10 toward the camera's
+/// eye (it_8027BA54) jittered by up to 5 sideways (HSD_Randf in double:
+/// retail 8027BA84..90 fsub, fmadd, frsp) and up to 30 up (fmadds).
+fn start_screen_flight(item: &mut ItemCore, context: &ItemEventContext<'_>) {
+    item.enter_air();
+    let mut target = context
+        .camera_position
+        .expect("it_8027BA54 reads the camera");
+    let cell = context.rng.expect("it_8027BA54 draws");
+    let mut rng = cell.get();
+    target.x = gekko_math::fma::fmadd(10.0, f64::from(rng.randf()) - 0.5, f64::from(target.x)) as f32;
+    target.y = gekko_math::fma::fmadds(30.0, rng.randf(), target.y);
+    cell.set(rng);
+    let toward = melee_lb::vector::normalize(melee_lb::vector::difference(target, item.position));
+    item.velocity = Vec3::new(toward.x * 10.0, toward.y * 10.0, toward.z * 10.0);
+    item.enter_air();
+    change(item, motion::SCREEN, UNK_0X1 | ANIM_UPDATE, context.assets);
+}
+
+/// itLeadead_UnkMotion16_Phys (802EA394): gravity, unlimited.
+fn screen_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
+    item.velocity.y -= ctx.assets.fall_acceleration;
 }
 
 /// itLeadead_UnkMotion15_Coll -> it_8027C79C (8027C79C): every surface it

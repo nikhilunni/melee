@@ -996,7 +996,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 591] = [
+const MATRIX_WITNESSES: [(&str, usize); 593] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -2000,10 +2000,13 @@ const MATRIX_WITNESSES: [(&str, usize); 591] = [
     // lunge and hold of Fox (CaptureLeadead) until the timer lets go; the
     // hold mashed out, a dash attack's knockdown, the rise and a turn; and
     // the hold broken by Marth's dash attack, the knockdown and a down
-    // smash's kill (the tumble out).
+    // smash's kill (the tumble out); a forward tilt's kill flying at the
+    // screen; Dancing Blade killing it while it holds Fox.
     ("w25_redead_fall_700_v01", 700),
     ("w26_redead_mash_1500_v01", 1500),
     ("w26_redead_death_v01", 826),
+    ("w26_redead_screen_v01", 900),
+    ("w26_redead_killed_holding_v01", 700),
 ];
 
 #[test]

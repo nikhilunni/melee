@@ -2721,8 +2721,8 @@ pub(crate) fn offer_redead_source(state: &mut crate::initial_state::InitialState
 }
 
 /// A fighter's request of the ReDead that holds it, run at once with the
-/// fighter's own state: it_802EAAEC (`ReDeadCling`), it_802EAE80 or
-/// it_802EADD8 (`ReDeadRelease`). False for every other request.
+/// fighter's own state: it_802EAAEC (`ReDeadCling`), it_802EAE80
+/// (`ReDeadRelease`). False for every other request.
 pub(crate) fn redead_request(
     items: &mut melee_it::ItemPool,
     assets: &Resources,
@@ -2755,21 +2755,13 @@ pub(crate) fn redead_request(
             };
             let item = items.get_mut(item).expect("the ReDead that caught a fighter");
             it_monsters::redead::cling(item, captive, position, map, redead);
-            item.constrained_root = Some(part_position(&view));
+            hold_root(item, &view);
             true
         }
-        melee_it::ItemRequest::ReDeadRelease {
-            item,
-            view,
-            timed_out,
-        } => {
+        melee_it::ItemRequest::ReDeadRelease { item, view } => {
             let item = items.get_mut(item).expect("the ReDead holding a fighter");
             it_monsters::redead::set_captive_view(item, view);
-            if timed_out {
-                it_monsters::redead::let_go(item, map, redead, depth);
-            } else {
-                it_monsters::redead::shake_off(item, map, redead, depth);
-            }
+            it_monsters::redead::let_go(item, map, redead, depth);
             true
         }
         _ => false,
@@ -2810,8 +2802,19 @@ pub(crate) fn refresh_redead_hold(state: &mut crate::initial_state::InitialState
         .core
         .redead_view());
     let item = state.items.get_mut(id).expect("live ReDead");
-    item.constrained_root = Some(part_position(&view));
+    hold_root(item, &view);
     it_monsters::redead::set_captive_view(item, view);
+}
+
+/// The constraint's resolution (HSD_RObjUpdateAll -> JObjUpdateFunc 0x35,
+/// then 0x38): the root's world translation is the fighter part's, and
+/// the root's own translate is read back from it, so the item push
+/// (it_80271D2C's HSD_JObjGetTranslation) sees the fighter's part too.
+/// Every matrix setup does it, the display pass among them.
+fn hold_root(item: &mut melee_it::ItemCore, view: &melee_it::CaptiveView) {
+    let position = part_position(view);
+    item.constrained_root = Some(position);
+    item.root_translation = position;
 }
 
 /// it_802E8CD8 (itleadead.c:173-176): a hit on a ReDead holding a fighter
