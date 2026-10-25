@@ -1196,6 +1196,11 @@ impl Runtime {
     }
     fn dispatch_item(&mut self, id: u32, phase: u8) -> Result<()> {
         use crate::scene_items::SceneItems;
+        // A clinging ReDead's bones (hitboxes at 11, hurt capsules at 13)
+        // and a hit's release (14) read the fighter it holds.
+        if matches!(phase, 11 | 13 | 14) {
+            crate::scene_items::refresh_redead_hold(&mut self.state, id);
+        }
         let state = &mut self.state;
         let Some(item) = state.items.get_mut(id) else {
             return Ok(());
@@ -1511,12 +1516,14 @@ impl Runtime {
                         item.attacker_position = position;
                     }
                 }
+                crate::scene_items::release_redead_on_hit(state, id);
                 let rng = std::cell::Cell::new(state.rng);
                 state.items.process_events_with_stale::<SceneItems>(
                     id,
                     reflected_stale,
                     state.assets.items.get(kind),
                     &rng,
+                    Some(&state.map),
                 );
                 state.rng = rng.get();
             }
@@ -1912,6 +1919,7 @@ impl Runtime {
                 let was_in_hitlag = grab_pairs::in_hitlag(state, player);
                 if proc == FighterProc::ProcessHit {
                     grab_pairs::linked_hit(state, player)?;
+                    crate::scene_items::offer_redead_source(state, player);
                     // Player_80033BB8 (ftCo_800C318C's sleep timer): stock
                     // standings, ties share a rank.
                     use crate::scene_fighter::with_fighter;
@@ -2967,9 +2975,21 @@ impl Runtime {
                         | melee_it::ItemRequest::Throw { .. }
                         | melee_it::ItemRequest::Drop { .. }
                         | melee_it::ItemRequest::Destroy { .. }
+                        | melee_it::ItemRequest::ReDeadCling { .. }
+                        | melee_it::ItemRequest::ReDeadRelease { .. }
                         | melee_it::ItemRequest::Stow { .. }
                         | melee_it::ItemRequest::DropArticle { .. }
                         | melee_it::ItemRequest::Launch { .. } => {}
+                    }
+                    if crate::scene_items::redead_request(
+                        &mut state.items,
+                        &state.assets.items,
+                        &mut state.map,
+                        &request,
+                        f,
+                        row.s_link,
+                    ) {
+                        continue;
                     }
                     let reads_owner = match &request {
                         melee_it::ItemRequest::SpawnHeld(_) => true,
@@ -3977,6 +3997,14 @@ fn deliver_owner_request(
 ) {
     use crate::scene_items::SceneItems;
     use melee_it::ItemDispatch;
+    if let melee_it::OwnerRequest::ReDeadLetGo { secondary } = request {
+        let index = crate::scene_items::owner_index(&state.fighters, Some(slot), secondary)
+            .expect("the fighter a ReDead let go");
+        crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+            .leave_redead(&state.assets.fighters[index]))
+        .expect("ftCo_800C7800");
+        return;
+    }
     let Some(index) = state
         .fighters
         .iter()
@@ -3989,6 +4017,7 @@ fn deliver_owner_request(
     match (request, part) {
         (melee_it::OwnerRequest::Catch, None)
         | (melee_it::OwnerRequest::Released | melee_it::OwnerRequest::ArticleStep(_), _) => {}
+        (melee_it::OwnerRequest::ReDeadLetGo { .. }, _) => unreachable!("handled above"),
         (melee_it::OwnerRequest::Catch, Some(part)) => {
             let lifetime = state.items.common().lifetime;
             let half_life_scale = state.items.common().half_life_scale;
@@ -4156,6 +4185,9 @@ fn lock_on_targets(state: &mut InitialState, targets: &mut melee_it::LockOnTarge
                 disabled: f.core.status.disabled,
                 position: f.core.camera_bone_position(),
                 team: f.core.player.team,
+                secondary: f.core.player.secondary,
+                cur_pos: f.core.physics.position,
+                motion: f.core.motion_state.action.0,
             });
         });
     }

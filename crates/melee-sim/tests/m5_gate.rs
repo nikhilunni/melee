@@ -996,7 +996,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 588] = [
+const MATRIX_WITNESSES: [(&str, usize); 591] = [
     ("sudden_death_airdrop_bomb_fd_fox", 1330),
     ("sudden_death_airreflect_bomb_fd_fox", 1330),
     ("sudden_death_airthrow_bomb_fd_fox", 1330),
@@ -1996,6 +1996,14 @@ const MATRIX_WITNESSES: [(&str, usize); 588] = [
     ("w26_heavy_box_hit_v01", 600),
     // Walked off the edge: ftCo_80096E68 drops the crate, DamageFall.
     ("w26_heavy_box_walkoff_v01", 960),
+    // The ReDead (itleadead.c) out of a barrel on FD: its fall, reel, walk,
+    // lunge and hold of Fox (CaptureLeadead) until the timer lets go; the
+    // hold mashed out, a dash attack's knockdown, the rise and a turn; and
+    // the hold broken by Marth's dash attack, the knockdown and a down
+    // smash's kill (the tumble out).
+    ("w25_redead_fall_700_v01", 700),
+    ("w26_redead_mash_1500_v01", 1500),
+    ("w26_redead_death_v01", 826),
 ];
 
 #[test]

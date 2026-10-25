@@ -74,6 +74,9 @@ pub enum OwnerRequest {
     /// The article's physics proc installed its state's step for the
     /// owner's accessory proc to run (the hookshot's `linkhookshot.x10`).
     ArticleStep(u8),
+    /// A hit made the ReDead let go of the fighter it held (it_802E8CD8 ->
+    /// ftCo_800C7800): that fighter, not the item's owner, steps back.
+    ReDeadLetGo { secondary: bool },
 }
 
 /// The partner as a reader sees it during its own proc.

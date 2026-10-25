@@ -2060,6 +2060,18 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MS_CaptureLeadead = 333 (ftCo_800C7590.c): no animation.
+    rows[S::CaptureLeadead as usize] = MotionRow {
+        action: ActionId(333),
+        id: S::CaptureLeadead,
+        animation: -1,
+        anim: crate::fighter::capture_redead::capture_animation,
+        iasa: crate::fighter::capture_redead::no_input,
+        physics: callbacks::physics::capture,
+        collision: crate::fighter::capture_redead::capture_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
     // ftCo_MS_DamageIce, DamageIceJump = 325, 326 (ftCo_DamageIce.c). The
     // frozen row has no animation; the hop out holds Fall's first frame.
     rows[S::DamageIce as usize] = MotionRow {

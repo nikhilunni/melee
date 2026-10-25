@@ -108,6 +108,7 @@ impl FighterCore {
             };
             self.combat.pending_from_captor =
                 captor.is_some_and(|c| entry.source == HitSource::Fighter(c));
+            self.combat.pending_source = Some(entry.source);
             self.combat.pending = Some(ReceivedHit {
                 knockback,
                 percent_damage: self.combat.frame_damage,

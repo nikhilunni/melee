@@ -793,6 +793,10 @@ impl FighterCore {
         }
         // ftCo_800C0A98 (800C0A98): only a barrel's shot sets the timer on
         // the stages the port has (bury_grkind Kongo or OldKongo).
+        // Fighter_procUpdate (fighter.c:2169), before ftCo_800C0A98.
+        if self.status.capture_timer != 0 {
+            self.status.capture_timer -= 1;
+        }
         if self.status.barrel_cooldown != 0 {
             self.status.barrel_cooldown -= 1;
         }

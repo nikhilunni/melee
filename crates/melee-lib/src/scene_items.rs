@@ -519,16 +519,20 @@ impl Resources {
                     it_monsters::KURIBOH_SPECIAL_ATTRIBUTES,
                 )?,
             ),
-            (
-                ItemKind::Leadead,
-                ItemAssets::from_monster(
+            (ItemKind::Leadead, {
+                // Its hitbox and hurt capsules ride joints below the root.
+                let mut assets = ItemAssets::from_monster(
                     &common_archive,
                     public,
                     ItemKind::Leadead,
                     &it_monsters::REDEAD_ARTICLE_STATES,
                     it_monsters::REDEAD_SPECIAL_ATTRIBUTES,
-                )?,
-            ),
+                )?;
+                assets
+                    .read_pose(&common_archive)
+                    .map_err(|e| anyhow::anyhow!("ReDead pose: {e}"))?;
+                assets
+            }),
             // Random items' containers.
             (
                 ItemKind::Capsule,
@@ -1801,6 +1805,10 @@ pub fn request(
         }
         ItemRequest::SpawnInHand { spawn, .. } => (spawn, None, None),
         ItemRequest::SpawnChain { .. } => unreachable!("handled above"),
+        // The fighter's own loop runs these with its state (redead_request).
+        ItemRequest::ReDeadCling { .. } | ItemRequest::ReDeadRelease { .. } => {
+            unreachable!("ReDead requests run with their fighter")
+        }
         ItemRequest::Launch {
             owner: slot,
             kind,
@@ -2681,4 +2689,149 @@ pub(crate) fn spawn_tool(
         .as_mut()
         .expect("tool collision")
         .joint_id_only = crate::scene_stage::flatzone::GROUND_JOINT;
+}
+
+/// ftCo_800C74F4's view of the ReDead behind a fighter's pending hit
+/// (dmg.x1868_source): which item, and whether it already holds someone
+/// (it_802EAF28), as it stands when the fighter's ProcessHit runs.
+pub(crate) fn offer_redead_source(state: &mut crate::initial_state::InitialState, player: usize) {
+    use melee_coll::damage_log::HitSource;
+    let items = &state.items;
+    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+        let combat = &mut f.core.combat;
+        combat.redead_source = match (combat.pending.as_ref(), combat.pending_source) {
+            (Some(hit), Some(HitSource::Item(source)))
+                if hit.descriptor.element == melee_types::HitElement::ReDead =>
+            {
+                items
+                    .iter()
+                    .find(|item| {
+                        !item.destroyed
+                            && item.kind == ItemKind::Leadead
+                            && item.gobj.index() == source.gobj
+                    })
+                    .map(|item| melee_ft::fighter::capture_redead::ReDeadSource {
+                        item: item.id,
+                        holding: it_monsters::redead::holds_fighter(item),
+                    })
+            }
+            _ => None,
+        };
+    });
+}
+
+/// A fighter's request of the ReDead that holds it, run at once with the
+/// fighter's own state: it_802EAAEC (`ReDeadCling`), it_802EAE80 or
+/// it_802EADD8 (`ReDeadRelease`). False for every other request.
+pub(crate) fn redead_request(
+    items: &mut melee_it::ItemPool,
+    assets: &Resources,
+    map: &mut melee_mp::CollMap,
+    request: &melee_it::ItemRequest,
+    fighter: &mut melee_ft::fighter::Fighter,
+    s_link: u8,
+) -> bool {
+    let depth = items.common().release_floor_depth;
+    let redead = assets.get(ItemKind::Leadead);
+    let id = match *request {
+        melee_it::ItemRequest::ReDeadCling { item, .. }
+        | melee_it::ItemRequest::ReDeadRelease { item, .. } => item,
+        _ => return false,
+    };
+    // As every fighter request of an item: a script's hitbox made past
+    // item link 11 is placed at once, and efAsync dispatches at once from
+    // link 9 on.
+    let item = items.get_mut(id).expect("the ReDead a fighter names");
+    item.past_hitbox_refresh = s_link > 11;
+    item.efasync_immediate = s_link >= 9;
+    let handled = match *request {
+        melee_it::ItemRequest::ReDeadCling { item, part } => {
+            let position = fighter.core.physics.position;
+            let view = fighter.core.redead_view();
+            let captive = melee_it::ReDeadCaptive {
+                player: fighter.player.id,
+                secondary: fighter.player.secondary,
+                part,
+            };
+            let item = items.get_mut(item).expect("the ReDead that caught a fighter");
+            it_monsters::redead::cling(item, captive, position, map, redead);
+            item.constrained_root = Some(part_position(&view));
+            true
+        }
+        melee_it::ItemRequest::ReDeadRelease {
+            item,
+            view,
+            timed_out,
+        } => {
+            let item = items.get_mut(item).expect("the ReDead holding a fighter");
+            it_monsters::redead::set_captive_view(item, view);
+            if timed_out {
+                it_monsters::redead::let_go(item, map, redead, depth);
+            } else {
+                it_monsters::redead::shake_off(item, map, redead, depth);
+            }
+            true
+        }
+        _ => false,
+    };
+    let item = items.get_mut(id).expect("the ReDead a fighter names");
+    item.past_hitbox_refresh = false;
+    item.efasync_immediate = false;
+    handled
+}
+
+fn part_position(view: &melee_it::CaptiveView) -> hsd_types::Vec3 {
+    hsd_types::Vec3::new(view.part.0[0][3], view.part.0[1][3], view.part.0[2][3])
+}
+
+/// lb_8000C1C0's constraint, evaluated when a clinging ReDead's bones are
+/// read: its root at its fighter's part, and that fighter as it stands.
+pub(crate) fn refresh_redead_hold(state: &mut crate::initial_state::InitialState, id: u32) {
+    let Some(item) = state.items.get_mut(id) else {
+        return;
+    };
+    let melee_it::ItemScratch::Monster(monster) = &item.scratch else {
+        return;
+    };
+    let melee_it::MonsterBehavior::ReDead(redead) = &monster.behavior else {
+        return;
+    };
+    let Some(captive) = redead.captive else {
+        return;
+    };
+    let index = owner_index(&state.fighters, Some(captive.player), captive.secondary)
+        .expect("the fighter a ReDead holds");
+    assert_eq!(
+        captive.part,
+        melee_types::FtPart::TopN as u8,
+        "it_802EAAEC: a ReDead holds TopN"
+    );
+    let view = crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+        .core
+        .redead_view());
+    let item = state.items.get_mut(id).expect("live ReDead");
+    item.constrained_root = Some(part_position(&view));
+    it_monsters::redead::set_captive_view(item, view);
+}
+
+/// it_802E8CD8 (itleadead.c:173-176): a hit on a ReDead holding a fighter
+/// lets the fighter go before the rest of the damage callback, whose
+/// Item_80269C5C proc this precedes.
+pub(crate) fn release_redead_on_hit(state: &mut crate::initial_state::InitialState, id: u32) {
+    let depth = state.items.common().release_floor_depth;
+    let Some(item) = state.items.get_mut(id) else {
+        return;
+    };
+    if item.kind != ItemKind::Leadead
+        || item.destroyed
+        || (item.pending_knockback == 0.0 && item.pending_damage_taken == 0)
+    {
+        return;
+    }
+    it_monsters::redead::release_on_hit(
+        item,
+        &mut state.map,
+        state.assets.items.get(ItemKind::Leadead),
+        depth,
+    );
 }

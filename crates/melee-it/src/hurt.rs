@@ -87,23 +87,26 @@ impl ItemCore {
     /// its offset on the capsule's bone; the model root has no parent, so an
     /// unrotated, unscaled root only adds the offset to its translation.
     pub fn hurt_capsules(&self, assets: &ItemAssets) -> HurtCapsules {
+        // A root held by a position constraint (a clinging ReDead) is where
+        // its fighter part is.
+        let root_position = self.constrained_root.unwrap_or(self.position);
         let mut matrix = Mtx::default();
         hsd_anim::mtx::hsd_mtx_srt(
             &mut matrix,
             &self.model_scale,
             &self.rotation,
-            &self.position,
+            &root_position,
             None,
         );
         let plain = self.rotation == Vec3::ZERO && self.model_scale == Vec3::new(1.0, 1.0, 1.0);
         let place = |offset: Vec3| -> Vec3 {
             if offset == Vec3::ZERO {
-                self.position
+                root_position
             } else if plain {
                 Vec3::new(
-                    self.position.x + offset.x,
-                    self.position.y + offset.y,
-                    self.position.z + offset.z,
+                    root_position.x + offset.x,
+                    root_position.y + offset.y,
+                    root_position.z + offset.z,
                 )
             } else {
                 let mut out = Vec3::ZERO;
@@ -122,12 +125,18 @@ impl ItemCore {
                         .pose
                         .as_ref()
                         .expect("it_8027163C: an item hurt capsule on a dynamic bone");
-                    let joint = pose.bone_matrix_turned(
+                    let joint = pose.bone_matrix_posed(
                         self.article_state,
                         self.pose_steps,
                         hurtbox.bone as usize,
-                        self.root_srt(),
+                        crate::pose::RootSrt {
+                            translate: root_position,
+                            ..self.root_srt()
+                        },
                         self.child_rotation_x.map(|x| (crate::engine::CHILD_JOINT, x)),
+                        self.joint_translation,
+                        self.joint_translation_z,
+                        self.joint_scale,
                     );
                     let through = |offset: Vec3| {
                         let mut out = Vec3::ZERO;
@@ -215,6 +224,7 @@ impl ItemCore {
         self.struck_by_item = matches!(hit.source, ItemHitSource::Item { .. });
         self.hit_direction = direction;
         self.knockback_angle = hit.angle;
+        self.hit_element = hit.element;
         self.pending_knockback = strongest_knockback;
     }
 
@@ -289,7 +299,6 @@ impl ItemCore {
     /// it_8027B798 (8027B798): the launch velocity for this frame's
     /// knockback (xCC8, its angle xCAC); the item turns to face the hit
     /// (xCCC). Returns whether a grounded item's launch leaves its floor.
-    /// Only the airborne branch is ported.
     pub fn knockback_launch(&mut self, launch: &ItemLaunch) -> (Vec3, bool) {
         const DEG_TO_RAD: f32 = 0.017_453_292;
         let knockback = self.pending_knockback;
@@ -316,10 +325,24 @@ impl ItemCore {
         let dx = speed * gekko_math::msl::cosf(angle);
         let dy = speed * gekko_math::msl::sinf(angle);
         self.facing = self.hit_direction;
-        if self.ground_or_air != melee_types::GroundOrAir::Air {
-            unimplemented!("it_8027B798: a grounded item's launch along its floor");
+        let launch = Vec3::new(-dx * self.facing, dy, 0.0);
+        if self.ground_or_air == melee_types::GroundOrAir::Air {
+            return (launch, false);
         }
-        (Vec3::new(-dx * self.facing, dy, 0.0), false)
+        // A launch more than a right angle from the floor's normal runs
+        // along the floor instead (retail 8027B8E8..: fmuls, fneg, fmuls).
+        let normal = self
+            .collision
+            .as_ref()
+            .expect("item map collision")
+            .floor
+            .normal;
+        if melee_lb::vector::angle(normal, launch) < 1.570_796_4 {
+            (launch, true)
+        } else {
+            let x = launch.x;
+            (Vec3::new(normal.y * x, -normal.x * x, 0.0), false)
+        }
     }
 }
 

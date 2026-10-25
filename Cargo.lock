@@ -1441,8 +1441,11 @@ dependencies = [
 name = "it-monsters"
 version = "0.0.1"
 dependencies = [
+ "gekko-math",
+ "hsd-anim",
  "hsd-types",
  "melee-it",
+ "melee-lb",
  "melee-mp",
  "melee-types",
 ]

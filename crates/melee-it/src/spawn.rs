@@ -196,6 +196,20 @@ pub enum ItemRequest {
     Destroy {
         item: u32,
     },
+    /// ftCo_800C7590 -> it_802EAAEC: the ReDead `item` whose hit caught the
+    /// requesting fighter clings to it at `part`.
+    ReDeadCling {
+        item: u32,
+        part: u8,
+    },
+    /// The held fighter lets the ReDead go: its timer ran out
+    /// (ftCo_CaptureLeadead_Anim -> it_802EAE80, `timed_out`), or it was
+    /// hit or died (fn_800C74CC / fn_800C7568 -> it_802EADD8).
+    ReDeadRelease {
+        item: u32,
+        view: crate::CaptiveView,
+        timed_out: bool,
+    },
     /// An item in hand stowed under an article (ftPe_SpecialHi_8011D424:
     /// it_8026BB44 hides it, it_8026B724 sets xDC8 x3, which freezes it) or
     /// brought back (ftPe_8011D518: it_8026BB20, it_8026B73C). It stays
@@ -426,6 +440,12 @@ pub struct LockOnFighter {
     pub position: Vec3,
     /// fp->team in a team battle (ftLib_80086368 skips the owner's team).
     pub team: Option<u8>,
+    /// Whether it is the player's second fighter (x221F_b4).
+    pub secondary: bool,
+    /// fp->cur_pos (ftLib_80086644).
+    pub cur_pos: Vec3,
+    /// fp->motion_id (ftLib_GetMotionId).
+    pub motion: u16,
 }
 
 /// An item an article may lock on to (it_8026C258's candidates, already

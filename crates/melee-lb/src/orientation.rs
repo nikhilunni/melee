@@ -21,3 +21,16 @@ pub fn from_partial_basis(forward: Vec3, up: Vec3) -> Vec3 {
         )
     }
 }
+
+/// lbVector_EulerAnglesFromONB (8000DF0C): the X, Y and Z angles that turn
+/// the standard basis onto (`a`, `b`, `c`). Retail has no fused sites; the
+/// gimbal case tests `b.z` against exactly -1 and 1.
+pub fn from_basis(a: Vec3, b: Vec3, c: Vec3) -> Vec3 {
+    if b.z == -1.0 {
+        Vec3::new(atan2f(c.x, c.y), std::f32::consts::FRAC_PI_2, 0.0)
+    } else if b.z == 1.0 {
+        Vec3::new(atan2f(-c.x, c.y), -std::f32::consts::FRAC_PI_2, 0.0)
+    } else {
+        Vec3::new(atan2f(c.z, a.z), asinf(-b.z), atan2f(b.y, b.x))
+    }
+}

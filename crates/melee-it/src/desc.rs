@@ -42,6 +42,9 @@ pub struct ItemCommonData {
     pub camera_extents: [f32; 4],
     /// +7C: the speed a push moves a grounded item (it_80271B60).
     pub push_speed: f32,
+    /// +F0: how far above a floor a released enemy may be set down on it
+    /// (it_802759DC).
+    pub release_floor_depth: f32,
     pub slide_rule: SlideRule,
     /// What the random item spawner reads (itspawn.c).
     pub random_items: RandomItemData,
@@ -174,6 +177,7 @@ impl ItemCommonData {
                 r.f32(base + 0x158)?,
             ],
             push_speed: r.f32(base + 0x7C)?,
+            release_floor_depth: r.f32(base + 0xF0)?,
             slide_rule: SlideRule {
                 minimum_slope: r.f32(base + 0xC0)?,
                 rearm_turn: r.f32(base + 0xC4)?,
@@ -186,11 +190,50 @@ impl ItemCommonData {
     }
 }
 
-/// The constructor-owned typed fields in itLeadeadAttributes.
+/// itLeadeadAttributes (itCommonItems.h:1002), with the pair its x0 points at.
 #[derive(Clone, Copy, Debug)]
-pub struct ReDeadConstructorAttributes {
-    pub horizontal_scale: f32,
-    pub release_timer: i32,
+pub struct ReDeadAttributes {
+    /// x0->x0: the damage (xC9C) beyond which a hit ends it.
+    pub health: i32,
+    /// x0->x4: the walking speed.
+    pub walk_speed: f32,
+    /// x4: frames a light hit keeps it reeling before it may recover.
+    pub reel_frames: i32,
+    /// x8: the share of `health` beyond which a hit staggers it.
+    pub stagger_share: f32,
+    /// xC: the horizontal speed kept by a fall (it_802E9308).
+    pub fall_speed_scale: f32,
+    /// x10: how far ahead a fighter may stand for a lunge.
+    pub lunge_reach: f32,
+    /// x14: the lunge's speed.
+    pub lunge_speed: f32,
+    /// x18 (s16): frames between turns toward the nearest fighter.
+    pub walk_frames: i32,
+    /// x1A (s16): stun frames per point of damage (it_802E98E0).
+    pub stun_per_damage: i32,
+    /// x1C (s16): frames after a release or hit before it may lunge again.
+    pub lunge_cooldown: i32,
+    /// x1E (s8): one in this many frames it looks for a lunge.
+    pub lunge_odds: i32,
+}
+
+/// it_804D6D40 (itPublicData +10): what every stage enemy shares.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct MonsterCommonData {
+    /// x0: wall and floor bounces before a launched enemy is gone.
+    pub bounce_limit: i32,
+    /// x4: a launch's speed (it_8027B964).
+    pub launch_speed: f32,
+    /// x8: the chance a killing hit sends it toward the camera
+    /// (it_802EA334) rather than tumbling (it_802EA2A0).
+    pub screen_chance: f32,
+    /// xC / x10: the damage a Nap or Sleep hit, and a Ground hit, adds
+    /// (it_8027CBFC).
+    pub sleep_damage: f32,
+    pub ground_damage: f32,
+    /// x14 / x18: it_8027CC88's 1P-mode drop odds and cooldown.
+    pub drop_odds: f32,
+    pub drop_cooldown: f32,
 }
 
 #[derive(Clone, Debug)]
@@ -199,7 +242,9 @@ pub struct ItemAssets {
     pub scripts: Vec<Vec<Command>>,
     pub hit_flags: Vec<Vec<Option<ItemHitFlags>>>,
     pub special_attributes: Vec<f32>,
-    pub redead_constructor: Option<ReDeadConstructorAttributes>,
+    pub redead: Option<ReDeadAttributes>,
+    /// it_804D6D40, for the monster bank's kinds.
+    pub monster_common: Option<MonsterCommonData>,
     pub scale: f32,
     pub model: u32,
     pub rotate_to_facing: bool,
@@ -493,14 +538,34 @@ impl ItemAssets {
             special_attributes,
         )?;
         assets.read_common_release(archive, public)?;
+        let reader = archive.reader();
+        let common = reader.u32(public + 0x10)?;
+        assets.monster_common = Some(MonsterCommonData {
+            bounce_limit: reader.s32(common)?,
+            launch_speed: reader.f32(common + 4)?,
+            screen_chance: reader.f32(common + 8)?,
+            sleep_damage: reader.f32(common + 0xC)?,
+            ground_damage: reader.f32(common + 0x10)?,
+            drop_odds: reader.f32(common + 0x14)?,
+            drop_cooldown: reader.f32(common + 0x18)?,
+        });
         if kind == melee_types::ItemKind::Leadead {
-            let reader = archive.reader();
             let article = reader.u32(articles + index * 4)?;
             let special = reader.u32(article + 4)?;
-            // itCommonItems.h: xC is f32; x1C is signed16 amid packed fields.
-            assets.redead_constructor = Some(ReDeadConstructorAttributes {
-                horizontal_scale: reader.f32(special + 0xC)?,
-                release_timer: i32::from(reader.s16(special + 0x1C)?),
+            let pair = reader.u32(special)?;
+            // itCommonItems.h:1002: x18..x1C are s16, x1E an s8.
+            assets.redead = Some(ReDeadAttributes {
+                health: reader.s32(pair)?,
+                walk_speed: reader.f32(pair + 4)?,
+                reel_frames: reader.s32(special + 4)?,
+                stagger_share: reader.f32(special + 8)?,
+                fall_speed_scale: reader.f32(special + 0xC)?,
+                lunge_reach: reader.f32(special + 0x10)?,
+                lunge_speed: reader.f32(special + 0x14)?,
+                walk_frames: i32::from(reader.s16(special + 0x18)?),
+                stun_per_damage: i32::from(reader.s16(special + 0x1A)?),
+                lunge_cooldown: i32::from(reader.s16(special + 0x1C)?),
+                lunge_odds: i32::from(reader.s8(special + 0x1E)?),
             });
         }
         Ok(assets)
@@ -681,7 +746,8 @@ impl ItemAssets {
             pose: None,
             particle_tracks: None,
             special_pointees: Vec::new(),
-            redead_constructor: None,
+            redead: None,
+            monster_common: None,
         })
     }
 

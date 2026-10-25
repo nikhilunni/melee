@@ -153,11 +153,15 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
                     (base.floor_normal.x, 0xDDC),
                     (base.floor_normal.y, 0xDE0),
                     (base.floor_normal.z, 0xDE4),
-                    (base.interpolation.x, 0xDE8),
-                    (base.interpolation.y, 0xDEC),
-                    (base.interpolation.z, 0xDF0),
                 ] {
                     assert_eq!(actual.to_bits(), word(bytes, offset));
+                }
+                for (actual, offset) in [
+                    (base.turn_frames, 0xDE8),
+                    (base.bounces, 0xDEC),
+                    (base.last_voice, 0xDF0),
+                ] {
+                    assert_eq!(actual as u32, word(bytes, offset));
                 }
                 let parent =
                     (crate::scene_items::SceneItems::logic(item.kind).stage_parent)(item).unwrap();

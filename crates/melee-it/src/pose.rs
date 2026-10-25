@@ -66,6 +66,8 @@ impl hsd_anim::mtx::InverseTrig for RetailTrig {
 /// Steps sampled of an animation that loops (the Ice Climbers' spinning
 /// ice block): ten seconds.
 const LOOP_SAMPLES: usize = 600;
+/// Room for a model's joints when a kind overrides one (the ReDead has 30).
+const MAX_POSED_JOINTS: usize = 64;
 
 impl ItemPose {
     /// Plays every article state's joint animation from frame zero until it
@@ -171,7 +173,7 @@ impl ItemPose {
             rotate: Quaternion::default(),
             scale: Vec3::ZERO,
             translate: Vec3::ZERO,
-        }; 16];
+        }; MAX_POSED_JOINTS];
         assert!(
             self.rest.len() <= locals.len(),
             "item pose: too many joints"
@@ -233,7 +235,7 @@ impl ItemPose {
     /// HSD_JObjMakeMatrix down the path from the root to `bone`.
     fn matrix_from_locals(&self, locals: &[LocalSrt], bone: usize, root: RootSrt) -> Mtx {
         // The path from the root down to `bone`.
-        let mut path = [0usize; 16];
+        let mut path = [0usize; MAX_POSED_JOINTS];
         let mut depth = 0;
         let mut joint = Some(bone);
         while let Some(j) = joint {
@@ -325,7 +327,7 @@ impl ItemPose {
             rotate: Quaternion::default(),
             scale: Vec3::ZERO,
             translate: Vec3::ZERO,
-        }; 16];
+        }; MAX_POSED_JOINTS];
         assert!(source.len() <= locals.len(), "item pose: too many joints");
         locals[..source.len()].copy_from_slice(source);
         if let Some((joint, angle)) = turned {
@@ -350,6 +352,7 @@ impl ItemPose {
         root: RootSrt,
         turned: Option<(usize, f32)>,
         translated: Option<(usize, Vec3)>,
+        translated_z: Option<(usize, f32)>,
         scaled: Option<(usize, Vec3)>,
     ) -> Mtx {
         let source: &[LocalSrt] = match &self.states[state] {
@@ -365,7 +368,7 @@ impl ItemPose {
         // An unmodified sampled pose does not need the bounded override copy.
         // Klaptrap's 26-joint model reads this exact path on its birth hitbox;
         // the arithmetic and parent traversal remain matrix_from_locals.
-        if turned.is_none() && translated.is_none() && scaled.is_none() {
+        if turned.is_none() && translated.is_none() && translated_z.is_none() && scaled.is_none() {
             return self.matrix_from_locals(source, bone, root);
         }
         let mut locals = [LocalSrt {
@@ -373,7 +376,7 @@ impl ItemPose {
             rotate: Quaternion::default(),
             scale: Vec3::ZERO,
             translate: Vec3::ZERO,
-        }; 16];
+        }; MAX_POSED_JOINTS];
         assert!(source.len() <= locals.len(), "item pose: too many joints");
         locals[..source.len()].copy_from_slice(source);
         if let Some((joint, angle)) = turned {
@@ -385,6 +388,10 @@ impl ItemPose {
         }
         if let Some((joint, translate)) = translated {
             locals[joint].translate = translate;
+        }
+        // HSD_JObjSetTranslateZ: the other two components stay animated.
+        if let Some((joint, z)) = translated_z {
+            locals[joint].translate.z = z;
         }
         if let Some((joint, scale)) = scaled {
             locals[joint].scale = scale;
@@ -440,7 +447,7 @@ mod unmodified_pose_tests {
     #[test]
     fn unmodified_large_pose_reads_the_requested_joint_without_override_scratch() {
         let pose = pose(26);
-        let actual = pose.bone_matrix_posed(0, 1, 25, root(), None, None, None);
+        let actual = pose.bone_matrix_posed(0, 1, 25, root(), None, None, None, None);
         assert_eq!(actual, pose.bone_matrix(0, 1, 25, root()));
         assert_eq!(actual, pose.bone_matrix_turned(0, 1, 25, root(), None));
         assert_eq!(
@@ -458,6 +465,7 @@ mod unmodified_pose_tests {
             root(),
             None,
             Some((1, Vec3::new(1.0, 2.0, 3.0))),
+            None,
             Some((1, Vec3::new(2.0, 3.0, 4.0))),
         );
         assert_eq!(
@@ -470,18 +478,28 @@ mod unmodified_pose_tests {
         );
     }
     #[test]
-    #[should_panic(expected = "item pose: too many joints")]
-    fn actual_large_pose_turn_remains_guarded() {
-        pose(26).bone_matrix_turned(0, 1, 1, root(), Some((1, 0.5)));
+    fn z_override_keeps_the_animated_x_and_y() {
+        let pose = pose(26);
+        let actual = pose.bone_matrix_posed(0, 1, 1, root(), None, None, Some((1, -12.0)), None);
+        assert_eq!(
+            [actual.0[0][3], actual.0[1][3], actual.0[2][3]],
+            [12.0, 23.0, 18.0]
+        );
     }
     #[test]
     #[should_panic(expected = "item pose: too many joints")]
-    fn actual_large_pose_override_remains_guarded() {
-        pose(26).bone_matrix_posed(
+    fn oversized_pose_turn_remains_guarded() {
+        pose(65).bone_matrix_turned(0, 1, 1, root(), Some((1, 0.5)));
+    }
+    #[test]
+    #[should_panic(expected = "item pose: too many joints")]
+    fn oversized_pose_override_remains_guarded() {
+        pose(65).bone_matrix_posed(
             0,
             1,
             1,
             root(),
+            None,
             None,
             None,
             Some((1, Vec3::new(2.0, 2.0, 2.0))),

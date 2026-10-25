@@ -857,6 +857,8 @@ impl Fighter {
     fn begin_death_release(&mut self) {
         // 0x800D34B4: mv x6C takes the motion the death interrupts.
         self.core.fatal_action = self.core.motion_state.action;
+        // fn_800C7568, CaptureLeadead's death2_cb, before the kind's.
+        self.shake_off_redead();
         if let Some(death) = self.character.table().death {
             death(self);
         }

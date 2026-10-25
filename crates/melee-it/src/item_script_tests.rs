@@ -31,6 +31,7 @@ fn item(assets: &ItemAssets) -> ItemCore {
         victim_bounce: Default::default(),
         camera_extents: [0.0; 4],
         push_speed: 0.0,
+        release_floor_depth: 0.0,
         slide_rule: crate::desc::SlideRule::NEVER,
     });
     let id = pool

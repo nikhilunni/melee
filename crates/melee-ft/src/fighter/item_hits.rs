@@ -11,6 +11,64 @@ use melee_it::{hurt::HurtCapsules, hurt::ItemHit, ItemCore};
 use melee_types::{fixed::FixedVec, GroundOrAir, HitElement};
 
 impl Fighter {
+    /// ftColl_8007BC90 (8007BC90): whether an armed grab's catch hitbox
+    /// reaches a catchable item (xDD0 b4, tangible, not passed over by
+    /// xD09) that its hit group has not already met. The port refuses the
+    /// catch it would start; this only finds it.
+    pub fn catch_reaches_item(&self, item: &ItemCore, capsules: &HurtCapsules) -> bool {
+        if !self.catch_may_reach(item) {
+            return false;
+        }
+        let victim = item.hitbox_victim();
+        let grounded = item.ground_or_air == GroundOrAir::Ground;
+        self.commands.hitboxes.iter().flatten().any(|hit| {
+            let desc = &hit.descriptor;
+            if desc.element != HitElement::Catch
+                || !((desc.hit_air && !grounded) || (desc.hit_ground && grounded))
+                || hit.victims.contains(&victim)
+            {
+                return false;
+            }
+            let radius = if desc.ignore_scale {
+                desc.radius
+            } else {
+                desc.radius * self.player.scale
+            };
+            capsules.iter().any(|capsule| {
+                capsule_contact(
+                    Capsule {
+                        start: hit.previous_position,
+                        end: hit.position,
+                        radius,
+                    },
+                    Capsule {
+                        start: capsule.start,
+                        end: capsule.end,
+                        radius: capsule.radius,
+                    },
+                    &capsule.matrix,
+                    3.0 * item.scale,
+                )
+                .is_some()
+            })
+        })
+    }
+
+    /// ftColl_8007BC90's tests before the capsules: an armed grab
+    /// (x221E_b6) and a catchable, tangible item.
+    pub fn catch_may_reach(&self, item: &ItemCore) -> bool {
+        let armed = matches!(
+            self.core.motion_state.id,
+            melee_types::CommonMotionState::Catch | melee_types::CommonMotionState::CatchDash
+        ) || self.core.status.special_grab.is_some();
+        armed
+            && !self.core.status.disabled
+            && !item.destroyed
+            && !item.hurt_intangible
+            && item.catchable
+            && !item.catch_ignored
+    }
+
     /// it_802703E8 for this fighter: each hitbox in ID order tests the item's
     /// hurt capsules in order and the first contact lands. `owner_spawn` is
     /// the spawn number of the fighter owning the item, if any.

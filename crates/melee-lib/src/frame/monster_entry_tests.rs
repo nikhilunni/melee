@@ -1,4 +1,5 @@
-//! Whole terminal births; no later monster lifecycle is claimed.
+//! Whole terminal crate births. The Goomba's later lifecycle stays guarded; the
+//! ReDead's runs on (w25_redead_fall_700_v01 gates it).
 use super::*;
 use crate::scenario::Scenario;
 use melee_it::ItemDispatch;
@@ -149,11 +150,15 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
                     (base.floor_normal.x, 0xDDC),
                     (base.floor_normal.y, 0xDE0),
                     (base.floor_normal.z, 0xDE4),
-                    (base.interpolation.x, 0xDE8),
-                    (base.interpolation.y, 0xDEC),
-                    (base.interpolation.z, 0xDF0),
                 ] {
                     assert_eq!(actual.to_bits(), word(offset));
+                }
+                for (actual, offset) in [
+                    (base.turn_frames, 0xDE8),
+                    (base.bounces, 0xDEC),
+                    (base.last_voice, 0xDF0),
+                ] {
+                    assert_eq!(actual as u32, word(offset));
                 }
                 match &base.behavior {
                     melee_it::MonsterBehavior::Klaptrap { .. } => {
@@ -174,32 +179,24 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
                             0
                         );
                     }
-                    melee_it::MonsterBehavior::ReDead {
-                        target,
-                        attack_timer,
-                        release_timer,
-                        attempts,
-                        hurt_offsets,
-                        hurt_radius,
-                        collision_box,
-                    } => {
-                        assert!(target.is_none());
+                    melee_it::MonsterBehavior::ReDead(redead) => {
+                        assert!(redead.captive.is_none());
                         assert_eq!(word(0xE0C), 0);
-                        assert_eq!(*attack_timer as u32, word(0xE1C));
-                        assert_eq!(*release_timer as u32, word(0xE20));
-                        assert_eq!(*attempts as u32, word(0xE24));
+                        assert_eq!(redead.timer as u32, word(0xE1C));
+                        assert_eq!(redead.cooldown as u32, word(0xE20));
+                        assert_eq!(redead.staggers as u32, word(0xE24));
                         for (actual, offset) in [
-                            (hurt_offsets[0].x, 0xE34),
-                            (hurt_offsets[0].y, 0xE38),
-                            (hurt_offsets[0].z, 0xE3C),
-                            (hurt_offsets[1].x, 0xE40),
-                            (hurt_offsets[1].y, 0xE44),
-                            (hurt_offsets[1].z, 0xE48),
-                            (*hurt_radius, 0xE4C),
-                            (collision_box.top, 0xE50),
-                            (collision_box.bottom, 0xE54),
-                            (collision_box.right, 0xE58),
-                            (collision_box.left, 0xE5C),
+                            (redead.hurt_offsets[0].x, 0xE34),
+                            (redead.hurt_offsets[0].y, 0xE38),
+                            (redead.hurt_offsets[0].z, 0xE3C),
+                            (redead.hurt_offsets[1].x, 0xE40),
+                            (redead.hurt_offsets[1].y, 0xE44),
+                            (redead.hurt_offsets[1].z, 0xE48),
+                            (redead.hurt_radius, 0xE4C),
+                            (redead.collision_box.top, 0xE50),
+                            (redead.collision_box.bottom, 0xE54),
+                            (redead.collision_box.right, 0xE58),
+                            (redead.collision_box.left, 0xE5C),
                         ] {
                             assert_eq!(
                                 actual.to_bits(),
@@ -252,6 +249,10 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
         assert_eq!((rows, births), (ticks, 1));
         let state = simulation.state();
         let monster = state.items.iter().find(|i| i.hold_kind == 6).unwrap();
+        if monster.kind == melee_types::ItemKind::Leadead {
+            // The ReDead's lifecycle runs on; w25_redead_fall_700_v01 gates it.
+            continue;
+        }
         let assets = state.assets.items.get(monster.kind);
         let mut item = monster.clone();
         let logic = crate::scene_items::SceneItems::logic(item.kind);
@@ -314,14 +315,6 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
                     )
                 },
                 "not implemented",
-            );
-        }
-        if item.kind == melee_types::ItemKind::Leadead {
-            let mut positive = item.clone();
-            positive.facing = 1.0;
-            expect_guard(
-                || (logic.facing_constructor.unwrap().after_query)(&mut positive, assets),
-                "positive-facing ReDead",
             );
         }
         let context = melee_it::ItemEventContext::new(assets, state.items.common());

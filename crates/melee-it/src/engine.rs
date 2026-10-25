@@ -242,13 +242,19 @@ pub enum ItemScratch {
     Yaku(YakuAnchor),
     None,
 }
-/// it_8027B730: shared monster constructor scratch. Later behavior remains guarded.
+/// it_8027B730: the scratch every stage enemy shares (itZako_ItemVars).
 #[derive(Clone, Debug)]
 pub struct MonsterState {
     pub joint: Option<usize>,
     pub joint_index: i32,
+    /// x8: the floor normal the model last turned toward (it_8027C0F0).
     pub floor_normal: Vec3,
-    pub interpolation: Vec3,
+    /// x14.x: frames left to finish that turn.
+    pub turn_frames: i32,
+    /// x14.y: wall and floor bounces of a launched enemy (it_8027C79C).
+    pub bounces: i32,
+    /// x14.z: the last hurt voice (it_8027C9D8), never repeated.
+    pub last_voice: i32,
     pub behavior: MonsterBehavior,
 }
 #[derive(Clone, Debug)]
@@ -260,15 +266,54 @@ pub enum MonsterBehavior {
         walking_speed: f32,
         spawn_timer: i32,
     },
-    ReDead {
-        target: Option<u8>,
-        attack_timer: i32,
-        release_timer: i32,
-        attempts: i32,
-        hurt_offsets: [Vec3; 2],
-        hurt_radius: f32,
-        collision_box: melee_types::mp::ItEcb,
-    },
+    ReDead(ReDeadState),
+}
+/// A fighter a ReDead holds (itLeadead x38, xE14): its player slot and
+/// whether it is the player's second fighter, and the part it clings to.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct ReDeadCaptive {
+    pub player: u8,
+    pub secondary: bool,
+    pub part: u8,
+}
+/// What a ReDead reads of the fighter it holds when it lets go
+/// (it_802EAC8C, it_802759DC); the scene refreshes it before each of the
+/// item's procs that may let go.
+#[derive(Clone, Copy, Debug)]
+pub struct CaptiveView {
+    /// The world matrix of the part it clings to (ftLib_80086630).
+    pub part: hsd_types::Mtx,
+    /// The fighter's floor line (it_8026C100's CollData).
+    pub floor_line: i32,
+    /// The fighter ECB's middle above its position: 0.5 * (top + bottom).
+    pub ecb_middle: f32,
+    /// fp->cur_pos (it_8026BC90).
+    pub position: Vec3,
+}
+/// itLeadead_ItemVars (itCharItems.h:204).
+#[derive(Clone, Debug)]
+pub struct ReDeadState {
+    /// x38 / xE14: the fighter it holds.
+    pub captive: Option<ReDeadCaptive>,
+    /// The held fighter as the scene last saw it.
+    pub captive_view: Option<CaptiveView>,
+    /// x30 (init_facing_dir): its facing before the last hit turned it.
+    pub facing_before_hit: f32,
+    /// x3C: how far in front of the fighter it clings (joint 1's Z).
+    pub cling_depth: f32,
+    /// x44: frames in the current state.
+    pub frames: i32,
+    /// x48: the state's countdown (or count up, in the lunge).
+    pub timer: i32,
+    /// x4C: frames before it may lunge.
+    pub cooldown: i32,
+    /// x50: hits that only staggered it, since its last fall.
+    pub staggers: i32,
+    /// xE30..xE4C: hurt capsule 0 at birth (it_80271590).
+    pub hurt_offsets: [Vec3; 2],
+    pub hurt_radius: f32,
+    /// xE50: the ECB box at birth.
+    pub collision_box: melee_types::mp::ItEcb,
 }
 /// itTaru_ItemVars (ittaru.c): a barrel.
 #[derive(Clone, Copy, Debug, Default)]
@@ -1031,6 +1076,14 @@ pub struct ItemCore {
     pub joint_translation: Option<(usize, Vec3)>,
     /// HSD_JObjSetScale on a joint below the root, likewise.
     pub joint_scale: Option<(usize, Vec3)>,
+    /// HSD_JObjSetTranslateZ on a joint below the root (a clinging ReDead's
+    /// joint 1): only Z replaces the animated translation.
+    pub joint_translation_z: Option<(usize, f32)>,
+    /// lb_8000C1C0's position constraint on the model root: the world
+    /// position of the fighter part it hangs from, which replaces the
+    /// root's translation in every bone matrix. The scene refreshes it
+    /// before the item's bones are read.
+    pub constrained_root: Option<Vec3>,
     /// xDC8 x13 (it_802742F4): held by its owner. A held item neither moves
     /// nor leaves the blast zones.
     pub held: bool,
@@ -1088,6 +1141,13 @@ pub struct ItemCore {
     pub knockback_angle: u16,
     pub hit_direction: f32,
     pub hit_by: Option<u8>,
+    /// xCC4: the strongest hit's element (it_80270E30), which it_8027CBFC reads.
+    pub hit_element: melee_types::HitElement,
+    /// xDD0 b4 (it_80275270 / it_80275258): a fighter's grab may catch it
+    /// (ftColl_8007BC90).
+    pub catchable: bool,
+    /// xD09 (it_80274ECC): ftColl_8007BC90 passes it over.
+    pub catch_ignored: bool,
     /// The strongest hit names its player's second fighter, including an article owner.
     pub hit_by_secondary: bool,
     /// The strongest hit this frame came from an item (xCF0, not xCEC).
@@ -1380,6 +1440,8 @@ impl ItemCore {
         self.flush_queued_effects();
         self.animation_frame = 0.0;
         self.speed_damage = false;
+        // item.c:1278: xD09 (it_80274ECC) lasts until the next state change.
+        self.catch_ignored = false;
         if flags & state_change::MODEL_UPDATE != 0 {
             self.reset_spin();
         }
@@ -1403,6 +1465,10 @@ impl ItemCore {
         self.article_state = article_state as usize;
         // Item_80268D34's HSD_JObjReqAnimAll(0) with ANIM_UPDATE, then the
         // HSD_JObjAnimAll every state change takes.
+        if flags & state_change::ANIM_UPDATE != 0 {
+            // Item_80268D34 returns the joints to their rest pose.
+            self.joint_translation_z = None;
+        }
         self.pose_steps = if flags & state_change::ANIM_UPDATE != 0 {
             1
         } else {
@@ -1455,8 +1521,9 @@ impl ItemCore {
     /// root is the model's JObj, which follows `position` at a state change
     /// (Item_80268E5C) and after the collision proc (Item_80269978).
     fn update_hitbox(&mut self, id: usize, assets: &ItemAssets) {
+        let translate = self.constrained_root.unwrap_or(self.root_translation);
         let root = crate::pose::RootSrt {
-            translate: self.root_translation,
+            translate,
             ..self.root_srt()
         };
         let (state, steps) = (self.article_state, self.pose_steps);
@@ -1469,7 +1536,7 @@ impl ItemCore {
                 &mut matrix,
                 &self.model_scale,
                 &self.rotation,
-                &self.root_translation,
+                &translate,
                 None,
             );
             matrix
@@ -1485,6 +1552,7 @@ impl ItemCore {
                 root,
                 self.child_rotation_x.map(|x| (CHILD_JOINT, x)),
                 self.joint_translation,
+                self.joint_translation_z,
                 self.joint_scale,
             )
         };
@@ -2008,6 +2076,8 @@ impl ItemPool {
             child_rotation_x: None,
             joint_translation: None,
             joint_scale: None,
+            joint_translation_z: None,
+            constrained_root: None,
             root_translation: if spawn.initial_collision {
                 spawn.previous_position
             } else {
@@ -2027,6 +2097,9 @@ impl ItemPool {
             keeps_intangible: false,
             speed_damage: false,
             hurt_by_owner: false,
+            hit_element: melee_types::HitElement::Normal,
+            catchable: false,
+            catch_ignored: false,
             strikes_kindred_items: false,
             damage_percent: 0,
             pending_damage_taken: 0,
@@ -2069,7 +2142,7 @@ impl ItemPool {
     /// Multiple hits accumulate a maximum; one callback runs in this slot.
     pub fn process_events<D: ItemDispatch>(&mut self, id: u32, assets: &ItemAssets) {
         let rng = core::cell::Cell::new(gekko_math::HsdRng::default());
-        self.process_events_with_stale::<D>(id, 1.0, assets, &rng);
+        self.process_events_with_stale::<D>(id, 1.0, assets, &rng, None);
     }
     pub fn process_events_with_stale<D: ItemDispatch>(
         &mut self,
@@ -2077,6 +2150,7 @@ impl ItemPool {
         reflected_stale: f32,
         assets: &ItemAssets,
         rng: &core::cell::Cell<gekko_math::HsdRng>,
+        map: Option<&melee_mp::CollMap>,
     ) {
         let cap = self.common.maximum_reflected_damage;
         // retail 80269E18/20: add then multiply, no FMA or double promotion.
@@ -2095,6 +2169,7 @@ impl ItemPool {
             item.hitlag_damage = item.pending_damage_taken;
             let context = ItemEventContext {
                 rng: Some(rng),
+                map,
                 ..ItemEventContext::new(assets, &common)
             };
             item.destroyed |= (D::logic(item.kind).damage_received)(item, &context);
@@ -2165,6 +2240,7 @@ impl ItemPool {
         item.pending_damage_taken = 0;
         item.largest_damage_taken = 0;
         item.pending_knockback = 0.0;
+        item.hit_element = melee_types::HitElement::Normal;
         item.hit_direction = 0.0;
         item.pending_reflection = None;
         item.pending_absorb = None;
@@ -2579,7 +2655,8 @@ mod tests {
             scripts: Vec::new(),
             hit_flags: Vec::new(),
             special_attributes: Vec::new(),
-            redead_constructor: None,
+            redead: None,
+            monster_common: None,
             scale: 1.0,
             model: 0,
             rotate_to_facing: false,
@@ -2650,6 +2727,7 @@ mod tests {
             victim_bounce: Default::default(),
             camera_extents: [0.0; 4],
             push_speed: 0.0,
+            release_floor_depth: 0.0,
             slide_rule: crate::desc::SlideRule::NEVER,
         });
         let spawn = SpawnItem::held(ItemKind::FoxBlaster, 0, Vec3::ZERO, 1.0);
@@ -2698,6 +2776,7 @@ mod tests {
             victim_bounce: Default::default(),
             camera_extents: [0.0; 4],
             push_speed: 0.0,
+            release_floor_depth: 0.0,
             slide_rule: crate::desc::SlideRule::NEVER,
         });
         let spawn = SpawnItem::held(

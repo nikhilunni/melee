@@ -647,6 +647,7 @@ fn burst(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) {
         root,
         None,
         item.joint_translation,
+        None,
         item.joint_scale,
     );
     let position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);

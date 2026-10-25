@@ -1239,7 +1239,7 @@ impl CollMap {
     /// also advances on NaN; kept as written.
     #[allow(clippy::neg_cmp_op_on_partial_ord)]
     pub fn walk_along_floor(
-        &mut self,
+        &self,
         line_id: i32,
         pos: &Vec3,
         distance: f32,

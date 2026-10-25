@@ -41,6 +41,23 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
             }
         }
     }
+    if nearest.is_none() {
+        // Fighter_UnkProcessGrab_8006CA5C: with no fighter caught, the grab
+        // looks for a stage enemy (ftColl_8007BC90).
+        for item in state.items.iter() {
+            if !with_fighter!(&state.fighters[player], |f| f.catch_may_reach(item)) {
+                continue;
+            }
+            let capsules = item.hurt_capsules(state.assets.items.get(item.kind));
+            if with_fighter!(&state.fighters[player], |f| f
+                .catch_reaches_item(item, &capsules))
+            {
+                unimplemented!(
+                    "ftColl_8007BC90 (ftcoll.c:3544): a grab catching a stage enemy (it_8027B4A4)"
+                );
+            }
+        }
+    }
     if let Some(other) = nearest {
         // gm_8016C5C0 / fn_8016588C: stock standings, ties share a rank.
         let stocks = with_fighter!(&state.fighters[other], |f| f.player.stocks);

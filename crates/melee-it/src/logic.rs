@@ -68,6 +68,8 @@ pub struct ItemEventContext<'a> {
     pub victim_bounce: crate::desc::VictimBounce,
     /// it_804D6D28 +4C: it_80275158's half-life scale.
     pub half_life_scale: f32,
+    /// The stage, for callbacks that read it (the ReDead's it_802EA804).
+    pub map: Option<&'a melee_mp::CollMap>,
 }
 impl<'a> ItemEventContext<'a> {
     pub fn new(assets: &'a ItemAssets, common: &crate::desc::ItemCommonData) -> Self {
@@ -81,6 +83,7 @@ impl<'a> ItemEventContext<'a> {
             rng: None,
             victim_bounce: common.victim_bounce,
             half_life_scale: common.half_life_scale,
+            map: None,
         }
     }
 }

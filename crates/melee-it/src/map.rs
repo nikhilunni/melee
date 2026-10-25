@@ -868,6 +868,13 @@ impl ItemCore {
         self.apply_collision_box();
     }
 
+    /// it_80275D5C (80275D5C): `b` becomes the box in use (xC1C) and the
+    /// fixed ECB at the item's scale, facing its direction.
+    pub fn set_collision_box(&mut self, b: melee_types::mp::ItEcb) {
+        self.collision_box = b;
+        self.apply_collision_box();
+    }
+
     /// it_80275D5C's tail (80275D5C): the fixed ECB from xC1C at the item's
     /// scale, facing its direction.
     fn apply_collision_box(&mut self) {

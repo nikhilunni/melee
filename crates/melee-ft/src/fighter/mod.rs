@@ -14,6 +14,7 @@ pub mod capture_captain;
 pub mod capture_mewtwo;
 pub mod barrel;
 pub mod bury;
+pub mod capture_redead;
 pub mod capture_kirby;
 pub mod capture_koopa;
 pub mod capture_yoshi;
@@ -1000,6 +1001,10 @@ pub struct Status {
     /// may catch the fighter again (ftCo_800C0A98 counts it down on the
     /// Kongo stages; ftCo_800C09B4 clears it at creation and each death).
     pub barrel_cooldown: u32,
+    /// capture_timer (+2108): frames after a ReDead lets go before one may
+    /// catch the fighter again (ftCo_800C7800 sets it, Fighter_procUpdate
+    /// counts it down, fighter.c:486 clears it).
+    pub capture_timer: i32,
 }
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
@@ -1031,6 +1036,7 @@ impl Status {
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,
             barrel_cooldown: 0,
+            capture_timer: 0,
         }
     }
 }
@@ -1427,6 +1433,8 @@ pub enum MotionData {
     Capture(grab_escape::CaptureState),
     /// Bury and BuryWait (mv.co.bury and the grab timer).
     Bury(bury::BuryState),
+    /// CaptureLeadead (mv.co.captureleadead and the grab timer).
+    CaptureReDead(capture_redead::CaptureReDeadState),
     /// BarrelWait: no scratch (the barrel holds the state).
     Barrel,
     /// mv.co.buryjump.x0: frames since the jump out of the ground; mv+4

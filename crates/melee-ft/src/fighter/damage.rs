@@ -173,6 +173,11 @@ pub struct CombatState {
     pub combo: super::attack::combo::ComboState,
     /// Egg Lay's swallow, for the scene to apply to the captured fighter.
     pub capture_requests: super::capture_yoshi::CaptureRequests,
+    /// dmg.x1868_source: who landed the pending hit.
+    pub pending_source: Option<HitSource>,
+    /// The ReDead behind the pending hit as the scene saw it before this
+    /// ProcessHit (ftCo_800C74F4 reads its it_802EAF28).
+    pub redead_source: Option<super::capture_redead::ReDeadSource>,
 }
 /// unk_gobj and x221C_b5 as hurtbox_detect_cb reads them (doAirEnd0,
 /// retail 8011C440..84: the x221C bit, then unk_gobj's kind at +4 and
@@ -1190,6 +1195,10 @@ impl Fighter {
                         // ftCo_800C0CB8 (ftCo_Damage.c:952), after the prone
                         // check: buried rather than launched.
                         self.enter_bury(hit, assets, rng)?;
+                    } else if down.is_none() && self.redead_holds(element) {
+                        // ftCo_800C74F4 (ftCo_Damage.c:956): held by the
+                        // ReDead rather than launched.
+                        self.enter_capture_redead(hit, assets, rng)?;
                     } else {
                         let facing = if down.is_some() {
                             Some(self.core.physics.facing)
@@ -1356,6 +1365,8 @@ impl Fighter {
         // ftCo_800BE7C0, the take_dmg_cb of a Kirby star and of the fighter
         // out of it.
         self.core.star_hit_taken();
+        // fn_800C74CC, CaptureLeadead's take_dmg_cb.
+        self.shake_off_redead();
         // ftCo_DamageIce_OnHit (80090B48), DamageIce's take_dmg_cb.
         if self.core.motion_state.id == S::DamageIce {
             self.core.status.frozen = false;

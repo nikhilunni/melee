@@ -161,6 +161,8 @@ pub struct FighterAssets {
     pub cargo: super::cargo::Parameters,
     /// PlCo +5F4..+620: ftCo_Bury.c.
     pub bury: super::bury::Parameters,
+    /// PlCo +71C..+73C: ftCo_800C7590.c.
+    pub capture_redead: super::capture_redead::Parameters,
     /// PlCo +4DC..+4EC and +5E0: ftCo_BarrelWait.c.
     pub barrel: super::barrel::Parameters,
     /// PlCo +714 and +77C..+7A4: ftCo_DamageIce.c.
@@ -469,6 +471,7 @@ impl FighterAssets {
             grab_escape: super::grab_escape::Parameters::read(common, common_data)?,
             cargo: super::cargo::Parameters::read(common, common_data)?,
             bury: super::bury::Parameters::read(common, common_data)?,
+            capture_redead: super::capture_redead::Parameters::read(common, common_data)?,
             barrel: super::barrel::Parameters::read(common, common_data)?,
             frozen: super::frozen::Parameters::read(common, common_data)?,
             magnifier: super::offscreen::MagnifierDamage::read(common, common_data)?,

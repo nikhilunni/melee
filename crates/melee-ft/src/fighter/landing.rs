@@ -222,6 +222,8 @@ impl FighterCore {
                 ..
             } => *retained_drop_timer,
             MotionData::Fall(fall) => fall.blend,
+            // mv.co.captureleadead writes only x0 (+2340).
+            MotionData::CaptureReDead(capture) => capture.retained_word?,
             // mv.co.bury.coll_box.top (+2344); BuryJump writes only +2340.
             MotionData::Bury(bury) => bury.collision_box.top,
             MotionData::BuryJump { retained_word, .. } => *retained_word,

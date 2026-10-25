@@ -82,7 +82,9 @@ fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
         joint: None,
         joint_index: -1,
         floor_normal: Vec3::new(0.0, 1.0, 0.0),
-        interpolation: Vec3::ZERO,
+        turn_frames: 0,
+        bounces: 0,
+        last_voice: 0,
         behavior: MonsterBehavior::Klaptrap { parent: None },
     });
     item.pushed_by_fighters = false;
@@ -110,7 +112,7 @@ pub fn attach_parent(item: &mut ItemCore, parent: StageParent) {
     };
     state.joint = None;
     state.joint_index = -1;
-    state.interpolation.z = 0.0;
+    state.last_voice = 0;
     item.collision
         .as_mut()
         .expect("Klaptrap collision")
