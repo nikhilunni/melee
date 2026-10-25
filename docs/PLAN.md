@@ -14,11 +14,16 @@ every step. `TRACKER.md` holds the current focus and backlog.
 | 7 | Slippi replay corpus | Zero divergence over thousands of replays | In progress. `melee-sim replay-batch` runs a corpus with the Slippi codes each game was recorded with: 108 of 108 games complete on `public-v3.7`, 484 of 502 on `public-v3.7-b` (13 refused at setup: doubles, CPU players, other stages), twelve of them with an inferred console lag frame and fifteen of them Slippi Online games. Open: the remaining stops by kind (`TRACKER.md`), then a wider corpus. |
 | 8 | Platform | Native app | In progress (`docs/APP.md`). A shared core (`melee-platform`) under a macOS host and a web host, with the disc image as the only input; all 25 characters and six stages render, and the wasm32 sim is bit-identical to native. Open: render-to-texture (FoD reflection, Stadium screen), gamepads and the other items in `TRACKER.md`. |
 
-Retail's menus, results screens, CPU players and single-player modes stay out
-of scope until milestone 7 is green (the app's menus are its own).
+The objective is 100% retail parity, with no scope exclusions (user,
+2026-10-24). Retail menus, results, CPU players and single-player modes are
+part of the backlog. The app's current menus are its own; they do not count
+as ports of retail menus.
 
 ## Choosing the next piece of work
 
-Prefer what real games need and the gate cannot yet verify. Measure it with
-Slippi divergences and explorer faults per hour of work. Shared-engine gaps
-come first: they unblock every character and stage at once.
+Work breadth before replay depth: close fail-closed sites and port unstarted
+retail code, with recordings proving each enabled branch. Rank bounded tasks
+by retail code and fail-closed branches they can close. Shared-engine gaps
+come first when they unblock several characters, items or stages. Use the
+function inventory and explorer faults to choose work; chase individual
+replay divergences after the breadth backlog.

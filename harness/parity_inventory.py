@@ -115,11 +115,9 @@ def area(src: str) -> str:
     return sub.split("/")[0]
 
 
-# Out of the gate by design (TRACKER.md "Out of the gate by design", PLAN.md):
-# menus, results, single-player modes, CPU players' modes, plus code the
-# headless simulator has no counterpart for (audio, memory card, rendering,
-# OS/hardware). Rendering ports live in melee-platform and still count when
-# cited; the tag only splits the totals.
+# Historical reporting groups, retained for comparable measurements. The
+# objective includes every family below (user, 2026-10-24); these tags do
+# not exclude work. Rendering ports in melee-platform count when cited.
 _OUT_OF_SCOPE: list[tuple[str, str]] = [
     (r"^melee/mn/", "menus"),
     (r"^melee/gm/(gmmenu|gmtitle|gmhanyu|gmmenumode|gmtitlemode|gmdebugmode|gm_1A3F|gm_1A36|gm_1A45)", "menus"),

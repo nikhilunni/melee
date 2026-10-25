@@ -52,9 +52,12 @@ proxy: a 4-byte empty callback and a 4 KiB physics routine differ in size far
 more than in porting effort, and a large function ported for one branch counts
 whole.
 
-**Scope.** Every function is kept in the totals. Families out of the gate by
-design (`TRACKER.md`, `docs/PLAN.md`) are tagged so totals can be read with
-and without them: menus (`mn`, menu scenes in `gm`), results (`gmresult`,
+**Measurement groups.** Every function is kept in the totals. The objective
+is 100% retail parity with no scope exclusions (user, 2026-10-24). The
+inventory retains its historical `scope` tags so measurements remain
+comparable; these are reporting groups, not permission to omit work. The
+groups outside the historical in-game subtotal are menus (`mn`, menu scenes
+in `gm`), results (`gmresult`,
 `gmreg*`, `pl/plbonus*`), single-player and modes (Classic, Adventure, events,
 Home-Run, Targets, trophy and route stages, Sandbag), single-player fighters
 (Master Hand, Crazy Hand, wireframes, Giga Bowser), trophies (`ty`),
@@ -146,7 +149,7 @@ are 2.0% done (3.6% with body and row), mostly rendering ported for the app.
 | MSL math | 9 | 4 | 0 | 5 | 0 | 0 | 0 | 1 | 82.0% | 100.0% |
 | **total** | 14399 | 3794 | 242 | 1167 | 1154 | 222 | 7820 | 2432 | 41.8% | 52.2% |
 
-| out-of-scope family | functions | KiB | ported+partial | with body+row |
+| family outside historical in-game subtotal | functions | KiB | ported+partial | with body+row |
 |---|---:|---:|---:|---:|
 | single-player and modes | 1520 | 278 | 0.0% | 0.0% |
 | menus | 530 | 260 | 0.1% | 4.8% |

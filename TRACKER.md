@@ -7,6 +7,20 @@ do not keep a session log here.
 
 ## Current state (2026-10-24, wave 14 integrating)
 
+- **Five of six handoff branches are on main:** grab/common edges, Kirby's
+  Nayru's Love/Fire Breath/Ice Shot, match flow, random items, and Kongo
+  Jungle/Jungle Japes. At `1dd22bd8`, the accepted sweep has **0 regressions**:
+  3163 particle-exact, 112 not comparable, 209 existing local failures and
+  one existing particle fault. Both replay corpora retain every baseline
+  completion and matched frame: **108/108** and **486/502** complete.
+  The root's full combat gate passes **293/293** and harness pytest **406**.
+  CPU's 95 witnesses pass on its rebased branch, including the repaired
+  persistent rapid-jab counter. Review found one remaining shared
+  character-kind dispatch, now being moved into the character table; final
+  verification of that adjustment, sweep and replay acceptance are
+  pending a macOS executable-launch stall. It remains unmerged. Full wave
+  checkpoint and fresh parity numbers follow CPU acceptance.
+
 - **Wave 14 startup:** the release workspace checkpoint exposed a dormant
   invalid palette in retail's `EfKbSs.dat`; presentation now retains its
   decode error until a live particle selects that image, as retail defers
@@ -17,27 +31,24 @@ do not keep a session log here.
   is clean, harness pytest 401, and both replay corpora retain 108/108 and
   484/502 complete. The fresh sweep has 0 regressions: 3075 particle-exact,
   102 not comparable, 307 existing local failures and one existing particle
-  fault. The six handoff branches below are being integrated in order.
+  fault. These are startup measurements, before the integrations above.
 
 - **Wave 13 chased breadth** (user, 2026-10-24: completeness is the only
   goal; close fail-closed sites and unported code before chasing single
   divergences). `docs/PARITY.md` and `harness/parity_inventory.py` measure
-  it per retail function: on main, in-game logic is **42.6% ported or
+  it per retail function: at wave-14 startup, in-game logic was **42.6% ported or
   partial, 54.2% with inlined bodies and rows** (41.8 / 52.2 at the wave's
   start), with **235 fail-closed sites** (331). `harness/retail_coverage.py`
   (Dolphin Branch Watch, `docs/PORT_NOTES/RETAIL_COVERAGE.md`) measures
   what retail executes: 7,919 of 19,827 functions across 1,472 recorded
-  scenarios; out-of-scope runs (items on, four players, other stages) add
+  scenarios; broader runs (items on, four players, other stages) add
   1,513 more, mostly items.
-- **Six wave-13 branches are committed but not merged**, each with a
-  handoff note in `docs/handoffs/` (branch, tip, what is verified, what is
-  WIP, how to merge): CPU players (Versus CPU at any level, 94 witnesses),
-  random items (Item Switch boundaries, the spawner, Capsule/Box/Barrel),
-  Kongo Jungle and Jungle Japes, match flow (3-4 player free-for-all, team
-  battles, doubles replays), grab/throw/common-state edges (Bowser's Klaw
-  on the Stadium windmill), and Kirby's Nayru's Love, Fire Breath and Ice
-  Shot. `docs/handoffs/WAVE13_FOLLOWUPS.md` lists every divergence and open
-  site the wave's agents reported.
+- **CPU is the remaining wave-13 handoff.** The original notes in
+  `docs/handoffs/` describe the incoming branches; acceptance evidence for
+  the five merged branches is under `target/wave14/`. Unsupported item,
+  stage, stock-sharing and copied-special branches remain guarded.
+  `docs/handoffs/WAVE13_FOLLOWUPS.md` is the original follow-up inventory;
+  consult current code and acceptance results before assigning a fault.
 - Gates on main at 03f801e2 (2026-10-24): sweep 3075 exact, 102 not
   comparable, 0 regressions against 26fee4c7 (55 fixed); the 307 failing
   and one particle fault are local scenarios not on main (the unmerged
@@ -48,10 +59,10 @@ do not keep a session log here.
 - **All 26 characters are registered and all six tournament stages run
   bit-exact; every Versus stage is named** (unported ones fail closed by
   name) and Yoshi's Island 64 and Kongo Jungle 64 are ported
-  (`docs/PORT_NOTES/N64_STAGES.md`). Kirby has his movement, attacks,
-  throws, Inhale, Final Cutter, Hammer, Stone and 21 of the 25 copied
-  neutral specials on main (all but Zelda's, Bowser's and the Ice
-  Climbers', which are on a handoff branch, and Sheik's, unstarted;
+  (`docs/PORT_NOTES/N64_STAGES.md`), plus Kongo Jungle and Jungle Japes
+  with their unwitnessed hazard branches guarded. Kirby has his movement,
+  attacks, throws, Inhale, Final Cutter, Hammer, Stone and 24 of the 25 copied
+  neutral specials on main (Sheik's remains unstarted;
   `docs/PORT_NOTES/KIRBY.md`). Each character has a start boundary vs Fox
   on FD (`m4_gate`), a witness list in `m5_gate` and explorer matches.
 - **Slippi replays** (every tick's Pre Frame seed is checked, so a complete
@@ -147,16 +158,17 @@ do not keep a session log here.
 
 ## Next (recommended order)
 
-1. [ ] **Merge the six wave-13 handoff branches** (`docs/handoffs/*.md`):
+1. [~] **Merge the six wave-13 handoff branches** (`docs/handoffs/*.md`):
    rebase each onto main, drop or re-guard its WIP commits, then a full
    sweep and `replay-batch` per branch. Suggested order: grab/common edges,
    Kirby copies, match flow, random items, Kongo/Japes (reconcile its
    barrel with main's `barrel.rs`), CPU players (largest; conflicts with
-   the all-stages `make_boundary.py`).
+   the all-stages `make_boundary.py`). The first five are merged; CPU's
+   final sweep/replay proof and the combined wave checkpoint remain.
 2. [ ] **Breadth wave 14**, from `docs/PARITY.md` (rerun
    `parity_inventory.py` after the merges) and `WAVE13_FOLLOWUPS.md`: the
    item-use fighter rows (HeavyGet, Lift, swing and shooting items), more
-   random item kinds, the 22 Versus stages still unported, Sheik's copy,
+   random item kinds, the 19 Versus stages still unported, Sheik's copy,
    CPU stage awareness, stamina/coin/handicap/time modes, then the rest of
    the fail-closed backlog. Record on a quiet machine: under heavy load
    about 8% of retail recordings differed between runs, with or without
@@ -192,8 +204,7 @@ do not keep a session log here.
      floor (same code as CatchWait, unwitnessed);
    - ported from retail's table but unwitnessed: a ReDead element
      (`melee-it` `hurt.rs`; no loaded script carries one).
-4. [~] **Kirby's copied specials**: 21 of 25 kinds on main, three more on
-   the Zelda/Bowser/Ice Climbers handoff branch; Sheik's Needle Storm is
+4. [~] **Kirby's copied specials**: 24 of 25 kinds on main; Sheik's Needle Storm is
    unstarted (its boundary exists; `charge_flash.rs`'s Sheik arm is empty).
    Then inhaling items and pickup hand poses (`KIRBY.md` item 3).
 5. [ ] **Match clone below 1 ms**: the floor is the 64 ready slots per
@@ -209,8 +220,9 @@ For a new matchup or stage, reuse the Fox-Marth approach:
 
 ## Status by area
 
-**Parity inventory** (`docs/PARITY.md`, `harness/parity_inventory.py`,
-2026-10-24): by retail code bytes, in-game logic is 41.8% ported or partial
+**Historical parity inventory** (`docs/PARITY.md`,
+`harness/parity_inventory.py`, before the handoff integrations; rerun at
+wave close): by retail code bytes, in-game logic is 41.8% ported or partial
 (52.2% counting callees ported inline and implemented motion rows); all of
 retail 27.6% (34.8%). 331 fail-closed sites, clustered into 32 work items.
 
@@ -245,7 +257,9 @@ items are ported:
 - Peach's rare pulls: Bob-omb, Beam Sword (with the swing states), Mr. Saturn;
 - Yoshi's Story's Shy Guys.
 
-Random items are unstarted.
+Random-item spawning and Capsule/Box/Barrel are on main, witnessed for
+two-player FD/Battlefield setups. Party Ball, other random item kinds,
+heavy-item fighter rows and unwitnessed container blasts remain guarded.
 
 **CPU** (`melee-cpu`): Nana's follow logic, Belay recovery, island
 routing, getting up (behaviours 5, 6), tumbling (15) and the KO totals she
@@ -258,8 +272,9 @@ entry-by-order and 2020 tables); the Stadium transformation preload and
 Frozen Stadium; Dween; Frozen Stages; Widescreen 16:9. Not yet: the level
 Fountain of Dreams platforms code (text not found), netplay codes.
 
-**Out of the gate by design**: the in-game Start pause, menus, results and
-single-player modes.
+**Completeness backlog**: the in-game Start pause, retail menus, results and
+single-player modes. These remain in scope; breadth work precedes individual
+replay fixes (user, 2026-10-24).
 
 **App** (`docs/APP.md`, 2026-10-04): Ghostty-style split. libmelee
 (`melee-platform`: disc via `gc-disc`, file cache, catalog, menu flow,
