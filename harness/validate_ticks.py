@@ -176,7 +176,8 @@ def validate(records, max_draws: int = 64, scripted: bool = False,
         pose = fighter_pose(record["state"])
         # A pass whose game timer is not due (a slowed game: gm_801A4D34
         # pauses every p_link, lb_80019900) changes nothing at all.
-        paused = previous is not None and record["state"] == previous["state"]
+        paused = (previous is not None and record["state"] == previous["state"]
+                  and record.get("items") == previous.get("items"))
         items.update(record, ordinal, violations,
                      frozen=paused or scene_frozen(previous_pose, pose))
         previous_pose = pose
