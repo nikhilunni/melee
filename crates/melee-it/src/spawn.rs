@@ -131,6 +131,24 @@ pub enum ItemControl {
     /// The owner's pointer to its article moves to a newer one of the same
     /// kind (the old article is no longer reached by its owner's calls).
     Superseded,
+    /// The Fan's swing animation at the holder's frame_speed_mul
+    /// (it_80292998 / it_802929C8 / it_802929F8).
+    SwingAnimation { swing: SwingAnimation, rate: f32 },
+    /// it_80292A28: the Fan's return to rest.
+    SwingRest,
+    /// it_802927E8: the Fan swells after its hit.
+    SwingSwell,
+    /// it_8029282C: the Fan back to its normal size.
+    SwingShrink,
+}
+
+/// Which of the Fan's swing animations the holder plays
+/// (ftCo_HarisenSwing_Anim's switch on mv.co.swing.x4).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SwingAnimation {
+    Jab,
+    Tilt,
+    Smash,
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {

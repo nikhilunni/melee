@@ -26,6 +26,26 @@ impl Effects {
         self.spawn_dust_generator::<T>(id, position, 1.0, bank, particles, rng)
     }
 
+    /// it_80278800's block_4FC (iteffect.c:343-351): efSync_Spawn(id, item,
+    /// &pos, &item->facing_dir) for a row that turns its generator to a
+    /// facing (efLib_CreateGenerator_Translate_FacingDir, e.g. 0x3EF/0x3F0).
+    /// Rows without a facing take [`Self::spawn_positional`]'s path.
+    pub fn spawn_positional_facing<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        position: Vec3,
+        facing: f32,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let directional = DUST_SPAWNS
+            .iter()
+            .any(|row| row.request == id && row.directional);
+        let facing = if directional { facing } else { 1.0 };
+        self.spawn_dust_generator::<T>(id, position, facing, bank, particles, rng)
+    }
+
     /// efSync_Spawn(0x3E8, item, &pos, &damage) -> efAsync_Dispatch: the
     /// plain hit spark an item shows when a hit lands on it (it_80270E30).
     /// One of two spark models at random, scaled by the damage.

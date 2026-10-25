@@ -608,13 +608,24 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         iasa: crate::fighter::lift::throw_input,
         ..rows[S::LiftWait as usize]
     };
-    // ftData_MotionStateList[120..=123]: ftCo_SM_SwordSwing1 (108) on,
-    // ft_0CD3.c's sword callbacks (ftCo_800CD1BC and its siblings).
-    const SWORD_SWINGS: [(S, i32); 4] = [
+    // ftData_MotionStateList[120..=127]: ftCo_SM_SwordSwing1 (108) on,
+    // ft_0CD3.c's sword and bat callbacks (ftCo_SwordSwing_* and
+    // ftCo_BatSwing_*, both the shared ftCo_800CD1BC and its siblings).
+    // [136..=139]: ftCo_StarRodSwing_* are the same callbacks; the star is
+    // the entry's accessory4 (ft_800CD914).
+    const SWORD_SWINGS: [(S, i32); 12] = [
+        (S::StarRodSwing1, 124),
+        (S::StarRodSwing3, 125),
+        (S::StarRodSwing4, 126),
+        (S::StarRodSwingDash, 127),
         (S::SwordSwing1, 108),
         (S::SwordSwing3, 109),
         (S::SwordSwing4, 110),
         (S::SwordSwingDash, 111),
+        (S::BatSwing1, 112),
+        (S::BatSwing3, 113),
+        (S::BatSwing4, 114),
+        (S::BatSwingDash, 115),
     ];
     let mut i = 0;
     while i < SWORD_SWINGS.len() {
@@ -627,6 +638,30 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
             iasa: callbacks::input::swing,
             physics: callbacks::physics::swing,
             collision: callbacks::collision::swing,
+            camera: callbacks::camera::follow_fighter,
+            implemented: true,
+        };
+        i += 1;
+    }
+    // ftData_MotionStateList[132..=135]: ftCo_SM_HarisenSwing1 (120) on,
+    // ftCo_HarisenSwing_* (the fan's own animation and collision).
+    const FAN_SWINGS: [(S, i32); 4] = [
+        (S::HarisenSwing1, 120),
+        (S::HarisenSwing3, 121),
+        (S::HarisenSwing4, 122),
+        (S::HarisenSwingDash, 123),
+    ];
+    let mut i = 0;
+    while i < FAN_SWINGS.len() {
+        let (state, animation) = FAN_SWINGS[i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation,
+            anim: callbacks::animation::fan_swing,
+            iasa: callbacks::input::swing,
+            physics: callbacks::physics::swing,
+            collision: callbacks::collision::fan_swing,
             camera: callbacks::camera::follow_fighter,
             implemented: true,
         };

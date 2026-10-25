@@ -127,6 +127,31 @@ pub enum StaleMove {
     SwordSwing3,
     SwordSwing4,
     SwordSwingDash,
+    /// FtMoveId_BatSwing1..BatSwingDash (0x44..0x47): the Home-Run Bat's.
+    BatSwing1,
+    BatSwing3,
+    BatSwing4,
+    BatSwingDash,
+    /// FtMoveId_ParasolSwing1..ParasolSwingDash (0x48..0x4B).
+    ParasolSwing1,
+    ParasolSwing3,
+    ParasolSwing4,
+    ParasolSwingDash,
+    /// FtMoveId_HarisenSwing1..HarisenSwingDash (0x4C..0x4F): the Fan's.
+    HarisenSwing1,
+    HarisenSwing3,
+    HarisenSwing4,
+    HarisenSwingDash,
+    /// FtMoveId_StarRodSwing1..StarRodSwingDash (0x50..0x53).
+    StarRodSwing1,
+    StarRodSwing3,
+    StarRodSwing4,
+    StarRodSwingDash,
+    /// FtMoveId_LipstickSwing1..LipstickSwingDash (0x54..0x57).
+    LipstickSwing1,
+    LipstickSwing3,
+    LipstickSwing4,
+    LipstickSwingDash,
     /// FtMoveId_KbSpecialNMr..KbSpecialNGk (0x16..0x2F): Kirby's copied
     /// neutral specials, one id per copied kind in retail's order (the two
     /// Bowsers, the two Links and the rest each stale on their own).

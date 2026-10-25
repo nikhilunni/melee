@@ -84,7 +84,9 @@ impl Fighter {
                 input.previous.cstick.y > assets.input.down_smash_threshold
                     && input.current.cstick.y <= assets.input.down_smash_threshold
             };
-            if held.use_kind == 0 || held.kind == melee_types::ItemKind::Sword {
+            // ftCo_80094E54 throws a throwable item on A alone; a battering
+            // item keeps it through the common smash.
+            if held.use_kind == 0 || super::item_swing::is_swing_item(held.kind) {
                 let up = predicate == P::SmashUp;
                 if self.core.item_throw_pressed() || cstick_throw {
                     return self.enter_item_throw(
@@ -121,8 +123,14 @@ impl Fighter {
                 // retail ftCo_AttackLw3_CheckInput 0x8008BBB0..8008BBF0:
                 // a Sword is not throwable by A alone. The ordinary entry
                 // retains its pickup check and repeat/new-attack ordering.
-                if predicate == P::TiltDown && held.kind == melee_types::ItemKind::Sword {
-                    return self.enter_simple_attack(S::AttackLw3, assets);
+                // ftCo_AttackHi3_CheckInput likewise enters doEnter.
+                if super::item_swing::is_swing_item(held.kind) {
+                    let state = if predicate == P::TiltDown {
+                        S::AttackLw3
+                    } else {
+                        S::AttackHi3
+                    };
+                    return self.enter_simple_attack(state, assets);
                 }
                 unimplemented!(
                     "a tilt with a non-throwable held item of kind {}",
@@ -169,9 +177,8 @@ impl Fighter {
         let threshold = assets.input.thresholds.dash_smash_stick_threshold;
         // retail 0x8008C29C: ftCo_800DF21C tests the C-stick independently
         // even when main-stick+A supplied the direction. Versus has no
-        // single-button mode (canUseCstick). Other swing items stay guarded.
-        let cstick_throw = held.kind == melee_types::ItemKind::Sword
-            && gekko_math::msl::fabsf(input.previous.cstick.x) < threshold
+        // single-button mode (canUseCstick).
+        let cstick_throw = gekko_math::msl::fabsf(input.previous.cstick.x) < threshold
             && gekko_math::msl::fabsf(input.current.cstick.x) >= threshold;
         if held.use_kind == 2 && !shoulder && !cstick_throw {
             if !main {

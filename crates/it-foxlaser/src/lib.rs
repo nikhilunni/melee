@@ -309,7 +309,11 @@ macro_rules! blaster {
                     | ItemControl::Motion(_)
                     | ItemControl::Orphan
                     | ItemControl::Aim { .. }
-                    | ItemControl::Superseded => {
+                    | ItemControl::Superseded
+                    | ItemControl::SwingAnimation { .. }
+                    | ItemControl::SwingRest
+                    | ItemControl::SwingSwell
+                    | ItemControl::SwingShrink => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }

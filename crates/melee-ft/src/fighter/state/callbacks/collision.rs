@@ -544,9 +544,16 @@ pub fn dash_item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Resu
     Ok(())
 }
 
-/// ftData_MotionStateList: ftCo_MS_SwordSwing1..SwordSwingDash (120..123),
-/// ftCo_SwordSwing_Coll -> ftCo_800CD2C4.
+/// ftData_MotionStateList: ftCo_MS_SwordSwing1..BatSwingDash (120..127),
+/// ftCo_SwordSwing_Coll / ftCo_BatSwing_Coll -> ftCo_800CD2C4(ft_800CD31C).
 pub fn swing(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let assets = phase.assets.expect("swing collision assets");
-    fighter.swing_collision(phase.map, assets)
+    fighter.swing_collision(phase.map, assets, Fighter::swing_restore_hand)
+}
+
+/// ftCo_MS_HarisenSwing1..HarisenSwingDash (132..135), ftCo_HarisenSwing_Coll
+/// -> ftCo_800CD2C4(ft_800CD604).
+pub fn fan_swing(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let assets = phase.assets.expect("swing collision assets");
+    fighter.swing_collision(phase.map, assets, Fighter::fan_restore)
 }

@@ -12,7 +12,7 @@ use super::{
     ActionId, Fighter, FighterCore, MotionData,
 };
 use gekko_math::fma::fmadds;
-use hsd_types::Vec2;
+use hsd_types::{Vec2, Vec3};
 use melee_types::{fixed::FixedVec, CommonMotionState as S, GroundOrAir};
 
 /// One pickup box of ftData x40 (itPickup): a centre offset (x forward) and
@@ -66,6 +66,11 @@ pub struct PickupCandidate {
     pub hand_hold_kind: u8,
     /// ItemAttr x1C (itGetDamageMultiplier).
     pub damage_multiplier: f32,
+    /// xD4C: the shots left (it_8026B594).
+    pub ammo: i32,
+    /// it_80292394 / it_80295748: where a shot leaves the item, in the hand
+    /// joint's frame (the Star Rod's and Lip's Stick's attributes x4).
+    pub shot_offset: Vec3,
 }
 
 /// The items offered to the current proc, in the item list's order.
@@ -121,6 +126,11 @@ pub struct HeldItem {
     pub use_kind: u8,
     /// ItemAttr x1C (itGetDamageMultiplier).
     pub damage_multiplier: f32,
+    /// xD4C as the hand holds it: the holder's shots count it down with
+    /// the item's (it_802923BC); it_8026B594 tests it.
+    pub ammo: i32,
+    /// The candidate's `shot_offset`.
+    pub shot_offset: Vec3,
 }
 
 /// fp->item_gobj holding one of the fighter's own articles (Peach's
@@ -137,7 +147,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 172] = [
+const HELD_ITEM_STATES: [S; 184] = [
     S::LightGet,
     // ftpickupitem.c and ftCo_Lift.c: a heavy item is lifted, carried,
     // turned and thrown (ftCo_ItemThrow.c); every one drops it when hit.
@@ -203,6 +213,18 @@ const HELD_ITEM_STATES: [S; 172] = [
     S::SwordSwing3,
     S::SwordSwing4,
     S::SwordSwingDash,
+    S::BatSwing1,
+    S::BatSwing3,
+    S::BatSwing4,
+    S::BatSwingDash,
+    S::HarisenSwing1,
+    S::HarisenSwing3,
+    S::HarisenSwing4,
+    S::HarisenSwingDash,
+    S::StarRodSwing1,
+    S::StarRodSwing3,
+    S::StarRodSwing4,
+    S::StarRodSwingDash,
     // ftCo_Rebound.c: a clanked swing rebounds with the item in hand (its
     // take_dmg_cb gave the hand back in ftCommon_8007DB58); no item branch.
     S::ReboundStop,
@@ -569,9 +591,11 @@ impl FighterCore {
 }
 
 /// A private character row can share a common identity but run different
-/// callbacks (Game & Watch's Manhole is row 345, identity AttackLw3). Only
-/// the actual common down-tilt/up-smash rows and F/B/Hi/Lw aerial entries
-/// have Sword witnesses.
+/// callbacks (Game & Watch's Manhole is row 345, identity AttackLw3), so
+/// only the actual common rows are admitted. With a battering item in hand
+/// the vertical tilts and smashes, the aerials and their landings run their
+/// common callbacks unchanged: none reads the item beyond the item-throw
+/// checks (ftCo_AttackHi3/Lw3/Hi4/Lw4.c, ftCo_AttackAir.c, ftCo_LandingAir.c).
 fn held_item_state_is_audited(
     kind: melee_types::ItemKind,
     action: ActionId,
@@ -583,19 +607,31 @@ fn held_item_state_is_audited(
         Some(keeps_item) => keeps_item,
         None => {
             HELD_ITEM_STATES.contains(&state)
-                || (kind == melee_types::ItemKind::Sword
+                || (super::item_swing::is_swing_item(kind)
                     && action == ActionId(state as u16)
-                    && (matches!(
-                        state,
-                        S::AttackLw3
-                            | S::AttackHi4
-                            | S::AttackAirF
-                            | S::AttackAirB
-                            | S::AttackAirHi
-                    ) || (state == S::AttackAirLw && common_down_air_animation)))
+                    && (SWING_ITEM_COMMON_STATES.contains(&state)
+                        || (state == S::AttackAirLw && common_down_air_animation)))
         }
     }
 }
+
+/// The common rows a fighter enters with a battering item in hand (beside
+/// the swings, which HELD_ITEM_STATES lists).
+const SWING_ITEM_COMMON_STATES: [S; 13] = [
+    S::AttackHi3,
+    S::AttackLw3,
+    S::AttackHi4,
+    S::AttackLw4,
+    S::AttackAirN,
+    S::AttackAirF,
+    S::AttackAirB,
+    S::AttackAirHi,
+    S::LandingAirN,
+    S::LandingAirF,
+    S::LandingAirB,
+    S::LandingAirHi,
+    S::LandingAirLw,
+];
 
 impl FighterCore {
     /// ftCo_800D7100 / ftCo_800D705C's shared test: LR held and A pressed
@@ -919,6 +955,8 @@ impl FighterCore {
             hand_hold_kind: item.hand_hold_kind,
             use_kind: item.use_kind,
             damage_multiplier: item.damage_multiplier,
+            ammo: item.ammo,
+            shot_offset: item.shot_offset,
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
         // Fighter_OnItemPickup (ft/inlines.h:143) and the Kirby and Purin
@@ -954,35 +992,39 @@ mod held_state_tests {
     use super::*;
 
     #[test]
-    fn sword_audit_admits_common_aerial_entries_but_not_private_or_other_aerial_rows() {
+    fn battering_audit_admits_common_attack_rows_but_not_private_ones() {
         use melee_types::ItemKind;
-        // Common down tilt/up smash and F/B/Hi/Lw aerial entries are witnessed;
-        // private and other aerial rows keep their guards, even with the
-        // same common identity. Back Air's callbacks separately refuse.
-        for (action, state, expected) in [
-            (57, S::AttackLw3, true),
-            (63, S::AttackHi4, true),
-            (345, S::AttackLw3, false), // Game & Watch's Manhole callbacks.
-            (56, S::AttackHi3, false),
-            (64, S::AttackLw4, false),
-            (67, S::AttackAirB, true), // Entry only; next Anim/IASA refuse.
-            (348, S::AttackAirB, false), // Game & Watch's Turtle row.
-            (65, S::AttackAirN, false),
-            (66, S::AttackAirF, true),
-            (68, S::AttackAirHi, true),
-            (69, S::AttackAirLw, true),
-            (349, S::AttackAirHi, false), // Game & Watch's private up aerial.
-            (349, S::AttackAirLw, false), // Private action is not common69.
-            (345, S::AttackAirF, false), // Private action/common identity mismatch.
-            (71, S::LandingAirF, false),
-            (73, S::LandingAirHi, false),
-            (72, S::LandingAirB, false),
-        ] {
-            assert_eq!(
-                held_item_state_is_audited(ItemKind::Sword, ActionId(action), state, None, true),
-                expected,
-                "action {action}, identity {state:?}"
-            );
+        // The common vertical tilts and smashes, the five aerials and their
+        // landings are witnessed with a Sword and a Bat in hand; private
+        // rows keep their guards, even with the same common identity.
+        for kind in [ItemKind::Sword, ItemKind::Bat] {
+            for (action, state, expected) in [
+                (57, S::AttackLw3, true),
+                (63, S::AttackHi4, true),
+                (345, S::AttackLw3, false), // Game & Watch's Manhole callbacks.
+                (56, S::AttackHi3, true),
+                (64, S::AttackLw4, true),
+                (67, S::AttackAirB, true),
+                (348, S::AttackAirB, false), // Game & Watch's Turtle row.
+                (65, S::AttackAirN, true),
+                (66, S::AttackAirF, true),
+                (68, S::AttackAirHi, true),
+                (69, S::AttackAirLw, true),
+                (349, S::AttackAirHi, false), // Game & Watch's private up aerial.
+                (349, S::AttackAirLw, false), // Private action is not common69.
+                (345, S::AttackAirF, false), // Private action/common identity mismatch.
+                (70, S::LandingAirN, true),
+                (71, S::LandingAirF, true),
+                (72, S::LandingAirB, true),
+                (73, S::LandingAirHi, true),
+                (74, S::LandingAirLw, true),
+            ] {
+                assert_eq!(
+                    held_item_state_is_audited(kind, ActionId(action), state, None, true),
+                    expected,
+                    "{kind:?}: action {action}, identity {state:?}"
+                );
+            }
         }
         for (action, state) in [(66, S::AttackAirF), (67, S::AttackAirB), (68, S::AttackAirHi)] {
             assert!(held_item_state_is_audited(ItemKind::Sword, ActionId(action), state, None, false));

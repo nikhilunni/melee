@@ -1218,26 +1218,14 @@ fn held_back_air_entry_step_and_capture_allocate_nothing_after_live_clone() {
         view.items().filter(|item| item.owner().is_some()).count(),
         1
     );
-    assert!(branch.is_some());
-    // The callback refusal is intentionally outside allocation measurement.
-    let error = game.step(&Inputs::default()).unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .contains("held Sword aerial entry continuation"),
-        "{error}"
-    );
-    let error = branch
-        .as_mut()
-        .unwrap()
-        .0
-        .step(&Inputs::default())
-        .unwrap_err();
-    assert!(
-        error
-            .to_string()
-            .contains("held Sword aerial entry continuation"),
-        "{error}"
+    // The held aerial's next callbacks run without allocating, in the live
+    // match and its clone alike.
+    let (cloned, _) = branch.as_mut().unwrap();
+    assert_eq!(measure(&mut game, &Inputs::default()), 0, "continuation");
+    assert_eq!(measure(cloned, &Inputs::default()), 0, "cloned continuation");
+    assert_eq!(
+        diagnostics::inspect(&game).unwrap(),
+        diagnostics::inspect(cloned).unwrap()
     );
 }
 
@@ -1441,25 +1429,14 @@ fn held_forward_and_up_entry_step_and_capture_allocate_nothing_after_live_clone(
         );
         assert!(view.items().count() > 0);
         assert!(branch.is_some());
-        // The callback refusal is intentionally outside allocation measurement.
-        let error = game.step(&Inputs::default()).unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .contains("held Sword aerial entry continuation"),
-            "{error}"
-        );
-        let error = branch
-            .as_mut()
-            .unwrap()
-            .0
-            .step(&Inputs::default())
-            .unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .contains("held Sword aerial entry continuation"),
-            "{error}"
+        // The held aerial's next callbacks run without allocating, in the
+        // live match and its clone alike.
+        let (cloned, _) = branch.as_mut().unwrap();
+        assert_eq!(measure(&mut game, &Inputs::default()), 0, "continuation");
+        assert_eq!(measure(cloned, &Inputs::default()), 0, "cloned continuation");
+        assert_eq!(
+            diagnostics::inspect(&game).unwrap(),
+            diagnostics::inspect(cloned).unwrap()
         );
     }
 }
@@ -1662,25 +1639,14 @@ fn held_down_entry_step_observe_and_capture_allocate_nothing_after_live_clone() 
         );
         assert!(view.items().count() > 0);
         assert!(branch.is_some());
-        // The callback refusal is intentionally outside allocation measurement.
-        let error = game.step(&Inputs::default()).unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .contains("held Sword aerial entry continuation"),
-            "{error}"
-        );
-        let error = branch
-            .as_mut()
-            .unwrap()
-            .0
-            .step(&Inputs::default())
-            .unwrap_err();
-        assert!(
-            error
-                .to_string()
-                .contains("held Sword aerial entry continuation"),
-            "{error}"
+        // The held aerial's next callbacks run without allocating, in the
+        // live match and its clone alike.
+        let (cloned, _) = branch.as_mut().unwrap();
+        assert_eq!(measure(&mut game, &Inputs::default()), 0, "continuation");
+        assert_eq!(measure(cloned, &Inputs::default()), 0, "cloned continuation");
+        assert_eq!(
+            diagnostics::inspect(&game).unwrap(),
+            diagnostics::inspect(cloned).unwrap()
         );
     }
 }

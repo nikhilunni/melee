@@ -23,6 +23,10 @@ melee_it::item_kinds! {
         Taru: it_container::Barrel,
         Kusudama: it_container::PartyBall,
         Sword: it_sword::Sword,
+        Bat: it_sword::Bat,
+        Harisen: it_sword::Harisen,
+        StarRod: it_sword::StarRod,
+        StarRodStar: it_sword::StarRodStar,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -475,6 +479,8 @@ fn candidate(
         use_kind: assets.use_kind,
         hand_hold_kind: assets.hand_hold_kind,
         damage_multiplier: assets.collision_damage_multiplier,
+        ammo: item.ammo,
+        shot_offset: it_sword::shot_offset(item.kind, assets),
     }
 }
 
@@ -598,6 +604,46 @@ impl Resources {
                     ItemKind::Sword,
                     &it_sword::ARTICLE_STATES,
                     it_sword::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Bat,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Bat,
+                    &it_sword::BAT_ARTICLE_STATES,
+                    it_sword::BAT_SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Harisen,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Harisen,
+                    &it_sword::harisen::ARTICLE_STATES,
+                    it_sword::harisen::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::StarRod,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::StarRod,
+                    &it_sword::starrod::ARTICLE_STATES,
+                    it_sword::starrod::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::StarRodStar,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::StarRodStar,
+                    &it_sword::starrod::STAR_ARTICLE_STATES,
+                    it_sword::starrod::STAR_SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (

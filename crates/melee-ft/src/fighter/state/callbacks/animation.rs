@@ -455,12 +455,21 @@ pub fn ottotto_wait(
     Ok(None)
 }
 
-/// ftData_MotionStateList: ftCo_MS_SwordSwing1..SwordSwingDash (120..123),
-/// ftCo_SwordSwing_Anim -> ftCo_800CD1BC.
+/// ftData_MotionStateList: ftCo_MS_SwordSwing1..BatSwingDash (120..127),
+/// ftCo_SwordSwing_Anim / ftCo_BatSwing_Anim -> ftCo_800CD1BC.
 pub fn swing(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);
     fighter.advance_smash_charge(assets);
     fighter.swing_animation(assets)?;
+    Ok(None)
+}
+
+/// ftCo_MS_HarisenSwing1..HarisenSwingDash (132..135), ftCo_HarisenSwing_Anim.
+pub fn fan_swing(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.advance_smash_charge(assets);
+    fighter.fan_swing_animation(assets)?;
     Ok(None)
 }

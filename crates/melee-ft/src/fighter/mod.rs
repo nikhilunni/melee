@@ -1309,6 +1309,9 @@ pub struct FighterCore {
     /// take_dmg_cb = ft_800CD31C while a swing runs; every
     /// Fighter_ChangeMotionState disarms it (fighter.c:1376-1389).
     pub swing_hand_armed: bool,
+    /// deal_dmg_cb = ft_800CD65C and take_dmg_cb = ft_800CD604 while a
+    /// Fan swing runs; every Fighter_ChangeMotionState disarms them.
+    pub fan_callbacks_armed: bool,
     /// take_dmg_cb = ftCo_800974C4 after the entry of HeavyGet, a lift
     /// state or a heavy throw; every motion change clears this common
     /// callback before entry commands run.
@@ -1496,9 +1499,6 @@ pub enum MotionData {
     },
     Aerial {
         retained_drop_timer: f32,
-        /// Immutable ownership of this move entry, not the current hand.
-        /// A catch during an existing aerial does not change it.
-        held_on_entry: bool,
     },
     Damage(damage::DamageState),
     Rebound(clank::State),

@@ -1515,6 +1515,7 @@ dependencies = [
  "gekko-math",
  "hsd-types",
  "melee-it",
+ "melee-lb",
  "melee-types",
 ]
 

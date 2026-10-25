@@ -246,7 +246,21 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 31] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 33] = [
+    // efasync.c:691-693: efLib_CreateGenerator(0x14D) at the point (the
+    // Fan's swing script, iteffect.c:286's 0x434).
+    DustSpawn {
+        request: 0x434,
+        particle: 0x14D,
+        directional: false,
+    },
+    // efasync.c:634-640: efLib_CreateGenerator_Translate_FacingDir(0x13C)
+    // (the Star Rod's shot flash, ft_800CD914's 1070).
+    DustSpawn {
+        request: 0x42E,
+        particle: 0x13C,
+        directional: true,
+    },
     // efsync.c:397-402: efLib_CreateGenerator(0x18A / 0x194) at the
     // script's point (Mewtwo's dark sparks).
     DustSpawn {

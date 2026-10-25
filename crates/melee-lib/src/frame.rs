@@ -514,9 +514,11 @@ impl Runtime {
                         for _ in 0..3 {
                             state.rng.randf();
                         }
-                        state.effects.spawn_positional::<RetailTrig>(
+                        // block_4FC rows take the item's facing.
+                        state.effects.spawn_positional_facing::<RetailTrig>(
                             id,
                             root.or(held_root).unwrap_or(item.root_translation),
+                            item.facing,
                             &state.assets.common_particle_bank,
                             &mut state.particles,
                             &mut state.rng,
@@ -3078,7 +3080,8 @@ impl Runtime {
                         f.article_created(kind, id);
                     }
                     if let Some(id) = spawned.filter(|_| hold) {
-                        let kind = state.items.iter().find(|i| i.id == id).unwrap().kind;
+                        let spawned_item = state.items.iter().find(|i| i.id == id).unwrap();
+                        let (kind, ammo) = (spawned_item.kind, spawned_item.ammo);
                         let item = state.assets.items.get(kind);
                         f.hold_spawned_item(
                             melee_ft::fighter::item_pickup::HeldItem {
@@ -3088,6 +3091,8 @@ impl Runtime {
                                 hand_hold_kind: item.hand_hold_kind,
                                 use_kind: item.use_kind,
                                 damage_multiplier: item.collision_damage_multiplier,
+                                ammo,
+                                shot_offset: it_sword::shot_offset(kind, item),
                             },
                             catch_item,
                             &state.assets.fighters[slot],
@@ -4564,6 +4569,7 @@ fn dispatch_fighter(
                 && !f.in_hitlag()
                 && !f.screen_ko_accessory(scene_assets.stage_camera.bottom())
                 && !f.item_throw_accessory(assets)
+                && !f.swing_accessory()
                 && !f.core.egg_accessory()
             {
                 f.character_accessory(assets, rng);
@@ -5496,12 +5502,6 @@ mod monster_entry_tests;
 
 #[cfg(test)]
 mod item_phantom_guard_tests;
-
-#[cfg(test)]
-mod held_back_air_tests;
-
-#[cfg(test)]
-mod held_f_hi_entry_tests;
 
 #[cfg(test)]
 mod giant_punch_invariant_tests;

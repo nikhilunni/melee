@@ -1597,3 +1597,42 @@ stage = "FlatZone"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2265280010
+
+# Items on, the Home-Run Bat alone (make_boundary.py --item-frequency very-high
+# --items Bat --no-containers).
+[[boundary]]
+name = "start_fd_items_bat"
+cold = "start_fd_items_bat_cold"
+savestate = "harness/roms/start_fd_items_bat.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1480286417
+item_frequency = 4
+item_mask = "0xfffffff800000800"
+
+# Items on, the Fan alone (make_boundary.py --item-frequency very-high
+# --items Harisen --no-containers).
+[[boundary]]
+name = "start_fd_items_harisen"
+cold = "start_fd_items_harisen_cold"
+savestate = "harness/roms/start_fd_items_harisen.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3773961997
+item_frequency = 4
+item_mask = "0xfffffff801000000"
+
+# Items on, the Star Rod alone (make_boundary.py --item-frequency very-high
+# --items StarRod --no-containers).
+[[boundary]]
+name = "start_fd_items_starrod"
+cold = "start_fd_items_starrod_cold"
+savestate = "harness/roms/start_fd_items_starrod.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4229397592
+item_frequency = 4
+item_mask = "0xfffffff800400000"

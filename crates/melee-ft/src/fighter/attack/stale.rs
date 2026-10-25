@@ -50,6 +50,27 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows[S::SwordSwing3 as usize] = Some(GroundMove::SwordSwing3);
     rows[S::SwordSwing4 as usize] = Some(GroundMove::SwordSwing4);
     rows[S::SwordSwingDash as usize] = Some(GroundMove::SwordSwingDash);
+    // [124..=143]: x4 low bytes 0x44..0x57, four per battering item.
+    rows[S::BatSwing1 as usize] = Some(GroundMove::BatSwing1);
+    rows[S::BatSwing3 as usize] = Some(GroundMove::BatSwing3);
+    rows[S::BatSwing4 as usize] = Some(GroundMove::BatSwing4);
+    rows[S::BatSwingDash as usize] = Some(GroundMove::BatSwingDash);
+    rows[S::ParasolSwing1 as usize] = Some(GroundMove::ParasolSwing1);
+    rows[S::ParasolSwing3 as usize] = Some(GroundMove::ParasolSwing3);
+    rows[S::ParasolSwing4 as usize] = Some(GroundMove::ParasolSwing4);
+    rows[S::ParasolSwingDash as usize] = Some(GroundMove::ParasolSwingDash);
+    rows[S::HarisenSwing1 as usize] = Some(GroundMove::HarisenSwing1);
+    rows[S::HarisenSwing3 as usize] = Some(GroundMove::HarisenSwing3);
+    rows[S::HarisenSwing4 as usize] = Some(GroundMove::HarisenSwing4);
+    rows[S::HarisenSwingDash as usize] = Some(GroundMove::HarisenSwingDash);
+    rows[S::StarRodSwing1 as usize] = Some(GroundMove::StarRodSwing1);
+    rows[S::StarRodSwing3 as usize] = Some(GroundMove::StarRodSwing3);
+    rows[S::StarRodSwing4 as usize] = Some(GroundMove::StarRodSwing4);
+    rows[S::StarRodSwingDash as usize] = Some(GroundMove::StarRodSwingDash);
+    rows[S::LipstickSwing1 as usize] = Some(GroundMove::LipstickSwing1);
+    rows[S::LipstickSwing3 as usize] = Some(GroundMove::LipstickSwing3);
+    rows[S::LipstickSwing4 as usize] = Some(GroundMove::LipstickSwing4);
+    rows[S::LipstickSwingDash as usize] = Some(GroundMove::LipstickSwingDash);
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();

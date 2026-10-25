@@ -240,6 +240,9 @@ pub enum ItemScratch {
     Barrel(BarrelState),
     Monster(MonsterState),
     Yaku(YakuAnchor),
+    /// One float of a projectile's xDD4 scratch: the Star Rod star's spin
+    /// per frame (HSD_JObjAddRotationZ), the spore's slowdown (xDD8).
+    Float(f32),
     None,
 }
 /// it_8027B730: the scratch every stage enemy shares (itZako_ItemVars).
@@ -1038,6 +1041,10 @@ pub struct ItemCore {
     /// xD50: landings since the last throw or bounce-free touchdown
     /// (it_8026DDFC, it_8026DD5C).
     pub land_count: u32,
+    /// xD4C: shots left (the Star Rod and Lip's Stick set it at spawn;
+    /// it_8026B594 reads it). Zero for every other kind: nothing else
+    /// writes it.
+    pub ammo: i32,
     /// xD54: throws since creation (it_80273F34).
     pub throw_count: u32,
     /// JOBJ_HIDDEN on the model (it_80280B60).
@@ -2059,6 +2066,7 @@ impl ItemPool {
             rest_line: self.freed_rest_lines.pop().unwrap_or(UNUSED_REST_LINE),
             slide_reversals: 0,
             land_count: 0,
+            ammo: 0,
             throw_count: 0,
             pending_shield_owner: None,
             shield_anchor: None,

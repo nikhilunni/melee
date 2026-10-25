@@ -1263,7 +1263,10 @@ impl Fighter {
             && clank.damage == 0
             && dealt_damage != 0
         {
-            if let Some(deal_damage) = self.character.table().deal_damage {
+            if self.core.fan_callbacks_armed {
+                // deal_dmg_cb = ft_800CD65C: the Fan swells.
+                self.fan_dealt_damage(assets);
+            } else if let Some(deal_damage) = self.character.table().deal_damage {
                 deal_damage(self, assets);
             }
         }
@@ -1352,6 +1355,11 @@ impl Fighter {
             // 0x800CD33C bl ftCommon_8007E7E4): the hand takes the held item
             // again before the damage entry.
             self.swing_restore_hand(assets);
+        }
+        if self.core.fan_callbacks_armed {
+            // take_dmg_cb = ft_800CD604: the Fan shrinks, rests and returns
+            // to the hand.
+            self.fan_restore(assets);
         }
         if let Some(take_damage) = self.character.table().take_damage {
             take_damage(self);

@@ -222,6 +222,9 @@ pub struct FighterAssets {
     /// PlCo +420: the dash swing's share of the ground friction
     /// (ftCo_800CD278).
     pub dash_swing_friction: f32,
+    /// PlCo +5A0: how long the Fan stays swollen after its hit
+    /// (ft_800CD65C).
+    pub fan_swell_frames: f32,
     /// CommonBehavior's item hand slots and held-item idle choice.
     /// CommonBehavior::fixed_shield_size.
     pub fixed_shield_size: bool,
@@ -766,6 +769,7 @@ impl FighterAssets {
                 common.reader().f32(common_data + 0x40C)?,
             ],
             dash_swing_friction: common.reader().f32(common_data + 0x420)?,
+            fan_swell_frames: common.reader().f32(common_data + 0x5A0)?,
             item_hand: descriptor.common_behavior.item_hand,
             fixed_shield_size: descriptor.common_behavior.fixed_shield_size,
             idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
