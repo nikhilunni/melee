@@ -65,11 +65,14 @@ is its own major scene (GameModeKind), which the importer maps to
 - Super Sudden Death (`gmsupersudden.c`, PlayerInitData x12 = 300): every
   player starts and revives at 300% (FighterMatchInfo.x6, read by
   fn_8016719C). Ported; explorer witnesses exact.
-- Slo-Mo (game_speed 0.5): the tick trace's first row after the boundary is
-  a frame with no scene tick (retail's seed is unchanged at tick 1, and
-  tick 2 holds the port's tick-1 draws: start_fd_sp_slomo_fox_marth4_cold).
-  The recorder does not mark such frames yet; guarded. Stamina's KO slows
-  the game to 0.4 for 100 frames (gm_801B97C4), so it waits on the same.
+- Slo-Mo (game_speed 0.5): polls stay at 1/60 s (lb_80019628 takes the
+  shorter period), so gm_801A4D34 makes a scheduler pass per VI, and
+  lb_80019900's game timer is due on every other one; the others pause
+  every p_link (gm_803DA8C8) and skip the frame callback: the tick trace
+  records them as unchanged rows. `crate::frame_timer` models it, with
+  fn_8016E730's speed request taken up after the creation pass. The tick
+  validator and pad schedule check accept such rows (the pad is dequeued,
+  the game's status not renewed). Ported; explorer witnesses exact.
 - Giant and Tiny scale every fighter (1.8 / 0.35): ftCo_800D105C's
   ftCo_800CF6E8 and the kinds' CalcIndiviParam (ftchangeparam.c:178-195)
   are not ported; guarded in `Fighter::prepare`.
