@@ -88,7 +88,7 @@ fn article_destroyed(f: &mut Fighter, kind: melee_types::ItemKind) {
     match kind {
         melee_types::ItemKind::NessBat => f.character.get_mut::<Ness>().bat = false,
         // it_802BE958_inline -> ftNs_AttackHi4_YoyoItemSetFlag.
-        melee_types::ItemKind::NessYoyo => f.character.get_mut::<Ness>().yoyo.out = false,
+        melee_types::ItemKind::NessYoyo => crate::yoyo::clear_current(f),
         // it_2725_Logic102_Destroyed -> ftNs_SpecialN_SetNULL.
         melee_types::ItemKind::NessPKFlush => crate::special_n::flash_gone(f),
         // it_802AB90C -> ftNs_SpecialHi_ItemPKThunderRemove.
@@ -229,8 +229,16 @@ impl CharacterCallbacks for Ness {
     /// x2222_b2: every yo-yo entry sets it after its motion change.
     const CAPE_TURN_BLOCKED: fn(&mut Fighter) -> bool =
         |f| crate::yoyo::ROWS.contains(&f.motion_state.action.0);
-    /// The yo-yo's phys callbacks (itnessyoyo.c) step Ness's string.
-    const ARTICLE_PHYSICS: fn(&mut Fighter, &FighterAssets, &mut melee_mp::CollMap) =
+    /// The yo-yo's creation result and end: `yoyo_gobj` and its string.
+    const ARTICLE_CREATED: fn(&mut Fighter, melee_types::ItemKind, u32) = crate::yoyo::created;
+    const ARTICLE_RETIRED: fn(&mut Fighter, melee_types::ItemKind, u32) = crate::yoyo::retired;
+    /// Ness's yo-yo calls pass `yoyo_gobj`, never every owned yo-yo.
+    const ARTICLE_CONTROL_TARGET: fn(
+        &melee_ft::fighter::CharacterState,
+        melee_types::ItemKind,
+    ) -> melee_it::ArticleControlTarget = crate::yoyo::control_target;
+    /// The yo-yo's phys callbacks (itnessyoyo.c) step that instance's string.
+    const ARTICLE_PHYSICS: fn(&mut Fighter, u32, &FighterAssets, &mut melee_mp::CollMap) =
         crate::yoyo::article_physics;
     /// ftColl_CreateReflectHit(gobj, &xB8_BASEBALL_BAT, ftNs_AttackS4_OnReflect).
     const REFLECTOR_CONTACT: Option<melee_ft::fighter::reflection::CharacterContact> =
@@ -273,7 +281,7 @@ impl CharacterCallbacks for Ness {
     fn on_reset(&mut self) {
         self.model_group = 0;
         self.bat = false;
-        self.yoyo.out = false;
+        self.yoyo.current = None;
         self.pk_flash.flash_out = false;
         self.pk_thunder.thunder_out = false;
     }

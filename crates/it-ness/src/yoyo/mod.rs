@@ -53,6 +53,8 @@ impl ItemLogic for NessYoyo {
     const KIND: ItemKind = ItemKind::NessYoyo;
     const STATES: &'static [ItemStateRow] = &STATES;
     const OWNER_PHYSICS: bool = true;
+    // it_802BE958_inline calls the owner before its own model/GObj teardown.
+    const NOTICE_AT_ONCE: bool = true;
     fn pickup_possible(_item: &ItemCore) -> bool {
         false
     }
@@ -74,7 +76,10 @@ impl ItemLogic for NessYoyo {
                 );
             }
             // it_802BE958: Item_8026A8EC, Ness's side already undone.
-            ItemControl::Remove => item.destroyed = true,
+            ItemControl::Remove => {
+                item.owner_released = true;
+                item.destroyed = true;
+            }
             // it_802BE598 / it_802BE5B8 -> it_8026B724 / it_8026B73C.
             ItemControl::OwnerHitlag(frozen) => item.frozen = frozen,
             _ => unreachable!("{control:?} sent to Ness's yo-yo"),

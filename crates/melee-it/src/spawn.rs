@@ -134,6 +134,10 @@ pub enum ItemControl {
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ItemRequest {
+    /// A synchronous retail creation was queued earlier in this same batch.
+    ControlCurrent { kind: ItemKind, control: ItemControl },
+    /// A retail caller passes one concrete Item GObj, independent of owner/kind.
+    ControlInstance { item: u32, control: ItemControl },
     Spawn(SpawnItem),
     /// The requesting fighter's own Item_8026AE60 call: a new hit group id
     /// for the articles it spawns with [`ItemRequest::SpawnInGroup`].
@@ -455,4 +459,15 @@ impl LockOnTargets {
             && !fighter.disabled
             && !(owner_team.is_some() && fighter.team == owner_team)
     }
+}
+
+/// How a fighter names the article a concrete retail pointer call controls.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ArticleControlTarget {
+    /// Existing owner/kind routing for callers not keeping an instance binding.
+    Owned,
+    /// A current article pointer; None is a NULL pointer, never a broadcast.
+    Instance(Option<u32>),
+    /// The instance is the return value of a preceding queued creation.
+    PendingCreation,
 }

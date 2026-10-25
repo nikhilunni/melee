@@ -2193,6 +2193,20 @@ impl ItemPool {
     pub fn get_mut(&mut self, id: u32) -> Option<&mut ItemCore> {
         self.items.iter_mut().find(|i| i.id == id)
     }
+    /// A call naming one concrete Item GObj (Ness's `yoyo_gobj`), by its
+    /// pool identity, whatever other articles its owner has of the kind.
+    pub fn control_instance<D: ItemDispatch>(
+        &mut self,
+        id: u32,
+        control: ItemControl,
+        assets: &ItemAssets,
+        immediate: bool,
+    ) {
+        let item = self.get_mut(id).expect("control of a live article instance");
+        item.efasync_immediate = immediate;
+        (D::logic(item.kind).control)(item, control, assets);
+        item.efasync_immediate = false;
+    }
     pub fn control<D: ItemDispatch>(
         &mut self,
         owner: u8,

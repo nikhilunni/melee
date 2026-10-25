@@ -1651,6 +1651,19 @@ pub fn request(
             speed,
             motion,
         } => (spawn, Some((angle, speed, motion)), None),
+        ItemRequest::ControlCurrent { .. } => {
+            unreachable!("current article control must resolve after creation")
+        }
+        ItemRequest::ControlInstance { item, control } => {
+            let kind = pool.get_mut(item).expect("article instance control").kind;
+            pool.control_instance::<SceneItems>(
+                item,
+                control,
+                resources.get(kind),
+                owner_context.efasync_immediate,
+            );
+            return None;
+        }
         ItemRequest::Control {
             owner,
             kind,
@@ -2394,6 +2407,7 @@ pub fn article_destroyed(
         crate::scene_fighter::with_fighter!(fighter, |f| {
             if f.player.id == owner && f.player.secondary == secondary {
                 f.article_destroyed(item.kind);
+                f.article_retired(item.kind, item.id);
             }
         });
     }

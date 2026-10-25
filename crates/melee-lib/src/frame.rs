@@ -1325,7 +1325,7 @@ impl Runtime {
                     );
                     if let (true, Some(index)) = (runs, index) {
                         crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
-                            .article_physics(&state.assets.fighters[index], &mut state.map));
+                            .article_physics(id, &state.assets.fighters[index], &mut state.map));
                     }
                 }
                 let rng = std::cell::Cell::new(state.rng);
@@ -2875,6 +2875,19 @@ impl Runtime {
                 f.apply_pending_pickup_pose(&state.assets.fighters[slot]);
                 while !f.item_requests.is_empty() {
                     let mut request = f.item_requests.remove(0);
+                    if let melee_it::ItemRequest::ControlCurrent { kind, control } = request {
+                        // The earlier Spawn request has now published its
+                        // concrete return value. Never use the pre-spawn id.
+                        match (f.character.table().article_control_target)(&f.character, kind) {
+                            melee_it::ArticleControlTarget::Instance(Some(item)) => {
+                                request = melee_it::ItemRequest::ControlInstance { item, control };
+                            }
+                            melee_it::ArticleControlTarget::Instance(None) => continue,
+                            _ => unreachable!(
+                                "pending article control precedes its creation result"
+                            ),
+                        }
+                    }
                     match &mut request {
                         melee_it::ItemRequest::Spawn(spawn)
                         | melee_it::ItemRequest::SpawnInGroup(spawn)
@@ -2889,7 +2902,9 @@ impl Runtime {
                                 spawn.stale_source = f.combat.stale.attack()
                             }
                         }
-                        melee_it::ItemRequest::Control { .. }
+                        melee_it::ItemRequest::ControlCurrent { .. }
+                        | melee_it::ItemRequest::ControlInstance { .. }
+                        | melee_it::ItemRequest::Control { .. }
                         | melee_it::ItemRequest::NewHitGroup
                         | melee_it::ItemRequest::PickUp { .. }
                         | melee_it::ItemRequest::Throw { .. }
@@ -2917,6 +2932,10 @@ impl Runtime {
                         } => (hold, catch_item),
                         _ => (false, false),
                     };
+                    let controlled_instance = match request {
+                        melee_it::ItemRequest::ControlInstance { item, .. } => Some(item),
+                        _ => None,
+                    };
                     let spawned = crate::scene_items::request(
                         &mut state.items,
                         &mut state.effects.gobjs,
@@ -2941,6 +2960,22 @@ impl Runtime {
                     );
                     // The requests remove articles in retail's order.
                     state.items.note_destroyed();
+                    // A concrete-pointer removal calls its owner before the
+                    // next queued creation can replace that owner's binding.
+                    if let Some(item) = controlled_instance.and_then(|id| state.items.get_mut(id)) {
+                        let logic =
+                            <crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
+                                item.kind,
+                            );
+                        if item.destroyed && !item.owner_notified && logic.notice_at_once
+                            && (logic.notifies_owner)(item)
+                            && (logic.tracker)(item) == Some((f.player.id, f.player.secondary))
+                        {
+                            f.article_destroyed(item.kind);
+                            f.article_retired(item.kind, item.id);
+                            item.owner_notified = true;
+                        }
+                    }
                     // Item_8026A8EC's DestroyItemInline: a destroyed held
                     // item lets go of the hand (ftCommon_8007E6DC).
                     if let Some(held) = f.held_item {
@@ -2952,6 +2987,10 @@ impl Runtime {
                             f.core
                                 .release_held_item(held.item, &state.assets.fighters[slot]);
                         }
+                    }
+                    if let Some(id) = spawned {
+                        let kind = state.items.get_mut(id).expect("created article").kind;
+                        f.article_created(kind, id);
                     }
                     if let Some(id) = spawned.filter(|_| hold) {
                         let kind = state.items.iter().find(|i| i.id == id).unwrap().kind;
@@ -4464,12 +4503,7 @@ fn dispatch_fighter(
         None
     };
     if let Some((kind, frozen)) = article_hitlag {
-        let owner = f.player.id;
-        f.core.item_requests.push(melee_it::ItemRequest::Control {
-            owner,
-            kind,
-            control: melee_it::ItemControl::OwnerHitlag(frozen),
-        });
+        f.control_article(kind, melee_it::ItemControl::OwnerHitlag(frozen));
         if frozen {
             f.article_hitlag_begin();
         } else {

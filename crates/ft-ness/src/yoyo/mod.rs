@@ -115,8 +115,14 @@ pub struct YoyoScratch {
 #[derive(Clone, Debug, Default)]
 pub struct Yoyo {
     pub scratch: YoyoScratch,
-    /// u.ns.yoyo_gobj != NULL.
-    pub out: bool,
+    /// u.ns.yoyo_gobj: the current instance, independent of its live owner.
+    pub current: Option<u32>,
+    /// The synchronous retail creation is awaiting its scene pool result.
+    pub(crate) pending_spawn: bool,
+    /// The instance whose string occupies the working buffer, even if unbound.
+    working_item: Option<u32>,
+    /// Older live instances, each keeping its own ItemLink chain.
+    older_strings: Vec<StoredString>,
     /// u.ns.yoyo_hitbox_pos: where hitbox 0 goes. It outlives the smash.
     pub point: Vec3,
     /// smash_attrs.x2118_frames while state 4 (the yo-yo charge) runs.
@@ -129,14 +135,109 @@ pub struct Yoyo {
     pub string: YoyoString,
 }
 
+#[derive(Clone, Debug)]
+struct StoredString {
+    item: Option<u32>,
+    string: YoyoString,
+}
+
 impl Yoyo {
     pub fn new(attributes: YoyoAttributes) -> Self {
         Self {
             string: YoyoString::with_capacity(&attributes),
+            // ItemPool's real capacity bounds simultaneous Item GObjs. Reserve
+            // all link buffers now; spawning/retiring never allocates.
+            older_strings: (0..melee_it::ITEM_CAPACITY)
+                .map(|_| StoredString {
+                    item: None,
+                    string: YoyoString::with_capacity(&attributes),
+                })
+                .collect(),
             attributes,
             ..Default::default()
         }
     }
+    fn is_out(&self) -> bool {
+        self.current.is_some() || self.pending_spawn
+    }
+    fn prepare_spawn(&mut self) {
+        assert!(!self.pending_spawn, "two unresolved yo-yo creations");
+        if let Some(item) = self.working_item.take() {
+            let slot = self
+                .older_strings
+                .iter_mut()
+                .find(|slot| slot.item.is_none())
+                .expect("yo-yo instances exceed the Item pool capacity");
+            std::mem::swap(&mut slot.string, &mut self.string);
+            slot.item = Some(item);
+        }
+        self.pending_spawn = true;
+    }
+    fn created(&mut self, item: u32) {
+        assert!(
+            std::mem::take(&mut self.pending_spawn),
+            "unexpected yo-yo creation result"
+        );
+        self.working_item = Some(item);
+        self.current = Some(item);
+    }
+    fn retire(&mut self, item: u32) {
+        if self.working_item == Some(item) {
+            self.working_item = None;
+        } else if let Some(slot) = self
+            .older_strings
+            .iter_mut()
+            .find(|slot| slot.item == Some(item))
+        {
+            slot.item = None;
+        }
+    }
+    fn string_for_mut(&mut self, item: u32) -> &mut YoyoString {
+        if self.working_item == Some(item) {
+            &mut self.string
+        } else {
+            &mut self
+                .older_strings
+                .iter_mut()
+                .find(|slot| slot.item == Some(item))
+                .expect("live yo-yo has no instance string")
+                .string
+        }
+    }
+}
+
+/// Scene publication of it_802BE9D8's concrete return value (80115A4C).
+pub(crate) fn created(f: &mut Fighter, kind: ItemKind, item: u32) {
+    if kind == ItemKind::NessYoyo {
+        yoyo(f).created(item);
+    }
+}
+pub(crate) fn retired(f: &mut Fighter, kind: ItemKind, item: u32) {
+    if kind == ItemKind::NessYoyo {
+        yoyo(f).retire(item);
+    }
+}
+/// The yo-yo calls' target: `yoyo_gobj`, or the creation still queued in
+/// this tick's requests (retail's it_802BE9D8 returns synchronously).
+pub(crate) fn control_target(
+    state: &melee_ft::fighter::CharacterState,
+    kind: ItemKind,
+) -> melee_it::ArticleControlTarget {
+    if kind != ItemKind::NessYoyo {
+        return melee_it::ArticleControlTarget::Owned;
+    }
+    let yoyo = &state.get::<Ness>().yoyo;
+    if yoyo.pending_spawn {
+        melee_it::ArticleControlTarget::PendingCreation
+    } else {
+        melee_it::ArticleControlTarget::Instance(yoyo.current)
+    }
+}
+/// ftNs_AttackHi4_YoyoItemSetFlag: thaw current pointer, then NULL it.
+/// No comparison with the ending instance exists in retail.
+pub(crate) fn clear_current(f: &mut Fighter) {
+    request(f, ItemControl::OwnerHitlag(false));
+    yoyo(f).current = None;
 }
 
 pub(crate) fn yoyo(f: &mut Fighter) -> &mut Yoyo {
@@ -147,12 +248,7 @@ fn is_up(f: &Fighter) -> bool {
 }
 
 fn request(f: &mut Fighter, control: ItemControl) {
-    let owner = f.player.id;
-    f.core.item_requests.push(ItemRequest::Control {
-        owner,
-        kind: ItemKind::NessYoyo,
-        control,
-    });
+    f.control_article(ItemKind::NessYoyo, control);
 }
 
 /// ft_80088510(fp, id, 127, 64): the fighter's effect channel.
@@ -377,6 +473,7 @@ fn spawn_yoyo(f: &mut Fighter, map: &CollMap) {
         f.physics.facing
     };
     let scale = f.player.scale;
+    yoyo(f).prepare_spawn();
     yoyo(f).string.lay_out(hand, motion, facing, scale, map);
     let mut spawn = SpawnItem::attached(ItemKind::NessYoyo, f.player.id, hand, facing);
     // it_802BE65C: one ItemLink GObj per link.
@@ -388,7 +485,6 @@ fn spawn_yoyo(f: &mut Fighter, map: &CollMap) {
         catch_item: false,
         scale_by_owner: false,
     });
-    yoyo(f).out = true;
     common::install_damage_callbacks(f);
     f.effect_state.article_hitlag = Some(ItemKind::NessYoyo);
 }
@@ -396,8 +492,11 @@ fn spawn_yoyo(f: &mut Fighter, map: &CollMap) {
 /// it_802BE958 from Ness's side (ftNs_AttackHi4_YoyoItemDespawn,
 /// 80115AF8): the article goes and Ness lets go of it.
 pub fn despawn(f: &mut Fighter) {
-    if std::mem::take(&mut yoyo(f).out) {
+    if yoyo(f).is_out() {
+        // it_802BE958's owner helper thaws before clearing the pointer.
+        request(f, ItemControl::OwnerHitlag(false));
         request(f, ItemControl::Remove);
+        yoyo(f).current = None;
     }
 }
 
@@ -420,7 +519,7 @@ fn step_article(f: &mut Fighter, map: &CollMap) -> bool {
     let end = if up { UP_END_FRAME } else { DOWN_END_FRAME };
     let frame = yoyo(f).scratch.frame;
     if frame > SPAWN_FRAME && frame <= end {
-        if !yoyo(f).out {
+        if !yoyo(f).is_out() {
             // Unreachable by retail's call graph (docs/COVERAGE_AUDIT.md).
             unimplemented!(
                 "ftnessattackhi4.c:460: ftNs_AttackHi4_YoyoThink_IsRemove reads the article of a NULL yoyo_gobj"
@@ -465,7 +564,7 @@ fn step_article(f: &mut Fighter, map: &CollMap) -> bool {
 /// charge's colour animation and sound.
 fn begin_charge(f: &mut Fighter, assets: &FighterAssets) {
     yoyo(f).scratch.frame = 0;
-    if yoyo(f).out {
+    if yoyo(f).is_out() {
         let facing = f.physics.facing;
         let a = &yoyo(f).attributes;
         // retail 801156C0: fmuls.
@@ -562,7 +661,7 @@ fn enter_release(f: &mut Fighter, state: ActionId, assets: &FighterAssets) -> Re
     f.change_motion_state_with_flags(state, assets, CHARGE_FLAGS, RELEASE_START_FRAME, 1.0)?;
     f.step_animation(assets);
     yoyo(f).scratch.frame = RELEASE_FRAME;
-    if yoyo(f).out {
+    if yoyo(f).is_out() {
         send_out(f);
     }
     play_effect_sound(f, RELEASE_SOUND);
@@ -684,8 +783,8 @@ fn collision(f: &mut Fighter, p: CollisionPhase<'_>) -> Result<()> {
 /// point (it_802BF28C), motion 2 swings it (it_802BF4A0); either way the
 /// yo-yo's link then gives the point (it_802BFAFC). Motion 0's
 /// it_802BF900 only poses the first link's model.
-pub fn article_physics(f: &mut Fighter, _assets: &FighterAssets, map: &mut CollMap) {
-    let motion_now = yoyo(f).string.motion;
+pub fn article_physics(f: &mut Fighter, item: u32, _assets: &FighterAssets, map: &mut CollMap) {
+    let motion_now = yoyo(f).string_for_mut(item).motion;
     match motion_now {
         motion::HELD => {}
         motion::TETHERED => {
@@ -693,19 +792,86 @@ pub fn article_physics(f: &mut Fighter, _assets: &FighterAssets, map: &mut CollM
             let scale = f.player.scale;
             let y = yoyo(f);
             let point = y.point;
-            y.string.tether(&y.attributes, point, hand, scale);
-            y.point = y.string.yoyo().position;
+            let attributes = y.attributes;
+            let string = y.string_for_mut(item);
+            string.tether(&attributes, point, hand, scale);
+            y.point = string.yoyo().position;
         }
         motion::SWINGING => {
             let hand = hand_point(f);
             let scale = f.player.scale;
             let y = yoyo(f);
-            y.string.swing(&y.attributes, hand, scale, map);
-            y.point = y.string.yoyo().position;
+            let attributes = y.attributes;
+            let string = y.string_for_mut(item);
+            string.swing(&attributes, hand, scale, map);
+            y.point = string.yoyo().position;
         }
         // Motion 3 ends with the article in the same call (docs/COVERAGE_AUDIT.md).
         _ => unimplemented!(
             "itnessyoyo.c:255: itNessyoyo_UnkMotion3_Phys (the yo-yo reeled in, it_802BF800)"
         ),
+    }
+}
+
+#[cfg(test)]
+mod binding_tests {
+    use super::*;
+
+    fn yoyo() -> Yoyo {
+        Yoyo::new(YoyoAttributes {
+            links: 4,
+            ..Default::default()
+        })
+    }
+    /// Spawn one instance whose string is marked by `owner_motion`.
+    fn spawn(y: &mut Yoyo, item: u32, mark: u16) {
+        y.prepare_spawn();
+        y.string.owner_motion = mark;
+        y.created(item);
+    }
+
+    /// The witness w25_ness_yoyo_overlap_v02: a second smash replaces the
+    /// binding (877) while the first instance keeps its own string; the
+    /// bound one ends (924), then the older one (925).
+    #[test]
+    fn a_new_yoyo_replaces_the_binding_and_each_keeps_its_string() {
+        let mut y = yoyo();
+        spawn(&mut y, 10, 345);
+        spawn(&mut y, 11, 342);
+        assert_eq!(y.current, Some(11));
+        assert_eq!(y.string_for_mut(10).owner_motion, 345);
+        assert_eq!(y.string_for_mut(11).owner_motion, 342);
+        y.current = None;
+        y.retire(11);
+        assert_eq!(y.string_for_mut(10).owner_motion, 345);
+        y.retire(10);
+        assert!(y.older_strings.iter().all(|slot| slot.item.is_none()));
+        assert_eq!(y.working_item, None);
+    }
+
+    /// A retired instance's storage is reused without aliasing a later id.
+    #[test]
+    fn retired_string_storage_is_reused_by_later_instances() {
+        let mut y = yoyo();
+        for id in 0..(3 * melee_it::ITEM_CAPACITY as u32) {
+            spawn(&mut y, id, id as u16);
+            if let Some(previous) = id.checked_sub(1) {
+                assert_eq!(y.string_for_mut(previous).owner_motion, previous as u16);
+                y.retire(previous);
+            }
+        }
+    }
+
+    /// it_802BE9D8 returns synchronously: from the queued creation on,
+    /// Ness's yo-yo is out, and its result becomes `yoyo_gobj`.
+    #[test]
+    fn a_queued_creation_is_out_until_its_result_binds() {
+        let mut y = yoyo();
+        assert!(!y.is_out());
+        y.prepare_spawn();
+        assert!(y.is_out() && y.pending_spawn && y.current.is_none());
+        y.created(7);
+        assert!(y.is_out() && !y.pending_spawn);
+        assert_eq!(y.current, Some(7));
     }
 }

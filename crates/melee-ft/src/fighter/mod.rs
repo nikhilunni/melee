@@ -326,10 +326,24 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
         &assets::FighterAssets,
         &mut melee_mp::CollMap,
     ) -> Option<u16> = character::no_article_accessory;
+    /// An article this fighter requested was created: the concrete Item
+    /// GObj its creation call returned (Ness stores it as `yoyo_gobj`,
+    /// ftNs_AttackHi4_YoyoCreateItem 80115A4C).
+    const ARTICLE_CREATED: fn(&mut Fighter, melee_types::ItemKind, u32) = |_, _, _| {};
+    /// An article this fighter owns ended (after `ARTICLE_DESTROYED`): the
+    /// instance id, for owners keeping per-instance state.
+    const ARTICLE_RETIRED: fn(&mut Fighter, melee_types::ItemKind, u32) = |_, _, _| {};
+    /// Which article a control of `kind` reaches: every owned article of
+    /// the kind (the default), or the one instance the fighter's pointer
+    /// names (Ness's `yoyo_gobj`).
+    const ARTICLE_CONTROL_TARGET: fn(
+        &CharacterState,
+        melee_types::ItemKind,
+    ) -> melee_it::ArticleControlTarget = |_, _| melee_it::ArticleControlTarget::Owned;
     /// The phys_cb of an article whose kind leaves it to its owner
     /// (melee_it::ItemLogic::OWNER_PHYSICS), at item link 4: the owner's
-    /// work on it (Ness's yo-yo string, itnessyoyo.c).
-    const ARTICLE_PHYSICS: fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap) =
+    /// work on that instance (Ness's yo-yo string, itnessyoyo.c).
+    const ARTICLE_PHYSICS: fn(&mut Fighter, u32, &assets::FighterAssets, &mut melee_mp::CollMap) =
         character::no_article_physics;
     /// The rest of an article's post-hitlag callback
     /// (`effect_state.article_hitlag`), after the article thaws.
@@ -1089,8 +1103,41 @@ impl Fighter {
         (self.character.table().article_accessory)(self, assets, map)
     }
     /// An owner-driven article's phys_cb (`ARTICLE_PHYSICS`).
-    pub fn article_physics(&mut self, assets: &assets::FighterAssets, map: &mut melee_mp::CollMap) {
-        (self.character.table().article_physics)(self, assets, map)
+    pub fn article_physics(
+        &mut self,
+        item: u32,
+        assets: &assets::FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) {
+        (self.character.table().article_physics)(self, item, assets, map)
+    }
+    /// `ARTICLE_CREATED`.
+    pub fn article_created(&mut self, kind: melee_types::ItemKind, item: u32) {
+        (self.character.table().article_created)(self, kind, item)
+    }
+    /// `ARTICLE_RETIRED`.
+    pub fn article_retired(&mut self, kind: melee_types::ItemKind, item: u32) {
+        (self.character.table().article_retired)(self, kind, item)
+    }
+    /// Queue a control of this fighter's article of `kind`, routed by
+    /// `ARTICLE_CONTROL_TARGET`. A NULL instance pointer controls nothing;
+    /// it never widens to every article of the kind.
+    pub fn control_article(&mut self, kind: melee_types::ItemKind, control: melee_it::ItemControl) {
+        use melee_it::{ArticleControlTarget, ItemRequest};
+        let request = match (self.character.table().article_control_target)(&self.character, kind)
+        {
+            ArticleControlTarget::Owned => ItemRequest::Control {
+                owner: self.player.id,
+                kind,
+                control,
+            },
+            ArticleControlTarget::Instance(Some(item)) => {
+                ItemRequest::ControlInstance { item, control }
+            }
+            ArticleControlTarget::Instance(None) => return,
+            ArticleControlTarget::PendingCreation => ItemRequest::ControlCurrent { kind, control },
+        };
+        self.core.item_requests.push(request);
     }
     /// The installed article post-hitlag callback's own work.
     pub fn article_hitlag_begin(&mut self) {

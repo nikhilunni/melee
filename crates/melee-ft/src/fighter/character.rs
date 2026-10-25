@@ -155,7 +155,11 @@ pub struct CharacterTable {
     pub owner_blast: fn(&mut Fighter, &melee_it::OwnerBlast, &assets::FighterAssets),
     pub article_accessory:
         fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap) -> Option<u16>,
-    pub article_physics: fn(&mut Fighter, &assets::FighterAssets, &mut melee_mp::CollMap),
+    pub article_created: fn(&mut Fighter, melee_types::ItemKind, u32),
+    pub article_retired: fn(&mut Fighter, melee_types::ItemKind, u32),
+    pub article_control_target:
+        fn(&CharacterState, melee_types::ItemKind) -> melee_it::ArticleControlTarget,
+    pub article_physics: fn(&mut Fighter, u32, &assets::FighterAssets, &mut melee_mp::CollMap),
     pub article_hitlag_end: fn(&mut Fighter),
     pub article_hitlag_begin: fn(&mut Fighter),
     pub article_request: fn(
@@ -304,6 +308,9 @@ impl CharacterTable {
             article_destroyed: C::ARTICLE_DESTROYED,
             owner_blast: C::OWNER_BLAST,
             article_accessory: C::ARTICLE_ACCESSORY,
+            article_created: C::ARTICLE_CREATED,
+            article_retired: C::ARTICLE_RETIRED,
+            article_control_target: C::ARTICLE_CONTROL_TARGET,
             article_physics: C::ARTICLE_PHYSICS,
             article_hitlag_end: C::ARTICLE_HITLAG_END,
             article_hitlag_begin: C::ARTICLE_HITLAG_BEGIN,
@@ -588,6 +595,7 @@ pub(super) fn no_article_accessory(
 /// Only Ness's yo-yo leaves its physics to its owner (`OWNER_PHYSICS`).
 pub(super) fn no_article_physics(
     fighter: &mut Fighter,
+    _item: u32,
     _assets: &assets::FighterAssets,
     _map: &mut melee_mp::CollMap,
 ) {
