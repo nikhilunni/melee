@@ -38,8 +38,22 @@ lipstick 5 (the motion states' order too).
   attributes at spawn (xD4C); the swing's accessory4 plays the script's
   sound, and on throw flag b0 spawns a star at the rod's tip with flash
   0x42E (generator 0x13C, facing). The empty rod's puff (1032) is guarded.
-- **Lip's Stick** and **Parasol**: still fail closed at fn_800CCEC4.
+  An item's destroy effect on a facing row (the star's 0x3F0) takes the
+  item's facing (it_80278800's block_4FC); it took 1.0 before.
+- **Lip's Stick**: still fails closed (random spawn and fn_800CCEC4). A
+  drafted port (item, spore, ft_800CDB9C) reproduced the cold boundary only
+  to tick 269, where the first falling stick's y is 4.69856 against retail
+  4.71543 (the cause is not isolated yet; first suspect: it_80276278 aims
+  the ECB with it_80274990, the root JObj's rotation, where the port reads
+  only the item's spin). A thrown stick's first contact also releases a
+  spore (it_8029A218). Both need porting before the kind can be admitted.
+- **Parasol**: still fails closed; its ItemParasolOpen/Fall fighter states
+  stay guarded in `parasol.rs`.
 
 New Item Switch boundaries (`make_boundary.py --items <kind>
 --no-containers`): `start_fd_items_{bat,harisen,starrod,lipstick,parasol}`;
 the last two stay unregistered (the cold gate meets the unported kind).
+
+Checks: full sweep against `f570da10` (3,729 scenarios in the main
+checkout): zero regressions, one fix (`corpus_v3_ps_bowser_ness4_edb5ae9dd_p0`);
+`public-v3.7` replays 108/108 complete, 964,782 frames matched.
