@@ -30,6 +30,7 @@ mod stage_kongo;
 mod stage_kraid;
 mod stage_yorster;
 mod stage_inishie1;
+mod stage_onett;
 mod stock;
 use hsd_types::Vec3;
 /// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
@@ -397,6 +398,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::Kraid {
             stage_kraid::restore_collision(&saved, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::Onett {
+            stage_onett::restore_collision(&saved, &assets, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;
@@ -786,6 +790,15 @@ impl InitialState {
             fighters.iter().map(|f| (f.player.id, f.player.team)),
         );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
+        // Onett's cars' material items, rebuilt on their bones.
+        crate::scene_stage::onett::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
         // Mushroom Kingdom's bricks' material items, rebuilt on their bones.
         crate::scene_stage::inishie1::spawn_items(
             &mut stage,

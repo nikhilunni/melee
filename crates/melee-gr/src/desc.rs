@@ -310,6 +310,44 @@ pub fn read_inishie1_parameters(archive: &Archive) -> ReadResult<crate::inishie1
         lift_settle_speed: r.f32(p + 0x50)?,
     })
 }
+/// grOt_StageData / grDatFiles_801C6038: GrOt.dat. grOt_803E27E0[5]
+/// carries flags 0xC0000000, so map 5 selects the lights and fog.
+pub fn read_onett(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Onett, 5)
+}
+/// `grOnett_StageParam` (gronett.c:64-91) as the asm reads it.
+pub fn read_onett_parameters(archive: &Archive) -> ReadResult<crate::onett::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    // The car timers are floats the asm converts (fctiwz) where it reads them.
+    let i = |at: u32| -> ReadResult<i32> { Ok(gekko_math::msl::fctiwz(r.f32(p + at)?)) };
+    Ok(crate::onett::Parameters {
+        awning_initial: f(0x0)?,
+        max_velocity: f(0x4)?,
+        vel_threshold: f(0x8)?,
+        pos_threshold: f(0xC)?,
+        damping: f(0x10)?,
+        spring_force: f(0x14)?,
+        spring_constant: f(0x18)?,
+        max_displacement: f(0x1C)?,
+        awning_delta: f(0x20)?,
+        smoke_pause: [f(0x24)?, f(0x28)?],
+        smoke_puff: [f(0x2C)?, f(0x30)?],
+        roof_crack: f(0x34)?,
+        roof_break: f(0x38)?,
+        roof_wait: [f(0x3C)?, f(0x40)?],
+        car_wait: i(0x44)?,
+        car_announce: i(0x48)?,
+        car_delay_middle: i(0x4C)?,
+        car_delay_last: i(0x50)?,
+        car_speed_base: f(0x54)?,
+        car_speed_range: f(0x58)?,
+        car_spin: f(0x5C)?,
+        warning_ticks: i(0x60)?,
+        horn_lead: f(0x64)?,
+    })
+}
 /// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
 /// carries flags 0xC0000000, so map 1 selects the lights and fog.
 pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {

@@ -1553,6 +1553,16 @@ impl Runtime {
                             .then_some((item.hit_by, item.hit_by_secondary));
                         (item.pending_damage_taken, fighter)
                     });
+                // Its DmgDealt calls yaku.x14 when no hit taken, shield or
+                // clank came first (Item_8026A294's order).
+                let material_dealt = state.items.get_mut(id).is_some_and(|item| {
+                    kind == melee_types::ItemKind::PokemonRandom
+                        && item.pending_knockback == 0.0
+                        && item.pending_damage_taken == 0
+                        && item.pending_shield_damage == 0
+                        && item.pending_clank_damage == 0
+                        && (item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0)
+                });
                 let rng = std::cell::Cell::new(state.rng);
                 state.items.process_events_with_stale::<SceneItems>(
                     id,
@@ -1568,6 +1578,9 @@ impl Runtime {
                         crate::scene_items::owner_index(&state.fighters, slot, secondary)
                     });
                     crate::scene_stage::material_hit(state, id, fighter, damage)?;
+                }
+                if material_dealt {
+                    crate::scene_stage::material_dealt(state, id);
                 }
             }
             13 => self.detect_item_hurts(id),
@@ -1780,6 +1793,10 @@ impl Runtime {
                             // then Ground_801C0C2C's own GObj (ground.c:708).
                             let [on_start, ground] = *state.stage.start_gobjs();
                             state.effects.gobjs.create(on_start);
+                            if matches!(state.stage, SceneStage::Onett(_)) {
+                                // grOnett_801E41B0, then grOnett_801E3930.
+                                crate::scene_stage::onett::start(state);
+                            }
                             if matches!(state.stage, SceneStage::Yorster(_)) {
                                 // grYorster_80202160: the blocks.
                                 crate::scene_stage::yorster::start(
@@ -1828,6 +1845,8 @@ impl Runtime {
                     SceneStage::Stadium(stage) => stage.screen.subject.as_mut(),
                     // grFourside_801F3894: the arriving UFO.
                     SceneStage::Fourside(stage) => stage.ufo.subject.as_mut(),
+                    // grOnett_801E3930: lane A's subject.
+                    SceneStage::Onett(stage) => stage.subject.as_mut(),
                     _ => None,
                 };
                 let items = state.items.iter_mut().rev().filter_map(|i| i.camera.as_mut());
@@ -2733,6 +2752,7 @@ impl Runtime {
                         || address == melee_gr::kraid::procs::DYNAMICS_PROC
                         || address == melee_gr::yorster::procs::DYNAMICS_PROC
                         || address == melee_gr::inishie1::procs::DYNAMICS_PROC
+                        || address == melee_gr::onett::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -2798,6 +2818,8 @@ impl Runtime {
                         crate::scene_stage::yorster::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Inishie1(_)) {
                         crate::scene_stage::inishie1::run_proc(state, map_id)?;
+                    } else if matches!(state.stage, SceneStage::Onett(_)) {
+                        crate::scene_stage::onett::run_proc(state, map_id, &mut self.particle_draws)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and

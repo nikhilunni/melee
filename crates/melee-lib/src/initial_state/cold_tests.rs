@@ -156,6 +156,9 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.barrel_position.y", &stage.barrel_position.y);
         }
         SceneStage::Shrine(_) => {}
+        SceneStage::Onett(stage) => {
+            sink.field("stage.onett.smoke_timer", &stage.smoke.timer);
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -379,6 +382,11 @@ fn start_bd_fox_marth4_cold_600() {
 #[test]
 fn start_fs_fox_marth4_cold_600() {
     verify("start_fs_fox_marth4");
+}
+
+#[test]
+fn start_onett_fox_marth4_cold_600() {
+    verify("start_onett_fox_marth4");
 }
 
 #[test]

@@ -1945,3 +1945,12 @@ stage = "MushroomKingdom"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2539962926
+
+[[boundary]]
+name = "start_onett_fox_marth4"
+cold = "start_onett_fox_marth4_cold"
+savestate = "harness/roms/start_onett_fox_marth4.sav"
+stage = "Onett"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2153958186

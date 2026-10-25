@@ -10,6 +10,7 @@ pub(crate) mod kongo;
 pub(crate) mod last;
 pub(crate) mod oldkongo;
 pub(crate) mod oldyoshi;
+pub(crate) mod onett;
 pub(crate) mod pupupu;
 pub(crate) mod shrine;
 pub(crate) mod stadium;
@@ -221,6 +222,14 @@ pub const MUSHROOM_KINGDOM: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Inishie1,
     read: melee_gr::desc::read_inishie1,
 };
+/// grOt_StageData: GrOt.dat; StageParam row 0x09 (StKind).
+pub const ONETT: StageDescriptor = StageDescriptor {
+    name: "Onett",
+    file: "GrOt.dat",
+    music_id: 0x09,
+    kind: melee_types::GrKind::Onett,
+    read: melee_gr::desc::read_onett,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -239,6 +248,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &FLAT_ZONE,
         &YOSHIS_ISLAND,
         &MUSHROOM_KINGDOM,
+        &ONETT,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -261,6 +271,7 @@ pub enum SceneStage {
     FlatZone(Box<melee_gr::flatzone::FlatZone>),
     Yorster(Box<melee_gr::yorster::procs::YorsterStage>),
     Inishie1(Box<melee_gr::inishie1::procs::Inishie1Stage>),
+    Onett(Box<melee_gr::onett::procs::OnettStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -271,7 +282,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -292,6 +303,7 @@ impl SceneStage {
             Self::FlatZone(s) => s.proc_table(),
             Self::Yorster(s) => s.proc_table(),
             Self::Inishie1(s) => s.proc_table(),
+            Self::Onett(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -330,6 +342,7 @@ impl SceneStage {
             Self::FlatZone(_) => unreachable!("Flat Zone callbacks require animation state"),
             Self::Yorster(_) => unreachable!("Yoshi's Island callbacks run in scene_stage::yorster"),
             Self::Inishie1(_) => unreachable!("Mushroom Kingdom callbacks run in scene_stage::inishie1"),
+            Self::Onett(_) => unreachable!("Onett callbacks run in scene_stage::onett"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -373,5 +386,12 @@ pub(crate) fn material_hit(
         }
         SceneStage::Inishie1(_) => inishie1::material_hit(state, item),
         _ => Ok(()),
+    }
+}
+
+/// A stage material item's damage-dealt callback (yaku.x14).
+pub(crate) fn material_dealt(state: &mut crate::initial_state::InitialState, item: u32) {
+    if let SceneStage::Onett(_) = state.stage {
+        onett::car_struck(state, item);
     }
 }

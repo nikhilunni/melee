@@ -188,6 +188,7 @@ impl InitialState {
                 | SceneStage::FlatZone(_)
                 | SceneStage::Yorster(_)
                 | SceneStage::Inishie1(_)
+                | SceneStage::Onett(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -257,6 +258,15 @@ impl InitialState {
             scenario.fighters.iter().map(|f| (f.slot, f.team)),
         );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
+        // grOnett_801E41C8: the cars' material items.
+        crate::scene_stage::onett::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
         // grInishie1_801FAD84: the bricks' material items.
         crate::scene_stage::inishie1::spawn_items(
             &mut stage,
@@ -412,6 +422,8 @@ fn setup_draws(
         GrKind::Yorster => 0,
         // grInishie1_801FAD84 draws only with items on (the `?` blocks).
         GrKind::Inishie1 => 0,
+        // grOnett_801E3A34's smoke pause, grOnett_801E41C8's HSD_Randi(4).
+        GrKind::Onett => 2,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -668,6 +680,12 @@ fn initialize_stage(
         }
         GrKind::Yorster => {
             let (stage, animations) = crate::scene_stage::yorster::initialize(assets, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Onett => {
+            let (stage, animations) =
+                crate::scene_stage::onett::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

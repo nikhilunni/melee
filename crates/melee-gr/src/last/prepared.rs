@@ -191,6 +191,26 @@ impl BackgroundAnimation {
     pub fn set_joint_translate_y(&mut self, bone: usize, y: f32) {
         self.tree.set_translate_y(self.joints[bone], y);
     }
+    /// `HSD_JObjSetTranslateX` of a model bone.
+    pub fn set_joint_translate_x(&mut self, bone: usize, x: f32) {
+        self.tree.set_translate_x(self.joints[bone], x);
+    }
+    /// `HSD_JObjSetTranslateZ` of a model bone.
+    pub fn set_joint_translate_z(&mut self, bone: usize, z: f32) {
+        self.tree.set_translate_z(self.joints[bone], z);
+    }
+    /// `HSD_JObjSetRotationY` of a model bone.
+    pub fn set_joint_rotation_y(&mut self, bone: usize, y: f32) {
+        self.tree.set_rotation_y(self.joints[bone], y);
+    }
+    /// `lb_8000B1CC(bone, &offset, &out)` (0x8000B1CC): `offset` in the
+    /// bone's world frame (PSMTXMultVec).
+    pub fn joint_point(&mut self, bone: usize, offset: hsd_types::Vec3) -> hsd_types::Vec3 {
+        let matrix = self.joint_matrix(bone);
+        let mut out = hsd_types::Vec3::ZERO;
+        hsd_anim::mtx::mtx_mult_vec(&matrix, &offset, &mut out);
+        out
+    }
     /// `HSD_JObjGetFlags(bone) & JOBJ_HIDDEN`.
     pub fn joint_hidden(&self, bone: usize) -> bool {
         self.tree.flags(self.joints[bone]) & hsd_anim::jobj::JOBJ_HIDDEN != 0

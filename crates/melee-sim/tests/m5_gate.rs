@@ -5389,7 +5389,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 855] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 866] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6771,6 +6771,21 @@ static CORPUS_V3_MATCHES: [(&str, usize); 855] = [
     // (ifMagnify_IsHUDVisible, hud_enabled).
     ("corpus_v3_mk_fox_marth4_e00f31913_p0", 452),
     ("corpus_v3_mk_fox_marth4_e9943b4ab_p1", 205),
+    // Onett (gronett.c): the awnings' springs and puffs, the chimney smoke,
+    // the roof cracking, breaking, blinking and rebuilt, lane A's cars
+    // (the leader's and the last player's delays, the horn, struck cars
+    // spun or let pass) and lane B in the background.
+    ("corpus_v3_onett_fox_marth4_e19f8579b_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_e573e2d95_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_ec13743d5_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_e7ff378da_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_eeda0d0fc_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_e3e74affa_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_e50814092_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_e1611c835_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_ee133b82f_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_e89a89d0e_p0", 6001),
+    ("corpus_v3_onett_fox_marth4_e9943b4ab_p0", 6001),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

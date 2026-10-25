@@ -1242,6 +1242,14 @@ fn start_mk_fox_marth4_600() {
     movement_gate_ticks("start_mk_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_mk_fox_marth4", 600, "ledger600");
 }
+/// Onett's start boundary: the smoke's first pause and the cars' discarded
+/// draw at creation, the cars released when the countdown ends.
+#[test]
+fn start_onett_fox_marth4_600() {
+    movement_gate_ticks("start_onett_fox_marth4", 600);
+    movement_gate_ticks("start_onett_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_onett_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

@@ -167,3 +167,69 @@ mod tests {
         }
     }
 }
+
+/// What `Camera_800307D0` reports: where the camera's view meets the
+/// stage plane (z = 0) on the left, in the middle and on the right.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct GroundView {
+    pub left: f32,
+    pub center: f32,
+    pub right: f32,
+    /// False when the view direction is (nearly) parallel to an axis.
+    pub valid: bool,
+}
+
+/// `Camera_800307D0` (0x800307D0): cast the view direction and the two
+/// horizontal frustum edges (half the vertical fov times the aspect) from
+/// the eye to the z = 0 plane. 0x80030828..38: two fmuls, then the double
+/// 0.5 * x rounded once; 0x800308D8 / 0x80030948 / 0x800309E4 fnmsubs;
+/// 0x80030904 / 0x800309A0 fmsubs and 0x80030908 / 0x800309A4 fmadds.
+#[allow(clippy::neg_cmp_op_on_partial_ord)] // fcmpo; ble: NaN takes the other branch.
+pub fn ground_view(camera: &PerspectiveCamera) -> GroundView {
+    use gekko_math::fma::{fmadds, fmsubs, fnmsubs};
+    use gekko_math::msl::{cosf, sinf};
+    /// `@2414` / `@2415`: an edge that never meets the plane.
+    const FAR: f32 = 8.507_059e37;
+    /// `@2412`: 1e-4, compared in double.
+    const EPSILON: f64 = 1e-4;
+    let half_fov = (0.5 * f64::from(
+        hsd_anim::cobj::DEGREES_TO_RADIANS * camera.fov * camera.aspect,
+    )) as f32;
+    let eye = camera.eye;
+    let forward = camera.eye_vector().unwrap_or(Vec3::new(0.0, 0.0, -1.0));
+    let magnitude = |v: f32| f64::from(if v < 0.0 { -v } else { v });
+    // fcmpo; ble: a NaN magnitude goes on.
+    if magnitude(forward.x) <= EPSILON || magnitude(forward.z) <= EPSILON {
+        return GroundView {
+            left: -FAR,
+            center: 0.0,
+            right: FAR,
+            valid: false,
+        };
+    }
+    // 0x800308A4..BC: three fmuls by -1.0, exact negations.
+    let forward = Vec3::new(-forward.x, -forward.y, -forward.z);
+    let center = fnmsubs(forward.x, eye.z / forward.z, eye.x);
+    let edge = |angle: f32| {
+        let s = sinf(angle);
+        let c = cosf(angle);
+        let edge_z = fmsubs(forward.z, c, forward.x * s);
+        let edge_x = fmadds(forward.x, c, forward.z * s);
+        // `same_side`: fmuls, then `> 0.0` in double (@2413).
+        if !(magnitude(edge_z) <= EPSILON) && !(f64::from(forward.z * edge_z) <= 0.0) {
+            fnmsubs(edge_x, eye.z / edge_z, eye.x)
+        } else if !(edge_x <= 0.0) {
+            FAR
+        } else {
+            -FAR
+        }
+    };
+    let left = edge(half_fov);
+    let right = edge(-half_fov);
+    GroundView {
+        left,
+        center,
+        right,
+        valid: true,
+    }
+}

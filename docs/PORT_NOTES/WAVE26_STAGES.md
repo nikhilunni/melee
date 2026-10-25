@@ -111,3 +111,35 @@ lifts' floor calls.
 - Open: corpus_v3_mk_fox_marth4_e19f8579b_p0 diverges at tick 238 by
   0.0015 in y as Fox's Illusion carries him off a descending lift (pos_delta
   and the lift match retail); a moving-floor collision case, not stage code.
+
+## Onett (gronett.c)
+
+Creation order 0, 2, 5, 4, 3; two setup draws (the smoke's first pause,
+rand_range(1200, 600), and grOnett_801E41C8's discarded HSD_Randi(4)).
+Ground_801C10B8's deferred list runs newest first at the stage's start:
+grOnett_801E41B0 (the cars may go), then grOnett_801E3930 (the awnings'
+floor callbacks, lane A's camera subject, extents -40/40/20/-20).
+
+- Awnings (grOnett_801E5214): a spring per awning (0x801E52B4 fnmsubs /
+  0x801E52C0 fmadds), sagged by each caller (grOnett_801E54B4), a puff
+  (grLib_801C9808 0x7533) when the callers changed, cooled down 10 ticks.
+- Smoke (grOnett_801E5538): a generator on bone 6 at (15.75, 40, 28.25)
+  through grLib_801C96F8, puffing and pausing on rand_range timers.
+- Roof (grOnett_801E3DA0): landings (ground_kind 1 on joints 3, 4) crack
+  it at roof_crack and break it at roof_break; broken, its joints drop at
+  frames 0x14 and 0x5A, it waits lo + (hi - lo) * HSD_Randf (0x801E3F5C
+  fmadds), blinks 60 ticks and comes back with its joints.
+- Cars (grOnett_801E43E0): lane A waits car_wait, picks its speed
+  (0x801E46C8 fmadds) and turns its item's hit on, comes at once for a
+  leader on the street (gm_8016C6C0, the port's standing rank), after
+  car_delay_last for the last, car_delay_middle otherwise; past the camera's
+  right edge plus horn_lead (Camera_800307D0, now melee_cm::view::ground_view)
+  with someone on the street it draws the horn (HSD_Randi(3)) and frames the
+  subject. A hit it deals (grOnett_801E5030, yaku.x14 after DmgDealt) speeds
+  it up and spins it (state 4, common-bank smoke 0x2C on its second bone) or
+  lets it pass (state 6). Lane B drives harmless in the background. The
+  cars' generators and the awnings' read the bones this proc moved, so the
+  maps republish their joint matrices after it.
+- Open: corpus_v3_onett_fox_marth4_ef89b3e70_p0 diverges at tick 3745 by
+  one ulp in Fox's x while he slides on the roof as its crack animation
+  plays (line 46, joint 3).

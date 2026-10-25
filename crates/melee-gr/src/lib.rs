@@ -13,6 +13,7 @@ pub mod kraid;
 pub mod kongo;
 pub mod last;
 pub mod music;
+pub mod onett;
 pub mod rand;
 pub mod shrine;
 pub mod stadium;

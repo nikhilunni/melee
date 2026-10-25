@@ -88,6 +88,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::YoshisIsland => (90.0, 60.0),
         // The main floor's ends (an approximation for the policies).
         Stage::MushroomKingdom => (80.0, 55.0),
+        // The street's ends (an approximation for the policies).
+        Stage::Onett => (85.0, 55.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {
