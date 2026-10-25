@@ -42,9 +42,7 @@ fn volume<C: LinkFamily>(f: &mut Fighter) -> DefenseVolume {
     let s = f.character.get::<C>().attributes().shield.clone();
     let bone = usize::try_from(s.bone).expect("Hylian shield part");
     let c = &mut f.core;
-    let position =
-        melee_ft::fighter::caches::bone_position(&mut c.skeleton, c.animation.root, bone, s.offset);
-    let matrix = *c.skeleton.get_mtx(c.animation.parts[bone].joint);
+    let (position, matrix) = c.defense_volume_placement(bone, s.offset);
     DefenseVolume {
         position,
         matrix,

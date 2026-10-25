@@ -230,9 +230,7 @@ fn counter_volume<C: MarsFamily>(f: &mut Fighter) -> Option<melee_ft::fighter::d
     let volume = f.character.get::<C>().specials_ref().special_lw.volume.as_ref()?;
     let (bone, offset, radius) = (volume.bone, volume.offset, volume.radius);
     let c = &mut f.core;
-    let position =
-        melee_ft::fighter::caches::bone_position(&mut c.skeleton, c.animation.root, bone, offset);
-    let matrix = *c.skeleton.get_mtx(c.animation.parts[bone].joint);
+    let (position, matrix) = c.defense_volume_placement(bone, offset);
     Some(melee_ft::fighter::damage::DefenseVolume {
         position,
         matrix,

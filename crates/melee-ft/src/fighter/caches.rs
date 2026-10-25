@@ -140,6 +140,24 @@ pub(super) fn unflattened(flat: Option<&hsd_types::Mtx>, bone: &hsd_types::Mtx) 
 }
 
 impl super::FighterCore {
+    /// lbColl_80007BCC's placement of a defensive volume (`shield_hit`, a
+    /// counter's or a shield item's) on `bone` at `offset`: its world
+    /// position, at the fighter's depth when it is flat, and the matrix the
+    /// test takes, behind x44_mtx when flat (ftCommon_8007F804).
+    pub fn defense_volume_placement(
+        &mut self,
+        bone: usize,
+        offset: Vec3,
+    ) -> (Vec3, hsd_types::Mtx) {
+        let mut position = bone_position(&mut self.skeleton, self.animation.root, bone, offset);
+        let flat = self.combat.flat_matrix;
+        if flat.is_some() {
+            position.z = self.physics.position.z;
+        }
+        let joint = self.animation.parts[bone].joint;
+        let matrix = unflattened(flat.as_ref(), self.skeleton.get_mtx(joint));
+        (position, matrix)
+    }
     /// Fighter_UnkApplyTransformation_8006C0F0 (8006C0F0), from
     /// Fighter_8006C80C after the effect flush: for a flat fighter, the
     /// root's transform at the model scale along its x axis, times the

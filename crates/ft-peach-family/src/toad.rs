@@ -559,9 +559,7 @@ fn toad_volume<C: ToadUser>(f: &mut Fighter) -> Option<melee_ft::fighter::damage
     let volume = C::scratch(f).volume.as_ref()?;
     let (bone, offset, radius) = (volume.bone, volume.offset, volume.radius);
     let c = &mut f.core;
-    let position =
-        melee_ft::fighter::caches::bone_position(&mut c.skeleton, c.animation.root, bone, offset);
-    let matrix = *c.skeleton.get_mtx(c.animation.parts[bone].joint);
+    let (position, matrix) = c.defense_volume_placement(bone, offset);
     Some(melee_ft::fighter::damage::DefenseVolume {
         position,
         matrix,
