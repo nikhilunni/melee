@@ -30,6 +30,7 @@ melee_it::item_kinds! {
         GShell: it_shell::GreenShell,
         RShell: it_shell::RedShell,
         Freeze: it_freeze::Freezie,
+        MSBomb: it_msbomb::MotionSensorBomb,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -516,7 +517,9 @@ impl Resources {
         launch: melee_it::hurt::ItemLaunch,
     ) -> Result<Self> {
         let archive = |file| -> Result<Archive> { Ok(Archive::parse(&read(file)?)?) };
-        let common_archive = std::sync::Arc::new(archive("ItCo.dat")?);
+        // it_8027870C: an English game loads ItCo.usd (the Motion-Sensor
+        // Bomb's and the Cloaking Device's attributes differ from ItCo.dat).
+        let common_archive = std::sync::Arc::new(archive("ItCo.usd")?);
         let public = common_archive
             .public("itPublicData")
             .context("itPublicData")?;
@@ -628,6 +631,16 @@ impl Resources {
                     ItemKind::RShell,
                     &it_shell::red_assets::ARTICLE_STATES,
                     it_shell::red_assets::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::MSBomb,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::MSBomb,
+                    &it_msbomb::ARTICLE_STATES,
+                    it_msbomb::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (

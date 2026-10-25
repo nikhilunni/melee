@@ -7,6 +7,13 @@ use melee_cmd::{Command, ScriptState};
 use melee_coll::hitbox::HitCapsule;
 use melee_types::{GroundOrAir, ItemKind};
 
+/// Item.toucher: who an inert hitbox met.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Toucher {
+    Fighter(u8),
+    Item(u32),
+}
+
 /// xCB8 (ftcoll.c:1252-1268, itcoll.c:497-508): moving, the way the item
 /// moves; all but still (under ItCo +D4), away from the victim at
 /// `victim_x`.
@@ -259,6 +266,8 @@ pub enum ItemScratch {
     Shell(ShellState),
     RedShell(RedShellState),
     Freeze(FreezeState),
+    /// itMSBomb_ItemVars xDD4 b0: it has armed before.
+    MotionSensor { armed_before: bool },
     Monster(MonsterState),
     Yaku(YakuAnchor),
     /// One float of a projectile's xDD4 scratch: the Star Rod star's spin
@@ -1102,6 +1111,14 @@ pub struct ItemCore {
     /// xCD0: the side the stomp came from (-1 when the item is right of
     /// the stomper's position, else +1).
     pub stomp_direction: f32,
+    /// xDCE b3: the item sticks to the line xC30 (the Motion-Sensor Bomb):
+    /// the physics proc takes that line's speed.
+    pub stuck_to_line: bool,
+    /// xDCE b6 with Item.toucher: an inert hitbox met this frame (a
+    /// fighter's player, or an item's id), for `touched`.
+    pub touched_by: Option<Toucher>,
+    /// Item.touched: what an inert touch does (Item_8026A294's last case).
+    pub touched: Option<fn(&mut ItemCore, &ItemEventContext<'_>) -> bool>,
     /// xB54: the box a stomp lands on (it_8027574C).
     pub stomp_box: crate::stomp::StompBox,
     pub hit_flags: [desc::ItemHitFlags; 4],
@@ -2246,6 +2263,9 @@ impl ItemPool {
             stomped_by_secondary: false,
             stomp_direction: 0.0,
             stomp_box: Default::default(),
+            stuck_to_line: false,
+            touched_by: None,
+            touched: None,
             hit_flags: [desc::ItemHitFlags::default(); 4],
             collision: None,
             collision_box: assets.collision_box,
@@ -2425,6 +2445,15 @@ impl ItemPool {
             // Item_8026A294: the kind's absorbed callback.
             let context = ItemEventContext::new(assets, &common);
             item.destroyed |= (D::logic(item.kind).absorbed)(item, &context);
+        } else if item.touched_by.is_some() {
+            // item.c:1836: xDCE b6 runs Item.touched.
+            if let Some(touched) = item.touched {
+                let context = ItemEventContext {
+                    rng: Some(rng),
+                    ..ItemEventContext::new(assets, &common)
+                };
+                item.destroyed |= touched(item, &context);
+            }
         }
         // processCallback (item.c:1739): destroy_type 2.
         if alive && item.destroyed {
@@ -2462,6 +2491,8 @@ impl ItemPool {
         item.pending_clank_damage = 0;
         item.hitlag_damage = 0;
         item.out_damage_direction = 0.0;
+        // Item_80269CC4 (item.c:1548, 1570): toucher and xDCE b6.
+        item.touched_by = None;
         // Item_80269CC4: xCFC and xCD0.
         item.stomped_by = None;
         item.stomped_by_secondary = false;
@@ -2845,11 +2876,17 @@ fn integrate(
     item.position = add(item.position, item.environmental_velocity);
     item.environmental_velocity = Vec3::ZERO;
     // retail 0x8026993C: a grounded item rides its floor line (mpGetSpeed
-    // of x378's floor at the item; xDCE b3, which would take xC30's, is
-    // never set). An inactive line leaves x64 as it was.
+    // of x378's floor at the item), or with xDCE b3 and that line still
+    // live (it_8026D604) the line it sticks to (xC30). An inactive line
+    // leaves x64 as it was.
     if item.ground_or_air == GroundOrAir::Ground {
         if let Some(collision) = &item.collision {
-            if let Some(speed) = map.line_speed(collision.floor.index, &item.position) {
+            let line = if item.stuck_to_line && map.line_is_active(item.floor_line) {
+                item.floor_line
+            } else {
+                collision.floor.index
+            };
+            if let Some(speed) = map.line_speed(line, &item.position) {
                 item.platform_velocity = speed;
             }
         }

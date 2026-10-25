@@ -520,7 +520,7 @@ impl Scenario {
             self.stage_descriptor().file,
             "EfCoData.dat",
             "EfFxData.dat",
-            "ItCo.dat",
+            "ItCo.usd",
             "PlFx.dat",
             "PlFc.dat",
         ]

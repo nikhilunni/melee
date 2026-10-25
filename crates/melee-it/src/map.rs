@@ -247,6 +247,23 @@ impl ItemCore {
             return;
         }
         let normal = collision.floor.normal;
+        self.lean_to_normal(normal);
+    }
+
+    /// it_802765BC (802765BC) itself: the lean against the surface in
+    /// contact (it_80276408's priority: a floor over a ceiling over the
+    /// walls).
+    pub fn lean_with_contact(&mut self) {
+        let (normal, _) = self
+            .contact_surface()
+            .unwrap_or_else(|| unimplemented!("it_802765BC with no surface in contact (an unset normal)"));
+        self.lean_to_normal(normal);
+    }
+
+    /// it_8027649C's lean for `normal` (the angle from up, signed by the
+    /// normal's X and the facing) about xDC8 x17's axis, as it_802765BC and
+    /// it_80276934 set it.
+    pub fn lean_to_normal(&mut self, normal: hsd_types::Vec3) {
         let angle = melee_lb::vector::angle(normal, hsd_types::Vec3::new(0.0, 1.0, 0.0));
         let direction = if normal.x < 0.0 { -1.0 } else { 1.0 };
         let lean = self.facing * (angle * direction);
@@ -255,6 +272,13 @@ impl ItemCore {
             1 => self.rotation.x = lean,
             _ => self.rotation.y = lean,
         }
+    }
+
+    /// it_80275D5C (80275D5C) with a box of the kind's own: it becomes the
+    /// box in use (xC1C) and the fixed ECB.
+    pub fn use_collision_box(&mut self, b: melee_types::mp::ItEcb) {
+        self.collision_box = b;
+        self.apply_collision_box();
     }
 
     /// it_802762B0 (802762B0): the item counts as grounded.

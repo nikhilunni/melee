@@ -24,6 +24,7 @@ members = [
     "crates/it-sword",
     "crates/it-shell",
     "crates/it-freeze",
+    "crates/it-msbomb",
     "crates/it-container",
     "crates/it-monsters",
     "crates/it-klap",

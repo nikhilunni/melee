@@ -5709,6 +5709,7 @@ fn item_hits_by_items(
             }
             if meets.contains(&true) {
                 let mut met = None;
+                let mut touch = None;
                 for (slot, own) in victim.hitboxes.iter().enumerate() {
                     let Some(own) = own.as_ref().filter(|_| meets[slot]) else {
                         continue;
@@ -5736,10 +5737,21 @@ fn item_hits_by_items(
                         continue;
                     };
                     if inert {
-                        unimplemented!("it_802706D0: an inert item hitbox touching another item's");
+                        // itcoll.c:600-617: the item whose hitbox is inert
+                        // is touched by the other one.
+                        touch = Some(if desc.element == HitElement::Inert {
+                            (other.id, melee_it::Toucher::Item(victim.id))
+                        } else {
+                            (victim.id, melee_it::Toucher::Item(other.id))
+                        });
+                        break;
                     }
                     met = Some((slot, points));
                     break;
+                }
+                if let Some((marked, toucher)) = touch {
+                    items.get_mut(marked).expect("touched item").touched_by = Some(toucher);
+                    continue;
                 }
                 if let Some((slot, points)) = met {
                     item_clank(items, index, id, victim_id, slot, points, &mut meets);
@@ -5758,15 +5770,39 @@ fn item_hits_by_items(
                 continue;
             };
             let desc = &hit.descriptor;
+            // itcoll.c:637-645: an inert hitbox meeting any hurt capsule
+            // (lbColl_80008248, whatever the victim's state) marks its own
+            // item, touched by the victim.
+            if desc.element == HitElement::Inert {
+                let radius = desc.radius * other.scale;
+                let touched = capsules.iter().any(|capsule| {
+                    melee_coll::geometry::capsule_contact(
+                        Capsule {
+                            start: hit.previous_position,
+                            end: hit.position,
+                            radius,
+                        },
+                        Capsule {
+                            start: capsule.start,
+                            end: capsule.end,
+                            radius: capsule.radius,
+                        },
+                        &capsule.matrix,
+                        3.0 * victim.scale,
+                    )
+                    .is_some()
+                });
+                if touched {
+                    let other_id = other.id;
+                    let toucher = melee_it::Toucher::Item(victim_id);
+                    items.get_mut(other_id).expect("touching item").touched_by = Some(toucher);
+                }
+                continue;
+            }
             // arg_item->xD0C == 2: the hurt capsules take no hits.
             if victim.hurt_intangible {
                 continue;
             }
-            assert_ne!(
-                desc.element,
-                HitElement::Inert,
-                "it_802706D0: an inert item hitbox"
-            );
             let contact = capsules.iter().find_map(|capsule| {
                 melee_coll::geometry::capsule_contact(
                     Capsule {

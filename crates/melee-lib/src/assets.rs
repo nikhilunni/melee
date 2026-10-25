@@ -82,7 +82,7 @@ const SHARED_FILES: [&str; 7] = [
     "PlCo.dat",
     "EfCoData.dat",
     "IfAll.usd",
-    "ItCo.dat",
+    "ItCo.usd",
     "PlFx.dat",
     "PlFc.dat",
     "PlYs.dat",

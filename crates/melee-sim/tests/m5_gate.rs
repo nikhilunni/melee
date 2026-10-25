@@ -7120,6 +7120,8 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_items_bombhei_cold", 600),
     ("start_fd_items_dosei", 600),
     ("start_fd_items_dosei_cold", 600),
+    ("start_fd_items_msbomb", 600),
+    ("start_fd_items_msbomb_cold", 600),
     // Green Shells: stomped from rest and while sliding (ft_80081A00 ->
     // it_8028CF68), struck, thrown, dropped, clanking with each other
     // (it_8026FE68, sparks in call order), bounced off shields, reflected,
@@ -7172,6 +7174,16 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     // Mr. Saturns: the spawn fall, sitting and looking round.
     ("corpus_v3_fd_items_dosei_edafcfddf_p0", 3790),
     ("corpus_v3_fd_items_dosei_e1502cb40_p0", 5124),
+    // Motion-Sensor Bombs (ItCo.usd's attributes): the tilted, spinning
+    // fall onto its fixed ECB, rest, held, thrown and dropped, sticking
+    // armed to the floor, set off by a touch or a hit, the blast; one
+    // reflected by Fox's shine (it_80273030).
+    ("corpus_v3_fd_items_msbomb_ef89b3e70_p0", 5740),
+    ("corpus_v3_fd_items_msbomb_e1502cb40_p1", 4932),
+    ("corpus_v3_fd_items_msbomb_e573e2d95_p2", 5888),
+    ("corpus_v3_fd_items_msbomb_eeda0d0fc_p0", 6001),
+    ("corpus_v3_fd_items_msbomb_e50f475b4_p1", 5720),
+    ("corpus_v3_fd_items_msbomb_e2b9e1400_p2", 6001),
 ];
 
 #[test]

@@ -57,6 +57,14 @@ came down onto a stompable item without the test having run.
 - Mr. Saturn (itdosei.c): the random item's spawn fall (8), sitting (7) and
   look round (9). Leaving the floor while sitting or looking round and the
   slope slide before being held (10) are guarded.
+- Motion-Sensor Bomb (itmsbomb.c): ported whole, with inert touches
+  (Item.touched, xDCE b6: fighters' hitboxes and hurt capsules in ftcoll.c,
+  other items in itcoll.c) and line sticking (xDCE b3). **An English game
+  loads ItCo.usd** (it_8027870C), not ItCo.dat: the bomb's ECB box, scale
+  and special attributes and the Cloaking Device's differ between the two,
+  and only the .usd values match retail (the falling bomb's spun fixed ECB
+  diverged at tick 247 with the .dat's). Guarded as unwitnessed: glancing
+  off a shield, a slope's slide, an armed bomb losing its line (state 5).
 - Heart Container, Maxim Tomato, Food: not ported. Eating needs the fighter's
   consumable pickup (ftpickupitem_8009447C) and the heal (Fighter_8006CF5C,
   applied in Fighter_ProcessHit), which still fail closed.

@@ -5,6 +5,10 @@ use crate::Archive;
 pub struct ItemVisual {
     pub model: JObjDesc,
     pub attachment_bone: usize,
+    /// ItemModelDesc xC bits 6-7: how many first-child steps below the root
+    /// the joint is whose rotation the spin turns and the ECB follows
+    /// (it_80274990, it_80274A64).
+    pub spin_joint_depth: u8,
     pub states: Vec<ItemVisualState>,
 }
 #[derive(Clone, Debug)]
@@ -51,6 +55,7 @@ impl ItemVisual {
                 None => JObjDesc::default(),
             },
             attachment_bone: reader.u32(model + 8)? as usize,
+            spin_joint_depth: (reader.u8(model + 0xC)? >> 6) & 3,
             states: animations,
         })
     }

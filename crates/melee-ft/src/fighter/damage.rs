@@ -3063,6 +3063,24 @@ impl Fighter {
             {
                 continue;
             }
+            // ftcoll.c:2236-2238, 2280-2293: an inert hitbox skips the
+            // shields and only marks the item (xDCE b6, toucher) when it
+            // meets any hurt capsule (lbColl_80008248, whatever its state).
+            if hit.descriptor.element == melee_types::HitElement::Inert {
+                let radius = hit.descriptor.radius
+                    * if hit.descriptor.ignore_scale {
+                        1.0
+                    } else {
+                        item.scale
+                    };
+                if self
+                    .core
+                    .hurt_capsules_touched(hit.previous_position, hit.position, radius)
+                {
+                    item.touched_by = Some(melee_it::Toucher::Fighter(self.player.id));
+                }
+                continue;
+            }
             if self.shield.active && item.hit_flags[id].shieldable {
                 if let Some(contact) = self.core.shield_contact(&hit, item.scale) {
                     self.record_item_shield_hit(item, id, contact);

@@ -394,12 +394,12 @@ pub(super) fn item_contact(
                 continue;
             }
             // ftcoll.c:2200-2213: a touch marks the item (xDCE b6, toucher)
-            // and ends this item hitbox's tests. Only the Motion-Sensor Bomb
-            // and a castle stage object install the `touched` callback that
-            // reads the mark (item.c:1836), and neither is ported.
+            // and ends this item hitbox's tests; Item.touched reads the mark
+            // (item.c:1836).
             if hitbox_pair_contact(geometry(&b, fighter.player.scale), geometry(&a, item.scale))
                 .is_some()
             {
+                item.touched_by = Some(melee_it::Toucher::Fighter(fighter.player.id));
                 return true;
             }
             continue;
