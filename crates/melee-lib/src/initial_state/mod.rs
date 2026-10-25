@@ -155,6 +155,8 @@ pub struct InitialState {
     /// match took a player's last stock (Player_UpdateMatchFrameCount);
     /// `None` for retail's -1.
     pub(crate) eliminated_at: [Option<u32>; 6],
+    /// lb_804329F0's game timer: which loop passes tick.
+    pub(crate) frame_timer: crate::frame_timer::FrameTimer,
     /// `SlippiCodes::offscreen_damage_by_camera_limits` (match setup, not
     /// saved state).
     pub(crate) offscreen_damage_by_camera_limits: bool,
@@ -830,6 +832,23 @@ impl InitialState {
             dween_previous_x: [0.0; 4],
             ko_counts: Default::default(),
             // Player_GetMatchFrameCount: StaticPlayer +88, -1 unset.
+            frame_timer: {
+                // lb_804329F0: x0[0].x0 (+0), x0[0].x8 (+8), x38, x40.
+                let timer = saved.bytes(0x8043_29F0, 0x48);
+                let wide = |at: usize| u64::from(word(timer, at)) << 32 | u64::from(word(timer, at + 4));
+                let saved_timer = crate::frame_timer::FrameTimer {
+                    period: wide(0),
+                    accumulated: wide(8),
+                    requested: wide(0x38),
+                    step: wide(0x40),
+                };
+                let speed = setup.special.map_or(1.0, crate::SpecialMelee::game_speed);
+                ensure!(
+                    saved_timer.requested == crate::frame_timer::FrameTimer::period_for(speed),
+                    "the savestate's frame timer {saved_timer:?} is not game speed {speed}'s"
+                );
+                saved_timer
+            },
             eliminated_at: std::array::from_fn(|slot| {
                 let frame = word(saved.bytes(0x8045_3080 + slot as u32 * 0xE90 + 0x88, 4), 0);
                 (frame != u32::MAX).then_some(frame)

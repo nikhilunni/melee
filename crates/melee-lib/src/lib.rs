@@ -3,6 +3,7 @@ mod article_pose;
 mod assets;
 mod banner;
 mod score_popup_timelines;
+mod frame_timer;
 mod special_melee;
 mod standings;
 pub use special_melee::SpecialMelee;

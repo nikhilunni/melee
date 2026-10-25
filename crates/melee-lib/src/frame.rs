@@ -3793,6 +3793,13 @@ impl Simulation {
             }
         }
         let runtime = self.runtime.as_mut();
+        // gm_801A4D34: a pass whose game timer is not due (lb_80019900)
+        // runs neither the scene's frame callback nor any proc (every
+        // p_link paused, gm_803DA8C8).
+        if !runtime.state.frame_timer.pass() {
+            runtime.frame += 1;
+            return Ok(());
+        }
         // gm_16AE.c:546-590, every scene frame in a team battle: a player
         // out of stocks whose fighter sleeps takes a teammate's stock on a
         // Start press (fn_8016B918, ifStock_802F7EFC, Player_LoseStock,

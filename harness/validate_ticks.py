@@ -174,7 +174,11 @@ def validate(records, max_draws: int = 64, scripted: bool = False,
     for ordinal, record in enumerate(records):
         count += 1
         pose = fighter_pose(record["state"])
-        items.update(record, ordinal, violations, frozen=scene_frozen(previous_pose, pose))
+        # A pass whose game timer is not due (a slowed game: gm_801A4D34
+        # pauses every p_link, lb_80019900) changes nothing at all.
+        paused = previous is not None and record["state"] == previous["state"]
+        items.update(record, ordinal, violations,
+                     frozen=paused or scene_frozen(previous_pose, pose))
         previous_pose = pose
         state = record["state"]
         current_anim = animations(state)

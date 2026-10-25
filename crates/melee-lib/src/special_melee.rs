@@ -92,21 +92,29 @@ impl SpecialMelee {
         }
     }
 
+    /// StartMeleeRules game_speed (gmlightning.c:135, gmslomo.c:133).
+    pub fn game_speed(self) -> f32 {
+        match self {
+            Self::Lightning => 1.25,
+            Self::SloMo => 0.5,
+            _ => 1.0,
+        }
+    }
+
     pub fn from_name(name: &str) -> Option<Self> {
         Self::ALL.into_iter().find(|m| m.name() == name)
     }
 
-    /// Whether the port plays the mode. Lightning changes only the scene's
-    /// frame period (fn_8016E730's lb_80019880(1/60/game_speed),
-    /// gm_16AE.c:1985), never a tick's work. Slo-Mo's ticks run two VIs
-    /// apart, and retail's first tick draws no Final Destination background
-    /// particle (start_fd_sp_slomo_fox_marth4_cold diverges at tick 1):
-    /// its display cadence is not ported. Super Sudden Death only starts
+    /// Whether the port plays the mode. Lightning and Slo-Mo change the
+    /// scene's frame period (fn_8016E730's lb_80019880(1/60/game_speed),
+    /// gm_16AE.c:1985): Lightning's polls follow it, so every pass ticks;
+    /// Slo-Mo's stay at 1/60 s and every other pass runs nothing
+    /// (`crate::frame_timer`). Super Sudden Death only starts
     /// every player at 300%. Giant and Tiny scale every fighter, which
     /// ftCo_800D105C's ftCo_800CF6E8 and the kinds' CalcIndiviParam scale
     /// with (ftchangeparam.c:178-195, guarded in `Fighter::prepare`).
     pub fn ported(self) -> bool {
-        matches!(self, Self::Lightning | Self::SuperSuddenDeath)
+        matches!(self, Self::Lightning | Self::SloMo | Self::SuperSuddenDeath)
     }
 
     /// Refuse a mode the port does not play, naming what it changes.

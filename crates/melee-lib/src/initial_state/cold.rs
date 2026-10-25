@@ -318,6 +318,9 @@ impl InitialState {
             dween_previous_x: [0.0; 4],
             ko_counts: Default::default(),
             eliminated_at: [None; 6],
+            frame_timer: crate::frame_timer::FrameTimer::entering(
+                scenario.special.map_or(1.0, crate::SpecialMelee::game_speed),
+            ),
             offscreen_damage_by_camera_limits: scenario
                 .slippi
                 .offscreen_damage_by_camera_limits,

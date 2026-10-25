@@ -81,6 +81,7 @@ def mismatches(scenario: dict, trace: Path):
         return
     schedule = held_pads(steps, scenario["frames"] + 1)
     before = None
+    previous_state = None
     with trace_io.open_text(trace) as lines:
         for line in lines:
             record = json.loads(line)
@@ -88,14 +89,21 @@ def mismatches(scenario: dict, trace: Path):
                 continue
             n = record["frame"]
             queues, statuses = record.get("pad_queue_sticks"), record.get("inputs")
+            # A slowed game's pass whose game timer is not due dequeues the
+            # pad (HSD_PadRenewMasterStatus) but neither renews the game's
+            # status (lb_80019900) nor changes the match: only the queue holds.
+            state = record.get("state")
+            paused = bool(state) and state == previous_state
+            previous_state = state
             # Record 0 is the boundary: the savestate's pad, not a scheduled one.
             if 0 < n < len(schedule) and queues is not None:
                 for port, raw in sorted(schedule[n].items()):
-                    found = differences(raw, queues[port], statuses and statuses[f"p{port}"],
-                                        before and before[f"p{port}"])
+                    status = None if paused else statuses and statuses[f"p{port}"]
+                    found = differences(raw, queues[port], status, before and before[f"p{port}"])
                     if found:
                         yield f"record {n}, port {port + 1}: " + "; ".join(found)
-            before = statuses
+            if not paused:
+                before = statuses
 
 
 def check(scenario: dict, trace: Path) -> str | None:
