@@ -1311,6 +1311,7 @@ dependencies = [
 name = "it-foxillusion"
 version = "0.0.1"
 dependencies = [
+ "gekko-math",
  "hsd-anim",
  "melee-it",
  "melee-types",

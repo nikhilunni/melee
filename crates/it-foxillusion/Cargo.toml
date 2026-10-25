@@ -7,3 +7,4 @@ edition.workspace = true
 melee-it = { path = "../melee-it" }
 melee-types = { path = "../melee-types" }
 hsd-anim = { path = "../hsd-anim" }
+gekko-math = { path = "../gekko-math" }

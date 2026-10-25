@@ -1,6 +1,6 @@
 //! Fox Illusion / Falco Phantasm articles, itfoxillusion.c (8029CEB4..8029D948).
 use melee_it::{desc::ItemAssets, *};
-use melee_types::{GroundOrAir, ItemKind};
+use melee_types::ItemKind;
 
 pub struct FoxIllusion;
 pub struct FalcoPhantasm;
@@ -50,14 +50,23 @@ macro_rules! ghost {
                 item.hitlag_damage = 0;
                 false
             }
-            fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
-                // it_8029CFF0: owner air state chooses the hitbox script.
+            /// it_8029CFF0 (8029CFF0), once Item_80268B18 returns: the
+            /// owner's air state (ftLib_800865CC, carried in
+            /// `spawn_variant`) chooses the motion; the item itself is
+            /// airborne.
+            fn launched(
+                item: &mut ItemCore,
+                assets: &ItemAssets,
+                _common: &desc::ItemCommonData,
+                spawn: &SpawnItem,
+                _rng: &mut gekko_math::HsdRng,
+            ) {
                 item.scratch = ItemScratch::Afterimage(AfterimageState {
                     secondary_rotation: item.rotation,
                     ..Default::default()
                 });
                 item.life_timer = assets.special_attributes[0];
-                item.change_motion(u16::from(item.ground_or_air == GroundOrAir::Air), assets);
+                item.change_motion(u16::from(spawn.spawn_variant == 1), assets);
                 // it_8029CFF0, retail 0x8029D070: it_80274594 after the
                 // state change. scl takes the owner's model scale
                 // (0x802745C8 fmuls), then it_80275534 (0x80274628) gives

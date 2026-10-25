@@ -206,7 +206,9 @@ fn travel<C: FoxFamily, const AIR: bool>(
         f.commands.variables[2] = 0;
         let mut spawn =
             melee_it::SpawnItem::held(C::GHOST, f.player.id, f.physics.position, f.physics.facing);
-        spawn.ground_or_air = f.physics.ground_or_air;
+        // it_8029CEB4 spawns it airborne (Item_80268B18); it_8029CFF0 picks
+        // its motion by the owner's air state (ftLib_800865CC).
+        spawn.spawn_variant = i32::from(f.physics.ground_or_air == GroundOrAir::Air);
         f.item_requests.push(melee_it::ItemRequest::Spawn(spawn));
         f.character.get_mut::<C>().special_side().ghost_present = true;
     }
