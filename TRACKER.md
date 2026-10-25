@@ -51,12 +51,14 @@ and `docs/PORT_NOTES/`.
   clones; clone creation is outside measured windows. Active draw ranges
   agree; unused presentation backing capacity is not active geometry.
   Release only; no debug run.
-- **Quiet performance retains existing budget failures:** at `f570da10`,
+- **Latest quiet measurement (`f570da10`) retains its historical budget result:**
   time passes (18.552 ms per 600 ticks; 56.702 ms load). Stripped size is
   7,675,616 bytes and text size 6,897,664 bytes, unchanged from wave 23 and
-  above unchanged ceilings. Kirby's one duplicate label exceeds baseline
-  zero; shared duplication passes (20 melee-ft, 94 across crates).
-  `docs/PERF.md` preserves the complete report; no budget was increased.
+  above the prior ceilings. The user subsequently approved baselines of
+  7,605,760 stripped / 6,848,512 text and Kirby allowance one. The measured
+  sizes fit their unchanged +5% ceiling; a fresh quiet policy check follows
+  recording. Timing and other duplication limits are unchanged (20/94 pass).
+  `docs/PERF.md` preserves the historical report and explicit ratchet.
 - **New captures are authorized (user, 2026-10-25):** create the evidence
   needed for 100% parity without asking again. Ness is first in the quiet
   capture queue; heavy carry/throws, Sword/monster callbacks, copied Sheik
@@ -176,6 +178,7 @@ checkpoints are preserved in `ee769ee9:TRACKER.md` and `docs/PERF.md`.
 
 | Date | Decision |
 |---|---|
+| 2026-10-25 | User approved size baselines 7,605,760 stripped / 6,848,512 text and Kirby duplicate-label allowance one; timing, other duplication limits and 5% size tolerance unchanged. |
 | 2026-10-25 | Fresh captures and required new boundaries are authorized for 100% parity. No further capture approval is needed; preserve existing data and never commit game data. |
 | 2026-09-08 | Layered workspace: one crate per subsystem and per character (build time). |
 | 2026-09-08 | Internal state need not match retail layout; `Snapshot` plus `harness/schema/` handle comparison. Traces compare floats by bit pattern. |

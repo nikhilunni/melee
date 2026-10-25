@@ -1,5 +1,15 @@
 # Performance regression history
 
+Ratchet note (2026-10-25, user-approved): set the reviewed feature-growth
+size baselines to **7,605,760 stripped / 6,848,512 text bytes**, exactly as
+approved; the fixed stripped ceiling remains +5% (**7,986,048 bytes**).
+Kirby's existing duplicate-label allowance moves from zero to one. Timing,
+all other duplication limits and the 5% size tolerance are unchanged. The
+latest measured source `f570da10` is slightly larger (7,675,616 / 6,897,664),
+within those approved ceilings. Its historical REGRESSION block is retained;
+a fresh quiet run will verify the updated policy after recording finishes.
+
+
 Ratchet note (2026-09-10, S3): the cross-crate duplicate-label baseline moved 99 -> 100 for `melee_ft::physics::airborne::drift_acceleration`, a concrete 20-line leaf that rustc auto-inlines into ft-mars. Cross-crate inlining of concrete leaves is not the duplication this metric guards (per-character instantiation of the shell); such moves are recorded here with the label named.
 
 Ratchet note (2026-09-28): the user raised the size baseline after feature growth (the Fox-Marth milestone and the `melee-sim search`/`triage` tools): `tools/perf_report.py` `REVIEWED_SIZE` = 4,956,208 stripped / 4,554,752 text bytes, fixed ceiling +5% (5,204,018). Time and duplicate-label ceilings are unchanged.
