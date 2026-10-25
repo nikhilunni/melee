@@ -131,6 +131,7 @@ fn combat_gate_ticks_with_ledger(name: &str, ticks: usize, ledger_suffix: &str) 
         || name.starts_with("held_item_")
         || REPLAY_BRANCH_WITNESSES.iter().any(|(n, _)| *n == name)
         || name.starts_with("ness_")
+        || name.starts_with("w25_ness_")
         || name.starts_with("pair_light_hit_")
         || name.starts_with("mewtwo_")
         || matches!(
@@ -2494,6 +2495,10 @@ const NESS_WITNESSES: &[(&str, usize)] = &[
     ("ness_yoyo_charge_struck_fd_fox4", 243),
     ("ness_yoyo_edge_fd_fox4", 260),
     ("ness_yoyo_stored_hitbox_fd_fox4", 235),
+    // Two yo-yos at once on Pokemon Stadium: a new smash replaces the
+    // current binding (877) while the older instance keeps its own string;
+    // the bound one is removed (924), then the older ends itself (925).
+    ("w25_ness_yoyo_overlap_v02", 4775),
     // Explorer: yo-yo smashes in play (they stopped at the unported entries).
     ("corpus_v3_fd_ness_fox4_e0fcf0c70_p0", 214),
     ("corpus_v3_fd_ness_fox4_eae52f0ea_p0", 86),
