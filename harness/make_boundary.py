@@ -6,6 +6,8 @@
                                                  [--gecko ucf-0.8 neutral-spawn --spawn neutral-2020]
                                                  [--ports 2 4] [--time-limit 8]
                                                  [--teams 0 1 0 1 [--friendly-fire]]
+                                                 [--mode time --time-limit 2]
+                                                 [--handicaps 9 1] [--damage-ratio 1.5]
 
                                                  [--item-frequency very-high --items Sword]
                                                  [--no-containers | --containers Taru]
@@ -66,6 +68,15 @@ player, two teams at least) and `--friendly-fire` lets teammates' attacks
 land, as tournament doubles plays: the CSS's is_teams, friendly fire and
 each door's team are poked before the match starts, and both scenarios and
 the registry entry name them.
+
+`--mode time --time-limit 2` plays a Time match (the rules' mode, GameRules
++2, and its timer, +3: KOs score, no stocks); `--mode coin` a Coin match.
+`--handicaps 9 1` turns the Handicap rule on (GameRules +5 = 2) and sets each
+door's handicap on the CSS; `--damage-ratio 1.5` sets the Damage Ratio rule
+(GameRules +6, tenths). The VS rules turn them into StartMeleeRules
+match_kind, time_limit, x30 and each player's attack and defense ratio
+(gm_80167BC8); both scenarios and the registry entry name them, as read back
+from the match.
 
 `--item-frequency very-high` plays with items on (the Item Switch screen's
 frequency, a save-data poke like the rules); `--items Sword BombHei` switches
@@ -157,6 +168,10 @@ CHARACTERS = {
 # character the player starts as; the CSS pick is the other form.
 TRANSFORMED = {"Sheik": "Zelda"}
 TIMEOUT = 300.0
+# The VS rules' mode (GameRules +2; mn/forward.h Mode) -> StartMeleeRules
+# match_kind, and the spelling scenarios use.
+MODES = {"time": 0, "stock": 1, "coin": 2}
+MODE_NAMES = {v: k for k, v in MODES.items()}
 # Item Switch frequency (gmm_x1CB0.item_freq, StartMeleeRules.xB).
 ITEM_FREQUENCIES = {"off": -1, "very-low": 0, "low": 1, "medium": 2, "high": 3, "very-high": 4}
 # gm_1601.c lbl_803B7844: the Item Switch entry (save-data mask bit) of each
@@ -169,6 +184,12 @@ ITEM_SWITCH_KINDS = [
 NO_SWITCH = 0x23
 # Item kinds VS rules spawn whatever the switch says: Capsule, Box, Barrel, Egg.
 CONTAINERS = {"Capsule": 0x00, "Box": 0x01, "Taru": 0x02, "Egg": 0x03}
+
+
+def _f32(x: float) -> float:
+    """`x` rounded to single precision, as the game stores it (0.1f * tenths)."""
+    import struct
+    return struct.unpack(">f", struct.pack(">f", x))[0]
 
 
 def item_kind_name(kind: int) -> str:
@@ -201,6 +222,25 @@ def item_lines(frequency: int, mask: int) -> str:
     on = [item_kind_name(k) for k in range(0x23) if mask >> k & 1]
     return (f"# Items {', '.join(on)}.\n"
             f"item_frequency = {frequency}\nitem_mask = \"{mask:#018x}\"\n")
+
+
+def rule_lines(rules: dict | None) -> str:
+    """A scenario's match rules beyond stock (none for a plain stock match):
+    the mode and the damage ratio (x30), as the match read them back."""
+    if not rules:
+        return ""
+    out = ""
+    if rules.get("mode", "stock") != "stock":
+        out += f'mode = "{rules["mode"]}"\n'
+    if rules.get("damage_ratio", 1.0) != 1.0:
+        out += f"damage_ratio = {rules['damage_ratio']!r}\n"
+    return out
+
+
+def handicap_line(rules: dict | None, i: int) -> str:
+    if not rules or not rules.get("handicaps"):
+        return ""
+    return f"handicap = {rules['handicaps'][i]}\n"
 
 
 def default_name(stage: str, players: list[str], stocks: int) -> str:
@@ -238,7 +278,7 @@ def controller_lines(i: int, default: str, cpu_levels: list[int] | None) -> str:
 def start_scenario(name: str, stage: str, players: list[str], stocks: int,
                    codes: list[str] | None = None, slots: list[int] | None = None,
                    game_start_seed: int | None = None, items: tuple[int, int] = (-1, 0),
-                   cpu_levels: list[int] | None = None) -> str:
+                   cpu_levels: list[int] | None = None, rules: dict | None = None) -> str:
     # The savestate importer covers slots 0..n: other ports gate the cold twin.
     gate = f'gate = "{name}_cold"\n' if slots and slots != list(range(len(players))) else ""
     slots = slots or list(range(len(players)))
@@ -248,7 +288,7 @@ def start_scenario(name: str, stage: str, players: list[str], stocks: int,
         for i, p in enumerate(players) if p in TRANSFORMED)
     fighters = "\n".join(
         f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\n'
-        f'{controller_lines(i, "scripted" if i == 0 else "idle", cpu_levels)}'
+        f'{controller_lines(i, "scripted" if i == 0 else "idle", cpu_levels)}{handicap_line(rules, i)}'
         f'{fix_line(codes)}'
         for i, kind in enumerate(players))
     return f'''# {" vs ".join(players)} on {stage}, {stocks} stocks, start boundary. Savestate
@@ -259,7 +299,7 @@ def start_scenario(name: str, stage: str, players: list[str], stocks: int,
 {gate}savestate = "harness/roms/{name}.sav"
 frames = 600
 seed = 1
-{creation_line(game_start_seed)}{item_lines(*items)}stage = "{stage}"
+{creation_line(game_start_seed)}{item_lines(*items)}{rule_lines(rules)}stage = "{stage}"
 {gecko.scenario_flag_lines(gecko.scenario_flags(codes))}{gecko_line(codes)}
 inputs = []
 
@@ -272,7 +312,7 @@ def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: 
                   time_limit: int = 0, game_start_seed: int | None = None,
                   spawn_points: list[int] | None = None, teams: list[int] | None = None,
                   friendly_fire: bool = False, items: tuple[int, int] = (-1, 0),
-                   cpu_levels: list[int] | None = None) -> str:
+                   cpu_levels: list[int] | None = None, rules: dict | None = None) -> str:
     ports = "CPU ports at their levels" if cpu_levels and any(cpu_levels) else "human ports"
     slots = slots or list(range(len(players)))
     team_lines = [f"team = {t}\n" for t in teams] if teams else [""] * len(players)
@@ -282,14 +322,16 @@ def cold_scenario(name: str, stage: str, players: list[str], stocks: int, seed: 
     points = [f"spawn_point = {p}\n" for p in spawn_points] if spawn_points else [""] * len(players)
     fighters = "\n".join(
         f'[[fighters]]\nslot = {slots[i]}\nkind = "{kind}"\ncostume = {costumes[i]}\nstocks = {stocks}\n'
-        f'{points[i]}{team_lines[i]}{controller_lines(i, "idle", cpu_levels)}{fix_line(codes)}' for i, kind in enumerate(players))
+        f'{points[i]}{team_lines[i]}{handicap_line(rules, i)}{controller_lines(i, "idle", cpu_levels)}'
+        f'{fix_line(codes)}' for i, kind in enumerate(players))
+    mode = (rules or {}).get("mode", "stock")
     return f'''# Parameters only; seed is after stage/fighter creation, before music.
-# Stock {stocks}, items {"off" if items[0] < 0 else "on"}, normal Versus Entry, {ports}, neutral pads.
+# {mode.capitalize()}, {stocks} stocks, items {"off" if items[0] < 0 else "on"}, normal Versus Entry, {ports}, neutral pads.
 name = "{name}_cold"
 expected = "{name}"
 frames = 600
 seed = {seed}
-{creation_line(game_start_seed)}{item_lines(*items)}stage = "{stage}"
+{creation_line(game_start_seed)}{item_lines(*items)}{rule_lines(rules)}stage = "{stage}"
 {gecko.scenario_flag_lines(gecko.scenario_flags(codes))}all_characters_unlocked = true
 {timer_line}{spawn_line}{ff_line}inputs = []
 
@@ -299,7 +341,8 @@ seed = {seed}
 def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed: int,
                    costumes: list[int] | None = None, teams: list[int] | None = None,
                    friendly_fire: bool = False, items: tuple[int, int] = (-1, 0),
-                   cpu_levels: list[int] | None = None) -> str:
+                   cpu_levels: list[int] | None = None, rules: dict | None = None,
+                   time_limit: int = 0) -> str:
     quoted = ", ".join(f'"{p}"' for p in players)
     # Costumes other than each port's first are written out (boundary.rs).
     worn = f"costumes = {list(costumes)}\n" if costumes and any(costumes) else ""
@@ -307,11 +350,15 @@ def boundary_entry(name: str, stage: str, players: list[str], stocks: int, seed:
     team_line = f"teams = {list(teams)}\n" if teams else ""
     ff_line = "friendly_fire = true\n" if friendly_fire else ""
 
-    rules = (f'item_frequency = {items[0]}\nitem_mask = "{items[1]:#018x}"\n'
-             if items[0] >= 0 else "")
+    item_rules = (f'item_frequency = {items[0]}\nitem_mask = "{items[1]:#018x}"\n'
+                  if items[0] >= 0 else "")
+    timer = f"time_limit = {time_limit * 60}\n" if time_limit else ""
+    handicaps = (f"handicaps = {list(rules['handicaps'])}\n"
+                 if rules and rules.get("handicaps") else "")
     return (f'\n[[boundary]]\nname = "{name}"\ncold = "{name}_cold"\n'
             f'savestate = "harness/roms/{name}.sav"\nstage = "{stage}"\nplayers = [{quoted}]\n'
-            f'stocks = {stocks}\nseed = {seed}\n{worn}{team_line}{ff_line}{rules}{cpus}')
+            f'stocks = {stocks}\nseed = {seed}\n{worn}{team_line}{ff_line}{item_rules}{cpus}'
+            f'{timer}{rule_lines(rules)}{handicaps}')
 
 
 def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, timeout: float,
@@ -321,7 +368,9 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                    spawn_points: list[int] | None = None, teams: list[int] | None = None,
                    friendly_fire: bool = False, extra: dict | None = None,
                    item_frequency: int = -1, item_switch: list[int] | None = None,
-                   rules_item_mask: int | None = None, cpu_levels: list[int] | None = None) -> dict:
+                   rules_item_mask: int | None = None, cpu_levels: list[int] | None = None,
+                   mode: int = 1, handicaps: list[int] | None = None,
+                   damage_ratio_tenths: int | None = None, special: str | None = None) -> dict:
     """Run boundary_script.py in a private headless Dolphin; return its summary.
     `extra` adds config keys (retail_coverage.py's items and CPU players)."""
     done, err = Path(str(sav) + ".done"), Path(str(sav) + ".err")
@@ -334,6 +383,12 @@ def make_savestate(sav: Path, stkind: int, players: list[int], stocks: int, time
                                       "players": players, "stocks": stocks,
                                       "transform": transform or [],
                                       "time_limit_minutes": time_limit,
+                                      "mode": mode,
+                                      **({"special": special} if special else {}),
+                                      **({"handicap_rule": 2, "handicaps": handicaps}
+                                         if handicaps else {}),
+                                      **({"damage_ratio_tenths": damage_ratio_tenths}
+                                         if damage_ratio_tenths is not None else {}),
                                       **({"ports": slots} if slots else {}),
                                       **({"game_start_seed": game_start_seed}
                                          if game_start_seed is not None else {}),
@@ -426,6 +481,15 @@ def main(argv: list[str] | None = None) -> None:
                     help="clear Capsule, Box, Barrel and Egg from the match's item mask")
     ap.add_argument("--containers", nargs="+", choices=list(CONTAINERS), metavar="CONTAINER",
                     help=f"keep only these containers in the match's item mask ({', '.join(CONTAINERS)})")
+    ap.add_argument("--mode", choices=list(MODES), default="stock",
+                    help="the VS rules' mode (default: stock); time and coin need --time-limit")
+    ap.add_argument("--handicaps", type=int, nargs="+", metavar="LEVEL",
+                    help="the Handicap rule on, each player's handicap 1..9")
+    ap.add_argument("--damage-ratio", type=float, metavar="RATIO",
+                    help="the Damage Ratio rule, 0.5..2.0 in tenths (default: the save data's 1.0)")
+    ap.add_argument("--special", choices=["camera", "stamina", "super-sudden-death", "giant", "tiny",
+                                          "invisible", "single-button", "lightning", "slomo"],
+                    help="a Special Melee mode (VS. Mode > Special Melee) instead of Melee")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
     if a.containers is not None and a.no_containers:
@@ -434,7 +498,25 @@ def main(argv: list[str] | None = None) -> None:
         a.containers = []
     if (a.items or a.containers is not None) and a.item_frequency == "off":
         sys.exit("--items and --no-containers need --item-frequency")
-    if (a.gecko or a.spawn or a.ports or a.time_limit or a.game_start_seed is not None
+    if a.mode != "stock" and not a.time_limit:
+        sys.exit("--mode time or coin needs --time-limit")
+    if a.handicaps is not None and (len(a.handicaps) != len(a.players)
+                                   or not all(1 <= h <= 9 for h in a.handicaps)):
+        sys.exit("--handicaps needs one handicap, 1..9, per player")
+    damage_ratio_tenths = None
+    if a.damage_ratio is not None:
+        damage_ratio_tenths = round(a.damage_ratio * 10)
+        if not 5 <= damage_ratio_tenths <= 20:
+            sys.exit("--damage-ratio is 0.5..2.0")
+    if a.special and not a.name:
+        sys.exit("a Special Melee boundary needs its own --name")
+    if a.special and not a.no_register:
+        sys.exit("a Special Melee boundary is not an explorer boundary: pass --no-register")
+    if a.mode != "stock" and not a.name:
+        sys.exit("a Time or Coin boundary needs its own --name")
+    # A Time or Coin match always runs its timer: the explorer plays it.
+    stock_timer = a.time_limit if a.mode == "stock" else 0
+    if (a.gecko or a.spawn or a.ports or stock_timer or a.game_start_seed is not None
             or a.spawn_points) and not a.no_register:
         # boundaries.toml describes explorer matches: retail spawns, first
         # ports, no timer, no codes, the seed the menus left.
@@ -493,7 +575,9 @@ def main(argv: list[str] | None = None) -> None:
                              a.game_start_seed, a.spawn_points, teams=a.teams,
                              friendly_fire=a.friendly_fire, cpu_levels=a.cpu_levels,
                              item_frequency=item_frequency,
-                             item_switch=item_switch, rules_item_mask=rules_item_mask)
+                             item_switch=item_switch, rules_item_mask=rules_item_mask,
+                             mode=MODES[a.mode], handicaps=a.handicaps,
+                             damage_ratio_tenths=damage_ratio_tenths, special=a.special)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]
@@ -512,6 +596,18 @@ def main(argv: list[str] | None = None) -> None:
             sys.exit(f"the match did not start as the team battle asked: {summary}")
         print(f"   teams {a.teams}, friendly fire {'on' if a.friendly_fire else 'off'}", flush=True)
 
+    rules = {"mode": MODE_NAMES[summary["match_kind"]], "damage_ratio": summary["damage_ratio"]}
+    if summary["match_kind"] != MODES[a.mode] or (
+            a.time_limit and summary["time_limit"] != a.time_limit * 60):
+        sys.exit(f"the match did not start with the rules asked: {summary}")
+    if a.handicaps:
+        rules["handicaps"] = [p["handicap"] for p in summary["rule_players"]]
+        if rules["handicaps"] != a.handicaps:
+            sys.exit(f"the match did not start with the handicaps asked: {summary['rule_players']}")
+    if damage_ratio_tenths is not None and summary["damage_ratio"] != _f32(_f32(0.1) * damage_ratio_tenths):
+        sys.exit(f"the match runs damage ratio {summary['damage_ratio']}, not {a.damage_ratio}")
+    print(f"   rules: {rules}, timer {summary['time_limit']}s, players {summary['rule_players']}",
+          flush=True)
     items = (summary["rules_item_frequency"], summary["rules_item_mask"])
     expected_mask = rules_item_mask if rules_item_mask is not None else menu_item_mask(item_switch)
     if items[0] != item_frequency or (item_frequency >= 0 and items[1] != expected_mask):
@@ -521,10 +617,12 @@ def main(argv: list[str] | None = None) -> None:
         print(f"   items: frequency {items[0]}, mask {items[1]:#018x}", flush=True)
 
     scenario.write_text(start_scenario(name, a.stage, a.players, a.stocks, a.gecko, slots,
-                                       a.game_start_seed, items=items, cpu_levels=a.cpu_levels))
+                                       a.game_start_seed, items=items, cpu_levels=a.cpu_levels,
+                                       rules=rules))
     cold.write_text(cold_scenario(name, a.stage, a.players, a.stocks, seed, costumes, a.spawn, a.gecko,
                                   slots, a.time_limit, a.game_start_seed, a.spawn_points, a.teams,
-                                  a.friendly_fire, items=items, cpu_levels=a.cpu_levels))
+                                  a.friendly_fire, items=items, cpu_levels=a.cpu_levels,
+                                  rules=rules))
     print(f"== recording {scenario.name}", flush=True)
     # record_many gives the run a private Dolphin user folder, so parallel
     # make_boundary runs (one per agent) never share config or card writes.
@@ -538,14 +636,15 @@ def main(argv: list[str] | None = None) -> None:
     if gate.returncode:
         print(f"== {name} is not registered: the port does not reproduce it yet. Its savestate, scenarios "
               f"and traces stay for that work; register it by rerunning the gate and adding\n"
-              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams, a.friendly_fire, items=items, cpu_levels=a.cpu_levels)}")
+              f"{boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams, a.friendly_fire, items=items, cpu_levels=a.cpu_levels, rules=rules, time_limit=a.time_limit)}")
         sys.exit(1)
     if a.no_register:
         print(f"== {name} passes; not registered (--no-register)")
         return
     with BOUNDARIES.open("a") as f:
         f.write(boundary_entry(name, a.stage, a.players, a.stocks, seed, costumes, a.teams,
-                               a.friendly_fire, items=items, cpu_levels=a.cpu_levels))
+                               a.friendly_fire, items=items, cpu_levels=a.cpu_levels,
+                               rules=rules, time_limit=a.time_limit))
     if BACKUP.is_dir():
         for src in (sav, Path(str(sav) + ".json")):
             dst = BACKUP / src.name

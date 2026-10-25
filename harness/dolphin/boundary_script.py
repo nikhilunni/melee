@@ -108,6 +108,14 @@ VS_STATE_CSS, VS_STATE_SSS = 0, 1      # gmvsmode.h gmVsMode_StateId
 MENU_FLOW = symbols.addr("mn_804A04F0")
 MENU_MAIN, MENU_VS = 0, 2              # mn/forward.h MenuKind
 SEL_MAIN_VS, SEL_VS_MELEE = 1, 0       # MainMenuSelection, VsMenuSelection
+# VS. Mode > Special Melee (MENU_KIND_SPECIAL, SEL_VS_SPECIAL): each mode's
+# SpecialVsMenuSelection and the GameModeKind its CSS runs in.
+MENU_SPECIAL, SEL_VS_SPECIAL = 12, 2
+SPECIAL_MODES = {
+    "camera": (0, 0x2A), "stamina": (1, 0x1F), "super-sudden-death": (2, 0x10),
+    "giant": (3, 0x1E), "tiny": (4, 0x1D), "invisible": (5, 0x11),
+    "single-button": (7, 0x2C), "lightning": (8, 0x13), "slomo": (9, 0x12),
+}
 
 # Save data (gmMainLib_804D3EE0 -> 0x8045A6C0), the pokes of docs/DOLPHIN_RUN.md
 # "Unlocks and rules are RAM-only pokes". The unlock bits reach match state
@@ -120,7 +128,11 @@ CHARACTER_UNLOCKS, CHARACTER_UNLOCK_BITS = 0x8045BF28, 0xFFFF
 STAGE_UNLOCKS, STAGE_UNLOCK_BITS = 0x8045BF2A, 0x07FF
 GAME_RULES = 0x8045BF10                # gm/types.h GameRules
 RULES_MODE, RULES_STOCKS, RULES_STOCK_TIME = 0x2, 0x4, 0x8
-MODE_STOCK = 1
+# GameRules time_limit (+3, minutes: the Time, Coin and Bonus timer),
+# handicap (+5: 0 off, 1 auto, 2 on) and damage_ratio (+6, tenths); the VS
+# rules build StartMeleeRules from them (gm_80167BC8, gm_1601.c:3570-3643).
+RULES_TIME, RULES_HANDICAP, RULES_DAMAGE_RATIO = 0x3, 0x5, 0x6
+MODE_TIME, MODE_STOCK, MODE_COIN = 0, 1, 2   # mn/forward.h Mode
 ITEM_FREQUENCY = 0x8045C370            # gmm_x1CB0.item_freq (0x1CB0 into save data)
 ITEMS_OFF = 0xFF                       # (s8) -1
 ITEM_SWITCH = 0x8045C378               # gmm_x1CB0.item_mask (u64, bit i: lbl_803B7844[i])
@@ -151,6 +163,7 @@ PKIND_HUMAN = 0
 # PlayerInitData team (+9) every frame (mncharsel.c:1518).
 CSS_RULES, RULES_IS_TEAMS, RULES_FRIENDLY_FIRE = 0x10, 0x8, 0x1
 PLAYER_TEAM = 0x9
+PLAYER_HANDICAP = 0x8
 CSS_DOORS, DOOR_SIZE, DOOR_TEAM = symbols.addr("mnCharSel_803F0DFC"), 0x24, 0xA
 # The match's StartMeleeRules (lbl_8046B6A0 +24C8), read back for the summary.
 MATCH_RULES = symbols.addr("lbl_8046B6A0") + 0x24C8
@@ -249,6 +262,10 @@ class BoundaryDriver:
         self.cpu_replaced: list[dict] | None = None
         self.creation_hooked = False
         self.watching_creation = False
+        # `special` (optional): a Special Melee mode instead of Melee.
+        special = config.get("special")
+        self.special = SPECIAL_MODES[special] if special else None
+        self.major = self.special[1] if self.special else GM_VS
 
     # --- memory ----------------------------------------------------------
     def scene(self) -> tuple[int, int]:
@@ -307,14 +324,14 @@ class BoundaryDriver:
                 return {}
             return self.pulse("Start")
         if self.phase == "menu":
-            if mode == GM_VS:
+            if mode == self.major:
                 self.enter("css")
                 return {}
             return self.navigate_menu()
         if self.phase == "css":
             return self.select_characters(mode, state)
         if self.phase == "start":
-            if mode == GM_VS and state == VS_STATE_SSS and self.ptr(SSS_DATA_PTR):
+            if mode == self.major and state == VS_STATE_SSS and self.ptr(SSS_DATA_PTR):
                 self.mem.write_u8(self.ptr(SSS_DATA_PTR) + SSS_FORCE_STAGE, self.config["stkind"])
                 if self.hooks_creation():
                     self.mem.add_memcheck(MATCH_START_TEST)
@@ -406,9 +423,19 @@ class BoundaryDriver:
         mem = self.mem
         mem.write_u16(CHARACTER_UNLOCKS, mem.read_u16(CHARACTER_UNLOCKS) | CHARACTER_UNLOCK_BITS)
         mem.write_u16(STAGE_UNLOCKS, mem.read_u16(STAGE_UNLOCKS) | STAGE_UNLOCK_BITS)
-        mem.write_u8(GAME_RULES + RULES_MODE, MODE_STOCK)
+        mode = self.config.get("mode", MODE_STOCK)
+        mem.write_u8(GAME_RULES + RULES_MODE, mode)
         mem.write_u8(GAME_RULES + RULES_STOCKS, self.config["stocks"])
-        mem.write_u8(GAME_RULES + RULES_STOCK_TIME, self.config.get("time_limit_minutes", 0))
+        # Stock reads its own timer (stock_time_limit); Time and Coin read
+        # time_limit (gm_1601.c:3578-3600).
+        minutes = self.config.get("time_limit_minutes", 0)
+        mem.write_u8(GAME_RULES + RULES_STOCK_TIME, minutes if mode == MODE_STOCK else 0)
+        if mode != MODE_STOCK:
+            mem.write_u8(GAME_RULES + RULES_TIME, minutes)
+        if "handicap_rule" in self.config:
+            mem.write_u8(GAME_RULES + RULES_HANDICAP, self.config["handicap_rule"])
+        if "damage_ratio_tenths" in self.config:
+            mem.write_u8(GAME_RULES + RULES_DAMAGE_RATIO, self.config["damage_ratio_tenths"])
         if self.config.get("teams"):
             # GameRules +9 friendly_fire: the match's rules take it from here.
             mem.write_u8(GAME_RULES + 9, 1 if self.config.get("friendly_fire") else 0)
@@ -423,7 +450,10 @@ class BoundaryDriver:
             return {}
         menu = self.mem.read_u8(MENU_FLOW)
         hovered = self.mem.read_u16(MENU_FLOW + 2)
-        target = {MENU_MAIN: SEL_MAIN_VS, MENU_VS: SEL_VS_MELEE}.get(menu)
+        targets = {MENU_MAIN: SEL_MAIN_VS, MENU_VS: SEL_VS_MELEE}
+        if self.special:
+            targets = {MENU_MAIN: SEL_MAIN_VS, MENU_VS: SEL_VS_SPECIAL, MENU_SPECIAL: self.special[0]}
+        target = targets.get(menu)
         self.wait_until = self.frame + PULSE_PERIOD
         first = self.ports[0]
         if target is None:   # a submenu this path never opens: back out
@@ -433,12 +463,14 @@ class BoundaryDriver:
         return {first: {"Down" if hovered < target else "Up": True}}
 
     def select_characters(self, mode: int, state: int) -> dict:
-        if (mode, state) != (GM_VS, VS_STATE_CSS):
+        if (mode, state) != (self.major, VS_STATE_CSS):
             raise BoundaryError(f"left the CSS early (mode {mode}, state {state})")
         players = self.config["players"]
         if self.player == len(players) and not self.costumes_done():
             return self.change_costume()
         if self.player == len(players) and not self.teams_set():
+            return {}
+        if self.player == len(players) and not self.handicaps_set():
             return {}
         if self.player == len(players):
             self.css = [self.css_player(p) for p in self.ports]
@@ -503,6 +535,21 @@ class BoundaryDriver:
         return all(self.mem.read_u8(css + CSS_PLAYERS + port * PLAYER_SIZE + PLAYER_TEAM) == team
                    for port, team in zip(self.ports, teams))
 
+    def handicaps_set(self) -> bool:
+        """Poke each door's handicap into the CSS start data (PlayerInitData
+        +8, what the CSS's handicap slider writes with the rule on), as
+        teams_set does; True once it reads back, or at once without
+        `handicaps`. gm_80167BC8 (gm_1601.c:3632-3637) turns them into the
+        attack and defense ratios of lbl_803B7930 when the match starts."""
+        handicaps = self.config.get("handicaps")
+        if not handicaps:
+            return True
+        css = self.ptr(CSS_DATA_PTR)
+        for port, handicap in zip(self.ports, handicaps):
+            self.mem.write_u8(css + CSS_PLAYERS + port * PLAYER_SIZE + PLAYER_HANDICAP, handicap)
+        return all(self.mem.read_u8(css + CSS_PLAYERS + port * PLAYER_SIZE + PLAYER_HANDICAP) == h
+                   for port, h in zip(self.ports, handicaps))
+
     def costumes_done(self) -> bool:
         wanted = self.config.get("costumes")
         return wanted is None or all(
@@ -548,7 +595,26 @@ class BoundaryDriver:
                 "item_frequency": self.mem.read_s8(ITEM_FREQUENCY),
                 "is_teams": self.mem.read_u8(MATCH_RULES + RULES_IS_TEAMS),
                 "friendly_fire": self.mem.read_u8(MATCH_RULES + RULES_FRIENDLY_FIRE) & 1,
-                **self.match_items(), **self.creation_seed()}
+                **self.match_rules(), **self.match_items(), **self.creation_seed()}
+
+    def match_rules(self) -> dict:
+        """The match's mode, timer and ratios as StartMeleeRules holds them:
+        match_kind (byte 0 bits 7-5), timer_enabled (bit 1), time_limit
+        (+0x10, seconds), the SD penalty xC, x30 the damage ratio, and each
+        player's attack and defense ratio (StaticPlayer +0x50/+0x54 is not
+        read: the start data's PlayerInitData +0x18/+0x1C, which
+        fn_8016D8AC copies)."""
+        flags = self.mem.read_u8(MATCH_RULES)
+        players = [{"handicap": self.mem.read_s8(VS_START_PLAYERS + p * START_PLAYER_SIZE + 8),
+                    "attack_ratio": self.mem.read_f32(VS_START_PLAYERS + p * START_PLAYER_SIZE + 0x18),
+                    "defense_ratio": self.mem.read_f32(VS_START_PLAYERS + p * START_PLAYER_SIZE + 0x1C)}
+                   for p in self.ports]
+        return {"match_kind": flags >> 5, "timer_enabled": (flags >> 1) & 1,
+                "time_limit": self.mem.read_u32(MATCH_RULES + 0x10),
+                "sd_penalty": self.mem.read_s8(MATCH_RULES + 0xC),
+                "score_display": self.mem.read_u8(MATCH_RULES + 3) >> 7,
+                "damage_ratio": self.mem.read_f32(MATCH_RULES + 0x30),
+                "rule_players": players}
 
     def match_items(self) -> dict:
         """The item rules the match runs: frequency and mask (gm_8016AE80,
@@ -583,7 +649,7 @@ def main() -> None:
         savestate.save_to_file(path)
         sidecar = {"savestate": path, "saved_at": time.strftime("%Y-%m-%d %H:%M:%S"),
                    "frame": driver.frame, "seed": memory.read_u32(SEED_ADDR),
-                   "fighters": driver.read_fighters(), **driver.match_items(),
+                   "fighters": driver.read_fighters(), **driver.match_rules(), **driver.match_items(),
                    **driver.creation_seed()}
         proto.write_json_atomic(Path(path + ".json"), sidecar)
 
