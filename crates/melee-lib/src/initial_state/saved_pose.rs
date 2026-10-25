@@ -126,11 +126,16 @@ impl SavedPose {
     /// Restore their saved AObj/FObj streams, rather than attaching the current
     /// main motion to the part-owned blend joints (jobj.h/aobj.h/fobj.h).
     fn part_animation(&self, joint: &mut JObj, address: u32) {
+        joint.aobj = self.joint_animation(address);
+    }
+
+    /// Restore a live joint clock and its decoded tracks without replacing
+    /// the archive-owned joint or its resolved path references.
+    pub(super) fn joint_animation(&self, address: u32) -> Option<hsd_anim::aobj::AObj> {
         use hsd_anim::{aobj::AObj, fobj::FObj};
         let pointer = word(self.bytes(address, 0x88), 0x7C);
         if pointer == 0 {
-            joint.aobj = None;
-            return;
+            return None;
         }
         let data = self.bytes(pointer, 0x1C);
         let mut tracks = Vec::new();
@@ -163,14 +168,14 @@ impl SavedPose {
             tracks.push(decoded);
             track = word(f, 0);
         }
-        joint.aobj = Some(AObj {
+        Some(AObj {
             flags: word(data, 0),
             curr_frame: float(data, 4),
             rewind_frame: float(data, 8),
             end_frame: float(data, 12),
             framerate: float(data, 16),
             fobj: tracks,
-        });
+        })
     }
     pub fn restore(&self, fighter: &mut melee_ft::fighter::FighterCore, raw: &[u8]) {
         let gobj = word(raw, 0);

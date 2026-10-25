@@ -106,11 +106,6 @@ pub struct Kongo {
     /// (Ground_801C4DA0 reads it for the catch).
     pub barrel_position: hsd_types::Vec3,
     pub barrel_angle: f32,
-    /// The barrel's position changed at its last step. The port's copy of
-    /// x730 lags retail's while the barrel travels its path (a held fighter
-    /// sits a step behind, explorer kj2 e0c8363c7_p1 tick 1032), so a catch
-    /// or a held fighter on a moving barrel fails closed.
-    pub barrel_moved: bool,
     /// ftCo_800C0764 registered the barrel's catch at the match start.
     pub catch_active: bool,
     /// The logs afloat (maps 1 and 2).

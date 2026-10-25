@@ -197,7 +197,6 @@ pub(crate) fn initialize(
             last_event: -1,
             barrel: barrel.expect("the barrel's map"),
             barrel_position,
-            barrel_moved: false,
             barrel_angle: 0.0,
             catch_active: false,
             logs: [None; 2],
@@ -289,7 +288,6 @@ pub(crate) fn run_proc(
             let model = state.stage_animations.get_mut(&BARREL).unwrap();
             model.set_joint_rotation_z(BARREL_JOINT, step.angle);
             let position = world_position(model, BARREL_JOINT);
-            stage.barrel_moved = position != stage.barrel_position;
             stage.barrel_position = position;
             stage.barrel_angle = step.angle;
             model.set_animation_rate(step.rate);
@@ -492,9 +490,6 @@ fn step_hold(state: &mut InitialState) -> Result<()> {
         unreachable!()
     };
     let barrel = &mut stage.barrel;
-    if barrel.hold != Hold::Empty {
-        require_barrel_witness();
-    }
     match barrel.hold {
         Hold::Empty => {
             // grKongo_801D8078: a Klaptrap within reach is caught.
@@ -593,17 +588,9 @@ pub(crate) fn barrel_catch(state: &mut InitialState, player: usize) -> Result<()
     {
         return Ok(());
     }
-    // Fail closed: while the barrel travels, the port's x730 is a step
-    // off retail's, so any fighter near enough to be caught or missed stops.
-    if stage.barrel_moved && barrel_near(stage, fighter.physics.position) {
-        unimplemented!(
-            "fn_801D8134: a catch by the barrel on its path (Ground_801C4DA0's x730 timing)"
-        );
-    }
     if !barrel_reaches(stage, fighter.physics.position) {
         return Ok(());
     }
-    require_barrel_witness();
     // fn_801D8134: the hold time, the keep, the hold; the sound, the
     // material flash (no state), efSync_Spawn(0x405) at the fighter.
     let position = fighter.physics.position;
@@ -653,30 +640,12 @@ pub(crate) fn barrel_accessory(state: &mut InitialState, player: usize) {
     };
     let fighter = &mut state.fighters[player].0;
     if fighter.motion_state.id == melee_types::CommonMotionState::BarrelWait && !fighter.in_hitlag() {
-        if stage.barrel_moved {
-            unimplemented!("ftCo_8009EC44: a fighter held by the barrel on its path (x730 timing)");
-        }
-        require_barrel_witness();
         fighter.ride_barrel(stage.barrel_position);
     }
 }
 
-/// fn_801D8134's test (0x801D8134), from ftColl_8007BA0C: whether the
-/// barrel would catch a fighter at `position`. retail 0x801D81C0..801D81E8:
-/// separate fsubs, fmuls, fadds.
-/// A guard for the fail-closed catch: within twice the catch radius of the
-/// barrel while it is empty. Not retail arithmetic; it only stops the run.
-fn barrel_near(stage: &Kongo, position: Vec3) -> bool {
-    if stage.barrel.hold != melee_gr::kongo::barrel::Hold::Empty {
-        return false;
-    }
-    let pos = stage.barrel_position;
-    let dx = pos.x - position.x;
-    let dy = pos.y - position.y;
-    let radius = 2.0 * stage.parameters.catch_radius;
-    dx * dx + dy * dy < radius * radius
-}
-
+/// fn_801D8134 (0x801D8134): separate fsubs, fmuls and fadds at
+/// 0x801D8190..0x801D81C0 test the squared three-dimensional distance.
 pub(crate) fn barrel_reaches(stage: &Kongo, position: Vec3) -> bool {
     if stage.barrel.hold != melee_gr::kongo::barrel::Hold::Empty {
         return false;
@@ -687,10 +656,4 @@ pub(crate) fn barrel_reaches(stage: &Kongo, position: Vec3) -> bool {
     let dz = pos.z - position.z;
     let radius = stage.parameters.catch_radius;
     (dx * dx + dy * dy) + dz * dz < radius * radius
-}
-
-/// fn_801D8134 / grKongo_801D577C: the recorded catch cases currently
-/// stop at the moving-barrel guard, so no complete witness covers use.
-fn require_barrel_witness() {
-    unimplemented!("fn_801D8134 / grKongo_801D577C (grkongo.c:1397,312): Kongo barrel use needs a retail witness");
 }

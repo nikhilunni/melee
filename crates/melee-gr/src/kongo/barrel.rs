@@ -245,7 +245,8 @@ impl Barrel {
     }
 
     /// The catch's hold time (fn_801D8134, grkongo.c:441): retail
-    /// 0x801D5DD8 fmadds (x24 - x20) * r + x20, fctiwz.
+    /// 0x801D81F0 (fighter) / 0x801D5DD8 (Klaptrap): fmadds
+    /// (x24 - x20) * r + x20, fctiwz.
     pub fn draw_hold(p: &Parameters, rng: &mut HsdRng) -> i16 {
         let r = rng.randf();
         let [low, high] = p.hold_frames;

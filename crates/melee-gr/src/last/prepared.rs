@@ -171,6 +171,14 @@ impl BackgroundAnimation {
             self.set_joint_rate(bone, rate);
         }
     }
+    /// Restore a saved live animation while retaining the archive-owned joint.
+    pub fn restore_joint_animation(
+        &mut self,
+        bone: usize,
+        animation: Option<hsd_anim::aobj::AObj>,
+    ) {
+        self.tree.get_mut(self.joints[bone]).aobj = animation;
+    }
     /// `HSD_JObjGetTranslation` of a model bone.
     pub fn joint_translation(&self, bone: usize) -> hsd_types::Vec3 {
         self.tree.translation(self.joints[bone])

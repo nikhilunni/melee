@@ -5151,7 +5151,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 781] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 787] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6402,15 +6402,75 @@ static CORPUS_V3_MATCHES: [(&str, usize); 781] = [
     // KONGO: Kongo Jungle's bridge, platform ends, barrel spin and path,
     // the first event (grKongo_801D7BBC at tick 1664: logs on maps 1/2,
     // passers-by on maps 7/8/9, each drawn and placed); the barrel never
-    // comes near enough to catch (that branch fails closed).
+    // comes near enough to catch in these first three recordings.
     ("corpus_v3_kj_fox_marth4_e0fcbde24_p0", 2236),
     ("corpus_v3_kj_fox_marth4_e11788094_p2", 3240),
     ("corpus_v3_kj_fox_marth4_e726cfdde_p1", 1666),
+    // Saved barrel AObj rate precedes gp+E8: complete moving catches,
+    // held x730 positions and DamageFlyRoll launches, plus all later ticks.
+    ("corpus_v3_kj_fox_marth4_ef5e3e043_p0", 1666),
+    ("corpus_v3_kj_fox_marth4_e41b2c2b8_p1", 2726),
+    ("corpus_v3_kj_fox_marth4_e7254fba4_p0", 3580),
+    ("corpus_v3_kj_fox_marth4_ef5e3e043_p0_cold", 1666),
+    ("corpus_v3_kj_fox_marth4_e41b2c2b8_p1_cold", 2726),
+    ("corpus_v3_kj_fox_marth4_e7254fba4_p0_cold", 3580),
     // Another full input path through the first map-9 passer-by event.
     ("corpus_v3_kj_fox_marth4_e726cfdde_p2", 1666),
     ("corpus_v3_kj_fox_marth4_e9943b4ab_p0", 1666),
     ("corpus_v3_kj_fox_marth4_ec13743d5_p1", 1666),
 ];
+
+/// Complete moving catches, held Ground x730 positions and launch damage.
+#[test]
+fn kongo_moving_barrel_complete_catches_holds_launches_and_ordered_particle_draws() {
+    for (name, ticks) in [
+        ("corpus_v3_kj_fox_marth4_ef5e3e043_p0", 1666),
+        ("corpus_v3_kj_fox_marth4_e41b2c2b8_p1", 2726),
+        ("corpus_v3_kj_fox_marth4_e7254fba4_p0", 3580),
+        ("corpus_v3_kj_fox_marth4_ef5e3e043_p0_cold", 1666),
+        ("corpus_v3_kj_fox_marth4_e41b2c2b8_p1_cold", 2726),
+        ("corpus_v3_kj_fox_marth4_e7254fba4_p0_cold", 3580),
+    ] {
+        if combat_gate_ticks(name, ticks).is_none() {
+            continue;
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        let ledger = scenario.trace_path("ledger.raw.jsonl");
+        let rows = melee_test_support::trace::read_to_string(&ledger).unwrap();
+        assert_eq!(rows.lines().count(), ticks);
+        let mut simulation = trace::simulation_displayed_as(&scenario, &ledger).unwrap();
+        let mut previous = None;
+        for (tick, line) in rows.lines().enumerate() {
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"], tick, "complete sequential ledger");
+            // Every RNG result is the next LCG state, including stage and
+            // fighter draws outside the separately checked particle sites.
+            let mut seed = previous.map(gekko_math::HsdRng::new);
+            for draw in row["rng_draws"].as_array().unwrap() {
+                let rng = seed.as_mut().expect("setup observation draws no RNG");
+                rng.rand();
+                assert_eq!(
+                    u64::from(rng.seed),
+                    draw["seed"].as_u64().unwrap(),
+                    "{name} tick {tick}: complete ordered RNG values"
+                );
+            }
+            let expected = row["seed"].as_u64().unwrap() as u32;
+            if let Some(seed) = seed {
+                assert_eq!(seed.seed, expected);
+            }
+            let actual = simulation.tick().unwrap();
+            assert_eq!(
+                actual.state["rng.seed"],
+                melee_diff::Value::UInt(u64::from(expected)),
+                "{name} tick {tick}: full ledger RNG count and final state"
+            );
+            previous = Some(expected);
+        }
+    }
+}
 
 /// Japes ef89 has a full 2038-tick retail field trace, but its separate
 /// ledger capture stopped after 1489 ticks and no particle-state dump exists.

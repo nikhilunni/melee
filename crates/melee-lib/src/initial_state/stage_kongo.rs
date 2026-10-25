@@ -231,7 +231,12 @@ pub(super) fn restore(
             }
             BARREL => {
                 let restored = restore_barrel(raw)?;
-                animation.set_animation_rate(restored.rate);
+                // Retail 0x801D5608 installs animation at its own rate.
+                // gp+E8 is applied only by link 4 (0x801D5D6C), after
+                // the first link-1 animation step (0x801C1CF0).
+                for (bone, &joint) in joints.iter().enumerate() {
+                    animation.restore_joint_animation(bone, saved.joint_animation(joint));
+                }
                 barrel = Some(restored);
             }
             _ => {}
@@ -267,7 +272,6 @@ pub(super) fn restore(
             last_event: timers.1,
             barrel,
             barrel_position,
-            barrel_moved: false,
             barrel_angle,
             catch_active: false,
             logs: [None; 2],

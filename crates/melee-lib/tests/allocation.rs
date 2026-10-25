@@ -173,6 +173,48 @@ fn random_item_spawns_and_container_capture_allocate_nothing() {
 }
 
 #[test]
+fn moving_kongo_barrel_catch_hold_launch_and_capture_allocate_nothing() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    let scenario = melee_sim::scenario::Scenario::load(
+        &root.join("harness/scenarios/corpus_v3_kj_fox_marth4_ef5e3e043_p0.toml"),
+    )
+    .unwrap();
+    if !melee_test_support::require_files(scenario.required_files()) {
+        return;
+    }
+    let mut game = diagnostics::import_match(&scenario).unwrap();
+    let mut presentation = presentation::Presentation::new(&game).unwrap();
+    let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+    let mut previous = [ActionId(0); 2];
+    let mut held_ticks = 0;
+    let mut launches = 0;
+    for frame in 0..scenario.frames {
+        let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+        assert_eq!(measure(&mut game, &inputs), 0, "barrel tick {frame}");
+        COUNT.with(|v| v.set(0));
+        ENABLED.with(|v| v.set(true));
+        let result = presentation.capture(&game);
+        ENABLED.with(|v| v.set(false));
+        result.unwrap();
+        assert_eq!(COUNT.with(Cell::get), 0, "barrel capture {frame}");
+        for (index, fighter) in game.observe().unwrap().fighters().enumerate() {
+            let action = fighter.action();
+            held_ticks += usize::from(action == ActionId(293));
+            launches += usize::from(previous[index] == ActionId(293) && action == ActionId(91));
+            previous[index] = action;
+        }
+    }
+    assert_eq!(
+        (held_ticks, launches),
+        (18, 3),
+        "exercise all recorded holds and launches"
+    );
+}
+
+#[test]
 fn imported_item_rules_survive_clone_and_reset_when_the_scenario_omits_them() {
     let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
     let mut scenario = melee_sim::scenario::Scenario::load(

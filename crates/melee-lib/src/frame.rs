@@ -5224,3 +5224,6 @@ fn item_hits_by_items(
 #[cfg(test)]
 #[path = "frame/barrel_owner_tests.rs"]
 mod barrel_owner_tests;
+
+#[cfg(test)]
+mod kongo_barrel_tests;
