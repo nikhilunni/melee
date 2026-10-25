@@ -242,6 +242,11 @@ pub fn read_pupupu_parameters(archive: &Archive) -> ReadResult<crate::pupupu::Pa
         blink_delay: [r.f32(p + 44)? as i32, r.f32(p + 48)? as i32],
     })
 }
+/// grSh_StageData / grDatFiles_801C6038: GrSh.dat. grSh_StageCallbacks[2]
+/// carries flags 0xC0000000, so map 2 selects the lights and fog.
+pub fn read_shrine(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Shrine, 2)
+}
 /// grOy_StageData / grDatFiles_801C6038: GrOy.dat. grOy_StageCallbacks[4]
 /// carries flags 0xC0000000, so map 4 selects the lights and fog.
 pub fn read_old_yoshi(archive: &Archive) -> ReadResult<StageDesc> {
@@ -617,6 +622,8 @@ pub fn read_music(archive: &Archive, stage_id: i32) -> ReadResult<crate::music::
     let row = selected.ok_or_else(|| error("missing stage music parameters"))?;
     let rule = match r.s16(row + 0x14)? {
         0 => crate::music::MusicRule::Primary,
+        3 => crate::music::MusicRule::CharacterUnlocked(crate::music::MARTH_UNLOCK_BIT),
+        4 => crate::music::MusicRule::CharacterUnlocked(crate::music::YOUNG_LINK_UNLOCK_BIT),
         6 => crate::music::MusicRule::AllCharactersUnlocked,
         rule => return Err(error(format!("unsupported stage music unlock rule {rule}"))),
     };

@@ -63,6 +63,15 @@ impl WindState {
     }
 }
 
+/// One active `lb_80011A50_t` at a saved boundary.
+#[derive(Clone, Copy, Debug)]
+pub struct SavedField {
+    pub field: ForceField,
+    pub frames: i32,
+    pub decay: f32,
+    pub priority: i32,
+}
+
 #[derive(Default, Clone)]
 pub struct RadialForces {
     fields: [ForceField; 8],
@@ -124,6 +133,31 @@ impl RadialForces {
         self.timers[slot] = frames;
         self.decay[slot] = decay;
         self.priority[slot] = priority;
+    }
+
+    /// The pool as a saved boundary holds it: the active list (lb_804D63B0)
+    /// in list order, each entry's field, timer (`unk_count0`), decay
+    /// (`x24`) and priority (`x1`), and the wind state (lb_804D63B4).
+    pub fn from_saved(entries: &[SavedField], wind_code: i32) -> Option<Self> {
+        if entries.len() > 8 {
+            return None;
+        }
+        let mut pool = Self::default();
+        for (slot, entry) in entries.iter().enumerate() {
+            pool.fields[slot] = entry.field;
+            pool.timers[slot] = entry.frames;
+            pool.decay[slot] = entry.decay;
+            pool.priority[slot] = entry.priority;
+        }
+        pool.len = entries.len();
+        pool.wind = match wind_code {
+            0 => WindState::Calm,
+            1 => WindState::Started,
+            2 => WindState::Blowing,
+            -1 => WindState::Stopped,
+            _ => return None,
+        };
+        Some(pool)
     }
 
     pub fn fields(&self) -> &[ForceField] {

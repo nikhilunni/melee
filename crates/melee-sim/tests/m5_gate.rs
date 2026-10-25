@@ -5223,7 +5223,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 791] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 797] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6497,6 +6497,14 @@ static CORPUS_V3_MATCHES: [(&str, usize); 791] = [
     ("corpus_v3_kj_fox_marth4_e726cfdde_p2", 1666),
     ("corpus_v3_kj_fox_marth4_e9943b4ab_p0", 1666),
     ("corpus_v3_kj_fox_marth4_ec13743d5_p1", 1666),
+    // Hyrule Temple (grshrine.c): static maps and the permanent stage wind
+    // (grShrine_80201C64's lb_80011A50), which keeps Marth's cape dynamic.
+    ("corpus_v3_ht_fox_marth4_ef89b3e70_p0", 5686),
+    ("corpus_v3_ht_fox_marth4_e9943b4ab_p0", 6001),
+    ("corpus_v3_ht_fox_marth4_e19f8579b_p0", 5127),
+    ("corpus_v3_ht_fox_marth4_e50814092_p0", 6001),
+    ("corpus_v3_ht_fox_marth4_eeda0d0fc_p0", 6001),
+    ("corpus_v3_ht_fox_marth4_ee133b82f_p0", 6001),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

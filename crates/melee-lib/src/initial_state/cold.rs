@@ -170,6 +170,11 @@ impl InitialState {
             stadium.transformation.frozen = scenario.slippi.stadium_frozen;
         }
         stage.set_frozen_stages(scenario.slippi.frozen_stages);
+        // grShrine_80201C64's lb_80011A50: the field outlives the match.
+        let mut radial_forces = melee_lb::radial_force::RadialForces::default();
+        if matches!(stage, SceneStage::Shrine(_)) {
+            radial_forces.insert_directional(melee_gr::shrine::wind());
+        }
         // Fountain of Dreams and the N64 stages bind their collision
         // joints during creation.
         let archive_bindings = !matches!(
@@ -212,9 +217,14 @@ impl InitialState {
         let pending_music = Some((
             melee_gr::desc::read_music(&assets.stage, assets.stage_descriptor.music_id)
                 .map_err(|e| anyhow::anyhow!("{e}"))?,
-            scenario
+            if scenario
                 .all_characters_unlocked
-                .expect("validated cold music rule"),
+                .expect("validated cold music rule")
+            {
+                melee_gr::music::ALL_UNLOCKABLE_CHARACTERS
+            } else {
+                0
+            },
         ));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
@@ -289,6 +299,7 @@ impl InitialState {
             offscreen_damage_by_camera_limits: scenario
                 .slippi
                 .offscreen_damage_by_camera_limits,
+            radial_forces,
         })
     }
 }
@@ -342,6 +353,8 @@ fn setup_draws(
         GrKind::Garden => 9,
         // The barrel's two waits (grKongo_801D55D8), then two keys.
         GrKind::Kongo => 4,
+        // grShrine_80201C64 draws nothing (GrSh.dat has no particle keys).
+        GrKind::Shrine => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -566,6 +579,11 @@ fn initialize_stage(
                 particles,
                 map,
             )?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Shrine => {
+            let (stage, animations) = crate::scene_stage::shrine::initialize(assets)?;
             stage_animations = animations;
             stage
         }

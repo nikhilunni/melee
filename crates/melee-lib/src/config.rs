@@ -224,7 +224,7 @@ const fn names(name: &'static str, display: &'static str, st_kind: u8) -> StageN
 }
 impl Stage {
     /// The stages a match can start on, in the order menus offer them.
-    pub const PORTED: [Self; 10] = [
+    pub const PORTED: [Self; 11] = [
         Self::Battlefield,
         Self::FinalDestination,
         Self::DreamLand,
@@ -235,6 +235,7 @@ impl Stage {
         Self::KongoJungle64,
         Self::JungleJapes,
         Self::KongoJungle,
+        Self::HyruleTemple,
     ];
     /// Every Versus stage (the 29 of the stage select screen), `StKind` order.
     pub const VERSUS: [Self; 29] = [

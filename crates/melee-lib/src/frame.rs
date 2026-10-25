@@ -2627,6 +2627,7 @@ impl Runtime {
                         || address == 0x801C_C0D4
                         || address == melee_gr::oldyoshi::procs::DYNAMICS_PROC
                         || address == melee_gr::oldkongo::procs::DYNAMICS_PROC
+                        || address == melee_gr::shrine::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                     {
@@ -2678,6 +2679,10 @@ impl Runtime {
                             &mut self.stage_objects,
                             &mut self.item_objects,
                         )?;
+                    } else if matches!(state.stage, SceneStage::Shrine(_)) {
+                        // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
+                        // Ground_801C2FE0 has no collision joints to move and
+                        // its lb_800115F4 ran above.
                     } else if matches!(state.stage, SceneStage::Garden(_)) {
                         crate::scene_stage::garden::run_proc(
                             state,
@@ -3573,7 +3578,7 @@ impl Simulation {
         let mut runtime = Box::new(Runtime {
             #[cfg(test)]
             callback_trace: None,
-            radial_forces: Default::default(),
+            radial_forces: state.radial_forces.clone(),
             item_objects: Default::default(),
             stage_objects: Default::default(),
             stage_start_rows: start_rows.clone(),

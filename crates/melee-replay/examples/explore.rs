@@ -75,6 +75,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::JungleJapes => (99.0, 42.0),
         // The bridge ends at about x -70 and 70.
         Stage::KongoJungle => (66.0, 41.0),
+        // The main floor's upper edges (an approximation for the policies).
+        Stage::HyruleTemple => (95.0, 60.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

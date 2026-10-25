@@ -131,6 +131,7 @@ pub(super) fn restore_scene(
         melee_types::GrKind::PStadium => restore_stadium(saved, assets, particles, slippi),
         melee_types::GrKind::OldYoshi => super::stage_oldyoshi::restore(saved, assets, particles),
         melee_types::GrKind::OldKongo => super::stage_oldkongo::restore(saved, assets, particles),
+        melee_types::GrKind::Shrine => super::stage_shrine::restore(saved, assets, particles),
         melee_types::GrKind::Kongo => {
             super::stage_kongo::restore(saved, assets, match_start, particles, metadata)
         }

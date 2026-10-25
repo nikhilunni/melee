@@ -155,6 +155,7 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.barrel_position.x", &stage.barrel_position.x);
             sink.field("stage.barrel_position.y", &stage.barrel_position.y);
         }
+        SceneStage::Shrine(_) => {}
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
             sink.field("stage.shy_timer", &stage.shy_timer);
@@ -186,6 +187,9 @@ fn setup_snapshot(state: &InitialState) -> Record {
             );
         }
     }
+    // lb_804D63B0 / lb_804D63B4: Hyrule Temple's field outlives creation.
+    sink.field("dynamics.fields", &(state.radial_forces.fields().len() as u32));
+    sink.field("dynamics.wind", &state.radial_forces.wind_state().code());
     sink.field("scheduler.resume_s_link", &state.resume.s_link);
     output.finish()
 }
@@ -333,6 +337,11 @@ fn cold_run_reads_only_dat_assets() {
 #[test]
 fn start_kj_fox_marth4_cold_600() {
     verify("start_kj_fox_marth4");
+}
+
+#[test]
+fn start_ht_fox_marth4_cold_600() {
+    verify("start_ht_fox_marth4");
 }
 
 #[test]

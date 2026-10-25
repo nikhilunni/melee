@@ -1202,6 +1202,14 @@ fn jungle_japes_and_kongo_jungle_start_particle_rng_order() {
     particle_rng_sites_with_ledger("start_jj_fox_marth4", 600, "ledger600");
     particle_rng_sites_with_ledger("start_kj_fox_marth4", 600, "ledger600");
 }
+/// Hyrule Temple's start boundary: three static maps and the permanent
+/// stage wind (grShrine_80201C64's lb_80011A50), which Marth's cape follows.
+#[test]
+fn start_ht_fox_marth4_600() {
+    movement_gate_ticks("start_ht_fox_marth4", 600);
+    movement_gate_ticks("start_ht_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_ht_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

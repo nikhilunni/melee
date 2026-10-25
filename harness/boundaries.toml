@@ -1561,3 +1561,12 @@ players = ["Sheik", "Fox"]
 stocks = 4
 seed = 1272007396
 cpu_levels = [0, 9]
+
+[[boundary]]
+name = "start_ht_fox_marth4"
+cold = "start_ht_fox_marth4_cold"
+savestate = "harness/roms/start_ht_fox_marth4.sav"
+stage = "HyruleTemple"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2428156546

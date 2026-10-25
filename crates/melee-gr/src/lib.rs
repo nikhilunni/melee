@@ -10,6 +10,7 @@ pub mod kongo;
 pub mod last;
 pub mod music;
 pub mod rand;
+pub mod shrine;
 pub mod stadium;
 
 pub mod story;

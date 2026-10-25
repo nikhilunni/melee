@@ -23,6 +23,7 @@ mod stage_garden;
 mod stage_izumi;
 mod stage_oldkongo;
 mod stage_oldyoshi;
+mod stage_shrine;
 mod stage_kongo;
 mod stock;
 use hsd_types::Vec3;
@@ -95,7 +96,7 @@ pub struct InitialState {
     pub(crate) effects: Box<melee_ef::Effects>,
     pub(crate) rng: HsdRng,
     /// Match setup still owes Stage_80225074 before the first observation.
-    pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, bool)>,
+    pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, u16)>,
     pub(crate) selected_music: Option<i32>,
     /// The HUD banner running now (countdown or GO).
     pub(crate) banner: Option<crate::banner::Banner>,
@@ -131,6 +132,9 @@ pub struct InitialState {
     /// `SlippiCodes::offscreen_damage_by_camera_limits` (match setup, not
     /// saved state).
     pub(crate) offscreen_damage_by_camera_limits: bool,
+    /// The dynamics field pool (lb_804D63B0) as the stage's creation or the
+    /// saved boundary left it; the runtime owns it from the first tick.
+    pub(crate) radial_forces: melee_lb::radial_force::RadialForces,
 }
 /// gm_8016AE94 for a Versus match (lbl_8046B6A0.unk_34, gm_16AE.c
 /// get_unk_float): the random items' weight scale by player count
@@ -551,6 +555,7 @@ impl InitialState {
             &metadata,
             &setup.slippi,
         )?;
+        let radial_forces = saved_radial_forces(&saved)?;
         stage.set_frozen_stages(setup.slippi.frozen_stages);
         crate::frame::validate_saved_resume(
             &resume,
@@ -572,11 +577,10 @@ impl InitialState {
             // global, add 0x1868. gm/types.h's +1898 comment is stale.
             let main = word(saved.bytes(0x804D_3EE0, 4), 0);
             let unlocks = u16::from_be_bytes(saved.bytes(main + 0x1868, 2).try_into().unwrap());
-            const ALL_UNLOCKABLE_CHARACTERS: u16 = (1 << 11) - 1;
             Some((
                 melee_gr::desc::read_music(&assets.stage, assets.stage_descriptor.music_id)
                     .map_err(|e| anyhow::anyhow!("{e}"))?,
-                unlocks & ALL_UNLOCKABLE_CHARACTERS == ALL_UNLOCKABLE_CHARACTERS,
+                unlocks,
             ))
         } else {
             None
@@ -691,6 +695,40 @@ impl InitialState {
             dween_previous_x: [0.0; 4],
             ko_counts: Default::default(),
             offscreen_damage_by_camera_limits: setup.slippi.offscreen_damage_by_camera_limits,
+            radial_forces,
         })
     }
+}
+
+/// lb_804D63B0 (the dynamics field pool's active list) and lb_804D63B4 (its
+/// wind state) at a saved boundary; `lb_80011A50_t` (lb/types.h:399).
+fn saved_radial_forces(saved: &saved_pose::SavedPose) -> Result<melee_lb::radial_force::RadialForces> {
+    use melee_lb::{dynamics::ForceField, radial_force::SavedField};
+    /// `x0` of a directional field (lb_80011A50); lb_800119DC's are 0.
+    const DIRECTIONAL: u8 = 1;
+    let mut entries = Vec::new();
+    let mut entry = word(saved.bytes(0x804D_63B0, 4), 0);
+    while entry != 0 {
+        ensure!(entries.len() < 8, "cyclic dynamics field list");
+        let raw = saved.bytes(entry, 0x38);
+        let vec = |at: usize| Vec3::new(float(raw, at), float(raw, at + 4), float(raw, at + 8));
+        entries.push(SavedField {
+            field: ForceField {
+                direction_or_center: vec(0x4),
+                rectangle: (raw[0] == DIRECTIONAL).then(|| {
+                    [float(raw, 0x10), float(raw, 0x14), float(raw, 0x18), float(raw, 0x1C)]
+                }),
+                strength: float(raw, 0x20),
+                phase: word(raw, 0x30) as i32,
+                phase_step: float(raw, 0x2C),
+            },
+            frames: word(raw, 0x28) as i32,
+            decay: float(raw, 0x24),
+            priority: i32::from(raw[1]),
+        });
+        entry = word(raw, 0x34);
+    }
+    let wind = word(saved.bytes(0x804D_63B4, 4), 0) as i32;
+    melee_lb::radial_force::RadialForces::from_saved(&entries, wind)
+        .ok_or_else(|| anyhow::anyhow!("dynamics field pool: wind state {wind}"))
 }
