@@ -1489,8 +1489,11 @@ impl FighterCore {
         self.effect_state.article_hitlag = None;
         // fighter.c:1381-1383: hitlag_cb / post_hitlag_cb reset with the row.
         self.combat.hitlag_callbacks = super::damage::HitlagCallbacks::None;
-        // fighter.c:344.
-        self.combat.struck_hitlag = false;
+        // x221A_b3 (struck_hitlag) survives a motion change: only
+        // Fighter_UnkInitReset (fighter.c:344) and the hitlag's end clear it;
+        // Fighter_ChangeMotionState's x221A stores touch b4 and b7 alone
+        // (800698C4, 8006972C). Retail `w26cpu_ht_ef89b3e70_p2` tick 829: a
+        // CPU teching a wall in its hitlag picks behaviour 18.
         self.status.unconditional_top_exit = false; // fighter.c:1075
         self.status.blast_zone_exempt = false; // fighter.c:1040
         self.combat.armor = 0.0;
