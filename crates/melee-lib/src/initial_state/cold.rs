@@ -237,6 +237,15 @@ impl InitialState {
         if let Some(mode) = scenario.special {
             mode.require_ported();
         }
+        if matches!(
+            scenario.mode,
+            melee_types::MatchKind::Coin | melee_types::MatchKind::Bonus
+        ) {
+            unimplemented!(
+                "gm_8016B0B4: a {:?} match (coins, bonus points) needs a retail witness",
+                scenario.mode
+            );
+        }
         effects.score_popups = super::score_popups(
             crate::match_clock::Scoring {
                 match_kind: scenario.mode,
