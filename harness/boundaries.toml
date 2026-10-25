@@ -1722,3 +1722,13 @@ players = ["Fox", "Marth"]
 stocks = 4
 seed = 801516016
 special = "slomo"
+
+[[boundary]]
+name = "start_fd_stamina_fox_marth"
+cold = "start_fd_stamina_fox_marth_cold"
+savestate = "harness/roms/start_fd_stamina_fox_marth.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 1
+seed = 2859672677
+special = "stamina"

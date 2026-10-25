@@ -5298,7 +5298,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 838] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 839] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6562,6 +6562,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 838] = [
     ("corpus_v3_fd_sp_slomo_fox_marth4_ef89b3e70_p0", 6001),
     ("corpus_v3_fd_sp_slomo_fox_marth4_e75fb4a9a_p1", 6001),
     ("corpus_v3_fd_sp_slomo_fox_marth4_e89a89d0e_p2", 6001),
+    // Stamina to a blast-zone KO: 150 HP on the HUD, knockback from PlCo
+    // +6D4 (the HP-out KO stays guarded).
+    ("corpus_v3_fd_stamina_fox_marth_e89a89d0e_p0", 1153),
     // Jungle Japes: the Klaptrap's bite lands (the stage material item's
     // ALDYakuAll hitbox, 30 damage) and KOs through the river, whose
     // current still carries a dead body (DeadDown's procUpdate tail).

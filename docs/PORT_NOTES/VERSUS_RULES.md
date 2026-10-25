@@ -73,6 +73,21 @@ is its own major scene (GameModeKind), which the importer maps to
   fn_8016E730's speed request taken up after the creation pass. The tick
   validator and pad schedule check accept such rows (the pad is dequeued,
   the game's status not renewed). Ported; explorer witnesses exact.
+- Stamina (`gmstamina.c`): one stock and 150 hit points
+  (Player_SetOtherStamina, MoreFlagsBit2 -> fp->x2225_b7). Ported: the
+  HUD shows Player_GetRemainingHP and shakes as it falls (ifstatus.c:577),
+  and knockback reads PlCo +6D4 instead of the percent
+  (ftColl_GetDamageCount, ftcoll.c:2363). Guarded: the KO when the hit
+  points run out (ftCo_800C8C84 -> fn_800C8E74, ft_0C8C.c), which sets
+  x2224_b2 and sends the fighter into DamageFall / DownSpot from a dozen
+  states (ftCo_Damage.c:1003/1096, ftCo_Fall.c:34, ftCo_Wait.c:37,
+  ftCo_DownBound.c:304, ftCo_DownDamage.c:31-57, ftCo_DamageIce.c, ledge
+  grabs off in ft_081B.c, grabs off in ftcoll.c:1589), uses +6D8 for
+  knockback, and slows the game to 0.4 for 100 ticks (gm_801B97C4,
+  fn_801B96E8; `crate::frame_timer` takes the request). Witness to resume
+  from: `corpus_v3_fd_stamina_fox_marth_ef89b3e70_p0` (KO at tick 3678,
+  EscapeN to DamageFall); exact witness `..._e89a89d0e_p0` (a blast-zone
+  KO).
 - Giant and Tiny scale every fighter (1.8 / 0.35): ftCo_800D105C's
   ftCo_800CF6E8 and the kinds' CalcIndiviParam (ftchangeparam.c:178-195)
   are not ported; guarded in `Fighter::prepare`.
