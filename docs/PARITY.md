@@ -1,9 +1,9 @@
 # Function-level parity inventory
 
 How far the port is from all of retail Melee, measured per retail function.
-Measured 2026-10-25 after wave 21 was integrated
-(production source `6d0c850e`). Evidence is in
-`target/parity/wave21-integrated/`. The objective here is breadth: every
+Measured 2026-10-25 after wave 22 was integrated
+(production source `f1288878`). Evidence is in
+`target/parity/wave22-integrated/`. The objective here is breadth: every
 function retail runs, not only what the gate exercises. The current full
 release checkpoint passes; runtime gates and performance budget results
 are tracked separately in `TRACKER.md`.
@@ -76,25 +76,25 @@ does not name them; `gm_1601.c` (match flow), `gm_16AE.c`, `gmmain_lib.c`
 (save data and rules) and the unnamed `hsd_3A94`/`hsd_3B*` files stay in game
 logic.
 
-**Fail-closed sites.** The current inventory has **286 sites**: 267
+**Fail-closed sites.** The current inventory has **299 sites**: 280
 `unimplemented!` and 19 `bail!`. The tool also detects `todo!` in non-test,
 non-tooling code and `Error::UnsupportedFeature` in `hsd-particle`; neither
 adds a current site. `bail!` is counted in simulation crates and `melee-lib`,
 while other crates' input validation is excluded. `unreachable!` is an
 invariant, not a gap, and is left out. A site resolves by a symbol/address
 or C line in its message/comment, then its enclosing Rust function's doc.
-Current resolution: 225 by message/C line, 17 by enclosing context, 44
+Current resolution: 235 by message/C line, 18 by enclosing context, 46
 unresolved dispatch/import sites. New explicit guards can increase this
 count even while more retail behavior is ported.
 
 ## Accuracy
 
-**Citations.** 24,257 of 25,111 function-citation candidates resolve to
-retail functions (96.6%); 546 name decomp inline helpers without their own
-retail symbol, and 308 names remain unresolved. Stale names include
+**Citations.** 24,316 of 25,175 function-citation candidates resolve to
+retail functions (96.6%); 547 name decomp inline helpers without their own
+retail symbol, and 312 names remain unresolved. Stale names include
 `Fighter_ProcessHit`, `Fighter_UnkProcessDeath` and `Fighter_UnkInitReset`;
 other unresolved tokens are state names or fields rather than functions.
-Not counted as function citations: 481 data references and 2,594 other
+Not counted as function citations: 482 data references and 2,594 other
 decomp identifiers. Counts come from the current generated summary, not
 the earlier calibration sample below.
 
@@ -125,47 +125,48 @@ undercount most.
 
 ## Current totals
 
-All functions (19,827; 3,783 KiB): **4,206 ported, 218 partial, 1,374 body,
-1,380 row, 232 referenced, 12,417 not started**. By retail bytes,
-**29.3% ported/partial, 38.1% with body/row**.
+All functions (19,827; 3,783 KiB): **4,211 ported, 225 partial, 1,372 body,
+1,381 row, 231 referenced, 12,407 not started**. By retail bytes,
+**29.4% ported/partial, 38.1% with body/row**.
 
 The historical in-game measurement group (14,399 functions; 2,432 KiB) is
-**45.0% / 57.1%**. The remaining 5,428 functions are still in scope; their
+**45.2% / 57.2%**. The remaining 5,428 functions are still in scope; their
 reporting groups appear below. These figures count citations and code bytes,
 not directly witnessed branches or a percentage of gameplay completeness.
-Since wave 20, ported plus partial grows by eleven functions. Thirteen
-additional explicit guards expose unsupported constructor/entry contexts
-and later callbacks. Seven complete Sword back-air entries and four complete
-crate-monster births now match. Acceptance and limits are in
-`docs/PORT_NOTES/WAVE21_BREADTH.md`.
+Since wave 21, ported plus partial grows by twelve functions. Net thirteen
+additional explicit guards expose unsupported contexts. Thirteen complete
+Sword forward/up-air entries and three complete Klaptrap birth windows now
+match. A paired-hitbox invariant is source/data-proven for Donkey Kong and
+Kirby without new behavior admission. Acceptance and limits are in
+`docs/PORT_NOTES/WAVE22_BREADTH.md`.
 
 | area | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| it items | 3802 | 803 | 30 | 141 | 117 | 42 | 2669 | 473 | 39.4% | 45.1% |
-| ft characters | 3672 | 1715 | 35 | 411 | 921 | 53 | 537 | 445 | 62.5% | 87.5% |
-| gr | 1760 | 150 | 7 | 89 | 0 | 28 | 1486 | 340 | 17.9% | 20.6% |
-| ft common states | 1471 | 512 | 85 | 190 | 321 | 8 | 355 | 248 | 62.1% | 77.8% |
+| it items | 3802 | 805 | 35 | 141 | 117 | 42 | 2662 | 473 | 39.6% | 45.4% |
+| ft characters | 3672 | 1716 | 34 | 411 | 921 | 53 | 537 | 445 | 62.5% | 87.5% |
+| gr | 1760 | 150 | 11 | 88 | 0 | 27 | 1484 | 340 | 18.4% | 20.8% |
+| ft common states | 1471 | 512 | 84 | 190 | 322 | 8 | 355 | 248 | 62.0% | 77.8% |
 | ft engine | 1108 | 338 | 30 | 213 | 21 | 42 | 464 | 237 | 54.9% | 69.4% |
 | HSD (sysdolphin) | 499 | 141 | 2 | 27 | 0 | 15 | 314 | 180 | 35.4% | 45.4% |
 | mp | 229 | 212 | 1 | 2 | 0 | 2 | 12 | 102 | 92.5% | 92.9% |
 | gm | 617 | 15 | 2 | 28 | 0 | 6 | 566 | 98 | 6.0% | 13.9% |
-| it engine | 475 | 129 | 16 | 113 | 0 | 11 | 206 | 88 | 47.5% | 63.4% |
+| it engine | 475 | 130 | 16 | 112 | 0 | 11 | 206 | 88 | 47.9% | 63.4% |
 | lb | 211 | 61 | 2 | 36 | 0 | 1 | 111 | 58 | 47.2% | 60.1% |
 | ef | 65 | 14 | 5 | 33 | 0 | 0 | 13 | 49 | 72.7% | 93.1% |
 | if | 163 | 5 | 0 | 10 | 0 | 1 | 147 | 49 | 5.6% | 27.2% |
 | cm | 127 | 21 | 1 | 13 | 0 | 4 | 88 | 35 | 30.2% | 37.5% |
 | pl | 191 | 9 | 1 | 19 | 0 | 6 | 156 | 29 | 8.5% | 17.4% |
 | MSL | 9 | 4 | 0 | 5 | 0 | 0 | 0 | 1 | 82.0% | 100.0% |
-| **total** | 14399 | 4129 | 217 | 1330 | 1380 | 219 | 7124 | 2432 | 45.0% | 57.1% |
+| **total** | 14399 | 4133 | 224 | 1328 | 1381 | 218 | 7115 | 2432 | 45.2% | 57.2% |
 
 ### Every reporting group remains in scope
 
 | scope | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| in-game | 14399 | 4129 | 217 | 1330 | 1380 | 219 | 7124 | 2432 | 45.0% | 57.1% |
+| in-game | 14399 | 4133 | 224 | 1328 | 1381 | 218 | 7115 | 2432 | 45.2% | 57.2% |
 | single-player and modes | 1520 | 5 | 0 | 2 | 0 | 1 | 1512 | 278 | 0.1% | 0.2% |
 | menus | 530 | 1 | 0 | 10 | 0 | 2 | 517 | 260 | 0.1% | 4.8% |
-| rendering | 795 | 42 | 1 | 11 | 0 | 6 | 735 | 206 | 4.5% | 13.6% |
+| rendering | 795 | 43 | 1 | 11 | 0 | 6 | 734 | 206 | 5.0% | 14.0% |
 | OS, hardware, loading | 746 | 27 | 0 | 12 | 0 | 3 | 704 | 165 | 2.0% | 3.7% |
 | results | 352 | 0 | 0 | 5 | 0 | 0 | 347 | 102 | 0.0% | 2.0% |
 | trophies | 151 | 0 | 0 | 0 | 0 | 0 | 151 | 97 | 0.0% | 0.0% |
@@ -175,7 +176,7 @@ crate-monster births now match. Acceptance and limits are in
 | debug | 153 | 0 | 0 | 2 | 0 | 0 | 151 | 37 | 0.0% | 0.5% |
 | cutscenes | 84 | 0 | 0 | 0 | 0 | 0 | 84 | 20 | 0.0% | 0.0% |
 | pause | 36 | 0 | 0 | 0 | 0 | 0 | 36 | 7 | 0.0% | 0.0% |
-| **total** | 19827 | 4206 | 218 | 1374 | 1380 | 232 | 12417 | 3783 | 29.3% | 38.1% |
+| **total** | 19827 | 4211 | 225 | 1372 | 1381 | 231 | 12407 | 3783 | 29.4% | 38.1% |
 
 Character-family percentages are sensitive to shared code and citation
 style: Fox/Falco, Marth/Roy and other family crates can implement behavior
@@ -190,13 +191,14 @@ the older copy-ability percentages as the current state.
    unwitnessed hazards; 19 remain. Large untouched files include Big Blue
    (41.2 KiB), Corneria (24.8), Brinstar (18.1), Icicle Mountain (16.2),
    Peach's Castle (15.2), Green Greens (14.5) and Venom (14.0). The whole
-   historical in-game `gr` group is 17.9% / 20.6% by bytes.
-2. **Items:** 2,688 of 3,802 item-kind functions are not started; the group
-   is 39.2% / 44.7%. Capsule/Box/Barrel and random spawning are integrated
+   historical in-game `gr` group is 18.4% / 20.8% by bytes.
+2. **Items:** 2,662 of 3,802 item-kind functions are not started; the group
+   is 39.6% / 45.4%. Capsule/Box/Barrel and random spawning are integrated
    within witnessed setup bounds, now including whole empty Box/Barrel
    blasts and narrow primary-article owner transfer to an unowned REST
    Barrel. Twenty-three ground Sword recordings admit only common held
    AttackLw3 (57), AttackHi4 (63) and witnessed throws; they end at entry.
+   Common held Sword F/B/Hi aerials additionally admit only recorded entry.
    Party Ball now has neutral left-facing FALL/REST coverage; its other
    states, other random kinds, shooting items, heavy carry/throws,
    stage/enemy items and many fighter use rows remain.
@@ -218,11 +220,13 @@ the older copy-ability percentages as the current state.
 6. **Shared engine sequencing:** the container Resume phase correction is
    integrated, with 37 strict random-item witnesses including combined
    Sword/container cases. Party Ball FALL/REST and Kongo saved AObj/controller-clock
-   restoration with complete held/launch witnesses are integrated. Log-standing, revival-floor entry, held Sword back-air entry and bounded
-   crate-monster births are integrated. Next existing-capture candidates are
-   common Sword forward/up-air entry and Klaptrap birth-tick path/item work. New call sites need
-   direct retail branch witnesses; monster births, heavy entries and the
-   25 held aerial entry captures do not authorize later continuations.
+   restoration with complete held/launch witnesses are integrated. Log-standing,
+   revival-floor entry, held Sword F/B/Hi entry and bounded crate-monster births
+   are integrated. Klaptrap admits actual coupled birth-tick path/item work,
+   including its stage-bank particle and narrow DFS1 matrix proof. Next is
+   common Sword Down Air entry with a static capability preserving Link's
+   dynamic callback boundary. New call sites need direct retail witnesses;
+   terminal monster/heavy/aerial captures do not prove later continuations.
    No new recordings are authorized in this task.
 
 The current `summary.md` and `inventory.tsv` list not-started source files
@@ -231,8 +235,8 @@ packet map below is a discovery aid only.
 
 ## Current fail-closed backlog
 
-**286 current sites** are enumerated in
-`target/parity/wave21-integrated/fail_closed.tsv` (267 unimplemented,
+**299 current sites** are enumerated in
+`target/parity/wave22-integrated/fail_closed.tsv` (280 unimplemented,
 19 bail). A site may guard an entire family of motion rows or setup states;
 site count is not branch count. Do not infer current row totals or agent
 scope from the older packets below. Check current source and complete
@@ -243,7 +247,7 @@ recordings before enabling anything.
 The following map was measured at `969a065e`: **331 historical sites**,
 including 258 unimplemented motion rows counted through shared dispatch.
 Its counts, line numbers, capability descriptions and reachability are
-historical and are not reconciled to the 286-site inventory above. Several
+historical and are not reconciled to the 299-site inventory above. Several
 packets have now landed partly or fully (CPU, copied specials, match flow,
 random items, Kongo/Japes and common grab edges). Keep it as an index of
 retail families, not a current assignment list or completion claim.
