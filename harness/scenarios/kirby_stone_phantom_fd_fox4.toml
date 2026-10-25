@@ -1,0 +1,36 @@
+# Directed witness (melee-sim search over Fox's approach and attack, 1302
+# candidates, 2 reached): Kirby turns to Stone beside Fox (236); Fox steps
+# away, walks back and his down-angled forward tilt (272) only glances the
+# rock: a phantom contact (ftColl_80076ED8, coll_distance under PlCo +7A8).
+# When its lockout runs out (280) ftColl_8007BE3C takes the halved damage
+# off the x221C_b4 shell's health (ftcoll.c:3666-3672); the shell holds, so
+# the call ends there: no percent, no credit, no hit effect.
+name = "kirby_stone_phantom_fd_fox4"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_fox4.sav"
+frames = 360
+seed = 1
+stage = "FinalDestination"
+inputs = [
+  { frame = 1, port = 0, buttons = {  }, raw = {  } },
+  { frame = 1, port = 1, buttons = {  }, raw = {  } },
+  { frame = 130, port = 0, buttons = {  }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = {  }, raw = {  } },
+  { frame = 236, port = 0, buttons = {  }, raw = { button = 512, stickY = -127 } },
+  { frame = 240, port = 0, buttons = {  }, raw = {  } },
+  { frame = 242, port = 1, buttons = {  }, raw = { stickX = 60 } },
+  { frame = 248, port = 1, buttons = {  }, raw = {  } },
+  { frame = 249, port = 1, buttons = {  }, raw = { stickX = -55 } },
+  { frame = 272, port = 1, buttons = {  }, raw = { button = 256, stickX = -60, stickY = -40 } },
+  { frame = 274, port = 1, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Fox"
+controller = "scripted"

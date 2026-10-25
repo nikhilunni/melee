@@ -2218,6 +2218,10 @@ fn detect_eligible_hit(
             log_phantom_contact(victim, attacker, id, contact, height, invincible, origin);
             return;
         }
+        // ftColl_80076ED8 ordinary contact, retail 0x80077200: discard
+        // earlier phantom contacts before invincibility or shell absorption
+        // can return without logging damage. Per-hitbox histories survive.
+        victim.combat.phantom_log.clear();
         if victim.status.revival_invincibility != 0 || invincible {
             // ftColl_80078C70 inlineB3: record the contact and attacker hitlag,
             // but omit damage logging/staling while x198C selects invincibility.

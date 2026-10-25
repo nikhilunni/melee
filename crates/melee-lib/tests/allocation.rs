@@ -1019,3 +1019,68 @@ fn pinned_mouth_death_live_clone_step_and_capture_allocate_nothing() {
     }
     assert!(branch.is_some());
 }
+
+/// Real mixed contact, followed by nudge or the complete Stone timeout. A
+/// clone made before contact must independently continue through both.
+/// Clone creation is outside the measured step/capture allocation windows.
+#[test]
+fn stone_contact_step_and_capture_allocate_nothing_after_live_clone() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    for (name, contact, ticks) in [
+        ("kirby_stone_phantom_fd_fox4", 276, 360),
+        ("corpus_v3_ys_kirby_fox4_e45211ed5_p0", 513, 699),
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        if !melee_test_support::require_files(scenario.required_files()) {
+            return;
+        }
+        assert_eq!(scenario.frames, ticks);
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut capture = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        let mut branch = None;
+        let mut continued = 0;
+        for frame in 0..ticks {
+            if frame == contact {
+                let cloned = game.clone();
+                let view = presentation::Presentation::new(&cloned).unwrap();
+                branch = Some((cloned, view));
+            }
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} tick{frame}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let result = capture.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            result.unwrap();
+            assert_eq!(COUNT.with(Cell::get), 0);
+            if let Some((cloned, view)) = &mut branch {
+                assert_eq!(measure(cloned, &inputs), 0, "{name} clone tick{frame}");
+                COUNT.with(|v| v.set(0));
+                ENABLED.with(|v| v.set(true));
+                let result = view.capture(cloned);
+                ENABLED.with(|v| v.set(false));
+                result.unwrap();
+                assert_eq!(COUNT.with(Cell::get), 0);
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(cloned).unwrap()
+                );
+                continued += 1;
+            }
+            if name.contains("e45211ed5") && frame == 642 {
+                assert_eq!(
+                    game.observe().unwrap().fighter(Port::P1).unwrap().action(),
+                    ActionId(395)
+                );
+            }
+        }
+        assert_eq!(continued, ticks - contact);
+    }
+}

@@ -6945,3 +6945,80 @@ fn immediate_capture_entry_graphics_preserve_linked_item_damage() {
         }
     }
 }
+
+/// Earlier phantom hitbox, then an ordinary shell-held hit: the pending
+/// phantom log is discarded without clearing either hitbox victim history.
+#[test]
+fn stone_mixed_contact_complete_captures_and_preserved_phantom_lockout() {
+    for (name, ticks) in [
+        ("kirby_stone_phantom_fd_fox4", 360),
+        ("corpus_v3_ys_kirby_fox4_e45211ed5_p0", 699),
+        ("corpus_v3_ys_kirby_fox4_ee769e727_p2", 1505),
+        ("falco_shine_phantom_crouch_start_fd_falco_fox4", 322),
+    ] {
+        if combat_gate_ticks(name, ticks).is_none() {
+            continue;
+        }
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        assert!(!scenario.is_cold() && scenario.boundary_seed.is_none());
+        let initial: serde_json::Value = serde_json::from_str(
+            &melee_test_support::trace::read_to_string(
+                &scenario.trace_path("particles.jsonl.initial.jsonl"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        let metadata: serde_json::Value = serde_json::from_str(
+            &melee_test_support::trace::read_to_string(
+                &scenario.trace_path("particles.jsonl.initial.jsonl.meta.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(metadata["sampling"], "savestate_loaded_before_first_tick");
+        let seed = initial["state"]["rng.seed"]["v"].as_u64().unwrap();
+        assert_eq!(metadata["particles"]["seed"], seed);
+        let boundary: serde_json::Value = serde_json::from_str(
+            &melee_test_support::trace::read_to_string(
+                &scenario.boundary_path("particles.jsonl.initial.jsonl"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(boundary["state"]["rng.seed"]["v"], seed);
+        let mut rng = gekko_math::HsdRng::new(seed.try_into().unwrap());
+        let ledger = scenario.trace_path("ledger.raw.jsonl");
+        let text = melee_test_support::trace::read_to_string(&ledger).unwrap();
+        assert_eq!(text.lines().count(), ticks);
+        let mut simulation = trace::simulation_displayed_as(&scenario, &ledger).unwrap();
+        for (tick, line) in text.lines().enumerate() {
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"], tick);
+            // Actual incoming observation also covers directed captures'
+            // row-zero setup draw; no inferred/reversed seed or empty-row waiver.
+            for draw in row["rng_draws"].as_array().unwrap() {
+                // HSD_Randf and HSD_Randi each inline the same LCG store.
+                assert!(
+                    matches!(draw["pc"].as_u64().unwrap(), 0x8038_054C | 0x8038_059C),
+                    "retail RNG result-store PC"
+                );
+                rng.rand();
+                assert_eq!(
+                    u64::from(rng.seed),
+                    draw["seed"].as_u64().unwrap(),
+                    "{name} tick{tick} ordered LCG edge"
+                );
+            }
+            assert_eq!(u64::from(rng.seed), row["seed"].as_u64().unwrap());
+            assert_eq!(
+                simulation.tick().unwrap().state["rng.seed"],
+                melee_diff::Value::UInt(u64::from(rng.seed)),
+                "{name} tick{tick} ledger cadence seed"
+            );
+        }
+    }
+}

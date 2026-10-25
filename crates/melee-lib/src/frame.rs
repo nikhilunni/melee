@@ -5279,3 +5279,6 @@ mod pinned_death_tests;
 
 #[cfg(test)]
 mod entry_graphics_tests;
+
+#[cfg(test)]
+mod stone_contact_tests;
