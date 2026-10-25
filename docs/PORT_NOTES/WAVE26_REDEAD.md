@@ -42,8 +42,9 @@ with the fighter's side of its hold (`ftCo_800C7434.c`, `ftCo_800C7590.c`,
 - A special grab's catch of a stage enemy (Kirby's Inhale x2194), and a
   ReDead gone while holding a fighter.
 - it_802759DC's floor probe that leaves `y_out` unset.
-- The right-facing birth is now plain code (it_8027C56C with the queried
-  facing); no witness yet.
+- The right-facing birth (it_802E8BCC with a facing of 1): the crate breaks
+  at 296 from Fox's earlier laser and its roll depends on that tick's RNG,
+  so Fox cannot stand right of it in time without changing the roll.
 
 ## Like Like (CaptureLikelike) is not a crate enemy
 

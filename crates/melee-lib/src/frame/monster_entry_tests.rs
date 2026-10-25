@@ -250,7 +250,16 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
         let state = simulation.state();
         let monster = state.items.iter().find(|i| i.hold_kind == 6).unwrap();
         if monster.kind == melee_types::ItemKind::Leadead {
-            // The ReDead's lifecycle runs on; w25_redead_fall_700_v01 gates it.
+            // The ReDead's lifecycle runs on (w25_redead_fall_700_v01 gates
+            // it); only a right-facing birth stays refused.
+            let mut positive = monster.clone();
+            positive.facing = 1.0;
+            let logic = crate::scene_items::SceneItems::logic(positive.kind);
+            let assets = state.assets.items.get(positive.kind);
+            expect_guard(
+                || (logic.facing_constructor.unwrap().after_query)(&mut positive, assets),
+                "right-facing ReDead",
+            );
             continue;
         }
         let assets = state.assets.items.get(monster.kind);

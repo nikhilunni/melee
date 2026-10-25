@@ -123,6 +123,9 @@ fn finish_kuriboh(item: &mut ItemCore, assets: &ItemAssets) {
 /// spin locked to its facing (x19); the lunge's cooldown starts, hurt
 /// capsule 0 and the ECB box are kept, and it falls (it_802E9308).
 fn finish_redead(item: &mut ItemCore, assets: &ItemAssets) {
+    if item.facing != -1.0 {
+        unimplemented!("it_802E8BCC (itleadead.c:145-152): a right-facing ReDead's birth is not witnessed");
+    }
     zako::face(item, item.facing);
     item.set_collision_facing(if item.facing == -1.0 { -1 } else { 1 });
     item.slide_mode = 0;
