@@ -1411,6 +1411,12 @@ impl Fighter {
             self.drop_lifted_item(assets);
             return;
         }
+        if self.core.motion_state.id == S::LightGet {
+            // ftpickupitem_80094694 installs ftpickupitem_80094DF8 for
+            // LightGet: what the hand holds is eaten if it can be.
+            self.eat_on_damage(assets);
+            return;
+        }
         if self.core.swing_hand_armed {
             // take_dmg_cb = ft_800CD31C (retail 0x8007DB98 blrl ->
             // 0x800CD33C bl ftCommon_8007E7E4): the hand takes the held item

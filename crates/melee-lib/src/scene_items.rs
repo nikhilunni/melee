@@ -31,6 +31,9 @@ melee_it::item_kinds! {
         RShell: it_shell::RedShell,
         Freeze: it_freeze::Freezie,
         MSBomb: it_msbomb::MotionSensorBomb,
+        Heart: it_heal::HeartContainer,
+        Tomato: it_heal::MaximTomato,
+        Foods: it_heal::Food,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -479,7 +482,16 @@ fn candidate(
         range: item.grab_range,
         heavy: assets.heavy,
         // it_8026B4F0: food, hearts, tomatoes, coins, eggs, apples.
-        consumable: false,
+        consumable: matches!(
+            item.kind,
+            ItemKind::Heart
+                | ItemKind::Tomato
+                | ItemKind::Foods
+                | ItemKind::Coin
+                | ItemKind::LuckyEgg
+                | ItemKind::WhispyHealApple
+        ),
+        heal: it_heal::heal_amount(item),
         use_kind: assets.use_kind,
         hand_hold_kind: assets.hand_hold_kind,
         damage_multiplier: assets.collision_damage_multiplier,
@@ -641,6 +653,36 @@ impl Resources {
                     ItemKind::MSBomb,
                     &it_msbomb::ARTICLE_STATES,
                     it_msbomb::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Heart,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Heart,
+                    &it_heal::heart::ARTICLE_STATES,
+                    it_heal::heart::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Tomato,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Tomato,
+                    &it_heal::tomato::ARTICLE_STATES,
+                    it_heal::tomato::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Foods,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Foods,
+                    &it_heal::foods::ARTICLE_STATES,
+                    it_heal::foods::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (
@@ -2296,8 +2338,9 @@ pub fn spawn_random_item(
         link_gobjs: 0,
         secondary_owner: None,
         kind,
-        // Item_802674AC: common items below It_Kind_L_Gun_Ray.
-        hold_kind: 0,
+        // Item_802674AC: Food is hold kind 2, the other common items
+        // (below It_Kind_L_Gun_Ray) 0.
+        hold_kind: if kind == ItemKind::Foods { 2 } else { 0 },
         spawn_variant: 0,
         position,
         previous_position: position,

@@ -13,7 +13,7 @@ use super::{
 };
 use gekko_math::fma::fmadds;
 use hsd_types::{Vec2, Vec3};
-use melee_types::{fixed::FixedVec, CommonMotionState as S, GroundOrAir};
+use melee_types::{fixed::FixedVec, CommonMotionState as S, GroundOrAir, ItemKind};
 
 /// One pickup box of ftData x40 (itPickup): a centre offset (x forward) and
 /// half extents.
@@ -61,6 +61,8 @@ pub struct PickupCandidate {
     pub heavy: bool,
     /// it_8026B4F0: food and coins, which a fighter can take with a full hand.
     pub consumable: bool,
+    /// it_8026B47C: what eating it heals (0 for anything not eaten).
+    pub heal: i32,
     /// ItemAttr x0 bits 0x78 and 0x07 (it_8026B30C, itGetHoldKind).
     pub use_kind: u8,
     pub hand_hold_kind: u8,
@@ -131,6 +133,8 @@ pub struct HeldItem {
     pub ammo: i32,
     /// The candidate's `shot_offset`.
     pub shot_offset: Vec3,
+    /// The candidate's `heal`.
+    pub heal: i32,
 }
 
 /// fp->item_gobj holding one of the fighter's own articles (Peach's
@@ -446,6 +450,10 @@ impl FighterCore {
         let mut nearest = PICKUP_SEARCH_LIMIT;
         let mut result = None;
         for candidate in self.pickup_candidates.items.iter() {
+            // x2222_b4: Nana takes nothing that heals (it_8026B47C).
+            if self.capabilities.refuses_healing_items && candidate.heal != 0 {
+                continue;
+            }
             if self.held_item.is_some() && !candidate.consumable {
                 continue;
             }
@@ -784,8 +792,15 @@ impl Fighter {
                 }
                 return self.enter_lift_wait(assets);
             }
-            // ftpickupitem_8009447C: kinds with use kind 5 are consumed, and
-            // the Warp Star and hammer take over; none is a supported kind.
+            // ftpickupitem_8009447C on LightGet's item (x1978 is never
+            // filled): use kind 5 is eaten; the Warp Star and the hammer
+            // would take over.
+            if let Some(held) = self.core.held_item {
+                if held.use_kind == 5 && matches!(held.kind, ItemKind::WStar | ItemKind::Hammer) {
+                    unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:181-186): {:?} taking over", held.kind);
+                }
+                self.core.eat(held, assets);
+            }
             self.enter_wait_holding(assets)?;
         }
         Ok(())
@@ -939,6 +954,11 @@ impl FighterCore {
     /// at the light item part) and x2224_b1.
     fn catch_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
         self.take_item(item, assets);
+        let held = self.held_item.expect("just caught");
+        if held.use_kind == 5 && matches!(held.kind, ItemKind::WStar | ItemKind::Hammer) {
+            unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:181-186): {:?} caught", held.kind);
+        }
+        self.eat(held, assets);
         let part = usize::from(self.bones.model.animation_translation);
         let joint = self.animation.parts[part].joint.0;
         self.effects
@@ -952,7 +972,6 @@ impl FighterCore {
     /// ftpickupitem_800948A8 (800948A8): the hand closes on `item`.
     fn take_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
         assert!(self.held_item.is_none(), "x1978: a second held item");
-        assert_ne!(item.use_kind, 5, "ftpickupitem_8009447C: consumable pickup");
         self.held_item = Some(HeldItem {
             item: item.item,
             kind: item.kind,
@@ -962,6 +981,7 @@ impl FighterCore {
             damage_multiplier: item.damage_multiplier,
             ammo: item.ammo,
             shot_offset: item.shot_offset,
+            heal: item.heal,
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
         // Fighter_OnItemPickup (ft/inlines.h:143) and the Kirby and Purin

@@ -116,10 +116,9 @@ impl FighterCore {
         self.check_stamina_knockout(launched, assets);
     }
 
-    /// ftCo_800C8C84's test (x18F0, the healing timer, is never set in
-    /// the ported modes): a Stamina fighter not yet out whose
-    /// Player_GetRemainingHPByIndex (hit points less the truncated percent,
-    /// floored at 0) is 0.
+    /// ftCo_800C8C84's test (ft_0C8C.c:29): a Stamina fighter not yet out
+    /// and not healing (dmg.x18F0) whose Player_GetRemainingHPByIndex (hit
+    /// points less the truncated percent, floored at 0) is 0.
     pub fn stamina_spent(&self) -> bool {
         self.stamina_spent_at(self.physics.percent)
     }
@@ -128,7 +127,9 @@ impl FighterCore {
     pub(crate) fn stamina_spent_at(&self, percent: f32) -> bool {
         self.player.stamina.is_some_and(|hp| {
             let spent = gekko_math::msl::fctiwz(percent) as i16;
-            !self.stamina_out && i32::from(hp) - i32::from(spent) <= 0
+            !self.stamina_out
+                && self.status.heal_remaining == 0
+                && i32::from(hp) - i32::from(spent) <= 0
         })
     }
 

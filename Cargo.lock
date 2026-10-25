@@ -1355,6 +1355,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-heal"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-heiho"
 version = "0.0.1"
 dependencies = [
@@ -1922,6 +1932,7 @@ dependencies = [
  "it-foxlaser",
  "it-freeze",
  "it-gamewatch",
+ "it-heal",
  "it-heiho",
  "it-kirby",
  "it-klap",

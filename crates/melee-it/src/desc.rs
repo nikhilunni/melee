@@ -333,8 +333,10 @@ pub struct ItemAssets {
     pub grab_range: hsd_types::Vec2,
     /// it_80272C90: the authored translation of the model's attachment
     /// bone (ItemModelDesc x8), which it_80273B50 undoes when a character
-    /// article (hold kind 8) leaves the hand.
-    pub attachment_translation: hsd_types::Vec3,
+    /// article (hold kind 8) leaves the hand. None when the authored model
+    /// has no such joint: Food's placeholder model, which it_80273318
+    /// replaces with its dish's before anything reads it.
+    pub attachment_translation: Option<hsd_types::Vec3>,
     /// The joint whose animation moves the kind (itUpdateVelocityFromBone),
     /// sampled by [`Self::read_bone_motion`].
     pub bone_motion: Option<crate::bone_motion::BoneMotion>,
@@ -879,7 +881,7 @@ fn attachment_translation(
     model: &hsd_archive::desc::JObjDesc,
     bone_count: u32,
     index: usize,
-) -> hsd_types::Vec3 {
+) -> Option<hsd_types::Vec3> {
     fn depth_first<'a>(
         joint: &'a hsd_archive::desc::JObjDesc,
         out: &mut Vec<&'a hsd_archive::desc::JObjDesc>,
@@ -897,16 +899,14 @@ fn attachment_translation(
         depth_first(model, &mut order);
         order[index]
     } else {
+        // it_80272CC0: the attach id's depth along the first children.
         let mut joint = model;
         for _ in 0..index {
-            joint = joint
-                .child
-                .as_deref()
-                .expect("it_80272CC0: attachment child");
+            joint = joint.child.as_deref()?;
         }
         joint
     };
-    hsd_types::Vec3::new(joint.position.x, joint.position.y, joint.position.z)
+    Some(hsd_types::Vec3::new(joint.position.x, joint.position.y, joint.position.z))
 }
 
 /// ItHurtBoneDesc (it/types.h:177): a capsule on bone `bone` (0 is the

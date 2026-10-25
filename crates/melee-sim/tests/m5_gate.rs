@@ -7122,6 +7122,12 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_items_dosei_cold", 600),
     ("start_fd_items_msbomb", 600),
     ("start_fd_items_msbomb_cold", 600),
+    ("start_fd_items_heart", 600),
+    ("start_fd_items_heart_cold", 600),
+    ("start_fd_items_tomato", 600),
+    ("start_fd_items_tomato_cold", 600),
+    ("start_fd_items_foods", 600),
+    ("start_fd_items_foods_cold", 600),
     // Green Shells: stomped from rest and while sliding (ft_80081A00 ->
     // it_8028CF68), struck, thrown, dropped, clanking with each other
     // (it_8026FE68, sparks in call order), bounced off shields, reflected,
@@ -7184,6 +7190,22 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_msbomb_eeda0d0fc_p0", 6001),
     ("corpus_v3_fd_items_msbomb_e50f475b4_p1", 5720),
     ("corpus_v3_fd_items_msbomb_e2b9e1400_p2", 6001),
+    // Heart Containers, Maxim Tomatoes and Food: the hop, fall and rest,
+    // tomatoes pushed apart (one by a passing airborne Illusion, which
+    // pushes nothing), picked up (LightGet) and eaten at the animation's
+    // end (ftpickupitem_8009447C): the heal's points one a frame
+    // (dmg.x18F0) under the healing colour (8).
+    ("corpus_v3_fd_items_heart_ef89b3e70_p0", 5952),
+    ("corpus_v3_fd_items_heart_ec13743d5_p0", 2864),
+    ("corpus_v3_fd_items_heart_e50814092_p0", 5666),
+    ("corpus_v3_fd_items_heart_e7ff378da_p0", 6001),
+    ("corpus_v3_fd_items_tomato_ef89b3e70_p0", 5138),
+    ("corpus_v3_fd_items_tomato_ec13743d5_p0", 2864),
+    ("corpus_v3_fd_items_tomato_e50814092_p0", 6001),
+    ("corpus_v3_fd_items_tomato_e7ff378da_p0", 3883),
+    ("corpus_v3_fd_items_foods_ec13743d5_p0", 2864),
+    ("corpus_v3_fd_items_foods_e50814092_p0", 5586),
+    ("corpus_v3_fd_items_foods_e7ff378da_p0", 4998),
 ];
 
 #[test]

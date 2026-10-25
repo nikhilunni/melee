@@ -238,13 +238,18 @@ impl FighterCore {
         }
     }
 
-    /// lb_80014498 on the primary slot, then ftCo_800C0408's fallbacks: a
-    /// Stamina fighter's KO color (x2224_b2), then the flash while the
-    /// fighter is intangible or invincible.
+    /// lb_80014498 on the primary slot, then ftCo_800C0408's fallbacks in
+    /// retail's order: a Stamina fighter's KO color (x2224_b2), the healing
+    /// colour while points remain to heal (dmg.x18F0), then the flash while
+    /// the fighter is intangible or invincible. x221D_b6's (0x6B) is for
+    /// states not reached.
     fn clear_color_overlay(&mut self, table: &ColorOverlayTable) {
         self.combat.color_overlay = ColorOverlaySlot::default();
         if self.stamina_out {
             self.install_color_overlay(super::stamina::STAMINA_OUT_COLOR, 0, table);
+        }
+        if self.status.heal_remaining != 0 {
+            self.install_color_overlay(super::heal::HEALING_COLOR, 0, table);
         }
         if self.status.revival_invincibility != 0 || self.status.ledge_intangibility != 0 {
             self.install_color_overlay(INVINCIBILITY_FLASH, 0, table);

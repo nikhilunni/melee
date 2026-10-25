@@ -268,6 +268,9 @@ pub enum ItemScratch {
     Freeze(FreezeState),
     /// itMSBomb_ItemVars xDD4 b0: it has armed before.
     MotionSensor { armed_before: bool },
+    /// A healing item's xDD4 scratch: what eating it heals (it_8026B47C)
+    /// and, for Food, which dish it is (xDD4_itemVar.foods.x0).
+    Heal { amount: i32, dish: u32 },
     Monster(MonsterState),
     Yaku(YakuAnchor),
     /// One float of a projectile's xDD4 scratch: the Star Rod star's spin
@@ -2972,7 +2975,7 @@ mod tests {
             event_destroy_effect: None,
             grab_offset: hsd_types::Vec2::ZERO,
             grab_range: hsd_types::Vec2::ZERO,
-            attachment_translation: Vec3::ZERO,
+            attachment_translation: Some(Vec3::ZERO),
             bone_motion: None,
             pose: None,
             particle_tracks: None,

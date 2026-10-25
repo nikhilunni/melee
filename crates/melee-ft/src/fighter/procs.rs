@@ -730,6 +730,7 @@ impl FighterCore {
             }
         }
         self.apply_magnifier_damage(assets);
+        self.tick_heal(assets);
         // fighter.c:1658: x2219_b5, the hitlag flag, gates the rest.
         if self.in_hitlag() {
             return false;

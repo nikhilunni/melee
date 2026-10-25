@@ -65,6 +65,16 @@ came down onto a stompable item without the test having run.
   and only the .usd values match retail (the falling bomb's spun fixed ECB
   diverged at tick 247 with the .dat's). Guarded as unwitnessed: glancing
   off a shield, a slope's slide, an armed bomb losing its line (state 5).
-- Heart Container, Maxim Tomato, Food: not ported. Eating needs the fighter's
-  consumable pickup (ftpickupitem_8009447C) and the heal (Fighter_8006CF5C,
-  applied in Fighter_ProcessHit), which still fail closed.
+- Heart Container, Maxim Tomato, Food (it-heal): the hop, fall and rest;
+  Food draws its dish (HSD_Randi over itFoodsAttributes row 0's x0) once
+  Item_80268B18 returns and is hold kind 2 (Item_802674AC). The pickup
+  eats a use-kind-5 item (ftpickupitem_8009447C at LightGet's end, at once
+  on an air catch, or on damage through LightGet's take_dmg_cb
+  ftpickupitem_80094DF8): Fighter_8006CF5C adds to dmg.x18F0 and installs
+  colour 8; Fighter_8006A360 heals a point a frame (also in hitlag) and
+  clears colour 8 when done, and ftCo_800C0408's fallback reinstalls 8
+  while points remain. Nana refuses healing items (x2222_b4). Food's dish
+  model swap (it_80273318) is the presentation's and not modelled; its
+  placeholder model has no attach joint, so `attachment_translation` is
+  an Option. Guarded: dropped and sliding healing items, x1978 (a second
+  held item), consuming the other use-kind-5 kinds.

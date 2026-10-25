@@ -2007,3 +2007,41 @@ seed = 2592861322
 item_frequency = 4
 item_mask = "0xfffffff800080000"
 
+# Items on, Heart Containers alone (make_boundary.py --item-frequency
+# very-high --items Heart --no-containers).
+[[boundary]]
+name = "start_fd_items_heart"
+cold = "start_fd_items_heart_cold"
+savestate = "harness/roms/start_fd_items_heart.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3477667278
+item_frequency = 4
+item_mask = "0xfffffff800000100"
+
+# Items on, Maxim Tomatoes alone (make_boundary.py --item-frequency
+# very-high --items Tomato --no-containers).
+[[boundary]]
+name = "start_fd_items_tomato"
+cold = "start_fd_items_tomato_cold"
+savestate = "harness/roms/start_fd_items_tomato.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3189791581
+item_frequency = 4
+item_mask = "0xfffffff800000200"
+
+# Items on, Food alone (make_boundary.py --item-frequency very-high --items
+# Foods --no-containers).
+[[boundary]]
+name = "start_fd_items_foods"
+cold = "start_fd_items_foods_cold"
+savestate = "harness/roms/start_fd_items_foods.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 974119411
+item_frequency = 4
+item_mask = "0xfffffff800040000"

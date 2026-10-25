@@ -47,6 +47,8 @@ fn collision_category(kind: ItemKind, hold_kind: u8) -> u8 {
     match hold_kind {
         8 => 5,
         0 if (kind as u32) < ItemKind::LGunRay as u32 => 2,
+        // Food (Item_802674AC) is a common item all the same.
+        2 if kind == ItemKind::Foods => 2,
         4 if stage_enemy => 3,
         // it_80275E98: the public+8 monster bank, before Octarock's stone.
         6 if (ItemKind::Kuriboh as u32..ItemKind::OctarockStone as u32)

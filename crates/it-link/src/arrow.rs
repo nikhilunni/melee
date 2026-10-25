@@ -363,7 +363,7 @@ fn shoot<const YOUNG: bool>(
     set_lifetime(item, a.lifetime(), half_life_scale);
     item.change_motion_with(motion::FLYING, ARTICLE_STATES[1], ANIM_UPDATE, assets);
     // it_8027429C with no speed, where the hand holds it.
-    let t = assets.attachment_translation;
+    let t = assets.attachment_translation.expect("it_80272C90: the attach joint");
     let mut hand = Vec3::ZERO;
     hsd_anim::mtx::mtx_mult_vec(&launch.hand, &Vec3::new(-t.x, -t.y, -t.z), &mut hand);
     item.leave_hand(Vec3::ZERO, hand, assets);

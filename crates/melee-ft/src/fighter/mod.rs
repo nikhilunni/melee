@@ -36,6 +36,7 @@ pub mod escape;
 pub mod fall;
 pub mod fly_reflect;
 pub mod frozen;
+pub mod heal;
 pub mod grab;
 pub mod grab_damage;
 pub mod grab_escape;
@@ -1013,6 +1014,10 @@ pub struct Status {
     /// catch the fighter again (ftCo_800C7800 sets it, Fighter_procUpdate
     /// counts it down, fighter.c:486 clears it).
     pub capture_timer: i32,
+    /// dmg.x18F0 (+18F0): points of healing still to come, one a frame
+    /// (Fighter_8006CF5C adds, Fighter_8006A360 spends); reset 0
+    /// (fighter.c:313).
+    pub heal_remaining: i32,
 }
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
@@ -1045,6 +1050,7 @@ impl Status {
             name_tag_timer: 0,
             barrel_cooldown: 0,
             capture_timer: 0,
+            heal_remaining: 0,
         }
     }
 }

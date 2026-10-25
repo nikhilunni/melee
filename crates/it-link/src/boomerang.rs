@@ -312,7 +312,7 @@ fn throw(
     change(item, motion::OUT, ANIM_UPDATE, assets);
     // it_8027429C: it_80273B50 at the hand, then it_80273F34 (see the
     // Yoshi egg's launch for the hung article's offset).
-    let t = assets.attachment_translation;
+    let t = assets.attachment_translation.expect("it_80272C90: the attach joint");
     let mut hand = Vec3::ZERO;
     hsd_anim::mtx::mtx_mult_vec(&launch.hand, &Vec3::new(-t.x, -t.y, -t.z), &mut hand);
     item.leave_hand(launch.velocity, hand, assets);

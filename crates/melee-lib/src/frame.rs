@@ -3215,6 +3215,7 @@ impl Runtime {
                                 damage_multiplier: item.collision_damage_multiplier,
                                 ammo,
                                 shot_offset: it_sword::shot_offset(kind, item),
+                                heal: 0,
                             },
                             catch_item,
                             &state.assets.fighters[slot],

@@ -189,6 +189,7 @@ fn pickup_entry_clears_every_throw_flag_and_common_damage_owner_replaces_charact
             range: hsd_types::Vec2::new(100.0, 100.0),
             heavy,
             consumable: false,
+            heal: 0,
             use_kind: 0,
             hand_hold_kind: 0,
             damage_multiplier: 1.0,
@@ -239,6 +240,7 @@ fn pickup_entry_clears_every_throw_flag_and_common_damage_owner_replaces_charact
             damage_multiplier: 1.0,
             ammo: 0,
             shot_offset: hsd_types::Vec3::ZERO,
+            heal: 0,
         });
         // ftCo_800974C4: the lifted item drops with xC44 0.
         f.item_requests.clear();
