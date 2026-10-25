@@ -985,11 +985,11 @@ pub(crate) fn damage_received(item: &mut ItemCore, context: &ItemEventContext<'_
         if floor_ahead(item, map, KNOCKDOWN_ROOM) {
             start_knockdown(item, context.assets);
         } else if redead(item).staggers > 1 && draw_randi(context, 2) == 0 {
-            if draw_randf(context) < common.screen_chance {
-                start_screen_flight(item, context);
-            } else {
-                start_tumble(item, context, &common);
-            }
+            // Then HSD_Randf against it_804D6D40 +8 picks it_802EA334 or
+            // it_802EA2A0, as a killing hit does.
+            unimplemented!(
+                "it_802E8CD8 (itleadead.c:205-209): a third stagger without room to fall over ends it"
+            );
         } else {
             item.velocity.x *= 1.5;
             redead_mut(item).staggers += 1;

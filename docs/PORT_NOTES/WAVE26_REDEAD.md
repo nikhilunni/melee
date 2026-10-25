@@ -34,7 +34,7 @@ with the fighter's side of its hold (`ftCo_800C7434.c`, `ftCo_800C7590.c`,
 ## Still guarded
 
 - A staggered ReDead's death (itleadead.c:205-209: a third heavy hit
-  without room to fall over) is plain code, unwitnessed.
+  without room to fall over).
 - A held fighter hit or KO'd (the take_dmg_cb and death2_cb, it_802EADD8):
   a search of Marth's attacks on the held Fox found every one hits the
   ReDead first, so the shake-off is refused.
