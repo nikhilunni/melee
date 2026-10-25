@@ -2192,6 +2192,9 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
     ("w26cpu_fz_e75fb4a9a_p2", 3982),
     ("w26cpu_fz_ef89b3e70_p2", 2476),
     ("w26cpu_ht_ef89b3e70_p1", 5839),
+    // A hit under Illusion's start and a CatchPull from Catch frame 6
+    // (fn_800D9CE8's Ft_MF_UpdateCmd skips the script's ground pose).
+    ("w26cpu_ht_ef89b3e70_p2", 6001),
     ("w26cpu_kj_e75fb4a9a_p0", 4401),
     ("w26cpu_rec_luigi_e89a89d0e_p2", 644),
     // An attacker's legs keep their last ground pose through hitlag

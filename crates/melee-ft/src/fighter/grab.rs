@@ -334,7 +334,16 @@ pub fn capture_pair(
     };
     attacker.core.commands.grab_release = false;
     attacker.core.commands.throw_reverse = false;
-    attacker.change_motion_state_at(pull.into(), attacker_assets, frame)?;
+    // fn_800D9CE8 (ftCo_CatchPull.c:64): Ft_MF_UpdateCmd, so the script
+    // seeks by control flow only (ftAction_8007349C) and its ground-pose
+    // command up to `frame` does not run: the cleared x221C stays clear.
+    attacker.change_motion_state_with_flags(
+        pull.into(),
+        attacker_assets,
+        super::MotionEntryFlags::UPDATE_CMD,
+        frame,
+        1.0,
+    )?;
     if let Some(pulled) = attacker.character.table().catch_pulled {
         pulled(attacker);
     }
