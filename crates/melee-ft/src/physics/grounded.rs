@@ -135,8 +135,8 @@ pub fn finish_ground_update(
         normal,
     );
     integrate::integrate_velocity(state);
-    let speed = map.line_speed(collision.floor.index, &state.position);
-    integrate::integrate_environment(state, speed, wind);
+    let line = collision.floor.index;
+    integrate::integrate_environment_with(state, |position| map.line_speed(line, position), wind);
 }
 
 /// ftCommon_8007C98C (0x8007C98C), ftcommon.c:61-100.

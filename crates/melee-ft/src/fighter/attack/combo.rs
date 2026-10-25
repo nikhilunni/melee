@@ -52,8 +52,12 @@ impl ComboState {
     }
 }
 impl FighterCore {
-    /// ftColl_80076528 (80076528): runs after ordinary physics, including hitlag.
-    pub fn apply_combo_push(&mut self, p: &ComboParameters) {
+    /// ftColl_80076528 (80076528): runs after ordinary physics, including
+    /// hitlag, but before the moving-floor offset (fighter.c:2366-2380). The
+    /// push is decided here, before the tick's physics, and applied by
+    /// `integrate_environment` (or by `finish_combo_push` when no
+    /// environment step runs).
+    pub fn prepare_combo_push(&mut self, p: &ComboParameters) {
         let combo = &mut self.combat.combo;
         if combo.remaining == 0 {
             return;
@@ -62,10 +66,18 @@ impl FighterCore {
         if self.combat.grab.is_some() || self.physics.ground_or_air != GroundOrAir::Ground {
             return;
         }
-        let step = p.steps[usize::from(combo.count >= p.stronger_threshold)] * self.physics.facing;
-        let n = self.collision.data.floor.normal;
-        // retail 8007658C / 800765A0: fnmsubs, including the outer negation.
-        self.physics.position.x = gekko_math::fma::fnmsubs(n.y, step, self.physics.position.x);
-        self.physics.position.y = gekko_math::fma::fnmsubs(-n.x, step, self.physics.position.y);
+        let step = p.steps[usize::from(combo.count >= p.stronger_threshold)];
+        self.physics.combo_push = Some(crate::physics::ComboPush {
+            normal: self.collision.data.floor.normal,
+            step,
+        });
+    }
+    /// The push of a tick whose physics ran no environment step.
+    pub fn finish_combo_push(&mut self) {
+        if let Some(push) = self.physics.combo_push.take() {
+            if self.physics.ground_or_air == GroundOrAir::Ground {
+                push.apply(&mut self.physics.position, self.physics.facing);
+            }
+        }
     }
 }

@@ -68,11 +68,26 @@ pub fn integrate_velocity(state: &mut FighterPhysics) {
 // inlining heuristic otherwise emits another copy in each special family.
 #[inline(never)]
 pub fn integrate_environment(state: &mut FighterPhysics, floor_speed: Option<Vec3>, wind: Wind) {
+    integrate_environment_with(state, |_| floor_speed, wind);
+}
+
+/// [`integrate_environment`] with mpGetSpeed sampled at the position the
+/// repeated-hit push leaves (fighter.c:2366-2380).
+#[inline(never)]
+pub fn integrate_environment_with(
+    state: &mut FighterPhysics,
+    floor_speed: impl FnOnce(&Vec3) -> Option<Vec3>,
+    wind: Wind,
+) {
     let (wind, splash) = wind.sample(state.position, state.previous_position);
     if splash.is_some() {
         state.water_splash = splash;
     }
-    if let Some(speed) = floor_speed {
+    // fighter.c:2366: ftColl_80076528 between the wind sample and mpGetSpeed.
+    if let Some(push) = state.combo_push.take() {
+        push.apply(&mut state.position, state.facing);
+    }
+    if let Some(speed) = floor_speed(&state.position) {
         state.position = add(state.position, speed);
     }
     state.position = add(state.position, wind);

@@ -74,9 +74,14 @@ impl Fighter {
         }
         let physics = self.core.begin_physics_phase();
         if physics {
+            self.core.prepare_combo_push(&assets.combo);
             (self.motion_row.physics)(self, state::PhysicsPhase { assets, map, wind });
+            self.core.finish_combo_push();
+        } else {
+            // In hitlag the push precedes the hitlag callback (fighter.c:2366-2372).
+            self.core.prepare_combo_push(&assets.combo);
+            self.core.finish_combo_push();
         }
-        self.core.apply_combo_push(&assets.combo);
         if self.core.combat.hitlag_remaining > 0.0 {
             match self.core.combat.hitlag_callbacks {
                 super::damage::HitlagCallbacks::Damage => self.core.damage_hitlag_input(),

@@ -2188,6 +2188,9 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
     // Wave 26: matches through the stage branches and a CPU of each kind
     // recovering (ftCo_800A96B8's Quick Attack, PK Thunder, Farore's
     // Wind, Green Missile, Yoshi's none, Samus's diagonal).
+    // A repeated-hit push on Brinstar Depths' turning floor: ftColl_80076528
+    // moves the fighter before mpGetSpeed samples the line.
+    ("w26cpu_bd_ef89b3e70_p0", 2946),
     ("w26cpu_bd_ef89b3e70_p2", 4768),
     ("w26cpu_fz_e75fb4a9a_p2", 3982),
     ("w26cpu_fz_ef89b3e70_p2", 2476),

@@ -66,6 +66,29 @@ pub struct FighterPhysics {
     /// A river device's splash (grGarden_8020349C) from this tick's
     /// physics, for the scene to spawn after the proc. Not retail state.
     pub water_splash: Option<melee_gr::garden::Splash>,
+    /// ftColl_80076528's repeated-hit push, decided as the tick's physics
+    /// begins and applied where retail calls it: after the velocity sum
+    /// and the wind sample, before the moving-floor offset. Not retail
+    /// state.
+    pub combo_push: Option<ComboPush>,
+}
+
+/// One ftColl_80076528 push along the floor: PlCo's `step`, times the
+/// facing when it is applied, over the floor's normal.
+#[derive(Clone, Copy, Debug)]
+pub struct ComboPush {
+    pub normal: Vec3,
+    pub step: f32,
+}
+
+impl ComboPush {
+    /// comboCount_Push: retail 8007658C / 800765A0, fnmsubs including the
+    /// outer negation.
+    pub fn apply(self, position: &mut Vec3, facing: f32) {
+        let step = self.step * facing;
+        position.x = gekko_math::fma::fnmsubs(self.normal.y, step, position.x);
+        position.y = gekko_math::fma::fnmsubs(-self.normal.x, step, position.y);
+    }
 }
 
 impl FighterPhysics {
@@ -96,6 +119,7 @@ impl FighterPhysics {
             shield_position_cached: false,
             fixed_traction: false,
             water_splash: None,
+            combo_push: None,
         }
     }
 
