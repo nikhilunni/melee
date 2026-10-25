@@ -4,7 +4,10 @@ use melee_replay::Recording;
 use std::{path::PathBuf, time::Duration};
 
 fn directory() -> Option<PathBuf> {
-    let files = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../harness/roms/files");
+    let root = std::env::var_os("MELEE_DATA_ROOT")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."));
+    let files = root.join("harness/roms/files");
     melee_test_support::require_files([files.join("PlCo.dat")]).then_some(files)
 }
 fn tick(session: &mut Session) -> Result<(), String> {
