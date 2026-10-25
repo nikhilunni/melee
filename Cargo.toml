@@ -35,6 +35,7 @@ members = [
     "crates/it-peach",
     "crates/it-pikachu",
     "crates/it-heiho",
+    "crates/it-tools",
     "crates/it-yaku",
     "crates/it-seak",
     "crates/it-zelda",

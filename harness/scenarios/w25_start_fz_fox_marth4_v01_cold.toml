@@ -1,0 +1,23 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items off, normal Versus Entry, human ports, neutral pads.
+name = "w25_start_fz_fox_marth4_v01_cold"
+expected = "w25_start_fz_fox_marth4_v01"
+frames = 600
+seed = 2265280010
+stage = "FlatZone"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"

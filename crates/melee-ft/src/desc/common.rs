@@ -64,6 +64,9 @@ pub struct CommonFighterData {
     /// model's translation joint at while a fighter with x2221_b2 hangs
     /// from a captor.
     pub pinned_hip_offset: hsd_types::Vec3,
+    /// +7E4 (x7E4_scaleZ): every fighter's x34_scale.z on Flat Zone
+    /// (Fighter_80068E64).
+    pub flat_zone_scale_z: f32,
 }
 
 pub fn read_common_data(archive: &Archive) -> Result<CommonFighterData> {
@@ -102,6 +105,7 @@ impl CommonFighterData {
             over_drift_air_friction: archive.reader().f32(add_offset(offset, 0x1FC)?)?,
             ledge_snap_height_multiplier: r.f32(0x1CC)?,
             ground_pose_max_angle_degrees: archive.reader().f32(add_offset(offset, 0x804)?)?,
+            flat_zone_scale_z: archive.reader().f32(add_offset(offset, 0x7E4)?)?,
             pinned_hip_offset: hsd_types::Vec3::new(
                 archive.reader().f32(add_offset(offset, 0x808)?)?,
                 archive.reader().f32(add_offset(offset, 0x80C)?)?,

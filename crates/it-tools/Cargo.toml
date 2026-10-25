@@ -1,0 +1,14 @@
+[package]
+name = "it-tools"
+version.workspace = true
+edition.workspace = true
+
+[dependencies]
+melee-it = { path = "../melee-it" }
+melee-types = { path = "../melee-types" }
+hsd-types = { path = "../hsd-types" }
+gekko-math = { path = "../gekko-math" }
+
+[dev-dependencies]
+hsd-archive = { path = "../hsd-archive" }
+melee-test-support = { path = "../melee-test-support" }

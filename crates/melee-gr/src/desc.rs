@@ -443,6 +443,33 @@ pub fn read_kongo_parameters(archive: &Archive) -> ReadResult<crate::kongo::Para
         swing_limit: f(0xB8)?,
     })
 }
+/// grFz_StageData / grDatFiles_801C6038: GrFz.dat. grFz_StageCallbacks[2]
+/// (the controller) carries flags 0xC0000000.
+pub fn read_flatzone(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Flatzone, 2)
+}
+/// `grFlatzone_YakumonoParam` (grflatzone.c:20-37), read through
+/// Ground_GetYakumonoParam by grFlatzone_80216E78 (0x80216E78).
+pub fn read_flatzone_parameters(archive: &Archive) -> ReadResult<crate::flatzone::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let w = |offset: u32| r.s32(p + offset);
+    Ok(crate::flatzone::Parameters {
+        event_wait: [w(0x4)?, w(0x0)?],
+        variant_wait: [w(0xC)?, w(0x8)?],
+        tools_frames: w(0x10)?,
+        tools_interval: w(0x14)?,
+        tools_right: w(0x18)?,
+        tools_left: w(0x1C)?,
+        oil_walk_in: w(0x20)?,
+        oil_right_x: r.f32(p + 0x24)?,
+        oil_left_x: r.f32(p + 0x28)?,
+        oil_step_frames: w(0x2C)?,
+        oil_steps: [w(0x30)?, w(0x34)?],
+        oil_step: r.f32(p + 0x38)?,
+        oil_frames: w(0x3C)?,
+    })
+}
 fn read_stage(archive: &Archive, kind: GrKind, environment_map: usize) -> ReadResult<StageDesc> {
     let header = public(archive, "map_head")?;
     let reader = archive.reader();

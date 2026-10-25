@@ -259,7 +259,7 @@ impl Assets {
         // axis picks both bounds; equal markers take the second (0x98) as low.
         let (left, right) = if low.x < high.x { (low.x, high.x) } else { (high.x, low.x) };
         let (bottom, top) = if low.y < high.y { (low.y, high.y) } else { (high.y, low.y) };
-        let arena = melee_ft::fighter::life::Arena {
+        let mut arena = melee_ft::fighter::life::Arena {
             left,
             right,
             top,
@@ -279,7 +279,15 @@ impl Assets {
                 melee_types::GrKind::Last | melee_types::GrKind::Battle
             ),
         };
-        let stage_camera = stage_camera(&stage_desc, &camera_range, [low, high])?;
+        let mut stage_camera = stage_camera(&stage_desc, &camera_range, [low, high])?;
+        if stage_desc.kind == melee_types::GrKind::Flatzone {
+            // grFlatzone_80216E78: Ground_801C3990(Stage_GetBlastZoneBottomOffset()
+            // - 50.0f) stores an absolute height in the relative field, so
+            // the getters add the camera centre twice.
+            stage_camera.blast_zone.bottom =
+                stage_camera.blast_bottom() - melee_gr::flatzone::BLAST_BOTTOM_DROP;
+            arena.bottom = stage_camera.blast_bottom();
+        }
         // Ground_801C2D24 fails for a marker the stage binds no joint to.
         let bound_marker = |index: i16| -> Result<Option<hsd_types::Vec3>> {
             if stage_desc

@@ -207,16 +207,20 @@ impl Fighter {
         if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
+        let flat = self.core.begin_flat_zone_dynamics();
         self.core.update_dynamic_colliders();
         self.solve_dynamics(None, &[]);
+        self.core.end_flat_zone_dynamics(flat);
     }
     /// Fighter_8006D9AC with the scene's mpCheckFloor provider.
     pub fn proc_dynamics_with_map(&mut self, map: &mut CollMap) {
         if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
+        let flat = self.core.begin_flat_zone_dynamics();
         self.core.update_dynamic_colliders();
         self.solve_dynamics(Some(map), &[]);
+        self.core.end_flat_zone_dynamics(flat);
     }
     /// Fighter_8006D9AC with the scene's force-field pool; Marth and Roy
     /// respond to its wind state first (ftCo_8009E614).
@@ -229,9 +233,11 @@ impl Fighter {
         if self.core.status.disabled || self.core.in_hitlag() {
             return;
         }
+        let flat = self.core.begin_flat_zone_dynamics();
         self.core.update_dynamic_colliders();
         self.core.respond_to_stage_wind(assets);
         self.solve_dynamics(Some(map), forces);
+        self.core.end_flat_zone_dynamics(flat);
     }
     fn solve_dynamics(
         &mut self,
@@ -938,6 +944,39 @@ struct DynamicsFrame {
     height: f32,
 }
 impl FighterCore {
+    /// ftCo_8009DD94 (ftdynamics.c:371-376) on Flat Zone: the root's x
+    /// scale becomes x34_scale.y while the chains solve; returns the old.
+    fn begin_flat_zone_dynamics(&mut self) -> Option<f32> {
+        if self.dynamics.is_empty() || !self.capabilities.flat_zone {
+            return None;
+        }
+        let root = self.animation.root;
+        let mut scale = self.skeleton.scale(root);
+        let old = scale.x;
+        scale.x = self.player.scale;
+        self.skeleton.set_scale(root, &scale);
+        self.skeleton.set_mtx_dirty(root);
+        Some(old)
+    }
+    /// ftCo_8009DD94 (ftdynamics.c:416-432): the root's x scale back, and
+    /// each chain's deepest first-child joint takes its matrix.
+    fn end_flat_zone_dynamics(&mut self, old: Option<f32>) {
+        let Some(old) = old else {
+            return;
+        };
+        let root = self.animation.root;
+        let mut scale = self.skeleton.scale(root);
+        scale.x = old;
+        self.skeleton.set_scale(root, &scale);
+        self.skeleton.set_mtx_dirty(root);
+        for index in 0..self.dynamics.len() {
+            let mut joint = self.dynamics[index].bones[0].joint;
+            while let Some(child) = self.skeleton.child(joint) {
+                joint = child;
+            }
+            self.skeleton.setup_matrix(joint);
+        }
+    }
     /// ftCo_8009DD94: collider positions before the first dynamics set.
     fn update_dynamic_colliders(&mut self) {
         for collider in &mut self.dynamic_colliders {

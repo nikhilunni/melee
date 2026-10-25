@@ -1,6 +1,7 @@
 //! Composition root for stage-specific resources and callbacks.
 pub(crate) mod battle;
 pub(crate) mod fourside;
+pub(crate) mod flatzone;
 pub(crate) mod garden;
 pub(crate) mod izumi;
 pub(crate) mod kraid;
@@ -194,6 +195,14 @@ pub const BRINSTAR_DEPTHS: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Kraid,
     read: melee_gr::desc::read_kraid,
 };
+/// grFz_StageData: GrFz.dat; StageParam row 0x1B (StKind).
+pub const FLAT_ZONE: StageDescriptor = StageDescriptor {
+    name: "FlatZone",
+    file: "GrFz.dat",
+    music_id: 0x1B,
+    kind: melee_types::GrKind::Flatzone,
+    read: melee_gr::desc::read_flatzone,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -209,6 +218,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &HYRULE_TEMPLE,
         &FOURSIDE,
         &BRINSTAR_DEPTHS,
+        &FLAT_ZONE,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -228,6 +238,7 @@ pub enum SceneStage {
     Shrine(melee_gr::shrine::Shrine),
     Fourside(Box<melee_gr::fourside::Fourside>),
     Kraid(Box<melee_gr::kraid::procs::KraidStage>),
+    FlatZone(Box<melee_gr::flatzone::FlatZone>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -238,7 +249,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -256,6 +267,7 @@ impl SceneStage {
             Self::Shrine(s) => s.proc_table(),
             Self::Fourside(s) => s.proc_table(),
             Self::Kraid(s) => s.proc_table(),
+            Self::FlatZone(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -291,6 +303,7 @@ impl SceneStage {
             Self::Shrine(_) => unreachable!("Hyrule Temple callbacks run in scene_stage::shrine"),
             Self::Fourside(_) => unreachable!("Fourside callbacks run in scene_stage::fourside"),
             Self::Kraid(_) => unreachable!("Brinstar Depths callbacks run in scene_stage::kraid"),
+            Self::FlatZone(_) => unreachable!("Flat Zone callbacks require animation state"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

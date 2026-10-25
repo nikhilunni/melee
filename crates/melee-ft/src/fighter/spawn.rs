@@ -392,6 +392,12 @@ impl Fighter {
             unimplemented!("ftchangeparam.c:178-195: scaled fighter attribute modifiers");
         }
         let mut capabilities = Capabilities::default();
+        // Fighter_80068E64 (0x80068E64), before the kind's OnLoad: every
+        // fighter is drawn flat on Flat Zone.
+        if map.grkind() == melee_types::GrKind::Flatzone {
+            capabilities.model_width = Some(assets.common.flat_zone_scale_z);
+            capabilities.flat_zone = true;
+        }
         character.on_load(&mut capabilities);
         character.on_resources_loaded(assets, &player);
         let motion_row = state::COMMON[CommonMotionState::Wait as usize];

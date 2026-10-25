@@ -897,6 +897,9 @@ pub struct Capabilities {
     /// scale (Fighter_UpdateModelScale, fighter.c:220-224), which flattens
     /// the fighter along the depth axis. None: x34_scale.z is 1.
     pub model_width: Option<f32>,
+    /// `stage_info.grkind == Gr_Kind_Flatzone`: ftCo_8009DD94 solves the
+    /// dynamic bones with the root's x scale at x34_scale.y.
+    pub flat_zone: bool,
     /// x2221_b2 (ftMt_Init_OnLoad): ftAnim_8006E054 takes TransN's extracted
     /// motion back out of the model's translation joint, so the model does
     /// not move with an animation whose motion the physics applies.

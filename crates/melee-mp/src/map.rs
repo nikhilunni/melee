@@ -98,6 +98,8 @@ pub struct CollMap {
     /// material override consulted by `mpCollEnd`. `None` behaves as a stage
     /// with no dynamic attributes (returns 0).
     pub dynamic_attr_hook: Option<crate::mpcoll::DynamicAttrHook>,
+    /// `grDynamicAttr_8049EFA0`: the stage's live material circles.
+    pub dynamic_attrs: crate::dynamic_attr::DynamicAttrs,
     /// `stage_info.grkind`, which selects the terrain tables.
     pub(crate) grkind: GrKind,
     /// `mpIsland_80458E88`: the floor and ceiling islands.
@@ -244,6 +246,7 @@ impl CollMap {
             coll_804d64ac: 0,
             coll: Default::default(),
             dynamic_attr_hook: None,
+            dynamic_attrs: Default::default(),
             grkind,
             islands: Default::default(),
         };

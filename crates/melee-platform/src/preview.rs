@@ -123,6 +123,7 @@ fn framing(stage: Stage) -> Framing {
         Stage::KongoJungle64 => (220.0, 15.0, 10.0),
         Stage::JungleJapes => (260.0, 20.0, 8.0),
         Stage::KongoJungle => (230.0, 20.0, 8.0),
+        Stage::FlatZone => (200.0, 10.0, 8.0),
         // TODO(framing): chosen by eye once each stage is ported.
         _ => (240.0, 15.0, 10.0),
     };

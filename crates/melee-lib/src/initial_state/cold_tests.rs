@@ -167,6 +167,21 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.heli.timer", &stage.heli.timer);
             sink.field("stage.ufo.timer", &stage.ufo.timer);
         }
+        SceneStage::FlatZone(stage) => {
+            let c = &stage.controller;
+            sink.field("stage.controller.waiting", &c.waiting);
+            sink.field("stage.controller.ready", &c.ready);
+            sink.field("stage.controller.timer", &c.timer);
+            let p = &stage.platforms;
+            sink.field("stage.platforms.waiting", &p.waiting);
+            sink.field("stage.platforms.animation", &p.animation);
+            sink.field("stage.platforms.stitched", &p.stitched);
+            sink.field("stage.platforms.layout", &p.layout);
+            sink.field("stage.platforms.variant", &p.variant);
+            sink.field("stage.platforms.timer", &p.timer);
+            sink.field("stage.oil.timer", &stage.oil.timer);
+            sink.field("stage.tools.frames", &stage.tools.frames);
+        }
         SceneStage::Story(stage) => {
             sink.field("stage.puff_timer", &stage.puff_timer);
             sink.field("stage.shy_timer", &stage.shy_timer);
@@ -363,6 +378,11 @@ fn start_fs_fox_marth4_cold_600() {
 #[test]
 fn start_ht_fox_marth4_cold_600() {
     verify("start_ht_fox_marth4");
+}
+
+#[test]
+fn start_fz_fox_marth4_cold_600() {
+    verify("w25_start_fz_fox_marth4_v01");
 }
 
 #[test]

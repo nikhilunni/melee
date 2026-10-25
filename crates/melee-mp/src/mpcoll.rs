@@ -979,7 +979,7 @@ impl CollMap {
         if cd.floor.index != NO_ID {
             let temp = match self.dynamic_attr_hook {
                 Some(hook) => hook(&cd.cur_pos, cd.floor.index),
-                None => 0,
+                None => self.dynamic_material(&cd.cur_pos, cd.floor.index),
             };
             if temp != 0 {
                 cd.floor.flags = (cd.floor.flags & !0xFF) | (temp as u32 & 0xFF);

@@ -81,6 +81,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::Fourside => (80.0, 50.0),
         // The middle platform's ends (an approximation for the policies).
         Stage::BrinstarDepths => (70.0, 45.0),
+        // The main floor ends at about x -63 and 63.
+        Stage::FlatZone => (58.0, 33.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

@@ -137,6 +137,7 @@ pub(super) fn restore_scene(
         melee_types::GrKind::Kongo => {
             super::stage_kongo::restore(saved, assets, match_start, particles, metadata)
         }
+        melee_types::GrKind::Flatzone => super::stage_flatzone::restore(saved, assets, particles),
         melee_types::GrKind::Garden => {
             super::stage_garden::check_saved_items(saved)?;
             super::stage_garden::restore(saved, assets, match_start, particles, metadata)

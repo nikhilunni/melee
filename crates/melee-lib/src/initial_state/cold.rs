@@ -185,6 +185,7 @@ impl InitialState {
                 | SceneStage::Kongo(_)
                 | SceneStage::Fourside(_)
                 | SceneStage::Kraid(_)
+                | SceneStage::FlatZone(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -365,6 +366,9 @@ fn setup_draws(
         GrKind::Fourside => 2,
         // grKraid_801FE818: Kraid's first wait.
         GrKind::Kraid => 1,
+        // The controller's event wait (grFlatzone_8021707C), then the
+        // platforms' variant wait (grFlatzone_80218060(1)).
+        GrKind::Flatzone => 2,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -605,6 +609,16 @@ fn initialize_stage(
         }
         GrKind::Shrine => {
             let (stage, animations) = crate::scene_stage::shrine::initialize(assets)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Flatzone => {
+            let (stage, animations) = crate::scene_stage::flatzone::initialize(
+                assets,
+                rng,
+                map,
+                melee_gr::flatzone::BOOT_STALE_EVENT,
+            )?;
             stage_animations = animations;
             stage
         }

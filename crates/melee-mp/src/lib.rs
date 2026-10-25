@@ -23,6 +23,7 @@
 
 mod builder;
 pub mod desc;
+pub mod dynamic_attr;
 mod geom;
 pub mod island;
 mod map;

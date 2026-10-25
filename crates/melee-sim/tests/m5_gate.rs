@@ -5223,7 +5223,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 809] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 821] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6525,6 +6525,27 @@ static CORPUS_V3_MATCHES: [(&str, usize); 809] = [
     ("corpus_v3_bd_fox_marth4_ec3145eb3_p0", 5506),
     ("corpus_v3_bd_fox_marth4_edb2b114a_p2", 6001),
     ("corpus_v3_bd_fox_marth4_ef89b3e70_p0", 6001),
+    // Flat Zone (grflatzone.c): whole Fox-Marth matches. The platforms
+    // cycle their layouts (grFlatzone_802174EC); the controller alternates
+    // the hazards (grFlatzone_802171D4). Tools fall, land, blink out, hit
+    // fighters and shields and are knocked away by fighters' and lasers'
+    // hits (it_802EF548), some running out while still falling; the oil
+    // man's spill makes fighters slip (grDynamicAttr material 0x11) until
+    // it expires. A dead fighter on the floor is no longer nudged
+    // (ftCommon_8007E0E4's x2219_b1), and a flat Marth's Counter volume
+    // sits at his depth (lbColl_80007BCC with x44_mtx).
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_ef89b3e70_p0", 2866),
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_edb2b114a_p0", 6001),
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_ec13743d5_p0", 6001),
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_e726cfdde_p0", 2687),
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_e50814092_p0", 6001),
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_edafcfddf_p0", 6001),
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_e7ff378da_p0", 6001),
+    ("corpus_v3_w25_start_fz_fox_marth4_v01_e50f475b4_p0", 6001),
+    ("corpus_v3_fz_fox_marth4_ec13743d5_p1", 6001),
+    ("corpus_v3_fz_fox_marth4_e0ac13e8e_p0", 6001),
+    ("corpus_v3_fz_fox_marth4_ecdf8887e_p2", 6001),
+    ("corpus_v3_fz_fox_marth4_ef89b3e70_p1", 6001),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

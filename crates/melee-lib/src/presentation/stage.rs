@@ -106,6 +106,8 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::Fourside => 6,
         // grKr_StageCallbacks[3] carries 0xC0000000.
         GrKind::Kraid => 3,
+        // grFz_StageCallbacks[2] carries 0xC0000000.
+        GrKind::Flatzone => 2,
         _ => return Err(error("stage light set unknown")),
     })
 }

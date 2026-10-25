@@ -545,6 +545,23 @@ impl Clone for BackgroundAnimation {
 }
 
 impl BackgroundAnimation {
+    /// `lb_8000B804(child of the gobj jobj, the archive joint)` (0x8000B804),
+    /// grAnime_801C8138's first step: every joint back to its authored
+    /// rotation, scale and translation, quaternion off, matrix dirty.
+    /// Flags such as `JOBJ_HIDDEN` stay.
+    pub fn reset_pose(&mut self) {
+        for &id in &self.joints {
+            let source = self.rest.get(id);
+            let (rotate, scale, translate) = (source.rotate, source.scale, source.translate);
+            let joint = self.tree.get_mut(id);
+            joint.rotate = rotate;
+            joint.scale = scale;
+            joint.translate = translate;
+            self.tree.clear_flags(id, hsd_anim::jobj::JOBJ_USE_QUATERNION);
+            self.tree.set_flags(id, hsd_anim::jobj::JOBJ_MTX_DIRTY);
+        }
+    }
+
     /// Recreate a stage model in its reserved storage. Hierarchy and authored
     /// resources stay fixed; poses, visibility and material values restart.
     pub fn reset_for_creation(&mut self) {

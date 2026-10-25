@@ -1234,6 +1234,21 @@ fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_kj_fox_marth4_cold", 600);
 }
 
+/// Flat Zone (grflatzone.c, docs/PORT_NOTES/FLAT_ZONE.md): the start
+/// boundary, warm and cold (the controller's and the platforms' setup
+/// draws, the first variant changes), and the per-tick-rendered capture.
+#[test]
+fn flat_zone_starts_600() {
+    movement_gate_ticks("w25_start_fz_fox_marth4_v01", 600);
+    movement_gate_ticks("w25_start_fz_fox_marth4_v01_cold", 600);
+    movement_gate_ticks("w25_fz_start600_v01", 600);
+}
+#[test]
+fn flat_zone_start_particle_rng_order() {
+    particle_rng_sites_with_ledger("w25_start_fz_fox_marth4_v01", 600, "ledger600");
+    particle_rng_sites_with_ledger("w25_fz_start600_v01", 600, "ledger");
+}
+
 #[test]
 fn idle_fd_puff_600() {
     movement_gate_ticks("idle_fd_puff", 600);

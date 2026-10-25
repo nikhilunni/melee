@@ -1588,3 +1588,12 @@ stage = "BrinstarDepths"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 1038753988
+
+[[boundary]]
+name = "w25_start_fz_fox_marth4_v01"
+cold = "w25_start_fz_fox_marth4_v01_cold"
+savestate = "harness/roms/w25_start_fz_fox_marth4_v01.sav"
+stage = "FlatZone"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2265280010

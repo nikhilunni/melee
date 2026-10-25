@@ -1488,6 +1488,29 @@ impl Runtime {
                         }
                     }
                 }
+                // it_802EF548 reads ftLib_800866DC of xCEC, the fighter whose
+                // hit was the strongest.
+                if kind == melee_types::ItemKind::Tools {
+                    let attacker = state.items.get_mut(id).and_then(|item| {
+                        let hit = item.pending_damage_taken != 0 || item.pending_knockback != 0.0;
+                        (hit && !item.struck_by_item)
+                            .then_some(item.hit_by.map(|p| (p, item.hit_by_secondary)))
+                            .flatten()
+                    });
+                    let position = attacker.and_then(|(player, secondary)| {
+                        let index = state.fighters.iter().position(|fighter| {
+                            crate::scene_fighter::with_fighter!(fighter, |f| f.player.id == player
+                                && f.player.secondary == secondary)
+                        })?;
+                        Some(crate::scene_fighter::with_fighter!(
+                            &mut state.fighters[index],
+                            |f| f.core.camera_bone_position()
+                        ))
+                    });
+                    if let Some(item) = state.items.get_mut(id) {
+                        item.attacker_position = position;
+                    }
+                }
                 let rng = std::cell::Cell::new(state.rng);
                 state.items.process_events_with_stale::<SceneItems>(
                     id,
@@ -1690,6 +1713,12 @@ impl Runtime {
                                     true,
                                 );
                                 stage.start(&mut state.rng);
+                            }
+                            // fn_80217440, then fn_8021706C (Ground_801C10B8's
+                            // list runs newest first): the platforms and the
+                            // controller start counting.
+                            if let SceneStage::FlatZone(stage) = &mut state.stage {
+                                stage.start();
                             }
                             // grStadium_801D4040.
                             crate::scene_stage::stadium::show(
@@ -2566,6 +2595,8 @@ impl Runtime {
                     }
                 }
                 0x801C461C | 0x801CADBC | 0x801C1D38 => {}
+                // mpLib_800587FC: grDynamicAttr_801CA224 ages the spills.
+                melee_gr::flatzone::procs::COLLISION_PROC => state.map.dynamic_attrs.tick(),
                 _ => {
                     let map_id = map.expect("stage callback map");
                     // grStory_801E3334: the Shy Guy spawner (grStory_801E3418)
@@ -2634,6 +2665,7 @@ impl Runtime {
                         || address == melee_gr::kraid::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
+                        || address == melee_gr::flatzone::procs::CONTROLLER_PROC
                     {
                         self.radial_forces.tick();
                         // lb_80011ABC reads the state this tick left.
@@ -2696,6 +2728,13 @@ impl Runtime {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and
                         // its lb_800115F4 ran above.
+                    } else if matches!(state.stage, SceneStage::FlatZone(_)) {
+                        crate::scene_stage::flatzone::run_proc(
+                            state,
+                            map_id,
+                            world,
+                            &mut self.item_objects,
+                        )?;
                     } else if matches!(state.stage, SceneStage::Garden(_)) {
                         crate::scene_stage::garden::run_proc(
                             state,

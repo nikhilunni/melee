@@ -1,0 +1,22 @@
+# Authorized fresh Flat Zone acceptance capture; coordinator schedules it.
+# Uses only the newly created boundary; output prefix differs from helper warm.
+name = "w25_fz_start600_v01"
+input_clock = "tick"
+savestate = "harness/roms/w25_start_fz_fox_marth4_v01.sav"
+frames = 600
+render_every_tick = true
+seed = 1
+stage = "FlatZone"
+
+inputs = [
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

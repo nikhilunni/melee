@@ -209,6 +209,8 @@ pub enum ItemScratch {
     Bomb(BombState),
     Dosei(DoseiState),
     Heiho(HeihoState),
+    /// Item.xDD4_itemVar.tools.x0 (ittools.c): which of the five tools.
+    Tools(i32),
     Turnip(TurnipState),
     Jolt(JoltState),
     Thunder(ThunderState),
@@ -1090,6 +1092,10 @@ pub struct ItemCore {
     pub hit_by_secondary: bool,
     /// The strongest hit this frame came from an item (xCF0, not xCEC).
     pub struck_by_item: bool,
+    /// ftLib_800866DC of xCEC, the fighter whose hit was the last
+    /// strongest: the scene fills it before Item_8026A294 for the kinds
+    /// whose damage callback reads it (it_802EF548).
+    pub attacker_position: Option<Vec3>,
     /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
     pub queued_events: melee_types::fixed::FixedVec<ItemEvent, 4>,
     /// A fighter proc at s_link 9 or later drives this item (an owner's
@@ -2031,6 +2037,7 @@ impl ItemPool {
             hit_by: None,
             hit_by_secondary: false,
             struck_by_item: false,
+            attacker_position: None,
             queued_events: Default::default(),
             efasync_immediate: false,
             events: Default::default(),

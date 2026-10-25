@@ -35,6 +35,7 @@ melee_it::item_kinds! {
         PeachToad: it_peach::PeachToad,
         PeachToadSpore: it_peach::PeachToadSpore,
         Heiho: it_heiho::Heiho,
+        Tools: it_tools::Tools,
         Yaku: it_yaku::Yaku,
         PikachuTJoltGround: it_pikachu::ThunderJoltBall,
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
@@ -1477,6 +1478,17 @@ impl Resources {
                 .map_err(|e| anyhow::anyhow!("Shy Guy gait: {e}"))?;
             kinds.push((ItemKind::Heiho, heiho));
         }
+        // Flat Zone's tools (it_802EEFA8), from GrFz.dat's itemdata.
+        if let Some(tools) = ItemAssets::from_stage_item(
+            stage,
+            ItemKind::Tools,
+            &it_tools::ARTICLE_STATES,
+            it_tools::SPECIAL_ATTRIBUTES,
+            &[],
+        )? {
+            kinds.push((ItemKind::Tools, tools));
+            visual_archives.push((ItemKind::Tools, std::sync::Arc::new(stage.clone())));
+        }
         // Ground_801C0800 (ground.c:493-498): a stage with ALDYakuAll
         // scripts its material item (it_802E6AEC, Jungle Japes' Klaptrap).
         if let Some(yaku) = ItemAssets::from_yaku(&common_archive, public, stage)? {
@@ -2624,4 +2636,49 @@ pub(crate) fn spawn_klaptrap(
         true,
     );
     it_klap::attach_parent(state.items.get_mut(id).unwrap(), parent);
+}
+
+/// grFlatzone_80217EF0 -> it_802EEFA8 (0x802EEFA8): a falling tool, then
+/// it_802EF098 starts tool `kind` and the stage limits its collision to the
+/// ground floor (`x378_itemColl.joint_id_only = 0x32`).
+pub(crate) fn spawn_tool(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    position: hsd_types::Vec3,
+    kind: i32,
+    facing: f32,
+) {
+    let before = state.items.len();
+    request(
+        &mut state.items,
+        &mut state.effects.gobjs,
+        &state.assets.items,
+        &mut state.map,
+        world,
+        objects,
+        ItemRequest::Spawn(it_tools::spawn(position, facing)),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        &mut state.rng,
+    );
+    if state.items.len() == before {
+        unimplemented!("it_802EEFA8: no item slot for a tool");
+    }
+    let assets = state.assets.items.get(ItemKind::Tools);
+    let id = state.items.iter().last().expect("the new tool").id;
+    let half_life_scale = state.items.common().half_life_scale;
+    let item = state.items.get_mut(id).expect("the new tool");
+    it_tools::start(item, kind, assets, half_life_scale);
+    item.collision
+        .as_mut()
+        .expect("tool collision")
+        .joint_id_only = crate::scene_stage::flatzone::GROUND_JOINT;
 }

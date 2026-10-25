@@ -1516,6 +1516,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-tools"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-it",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "it-yaku"
 version = "0.0.1"
 dependencies = [
@@ -1890,6 +1902,7 @@ dependencies = [
  "it-samus",
  "it-seak",
  "it-sword",
+ "it-tools",
  "it-yaku",
  "it-yoshieggthrow",
  "it-yoshistar",

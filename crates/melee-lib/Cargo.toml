@@ -17,6 +17,7 @@ it-yoshieggthrow = { path = "../it-yoshieggthrow" }
 it-peach = { path = "../it-peach" }
 it-pikachu = { path = "../it-pikachu" }
 it-heiho = { path = "../it-heiho" }
+it-tools = { path = "../it-tools" }
 it-yaku = { path = "../it-yaku" }
 it-seak = { path = "../it-seak" }
 it-zelda = { path = "../it-zelda" }
