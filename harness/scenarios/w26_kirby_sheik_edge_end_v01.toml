@@ -1,0 +1,34 @@
+# Kirby's copied Needle Storm: a dash into the grounded start, a one-needle throw sliding off the right edge into Fall
+name = "w26_kirby_sheik_edge_end_v01"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_sheik4.sav"
+frames = 600
+render_every_tick = true
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = { }, raw = {  } },
+  { frame = 1, port = 1, buttons = { }, raw = {  } },
+  { frame = 130, port = 0, buttons = { }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = { }, raw = {  } },
+  { frame = 236, port = 0, buttons = { }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = { }, raw = {  } },
+  { frame = 340, port = 0, buttons = { }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = { }, raw = {  } },
+  { frame = 375, port = 0, buttons = { }, raw = { stickX = 50 } },
+  { frame = 381, port = 0, buttons = { }, raw = {  } },
+  { frame = 392, port = 0, buttons = { }, raw = { stickX = 127 } },
+  { frame = 411, port = 0, buttons = { }, raw = { button = 512 } },
+  { frame = 419, port = 0, buttons = { }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Sheik"
+controller = "scripted"

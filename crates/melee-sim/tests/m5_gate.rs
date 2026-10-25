@@ -3096,8 +3096,21 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // 467..474, u.kb.xB4/xB8, It_Kind_Kirby_SeakNeedleHeld (153) in the
     // right hand and It_Kind_Kirby_SeakNeedleThrow (152) from PlKbCpSk.dat,
     // colour 87), from `start_fd_kirby_sheik4`: a six-needle grounded
-    // charge and volley, then a one-needle tap.
+    // charge and volley, then a one-needle tap; the needles hitting Sheik,
+    // her jab and forward smash into the charge (800F1A8C's drop); aerial
+    // loop/start/cancel/throw landings, a throw and a cancel ending in the
+    // air; a kept charge after shield cancels; the start, loop, cancel and
+    // throw sliding off the edge; death with the bundle in hand (800F19AC
+    // drops the charge, the ability goes).
     ("w25_kirby_sheik_ground_v01", 900),
+    ("w26_kirby_sheik_hit_v01", 900),
+    ("w26_kirby_sheik_air_v01", 900),
+    ("w26_kirby_sheik_air2_v01", 900),
+    ("w26_kirby_sheik_cancel_v01", 900),
+    ("w26_kirby_sheik_edge_loop_v01", 760),
+    ("w26_kirby_sheik_edge_start_v01", 600),
+    ("w26_kirby_sheik_edge_end_v01", 600),
+    ("w26_kirby_sheik_edge_cancel_v01", 600),
 ];
 
 #[test]

@@ -874,8 +874,7 @@ Remaining work, in the order to take it:
    `ftKb_Init_UnkMotionStates4` (`charge_flash.rs`), Samus's Charge Shot
    (`kirby_copy_chargeshot_*`, boundary `start_fd_kirby_samus4`),
    Donkey Kong's Giant Punch (`kirby_copy_giantpunch_*`) and Mewtwo's
-   Shadow Ball (`kirby_copy_shadowball_*`). The charge flash's Sheik arm
-   (xB4 == 6, colour 87) waits for the copied Needle Storm.
+   Shadow Ball (`kirby_copy_shadowball_*`).
    Pikachu's and Pichu's Thunder Jolt (`kirby_copy_thunderjolt_*`,
    `kirby_copy_pichujolt_*`, boundaries `start_fd_kirby_pikachu4`,
    `start_fd_kirby_pichu4`); Peach's Toad (`kirby_copy_toad_*`, boundary
@@ -909,7 +908,19 @@ Remaining work, in the order to take it:
    boundary's savestate holds Nana before her entry's motion change
    finished (x3EC stale heap bytes), so the warm import takes her
    tick-zero row (`initial_state`).
-   Next: Sheik, then the rest; each row's stale-move id exists
+   Done (wave 26): Sheik's Needle Storm (`copied/needle_storm.rs`,
+   witnesses `w25_kirby_sheik_ground_v01`, `w26_kirby_sheik_*`, boundary
+   `start_fd_kirby_sheik4`). Kirby's rows 467..474 are his own code, not
+   Sheik's states: the callbacks are Kirby's (ftKb_SpecialN_set_cbs),
+   the grounded cancel and throw leave the floor into Fall without
+   clearing anything, the aerial cancel lands without them, the bundle
+   rides FtPart_RHandN (39), and the full charge is colour 87 (Sheik's 86),
+   which `charge_flash.rs` also installs while xB4 == 6. The put-away arm
+   (8010603C) drops the charge without clearing callbacks. The articles
+   are it-seak's needles generic over the owner (152 thrown, 153 held,
+   PlKbCpSk.dat hats[6]); a released bundle's slot is reused by the first
+   thrown needle, which the trace shows as 153 becoming 152 in place.
+   Next: the rest; each row's stale-move id exists
    already (`StaleMove::Copied*`). The pattern, per kind:
    - `crates/ft-kirby/src/copied/<kind>.rs`: marker types (`KirbyFox`,
      `KirbyFalco`) implementing the original family's trait over Kirby's

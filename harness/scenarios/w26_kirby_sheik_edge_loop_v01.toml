@@ -1,0 +1,34 @@
+# Kirby's copied Needle Storm: a dash into the grounded start, the loop sliding off Final Destination's right edge into the aerial loop, B held to the blast zone (death with the bundle in hand), an Inhale after the respawn
+name = "w26_kirby_sheik_edge_loop_v01"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_kirby_sheik4.sav"
+frames = 760
+render_every_tick = true
+seed = 1
+stage = "FinalDestination"
+
+inputs = [
+  { frame = 1, port = 0, buttons = { }, raw = {  } },
+  { frame = 1, port = 1, buttons = { }, raw = {  } },
+  { frame = 130, port = 0, buttons = { }, raw = { stickX = 127 } },
+  { frame = 202, port = 0, buttons = { }, raw = {  } },
+  { frame = 236, port = 0, buttons = { }, raw = { button = 512 } },
+  { frame = 238, port = 0, buttons = { }, raw = {  } },
+  { frame = 340, port = 0, buttons = { }, raw = { stickY = -127 } },
+  { frame = 346, port = 0, buttons = { }, raw = {  } },
+  { frame = 392, port = 0, buttons = { }, raw = { stickX = 127 } },
+  { frame = 413, port = 0, buttons = { }, raw = { button = 512 } },
+  { frame = 560, port = 0, buttons = { }, raw = {  } },
+  { frame = 680, port = 0, buttons = { }, raw = { button = 512 } },
+  { frame = 682, port = 0, buttons = { }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Kirby"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Sheik"
+controller = "scripted"
