@@ -4,8 +4,13 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 24 integrated)
+## Current state (2026-10-25, wave 24 integrated; wave 25 paused)
 
+- **Paused at the user's request:** no agent, build, sweep or capture is
+  running. MAIN is verified through wave 24; wave-25 ports are not merged.
+  Ness has uncommitted, unbuilt edits in its isolated worktree; ReDead and
+  copied-Sheik worktrees are clean. Resume details and evidence are in
+  `docs/handoffs/WAVE25_PAUSED.md`. Do not resume without user instruction.
 - **Original command-owner invariants are verified at source `f570da10`:**
   Swing42 and Smash42 missing static rows are proven retail assertions,
   with original asset ownership, entry/reset and asynchronous-writer proofs.
@@ -51,19 +56,23 @@ and `docs/PORT_NOTES/`.
   clones; clone creation is outside measured windows. Active draw ranges
   agree; unused presentation backing capacity is not active geometry.
   Release only; no debug run.
-- **Latest quiet measurement (`f570da10`) retains its historical budget result:**
-  time passes (18.552 ms per 600 ticks; 56.702 ms load). Stripped size is
-  7,675,616 bytes and text size 6,897,664 bytes, unchanged from wave 23 and
-  above the prior ceilings. The user subsequently approved baselines of
-  7,605,760 stripped / 6,848,512 text and Kirby allowance one. The measured
-  sizes fit their unchanged +5% ceiling; a fresh quiet policy check follows
-  recording. Timing and other duplication limits are unchanged (20/94 pass).
-  `docs/PERF.md` preserves the historical report and explicit ratchet.
-- **New captures are authorized (user, 2026-10-25):** create the evidence
-  needed for 100% parity without asking again. Ness is first in the quiet
-  capture queue; heavy carry/throws, Sword/monster callbacks, copied Sheik
-  and Flat Zone are being prepared. Use fresh names, retain existing data,
-  and keep game data out of Git.
+- **Fresh quiet performance passes at source `7c06907b`:** 19.084 ms per
+  600 ticks, 54.833 ms load, 7,675,616 stripped bytes and 6,897,664 text bytes.
+  The user approved baselines of 7,605,760 / 6,848,512 bytes and Kirby
+  duplicate-label allowance one; +5% size tolerance, timing and all other
+  duplication limits are unchanged. Shared duplication remains 20/94.
+  `docs/PERF.md` retains both historical failures and the fresh PASS report.
+- **Fresh capture evidence is complete:** eight successful capture chains,
+  9,725 ticks total: Ness 4,775; Heavy 600/800; Sword 750; ReDead 700;
+  copied Sheik 900; Flat Zone helper 600 and per-tick 600. Capture completion
+  does not admit behavior. New ports remain unmerged; the last full sweep
+  covers the original 3,490 scenarios, not these new cases. The two generated
+  Flat Zone start SCNs remain local, unregistered and unsupported. See the
+  paused handoff for exact validation limits and paths.
+- **New captures remain authorized (user, 2026-10-25):** no further capture
+  approval is needed when work resumes. Use fresh names, retain existing
+  data and failed attempts, and keep game data out of Git. The current pause
+  takes precedence over this standing authority.
 
 ## Next (breadth before individual replay fixes)
 
@@ -81,11 +90,11 @@ and `docs/PORT_NOTES/`.
    Sink/Remove and second-live-log paths remain guarded.
 5. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
    actual floor transition on its last tick. No later floor-exit proof.
-6. [~] **Ness current yo-yo binding:** the original 4,775-tick capture has
-   only 3,340 particle/meta ticks. A full fresh capture with the original
-   setup and inputs is authorized and being launched with a longer timeout.
-   Preserve all old and failed-attempt files; validate every complete stream
-   before enabling current-instance binding.
+6. [~] **Ness current yo-yo binding — paused:** fresh full 4,775-tick
+   recording validates all five streams and all 200,210 RNG draws. Triage
+   confirms both yo-yos are removed at 924 while retail keeps the older one.
+   Uncommitted instance-routing/string-storage edits are unbuilt and untested;
+   do not merge or treat them as verified. Preserve the old incomplete data.
 7. [x] **Common held Sword F/B/Hi/Lw terminal entry and sealed-effect
    ordering:** complete original witnesses, callback/identity controls,
    allocation checks and root checkpoint pass. Link/YoungLink direct
@@ -93,12 +102,16 @@ and `docs/PORT_NOTES/`.
    and outside the new common-row proof. Later held callbacks stay guarded.
 8. [x] **Original command-owner invariants:** Swing42 and Smash42 source,
    asset, writer and complete live controls pass; neither admits gameplay.
-9. [~] **Further breadth with fresh evidence:** prepare heavy carry/throws,
-   held-item and monster callbacks, copied Sheik Needle Storm and Flat Zone.
-   All 19 remaining Versus stages, wider CPU awareness, modes, retail
-   menus/results/single-player and pause remain in scope. The bounded
-   third-invariant audit found no eligible candidate; it proves no general
-   impossibility. Second-log data still lacks coexistence proof.
+9. [~] **Further breadth — paused with fresh evidence:** ReDead 700 includes
+   the coupled fighter CaptureLeadead state and release; copied Sheik 900
+   proves ground charge/release and needle cleanup; Heavy 800 proves carry
+   and forward throw; Sword 750 proves landing/ledge continuation, with no
+   unlocked airborne throw window. Flat Zone has a new boundary and full
+   per-tick 600/bones/camera evidence, but remains unported. ReDead and Kirby
+   worktrees are clean; no wave-25 implementation has passed acceptance.
+   All 19 remaining stages, wider CPU awareness, modes, retail menus/results,
+   single-player and pause remain in scope. Second-log coexistence is still
+   unwitnessed. See `docs/handoffs/WAVE25_PAUSED.md` before resuming.
 10. [ ] Replay depth after breadth: five existing stops remain in the second
    corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
    unconsumed controller polls; two one-ulp Nana positions). Other
@@ -109,8 +122,8 @@ and `docs/PORT_NOTES/`.
 
 **Characters:** all 26 are registered. Movement, combat and character
 specials have recorded witness families. Kirby has **24/25 copied neutral
-specials**; copied Sheik Needle Storm remains unported despite an existing
-start boundary (`docs/PORT_NOTES/KIRBY.md`). Pinned mouth-victim bottom cleanup is witnessed; other Inhale/item and
+specials**; copied Sheik Needle Storm remains unported, with a complete
+ground charge/release capture now available (`docs/PORT_NOTES/KIRBY.md`). Pinned mouth-victim bottom cleanup is witnessed; other Inhale/item and
 hand-pose gaps remain. Character differences use static tables and family crates.
 
 **Stages:** ten supported Versus stages: the six tournament stages, Yoshi's

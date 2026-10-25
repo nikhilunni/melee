@@ -10,7 +10,7 @@ every step. `TRACKER.md` holds the current focus and backlog.
 | 3 | One fighter idle | `idle_fd_fox` 600 ticks bit-exact | Done. |
 | 4 | Movement | Movement scenes per character | Done for all 26 characters. |
 | 5 | Combat, two fighters | Hits, shields, grabs, KOs | Done for Fox vs Marth on FD: two recorded human matches bit-exact; full interaction coverage including Sudden Death (`docs/MATCHUP_COMPLETENESS.md`). Every registered character's combat is exact on its explorer batches vs Fox and on ten cross-matchups. |
-| 6 | Breadth | Every character and stage, idle to full matchup | In progress: ten supported Versus stages, with unwitnessed hazards guarded; 19 remain. All 26 characters are registered; Kirby has 24/25 copied neutrals (Sheik remains unported). Guarded FD/Battlefield CPU players, random containers, narrow Barrel owner transfer, ground Sword entries and empty Box/Barrel blasts are integrated. Moving Kongo barrel use, neutral Party Ball FALL/REST, log-standing, revival-floor entry, retained running-item program identity and pinned mouth-victim bottom cleanup are integrated. Each admission has complete recordings or explicit entry-only limits. Shared Stone contact handling, terminal HeavyGet entry, held Sword common F/B/Hi/Lw entry, bounded Kuriboh/ReDead births and coupled Klaptrap birth-tick path/item work are integrated; shared teardown-before-sealed-effect ordering is witnessed through a complete 700-tick landing; the paired Giant Punch invariant is source/data-proven without new behavior; unsupported mixed item-contact paths refuse explicitly, while Ness yo-yo instance binding awaits complete particle evidence (`TRACKER.md`). |
+| 6 | Breadth | Every character and stage, idle to full matchup | In progress: ten supported Versus stages, with unwitnessed hazards guarded; 19 remain. All 26 characters are registered; Kirby has 24/25 copied neutrals (Sheik remains unported). Guarded FD/Battlefield CPU players, random containers, narrow Barrel owner transfer, ground Sword entries and empty Box/Barrel blasts are integrated. Moving Kongo barrel use, neutral Party Ball FALL/REST, log-standing, revival-floor entry, retained running-item program identity and pinned mouth-victim bottom cleanup are integrated. Each admission has complete recordings or explicit entry-only limits. Shared Stone contact handling, terminal HeavyGet entry, held Sword common F/B/Hi/Lw entry, bounded Kuriboh/ReDead births and coupled Klaptrap birth-tick path/item work are integrated; shared teardown-before-sealed-effect ordering is witnessed through a complete 700-tick landing; the paired Giant Punch invariant is source/data-proven without new behavior; unsupported mixed item-contact paths refuse explicitly, while Ness current-instance binding has complete fresh evidence and unverified worktree edits (`TRACKER.md`). |
 | 7 | Slippi replay corpus | Zero divergence over thousands of replays | In progress. `melee-sim replay-batch` runs a corpus with the Slippi codes each game was recorded with: 108 of 108 games complete on `public-v3.7` (964,782 matched frames), 486 of 502 on `public-v3.7-b` (5,102,652 matched frames). Five games stop; unsupported setups remain refused, including CPU levels absent from Slippi and stock-sharing teams. Lag inference and Slippi Online retain their documented comparison boundaries. Open: the remaining stops by kind (`TRACKER.md`), then a wider corpus. |
 | 8 | Platform | Native app | In progress (`docs/APP.md`). A shared core (`melee-platform`) under a macOS host and a web host, with the disc image as the only input; the wave-24 checkpoint matches native/WASM over 6,003 hash lines and passes the release web build. Open: render-to-texture (FoD reflection, Stadium screen), gamepads and the other items in `TRACKER.md`. |
 
@@ -22,8 +22,9 @@ Checkpoint source `f570da10` retains both replay corpora and has a fresh
 passes 2,020 tests; clippy, harness, schema, five WASI guard traps, 6,003 WASM
 hash lines and web pass. Two command-owner guards are now source/data-proven
 invariants, without admitting gameplay; 297 fail-closed sites remain. The
-function inventory's covered-byte percentages and performance budgets are
-unchanged. See `docs/PORT_NOTES/WAVE24_BREADTH.md`.
+function inventory's covered-byte percentages are unchanged. The user-approved
+performance baseline update now passes a fresh quiet run; timing and other
+duplication limits are unchanged. See `docs/PORT_NOTES/WAVE24_BREADTH.md`.
 
 The objective is 100% retail parity, with no scope exclusions (user,
 2026-10-24). Retail menus, results, CPU players and single-player modes are
@@ -50,12 +51,15 @@ pre-existing and outside these new common-row witnesses.
 
 Two original command-owner invariants (Swing42/Smash42) are integrated.
 A bounded search found no eligible third invariant, without claiming
-exhaustive impossibility. Ness's current yo-yo binding needs a complete fresh
-4,775-tick capture; its old particle/meta stream ends at 3,340. The user
-explicitly authorized new captures on 2026-10-25, superseding the prior
-recording restriction. Ness is first in the quiet queue, followed by later
-heavy carry/throw, Sword/monster callbacks, copied Sheik and another stage.
-All remain in scope.
+exhaustive impossibility. Wave 25 is now **paused at the user's request**.
+Eight fresh capture chains (9,725 ticks) completed after recording authority
+was granted. Ness's full 4,775-tick evidence now validates; its old incomplete
+recording is preserved. Heavy carry/forward throw, Sword landing/ledge,
+ReDead grab/release, copied-Sheik ground charge/release and Flat Zone startup
+have new evidence. These ports are not integrated or accepted. Ness has
+uncommitted unbuilt edits; the ReDead and copied-Sheik worktrees are clean.
+`docs/handoffs/WAVE25_PAUSED.md` records exact artifacts, proof limits and
+resume steps. Do not resume development without user instruction.
 
 Revival-floor entry is witnessed only on its 1,679-tick capture's final tick;
 no later floor-exit observation is available. The second-live-log creation
@@ -66,7 +70,9 @@ scenarios; log-standing adds one whole warm/cold capture. Ground Sword work
 admits actual common rows 57/63 and witnessed throws; common F/B/Hi/Lw
 aerials admit only recorded held entry. Neutral, private Game & Watch aerials
 and Hi3/Lw4 remain guarded; Peach float uses its separate pre-existing policy.
-Terminal monster, heavy and aerial data do not prove later lifecycles. The CPU audit found no eligible additional branch in
-existing complete configured-CPU recordings.
+The old terminal monster, heavy and aerial captures prove no later lifecycle;
+new longer evidence is listed in the paused handoff and still needs a verified
+implementation. The CPU audit found no eligible additional branch in existing
+complete configured-CPU recordings.
 New captures and required boundaries are authorized. Use fresh names, retain
 existing data, and record at modest concurrency without competing heavy checks.
