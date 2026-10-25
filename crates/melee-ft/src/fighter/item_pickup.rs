@@ -664,9 +664,29 @@ impl Fighter {
         Ok(true)
     }
 
+    /// fn_800D8BFC (800D8BFC), Catch's x2194 once ftColl_8007BC90 found a
+    /// stage enemy in the grab: the hand closes on it
+    /// (ftpickupitem_800948A8), then HeavyGet in loop mode
+    /// (ftpickupitem_80094694(gobj, 0x5D, 1)): the animation steps until
+    /// its throw flag (ftCheckThrowB3) has closed the hand.
+    pub fn catch_stage_enemy(&mut self, item: PickupCandidate, assets: &FighterAssets) -> Result<()> {
+        if !matches!(self.core.motion_state.id, S::Catch | S::CatchDash) {
+            unimplemented!("x2194 of a special grab catching a stage enemy (ftKb_SpecialN fn_800F6178)");
+        }
+        self.core.take_item(item, assets);
+        self.enter_item_get_with(S::HeavyGet, assets, true)
+    }
+
     /// ftpickupitem_80094694 (80094694) without its loop mode: clear the
     /// throw flags, enter the state and play its first frame.
     fn enter_item_get(&mut self, state: S, assets: &FighterAssets) -> Result<()> {
+        self.enter_item_get_with(state, assets, false)
+    }
+
+    /// ftpickupitem_80094694 (80094694): clear the throw flags, enter the
+    /// state, and step its animation once or, in loop mode, until the
+    /// throw flag B3 (taken as it is read).
+    fn enter_item_get_with(&mut self, state: S, assets: &FighterAssets, looping: bool) -> Result<()> {
         if state == S::HeavyGet && self.core.player.scale != 1.0 {
             unimplemented!("ftpickupitem.c:213: scaled HeavyGet animation rate");
         }
@@ -675,7 +695,18 @@ impl Fighter {
         self.core.commands.clear_throw_flags();
         let retained_word = self.inherited_scratch_word();
         self.change_motion_state(state.into(), assets)?;
-        self.step_animation(assets);
+        if looping {
+            // ftpickupitem.c:223: the flag is tested before each step.
+            while !self.core.commands.take_throw_flag_b3() {
+                assert!(
+                    self.core.animation.frames_remaining(&self.core.skeleton),
+                    "ftpickupitem_80094694: HeavyGet ran out without its throw flag"
+                );
+                self.step_animation(assets);
+            }
+        } else {
+            self.step_animation(assets);
+        }
         // 80094754..60 publishes mv.co.itemget.x0, then take_dmg_cb.
         // Publish the explicit common callback owner after this scratch write;
         // interrupt_actions uses it instead of the character hook. Other

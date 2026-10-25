@@ -445,6 +445,39 @@ pub(crate) fn kirby_copy_archives(
 
 /// The grabbable items (Item_IsGrabbable: xDC8 x15 and a pickup callback)
 /// in list order, as ftpickupitem_800942A0 walks HSD_GObj_Entities->items.
+/// One item as ftpickupitem_800948A8 takes it (whatever its pickup flags).
+pub(crate) fn pickup_candidate(
+    items: &ItemPool,
+    resources: &Resources,
+    id: u32,
+) -> melee_ft::fighter::item_pickup::PickupCandidate {
+    let item = items.iter().find(|item| item.id == id).expect("a caught item");
+    candidate(item, resources)
+}
+
+fn candidate(
+    item: &melee_it::ItemCore,
+    resources: &Resources,
+) -> melee_ft::fighter::item_pickup::PickupCandidate {
+    let assets = resources.get(item.kind);
+    melee_ft::fighter::item_pickup::PickupCandidate {
+        item: item.id,
+        kind: item.kind,
+        // it_8026B344 (retail 8026B354: fmadds).
+        position: hsd_types::Vec2::new(
+            gekko_math::fma::fmadds(item.facing, item.grab_offset.x, item.position.x),
+            item.position.y + item.grab_offset.y,
+        ),
+        range: item.grab_range,
+        heavy: assets.heavy,
+        // it_8026B4F0: food, hearts, tomatoes, coins, eggs, apples.
+        consumable: false,
+        use_kind: assets.use_kind,
+        hand_hold_kind: assets.hand_hold_kind,
+        damage_multiplier: assets.collision_damage_multiplier,
+    }
+}
+
 pub fn pickup_candidates<'a>(
     items: &'a ItemPool,
     resources: &'a Resources,
@@ -456,25 +489,7 @@ pub fn pickup_candidates<'a>(
                 && item.grabbable
                 && (SceneItems::logic(item.kind).pickup_possible)(item)
         })
-        .map(|item| {
-            let assets = resources.get(item.kind);
-            melee_ft::fighter::item_pickup::PickupCandidate {
-                item: item.id,
-                kind: item.kind,
-                // it_8026B344 (retail 8026B354: fmadds).
-                position: hsd_types::Vec2::new(
-                    gekko_math::fma::fmadds(item.facing, item.grab_offset.x, item.position.x),
-                    item.position.y + item.grab_offset.y,
-                ),
-                range: item.grab_range,
-                heavy: assets.heavy,
-                // it_8026B4F0: food, hearts, tomatoes, coins, eggs, apples.
-                consumable: false,
-                use_kind: assets.use_kind,
-                hand_hold_kind: assets.hand_hold_kind,
-                damage_multiplier: assets.collision_damage_multiplier,
-            }
-        })
+        .map(|item| candidate(item, resources))
 }
 
 pub struct Resources {
@@ -1789,6 +1804,10 @@ pub fn request(
             // xDCE b0 and b2: the thrower's hits land on it, and so do its
             // kin's.
             thrown.hurt_by_owner = true;
+            // Item_8026AC74 only: a dropped stage enemy is nobody's.
+            if dropped {
+                release_stage_enemy(thrown);
+            }
             return None;
         }
         ItemRequest::Stow { item, stowed } => {
@@ -1872,8 +1891,8 @@ pub fn request(
         } => {
             // Item_8026ABD8: it_802731A4's sound, xC44, it_80273B50 at the
             // hand with no push, the kind's dropped callback, it_80274198
-            // (it_80273F34), then it_802754D4; it_8026B6C8's stage enemies
-            // are not in scope.
+            // (it_80273F34), then it_802754D4; a stage enemy (it_8026B6C8)
+            // is then nobody's and not grabbable (it_80275390).
             let dropped = pool.get_mut(item).expect("dropped item");
             let assets = resources.get(dropped.kind);
             // it_802790C0: as for a throw.
@@ -1894,6 +1913,7 @@ pub fn request(
             );
             dropped.end_hold(center, attack, map, assets);
             dropped.hurt_by_owner = true;
+            release_stage_enemy(dropped);
             return None;
         }
     };
@@ -2837,4 +2857,17 @@ pub(crate) fn release_redead_on_hit(state: &mut crate::initial_state::InitialSta
         state.assets.items.get(ItemKind::Leadead),
         depth,
     );
+}
+
+/// it_8026B6C8 (8026B6C8): a stage enemy (the crate monsters and the
+/// adventure maps' kinds, but for Kyasarin's egg and Whispy's apple), which
+/// a drop leaves nobody's and ungrabbable (it_80275390).
+fn release_stage_enemy(item: &mut melee_it::ItemCore) {
+    let kind = item.kind as u32;
+    let monster = (ItemKind::Kuriboh as u32..ItemKind::OctarockStone as u32).contains(&kind)
+        || (ItemKind::OldKuri as u32..ItemKind::ArwingLaser as u32).contains(&kind);
+    if monster && !matches!(item.kind, ItemKind::KyasarinEgg | ItemKind::WhispyApple) {
+        item.owner = None;
+        item.grabbable = false;
+    }
 }

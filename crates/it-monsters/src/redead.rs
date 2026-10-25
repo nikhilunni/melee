@@ -2,12 +2,12 @@
 //! a crate it falls, settles and walks, turning toward the nearest fighter
 //! and at edges and walls; now and then it lunges, and a fighter its lunge
 //! catches is held (the fighter's CaptureLeadead) until the fighter's mash
-//! timer lets it go, the fighter is hit, or the ReDead is.
+//! timer lets it go or the ReDead is hit. A light hit makes it reel, a
+//! heavy one knocks it down (or staggers it with no room to fall), and a
+//! killing one sends it tumbling or flying at the screen. A fighter's grab
+//! may catch it and carry or throw it (states 13, 14).
 //!
-//! Ported: the fall, the settle, the walk, the turn, the lunge, the hold and
-//! its release, and a light hit's reel. A heavier hit's knockdown (states
-//! 7..9, 12), its death (15, 16) and a fighter's catch and throw (13, 14)
-//! fail closed with their C lines.
+//! Unported rows (0, the generator's spawn; 17) refuse with their state.
 use crate::zako::{self, monster, monster_mut};
 use gekko_math::{
     fma::{fmadds, fnmsubs},
@@ -53,6 +53,8 @@ pub(crate) mod motion {
     pub const REEL: u16 = 11;
     /// it_802E9494: knocked back while lying down.
     pub const DOWN_REEL: u16 = 12;
+    /// itLeadead_Logic1_PickedUp: carried by a fighter.
+    pub const HELD: u16 = 13;
     /// itLeadead_Logic1_Thrown: thrown by a fighter.
     pub const THROWN: u16 = 14;
     /// it_802EA2A0: killed, tumbling away.
@@ -173,6 +175,19 @@ pub(crate) static STATES: [ItemStateRow; 18] = {
         animation: no_animation,
         physics: no_physics,
         collision: tumble_collision,
+    };
+    // it_803F8EB0[13]: no collision callback.
+    rows[motion::HELD as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[13],
+        animation: held_animation,
+        physics: no_physics,
+        collision: no_collision,
+    };
+    rows[motion::THROWN as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[14],
+        animation: thrown_animation,
+        physics: fall_physics,
+        collision: thrown_collision,
     };
     // itLeadead_UnkMotion16_Coll -> it_8027C794: no map pass.
     rows[motion::SCREEN as usize] = ItemStateRow {
@@ -695,6 +710,61 @@ fn floor_normal(item: &ItemCore) -> Vec3 {
         .expect("item map collision")
         .floor
         .normal
+}
+
+/// itLeadead_UnkMotion13_Anim (802EA0FC): the carried cycle restarts.
+fn held_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    if item.article_animation_ended(ctx.assets) {
+        change(item, motion::HELD, ANIM_UPDATE, ctx.assets);
+    }
+    false
+}
+
+/// itLeadead_UnkMotion14_Anim (802EA1C4): the thrown cycle restarts with
+/// its hitbox kept (flags 0x12).
+fn thrown_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    if item.article_animation_ended(ctx.assets) {
+        change(item, motion::THROWN, ANIM_UPDATE | HIT_PRESERVE, ctx.assets);
+    }
+    false
+}
+
+/// itLeadead_UnkMotion14_Coll -> it_8027C824(gobj, NULL) (8027C824): the
+/// first surface it meets (it_8026DAA8) ends it, after it_8027CC88's 1P-mode
+/// drop (none here) and the zako generator's notice (it_8027CE44).
+fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    item.air_contact_bits(ctx.map) & 0xF != 0
+}
+
+/// itLeadead_Logic1_PickedUp (802EA0E0): carried (state 13).
+pub(crate) fn picked_up(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) {
+    change(item, motion::HELD, ANIM_UPDATE, ctx.assets);
+}
+
+/// itLeadead_Logic1_Dropped (802EA140): it_8027CBA4 (the holder's
+/// facing, airborne, the holder's hits land on it (it_802754D4), not
+/// grabbable), then the fall (it_802E9308).
+pub(crate) fn dropped(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) {
+    item.facing = ctx.owner.expect("the dropping holder").facing;
+    item.enter_air();
+    item.hurt_by_owner = true;
+    item.grabbable = false;
+    start_fall(item, ctx.assets);
+}
+
+/// itLeadead_Logic1_Thrown (802EA17C): it_8027CB3C (the thrower's player
+/// as its source, the thrower's facing, striking kindred items but not its
+/// owner (it_80275414, it_80275474), airborne, not grabbable), then
+/// thrown (state 14) with its timer cleared.
+pub(crate) fn thrown(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) {
+    item.facing = ctx.owner.expect("the throwing holder").facing;
+    item.strikes_kindred_items = true;
+    item.hits_owner = false;
+    item.strikes_kindred_items = false;
+    item.enter_air();
+    item.grabbable = false;
+    redead_mut(item).timer = 0;
+    change(item, motion::THROWN, ANIM_UPDATE, ctx.assets);
 }
 
 // --- Fighter queries ------------------------------------------------------

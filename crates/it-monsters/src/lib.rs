@@ -190,8 +190,6 @@ impl ItemLogic for Kuriboh {
         unavailable_damage(item, context)
     }
 }
-// NonNULL pickup/drop/throw entries remain unavailable: itLeadead_Logic1_PickedUp
-// (802EA0E0, itleadead.c:737), itLeadead_Logic1_Dropped / Thrown (c:752/758).
 impl ItemLogic for ReDead {
     const KIND: ItemKind = ItemKind::Leadead;
     const STATES: &'static [ItemStateRow] = &redead::STATES;
@@ -208,8 +206,17 @@ impl ItemLogic for ReDead {
     fn pickup_possible(_: &ItemCore) -> bool {
         false
     }
-    fn picked_up(_: &mut ItemCore, _: &mut ItemAnimationContext<'_>) {
-        unimplemented!("itOldKuri_Logic0_PickedUp/itLeadead_Logic1_PickedUp: monster pickup lifecycle is not witnessed")
+    /// itLeadead_Logic1_PickedUp (802EA0E0).
+    fn picked_up(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        redead::picked_up(item, context)
+    }
+    /// itLeadead_Logic1_Dropped (802EA140).
+    fn dropped(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        redead::dropped(item, context)
+    }
+    /// itLeadead_Logic1_Thrown (802EA17C).
+    fn thrown(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        redead::thrown(item, context)
     }
     /// itLeadead_Logic1_Destroyed (802EA41C, itleadead.c:849): a ReDead
     /// gone while it held a fighter would let it go first; then

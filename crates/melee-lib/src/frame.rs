@@ -3000,6 +3000,13 @@ impl Runtime {
                             )
                             .pickup_reads_owner
                         }
+                        // it_8027CB3C / it_8027CBA4: a stage enemy thrown or
+                        // dropped takes its holder's facing (ftLib_800865C0).
+                        melee_it::ItemRequest::Throw { item, .. }
+                        | melee_it::ItemRequest::Drop { item, .. } => state
+                            .items
+                            .iter()
+                            .any(|i| i.id == *item && i.kind == melee_types::ItemKind::Leadead),
                         _ => false,
                     };
                     let owner =

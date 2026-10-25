@@ -43,7 +43,11 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
     }
     if nearest.is_none() {
         // Fighter_UnkProcessGrab_8006CA5C: with no fighter caught, the grab
-        // looks for a stage enemy (ftColl_8007BC90).
+        // looks for a stage enemy (ftColl_8007BC90): the reached item
+        // strictly nearest in X (fsubs, then a sign test), in list order.
+        let mut caught = None;
+        let mut best = f32::MAX;
+        let x = state.fighters[player].physics.position.x;
         for item in state.items.iter() {
             if !with_fighter!(&state.fighters[player], |f| f.catch_may_reach(item)) {
                 continue;
@@ -52,10 +56,22 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
             if with_fighter!(&state.fighters[player], |f| f
                 .catch_reaches_item(item, &capsules))
             {
-                unimplemented!(
-                    "ftColl_8007BC90 (ftcoll.c:3544): a grab catching a stage enemy (it_8027B4A4)"
-                );
+                let mut distance = item.position.x - x;
+                if distance < 0.0 {
+                    distance = -distance;
+                }
+                if distance < best {
+                    best = distance;
+                    caught = Some(item.id);
+                }
             }
+        }
+        if let Some(id) = caught {
+            let candidate = crate::scene_items::pickup_candidate(&state.items, &state.assets.items, id);
+            let assets = &state.assets.fighters[player];
+            with_fighter!(&mut state.fighters[player], |f| f
+                .catch_stage_enemy(candidate, assets))
+            .map_err(|error| anyhow::anyhow!(error.to_string()))?;
         }
     }
     if let Some(other) = nearest {

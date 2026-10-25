@@ -13,6 +13,8 @@ with the fighter's side of its hold (`ftCo_800C7434.c`, `ftCo_800C7590.c`,
 | `w26_redead_death_v01` | 826 | Marth's dash attack hits the ReDead holding Fox (release, knockdown 7 at 533); a down smash kills it lying down (tumble 15 at 626, gone by 684). |
 | `w26_redead_screen_v01` | 900 | As above, but a forward tilt kills it and it flies at the camera (16, it_802EA334). |
 | `w26_redead_stagger_death_v01` | 1000 | Walking left within 15 of the edge, two of Fox's lasers stagger it (11) a second and third time; the third ends it (itleadead.c:205-209, tumble 15 at 846). |
+| `w26_redead_grab_v01` | 640 | Fox's dash grab catches the walking ReDead (ftColl_8007BC90 -> fn_800D8BFC: HeavyGet in loop mode), carries it (13) and throws it (14), gone on landing (destroy effect 0x444). |
+| `w26_redead_grab_drop_v01` | 700 | Marth's dash attack makes the carrying Fox drop it (10; Item_8026ABD8 then it_80275390 leaves it nobody's); it walks, lunges and holds Fox again, its hitbox also striking Marth. |
 | `w26_redead_killed_holding_v01` | 700 | Dancing Blade kills the ReDead while it holds Fox (CaptureCut 548, tumble 15). The rolling barrel it passes shows the hold's root resolving into the root's translate (no push). |
 
 ## Shape
@@ -37,8 +39,8 @@ with the fighter's side of its hold (`ftCo_800C7434.c`, `ftCo_800C7590.c`,
 - A held fighter hit or KO'd (the take_dmg_cb and death2_cb, it_802EADD8):
   a search of Marth's attacks on the held Fox found every one hits the
   ReDead first, so the shake-off is refused.
-- A fighter's grab catching a ReDead (ftColl_8007BC90; the held and thrown
-  states 13 and 14), and a ReDead gone while holding a fighter.
+- A special grab's catch of a stage enemy (Kirby's Inhale x2194), and a
+  ReDead gone while holding a fighter.
 - it_802759DC's floor probe that leaves `y_out` unset.
 - The right-facing birth is now plain code (it_8027C56C with the queried
   facing); no witness yet.
