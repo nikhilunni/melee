@@ -1681,3 +1681,23 @@ stocks = 4
 seed = 212953582
 handicaps = [9, 1]
 damage_ratio = 1.5
+
+[[boundary]]
+name = "start_fd_sp_lightning_fox_marth4"
+cold = "start_fd_sp_lightning_fox_marth4_cold"
+savestate = "harness/roms/start_fd_sp_lightning_fox_marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3371376982
+special = "lightning"
+
+[[boundary]]
+name = "start_fd_sp_super_sudden_death_fox_marth4"
+cold = "start_fd_sp_super_sudden_death_fox_marth4_cold"
+savestate = "harness/roms/start_fd_sp_super_sudden_death_fox_marth4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 391077037
+special = "super-sudden-death"

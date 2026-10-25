@@ -54,9 +54,39 @@ hit under handicaps (logged under its thrower) stays guarded.
 `ftColl_80079EA8` (the barrel) takes no ratios. Witness boundary:
 `start_fd_handicap9_1_ratio15_fox_marth4`.
 
+## Special Melee
+
+`make_boundary.py --special <mode>` walks VS. Mode > Special Melee; each mode
+is its own major scene (GameModeKind), which the importer maps to
+`SpecialMelee` and checks against the scenario's `special`.
+
+- Lightning (`gmlightning.c`, game_speed 1.25): only the scene's frame
+  period changes (gm_16AE.c:1985). Ported; explorer witnesses exact.
+- Super Sudden Death (`gmsupersudden.c`, PlayerInitData x12 = 300): every
+  player starts and revives at 300% (FighterMatchInfo.x6, read by
+  fn_8016719C). Ported; explorer witnesses exact.
+- Slo-Mo (game_speed 0.5): the tick trace's first row after the boundary is
+  a frame with no scene tick (retail's seed is unchanged at tick 1, and
+  tick 2 holds the port's tick-1 draws: start_fd_sp_slomo_fox_marth4_cold).
+  The recorder does not mark such frames yet; guarded. Stamina's KO slows
+  the game to 0.4 for 100 frames (gm_801B97C4), so it waits on the same.
+- Giant and Tiny scale every fighter (1.8 / 0.35): ftCo_800D105C's
+  ftCo_800CF6E8 and the kinds' CalcIndiviParam (ftchangeparam.c:178-195)
+  are not ported; guarded in `Fighter::prepare`.
+- Invisible sets x2226_b3, a permanent Cloaking Device (x2226_b4 at every
+  spawn, ftCo_800C89A0), whose readers (ftlib.c:807, ftcolanim.c,
+  ft_0892.c, fighter.c:1202/1562) are not ported; Single Button remaps
+  input (gm_8016B0FC, ft_0DF1.c). Both boundaries gate idle; guarded.
+- Camera mode: the boundary driver could not reach its CSS (likely locked
+  in the boundary's save data).
+
+Boundaries: `start_fd_sp_<mode>_fox_marth4` (+ `_cold`) for lightning,
+slomo, super_sudden_death, giant, tiny, invisible, single_button, and
+`start_fd_stamina_fox_marth`.
+
 ## Still guarded
 
 Coin and Bonus matches (`gm_8016B0B4`: coins from hits, the coin item, the
-coin HUD), every Special Melee mode (Stamina, Giant, Tiny, Invisible, Super
-Sudden Death, Lightning, Slo-Mo, Camera, Single Button, Fixed Camera), a
-stock match's timed team ranking, and a Sudden Death among some players.
+coin HUD; boundary `start_fd_coin1_fox_marth`), the Special Melee modes
+above, a stock match's timed team ranking, and a Sudden Death among some
+players.
