@@ -12,6 +12,7 @@ with the fighter's side of its hold (`ftCo_800C7434.c`, `ftCo_800C7590.c`,
 | `w26_redead_mash_1500_v01` | 1500 | Fox mashes out (CaptureCut 535, ReDead 6); Fox's dash attack knocks it down (7, 8), it rises (9), settles, walks and turns (3 at 1202). |
 | `w26_redead_death_v01` | 826 | Marth's dash attack hits the ReDead holding Fox (release, knockdown 7 at 533); a down smash kills it lying down (tumble 15 at 626, gone by 684). |
 | `w26_redead_screen_v01` | 900 | As above, but a forward tilt kills it and it flies at the camera (16, it_802EA334). |
+| `w26_redead_stagger_death_v01` | 1000 | Walking left within 15 of the edge, two of Fox's lasers stagger it (11) a second and third time; the third ends it (itleadead.c:205-209, tumble 15 at 846). |
 | `w26_redead_killed_holding_v01` | 700 | Dancing Blade kills the ReDead while it holds Fox (CaptureCut 548, tumble 15). The rolling barrel it passes shows the hold's root resolving into the root's translate (no push). |
 
 ## Shape
@@ -33,8 +34,6 @@ with the fighter's side of its hold (`ftCo_800C7434.c`, `ftCo_800C7590.c`,
 
 ## Still guarded
 
-- A staggered ReDead's death (itleadead.c:205-209: a third heavy hit
-  without room to fall over).
 - A held fighter hit or KO'd (the take_dmg_cb and death2_cb, it_802EADD8):
   a search of Marth's attacks on the held Fox found every one hits the
   ReDead first, so the shake-off is refused.
@@ -43,3 +42,12 @@ with the fighter's side of its hold (`ftCo_800C7434.c`, `ftCo_800C7590.c`,
 - it_802759DC's floor probe that leaves `y_out` unset.
 - The right-facing birth is now plain code (it_8027C56C with the queried
   facing); no witness yet.
+
+## Like Like (CaptureLikelike) is not a crate enemy
+
+It_Kind_Likelike is 0xD5, outside the crate table's four enemies
+(it_8026CF04: Kuriboh, Leadead, Octarock, Ottosea). Its only spawner is
+a stage's zako generator table (grZakoGenerator_801CA* case
+It_Kind_Likelike -> it_802DC4BC, filled from stage data). No crate or item
+switch reaches it and no recording on the port's stages shows one, so
+`itlikelike.c` and ftCo_800C78B0.c stay unported (their rows refuse).
