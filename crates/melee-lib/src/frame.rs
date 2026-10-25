@@ -2631,6 +2631,7 @@ impl Runtime {
                         || address == melee_gr::oldkongo::procs::DYNAMICS_PROC
                         || address == melee_gr::shrine::procs::DYNAMICS_PROC
                         || address == melee_gr::fourside::procs::DYNAMICS_PROC
+                        || address == melee_gr::kraid::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                     {
@@ -2681,6 +2682,13 @@ impl Runtime {
                             world,
                             &mut self.stage_objects,
                             &mut self.item_objects,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Kraid(_)) {
+                        crate::scene_stage::kraid::run_proc(
+                            state,
+                            map_id,
+                            &self.pads,
+                            &mut self.particle_draws,
                         )?;
                     } else if matches!(state.stage, SceneStage::Fourside(_)) {
                         crate::scene_stage::fourside::run_proc(state, map_id)?;

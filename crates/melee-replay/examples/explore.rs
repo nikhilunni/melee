@@ -79,6 +79,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::HyruleTemple => (95.0, 60.0),
         // The main building's roof (an approximation for the policies).
         Stage::Fourside => (80.0, 50.0),
+        // The middle platform's ends (an approximation for the policies).
+        Stage::BrinstarDepths => (70.0, 45.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

@@ -1218,6 +1218,14 @@ fn start_fs_fox_marth4_600() {
     movement_gate_ticks("start_fs_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_fs_fox_marth4", 600, "ledger600");
 }
+/// Brinstar Depths' start boundary: Kraid draws his first wait at
+/// creation (grKraid_801FE818).
+#[test]
+fn start_bd_fox_marth4_600() {
+    movement_gate_ticks("start_bd_fox_marth4", 600);
+    movement_gate_ticks("start_bd_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_bd_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

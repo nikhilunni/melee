@@ -26,6 +26,7 @@ mod stage_oldkongo;
 mod stage_oldyoshi;
 mod stage_shrine;
 mod stage_kongo;
+mod stage_kraid;
 mod stock;
 use hsd_types::Vec3;
 /// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
@@ -344,6 +345,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::Izumi {
             stage_izumi::restore_collision(&saved, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::Kraid {
+            stage_kraid::restore_collision(&saved, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::Fourside {
             stage_fourside::restore_collision(&saved, &mut map)?;

@@ -184,6 +184,7 @@ impl InitialState {
                 | SceneStage::OldKongo(_)
                 | SceneStage::Kongo(_)
                 | SceneStage::Fourside(_)
+                | SceneStage::Kraid(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -362,6 +363,8 @@ fn setup_draws(
         // grFourside_801F3154 and 801F3C40: the crane's and the
         // helicopter's first waits.
         GrKind::Fourside => 2,
+        // grKraid_801FE818: Kraid's first wait.
+        GrKind::Kraid => 1,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -586,6 +589,12 @@ fn initialize_stage(
                 particles,
                 map,
             )?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Kraid => {
+            let (stage, animations) =
+                crate::scene_stage::kraid::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

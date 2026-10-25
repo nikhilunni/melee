@@ -816,6 +816,31 @@ pub fn animation_subtree(
     )?)
 }
 
+/// grKr_StageData / grDatFiles_801C6038: GrKr.dat. grKr_StageCallbacks[3]
+/// carries flags 0xC0000000, so map 3 selects the lights and fog.
+pub fn read_kraid(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Kraid, 3)
+}
+/// `grKraid_YakumonoParam` (grkraid.c:14-23) as the asm reads it.
+pub fn read_kraid_parameters(archive: &Archive) -> ReadResult<crate::kraid::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let mut kraid_pos_x = [0.0; 6];
+    for (i, x) in kraid_pos_x.iter_mut().enumerate() {
+        *x = r.f32(p + 0x1C + 4 * i as u32)?;
+    }
+    Ok(crate::kraid::Parameters {
+        map_time_min: r.s32(p)?,
+        map_time_max: r.s32(p + 0x4)?,
+        map_time_acl: r.s32(p + 0x8)?,
+        map_rot_spd_min: r.f32(p + 0xC)?,
+        map_rot_spd_max: r.f32(p + 0x10)?,
+        kraid_wait_time: r.s32(p + 0x14)?,
+        kraid_wait_time_add: r.s32(p + 0x18)?,
+        kraid_pos_x,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

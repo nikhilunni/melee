@@ -7,6 +7,7 @@ pub mod fourside;
 pub mod garden;
 pub mod ground;
 pub mod izumi;
+pub mod kraid;
 pub mod kongo;
 pub mod last;
 pub mod music;

@@ -156,6 +156,11 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.barrel_position.y", &stage.barrel_position.y);
         }
         SceneStage::Shrine(_) => {}
+        SceneStage::Kraid(stage) => {
+            sink.field("stage.kraid.timer", &stage.kraid.timer);
+            sink.field("stage.kraid.leftmost", &stage.kraid.leftmost);
+            sink.field("stage.kraid.rightmost", &stage.kraid.rightmost);
+        }
         SceneStage::Fourside(stage) => {
             sink.field("stage.crane.timer", &stage.crane.timer);
             sink.field("stage.crane.y", &stage.crane.y);
@@ -343,6 +348,11 @@ fn cold_run_reads_only_dat_assets() {
 #[test]
 fn start_kj_fox_marth4_cold_600() {
     verify("start_kj_fox_marth4");
+}
+
+#[test]
+fn start_bd_fox_marth4_cold_600() {
+    verify("start_bd_fox_marth4");
 }
 
 #[test]

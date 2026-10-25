@@ -1579,3 +1579,12 @@ stage = "Fourside"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2338566608
+
+[[boundary]]
+name = "start_bd_fox_marth4"
+cold = "start_bd_fox_marth4_cold"
+savestate = "harness/roms/start_bd_fox_marth4.sav"
+stage = "BrinstarDepths"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1038753988

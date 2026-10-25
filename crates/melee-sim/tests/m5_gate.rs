@@ -5223,7 +5223,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 803] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 809] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6515,6 +6515,16 @@ static CORPUS_V3_MATCHES: [(&str, usize); 803] = [
     ("corpus_v3_fs_fox_marth4_e50814092_p0", 2596),
     ("corpus_v3_fs_fox_marth4_eeda0d0fc_p0", 5875),
     ("corpus_v3_fs_fox_marth4_ee133b82f_p0", 2275),
+    // Brinstar Depths (grkraid.c): Kraid rising at each kind of place, every
+    // roar, both swipes landing and turning the stage (Loop and Medium
+    // quakes), sinking; the second port's A presses stepping map 1 through
+    // its animations (grKraid_801FE2D0, debug code left in retail).
+    ("corpus_v3_bd_fox_marth4_e00f31913_p1", 6001),
+    ("corpus_v3_bd_fox_marth4_e3e74affa_p2", 3564),
+    ("corpus_v3_bd_fox_marth4_e7ff378da_p2", 4298),
+    ("corpus_v3_bd_fox_marth4_ec3145eb3_p0", 5506),
+    ("corpus_v3_bd_fox_marth4_edb2b114a_p2", 6001),
+    ("corpus_v3_bd_fox_marth4_ef89b3e70_p0", 6001),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.
