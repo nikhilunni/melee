@@ -11,9 +11,10 @@
 use crate::{
     art::{Art, ArtFile, Image, Piece},
     disc::{DiscFiles, FileRequest},
+    pads::{adapter, MenuEvents, Pads, RawPad},
     players::{check_player, Controller, Lineup, Rules, Slot, SLOTS},
     preview::{self, Previews},
-    session::{Action, Gamepad, Session},
+    session::{Action, Session},
 };
 use melee_lib::{Character, MatchConfig, MatchOutcome, MatchStatus, Port, Seed, Stage};
 use std::sync::Arc;
@@ -111,6 +112,8 @@ pub struct App {
     notice: Option<String>,
     /// Counts sessions started, so a host knows when to upload a new scene.
     generation: u64,
+    /// Connected gamepads and their ports.
+    pads: Pads,
 }
 
 impl Default for App {
@@ -138,6 +141,7 @@ impl App {
             results: None,
             notice: None,
             generation: 0,
+            pads: Pads::default(),
         }
     }
     pub fn screen(&self) -> Screen {
@@ -634,15 +638,123 @@ impl App {
             session.set_action(port, action, down);
         }
     }
-    /// Gamepad `device`'s state (in connection order), or `None` when it
-    /// is disconnected. Hosts report every connected pad each frame.
-    pub fn set_gamepad(&mut self, device: usize, pad: Option<Gamepad>) {
-        let Some(&port) = self.human_ports().get(device) else {
-            return;
-        };
-        if let Some(session) = &mut self.session {
-            session.set_gamepad(port, pad);
+
+    // --- Gamepads ---------------------------------------------------------
+
+    pub fn pads(&self) -> &Pads {
+        &self.pads
+    }
+    /// Settings, rebinding and saved preferences go straight to the pads.
+    pub fn pads_mut(&mut self) -> &mut Pads {
+        &mut self.pads
+    }
+    /// A pad appeared (see [`Pads::connect`]).
+    pub fn pad_connect(&mut self, handle: u32, name: &str, category: &str, vendor: u16, product: u16) {
+        if let Some(port) = self.pads.port(handle) {
+            self.release_port(port);
         }
+        self.pads.connect(handle, name, category, vendor, product);
+    }
+    /// A pad went away: its player stands still.
+    pub fn pad_disconnect(&mut self, handle: u32) {
+        if let Some(port) = self.pads.disconnect(handle) {
+            self.release_port(port);
+        }
+    }
+    fn release_port(&mut self, port: usize) {
+        if let Some(session) = &mut self.session {
+            session.set_gamepad(port, None);
+        }
+    }
+    /// The slot a joining pad takes: the first human without a pad, else
+    /// the first slot sitting out.
+    fn join_port(&self) -> Option<usize> {
+        let slots = self.lineup.slots;
+        let free = |port: usize| self.pads.on_port(port).is_none();
+        (0..SLOTS)
+            .find(|&p| slots[p].controller == Controller::Human && free(p))
+            .or_else(|| (0..SLOTS).find(|&p| slots[p].controller == Controller::Off && free(p)))
+    }
+    /// Give a pad a controller port (`None` frees it). On character select
+    /// a slot sitting out joins as a human.
+    pub fn assign_pad(&mut self, handle: u32, port: Option<usize>) {
+        if port.is_some_and(|p| p >= SLOTS) || !self.pads.is_connected(handle) {
+            return;
+        }
+        if let Some(old) = self.pads.port(handle) {
+            self.release_port(old);
+        }
+        if let Some(other) = port.and_then(|p| self.pads.on_port(p)) {
+            if other != handle {
+                self.release_port(port.unwrap_or_default());
+            }
+        }
+        self.pads.assign(handle, port);
+        if let Some(port) = port {
+            if self.screen == Screen::Characters && self.lineup.slots[port].controller == Controller::Off {
+                let _ = self.set_controller(port, Controller::Human);
+            }
+        }
+    }
+    /// Poll one pad (every display frame, on every screen): its menu
+    /// events for the host. On character select a pad without a port joins
+    /// on its first button press ([`MenuEvents::JOINED`], which consumes
+    /// the press). In a match it drives its port's human player; a pad
+    /// that never joined takes the first human port without a pad.
+    pub fn pad_update(&mut self, handle: u32, raw: &RawPad, now_ms: f64) -> MenuEvents {
+        let Some(read) = self.pads.read(handle, raw, now_ms) else {
+            return MenuEvents(0);
+        };
+        if self.screen == Screen::Characters
+            && read.port.is_none()
+            && read.events.pressed_button()
+        {
+            if let Some(port) = self.join_port() {
+                self.assign_pad(handle, Some(port));
+                return MenuEvents(MenuEvents::JOINED);
+            }
+        }
+        if self.screen == Screen::Match {
+            let humans = self.human_ports();
+            let port = read.port.or_else(|| {
+                let free = humans.iter().copied().find(|&p| self.pads.on_port(p).is_none())?;
+                self.pads.assign(handle, Some(free));
+                Some(free)
+            });
+            if let (Some(port), Some(session)) = (port, &mut self.session) {
+                if humans.contains(&port) {
+                    session.set_gamepad(port, Some(read.state));
+                }
+            }
+        }
+        read.events
+    }
+    /// One input report of a Wii U GameCube adapter the host opened
+    /// ([`adapter`]): its four ports are pads `base`..`base + 3`, connected
+    /// while a controller is plugged in. Each connected port's events.
+    pub fn pad_adapter_report(&mut self, base: u32, report: &[u8], now_ms: f64) -> [Option<MenuEvents>; 4] {
+        let mut events = [None; 4];
+        let Some(ports) = adapter::parse_report(report) else {
+            return events;
+        };
+        for (index, port) in ports.iter().enumerate() {
+            let handle = base + index as u32;
+            match port {
+                Some(pad) => {
+                    if !self.pads.is_connected(handle) {
+                        let name = format!("GameCube controller (adapter port {})", index + 1);
+                        self.pad_connect(handle, &name, "GameCube", adapter::VENDOR, adapter::PRODUCT);
+                    }
+                    events[index] = Some(self.pad_update(handle, &RawPad::from_adapter(pad), now_ms));
+                }
+                None => {
+                    if self.pads.is_connected(handle) {
+                        self.pad_disconnect(handle);
+                    }
+                }
+            }
+        }
+        events
     }
     /// Run the simulation for `elapsed` host time. A fault stops the match
     /// (the notice carries the message and replay location); a finished
@@ -1291,5 +1403,56 @@ mod tests {
         let error = app.choose_stage(Stage::Battlefield, 0).unwrap_err();
         assert!(error.contains("is not on this disc"), "{error}");
         assert_eq!(app.screen(), Screen::Stages);
+    }
+
+    #[test]
+    fn pads_join_character_select_with_a_button_press() {
+        use crate::pads::{Input, MenuEvents, RawPad};
+        let mut app = App::new();
+        app.open_disc(disc_for(&[versus(Stage::Battlefield, Character::Fox, Character::Marth)]))
+            .unwrap();
+        let press = |input: Input| {
+            let mut raw = RawPad::default();
+            raw.buttons[input.index()] = 1.0;
+            raw
+        };
+        let idle = RawPad::default();
+        for handle in [1, 2, 3, 4, 5] {
+            app.pad_connect(handle, "Pro Controller", "Switch Pro Controller", 0, 0);
+        }
+        // On the disc screen pads only navigate.
+        app.back();
+        assert_eq!(app.screen(), Screen::Disc);
+        let events = app.pad_update(1, &press(Input::South), 0.0);
+        assert_eq!(events, MenuEvents(MenuEvents::CONFIRM));
+        app.pad_update(1, &idle, 16.0);
+        app.resume_disc().unwrap();
+        // Directions never join; the first button press does (and is used up).
+        assert_eq!(app.pad_update(2, &press(Input::DpadRight), 32.0), MenuEvents(MenuEvents::RIGHT));
+        assert_eq!(app.pads().port(2), None);
+        assert_eq!(app.pad_update(2, &press(Input::Start), 48.0), MenuEvents(MenuEvents::JOINED));
+        assert_eq!(app.pads().port(2), Some(0));
+        assert_eq!(app.pad_update(1, &press(Input::South), 64.0), MenuEvents(MenuEvents::JOINED));
+        assert_eq!(app.pads().port(1), Some(1));
+        // Slots 3 and 4 sit out: joining makes them human.
+        app.pad_update(3, &press(Input::West), 80.0);
+        assert_eq!(app.pads().port(3), Some(2));
+        assert_eq!(app.slots()[2].controller, Controller::Human);
+        // A CPU keeps its slot: with the rest taken, a fourth pad only navigates.
+        app.set_controller(3, Controller::Cpu).unwrap();
+        assert_eq!(app.pad_update(4, &press(Input::West), 96.0), MenuEvents(MenuEvents::BACK));
+        assert_eq!(app.pads().port(4), None);
+        assert_eq!(app.pad_update(5, &press(Input::South), 112.0), MenuEvents(MenuEvents::CONFIRM));
+        // A joined pad's presses are its own again.
+        app.pad_update(1, &idle, 128.0);
+        assert_eq!(app.pad_update(1, &press(Input::South), 144.0), MenuEvents(MenuEvents::CONFIRM));
+        // Unplugged: the port is free for the next pad.
+        app.pad_disconnect(2);
+        app.pad_update(5, &idle, 160.0);
+        assert_eq!(app.pad_update(5, &press(Input::North), 176.0), MenuEvents(MenuEvents::JOINED));
+        assert_eq!(app.pads().port(5), Some(0));
+        // A port can be given by hand; the pad there trades places.
+        app.assign_pad(5, Some(1));
+        assert_eq!((app.pads().port(5), app.pads().port(1)), (Some(1), Some(0)));
     }
 }

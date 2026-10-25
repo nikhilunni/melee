@@ -13,7 +13,9 @@ use melee_platform::{
     disc::{DiscFiles, FileRequest},
     players::{Controller, Mode, Rules, SPECIAL_MODES},
     preview,
-    session::{panic_replay, Action, Gamepad},
+    focus,
+    pads::{family, Family, Input, PadInfo, RawPad, Target, INPUT_COUNT},
+    session::{panic_replay, Action},
     surface::WindowRenderer,
 };
 use std::{future::Future, time::Duration};
@@ -543,34 +545,88 @@ impl WebApp {
             self.app.set_action(device as usize, action, down);
         }
     }
-    /// Gamepad `device` (the page's connection order) drives the match's
-    /// `device`th human player. `buttons` are `melee_pad_button_e` bits;
-    /// sticks -1..1 (up positive), triggers 0..1. Call every frame.
-    #[allow(clippy::too_many_arguments)]
-    pub fn gamepad(
-        &mut self,
-        device: u32,
-        buttons: u32,
-        stick_x: f32,
-        stick_y: f32,
-        cstick_x: f32,
-        cstick_y: f32,
-        trigger_l: f32,
-        trigger_r: f32,
-    ) {
-        self.app.set_gamepad(
-            device as usize,
-            Some(Gamepad {
-                buttons,
-                stick: [stick_x, stick_y],
-                cstick: [cstick_x, cstick_y],
-                triggers: [trigger_l, trigger_r],
-            }),
-        );
+    // --- Gamepads (the C API's melee_app_pad_*)
+    /// A pad appeared: `handle` is the page's (the Gamepad's index), `id`
+    /// its `Gamepad.id` (USB ids and name). Returns the family index.
+    pub fn pad_connect(&mut self, handle: u32, id: &str) -> u32 {
+        let (vendor, product, name) = family::parse_web_id(id);
+        self.app.pad_connect(handle, &name, "", vendor, product);
+        self.app
+            .pads()
+            .info(handle)
+            .map_or(0, |info| family_index(info.family))
     }
-    /// Gamepad `device` disconnected.
-    pub fn gamepad_lost(&mut self, device: u32) {
-        self.app.set_gamepad(device as usize, None);
+    pub fn pad_disconnect(&mut self, handle: u32) {
+        self.app.pad_disconnect(handle);
+    }
+    /// Report a pad every frame on every screen: `buttons` are the
+    /// Gamepad's button values in standard order, `axes` its axes as the
+    /// Gamepad API gives them (y down). Returns `melee_menu_event_e` bits.
+    pub fn pad_update(&mut self, handle: u32, buttons: &[f32], axes: &[f32], now_ms: f64) -> u32 {
+        let mut raw = RawPad::default();
+        for (slot, value) in raw.buttons.iter_mut().zip(buttons) {
+            *slot = *value;
+        }
+        let axis = |i: usize| axes.get(i).copied().unwrap_or(0.0);
+        raw.axes = [axis(0), -axis(1), axis(2), -axis(3)];
+        self.app.pad_update(handle, &raw, now_ms).0
+    }
+    /// Connected pads, oldest first: `[{handle, family, familyName, name,
+    /// port (or -1), listening (target or -1), bindings (target per input),
+    /// deadzone, triggerClick, buttons, stick, cstick, triggers}]`.
+    pub fn pads(&self) -> Array {
+        let pads = self.app.pads();
+        pads.handles()
+            .into_iter()
+            .filter_map(|h| pads.info(h))
+            .map(|info| pad_object(&info))
+            .collect()
+    }
+    pub fn pad_bind(&mut self, handle: u32, input: u32, target: u32) {
+        let (Some(input), Some(target)) = (Input::from_index(input as usize), Target::from_index(target)) else {
+            return;
+        };
+        if let Some(mut settings) = self.app.pads().settings(handle) {
+            settings.bind(input, target);
+            self.app.pads_mut().set_settings(handle, settings);
+        }
+    }
+    pub fn pad_swap_ab(&mut self, handle: u32) {
+        if let Some(mut settings) = self.app.pads().settings(handle) {
+            settings.swap_ab();
+            self.app.pads_mut().set_settings(handle, settings);
+        }
+    }
+    pub fn pad_set_deadzone(&mut self, handle: u32, deadzone: f32) {
+        if let Some(mut settings) = self.app.pads().settings(handle) {
+            settings.set_deadzone(deadzone);
+            self.app.pads_mut().set_settings(handle, settings);
+        }
+    }
+    pub fn pad_set_trigger_click(&mut self, handle: u32, click: f32) {
+        if let Some(mut settings) = self.app.pads().settings(handle) {
+            settings.set_trigger_click(click);
+            self.app.pads_mut().set_settings(handle, settings);
+        }
+    }
+    pub fn pad_reset(&mut self, handle: u32) {
+        self.app.pads_mut().reset(handle);
+    }
+    /// Bind the pad's next new press to `target` (-1 stops waiting).
+    pub fn pad_listen(&mut self, handle: u32, target: i32) {
+        let target = u32::try_from(target).ok().and_then(Target::from_index);
+        self.app.pads_mut().listen(handle, target);
+    }
+    /// Give a pad a controller port (-1 frees it).
+    pub fn pad_assign(&mut self, handle: u32, port: i32) {
+        self.app.assign_pad(handle, usize::try_from(port).ok());
+    }
+    /// Saved settings of every controller seen, for localStorage.
+    pub fn pad_prefs(&self) -> String {
+        self.app.pads().prefs()
+    }
+    pub fn pad_load_prefs(&mut self, prefs: &str) {
+        self.app.pads_mut().load_prefs(prefs);
     }
     pub fn set_paused(&mut self, paused: bool) {
         if let Some(session) = self.app.session_mut() {
@@ -694,4 +750,69 @@ impl WebApp {
             surface.follow(&mut self.app);
         }
     }
+}
+
+fn family_index(family: Family) -> u32 {
+    Family::ALL.iter().position(|f| *f == family).unwrap_or_default() as u32
+}
+fn pad_object(info: &PadInfo) -> JsValue {
+    let signed = |values: &[i8]| values.iter().map(|v| JsValue::from(*v)).collect::<Array>();
+    let unsigned = |values: &[u8]| values.iter().map(|v| JsValue::from(*v)).collect::<Array>();
+    let bindings: Array = info
+        .settings
+        .bindings
+        .iter()
+        .map(|t| JsValue::from(t.index()))
+        .collect();
+    object(&[
+        ("handle", info.handle.into()),
+        ("family", family_index(info.family).into()),
+        ("familyName", info.family.name().into()),
+        ("name", info.name.as_str().into()),
+        ("port", info.port.map_or(-1, |p| p as i32).into()),
+        ("listening", info.listening.map_or(-1, |t| t.index() as i32).into()),
+        ("bindings", bindings.into()),
+        ("deadzone", info.settings.deadzone.into()),
+        ("triggerClick", info.settings.trigger_click.into()),
+        ("buttons", info.state.buttons.into()),
+        ("stick", signed(&info.state.stick).into()),
+        ("cstick", signed(&info.state.cstick).into()),
+        ("triggers", unsigned(&info.state.triggers).into()),
+    ])
+}
+
+/// Labels for a controller settings screen: `{families: [name], inputs:
+/// [[label per input] per family], positions: [per input], targets: [name
+/// per melee_pad_target_e], inputCount}`.
+#[wasm_bindgen]
+pub fn pad_labels() -> JsValue {
+    let strings = |items: Vec<&str>| items.into_iter().map(JsValue::from).collect::<Array>();
+    let inputs: Array = Family::ALL
+        .iter()
+        .map(|f| JsValue::from(strings(Input::ALL.iter().map(|i| f.label(*i)).collect())))
+        .collect();
+    let targets = (0..=Target::ALL.len() as u32)
+        .map(|t| Target::from_index(t).unwrap_or_default().name())
+        .collect();
+    object(&[
+        ("families", strings(Family::ALL.iter().map(|f| f.name()).collect()).into()),
+        ("inputs", inputs.into()),
+        ("positions", strings(Input::ALL.iter().map(|i| i.position()).collect()).into()),
+        ("targets", strings(targets).into()),
+        ("inputCount", (INPUT_COUNT as u32).into()),
+    ])
+}
+
+/// Menu focus movement (`melee_focus_next`): `frames` are x, y, width,
+/// height per control; direction 0 up, 1 down, 2 left, 3 right; -1 for none.
+#[wasm_bindgen]
+pub fn focus_next(frames: &[f32], from: u32, direction: u32) -> i32 {
+    let Some(direction) = focus::Direction::from_index(direction) else {
+        return -1;
+    };
+    let frames: Vec<focus::Frame> = frames
+        .chunks_exact(4)
+        .map(|c| [c[0], c[1], c[2], c[3]])
+        .collect();
+    focus::next(&frames, from as usize, direction).map_or(-1, |i| i as i32)
 }

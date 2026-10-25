@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 /* Bumped on any incompatible change; hosts check it at startup. */
-#define MELEE_API_VERSION 4
+#define MELEE_API_VERSION 5
 uint32_t melee_api_version(void);
 
 typedef struct melee_app_s melee_app_t;
@@ -53,8 +53,7 @@ typedef enum {
     MELEE_CONTROLLER_CPU = 2,    /* the game's CPU, at the slot's level */
 } melee_controller_e;
 
-/* Gamepad buttons in GameCube terms: bit (1 << value) of
- * melee_gamepad_s.buttons. The host maps its pad's layout onto these. */
+/* GameCube controller buttons: bit (1 << value) of melee_pad_info_s.buttons. */
 typedef enum {
     MELEE_PAD_A = 0,
     MELEE_PAD_B,
@@ -284,18 +283,107 @@ typedef struct {
 bool melee_app_frame(melee_app_t *app, uint32_t width, uint32_t height);
 /* Whether the match needs frames (running, not paused). */
 bool melee_app_needs_frame(const melee_app_t *app);
-/* Input device n (keyboard layout n, gamepad n) drives the match's nth
- * human player; CPU players read no device. */
+/* Keyboard layout n drives the match's nth human player; CPU players read
+ * no device. */
 void melee_app_action(melee_app_t *app, uint32_t device, melee_action_e action, bool down);
+
+/* ---- Gamepads (see docs/APP.md "Gamepads"). The core maps every pad onto
+ * a GameCube controller: the host reads its pads in the W3C standard layout
+ * and reports each one every display frame on every screen. ---- */
+
+/* Physical controls by position (the W3C standard gamepad's order). */
+typedef enum {
+    MELEE_INPUT_SOUTH = 0, MELEE_INPUT_EAST, MELEE_INPUT_WEST, MELEE_INPUT_NORTH,
+    MELEE_INPUT_LEFT_BUMPER, MELEE_INPUT_RIGHT_BUMPER, MELEE_INPUT_LEFT_TRIGGER, MELEE_INPUT_RIGHT_TRIGGER,
+    MELEE_INPUT_SELECT, MELEE_INPUT_START, MELEE_INPUT_LEFT_STICK, MELEE_INPUT_RIGHT_STICK,
+    MELEE_INPUT_DPAD_UP, MELEE_INPUT_DPAD_DOWN, MELEE_INPUT_DPAD_LEFT, MELEE_INPUT_DPAD_RIGHT,
+    MELEE_INPUT_HOME,
+    MELEE_INPUT_COUNT,
+} melee_pad_input_e;
+/* What a physical control does: a GameCube control (or nothing). */
+typedef enum {
+    MELEE_TARGET_NONE = 0, MELEE_TARGET_A, MELEE_TARGET_B, MELEE_TARGET_X, MELEE_TARGET_Y,
+    MELEE_TARGET_Z, MELEE_TARGET_L, MELEE_TARGET_R, MELEE_TARGET_START,
+    MELEE_TARGET_DPAD_UP, MELEE_TARGET_DPAD_DOWN, MELEE_TARGET_DPAD_LEFT, MELEE_TARGET_DPAD_RIGHT,
+    MELEE_TARGET_COUNT,
+} melee_pad_target_e;
+typedef enum {
+    MELEE_FAMILY_GAMECUBE = 0, MELEE_FAMILY_SWITCH_PRO, MELEE_FAMILY_JOY_CON, MELEE_FAMILY_DUALSENSE,
+    MELEE_FAMILY_DUALSHOCK4, MELEE_FAMILY_XBOX, MELEE_FAMILY_8BITDO, MELEE_FAMILY_GENERIC,
+} melee_pad_family_e;
+/* Menu events of one poll, bits. Confirm is the pad's GameCube A, back B. */
+typedef enum {
+    MELEE_MENU_UP = 1 << 0, MELEE_MENU_DOWN = 1 << 1, MELEE_MENU_LEFT = 1 << 2, MELEE_MENU_RIGHT = 1 << 3,
+    MELEE_MENU_CONFIRM = 1 << 4, MELEE_MENU_BACK = 1 << 5, MELEE_MENU_X = 1 << 6, MELEE_MENU_Y = 1 << 7,
+    MELEE_MENU_L = 1 << 8, MELEE_MENU_R = 1 << 9, MELEE_MENU_Z = 1 << 10, MELEE_MENU_START = 1 << 11,
+    MELEE_MENU_MENU = 1 << 12,      /* Select or Home: the app menu */
+    MELEE_MENU_JOINED = 1 << 16,    /* this press joined the pad to a player */
+    MELEE_MENU_BOUND = 1 << 17,     /* a rebind finished or timed out */
+} melee_menu_event_e;
 typedef struct {
-    uint32_t buttons;               /* melee_pad_button_e bits */
-    float stick_x, stick_y;         /* main stick, -1..1, up positive */
-    float cstick_x, cstick_y;       /* C-stick, -1..1, up positive */
-    float trigger_l, trigger_r;     /* analog shoulders, 0..1 */
-} melee_gamepad_s;
-/* Report gamepad `device`'s state every frame while it is connected (in
- * connection order); pad NULL when it disconnects. */
-void melee_app_gamepad(melee_app_t *app, uint32_t device, const melee_gamepad_s *pad);
+    float buttons[MELEE_INPUT_COUNT]; /* 0..1; triggers analog */
+    float axes[4];                    /* left x, y, right x, y; -1..1, up positive */
+} melee_raw_pad_s;
+typedef struct {
+    uint32_t family;                  /* melee_pad_family_e */
+    char name[64];
+    int32_t port;                     /* controller port 0..3, or -1 before joining */
+    int32_t listening;                /* melee_pad_target_e awaiting a press, or -1 */
+    uint8_t bindings[MELEE_INPUT_COUNT]; /* melee_pad_target_e per input */
+    float deadzone;                   /* stick deadzone, 0..0.5 */
+    float trigger_click;              /* trigger travel that clicks L/R, 0.3..1 */
+    uint32_t buttons;                 /* melee_pad_button_e bits of the last poll */
+    int8_t stick[2], cstick[2];       /* GameCube stick bytes of the last poll */
+    uint8_t triggers[2];
+} melee_pad_info_s;
+
+/* Static labels: the family's name, what it prints on a control, where a
+ * control sits, a GameCube control's name. NULL when out of range. */
+const char *melee_pad_family_name(uint32_t family);
+const char *melee_pad_input_label(uint32_t family, uint32_t input);
+const char *melee_pad_input_position(uint32_t input);
+const char *melee_pad_target_name(uint32_t target);
+
+/* A pad appeared; `handle` is the host's (unique among connected pads).
+ * Names and USB ids (0 if unknown) pick the family; saved settings for
+ * the same controller apply. */
+void melee_app_pad_connect(melee_app_t *app, uint32_t handle, const char *name, const char *category,
+                           uint16_t vendor, uint16_t product);
+void melee_app_pad_disconnect(melee_app_t *app, uint32_t handle);
+/* Report a pad (every display frame, on every screen); its menu events.
+ * On character select a pad without a port joins on its first button press
+ * (MELEE_MENU_JOINED). In a match it drives its port. */
+uint32_t melee_app_pad_update(melee_app_t *app, uint32_t handle, const melee_raw_pad_s *raw, double now_ms);
+/* A Wii U GameCube adapter's input report (the host opened the device and
+ * wrote 0x13). Its ports are pads base..base+3; `events` receives each
+ * port's menu events. Returns a bit per port with a controller. */
+uint32_t melee_app_pad_adapter_report(melee_app_t *app, uint32_t base, const uint8_t *report, size_t len,
+                                      double now_ms, uint32_t events[4]);
+uint32_t melee_app_pad_count(const melee_app_t *app);
+/* The index-th connected pad's handle, oldest first (UINT32_MAX past the end). */
+uint32_t melee_app_pad_handle(const melee_app_t *app, uint32_t index);
+bool melee_app_pad_info(const melee_app_t *app, uint32_t handle, melee_pad_info_s *out);
+/* Settings, saved per controller (melee_app_pad_prefs). Binding a control
+ * gives the control that had the target its old job. */
+void melee_app_pad_bind(melee_app_t *app, uint32_t handle, uint32_t input, uint32_t target);
+void melee_app_pad_swap_ab(melee_app_t *app, uint32_t handle);
+void melee_app_pad_set_deadzone(melee_app_t *app, uint32_t handle, float deadzone);
+void melee_app_pad_set_trigger_click(melee_app_t *app, uint32_t handle, float click);
+void melee_app_pad_reset(melee_app_t *app, uint32_t handle);
+/* Bind the pad's next new press to `target` (-1 stops waiting; gives up after 5 s). */
+void melee_app_pad_listen(melee_app_t *app, uint32_t handle, int32_t target);
+/* Give a pad a controller port (-1 frees it); a pad already there trades places. */
+void melee_app_pad_assign(melee_app_t *app, uint32_t handle, int32_t port);
+/* Every controller's saved settings as text for the host to store; copied
+ * into `out` (truncated, NUL-terminated); returns the full length. */
+size_t melee_app_pad_prefs(const melee_app_t *app, char *out, size_t capacity);
+void melee_app_pad_load_prefs(melee_app_t *app, const char *prefs);
+
+/* Menu focus: frames are x, y, width, height per control (y down). The
+ * control a direction (0 up, 1 down, 2 left, 3 right) moves to from `from`,
+ * or -1. Left and right stay in the row and wrap. */
+int32_t melee_focus_next(const float *frames, uint32_t count, uint32_t from, uint32_t direction);
+
 void melee_app_set_paused(melee_app_t *app, bool paused);
 void melee_app_set_focused(melee_app_t *app, bool focused);
 bool melee_app_hud(const melee_app_t *app, melee_hud_s *out);

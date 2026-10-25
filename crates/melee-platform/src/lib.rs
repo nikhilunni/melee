@@ -6,9 +6,11 @@ pub mod app;
 pub mod art;
 pub mod catalog;
 pub mod disc;
+pub mod focus;
 #[cfg(not(target_arch = "wasm32"))]
 mod ffi;
 pub mod input;
+pub mod pads;
 mod lighting;
 pub mod players;
 pub mod preview;

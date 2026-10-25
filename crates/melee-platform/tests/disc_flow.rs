@@ -5,7 +5,8 @@ use melee_platform::{
     app::{App, Screen},
     disc::DiscFiles,
     players::{Controller, Mode, Rules},
-    session::{Action, Gamepad, PadButton},
+    pads::{Input, RawPad},
+    session::Action,
 };
 use std::{path::PathBuf, time::Duration};
 
@@ -179,16 +180,15 @@ fn four_players_play_a_team_battle_driven_by_gamepads() {
     load(&mut app);
     assert_eq!(app.human_ports(), [0, 1, 2, 3]);
     assert_eq!(app.session().unwrap().game().config().players.len(), 4);
-    // Gamepad 3 drives port 4: a held jump with the stick right.
-    app.set_gamepad(
-        3,
-        Some(Gamepad {
-            buttons: PadButton::X.bit(),
-            stick: [1.0, 0.0],
-            ..Gamepad::default()
-        }),
-    );
-    for _ in 0..900 {
+    // A pad given port 4 drives it: a held jump (X, the right face
+    // button) with the stick right.
+    app.pad_connect(40, "Xbox Wireless Controller", "Xbox One", 0x045e, 0x0b13);
+    app.assign_pad(40, Some(3));
+    let mut pad = RawPad::default();
+    pad.buttons[Input::East.index()] = 1.0;
+    pad.axes[0] = 1.0;
+    for frame in 0..900 {
+        app.pad_update(40, &pad, f64::from(frame) * 16.0);
         app.advance(FRAME).unwrap();
     }
     let hud = app.hud().unwrap();

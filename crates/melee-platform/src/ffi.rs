@@ -7,7 +7,7 @@ use crate::{
     disc::DiscFiles,
     panic_text,
     players::{Controller, Mode, Rules, SLOTS, SPECIAL_MODES},
-    session::{Action, Gamepad},
+    session::Action,
     surface::WindowRenderer,
 };
 use std::{
@@ -21,7 +21,10 @@ use std::{
 /// 3: stage previews (`MELEE_ART_STAGE_PREVIEW`, `melee_app_stage_previews_ready`).
 /// 4: four slots with controllers, CPU levels and teams; rules (teams,
 /// friendly fire, items); gamepads; HUD and results for up to four.
-pub const API_VERSION: u32 = 4;
+/// 5: gamepads in the core (`melee_app_pad_*`: families, mapping,
+/// calibration, ports joined by a button press, saved settings, the Wii U
+/// GameCube adapter); menu focus movement (`melee_focus_next`).
+pub const API_VERSION: u32 = 5;
 
 pub struct Handle {
     app: App,
@@ -87,16 +90,6 @@ pub struct RulesC {
     item_frequency: i8,
     damage_ratio_tenths: u8,
     special: u8,
-}
-#[repr(C)]
-pub struct GamepadC {
-    buttons: u32,
-    stick_x: f32,
-    stick_y: f32,
-    cstick_x: f32,
-    cstick_y: f32,
-    trigger_l: f32,
-    trigger_r: f32,
 }
 #[repr(C)]
 pub struct LoadProgress {
@@ -784,19 +777,6 @@ pub unsafe extern "C" fn melee_app_action(app: *mut Handle, player: u32, action:
     }
 }
 /// # Safety
-/// `app` is null or live; `pad` is null (disconnected) or readable.
-#[no_mangle]
-pub unsafe extern "C" fn melee_app_gamepad(app: *mut Handle, device: u32, pad: *const GamepadC) {
-    let h = handle!(app);
-    let pad = unsafe { pad.as_ref() }.map(|p| Gamepad {
-        buttons: p.buttons,
-        stick: [p.stick_x, p.stick_y],
-        cstick: [p.cstick_x, p.cstick_y],
-        triggers: [p.trigger_l, p.trigger_r],
-    });
-    h.app.set_gamepad(device as usize, pad);
-}
-/// # Safety
 /// `app` is null or live.
 #[no_mangle]
 pub unsafe extern "C" fn melee_app_set_paused(app: *mut Handle, paused: bool) {
@@ -886,3 +866,5 @@ pub unsafe extern "C" fn melee_app_save_replay(app: *mut Handle, path: *const c_
             .save_replay(std::path::Path::new(&path))
     })
 }
+
+mod pads;

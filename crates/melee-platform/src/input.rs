@@ -35,18 +35,19 @@ impl TryFrom<u32> for Action {
     }
 }
 
-/// A gamepad as a GameCube controller: the host maps its physical layout
-/// onto these buttons (`melee_pad_button_e` in the C header).
-#[derive(Clone, Copy, Debug, Default, PartialEq)]
+/// A gamepad as a GameCube controller after the host pad's mapping and
+/// calibration ([`crate::pads`]): what retail's PADRead hands HSD, signed
+/// origin-adjusted stick bytes and unsigned trigger bytes.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Gamepad {
     /// [`PadButton`] bits.
     pub buttons: u32,
-    /// Main stick, -1..=1 each axis, up positive.
-    pub stick: [f32; 2],
-    /// C-stick, -1..=1 each axis, up positive.
-    pub cstick: [f32; 2],
-    /// Analog L and R, 0..=1.
-    pub triggers: [f32; 2],
+    /// Main stick bytes, up positive (HSD clamps them to its 80-unit circle).
+    pub stick: [i8; 2],
+    /// C-stick bytes, up positive.
+    pub cstick: [i8; 2],
+    /// Analog L and R (HSD clamps them to 140).
+    pub triggers: [u8; 2],
 }
 
 /// Gamepad buttons in GameCube terms; bit `1 << value` of [`Gamepad::buttons`].
@@ -73,24 +74,8 @@ impl PadButton {
     }
 }
 
-/// Retail stick range: a full tilt is 80 units from the origin
-/// (HSD_PadClampCheck3's radius, `melee_ft::input`).
-const STICK_UNITS: f32 = 80.0;
 /// Retail analog trigger range (HSD's 140-unit full press).
-const TRIGGER_UNITS: f32 = 140.0;
-
-fn axis(value: f32) -> i8 {
-    if !value.is_finite() {
-        return 0;
-    }
-    (value * STICK_UNITS).round().clamp(-127.0, 127.0) as i8
-}
-fn trigger(value: f32) -> u8 {
-    if !value.is_finite() {
-        return 0;
-    }
-    (value * TRIGGER_UNITS).round().clamp(0.0, 255.0) as u8
-}
+pub const TRIGGER_UNITS: u8 = 140;
 
 impl Gamepad {
     fn sample(&self) -> ControllerState {
@@ -123,18 +108,13 @@ impl Gamepad {
             }
         }
         // A clicked shoulder is a full analog press, as on the controller.
-        let mut triggers = [trigger(self.triggers[0]), trigger(self.triggers[1])];
+        let mut triggers = self.triggers;
         for (side, pad) in [PadButton::L, PadButton::R].into_iter().enumerate() {
             if self.buttons & pad.bit() != 0 {
-                triggers[side] = TRIGGER_UNITS as u8;
+                triggers[side] = TRIGGER_UNITS;
             }
         }
-        ControllerState::from_origin_adjusted(
-            Buttons(buttons),
-            [axis(self.stick[0]), axis(self.stick[1])],
-            [axis(self.cstick[0]), axis(self.cstick[1])],
-            triggers,
-        )
+        ControllerState::from_origin_adjusted(Buttons(buttons), self.stick, self.cstick, triggers)
     }
 }
 
@@ -224,9 +204,9 @@ mod tests {
         let mut inputs = PortInputs::default();
         let pad = Gamepad {
             buttons: PadButton::A.bit() | PadButton::DpadUp.bit(),
-            stick: [-0.5, 0.25],
-            cstick: [0.0, 1.0],
-            triggers: [0.5, 0.0],
+            stick: [-40, 20],
+            cstick: [0, 80],
+            triggers: [70, 0],
         };
         inputs.set_gamepad(2, Some(pad));
         let sample = inputs.sample();
@@ -265,19 +245,17 @@ mod tests {
         assert_eq!(inputs.sample().0[2], ControllerState::default());
     }
     #[test]
-    fn out_of_range_and_non_finite_axes_stay_valid() {
+    fn sticks_past_the_rim_clamp_to_hsds_circle() {
         let mut inputs = PortInputs::default();
         inputs.set_gamepad(
             0,
             Some(Gamepad {
-                stick: [f32::NAN, 9.0],
-                triggers: [f32::INFINITY, -3.0],
+                stick: [127, 0],
+                triggers: [255, 0],
                 ..Gamepad::default()
             }),
         );
         let state = inputs.sample().0[0];
-        assert_eq!(state.stick.x, 0.0);
-        assert!((0.0..=1.0).contains(&state.stick.y));
-        assert_eq!(state.left_trigger, 0.0);
+        assert_eq!((state.stick.x, state.left_trigger), (1.0, 1.0));
     }
 }
