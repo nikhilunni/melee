@@ -6600,3 +6600,11 @@ fn random_item_witnesses_match_retail() {
         .collect();
     gate_in_parallel(&matches);
 }
+
+/// it_80270E30 xCF0 names the striking article's fighter owner; a resting,
+/// unowned barrel takes that owner and resets its rolling attack identity.
+#[test]
+fn barrel_article_owner_transfer_full_fields_particles_and_ordered_draws() {
+    combat_gate_ticks("corpus_v3_bf_items_sword_e44c79d87_p2", 252);
+    combat_gate_ticks("corpus_v3_fd_items_sword_e3b85eba6_p1", 282);
+}

@@ -5188,6 +5188,7 @@ fn item_hits_by_items(
         hitter.pending_damage_dealt = damage;
         let source = melee_it::hurt::ItemHitSource::Item {
             owner: hitter.owner,
+            owner_secondary: hitter.owner_secondary,
             position: hitter.position,
             velocity_x: hitter.velocity.x,
         };
@@ -5208,3 +5209,7 @@ fn item_hits_by_items(
         });
     }
 }
+
+#[cfg(test)]
+#[path = "frame/barrel_owner_tests.rs"]
+mod barrel_owner_tests;

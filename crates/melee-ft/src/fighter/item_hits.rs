@@ -96,6 +96,7 @@ impl Fighter {
             let hit = ItemHit {
                 source: melee_it::hurt::ItemHitSource::Fighter {
                     player: self.player.id,
+                    secondary: self.player.secondary,
                     x: self.physics.position.x,
                 },
                 damage: desc.damage,

@@ -6,8 +6,7 @@
 //!
 //! The staves' tilt (it_80287690's child joint) is drawing only; the root's
 //! roll angle is kept as the model's rotation. A struck barrel set rolling
-//! takes its striker as owner (it_8027236C, it_8027B1F4), which fails
-//! closed.
+//! takes its striker's fighter owner (it_8027236C, it_8027B1F4).
 use crate::{no_animation, no_collision, no_physics};
 use hsd_types::Vec3;
 use melee_it::{
@@ -338,13 +337,21 @@ fn break_open(item: &mut ItemCore) {
     item.events.push(ItemEvent::Resume(BREAK));
 }
 
-/// it_8027236C (8027236C): the item now belongs to the fighter whose hit
-/// it took this frame (xCEC), and it_8027B1F4 gives it attack 1, instance
-/// 0. An item's hit (xCF0) would make that item its owner, which fails
-/// closed.
+/// it_8027236C: xCEC names a fighter hit; xCF0 names the striking
+/// article's fighter owner, not the article itself (80271160..80271194).
+/// it_8027B1F4 resets attack ID to 1 and instance to 0 (8027B214..8027B224).
 fn take_striker_as_owner(item: &mut ItemCore) {
     if item.struck_by_item {
-        unimplemented!("it_8027236C: an item struck by another item takes it as owner (itcoll.c:1373)");
+        if item.motion != motion::REST || item.owner.is_some() {
+            unimplemented!("it_8027236C: article ownership transfer to an owned or nonresting barrel (itcoll.c:1373)");
+        }
+        if item.hit_by.is_none() || item.hit_by_secondary {
+            unimplemented!("it_8027236C: article without a primary fighter owner strikes a barrel (itcoll.c:1373)");
+        }
+        // An unowned resting barrel has no stale attack. Its new rolling
+        // hitbox is authored in this callback, after the identity reset.
+        assert!(item.stale_source.is_none());
+        assert_eq!(item.stale_multiplier, 1.0);
     }
     item.owner = item.hit_by;
     item.owner_secondary = false;

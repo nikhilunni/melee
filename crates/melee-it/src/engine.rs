@@ -1045,6 +1045,8 @@ pub struct ItemCore {
     pub knockback_angle: u16,
     pub hit_direction: f32,
     pub hit_by: Option<u8>,
+    /// The strongest hit names its player's second fighter, including an article owner.
+    pub hit_by_secondary: bool,
     /// The strongest hit this frame came from an item (xCF0, not xCEC).
     pub struck_by_item: bool,
     /// efAsync requests queued below s_link 9, flushed at link 9 (Item_80269A9C).
@@ -1913,6 +1915,7 @@ impl ItemPool {
             knockback_angle: 0,
             hit_direction: 0.0,
             hit_by: None,
+            hit_by_secondary: false,
             struck_by_item: false,
             queued_events: Default::default(),
             efasync_immediate: false,

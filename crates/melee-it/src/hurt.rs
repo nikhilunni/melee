@@ -18,11 +18,12 @@ pub struct HurtCapsule {
 #[derive(Clone, Copy, Debug)]
 pub enum ItemHitSource {
     /// Kind 1, a fighter: its player slot and cur_pos.x.
-    Fighter { player: u8, x: f32 },
+    Fighter { player: u8, secondary: bool, x: f32 },
     /// Kind 2, another item (it_802706D0): its fighter owner, if any (xCB0
     /// is 6 otherwise), and its position and horizontal speed.
     Item {
         owner: Option<u8>,
+        owner_secondary: bool,
         position: Vec3,
         velocity_x: f32,
     },
@@ -183,16 +184,24 @@ impl ItemCore {
         let Some(hit) = strongest else {
             return;
         };
-        let (hit_by, direction) = match hit.source {
-            ItemHitSource::Fighter { player, x } => {
-                (Some(player), if self.position.x > x { -1.0 } else { 1.0 })
-            }
+        let (hit_by, secondary, direction) = match hit.source {
+            ItemHitSource::Fighter {
+                player,
+                secondary,
+                x,
+            } => (
+                Some(player),
+                secondary,
+                if self.position.x > x { -1.0 } else { 1.0 },
+            ),
             ItemHitSource::Item {
                 owner,
+                owner_secondary,
                 position,
                 velocity_x,
             } => (
                 owner,
+                owner_secondary,
                 hit_direction(
                     self.position.x,
                     position.x,
@@ -202,6 +211,7 @@ impl ItemCore {
             ),
         };
         self.hit_by = hit_by;
+        self.hit_by_secondary = secondary;
         self.struck_by_item = matches!(hit.source, ItemHitSource::Item { .. });
         self.hit_direction = direction;
         self.knockback_angle = hit.angle;
