@@ -21,6 +21,7 @@ melee_it::item_kinds! {
         Capsule: it_container::Capsule,
         Box: it_container::Box,
         Taru: it_container::Barrel,
+        Kusudama: it_container::PartyBall,
         Sword: it_sword::Sword,
         Dosei: it_dosei::Dosei,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
@@ -509,6 +510,16 @@ impl Resources {
                     ItemKind::Box,
                     &it_container::box_assets::ARTICLE_STATES,
                     it_container::box_assets::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Kusudama,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Kusudama,
+                    &it_container::party_ball_assets::ARTICLE_STATES,
+                    it_container::party_ball_assets::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             // Peach's rare pulls.

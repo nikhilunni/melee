@@ -1,0 +1,28 @@
+# One shared complete 600-tick retail capture: left-facing neutral FALL,
+# flat-floor bounce at 480, settle at 495, REST through 599.
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock 4, items on, normal Versus Entry, human ports, neutral pads.
+name = "start_fd_items_kusudama_cold"
+expected = "start_fd_items_kusudama"
+frames = 600
+seed = 2269040402
+# Items Kusudama, Sword.
+item_frequency = 4
+item_mask = "0xfffffff800001010"
+stage = "FinalDestination"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"

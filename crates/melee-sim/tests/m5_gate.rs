@@ -6690,6 +6690,41 @@ const RANDOM_ITEM_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_sword_eee14f173_p2", 1974),
 ];
 
+/// One complete retail capture, checked through both savestate and cold creation.
+#[test]
+fn party_ball_left_fall_bounce_and_rest_full_capture() {
+    for name in ["start_fd_items_kusudama", "start_fd_items_kusudama_cold"] {
+        if combat_gate_ticks_with_ledger(name, 600, "ledger600").is_none() {
+            continue;
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        let ledger = scenario.trace_path("ledger600.raw.jsonl");
+        let rows = melee_test_support::trace::read_to_string(&ledger).unwrap();
+        assert_eq!(rows.lines().count(), 600);
+        let mut simulation = trace::simulation_displayed_as(&scenario, &ledger).unwrap();
+        // This capture begins before music at the cold twin's setup seed.
+        // Audit every retail LCG value separately from ordered particle sites;
+        // the port's end seed proves the complete draw count on every tick.
+        let mut rng = gekko_math::HsdRng::new(2269040402);
+        for (tick, line) in rows.lines().enumerate() {
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"], tick, "complete sequential ledger");
+            for draw in row["rng_draws"].as_array().unwrap() {
+                rng.rand();
+                assert_eq!(u64::from(rng.seed), draw["seed"].as_u64().unwrap(),
+                    "{name} tick {tick}: retail ordered LCG values");
+            }
+            let expected = row["seed"].as_u64().unwrap() as u32;
+            assert_eq!(rng.seed, expected);
+            assert_eq!(simulation.tick().unwrap().state["rng.seed"],
+                melee_diff::Value::UInt(u64::from(expected)),
+                "{name} tick {tick}: full ledger draw count and final seed");
+        }
+    }
+}
+
 #[test]
 fn random_item_witnesses_match_retail() {
     // Start boundaries are recorded with the 600-tick ledger pass, just

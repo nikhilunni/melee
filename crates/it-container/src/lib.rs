@@ -8,6 +8,12 @@ use melee_it::{
     ItemCollisionContext, ItemCore, ItemEvent, ItemEventContext, ItemPhysicsContext, ItemScratch,
 };
 
+mod party_ball;
+pub use party_ball::PartyBall;
+/// Party Ball article tables for scene asset loading.
+pub mod party_ball_assets {
+    pub use crate::party_ball::{ARTICLE_STATES, SPECIAL_ATTRIBUTES};
+}
 mod capsule;
 pub use capsule::Capsule;
 mod barrel;

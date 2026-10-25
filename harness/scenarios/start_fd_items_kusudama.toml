@@ -1,0 +1,26 @@
+# One shared complete 600-tick retail capture: left-facing neutral FALL,
+# flat-floor bounce at 480, settle at 495, REST through 599.
+# Fox vs Marth on FinalDestination, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# Battlefield/FD unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "start_fd_items_kusudama"
+savestate = "harness/roms/start_fd_items_kusudama.sav"
+frames = 600
+seed = 1
+# Items Kusudama, Sword.
+item_frequency = 4
+item_mask = "0xfffffff800001010"
+stage = "FinalDestination"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

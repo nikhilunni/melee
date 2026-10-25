@@ -118,8 +118,9 @@ fn random_item_spawns_and_container_capture_allocate_nothing() {
         || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
         std::path::PathBuf::from,
     );
-    let mut seen = [false; 3];
+    let mut seen = [false; 4];
     for name in [
+        "start_fd_items_kusudama",
         "corpus_v3_fd_items_sword_e9af22990_p0",
         "corpus_v3_bf_items_sword_e49783a03_p1",
         "corpus_v3_fd_items_taru_ece1e43b7_p2",
@@ -157,11 +158,14 @@ fn random_item_spawns_and_container_capture_allocate_nothing() {
             result.unwrap_or_else(|error| panic!("{name} capture {frame}: {error}"));
             assert_eq!(COUNT.with(Cell::get), 0, "{name} capture {frame}");
             for item in game.observe().unwrap().items() {
-                // Retail item kinds 0/1/2: Capsule, Box and Barrel.
-                if let Ok(index) = usize::try_from(item.kind().0) {
-                    if let Some(present) = seen.get_mut(index) {
-                        *present = true;
-                    }
+                // Capsule, Box, Barrel and Party Ball all reach real captures.
+                let index = match item.kind().0 {
+                    0..=2 => Some(item.kind().0 as usize),
+                    4 => Some(3),
+                    _ => None,
+                };
+                if let Some(index) = index {
+                    seen[index] = true;
                 }
             }
         }
