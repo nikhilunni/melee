@@ -1793,6 +1793,9 @@ impl FighterCore {
             );
             self.apply_script_damage();
         }
+        // The entry step/seek/control batch calls ftCo_800BFFD0 as its
+        // commands run. Publish those installs without an extra color step.
+        self.install_requested_color_overlays(assets);
         // A frame-zero set ground/air command takes effect inside the entry.
         self.apply_airborne_commands();
         self.apply_dynamic_commands(assets);

@@ -937,10 +937,7 @@ impl Fighter {
             .status
             .revival_invincibility
             .max(assets.life.invincibility_duration);
-        self.core
-            .commands
-            .color_animations
-            .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
+        self.core.install_color_overlay_now(9, assets);
         // pl_80040374: stamps the stale-move table's platform-exit frame (xD60);
         // it feeds no compared key or RNG draw.
         Ok(())
@@ -976,10 +973,7 @@ impl Fighter {
                         .status
                         .revival_invincibility
                         .max(assets.life.invincibility_duration);
-                    self.core
-                        .commands
-                        .color_animations
-                        .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
+                    self.core.install_color_overlay_now(9, assets);
                     self.change_motion_state(S::Fall.into(), assets)?;
                 }
             }

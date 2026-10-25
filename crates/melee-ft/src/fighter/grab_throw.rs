@@ -171,11 +171,9 @@ pub fn enter_throw(
     status.revival_invincibility = status
         .revival_invincibility
         .max(aa.grab_escape.throw_invincible_frames);
-    attacker
-        .core
-        .commands
-        .color_animations
-        .push(melee_cmd::ColorAnimationRequest { id: 9, duration: 0 });
+    // ftColl_8007B7A4 installs immediately after the two entry scripts;
+    // its program still waits for the ordinary color-animation proc.
+    attacker.core.install_color_overlay_now(9, aa);
     Ok(())
 }
 

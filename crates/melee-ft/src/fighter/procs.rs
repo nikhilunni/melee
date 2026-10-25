@@ -381,6 +381,9 @@ impl FighterCore {
             self.physics.facing,
             self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
         );
+        // ftAction_80071A14 -> ftColl_8007B62C -> ftCo_800BFFD0 installs
+        // immediately; the later color proc alone executes the program.
+        self.install_requested_color_overlays(assets);
         self.apply_script_damage();
         self.apply_airborne_commands();
         self.apply_dynamic_commands(assets);
@@ -564,6 +567,7 @@ impl FighterCore {
                 self.physics.ground_or_air == melee_types::GroundOrAir::Ground,
             ),
         );
+        self.install_requested_color_overlays(assets);
         self.apply_dynamic_commands(assets);
         Ok(())
     }
@@ -602,6 +606,7 @@ impl FighterCore {
                 )
             },
         )?;
+        self.install_requested_color_overlays(assets);
         self.apply_dynamic_commands(assets);
         // ftCommon_8007E0E4: reset before the fighter-overlap nudge query.
         self.physics.player_nudge = Vec2::ZERO;

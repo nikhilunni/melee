@@ -5230,3 +5230,6 @@ mod kongo_barrel_tests;
 
 #[cfg(test)]
 mod kongo_log_tests;
+
+#[cfg(test)]
+mod script_color_tests;

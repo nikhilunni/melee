@@ -8,9 +8,9 @@
 //! programs, the powershield flash), so which program owns a slot is
 //! gameplay: it decides which effects draw from the shared RNG.
 //!
-//! Requests from scripts, damage and shields go through
-//! `CommandState::color_animations` in call order and are installed right
-//! before the next program step, which preserves retail's install order.
+//! `CommandState::color_animations` retains request order. Script batches
+//! publish slot ownership without stepping the program; direct install/clear
+//! paths drain older requests first. Program execution stays in the color proc.
 use super::smash::{ChargeOverlay, OverlayCommand};
 use super::FighterCore;
 use hsd_archive::Archive;
@@ -101,7 +101,10 @@ pub struct ColorOverlaySlot {
 
 impl FighterCore {
     /// ftCo_800BFFD0 -> lb_800144C8 for queued requests, in request order.
-    fn install_requested_color_overlays(&mut self, assets: &super::assets::FighterAssets) {
+    /// Script batches publish slot ownership immediately, even when the
+    /// next ftCo_800C0408 program step is in a later scheduler phase.
+    /// This installs only: no timer, graphics, sound or RNG is advanced.
+    pub(super) fn install_requested_color_overlays(&mut self, assets: &super::assets::FighterAssets) {
         for request in self.commands.color_animations.take_all() {
             self.install_color_overlay(request.id, request.duration, &assets.color_overlays);
         }
