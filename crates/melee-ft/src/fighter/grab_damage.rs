@@ -164,6 +164,8 @@ fn launch_by_captor(
         captured.combat.frame_damage,
         captured.attributes.size.weight,
         captor.commands.throw_damage_counts[1],
+        // ftColl_80079C70(captured, captor): the record's owner attacks.
+        captured.player.ratios_against(captor.player.attack_ratio),
     );
     // ftColl_80078710 (0x80078710): the captor is the KO credit.
     captured
@@ -207,6 +209,8 @@ fn take_captor_throw_hit(
         captured.combat.frame_damage,
         captured.attributes.size.weight,
         captor.commands.throw_damage_counts[1],
+        // ftColl_80079C70(captured, captor): the record's owner attacks.
+        captured.player.ratios_against(captor.player.attack_ratio),
     );
     let damage = descriptor.damage;
     let combat = &mut captured.core.combat;
@@ -250,6 +254,8 @@ pub fn launch_released_captor(
         captor.combat.frame_damage,
         captor.attributes.size.weight,
         fctiwz_damage(descriptor.damage),
+        // ftCo_Throw.c:605: no attacker (1.0), the captor's own defense.
+        captor.player.ratios_against(1.0),
     );
     let hit = melee_coll::damage::ReceivedHit {
         facing: captor.physics.facing,

@@ -173,6 +173,7 @@ impl Fighter {
             self.core.combat.frame_damage,
             self.core.attributes.size.weight,
             shot.damage as u32,
+            melee_coll::damage::KnockbackRatios::NONE,
         );
         let hit = melee_coll::damage::ReceivedHit {
             facing: self.core.physics.facing,

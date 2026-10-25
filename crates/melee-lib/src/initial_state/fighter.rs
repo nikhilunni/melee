@@ -33,6 +33,13 @@ pub(crate) fn import(
         cpu_level: 1,
         team: None,
         friendly_fire: false,
+        match_kind: melee_types::MatchKind::Stock,
+        self_destructs: 0,
+        // The StaticPlayer and rules' values replace these (mod.rs).
+        attack_ratio: 1.0,
+        defense_ratio: 1.0,
+        knockback_ratio: 1.0,
+        attack_ratios: [1.0; 6],
     };
     player.position = vector(raw, 0xB0);
     player.facing = float(raw, 0x2C);

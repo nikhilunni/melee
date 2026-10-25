@@ -10,6 +10,7 @@ use gekko_math::{
 };
 use hsd_archive::Archive;
 use hsd_types::Vec3;
+use melee_coll::damage::KnockbackRatios;
 use melee_coll::damage_log::{DamageLog, HitCredit, HitSource, LoggedHit};
 use melee_coll::{geometry::Contact, hitbox::HitCapsule, hurtbox::HurtHeight};
 use melee_gr::wind::Wind;
@@ -477,7 +478,13 @@ impl DamageParameters {
         })
     }
     pub fn knockback(&self, hit: &HitboxDescriptor, percent: f32, weight: f32) -> f32 {
-        self.knockback_with_damage(hit, percent, weight, fctiwz(hit.damage) as u32)
+        self.knockback_with_damage(
+            hit,
+            percent,
+            weight,
+            fctiwz(hit.damage) as u32,
+            KnockbackRatios::NONE,
+        )
     }
     pub(super) fn knockback_for_frame(
         &self,
@@ -486,9 +493,10 @@ impl DamageParameters {
         frame_damage: f32,
         weight: f32,
         damage: u32,
+        ratios: KnockbackRatios,
     ) -> f32 {
         self.knockback_parameters()
-            .knockback_for_frame(hit, percent, frame_damage, weight, damage)
+            .knockback_for_frame(hit, percent, frame_damage, weight, damage, ratios)
     }
     pub(super) fn knockback_with_damage(
         &self,
@@ -496,9 +504,10 @@ impl DamageParameters {
         percent: f32,
         weight: f32,
         damage: u32,
+        ratios: KnockbackRatios,
     ) -> f32 {
         self.knockback_parameters()
-            .knockback_with_damage(hit, percent, weight, damage)
+            .knockback_with_damage(hit, percent, weight, damage, ratios)
     }
     fn knockback_parameters(&self) -> melee_coll::damage::KnockbackParameters {
         melee_coll::damage::KnockbackParameters {
@@ -2320,6 +2329,10 @@ fn detect_eligible_hit(
             damage,
             // DmgLogEntry.x20: the hitbox's own damage.
             effect_damage: descriptor.damage,
+            attack_ratio: crate::fighter::PlayerSlot::fighter_attack_ratio(
+                &attacker.player,
+                attacker.commands.thrown_by.is_some(),
+            ),
         });
         // inlineB2's x183C_applied takes the count from before the shell.
         victim.combat.frame_max_damage = victim.combat.frame_max_damage.max(count);
@@ -2434,6 +2447,10 @@ fn log_phantom_contact(
             knockback_damage: count,
             damage,
             effect_damage: damage,
+            attack_ratio: crate::fighter::PlayerSlot::fighter_attack_ratio(
+                &attacker.player,
+                attacker.commands.thrown_by.is_some(),
+            ),
         });
     }
     victim
@@ -3082,6 +3099,7 @@ impl Fighter {
                 item.velocity.x,
                 common.knockback.still_speed,
             );
+            let owner_attack = self.player.owner_attack_ratio(item.owner);
             self.combat.log_hit(LoggedHit {
                 source: HitSource::Item(melee_coll::damage_log::ItemSource {
                     gobj: item.gobj.index(),
@@ -3099,6 +3117,7 @@ impl Fighter {
                 knockback_damage,
                 damage,
                 effect_damage: raw_damage,
+                attack_ratio: owner_attack,
             });
             self.combat.frame_max_damage = self.combat.frame_max_damage.max(count);
             item.record_fighter_victim(id, descriptor.group, self.spawn_number);
@@ -3164,6 +3183,7 @@ impl Fighter {
                 common.knockback.still_speed,
             );
             self.combat.phantom_max_damage = self.combat.phantom_max_damage.max(fctiwz(damage));
+            let owner_attack = self.player.owner_attack_ratio(item.owner);
             self.combat.phantom_log.push(LoggedHit {
                 source: HitSource::Item(melee_coll::damage_log::ItemSource {
                     gobj: item.gobj.index(),
@@ -3181,6 +3201,7 @@ impl Fighter {
                 knockback_damage: count,
                 damage,
                 effect_damage: damage,
+                attack_ratio: owner_attack,
             });
         }
         self.commands

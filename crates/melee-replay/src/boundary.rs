@@ -43,6 +43,18 @@ pub struct Boundary {
     /// The match's item mask, hex (StartMeleeRules x20).
     #[serde(default)]
     pub item_mask: Option<String>,
+    /// The match's mode other than Stock (`make_boundary.py --mode`).
+    #[serde(default)]
+    pub mode: Option<String>,
+    /// A Time match's timer, in seconds (`make_boundary.py --time-limit`).
+    #[serde(default)]
+    pub time_limit: Option<u32>,
+    /// Each player's handicap with the Handicap rule on.
+    #[serde(default)]
+    pub handicaps: Option<Vec<u8>>,
+    /// The Damage Ratio rule as the match holds it (StartMeleeRules x30).
+    #[serde(default)]
+    pub damage_ratio: Option<f32>,
 }
 
 #[derive(Deserialize)]
@@ -100,6 +112,17 @@ impl Boundary {
             cpu_levels: self.cpu_levels.clone(),
             friendly_fire: self.friendly_fire,
             items: self.items()?,
+            mode: self.mode.clone(),
+            time_limit: self.time_limit,
+            handicaps: self.handicaps.clone(),
+            damage_ratio_tenths: match self.damage_ratio {
+                None => None,
+                Some(ratio) => Some(
+                    (5..=20u8)
+                        .find(|&t| 0.1 * f32::from(t) == ratio)
+                        .ok_or_else(|| format!("{}: damage_ratio {ratio}", self.name))?,
+                ),
+            },
         }
         .decode()
         .map_err(|e| format!("{}: {e}", self.name))
@@ -173,6 +196,10 @@ mod tests {
             friendly_fire: false,
             item_frequency: None,
             item_mask: None,
+            mode: None,
+            time_limit: None,
+            handicaps: None,
+            damage_ratio: None,
         };
         assert!(boundary.config().is_err());
     }

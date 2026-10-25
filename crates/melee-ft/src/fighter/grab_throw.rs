@@ -446,6 +446,8 @@ pub(super) fn record_throw_hit(
         victim.physics.percent,
         va.damage.throw_weight,
         attacker.commands.throw_damage_counts[0],
+        // ftCo_Throw.c:540: the thrower's attack ratio, the victim's defense.
+        victim.player.ratios_against(attacker.player.attack_ratio),
     );
     attacker.combat.has_recorded_hit = true;
     // ftColl_8007891C -> ftColl_80076444: the throw counts toward the

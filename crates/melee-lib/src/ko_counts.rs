@@ -33,6 +33,21 @@ impl KoCounts {
             .fold(0, u32::wrapping_add);
         total as i32
     }
+
+    /// gm_80166378's other half (gm_1601.c:3034-3037, 3050-3054): the KOs
+    /// `player` scored on itself, and in a team battle on its teammates,
+    /// which count as its self-destructs and falls.
+    pub(crate) fn own_side(&self, player: u8, teams: &[Option<u8>; 4]) -> u32 {
+        let row = &self.0[usize::from(player)];
+        let own = teams.get(usize::from(player)).copied().flatten();
+        (0..SLOTS)
+            .filter(|&other| {
+                other == usize::from(player)
+                    || (own.is_some() && teams.get(other).copied().flatten() == own)
+            })
+            .map(|other| row[other])
+            .fold(0, u32::wrapping_add)
+    }
 }
 
 #[cfg(test)]

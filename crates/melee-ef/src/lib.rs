@@ -16,6 +16,7 @@ mod mario;
 mod pool;
 mod resources;
 mod samus;
+pub mod score_popups;
 mod visual;
 pub use resources::{CharacterEffectFile, Resources, CHARACTER_EFFECT_FILES};
 pub use visual::{VisualModel, VISUAL_CAPACITY};
@@ -76,6 +77,8 @@ pub struct Effects {
     /// order: each model here is one (efLib_Create, eflib.c:481), and the
     /// scene's items, screen-shake models and HUD banners share the list.
     pub gobjs: hsd_gobj::GObjAddresses,
+    /// A Time match's HUD score popups, whose GObjs share `gobjs`.
+    pub score_popups: score_popups::ScorePopups,
     character_banks: resources::CharacterBanks,
     /// efAsync_DatEntries rows the match's fighters loaded (one bit each).
     loaded_banks: u64,
@@ -375,6 +378,7 @@ impl Effects {
     /// The models a replay created at another address
     /// (`hsd_gobj::GObjAddresses::replay`).
     pub fn rename_gobjs(&mut self, renamed: &hsd_gobj::Renamed) {
+        self.score_popups.rename_gobjs(renamed);
         for effect in self.instances.iter_mut() {
             effect.gobj = renamed.apply(effect.gobj);
         }
@@ -441,6 +445,10 @@ impl Effects {
             let resolved_matrix = queued.matrix;
             if let EffectRequest::CameraQuake { kind, position } = request {
                 self.request_camera_quake(kind, position);
+                continue;
+            }
+            if let EffectRequest::Score(event) = request {
+                self.score_popups.score(event, &mut self.gobjs);
                 continue;
             }
             if let EffectRequest::DamageTrail { trajectory } = request {
@@ -1680,6 +1688,7 @@ impl Effects {
                 | EffectRequest::ExpireOwned
                 | EffectRequest::EggShell { .. }
                 | EffectRequest::CameraQuake { .. }
+                | EffectRequest::Score(_)
                 | EffectRequest::DamageTrail { .. }
                 | EffectRequest::NormalSparkExtra { .. }
                 | EffectRequest::DestroyOwned

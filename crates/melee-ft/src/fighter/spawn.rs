@@ -118,8 +118,56 @@ pub struct PlayerSlot {
     pub team: Option<u8>,
     /// StartMeleeRules friendly_fire (gm_8016B0D4): teammates' hits land.
     pub friendly_fire: bool,
+    /// StartMeleeRules match_kind: only a stock match (gm_8016B094) takes
+    /// a stock at a fall (ftCo_800D34E0).
+    pub match_kind: melee_types::MatchKind,
+    /// Player_GetSuicideCount (StaticPlayer suicide_count): the player's
+    /// own fighter's falls with no player to credit (ftCo_800D34E0 ->
+    /// Player_IncSuicideCount).
+    pub self_destructs: u32,
+    /// Player_GetAttackRatio (StaticPlayer +54): the handicap's launch
+    /// scale on the player's hits.
+    pub attack_ratio: f32,
+    /// Player_GetDefenseRatio (StaticPlayer +58): the handicap's launch
+    /// scale on hits the player takes.
+    pub defense_ratio: f32,
+    /// gm_8016B248 (StartMeleeRules x30): the Damage Ratio rule.
+    pub knockback_ratio: f32,
+    /// Every slot's Player_GetAttackRatio, for hits whose attacker is an
+    /// item's owner.
+    pub attack_ratios: [f32; 6],
 }
 impl PlayerSlot {
+    /// ftColl_80079AB0's ratios for a hit on this player by `attack`'s
+    /// attack ratio (1.0 where retail passes no attacker).
+    /// Player_GetAttackRatio of an item's fighter owner (ftLib_80086960),
+    /// else 1.0 (ftcoll.c:2643-2647).
+    pub fn owner_attack_ratio(&self, owner: Option<u8>) -> f32 {
+        owner.map_or(1.0, |slot| self.attack_ratios[usize::from(slot)])
+    }
+    /// The attack ratio of a fighter's logged hit: its own, or for a thrown
+    /// fighter's hitbox, which retail logs under its thrower
+    /// (ftColl_80076ED8), the thrower's.
+    pub fn fighter_attack_ratio(attacker: &PlayerSlot, thrown: bool) -> f32 {
+        if thrown && attacker.attack_ratios.iter().any(|&r| r != 1.0) {
+            unimplemented!(
+                "ftcoll.c:2599: a thrown fighter's hit under handicaps (its thrower's attack ratio)"
+            );
+        }
+        attacker.attack_ratio
+    }
+    pub fn ratios_against(&self, attack: f32) -> melee_coll::damage::KnockbackRatios {
+        melee_coll::damage::KnockbackRatios {
+            stage: self.knockback_ratio,
+            attack,
+            defense: self.defense_ratio,
+        }
+    }
+    /// gm_8016B094 (|| gm_8016B0E8, never set in Versus): a fall costs a
+    /// stock and a player out of stocks is not revived.
+    pub fn stock_match(&self) -> bool {
+        self.match_kind == melee_types::MatchKind::Stock
+    }
     /// gm_8016B168() && a->team == b->team: the two fighters fight on one
     /// team (ftLib_80086198's teammate skip, pl_040D.c:80).
     pub fn teammate_of(&self, team: Option<u8>) -> bool {

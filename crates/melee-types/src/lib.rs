@@ -100,6 +100,7 @@ mod ft_part;
 mod gr_kind;
 mod ground_or_air;
 mod item_kind;
+mod match_kind;
 mod motion_state;
 mod player_kind;
 
@@ -109,6 +110,7 @@ pub use ft_part::FtPart;
 pub use gr_kind::GrKind;
 pub use ground_or_air::GroundOrAir;
 pub use item_kind::ItemKind;
+pub use match_kind::MatchKind;
 pub use motion_state::CommonMotionState;
 pub use player_kind::PlayerKind;
 

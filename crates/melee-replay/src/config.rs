@@ -32,6 +32,40 @@ pub struct Config {
     /// in older recordings and when items are off.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub(crate) items: Option<(i8, u64)>,
+    /// `MatchRules::mode` other than Stock ("time"); absent in older
+    /// recordings, which are stock matches.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) mode: Option<String>,
+    /// `MatchRules::time_limit_seconds`; absent without a timer.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) time_limit: Option<u32>,
+    /// Each player's handicap with the Handicap rule on; absent with it off.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) handicaps: Option<Vec<u8>>,
+    /// The Damage Ratio rule in tenths; absent at 1.0x.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub(crate) damage_ratio_tenths: Option<u8>,
+}
+
+/// A match mode's spelling in recordings, scenarios and the boundary
+/// registry.
+pub fn mode_name(mode: MatchKind) -> &'static str {
+    match mode {
+        MatchKind::Time => "time",
+        MatchKind::Stock => "stock",
+        MatchKind::Coin => "coin",
+        MatchKind::Bonus => "bonus",
+    }
+}
+
+/// The mode a recording or registry names.
+pub fn parse_mode(name: Option<&str>) -> Result<MatchKind, String> {
+    match name {
+        None | Some("stock") => Ok(MatchKind::Stock),
+        Some("time") => Ok(MatchKind::Time),
+        Some("coin") => Ok(MatchKind::Coin),
+        Some(other) => Err(format!("unknown match mode {other:?}")),
+    }
 }
 
 const CHARACTERS: [(Character, &str); 26] = [
@@ -121,6 +155,18 @@ impl From<&MatchConfig> for Config {
                         .map(|p| p.cpu_level.unwrap_or(0))
                         .collect()
                 }),
+            mode: (config.rules.mode != MatchKind::Stock)
+                .then(|| mode_name(config.rules.mode).to_owned()),
+            time_limit: config.rules.time_limit_seconds,
+            handicaps: config.players.iter().any(|p| p.handicap.is_some()).then(|| {
+                config
+                    .players
+                    .iter()
+                    .map(|p| p.handicap.unwrap_or(0))
+                    .collect()
+            }),
+            damage_ratio_tenths: (config.rules.damage_ratio_tenths != 10)
+                .then_some(config.rules.damage_ratio_tenths),
         }
     }
 }
@@ -157,6 +203,13 @@ impl Config {
                     None => None,
                     Some(teams) => Some(*teams.get(index).ok_or("one team per player")?),
                 },
+                handicap: match &self.handicaps {
+                    None => None,
+                    Some(levels) => {
+                        let level = *levels.get(index).ok_or("one handicap per player")?;
+                        (level != 0).then_some(level)
+                    }
+                },
             })
         };
         let players = (0..self.players.len())
@@ -168,6 +221,9 @@ impl Config {
         config.rules.all_characters_unlocked = self.all_characters_unlocked;
         config.rules.sudden_death = self.sudden_death;
         config.rules.friendly_fire = self.friendly_fire;
+        config.rules.mode = parse_mode(self.mode.as_deref())?;
+        config.rules.time_limit_seconds = self.time_limit;
+        config.rules.damage_ratio_tenths = self.damage_ratio_tenths.unwrap_or(10);
         if let Some((frequency, mask)) = self.items {
             config.rules.items = ItemRules { frequency, mask };
         }

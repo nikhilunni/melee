@@ -47,6 +47,13 @@ pub(super) fn restore_clock(saved: &super::SavedPose) -> Result<(MatchClock, Bom
             seconds: word(data, TIMER_SECONDS),
             frames: u16::from_be_bytes([data[TIMER_FRAMES], data[TIMER_FRAMES + 1]]),
         }),
+        scoring: {
+            let rules = super::SavedRules::read(saved);
+            crate::match_clock::Scoring {
+                match_kind: rules.match_kind,
+                self_destruct_penalty: rules.self_destruct_penalty,
+            }
+        },
     };
     let rain = BombRain {
         last_drop_frame: word(saved.bytes(STAGE_INFO + LAST_DROP_FRAME, 4), 0),

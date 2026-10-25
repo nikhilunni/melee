@@ -859,6 +859,8 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
         sudden_death: false,
         friendly_fire: cold.friendly_fire,
         time_limit: None,
+        mode: None,
+        damage_ratio: None,
         item_frequency: None,
         item_mask: None,
         spawn: Default::default(),
@@ -885,6 +887,7 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
                 team: fighter.team,
                 // Replays continue to reject CPU players without a level.
                 cpu_level: None,
+                handicap: None,
             })
             .collect(),
         inputs: Vec::new(),

@@ -191,14 +191,8 @@ pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<(
         }
     }
     let InitialState {
-        fighters,
-        assets,
-        revival_offsets,
-        map,
-        rng,
-        spawn_counter,
-        ..
-    } = state;
+        fighters, assets, ..
+    } = &mut *state;
     let fighter = &mut fighters[index];
     // ftCo_800BFD04 (800BFD04): Sleep for an instant. Its motion change turns
     // the root back to the facing (fighter.c:1173-1175), which a screen KO
@@ -211,9 +205,32 @@ pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<(
     // gm_80167320 (gm_1601.c:3338-3341): a stock match does not revive a
     // player out of stocks; gm_8016AC44 finds no Versus roster (StartMeleeRules
     // x58 is NULL) and the fighter sleeps for the rest of the match.
-    if fighter.player.stocks == 0 {
+    if fighter.player.stock_match() && fighter.player.stocks == 0 {
         return Ok(());
     }
+    revive(state, index, partner.filter(|_| leads))
+}
+
+/// A team battle's stock steal (fn_8016B918): the asleep player, given a
+/// teammate's stock, revives at once (fn_8016719C(slot, 0)).
+pub(super) fn revive_stolen_stock(state: &mut InitialState, index: usize) -> Result<()> {
+    let partner = partner_of(state, index);
+    let leads = state.fighters[index].capabilities.leads_partner;
+    revive(state, index, partner.filter(|_| leads))
+}
+
+/// fn_8016719C (8016719C): the revival platform, then Player_80032070.
+fn revive(state: &mut InitialState, index: usize, partner: Option<usize>) -> Result<()> {
+    let InitialState {
+        fighters,
+        assets,
+        revival_offsets,
+        map,
+        rng,
+        spawn_counter,
+        ..
+    } = state;
+    let fighter = &mut fighters[index];
     let platform = fighter.place_revival(&assets.arena, revival_offsets);
     with_fighter!(fighter, |f| f.revive_at(
         &assets.fighters[index],
@@ -227,7 +244,7 @@ pub(super) fn complete_death(state: &mut InitialState, index: usize) -> Result<(
     ))
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     // Player_80032070: an asleep partner revives beside the leader.
-    if let Some(partner) = partner.filter(|_| leads) {
+    if let Some(partner) = partner {
         if fighters[partner].status.disabled {
             let leader = fighters[index].player.clone();
             with_fighter!(&mut fighters[partner], |f| f.revive_beside_leader(

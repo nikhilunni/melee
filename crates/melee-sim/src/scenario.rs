@@ -74,6 +74,14 @@ pub struct Scenario {
     /// A cold match's counting-down timer, in seconds.
     #[serde(default)]
     pub time_limit: Option<u32>,
+    /// The match's rules (StartMeleeRules match_kind): `"stock"`
+    /// (default) or `"time"` (KOs score; `time_limit` ends the match).
+    #[serde(default)]
+    pub mode: Option<String>,
+    /// The Damage Ratio rule as the match holds it (StartMeleeRules x30),
+    /// 1.0 when absent.
+    #[serde(default)]
+    pub damage_ratio: Option<f32>,
     /// The Item Switch frequency the match runs (StartMeleeRules xB): 0
     /// Very Low .. 4 Very High; absent means items off.
     #[serde(default)]
@@ -172,6 +180,9 @@ pub struct FighterScenario {
     /// cpu_level; the Versus CSS's slider).
     #[serde(default)]
     pub cpu_level: Option<u8>,
+    /// The player's handicap, 1..=9, with the Handicap rule on.
+    #[serde(default)]
+    pub handicap: Option<u8>,
 }
 fn one_stock() -> u8 {
     1
@@ -284,6 +295,7 @@ impl Scenario {
             "friendly_fire belongs to a team battle"
         );
         self.item_rules()?;
+        self.match_kind()?;
         let mut previous_port = None;
         for (slot, fighter) in self.fighters.iter().enumerate() {
             ensure!(
@@ -381,6 +393,21 @@ impl Scenario {
             }
             _ => anyhow::bail!("item_frequency and item_mask go together"),
         }
+    }
+    /// The match's rules (`mode`), Stock when absent.
+    pub fn match_kind(&self) -> Result<melee_lib::MatchKind> {
+        use melee_lib::MatchKind;
+        let kind = match self.mode.as_deref() {
+            None | Some("stock") => MatchKind::Stock,
+            Some("time") => MatchKind::Time,
+            Some("coin") => MatchKind::Coin,
+            Some(other) => anyhow::bail!("unknown mode {other:?}"),
+        };
+        ensure!(
+            kind == MatchKind::Stock || self.time_limit.is_some() || !self.is_cold(),
+            "a cold {kind:?} match needs its time_limit"
+        );
+        Ok(kind)
     }
     pub fn screen(&self) -> melee_lib::slippi::Screen {
         use melee_lib::slippi::Screen;
@@ -560,11 +587,14 @@ impl Scenario {
                     controller_fix: f.controller_fix().expect("validated controller fix"),
                     team: f.team,
                     cpu_level: f.cpu_level(),
+                    handicap: f.handicap,
                 })
                 .collect(),
             stage: self.stage_descriptor(),
             seed: self.seed,
             all_characters_unlocked: self.all_characters_unlocked,
+            mode: self.match_kind().expect("validated match mode"),
+            damage_ratio: self.damage_ratio.unwrap_or(1.0),
             time_limit: self.time_limit,
             sudden_death: self.sudden_death,
             friendly_fire: self.friendly_fire,

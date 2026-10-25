@@ -42,6 +42,8 @@ pub struct Assets {
     /// FNV-1a over named source bytes in load order; diagnostic identity, not security.
     pub(crate) fingerprint: u64,
     pub(crate) interface: Archive,
+    /// The Time match's score popups' animations (IfAll).
+    pub(crate) score_popups: [melee_ef::score_popups::PopupTimeline; 3],
     pub(crate) effect_resources: melee_ef::Resources,
     pub(crate) items: crate::scene_items::Resources,
     pub arena: melee_ft::fighter::life::Arena,
@@ -323,6 +325,7 @@ impl Assets {
         let effect_resources = melee_ef::Resources::load(&effects, &character_effects)?
             .with_fighters(characters.iter().map(|c| i32::from(c.descriptor.kind)));
         let interface = archive("IfAll.usd")?;
+        let score_popups = crate::score_popup_timelines::load(&interface)?;
         // it_8027B798 reads p_ftCommonData, the same PlCo every slot loads.
         let common_damage = &fighters[0].damage;
         let launch = melee_it::hurt::ItemLaunch {
@@ -342,6 +345,7 @@ impl Assets {
                 .expect("common and character effect archives"),
             effect_resources,
             interface,
+            score_popups,
             items,
             arena,
             stage_camera,

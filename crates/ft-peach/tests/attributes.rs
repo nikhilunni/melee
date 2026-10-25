@@ -165,6 +165,12 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
             cpu_level: 9,
             team: None,
             friendly_fire: false,
+            match_kind: melee_types::MatchKind::Stock,
+            self_destructs: 0,
+            attack_ratio: 1.0,
+            defense_ratio: 1.0,
+            knockback_ratio: 1.0,
+            attack_ratios: [1.0; 6],
         },
     );
     assert_eq!(

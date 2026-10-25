@@ -14,7 +14,32 @@ pub struct PlayerSetup {
     pub team: Option<u8>,
     /// Versus CPU level, 1..=9; None for a human.
     pub cpu_level: Option<u8>,
+    /// The player's handicap, 1..=9, with the Handicap rule on
+    /// (PlayerInitData +8); None with it off.
+    pub handicap: Option<u8>,
 }
+impl PlayerSetup {
+    /// gm_80167BC8 (gm_1601.c:3613-3638): the attack and defense ratios
+    /// lbl_803B7930 gives the handicap, 1.0 with the rule off.
+    pub fn handicap_ratios(&self) -> (f32, f32) {
+        match self.handicap {
+            None => (1.0, 1.0),
+            Some(level) => HANDICAP_RATIOS[usize::from(level) - 1],
+        }
+    }
+}
+/// lbl_803B7930 (0x803B7930): attack and defense ratio by handicap 1..=9.
+pub const HANDICAP_RATIOS: [(f32, f32); 9] = [
+    (0.35, 2.857143),
+    (0.4, 2.5),
+    (0.46, 2.173913),
+    (0.53, 1.8867925),
+    (0.61, 1.6393442),
+    (0.7, 1.4285715),
+    (0.8, 1.25),
+    (0.93, 1.0752689),
+    (1.07, 0.9345794),
+];
 impl PlayerSetup {
     pub fn descriptor(&self) -> &'static CharacterDescriptor {
         self.descriptor
@@ -26,8 +51,14 @@ pub struct Setup {
     pub stage: &'static crate::scene_stage::StageDescriptor,
     pub seed: Option<u32>,
     pub all_characters_unlocked: Option<bool>,
+    /// StartMeleeRules match_kind: Stock, or Time (KOs score, the timer
+    /// ends the match).
+    pub mode: melee_types::MatchKind,
     /// A counting-down match timer, in seconds.
     pub time_limit: Option<u32>,
+    /// StartMeleeRules x30 (gm_8016B248), the Damage Ratio rule:
+    /// 0.1f * the rule's tenths.
+    pub damage_ratio: f32,
     /// The Sudden Death scene after a timed-out tie (gm_SetupSuddenDeath,
     /// gm_Scene_SuddenDeath_OnEnter): one stock each at 300%, its own
     /// countdown and the Bob-omb rain.

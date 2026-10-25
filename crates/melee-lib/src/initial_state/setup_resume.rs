@@ -89,6 +89,14 @@ pub(super) fn fighter(
         // Player_GetTeam (StaticPlayer +47) in a team battle.
         team: super::SavedRules::read(saved).teams.then_some(raw[0x47]),
         friendly_fire: super::SavedRules::read(saved).friendly_fire,
+        match_kind: super::SavedRules::read(saved).match_kind,
+        // Player_GetSuicideCount: StaticPlayer +8C.
+        self_destructs: u32::from(u16::from_be_bytes([raw[0x8C], raw[0x8D]])),
+        // StaticPlayer +54/+58, the rules' x30.
+        attack_ratio: float(raw, 0x54),
+        defense_ratio: float(raw, 0x58),
+        knockback_ratio: super::SavedRules::read(saved).knockback_ratio,
+        attack_ratios: super::saved_attack_ratios(saved),
     };
     let mut counter = SpawnCounter(word(saved.bytes(0x804D_64F8, 4), 0));
     SceneFighter::from_parameters(

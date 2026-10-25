@@ -1924,16 +1924,25 @@ impl Runtime {
                     grab_pairs::linked_hit(state, player)?;
                     crate::scene_items::offer_redead_source(state, player);
                     // Player_80033BB8 (ftCo_800C318C's sleep timer): stock
-                    // standings, ties share a rank.
+                    // standings, ties share a rank; a Time match ranks
+                    // scores (gm_8016C5C0).
                     use crate::scene_fighter::with_fighter;
                     let stocks = with_fighter!(&state.fighters[player], |f| f.player.stocks);
-                    let rank = state
-                        .fighters
-                        .iter()
-                        .filter(|f| {
-                            with_fighter!(f, |f| !f.player.secondary && f.player.stocks > stocks)
-                        })
-                        .count() as u8;
+                    let rank = if state.clock.scoring.match_kind == melee_types::MatchKind::Time {
+                        let slot = with_fighter!(&state.fighters[player], |f| f.player.id);
+                        crate::standings::time_ranks(
+                            &crate::standings::current(state),
+                            state.clock.scoring.self_destruct_penalty,
+                        )[usize::from(slot)]
+                    } else {
+                        state
+                            .fighters
+                            .iter()
+                            .filter(|f| {
+                                with_fighter!(f, |f| !f.player.secondary && f.player.stocks > stocks)
+                            })
+                            .count() as u8
+                    };
                     with_fighter!(&mut state.fighters[player], |f| f.core.standing_rank = rank);
                 }
                 // The partner as this proc's callbacks will read it.
@@ -2810,8 +2819,22 @@ impl Runtime {
                 self.interface[player].tick(percent, &mut state.rng);
                 if let Some(display) = &mut state.stock_displays[player] {
                     let stocks = with_fighter!(&state.fighters[own], |f| f.player.stocks);
-                    for position in display.tick(stocks) {
-                        let mut request = hsd_particle::system::SpawnRequest::new(0, 0xF7, 1);
+                    let tick = display.tick(stocks);
+                    // A stolen stock that landed sets its thief's flag at once.
+                    for thief in tick.landed.into_iter().flatten() {
+                        let thief = (0..state.stock_displays.len())
+                            .find(|&p| {
+                                with_fighter!(&state.fighters[state.player_fighter_index(p)], |f| {
+                                    f.player.id
+                                }) == thief
+                            })
+                            .expect("a stolen stock's thief");
+                        if let Some(display) = &mut state.stock_displays[thief] {
+                            display.animate_losses = true;
+                        }
+                    }
+                    for (generator, position) in tick.particles.into_iter().flatten() {
+                        let mut request = hsd_particle::system::SpawnRequest::new(0, generator, 1);
                         request.position = [position.x, position.y, position.z];
                         state.effects.events.spawn(&request, false, true);
                         state.particles.spawn::<RetailTrig>(
@@ -3789,8 +3812,12 @@ impl Simulation {
         // Start press (fn_8016B918, ifStock_802F7EFC, Player_LoseStock,
         // gm_8016C658, fn_8016719C).
         const START: u32 = 0x1000;
-        for fighter in runtime.state.fighters.iter().filter(|f| !f.0.player.secondary) {
+        for index in 0..runtime.state.fighters.len() {
+            let fighter = &runtime.state.fighters[index];
             let player = &fighter.0.player;
+            if player.secondary {
+                continue;
+            }
             let port = usize::from(player.id);
             let start = runtime.pads[port].buttons.0 & START != 0;
             if player.team.is_some()
@@ -3799,7 +3826,7 @@ impl Simulation {
                 && start
                 && !runtime.start_held[port]
             {
-                unimplemented!("gm_16AE.c:576-586: a team battle's stock steal on a Start press");
+                steal_stock(&mut runtime.state, index)?;
             }
         }
         runtime.start_held = runtime.pads.map(|pad| pad.buttons.0 & START != 0);
@@ -3809,6 +3836,7 @@ impl Simulation {
         // 2926-2936), not individual stocks. Keep countdown replays runnable
         // until this unwitnessed result branch is actually reached.
         if runtime.state.clock.timed_out()
+            && runtime.state.clock.scoring.match_kind == melee_types::MatchKind::Stock
             && runtime.state.fighters.iter().any(|f| f.0.player.team.is_some())
         {
             unimplemented!("fn_80165E7C/fn_801661E0: timed team result ranking needs a retail witness");
@@ -3905,6 +3933,15 @@ impl Simulation {
         if let Some(error) = &runtime.error {
             anyhow::bail!("{error:#}");
         }
+        // fn_802F75D4 / fn_802F7670 / fn_802F7994 (s_link 17, after the
+        // percent HUD's procs; nothing later in the pass makes a GObj).
+        let state = &mut runtime.state;
+        if !state.effects.score_popups.is_empty() {
+            let effects = &mut *state.effects;
+            effects
+                .score_popups
+                .tick(&state.assets.score_popups, &mut effects.gobjs);
+        }
         runtime.frame += 1;
         Ok(())
     }
@@ -3946,6 +3983,68 @@ impl Simulation {
             })
             .collect()
     }
+}
+
+/// fn_8016B918 (gm_16AE.c:576-586) for `index`'s player, out of stocks with
+/// a Start press: the first teammate in slot order with more than one stock
+/// gives one (fn_8016B918_inline); its HUD sends the icon over
+/// (ifStock_802F7EFC), Player_LoseStock and Player_SetStocks move it, and the
+/// player revives (fn_8016719C).
+fn steal_stock(state: &mut InitialState, index: usize) -> Result<()> {
+    use crate::scene_fighter::with_fighter;
+    let (thief, team) = with_fighter!(&state.fighters[index], |f| (f.player.id, f.player.team));
+    let players = state.fighters.iter().filter(|f| !f.0.player.secondary).count();
+    let ordered = {
+        let mut slots: [Option<(u8, usize)>; 6] = [None; 6];
+        for player in 0..players {
+            let own = state.player_fighter_index(player);
+            let id = with_fighter!(&state.fighters[own], |f| f.player.id);
+            slots[usize::from(id)] = Some((id, player));
+        }
+        slots
+    };
+    let donor = ordered.iter().flatten().copied().find(|&(id, player)| {
+        let own = state.player_fighter_index(player);
+        with_fighter!(&state.fighters[own], |f| {
+            id != thief && f.player.team == team && f.player.stocks > 1
+        })
+    });
+    let Some((donor_id, donor_player)) = donor else {
+        return Ok(());
+    };
+    let thief_player = ordered[usize::from(thief)].expect("the thief's slot").1;
+    let donor_index = state.player_fighter_index(donor_player);
+    let donor_stocks = with_fighter!(&state.fighters[donor_index], |f| f.player.stocks);
+    let thief_stocks = with_fighter!(&state.fighters[index], |f| f.player.stocks);
+    let (Some(to), Some(_)) = (
+        state.stock_displays[thief_player].clone(),
+        state.stock_displays[donor_player].as_ref(),
+    ) else {
+        unimplemented!("fn_8016B918: a stock steal without the stock HUD");
+    };
+    let started = state.stock_displays[donor_player]
+        .as_mut()
+        .expect("the donor's HUD")
+        .begin_steal(donor_stocks, thief, thief_stocks, &to);
+    if !started {
+        return Ok(());
+    }
+    // x204[thief].flag = 0 until the icon lands.
+    if let Some(display) = &mut state.stock_displays[thief_player] {
+        display.animate_losses = false;
+    }
+    // Player_LoseStock(donor): both of the donor's fighters read its count.
+    for fighter in state.fighters.iter_mut() {
+        with_fighter!(fighter, |f| if f.player.id == donor_id {
+            f.player.stocks -= 1;
+        });
+    }
+    for fighter in state.fighters.iter_mut() {
+        with_fighter!(fighter, |f| if f.player.id == thief {
+            f.player.stocks += 1;
+        });
+    }
+    partner_fighters::revive_stolen_stock(state, index)
 }
 
 /// grStory_801E3334: Yoshi's Story's map 3 proc, the Shy Guy spawner.

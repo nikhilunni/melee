@@ -107,6 +107,7 @@ impl Effects {
             instances: Default::default(),
             models,
             gobjs: Default::default(),
+            score_popups: Default::default(),
             character_banks: std::array::from_fn(|_| None),
             loaded_banks: 0,
             next_joint: 0,

@@ -13,7 +13,32 @@ pub(crate) struct MatchClock {
     pub sudden_death: bool,
     /// StartMeleeRules timer_enabled with a counting-down time limit.
     pub timer: Option<CountdownTimer>,
+    /// How the match's standings score its players.
+    pub scoring: Scoring,
 }
+
+/// The rules gm_80166378's standings read (lbl_8046B6A0_24C_t x5, xC).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) struct Scoring {
+    /// StartMeleeRules match_kind (gm_16AE.c:1672 copies it to x5).
+    pub match_kind: melee_types::MatchKind,
+    /// StartMeleeRules xC (gm_8016AEC8): what a self-destruct scores, 0,
+    /// -1 or -2 (gm_80167BC8 from the save data's rule, -1 by default).
+    pub self_destruct_penalty: i8,
+}
+
+impl Default for Scoring {
+    fn default() -> Self {
+        Self {
+            match_kind: melee_types::MatchKind::Stock,
+            self_destruct_penalty: VERSUS_SELF_DESTRUCT_PENALTY,
+        }
+    }
+}
+
+/// gm_80167BC8's xC for the save data's default rule (gmMainLib_8015ED30()
+/// == 0): a self-destruct scores -1.
+pub(crate) const VERSUS_SELF_DESTRUCT_PENALTY: i8 = -1;
 
 /// The match timer (lbl_8046B6A0 +0x28 timer_seconds, +0x2C unk_2C).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

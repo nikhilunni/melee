@@ -80,6 +80,9 @@ impl FighterCore {
             self.combat.frame_damage,
             self.attributes.size.weight,
             entry.knockback_damage,
+            // ftColl_8007A06C: the entry's attacker's ratio (a fighter's,
+            // an item owner's, or 1.0), the victim's defense.
+            self.player.ratios_against(entry.attack_ratio),
         )
     }
 

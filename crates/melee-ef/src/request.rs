@@ -112,6 +112,10 @@ pub enum EffectRequest {
         kind: u16,
         position: Vec3,
     },
+    /// ftCo_800D34E0's HUD report of a fall in a Time match
+    /// (Player_UpdateKOsBySlot, Player_IncSuicideCount): the score popups'
+    /// GObjs, created between the KO's quake model and its blast.
+    Score(crate::score_popups::Fall),
     Death {
         position: Vec3,
         angle: f32,
@@ -569,6 +573,7 @@ impl EffectRequest {
                 | Self::PositionalGenerator { .. }
                 | Self::PositionalModel { .. }
                 | Self::CameraQuake { .. }
+                | Self::Score(_)
                 | Self::Death { .. }
                 | Self::Shield { .. }
                 | Self::HitSpark { .. }

@@ -364,6 +364,10 @@ pub struct PlayerConfig {
     pub team: Option<u8>,
     /// Versus CPU level, 1..=9; None for a human.
     pub cpu_level: Option<u8>,
+    /// The player's handicap, 1..=9, with the Handicap rule on; None with
+    /// it off. It scales launches (lbl_803B7930's attack and defense
+    /// ratios).
+    pub handicap: Option<u8>,
 }
 impl PlayerConfig {
     pub fn new(port: Port, character: Character) -> Self {
@@ -374,6 +378,7 @@ impl PlayerConfig {
             controller_fix: ControllerFix::Off,
             team: None,
             cpu_level: None,
+            handicap: None,
         }
     }
     pub fn with_cpu_level(mut self, level: u8) -> Self {
@@ -396,6 +401,9 @@ use crate::ItemRules;
 /// timer and items.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct MatchRules {
+    /// StartMeleeRules match_kind: Stock (the default) or Time, where KOs
+    /// score and the timer (`time_limit_seconds`, required) ends the match.
+    pub mode: crate::MatchKind,
     pub stocks: u8,
     /// StartMeleeRules time_limit: a counting-down timer, in seconds (eight
     /// minutes is 480). When it runs out the player with more stocks wins; a
@@ -412,16 +420,21 @@ pub struct MatchRules {
     pub friendly_fire: bool,
     /// The Item Switch (StartMeleeRules xB and x20): off by default.
     pub items: ItemRules,
+    /// The Damage Ratio rule in tenths, 5..=20 (1.0x is 10): it scales
+    /// every launch (StartMeleeRules x30).
+    pub damage_ratio_tenths: u8,
 }
 impl Default for MatchRules {
     fn default() -> Self {
         Self {
+            mode: crate::MatchKind::Stock,
             stocks: 4,
             time_limit_seconds: None,
             sudden_death: false,
             all_characters_unlocked: true,
             friendly_fire: false,
             items: ItemRules::OFF,
+            damage_ratio_tenths: 10,
         }
     }
 }
@@ -472,7 +485,7 @@ impl MatchConfig {
                     "a team battle gives every player a team, 0 to 2",
                 ));
             }
-            if self.rules.time_limit_seconds.is_some() {
+            if self.rules.time_limit_seconds.is_some() && self.rules.mode == crate::MatchKind::Stock {
                 return Err(StartError::InvalidConfig(
                     "timed team outcomes need a retail witness",
                 ));
@@ -481,8 +494,22 @@ impl MatchConfig {
                 return Err(StartError::InvalidConfig("a team battle needs two teams"));
             }
         }
+        match self.rules.mode {
+            crate::MatchKind::Stock => {}
+            crate::MatchKind::Time if self.rules.time_limit_seconds.is_some() => {}
+            crate::MatchKind::Time => {
+                return Err(StartError::InvalidConfig("a Time match needs its time limit"));
+            }
+            crate::MatchKind::Coin | crate::MatchKind::Bonus => {
+                return Err(StartError::InvalidConfig(
+                    "Coin and Bonus matches need a retail witness",
+                ));
+            }
+        }
         if self.rules.sudden_death
-            && (self.rules.stocks != 1 || self.rules.time_limit_seconds.is_some())
+            && (self.rules.stocks != 1
+                || self.rules.time_limit_seconds.is_some()
+                || self.rules.mode != crate::MatchKind::Stock)
         {
             return Err(StartError::InvalidConfig(
                 "Sudden Death has one stock and no timer",
@@ -494,10 +521,16 @@ impl MatchConfig {
         if self.rules.items.validate().is_err() {
             return Err(StartError::InvalidConfig("item frequency must be in -1..=4"));
         }
+        if !(5..=20).contains(&self.rules.damage_ratio_tenths) {
+            return Err(StartError::InvalidConfig("the damage ratio is 0.5..=2.0"));
+        }
         if !(1..=99).contains(&self.rules.stocks) {
             return Err(StartError::InvalidConfig("stocks must be in 1..=99"));
         }
         for player in &self.players {
+            if player.handicap.is_some_and(|level| !(1..=9).contains(&level)) {
+                return Err(StartError::InvalidConfig("a handicap is 1..=9"));
+            }
             if player.cpu_level.is_some_and(|level| !(1..=9).contains(&level)) {
                 return Err(StartError::InvalidConfig("a CPU level is 1..=9"));
             }
@@ -518,11 +551,15 @@ impl MatchConfig {
                     controller_fix: player.controller_fix,
                     team: player.team,
                     cpu_level: player.cpu_level,
+                    handicap: player.handicap,
                 })
                 .collect(),
             stage: self.stage.descriptor().ok_or(StartError::UnportedStage(self.stage))?,
             seed: Some(self.seed.0),
             all_characters_unlocked: Some(self.rules.all_characters_unlocked),
+            mode: self.rules.mode,
+            // gm_80167BC8: 0.1f * damage_ratio (gm_1601.c:3643).
+            damage_ratio: 0.1 * f32::from(self.rules.damage_ratio_tenths),
             time_limit: self.rules.time_limit_seconds,
             sudden_death: self.rules.sudden_death,
             friendly_fire: self.rules.friendly_fire,

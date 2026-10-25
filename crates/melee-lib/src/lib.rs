@@ -2,6 +2,8 @@
 mod article_pose;
 mod assets;
 mod banner;
+mod score_popup_timelines;
+mod standings;
 pub mod diagnostics;
 mod frame;
 mod initial_state;
@@ -25,6 +27,7 @@ mod input;
 mod observation;
 pub use assets::FileSource;
 pub use melee_it::random_spawn::ItemRules;
+pub use melee_types::MatchKind;
 pub use config::{
     Character, ControllerFix, Costume, MatchConfig, MatchRules, PlayerConfig, Port, Seed, Stage,
 };

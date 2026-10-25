@@ -983,6 +983,8 @@ pub fn escape(
         carrier.combat.frame_damage,
         carrier.attributes.size.weight,
         victim_count,
+        // ftColl_80079C70(carrier, shouldered): the record's owner attacks.
+        carrier.player.ratios_against(victim.player.attack_ratio),
     );
     let hit = melee_coll::damage::ReceivedHit {
         facing: carrier.physics.facing,
@@ -1003,6 +1005,7 @@ pub fn escape(
         victim.combat.frame_damage,
         victim.attributes.size.weight,
         carrier_count,
+        victim.player.ratios_against(carrier.player.attack_ratio),
     );
     let hit = melee_coll::damage::ReceivedHit {
         facing: -carrier.physics.facing,

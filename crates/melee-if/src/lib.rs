@@ -103,15 +103,119 @@ pub struct StockDisplay {
     pub icon_positions: [hsd_types::Vec3; 5],
     pub animation_frames: [u8; 5],
     pub animate_losses: bool,
+    /// The HUD place's root translation (x4[0]) and each icon's local
+    /// translation at animation frame 0, where ifStock_802F7EFC poses
+    /// them before reading a stolen stock's path.
+    pub root: hsd_types::Vec3,
+    pub icon_locals: [hsd_types::Vec3; 5],
+    /// x204.anim[5..7] and steal[2]: stocks flying from this player's HUD
+    /// to a teammate's (a team battle's stock steal).
+    pub steals: [Option<StockSteal>; 2],
 }
+
+/// One stolen stock's flight (IfStockStealAnim and its anim counter).
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct StockSteal {
+    pub start: hsd_types::Vec3,
+    pub mid: hsd_types::Vec3,
+    pub end: hsd_types::Vec3,
+    /// x204.x3[i]: the player who takes the stock.
+    pub thief: u8,
+    /// x204.anim[5 + i]: 1..=10 in flight.
+    pub frame: u8,
+}
+
+/// The particle generators ifStock_802F8298's efSync_Spawn calls make
+/// (efAsync_80067688): 0x474 an icon's loss, 0x475 a stolen stock leaving,
+/// 0x476 it arriving.
+pub const STOCK_LOST_GENERATOR: u32 = 0xF7;
+pub const STOCK_STEAL_START_GENERATOR: u32 = 0xFC;
+pub const STOCK_STEAL_END_GENERATOR: u32 = 0xFF;
+
+/// What one stock HUD proc did: particles in call order, and a thief whose
+/// stock landed (its x204.flag set again).
+pub struct StockTick {
+    pub particles: [Option<(u32, hsd_types::Vec3)>; 7],
+    pub landed: [Option<u8>; 2],
+}
+
+/// lbVector_8000DE38 (8000DE38) for one axis: the quadratic through
+/// `start`, `mid` and `end` at `t` (clamped to 0..1), as retail fuses it.
+pub fn steal_curve(start: f32, mid: f32, end: f32, t: f32) -> f32 {
+    use gekko_math::fma::{fmadds, fmsubs};
+    // Retail's two fcmpo tests in order (a NaN passes through).
+    #[allow(clippy::manual_clamp)]
+    let t = if t > 1.0 {
+        1.0
+    } else if t < 0.0 {
+        0.0
+    } else {
+        t
+    };
+    let four_mid = 4.0 * mid;
+    // 8000DE78 fmsubs, 8000DE7C fmadds, 8000DE80 fmadds, 8000DE84 fsubs.
+    let a = fmadds(2.0, end, fmsubs(2.0, start, four_mid));
+    let b = fmadds(-3.0, start, four_mid) - end;
+    // 8000DE88/8C fmuls, 8000DE90 fmadds, 8000DE94 fadds.
+    start + fmadds(t, a * t, b * t)
+}
+
 impl StockDisplay {
-    pub fn tick(&mut self, stocks: u8) -> impl Iterator<Item = hsd_types::Vec3> {
+    /// ifStock_802F7EFC (802F7EFC) on the donor's display, `donor_stocks`
+    /// before its loss: the stolen icon's flight toward `thief`'s HUD,
+    /// whose display is `to`. False when both flight slots are busy (it
+    /// returns 2 and the steal does not happen).
+    pub fn begin_steal(&mut self, donor_stocks: u8, thief: u8, thief_stocks: u8, to: &Self) -> bool {
+        use hsd_types::Vec3;
+        let Some(index) = self.steals.iter().position(Option::is_none) else {
+            return false;
+        };
+        // The icon that goes does not explode (x0[stocks + 4] = 10).
+        if (1..=5).contains(&donor_stocks) {
+            self.animation_frames[usize::from(donor_stocks) - 1] = 10;
+        }
+        let from_icon = if (1..=5).contains(&donor_stocks) {
+            usize::from(donor_stocks)
+        } else {
+            1
+        };
+        let local = self.icon_locals[from_icon - 1];
+        let start = Vec3::new(
+            local.x + self.root.x,
+            local.y + self.root.y,
+            local.z + self.root.z,
+        );
+        let j = if thief_stocks > 0 && thief_stocks < 5 {
+            f32::from(thief_stocks)
+        } else {
+            0.0
+        };
+        let first = to.icon_locals[0];
+        // retail 802F8224: fmadds (2.4f * j + root.x), then fadds.
+        let end = Vec3::new(
+            first.x + gekko_math::fma::fmadds(2.4, j, to.root.x),
+            start.y,
+            first.z + to.root.z,
+        );
+        let mid = Vec3::new(0.5 * (end.x + start.x), 10.0 + start.y, 0.5 * (end.z + start.z));
+        self.steals[index] = Some(StockSteal {
+            start,
+            mid,
+            end,
+            thief,
+            frame: 1,
+        });
+        true
+    }
+
+    pub fn tick(&mut self, stocks: u8) -> StockTick {
         assert!(
             stocks <= 5,
             "ifStock_802F8298: numeric stock count above five"
         );
         // At most one loss effect per icon; preserve slot order without allocating.
-        let mut effects = [None; 5];
+        let mut effects = [None; 7];
+        let mut landed = [None; 2];
         for (i, frame) in self.animation_frames.iter_mut().enumerate() {
             if i < usize::from(stocks) {
                 *frame = if self.animate_losses { 0 } else { 10 };
@@ -120,14 +224,37 @@ impl StockDisplay {
                     *frame = 10;
                 }
                 if *frame == 0 {
-                    effects[i] = Some(self.icon_positions[i]);
+                    effects[i] = Some((STOCK_LOST_GENERATOR, self.icon_positions[i]));
                 }
                 if *frame < 10 {
                     *frame += 1;
                 }
             }
         }
-        effects.into_iter().flatten()
+        // The stolen stocks' flights (anim[5], anim[6]).
+        for (slot, steal) in self.steals.iter_mut().enumerate() {
+            let Some(flight) = steal else { continue };
+            if flight.frame > 10 {
+                landed[slot] = Some(flight.thief);
+                *steal = None;
+                continue;
+            }
+            let t = 0.1 * f32::from(flight.frame);
+            let z = steal_curve(flight.start.z, flight.mid.z, flight.end.z, t) - self.root.z;
+            let at = match flight.frame {
+                1 => Some((STOCK_STEAL_START_GENERATOR, flight.start)),
+                10 => Some((STOCK_STEAL_END_GENERATOR, flight.end)),
+                _ => None,
+            };
+            if let Some((generator, point)) = at {
+                effects[5 + slot] = Some((generator, hsd_types::Vec3::new(point.x, point.y, z)));
+            }
+            flight.frame += 1;
+        }
+        StockTick {
+            particles: effects,
+            landed,
+        }
     }
 }
 

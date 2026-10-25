@@ -1177,8 +1177,31 @@ impl FighterCore {
         self.player.falls += 1;
         self.combat.stale.reset_table();
         if !self.player.secondary {
-            self.player.stocks = self.player.stocks.saturating_sub(1);
+            if self.player.stock_match() {
+                self.player.stocks = self.player.stocks.saturating_sub(1);
+            }
             self.fall_credit = self.combat.ko_source.player;
+            // Player_UpdateKOsBySlot always tells the HUD; for a fall no
+            // player is credited with (x18C4 == 6), Player_IncSuicideCount
+            // does below its 0xFFFF cap. The HUD scores it in a Time match.
+            let reported = match self.fall_credit {
+                Some(_) => true,
+                None => {
+                    let counted = self.player.self_destructs < 0xFFFF;
+                    if counted {
+                        self.player.self_destructs += 1;
+                    }
+                    counted
+                }
+            };
+            // ifStatus_TriggerStockLoss: no score popups in a stock match.
+            if reported && !self.player.stock_match() {
+                self.effects_after_items
+                    .push(EffectRequest::Score(melee_ef::score_popups::Fall {
+                        fallen: self.player.id,
+                        by: self.fall_credit,
+                    }));
+            }
         }
         self.fell = true;
     }

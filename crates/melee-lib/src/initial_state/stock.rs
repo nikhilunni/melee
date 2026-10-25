@@ -61,10 +61,18 @@ pub(super) fn create(
                 local.z + root_position.z,
             )
         });
+        // ifStock_802F7EFC poses an icon at frame 0 (HSD_JObjReqAnimAll,
+        // HSD_JObjAnimAll) before it reads a stolen stock's path.
+        tree.req_anim_all(root, 0.0);
+        tree.anim_all::<RetailTrig>(root);
+        let icon_locals = std::array::from_fn(|i| tree.get(tree.bone(root, i + 1).unwrap()).translate);
         *display = Some(StockDisplay {
             icon_positions,
             animation_frames: frames,
             animate_losses: true,
+            root: tree.get(root).translate,
+            icon_locals,
+            steals: [None; 2],
         });
     }
     Ok(displays)

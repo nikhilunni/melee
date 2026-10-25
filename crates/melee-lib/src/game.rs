@@ -103,6 +103,12 @@ impl Match {
                     team: f.player.team,
                     cpu_level: (f.player.control == melee_types::PlayerKind::Cpu)
                         .then_some(f.player.cpu_level as u8),
+                    handicap: crate::setup::HANDICAP_RATIOS
+                        .iter()
+                        .position(|&(attack, defense)| {
+                            (attack, defense) == (f.player.attack_ratio, f.player.defense_ratio)
+                        })
+                        .map(|i| i as u8 + 1),
                 }
             })
             .collect();
@@ -111,6 +117,7 @@ impl Match {
             .with_seed(Seed(setup.seed.unwrap_or(0)));
         config.rules.friendly_fire = engine.state().player_fighter(0).0.player.friendly_fire;
         config.rules.items = engine.state().item_rules;
+        config.rules.mode = engine.state().clock.scoring.match_kind;
         let assets = GameAssets {
             inner: Arc::clone(&engine.state().assets),
             stage,
@@ -157,7 +164,24 @@ impl Match {
         }))
         .map_err(|p| StartError::Initialization(panic_message(p)))?
         .map_err(|e| StartError::Initialization(format!("{e:#}")))?;
+        // gm_SetupSuddenDeath: only the winners play on (the others' slots
+        // go to Gm_PKind_NA).
+        if self.config.rules.mode == crate::MatchKind::Time {
+            let state = self.engine.state();
+            let ranks = crate::standings::time_ranks(
+                &crate::standings::current(state),
+                state.clock.scoring.self_destruct_penalty,
+            );
+            if (0..self.config.players.len())
+                .any(|p| ranks[usize::from(state.player_fighter(p).0.player.id)] != 0)
+            {
+                return Err(StartError::InvalidConfig(
+                    "a Sudden Death without every player needs a retail witness",
+                ));
+            }
+        }
         let mut config = self.config.clone();
+        config.rules.mode = crate::MatchKind::Stock;
         config.rules.stocks = 1;
         config.rules.time_limit_seconds = None;
         config.rules.sudden_death = true;
@@ -250,8 +274,33 @@ impl Match {
         if self.engine.state().clock.timed_out() {
             // Imported countdown matches can reach an unwitnessed team result.
             // Never rank their players independently as a singles timeout.
-            if fighters().next().is_some_and(|f| f.player.team.is_some()) {
+            let time_match = state.clock.scoring.match_kind == crate::MatchKind::Time;
+            if !time_match && fighters().next().is_some_and(|f| f.player.team.is_some()) {
                 return MatchStatus::Faulted;
+            }
+            // A Time match ranks scores (gm_80166378); more than one
+            // winner goes to Sudden Death (gmVsMelee_ExitVs).
+            if time_match {
+                let ranks = crate::standings::time_ranks(
+                    &crate::standings::current(state),
+                    state.clock.scoring.self_destruct_penalty,
+                );
+                // A team battle ranks teams (fn_80165FA4): a lone top team wins.
+                if fighters().next().is_some_and(|f| f.player.team.is_some()) {
+                    let mut top = fighters()
+                        .filter(|f| ranks[usize::from(f.player.id)] == 0)
+                        .filter_map(|f| f.player.team);
+                    let first = top.next();
+                    return MatchStatus::Finished(match first {
+                        Some(team) if top.all(|t| t == team) => MatchOutcome::TeamWinner(team),
+                        _ => MatchOutcome::SuddenDeath,
+                    });
+                }
+                let mut winners = fighters().filter(|f| ranks[usize::from(f.player.id)] == 0);
+                return MatchStatus::Finished(match (winners.next(), winners.next()) {
+                    (Some(winner), None) => MatchOutcome::Winner(port(winner)),
+                    _ => MatchOutcome::SuddenDeath,
+                });
             }
             // The results screen ranks a timed-out stock match by stocks;
             // a tie for the most goes to Sudden Death.

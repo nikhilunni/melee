@@ -37,14 +37,28 @@ pub(crate) struct SavedRules {
     pub teams: bool,
     /// +1 bit 0, friendly_fire (gm_8016B0D4: lbz 0x24C9; clrlwi 31).
     pub friendly_fire: bool,
+    /// +0 bits 7-5, match_kind (gm_8016B094: lbz 0x24C8; rlwinm 27,29,31).
+    pub match_kind: melee_types::MatchKind,
+    /// +0xC, the self-destruct penalty (gm_8016AEC8): 0, -1 or -2.
+    pub self_destruct_penalty: i8,
+    /// +0x30, the Damage Ratio rule (gm_8016B248).
+    pub knockback_ratio: f32,
+}
+/// Every slot's Player_GetAttackRatio (StaticPlayer +54, stride 0xE90).
+pub(crate) fn saved_attack_ratios(saved: &saved_pose::SavedPose) -> [f32; 6] {
+    std::array::from_fn(|slot| float(saved.bytes(0x8045_3080 + slot as u32 * 0xE90 + 0x54, 4), 0))
 }
 impl SavedRules {
     const ADDRESS: u32 = 0x8046_B6A0 + 0x24C8;
     pub(crate) fn read(saved: &saved_pose::SavedPose) -> Self {
-        let rules = saved.bytes(Self::ADDRESS, 9);
+        let rules = saved.bytes(Self::ADDRESS, 0x34);
         Self {
             teams: rules[8] == 1,
             friendly_fire: rules[1] & 1 != 0,
+            match_kind: melee_types::MatchKind::try_from(i32::from(rules[0] >> 5))
+                .unwrap_or_else(|_| unimplemented!("match_kind {}", rules[0] >> 5)),
+            self_destruct_penalty: rules[0xC] as i8,
+            knockback_ratio: float(rules, 0x30),
         }
     }
 }
@@ -138,6 +152,22 @@ pub struct InitialState {
     /// The dynamics field pool (lb_804D63B0) as the stage's creation or the
     /// saved boundary left it; the runtime owns it from the first tick.
     pub(crate) radial_forces: melee_lb::radial_force::RadialForces,
+}
+/// The HUD's score popups (if_2F72.c) for a match with these rules: a
+/// Versus match shows them unless it is a stock match (x2_5, which
+/// gm_SetupSuddenDeath clears).
+pub(crate) fn score_popups(
+    scoring: crate::match_clock::Scoring,
+    sudden_death: bool,
+    players: impl Iterator<Item = (u8, Option<u8>)>,
+) -> melee_ef::score_popups::ScorePopups {
+    let mut popups = melee_ef::score_popups::ScorePopups::default();
+    popups.enabled = scoring.match_kind != melee_types::MatchKind::Stock && !sudden_death;
+    popups.self_destruct_penalty = scoring.self_destruct_penalty;
+    for (slot, team) in players {
+        popups.teams[usize::from(slot)] = team;
+    }
+    popups
 }
 /// gm_8016AE94 for a Versus match (lbl_8046B6A0.unk_34, gm_16AE.c
 /// get_unk_float): the random items' weight scale by player count
@@ -431,6 +461,16 @@ impl InitialState {
                 let team = saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x47, 1)[0];
                 f.player.team = rules.teams.then_some(team);
                 f.player.friendly_fire = rules.friendly_fire;
+                f.player.match_kind = rules.match_kind;
+                // Player_GetAttackRatio / Player_GetDefenseRatio: +54, +58.
+                let ratios = saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x54, 8);
+                f.player.attack_ratio = float(ratios, 0);
+                f.player.defense_ratio = float(ratios, 4);
+                f.player.knockback_ratio = rules.knockback_ratio;
+                f.player.attack_ratios = saved_attack_ratios(&saved);
+                // Player_GetSuicideCount: StaticPlayer +8C.
+                let sd = saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8C, 2);
+                f.player.self_destructs = u32::from(u16::from_be_bytes([sd[0], sd[1]]));
                 // Player_GetStocks, StaticPlayer stride 0xE90.
                 f.player.stocks =
                     saved.bytes(0x8045_3080 + u32::from(f.player.id) * 0xE90 + 0x8E, 1)[0];
@@ -446,6 +486,47 @@ impl InitialState {
         // fighter linked its subject at creation (fighter.c:893). A fighter the
         // setup resume creates keeps the subject its spawn reset.
         let (clock, bomb_rain) = scene_flow::restore_clock(&saved)?;
+        ensure!(
+            clock.scoring.match_kind == setup.mode,
+            "the scenario names a {:?} match, the savestate runs {:?}",
+            setup.mode,
+            clock.scoring.match_kind
+        );
+        // gm_1A3F.c state_machine (0x80479D30) curr_mode: the Special Melee
+        // modes (Stamina, Giant, Tiny, Invisible, Super Sudden Death,
+        // Lightning, Slo-Mo, Camera, Single Button, Fixed Camera) are major
+        // scenes of their own, with rules the VS scene never sets.
+        const GM_VS: u8 = 2;
+        let major = saved.bytes(0x8047_9D30, 1)[0];
+        if major != GM_VS {
+            unimplemented!("GameModeKind {major:#x}: a Special Melee mode needs a retail witness");
+        }
+        let rules = SavedRules::read(&saved);
+        ensure!(
+            rules.knockback_ratio == setup.damage_ratio,
+            "the scenario names damage ratio {}, the savestate runs {}",
+            setup.damage_ratio,
+            rules.knockback_ratio
+        );
+        for player in &setup.fighters {
+            let saved_ratios = saved.bytes(0x8045_3080 + u32::from(player.slot) * 0xE90 + 0x54, 8);
+            let saved_ratios = (float(saved_ratios, 0), float(saved_ratios, 4));
+            ensure!(
+                saved_ratios == player.handicap_ratios(),
+                "port {}: the scenario's handicap gives ratios {:?}, the savestate runs {saved_ratios:?}",
+                player.slot,
+                player.handicap_ratios()
+            );
+        }
+        if matches!(
+            clock.scoring.match_kind,
+            melee_types::MatchKind::Coin | melee_types::MatchKind::Bonus
+        ) {
+            unimplemented!(
+                "gm_8016B0B4: a {:?} match (coins, bonus points) needs a retail witness",
+                clock.scoring.match_kind
+            );
+        }
         let (mut camera, subjects) = camera::restore(&saved)?;
         camera.screen = setup.slippi.screen;
         ensure!(
@@ -614,10 +695,19 @@ impl InitialState {
                 &players.iter().map(|p| p.1).collect::<Vec<_>>(),
             )?
         } else {
+            // The icons' frame-0 poses a stolen stock's path reads, from the
+            // HUD as the match created it.
+            let created = stock::create(
+                &assets.interface,
+                &players.iter().map(|_| 0).collect::<Vec<_>>(),
+                &players.iter().map(|&(_, port)| port).collect::<Vec<_>>(),
+            )?;
             // ifStock_804A1378 keeps one record per port.
             players
                 .iter()
-                .map(|&(_, port)| {
+                .zip(created)
+                .map(|(&(_, port), created)| {
+                    let created = created.expect("a created stock display");
                     let slot = u32::from(port);
                     let player = saved.bytes(0x804A_1378 + 8 + slot * 0x50, 0x50);
                     let state = saved.bytes(0x804A_1378 + 0x204 + slot * 0x54, 12);
@@ -626,10 +716,17 @@ impl InitialState {
                         let local = vector(saved.bytes(word(player, 8 + i * 4) + 0x38, 12), 0);
                         Vec3::new(local.x + root.x, local.y + root.y, local.z + root.z)
                     });
+                    // anim[5..7]: a stolen stock in flight.
+                    if state[10] != 0 || state[11] != 0 {
+                        unimplemented!("ifStock_802F8298: a stolen stock in flight at a boundary");
+                    }
                     Some(melee_if::StockDisplay {
                         icon_positions,
                         animation_frames: state[5..10].try_into().unwrap(),
                         animate_losses: state[2] != 0,
+                        root: created.root,
+                        icon_locals: created.icon_locals,
+                        steals: [None; 2],
                     })
                 })
                 .collect()
@@ -646,6 +743,11 @@ impl InitialState {
         let rendered_camera = camera.render_camera(&assets.stage_camera);
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
+        effects.score_popups = score_popups(
+            clock.scoring,
+            clock.sudden_death,
+            fighters.iter().map(|f| (f.player.id, f.player.team)),
+        );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
         if matches!(stage, crate::scene_stage::SceneStage::Garden(_)) {
             // The Klaptrap's idle material item, rebuilt on its jaw.

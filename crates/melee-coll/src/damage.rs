@@ -13,6 +13,29 @@ pub struct ReceivedHit {
     /// logged damage (dmg.x1838_percentTemp) for hits, the throw's damage.
     pub percent_damage: f32,
 }
+/// The three ratios ftColl_80079AB0 scales a launch by: the match's damage
+/// ratio (StartMeleeRules x30, gm_8016B248), the attacker's handicap attack
+/// ratio and the victim's defense ratio (Player_GetAttackRatio,
+/// Player_GetDefenseRatio). All three are 1.0 in an ordinary Versus match.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct KnockbackRatios {
+    pub stage: f32,
+    pub attack: f32,
+    pub defense: f32,
+}
+impl KnockbackRatios {
+    /// ftColl_80079EA8: no ratios.
+    pub const NONE: Self = Self {
+        stage: 1.0,
+        attack: 1.0,
+        defense: 1.0,
+    };
+    /// retail 80079B58-80079B60 (and 80079D6C-74 in ftColl_80079C70): three
+    /// separate fmuls after the formula, stage first, before the cap.
+    pub fn apply(self, knockback: f32) -> f32 {
+        self.defense * (self.attack * (self.stage * knockback))
+    }
+}
 pub struct KnockbackParameters {
     pub weight_scale: f32,
     pub weight_decay: f32,
@@ -26,7 +49,13 @@ pub struct KnockbackParameters {
 impl KnockbackParameters {
     /// ftColl_80079AB0 (80079AB0), ordinary Vs 1.0 attack/defense/stage ratios.
     pub fn knockback(&self, hit: &HitboxDescriptor, percent: f32, weight: f32) -> f32 {
-        self.knockback_with_damage(hit, percent, weight, fctiwz(hit.damage) as u32)
+        self.knockback_with_damage(
+            hit,
+            percent,
+            weight,
+            fctiwz(hit.damage) as u32,
+            KnockbackRatios::NONE,
+        )
     }
     /// ftColl_80079AB0: the logged damage count precedes stale scaling.
     pub fn knockback_with_damage(
@@ -35,8 +64,9 @@ impl KnockbackParameters {
         percent: f32,
         weight: f32,
         damage: u32,
+        ratios: KnockbackRatios,
     ) -> f32 {
-        self.knockback_for_frame(hit, percent, hit.damage, weight, damage)
+        self.knockback_for_frame(hit, percent, hit.damage, weight, damage, ratios)
     }
     /// ftColl_80079AB0 in a damage log: the percent term is the victim's
     /// damage count plus every hit logged this frame (dmg.x1838_percentTemp).
@@ -47,6 +77,7 @@ impl KnockbackParameters {
         frame_damage: f32,
         weight: f32,
         damage: u32,
+        ratios: KnockbackRatios,
     ) -> f32 {
         let w = weight * self.weight_scale;
         let factor = self.weight_decay - (w * self.weight_decay) / (1.0 + w);
@@ -59,11 +90,11 @@ impl KnockbackParameters {
         let inner = fmadds(self.percent_scale, p, self.damage_scale * (d * p));
         // retail 80079C40/C44 (fixed: 9B50/9B54).
         let scaled = fmadds(self.growth_scale, factor * inner, self.base);
-        let result = fmadds(
+        let result = ratios.apply(fmadds(
             0.01 * f32::from(hit.growth),
             scaled,
             f32::from(hit.base_knockback),
-        );
+        ));
         if result >= self.maximum {
             self.maximum
         } else {

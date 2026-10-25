@@ -234,6 +234,14 @@ impl InitialState {
         ));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
+        effects.score_popups = super::score_popups(
+            crate::match_clock::Scoring {
+                match_kind: scenario.mode,
+                ..Default::default()
+            },
+            scenario.sudden_death,
+            scenario.fighters.iter().map(|f| (f.slot, f.team)),
+        );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
         if matches!(stage, SceneStage::Garden(_)) {
             // grGarden_802031A4: the Klaptrap's material item on its jaw.
@@ -276,6 +284,10 @@ impl InitialState {
                 timer: scenario
                     .time_limit
                     .map(crate::match_clock::CountdownTimer::start),
+                scoring: crate::match_clock::Scoring {
+                    match_kind: scenario.mode,
+                    ..Default::default()
+                },
                 ..Default::default()
             },
             bomb_rain: Default::default(),
@@ -790,6 +802,18 @@ fn create_players(
             cpu_level: i32::from(scenario.fighters[p].cpu_level.unwrap_or(1)),
             team: scenario.fighters[p].team,
             friendly_fire: scenario.friendly_fire,
+            match_kind: scenario.mode,
+            self_destructs: 0,
+            attack_ratio: scenario.fighters[p].handicap_ratios().0,
+            defense_ratio: scenario.fighters[p].handicap_ratios().1,
+            knockback_ratio: scenario.damage_ratio,
+            attack_ratios: {
+                let mut ratios = [1.0; 6];
+                for f in &scenario.fighters {
+                    ratios[usize::from(f.slot)] = f.handicap_ratios().0;
+                }
+                ratios
+            },
         };
         let context = SpawnContext {
             map: &mut *map,

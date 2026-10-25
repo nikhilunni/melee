@@ -84,6 +84,7 @@ fn item_ordinary_early_returns_refuse_pending_phantoms_before_response_mutation(
         knockback_damage: 1,
         damage: 1.0,
         effect_damage: 1.0,
+        attack_ratio: 1.0,
     };
     // A resolved older phantom is independent of this frame's pending log.
     let old_phantom = melee_ft::fighter::damage::PhantomHit {

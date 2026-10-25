@@ -69,6 +69,10 @@ pub struct LoggedHit {
     /// DmgLogEntry.x20: the damage the entry's hit effect receives. Items
     /// report their hitbox damage before a captured victim's scaling.
     pub effect_damage: f32,
+    /// ftColl_8007A06C's attack ratio for the entry: the attacking
+    /// fighter's (Player_GetAttackRatio), an item's fighter owner's
+    /// (ftLib_80086960), else 1.0.
+    pub attack_ratio: f32,
 }
 
 /// A fixed-capacity damage log.
@@ -156,6 +160,7 @@ mod tests {
             knockback_damage: damage as u32,
             damage,
             effect_damage: damage,
+            attack_ratio: 1.0,
         }
     }
 
