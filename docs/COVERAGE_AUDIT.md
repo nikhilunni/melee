@@ -495,3 +495,20 @@ Nana/Popo fallback, prior borrowed commands and the demo no-Input/link3 fence
 are documented in [the proof](PORT_NOTES/SWING42_COMMAND_OWNER_INVARIANT.md).
 Custom or corrupted state still panics; unsupported item kinds remain guarded.
 No gameplay, function-count or recording gain is claimed.
+
+
+### Original common S4 followup ownership invariant (wave24)
+
+`fighter/attack.rs` keeps the missing static Smash42 capability as an explicit
+invariant panic matching retail800CED8C. No input ordering or gameplay is
+changed. All165 common S4 submotion graphs60..64 across33 ordinary command
+owners have exactly three positive var0 writers: Link, YoungLink and Ness.
+Ness's positive belongs to its own private bat IASA; only Link/YoungLink's
+common-S4 callbacks can request the existing private341 followup. The typed
+asset test retains the separate25 copy roots and the earlier Swing42 proof.
+The full1132C+3header producer, borrowed-script, mode/demo,18outgoing-hook and
+365writer closure is recorded in
+[the proof](PORT_NOTES/SMASH42_COMMAND_OWNER_INVARIANT.md). Malformed/custom
+state still fails loudly. The existing common IASA prefix-order difference
+is explicitly retained; no full IASA parity or new function/gameplay gain is
+claimed.

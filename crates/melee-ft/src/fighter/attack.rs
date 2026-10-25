@@ -590,7 +590,9 @@ impl Fighter {
     /// write no mv field, so mv+4 stays the first hit's.
     fn enter_forward_smash_combo(&mut self, assets: &FighterAssets) -> Result<()> {
         let Some(state) = self.character.table().forward_smash_combo else {
-            unimplemented!("ftCo_800CED30: don't have smash42 motion!!!");
+            // Retail800CED8C asserts here; all original common S4 command
+            // owners without this capability cannot request the followup.
+            unreachable!("ftCo_800CED30: retail S4 followup requires a static motion");
         };
         let retained_word = self.inherited_scratch_word();
         self.core.commands.allow_interrupt = false;
