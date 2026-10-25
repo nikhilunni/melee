@@ -49,10 +49,12 @@ and `docs/PORT_NOTES/`.
    measurement. Full-sweep/replay evidence and provenance are under
    `target/sweeps/58118743*`; completed worktrees have been removed.
    Performance budgets still require the user decision above.
-2. [ ] **Party Ball:** bounded FALL/REST from the existing left-facing
+2. [~] **Party Ball** (wave 16, 2026-10-24): bounded
+   FALL/REST from the existing left-facing
    600-tick capture, following the integrated Resume phase correction.
    Opening, contents and other unproved continuations remain guarded.
-3. [ ] **Kongo moving barrel:** restore the saved live AObj clock
+3. [~] **Kongo moving barrel** (wave 16, 2026-10-24): restore
+   the saved live AObj clock
    independently of the controller's future rate, then prove actual
    held-position and launch behavior against complete existing captures.
    Keep entry-only, second-live-log and other hazard limits explicit.
