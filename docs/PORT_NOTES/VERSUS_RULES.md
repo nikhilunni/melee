@@ -88,5 +88,15 @@ slomo, super_sudden_death, giant, tiny, invisible, single_button, and
 
 Coin and Bonus matches (`gm_8016B0B4`: coins from hits, the coin item, the
 coin HUD; boundary `start_fd_coin1_fox_marth`), the Special Melee modes
-above, a stock match's timed team ranking, and a Sudden Death among some
-players.
+above, and a Sudden Death among some players.
+
+## Standings and timed team battles
+
+`standings::ranks` is gm_80166378 for every mode the port plays: a stock
+match's score is the stocks left, or for an eliminated player its
+elimination second from 0xFF000001 (Player_UpdateMatchFrameCount, kept in
+`InitialState::eliminated_at`); a team battle ranks teams, fn_80165E7C
+combining a stock team's members (the best eliminated score until a member
+with stocks replaces it, then sums). Player_80033BB8 and the TIME! result
+both read it. Witness: `doubles_timeout_fd_fox_marth` (boundary
+`start_fd_doubles_timer1_fox_falco_marth_captainfalcon2`).

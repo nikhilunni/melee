@@ -996,7 +996,10 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 597] = [
+const MATRIX_WITNESSES: [(&str, usize); 598] = [
+    // A timed stock team battle to TIME!: teams ranked by fn_80165E7C's
+    // team scores (standings::ranks), no singles ranking.
+    ("doubles_timeout_fd_fox_marth", 3839),
     // A doubles stock steal (fn_8016B918): Fox out of stocks presses Start
     // and takes Marth's spare stock; the icon flies (ifStock_802F8298).
     ("teams_steal_fd_fox_marth", 1100),

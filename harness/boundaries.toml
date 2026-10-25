@@ -1701,3 +1701,14 @@ players = ["Fox", "Marth"]
 stocks = 4
 seed = 391077037
 special = "super-sudden-death"
+
+[[boundary]]
+name = "start_fd_doubles_timer1_fox_falco_marth_captainfalcon2"
+cold = "start_fd_doubles_timer1_fox_falco_marth_captainfalcon2_cold"
+savestate = "harness/roms/start_fd_doubles_timer1_fox_falco_marth_captainfalcon2.sav"
+stage = "FinalDestination"
+players = ["Fox", "Falco", "Marth", "CaptainFalcon"]
+stocks = 2
+seed = 3937887305
+teams = [0, 1, 0, 1]
+time_limit = 60
