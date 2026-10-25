@@ -98,14 +98,18 @@ pub const fn empty_row(action: u16, animation: i32, camera: CameraFn) -> MotionR
     }
 }
 
+#[inline(never)] // one definition: character rows point at it too
 fn empty_anim(_: &mut Fighter, _: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     Ok(None)
 }
 
+#[inline(never)]
 fn empty_iasa(_: &mut Fighter, _: InputPhase<'_>) {}
 
+#[inline(never)]
 fn empty_physics(_: &mut Fighter, _: PhysicsPhase<'_>) {}
 
+#[inline(never)]
 fn empty_collision(_: &mut Fighter, _: CollisionPhase<'_>) -> Result<()> {
     Ok(())
 }

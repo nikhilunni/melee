@@ -651,9 +651,11 @@ impl CommandState {
                     if !seeking {
                         // melee_cmd's decoder admits only 0..=6 and
                         // 10..=15, the three-word behaviors.
-                        let channel = SoundChannel::for_behavior(*behavior)
-                            .or_else(|| SoundChannel::stop_for_behavior(*behavior))
-                            .expect("decoded ftAction_80071B50 behavior");
+                        let channel = match SoundChannel::for_behavior(*behavior) {
+                            Some(channel) => Some(channel),
+                            None => SoundChannel::stop_for_behavior(*behavior),
+                        }
+                        .expect("decoded ftAction_80071B50 behavior");
                         let sound = FootstepSound {
                             channel,
                             id: *id,

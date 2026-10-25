@@ -52,6 +52,7 @@ pub fn cliff(fighter: &mut Fighter, mut phase: CameraPhase<'_>) {
 
 /// ftCo_DeadDown_Cam / DeadLeft_Cam / DeadRight_Cam: the subject stays where
 /// the fighter left the stage until the revival resets it.
+#[inline(never)] // one definition: character rows point at it too
 pub fn hold(_fighter: &mut Fighter, _phase: CameraPhase<'_>) {}
 
 /// ftCo_DeadUpStar_Cam / ftCo_DeadUpFall_Cam -> ftCamera_80076320

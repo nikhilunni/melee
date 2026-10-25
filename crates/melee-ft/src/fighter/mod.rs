@@ -187,7 +187,7 @@ pub trait CharacterCallbacks: Clone + Sized + Send + Sync + 'static {
     /// Character choices in ftCo_0A01.c / ftcpuattack.c, consumed as static data.
     const CPU_PROFILE: cpu_profile::CpuProfile = cpu_profile::CpuProfile::DEFAULT;
     /// A copied charged special whose CPU branch still needs a retail witness.
-    const CPU_COPIED_CHARGE: fn(&CharacterState) -> bool = |_| false;
+    const CPU_COPIED_CHARGE: fn(&CharacterState) -> bool = character::no_cpu_copied_charge;
 
     const TABLE: CharacterTable = CharacterTable::new::<Self>();
 

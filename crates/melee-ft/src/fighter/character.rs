@@ -641,6 +641,11 @@ pub(super) fn no_neutral_charge(_state: &CharacterState) -> super::NeutralCharge
 }
 
 #[inline(never)]
+pub(super) fn no_cpu_copied_charge(_state: &CharacterState) -> bool {
+    false
+}
+
+#[inline(never)]
 pub(super) fn no_copied_ability(_state: &CharacterState) -> Option<melee_types::FighterKind> {
     None
 }
