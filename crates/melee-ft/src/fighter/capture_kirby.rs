@@ -517,6 +517,9 @@ fn escape(
     victim.skeleton.set_scale(root, &scale);
     // ftCo_800DC920(captor, victim).
     captor.combat.grab = None;
+    // The scale write above may dirty XRotN after the scene observation.
+    // Resolve its live RObj target at ftCo_800DC920's actual matrix query.
+    super::grab_throw::refresh_constraint(victim, captor, victim_assets, captor_assets);
     super::grab_damage::release_thrown(captor, victim, victim_assets, map);
     victim.combat.grab = None;
     let position = victim.physics.position;

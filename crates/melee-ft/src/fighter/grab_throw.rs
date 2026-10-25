@@ -261,6 +261,35 @@ pub fn update_constraint(
     va: &FighterAssets,
     aa: &FighterAssets,
 ) {
+    let (xrot, target) = constraint_target(victim, attacker, va, aa);
+    victim.skeleton.set_position_constraint(xrot, Some(target));
+}
+
+/// Observe an external RObj target at a scene or actual matrix-query boundary.
+/// This does not attach a dependency or invalidate the owner's pose.
+pub fn refresh_constraint(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+) {
+    let xrot =
+        victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
+    // lb_8000B1CC returns a clean owner's cached matrix before traversing
+    // its RObj target. Sampling that target itself can rebuild its cache.
+    if !victim.skeleton.mtx_is_dirty(xrot) {
+        return;
+    }
+    let (_, target) = constraint_target(victim, attacker, va, aa);
+    victim.skeleton.refresh_position_constraint(xrot, target);
+}
+
+fn constraint_target(
+    victim: &mut FighterCore,
+    attacker: &mut FighterCore,
+    va: &FighterAssets,
+    aa: &FighterAssets,
+) -> (hsd_anim::jobj::JObjId, Vec3) {
     let target = bone_position(
         &mut attacker.skeleton,
         attacker.animation.root,
@@ -269,7 +298,7 @@ pub fn update_constraint(
     );
     let xrot =
         victim.animation.parts[usize::from(va.parts.joint(FtPart::XRotN).expect("XRotN"))].joint;
-    victim.skeleton.set_position_constraint(xrot, Some(target));
+    (xrot, target)
 }
 
 impl FighterCore {

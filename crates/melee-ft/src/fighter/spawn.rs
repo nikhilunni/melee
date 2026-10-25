@@ -1796,6 +1796,9 @@ impl FighterCore {
         // The entry step/seek/control batch calls ftCo_800BFFD0 as its
         // commands run. Publish those installs without an extra color step.
         self.install_requested_color_overlays(assets);
+        // fighter.c:1295..1349 / efAsync_Spawn (800676F0): its immediate
+        // branch80067938..68 reads the joint before a caller's attachment.
+        self.capture_issued_joints(assets);
         // A frame-zero set ground/air command takes effect inside the entry.
         self.apply_airborne_commands();
         self.apply_dynamic_commands(assets);

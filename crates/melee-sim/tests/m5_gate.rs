@@ -135,7 +135,8 @@ fn combat_gate_ticks_with_ledger(name: &str, ticks: usize, ledger_suffix: &str) 
         || name.starts_with("mewtwo_")
         || matches!(
             name,
-            "illusion_start_landing_fd_fox"
+            "kirby_inhale_randall_pit_ys_fox4"
+                | "illusion_start_landing_fd_fox"
                 | "laser_fd_fox"
                 | "laser_shield_fd_marth"
                 | "laser_lightshield_fd_marth"
@@ -2660,6 +2661,8 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     // Neither lets go: Fox, pinned in Kirby's mouth, crosses the blast zone
     // first (ftCo_800DD100 on the dying fighter), then Kirby.
     ("kirby_mouthful_edge_death_fd_fox4", 900),
+    // The constrained victim is released against the wall before DeadDown.
+    ("kirby_inhale_randall_pit_ys_fox4", 1500),
     // With Fox's ability: each of his two down smashes draws for its loss
     // (ftKb_SpecialN_800F5BA4), neither takes it; the bare midair jumps and
     // a ledge with the ability. Three lasers, damage without knockback:
@@ -6859,6 +6862,85 @@ fn barrel_drop_retains_item_script_full_fields_particles_and_ordered_rng() {
                 simulation.tick().unwrap().state["rng.seed"],
                 melee_diff::Value::UInt(expected),
                 "{name} tick {tick}: full ledger draw count and final seed"
+            );
+        }
+    }
+}
+
+#[test]
+fn pinned_mouth_victim_bottom_death_full_capture_and_rng() {
+    complete_rng_ledger_gate("kirby_inhale_randall_pit_ys_fox4", 1500);
+}
+
+/// Immediate Catch graphics read the joint before a grounded Dive attachment;
+/// the later CBeam contact must still damage Falcon and release the pair.
+#[test]
+fn immediate_capture_entry_graphics_preserve_linked_item_damage() {
+    for (name, ticks) in [
+        ("corpus_v3_fd_kirby_captainfalcon4_e1cda1301_p1", 4097),
+        ("corpus_v3_fd_kirby_captainfalcon4_e2798fef9_p2", 3501),
+    ] {
+        if combat_gate_ticks(name, ticks).is_none() {
+            continue;
+        }
+        let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join(format!("../../harness/scenarios/{name}.toml"));
+        let scenario = Scenario::load(&path).unwrap();
+        assert_eq!(
+            scenario.savestate.as_deref(),
+            Some(Path::new("harness/roms/start_fd_kirby_captainfalcon4.sav"))
+        );
+        assert!(!scenario.is_cold());
+        assert!(scenario.boundary_seed.is_none() && scenario.online_rng_offset.is_none());
+        // `seed` is cold-only. These warm captures resume the independently
+        // sampled savestate seed; no setup override replaces it.
+        let initial_path = scenario.boundary_path("particles.jsonl.initial.jsonl");
+        assert_eq!(
+            initial_path.file_name().unwrap(),
+            "start_fd_kirby_captainfalcon4.particles.jsonl.initial.jsonl"
+        );
+        let initial = melee_test_support::trace::read_to_string(&initial_path).unwrap();
+        let initial: melee_diff::Record =
+            serde_json::from_str(initial.lines().next().unwrap()).unwrap();
+        assert_eq!(
+            initial.state["rng.seed"],
+            melee_diff::Value::UInt(4_055_080_798)
+        );
+        // InitialState independently validates this sample against the
+        // savestate sidecar, metadata and saved RAM seed (804D5F90).
+        let mut rng = gekko_math::HsdRng::new(4_055_080_798);
+        let ledger = scenario.trace_path("ledger.raw.jsonl");
+        let rows = melee_test_support::trace::read_to_string(&ledger).unwrap();
+        assert_eq!(rows.lines().count(), ticks);
+        let mut simulation = trace::simulation_displayed_as(&scenario, &ledger).unwrap();
+        for (tick, line) in rows.lines().enumerate() {
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"], tick);
+            assert_eq!(row["phase"], "frame_end");
+            let draws = row["rng_draws"].as_array().unwrap();
+            if tick == 0 {
+                assert_eq!(
+                    draws.len(),
+                    1,
+                    "the imported partial tick still runs its final retail draw"
+                );
+                assert_eq!(draws[0]["seed"], 3_212_490_921_u32);
+                assert_eq!(row["seed"], 3_212_490_921_u32);
+            }
+            for draw in draws {
+                rng.rand();
+                assert_eq!(
+                    u64::from(rng.seed),
+                    draw["seed"].as_u64().unwrap(),
+                    "{name} raw LCG tick{tick}"
+                );
+            }
+            assert_eq!(u64::from(rng.seed), row["seed"].as_u64().unwrap());
+            let actual = simulation.tick().unwrap();
+            assert_eq!(
+                actual.state["rng.seed"],
+                melee_diff::Value::UInt(u64::from(rng.seed)),
+                "{name} ledger cadence tick{tick}"
             );
         }
     }

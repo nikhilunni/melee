@@ -1229,7 +1229,7 @@ impl Runtime {
                 // rebuilt; the captor may have moved since the holder's last
                 // proc refreshed it.
                 if let Some(index) = holder_index {
-                    grab_pairs::constrain(state, index);
+                    grab_pairs::refresh_constraint(state, index);
                 }
                 let partner =
                     crate::scene_items::partner_view(&state.items, &state.assets.items, id);
@@ -1717,7 +1717,7 @@ impl Runtime {
                             None);
                     }
                 }
-                grab_pairs::constrain(state, player);
+                grab_pairs::refresh_constraint(state, player);
                 if proc == FighterProc::Animation {
                     grab_pairs::offer_carrier_ground(state, player);
                     if state.offscreen_damage_by_camera_limits {
@@ -1945,7 +1945,23 @@ impl Runtime {
                 if cpu_driven {
                     crate::cpu::think(state, player);
                 } else {
-                    crate::scene_fighter::with_fighter!(&mut state.fighters[player], |f| {
+                    let death_partner = (proc == FighterProc::Update)
+                        .then(|| state.fighters[player].thrown_by())
+                        .flatten()
+                        .map(|spawn| {
+                            state
+                                .fighters
+                                .iter()
+                                .position(|f| f.spawn_number == spawn)
+                                .expect("pinned captor")
+                        });
+                    let (fighter, peer) = if let Some(other) = death_partner {
+                        let (fighter, peer) = grab_pairs::pair(&mut state.fighters, player, other);
+                        (fighter, Some((&mut **peer.0, &assets.fighters[other])))
+                    } else {
+                        (&mut state.fighters[player], None)
+                    };
+                    crate::scene_fighter::with_fighter!(fighter, |f| {
                         let f: &mut melee_ft::fighter::Fighter = f;
                         if let Continuation::Animation {
                             restart,
@@ -1999,6 +2015,7 @@ impl Runtime {
                                 &mut state.rng,
                                 &mut self.radial_forces,
                                 wind,
+                                peer,
                             )
                         }
                     })?;
@@ -3652,9 +3669,11 @@ impl Simulation {
                                 SceneStage::Stadium(_) => {
                                     melee_gr::stadium::procs::map_callback(map)
                                 }
-                                SceneStage::Kongo(_) => melee_gr::kongo::procs::map_callback(map)
-                                    .expect("an event map's gobj proc")
-                                    .1,
+                                SceneStage::Kongo(_) => {
+                                    melee_gr::kongo::procs::map_callback(map)
+                                        .expect("an event map's gobj proc")
+                                        .1
+                                }
                                 _ => melee_gr::last::procs::map_callback(map),
                             },
                         },
@@ -4252,6 +4271,10 @@ fn dispatch_fighter(
     rng: &mut gekko_math::HsdRng,
     radial_forces: &mut melee_lb::radial_force::RadialForces,
     wind: melee_gr::wind::Wind,
+    death_partner: Option<(
+        &mut melee_ft::fighter::Fighter,
+        &melee_ft::fighter::assets::FighterAssets,
+    )>,
 ) -> Result<()> {
     let assets = &scene_assets.fighters[player];
     // efAsync_Spawn (800679B0): from link 9 on, effects are created when
@@ -4286,8 +4309,19 @@ fn dispatch_fighter(
             if let Some(splash) = f.core.physics.water_splash.take() {
                 crate::scene_stage::garden::splash(scene_assets, particles, splash, rng)?;
             }
-            f.check_blast_zone(assets, &scene_assets.arena, rng)
-                .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            if let Some((partner, partner_assets)) = death_partner {
+                f.check_blast_zone_with_partner(
+                    assets,
+                    &scene_assets.arena,
+                    rng,
+                    partner,
+                    partner_assets,
+                    map,
+                )
+            } else {
+                f.check_blast_zone(assets, &scene_assets.arena, rng)
+            }
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         }
         FighterProc::Map => {
             f.proc_map_with_assets(assets, map)
@@ -5239,3 +5273,9 @@ mod script_color_tests;
 
 #[cfg(test)]
 mod item_script_tests;
+
+#[cfg(test)]
+mod pinned_death_tests;
+
+#[cfg(test)]
+mod entry_graphics_tests;

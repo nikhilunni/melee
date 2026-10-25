@@ -530,6 +530,18 @@ impl JObjTree {
         self.set_mtx_dirty_sub(id);
     }
 
+    /// Refresh the external target of an installed RObj without invalidating
+    /// the constrained joint's cached matrix. Retail resolves the target only
+    /// when that joint is rebuilt (lb_8000B1CC -> HSD_JObjSetupMatrix).
+    /// Installing a new constraint still dirties the joint as usual.
+    pub fn refresh_position_constraint(&mut self, id: JObjId, position: Vec3) {
+        if let Some(slot @ Some(_)) = self.position_constraints.get_mut(&id) {
+            *slot = Some(position);
+        } else {
+            self.set_position_constraint(id, Some(position));
+        }
+    }
+
     /// Prepare an inactive orientation slot before animation updates begin,
     /// so setting the constraint in the tick does not allocate.
     pub fn reserve_orientation_constraint(&mut self, id: JObjId) {
@@ -1037,7 +1049,8 @@ impl JObjTree {
     /// `HSD_JObjCheckDepend` (`jobj.c:30`): before a node animates, mark it
     /// dirty if its parent is dirty (user-defined matrices only when they
     /// are not `JOBJ_MTX_INDEP_PARENT`), or if it is an IK joint. The
-    /// `robj != NULL` term is deferred with the RObj.
+    /// Active positional constraints model the RObj term; other RObj kinds
+    /// remain deferred.
     pub fn check_depend(&mut self, id: JObjId) {
         if self.mtx_is_dirty(id) {
             return;
@@ -1052,6 +1065,10 @@ impl JObjTree {
             || (flags & JOBJ_EFFECTOR) == JOBJ_JOINT1
             || (flags & JOBJ_EFFECTOR) == JOBJ_JOINT2
             || (flags & JOBJ_EFFECTOR) == JOBJ_EFFECTOR
+            || self
+                .position_constraints
+                .get(&id)
+                .is_some_and(Option::is_some)
         {
             self.nodes[id.0].flags |= JOBJ_MTX_DIRTY;
         }

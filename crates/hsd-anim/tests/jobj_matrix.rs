@@ -297,3 +297,30 @@ fn setters_feed_the_next_setup() {
     let want = expect_world(&s1, &r1, &t1, Some(&S0), Some(&root_world));
     assert_mtx_bits(&got, &want, "after setters");
 }
+
+#[test]
+fn external_constraint_target_refresh_keeps_clean_matrix_until_own_invalidation() {
+    let mut tree = JObjTree::new();
+    let root = tree.load_joint(&JointSpec::new().child(JointSpec::new()));
+    let child = tree.child(root).unwrap();
+    tree.reserve_position_constraint(child);
+    let first = Vec3::new(10.0, 20.0, 30.0);
+    let next = Vec3::new(40.0, 50.0, 60.0);
+    tree.refresh_position_constraint(child, first);
+    assert!(tree.mtx_is_dirty(child), "installation invalidates");
+    assert_eq!(tree.get_mtx(child).0[0][3], first.x);
+    assert!(!tree.mtx_is_dirty(child));
+    tree.refresh_position_constraint(child, next);
+    assert!(
+        !tree.mtx_is_dirty(child),
+        "external snapshot refresh is not own animation"
+    );
+    assert_eq!(tree.get_mtx(child).0[0][3], first.x);
+    // HSD_JObjAnim calls CheckDepend: its RObj term invalidates the owner
+    // during animation even when neither its parent nor its SRT changed.
+    tree.check_depend(child);
+    assert!(tree.mtx_is_dirty(child));
+    assert_eq!(tree.get_mtx(child).0[0][3], next.x);
+    tree.set_position_constraint(child, None);
+    assert!(tree.mtx_is_dirty(child), "clear still invalidates");
+}

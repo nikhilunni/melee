@@ -240,3 +240,87 @@ fn async_pressure_preserves_sync_models_and_retires_link_11_before_death() {
     assert_eq!(descriptors, [0xB, 0x24, 0x1E, 0x19]);
     assert_eq!(effects.instances.iter().nth(4).unwrap().joint_base, 1);
 }
+
+#[test]
+fn issued_graphics_do_not_query_the_current_owner_matrix_again() {
+    struct Owner {
+        queue: request::EffectQueue,
+        queries: usize,
+    }
+    impl EffectOwner for Owner {
+        fn effect_queue(&mut self) -> &mut request::EffectQueue {
+            &mut self.queue
+        }
+        fn effect_matrix(&mut self, bone: Option<usize>) -> Mtx {
+            assert_eq!(bone, Some(61));
+            self.queries += 1;
+            Mtx::IDENTITY
+        }
+        fn effect_orientation_target(
+            &mut self,
+            _: usize,
+        ) -> hsd_anim::orientation::OrientationTarget {
+            panic!("0x41D is a positional model, not an orientation attachment");
+        }
+        fn effect_facing(&self) -> f32 {
+            -1.0
+        }
+        fn effect_scale(&self) -> Vec3 {
+            Vec3::new(1.0, 1.0, 1.0)
+        }
+    }
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    let path = root.join("harness/roms/files/EfCoData.dat");
+    if !melee_test_support::require_files([path.clone()]) {
+        return;
+    }
+    let archive = Archive::parse(&std::fs::read(path).unwrap()).unwrap();
+    let table = archive.public("effCommonDataTable").unwrap();
+    let commands = archive.link(table).unwrap().unwrap() as usize;
+    let textures = archive.link(table + 4).unwrap().unwrap() as usize;
+    let bank = ParticleBank::from_bytes(
+        &archive.data()[commands..textures],
+        &archive.data()[textures..],
+    )
+    .unwrap();
+    let request = EffectRequest::Graphics {
+        id: 0x41D,
+        bone: 61,
+        offset: Vec3::ZERO,
+        facing: -1.0,
+        floor_angle: 0.0,
+    };
+    for issued in [true, false] {
+        let mut effects = Effects::load(&archive).unwrap();
+        let mut owner = Owner {
+            queue: Default::default(),
+            queries: 0,
+        };
+        if issued {
+            owner.queue.push_graphics_at(request, Mtx::IDENTITY);
+        } else {
+            owner.queue.push_graphics(request);
+        }
+        let timing = if issued {
+            EffectTiming::Immediate
+        } else {
+            EffectTiming::Deferred
+        };
+        effects
+            .flush::<Trig>(
+                timing,
+                0,
+                &mut owner,
+                &bank,
+                &bank,
+                &mut ParticleSystem::default(),
+                &mut HsdRng::new(1),
+            )
+            .unwrap();
+        assert_eq!(owner.queries, usize::from(!issued), "issued={issued}");
+        assert_eq!(effects.instances.len(), 1);
+    }
+}

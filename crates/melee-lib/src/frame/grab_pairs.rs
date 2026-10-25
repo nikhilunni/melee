@@ -4,7 +4,7 @@ use crate::scene_fighter::{with_fighter, SceneFighter};
 use melee_ft::fighter::grab::{self, GrabLink};
 use melee_ft::fighter::grab_throw;
 
-fn pair(
+pub(super) fn pair(
     fighters: &mut [SceneFighter],
     first: usize,
     second: usize,
@@ -54,6 +54,14 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
             // The captor's Grab proc is past link 9: efAsync_Spawn creates
             // what the victim's motion change issues at once, on the
             // capture's first pose (its color program's sparks).
+            let previous = (
+                a.effect_state.dispatch_at_once,
+                v.effect_state.dispatch_at_once,
+            );
+            // efAsync_Spawn (800676F0), immediate branch80067938..68:
+            // this Grab callback is link12 for both members, including the
+            // captor's entry before attachment.
+            a.effect_state.dispatch_at_once = true;
             v.effect_state.dispatch_at_once = true;
             let captured = grab::capture_pair(
                 v,
@@ -63,7 +71,8 @@ pub(super) fn select(state: &mut InitialState, player: usize) -> Result<()> {
                 &mut state.map,
                 rank,
             );
-            v.effect_state.dispatch_at_once = false;
+            a.effect_state.dispatch_at_once = previous.0;
+            v.effect_state.dispatch_at_once = previous.1;
             captured
         }))
         .map_err(|error| anyhow::anyhow!(error.to_string()))?;
@@ -204,6 +213,14 @@ pub(super) fn throw_input(state: &mut InitialState, player: usize) -> Result<Opt
 }
 
 pub(super) fn constrain(state: &mut InitialState, player: usize) {
+    update_constraint(state, player, false);
+}
+
+pub(super) fn refresh_constraint(state: &mut InitialState, player: usize) {
+    update_constraint(state, player, true);
+}
+
+fn update_constraint(state: &mut InitialState, player: usize, external_snapshot: bool) {
     if !with_fighter!(&state.fighters[player], |f| f.combat.thrown_pose.is_some()) {
         return;
     }
@@ -222,7 +239,12 @@ pub(super) fn constrain(state: &mut InitialState, player: usize) {
         .expect("live constraint anchor");
     let (victim, attacker) = pair(&mut state.fighters, player, other);
     with_fighter!(attacker, |a| with_fighter!(victim, |v| {
-        grab_throw::update_constraint(
+        let update = if external_snapshot {
+            grab_throw::refresh_constraint
+        } else {
+            grab_throw::update_constraint
+        };
+        update(
             v,
             a,
             &state.assets.fighters[player],
@@ -326,6 +348,7 @@ pub(super) fn thrown_escape(state: &mut InitialState, player: usize) -> Result<b
             v,
             t,
             &state.assets.fighters[player],
+            &state.assets.fighters[other],
             &mut state.map,
             escape,
         )

@@ -376,6 +376,58 @@ impl Fighter {
         }
         Ok(())
     }
+    /// The Update caller owns both members of a live grab pair. Only a bottom
+    /// death of a non-pulling mouth victim needs this earlier release path.
+    pub fn check_blast_zone_with_partner(
+        &mut self,
+        assets: &FighterAssets,
+        arena: &Arena,
+        rng: &mut HsdRng,
+        partner: &mut Fighter,
+        partner_assets: &FighterAssets,
+        map: &mut melee_mp::CollMap,
+    ) -> Result<()> {
+        let p = self.core.physics.position;
+        // Preserve retail's right-then-left comparisons, including unordered X.
+        let side_exit = p.x > arena.right || p.x < arena.left;
+        if !self.core.out_of_play()
+            && !self.core.status.disabled
+            && !self.core.status.ledge_grab_disabled
+            && !self.core.status.blast_zone_exempt
+            && !side_exit
+            && p.y < arena.bottom
+            && self.core.combat.thrown_pose.is_some()
+            && super::capture_kirby::captured(&self.core)
+        {
+            super::capture_kirby::refuse_parting_in_the_pull(&self.core);
+            self.begin_death_release();
+            let link = self.core.combat.grab.take().expect("pinned death link");
+            assert!(
+                matches!(link, super::grab::GrabLink::Captured { captor } if captor == partner.spawn_number)
+            );
+            assert!(
+                matches!(partner.combat.grab, Some(super::grab::GrabLink::Holding { victim, .. }) if victim == self.spawn_number)
+            );
+            // 800D33F8 -> 800DD100: place the victim and settle its partner
+            // before the dead motion, velocity reset and item/effect cleanup.
+            super::grab_throw::refresh_constraint(self, partner, assets, partner_assets);
+            super::grab_damage::release_thrown(partner, self, assets, map);
+            partner.release_from_dead_partner(self, partner_assets, assets, map)?;
+            self.finish_death_release(assets);
+            self.start_death_entry(assets, S::DeadDown, 0x61)?;
+            // 800D3CF0..3D04 reads cur_pos after the dead motion and quake.
+            let mut effect = self.core.physics.position;
+            if effect.x > arena.right {
+                effect.x = arena.right;
+            }
+            if effect.x < arena.left {
+                effect.x = arena.left;
+            }
+            self.queue_death_explosion(assets, effect, 0.0);
+            return Ok(());
+        }
+        self.check_blast_zone(assets, arena, rng)
+    }
     /// ftCo_800D3BC8 (800D3BC8): the bottom exit, DeadDown. The explosion is
     /// clamped to the side blast zones and drawn upright.
     fn enter_bottom_death(&mut self, assets: &FighterAssets, arena: &Arena) -> Result<()> {
@@ -421,6 +473,26 @@ impl Fighter {
         effect_angle: f32,
     ) -> Result<()> {
         self.release_for_death(assets);
+        self.enter_death_released(assets, state, exit_sound, effect_position, effect_angle)
+    }
+    fn enter_death_released(
+        &mut self,
+        assets: &FighterAssets,
+        state: S,
+        exit_sound: u32,
+        effect_position: Vec3,
+        effect_angle: f32,
+    ) -> Result<()> {
+        self.start_death_entry(assets, state, exit_sound)?;
+        self.queue_death_explosion(assets, effect_position, effect_angle);
+        Ok(())
+    }
+    fn start_death_entry(
+        &mut self,
+        assets: &FighterAssets,
+        state: S,
+        exit_sound: u32,
+    ) -> Result<()> {
         self.change_motion_state(state.into(), assets)?;
         self.core.state_data = MotionData::Life(LifeState::Dead {
             remaining: assets.life.death_delay,
@@ -441,13 +513,20 @@ impl Fighter {
             });
         self.core.lose_stock();
         self.core.play_death_sounds(assets, exit_sound);
+        Ok(())
+    }
+    fn queue_death_explosion(
+        &mut self,
+        assets: &FighterAssets,
+        effect_position: Vec3,
+        effect_angle: f32,
+    ) {
         self.core.effects_after_items.push(EffectRequest::Death {
             position: effect_position,
             angle: effect_angle,
             scale: assets.life.death_effect_scale,
         });
         // ftCo_800D4E50: the coin-mode payout only.
-        Ok(())
     }
     /// ftCo_800D40B8 (800D40B8): the star KO entry, DeadUpStar. The stock is only
     /// lost when the star vanishes (ftCo_DeadUpStar_Anim phase 1).
@@ -755,11 +834,7 @@ impl Fighter {
         assets: &FighterAssets,
         thrower: Option<(&Fighter, &mut melee_mp::CollMap)>,
     ) {
-        // 0x800D34B4: mv x6C takes the motion the death interrupts.
-        self.core.fatal_action = self.core.motion_state.action;
-        if let Some(death) = self.character.table().death {
-            death(self);
-        }
+        self.begin_death_release();
         // ftCo_800DD100 -> ftCo_800DC920: separate a grab pair. The scene
         // releases the partner (ftCommon_8007D92C) right after this proc.
         if let Some(link) = self.core.combat.grab.take() {
@@ -777,6 +852,16 @@ impl Fighter {
             }
             self.core.released_link = Some(link);
         }
+        self.finish_death_release(assets);
+    }
+    fn begin_death_release(&mut self) {
+        // 0x800D34B4: mv x6C takes the motion the death interrupts.
+        self.core.fatal_action = self.core.motion_state.action;
+        if let Some(death) = self.character.table().death {
+            death(self);
+        }
+    }
+    fn finish_death_release(&mut self, assets: &FighterAssets) {
         self.core.clear_velocities();
         if let Some(held) = self.core.held_item {
             self.core

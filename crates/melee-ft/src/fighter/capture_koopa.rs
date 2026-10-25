@@ -387,7 +387,7 @@ pub fn escape(
     }
     captor.change_motion_state(S::CatchCut.into(), captor_assets)?;
     victim.physics.facing = -victim.physics.facing;
-    set_down(victim, captor, victim_assets, map);
+    set_down(victim, captor, victim_assets, captor_assets, map);
     let velocity = -victim.physics.facing * victim_assets.grab_escape.escape_speed;
     if victim.physics.ground_or_air == GroundOrAir::Ground {
         victim.physics.ground_velocity = velocity;
@@ -406,9 +406,13 @@ fn set_down(
     victim: &mut Fighter,
     captor: &mut Fighter,
     victim_assets: &FighterAssets,
+    captor_assets: &FighterAssets,
     map: &mut melee_mp::CollMap,
 ) {
     captor.combat.grab = None;
+    // ftCo_800DC920 resolves the live RObj only if the owner is dirty;
+    // a clean cached held point survives the captor's CatchCut entry.
+    super::grab_throw::refresh_constraint(victim, captor, victim_assets, captor_assets);
     super::grab_damage::release_thrown(captor, victim, victim_assets, map);
     victim.combat.grab = None;
     let root = victim.animation.root;

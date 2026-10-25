@@ -1664,7 +1664,12 @@ impl Effects {
             } else {
                 None
             };
-            let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(bone));
+            // A sealed/issued matrix already performed retail's joint read.
+            // An eager fallback would rebuild the owner's current pose again.
+            let matrix = match resolved_matrix {
+                Some(matrix) => matrix,
+                None => fighter.effect_matrix(bone),
+            };
             let mut position = Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
             match request {
                 EffectRequest::OwnedRotation { .. }

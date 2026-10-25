@@ -334,6 +334,7 @@ pub fn escape_thrown(
     victim: &mut Fighter,
     thrower: &mut Fighter,
     va: &FighterAssets,
+    thrower_assets: &FighterAssets,
     map: &mut melee_mp::CollMap,
     escape: Escape,
 ) -> Result<()> {
@@ -344,6 +345,9 @@ pub fn escape_thrown(
         victim.physics.self_velocity.y = p.air_escape_vertical_speed;
     }
     thrower.combat.grab = None;
+    // ftCo_800DC920 reads the live RObj target here, after this animation
+    // callback changed the owner. A clean owner still keeps its cached matrix.
+    super::grab_throw::refresh_constraint(victim, thrower, va, thrower_assets);
     super::grab_damage::release_thrown(thrower, victim, va, map);
     victim.combat.grab = None;
     match escape {
