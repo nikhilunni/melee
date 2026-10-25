@@ -6,7 +6,8 @@ use crate::{
     catalog,
     disc::DiscFiles,
     panic_text,
-    session::Action,
+    players::{Controller, Rules, SLOTS},
+    session::{Action, Gamepad},
     surface::WindowRenderer,
 };
 use std::{
@@ -18,7 +19,9 @@ use std::{
 
 /// 2: menu art (`melee_app_art` and friends).
 /// 3: stage previews (`MELEE_ART_STAGE_PREVIEW`, `melee_app_stage_previews_ready`).
-pub const API_VERSION: u32 = 3;
+/// 4: four slots with controllers, CPU levels and teams; rules (teams,
+/// friendly fire, items); gamepads; HUD and results for up to four.
+pub const API_VERSION: u32 = 4;
 
 pub struct Handle {
     app: App,
@@ -50,6 +53,7 @@ pub struct CharacterInfo {
 pub struct StageInfo {
     name: *const c_char,
     key: *const c_char,
+    cpu_supported: bool,
 }
 #[repr(C)]
 pub struct DiscInfo {
@@ -61,14 +65,33 @@ pub struct DiscInfo {
 }
 #[repr(C)]
 pub struct Slot {
+    controller: u32,
     character: i32,
     costume: u8,
+    cpu_level: u8,
+    team: u8,
 }
 #[repr(C)]
 pub struct Selection {
-    players: [Slot; 2],
-    stocks: u8,
+    players: [Slot; SLOTS],
     ready: bool,
+}
+#[repr(C)]
+pub struct RulesC {
+    stocks: u8,
+    teams: bool,
+    friendly_fire: bool,
+    item_frequency: i8,
+}
+#[repr(C)]
+pub struct GamepadC {
+    buttons: u32,
+    stick_x: f32,
+    stick_y: f32,
+    cstick_x: f32,
+    cstick_y: f32,
+    trigger_l: f32,
+    trigger_r: f32,
 }
 #[repr(C)]
 pub struct LoadProgress {
@@ -85,6 +108,8 @@ pub struct PlayerHud {
     costume: u8,
     percent: f32,
     stocks: u8,
+    cpu: bool,
+    team: i8,
 }
 #[repr(C)]
 #[derive(Default)]
@@ -92,11 +117,13 @@ pub struct HudOut {
     tick: u64,
     paused: bool,
     faulted: bool,
-    players: [PlayerHud; 2],
+    player_count: u8,
+    players: [PlayerHud; SLOTS],
 }
 #[repr(C)]
 pub struct ResultsOut {
     winner: i32,
+    winning_team: i32,
     hud: HudOut,
 }
 
@@ -191,12 +218,17 @@ impl Handle {
             tick: hud.tick,
             paused: hud.paused,
             faulted: self.app.session().is_some_and(|s| s.failure().is_some()),
-            players: hud.players.map(|p| PlayerHud {
-                port: p.port.index() as u8,
-                character: catalog::character_id(p.character),
-                costume: p.costume,
-                percent: p.percent,
-                stocks: p.stocks,
+            player_count: hud.players.len() as u8,
+            players: std::array::from_fn(|i| {
+                hud.players.get(i).map_or_else(PlayerHud::default, |p| PlayerHud {
+                    port: p.port.index() as u8,
+                    character: catalog::character_id(p.character),
+                    costume: p.costume,
+                    percent: p.percent,
+                    stocks: p.stocks,
+                    cpu: p.cpu,
+                    team: p.team.map_or(-1, |t| t as i8),
+                })
             }),
         }
     }
@@ -253,6 +285,7 @@ pub unsafe extern "C" fn melee_stage_info(id: u32, out: *mut StageInfo) -> bool 
     *out = StageInfo {
         name: name.as_ptr(),
         key: key.as_ptr(),
+        cpu_supported: catalog::stage(id).is_some_and(|s| s.cpu_supported()),
     };
     true
 }
@@ -424,14 +457,102 @@ pub unsafe extern "C" fn melee_app_selection(app: *const Handle, out: *mut Selec
     };
     *out = Selection {
         players: h.app.slots().map(|slot| Slot {
+            controller: slot.controller as u32,
             character: slot
                 .character
                 .map_or(-1, |c| catalog::character_id(c) as i32),
             costume: slot.costume,
+            cpu_level: slot.cpu_level,
+            team: slot.team,
         }),
-        stocks: h.app.stocks(),
         ready: h.app.characters_ready(),
     };
+}
+/// # Safety
+/// `app` is null or live; `buf` is null or writable for `capacity` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_characters_not_ready(
+    app: *const Handle,
+    buf: *mut c_char,
+    capacity: usize,
+) -> usize {
+    unsafe { app.as_ref() }
+        .and_then(|h| h.app.characters_not_ready())
+        .map_or(0, |reason| unsafe { copy_out(reason, buf, capacity) })
+}
+/// # Safety
+/// `app` is null or live.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_set_controller(
+    app: *mut Handle,
+    player: u32,
+    controller: u32,
+) -> bool {
+    handle!(app).perform(|h| {
+        let controller = Controller::from_u32(controller).ok_or("no controller with that number")?;
+        h.app.set_controller(player as usize, controller)
+    })
+}
+/// # Safety
+/// `app` is null or live.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_set_cpu_level(app: *mut Handle, player: u32, level: u8) -> bool {
+    handle!(app).perform(|h| h.app.set_cpu_level(player as usize, level))
+}
+/// # Safety
+/// `app` is null or live.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_set_team(app: *mut Handle, player: u32, team: u8) -> bool {
+    handle!(app).perform(|h| h.app.set_team(player as usize, team))
+}
+/// # Safety
+/// `app` is null or live; `out` is null or writable.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_rules(app: *const Handle, out: *mut RulesC) {
+    let (Some(h), Some(out)) = (unsafe { app.as_ref() }, unsafe { out.as_mut() }) else {
+        return;
+    };
+    let rules = h.app.rules();
+    *out = RulesC {
+        stocks: rules.stocks,
+        teams: rules.teams,
+        friendly_fire: rules.friendly_fire,
+        item_frequency: rules.item_frequency.map_or(-1, |f| f as i8),
+    };
+}
+/// # Safety
+/// `app` is null or live; `rules` is null or readable.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_set_rules(app: *mut Handle, rules: *const RulesC) -> bool {
+    let h = handle!(app);
+    let Some(rules) = (unsafe { rules.as_ref() }) else {
+        h.error = "missing rules".into();
+        return false;
+    };
+    h.perform(|h| {
+        h.app.set_rules(Rules {
+            stocks: rules.stocks,
+            teams: rules.teams,
+            friendly_fire: rules.friendly_fire,
+            item_frequency: u8::try_from(rules.item_frequency).ok(),
+        })
+    })
+}
+/// # Safety
+/// `app` is null or live; `buf` is null or writable for `capacity` bytes.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_stage_unavailable(
+    app: *const Handle,
+    stage: u32,
+    buf: *mut c_char,
+    capacity: usize,
+) -> usize {
+    let (Some(h), Some(stage)) = (unsafe { app.as_ref() }, catalog::stage(stage)) else {
+        return 0;
+    };
+    h.app
+        .stage_unavailable(stage)
+        .map_or(0, |reason| unsafe { copy_out(reason, buf, capacity) })
 }
 /// # Safety
 /// `app` is null or live.
@@ -460,12 +581,6 @@ pub unsafe extern "C" fn melee_app_set_costume(app: *mut Handle, player: u32, co
 #[no_mangle]
 pub unsafe extern "C" fn melee_app_cycle_costume(app: *mut Handle, player: u32, step: i32) -> bool {
     handle!(app).perform(|h| h.app.cycle_costume(player as usize, step))
-}
-/// # Safety
-/// `app` is null or live.
-#[no_mangle]
-pub unsafe extern "C" fn melee_app_set_stocks(app: *mut Handle, stocks: u8) -> bool {
-    handle!(app).perform(|h| h.app.set_stocks(stocks))
 }
 /// # Safety
 /// `app` is null or live.
@@ -619,6 +734,19 @@ pub unsafe extern "C" fn melee_app_action(app: *mut Handle, player: u32, action:
     }
 }
 /// # Safety
+/// `app` is null or live; `pad` is null (disconnected) or readable.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_gamepad(app: *mut Handle, device: u32, pad: *const GamepadC) {
+    let h = handle!(app);
+    let pad = unsafe { pad.as_ref() }.map(|p| Gamepad {
+        buttons: p.buttons,
+        stick: [p.stick_x, p.stick_y],
+        cstick: [p.cstick_x, p.cstick_y],
+        triggers: [p.trigger_l, p.trigger_r],
+    });
+    h.app.set_gamepad(device as usize, pad);
+}
+/// # Safety
 /// `app` is null or live.
 #[no_mangle]
 pub unsafe extern "C" fn melee_app_set_paused(app: *mut Handle, paused: bool) {
@@ -660,7 +788,11 @@ pub unsafe extern "C" fn melee_app_results(app: *const Handle, out: *mut Results
     *out = ResultsOut {
         winner: match results.outcome {
             Outcome::Winner(index) => index as i32,
-            Outcome::Draw => -1,
+            Outcome::Team(_) | Outcome::Draw => -1,
+        },
+        winning_team: match results.outcome {
+            Outcome::Team(team) => i32::from(team),
+            Outcome::Winner(_) | Outcome::Draw => -1,
         },
         hud: h.hud_out(results.hud),
     };

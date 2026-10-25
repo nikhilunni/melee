@@ -12,12 +12,11 @@ use crate::{
     art::{Art, ArtFile, Image, Piece},
     disc::{DiscFiles, FileRequest},
     preview::{self, Previews},
-    session::{Action, Session},
+    players::{check_player, Controller, Lineup, Rules, Slot, SLOTS},
+    session::{Action, Gamepad, Session},
 };
 use std::sync::Arc;
-use melee_lib::{
-    Character, Costume, MatchConfig, MatchOutcome, MatchStatus, PlayerConfig, Port, Seed, Stage,
-};
+use melee_lib::{Character, MatchConfig, MatchOutcome, MatchStatus, Port, Seed, Stage};
 use std::{collections::VecDeque, time::Duration};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -31,13 +30,6 @@ pub enum Screen {
     Loading = 3,
     Match = 4,
     Results = 5,
-}
-
-/// One player's character select cursor.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub struct Slot {
-    pub character: Option<Character>,
-    pub costume: u8,
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -55,23 +47,30 @@ pub struct PlayerHud {
     pub costume: u8,
     pub percent: f32,
     pub stocks: u8,
+    /// Driven by the game's CPU.
+    pub cpu: bool,
+    /// The team in a team battle (0 red, 1 blue, 2 green).
+    pub team: Option<u8>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Hud {
     pub tick: u64,
     pub paused: bool,
-    pub players: [PlayerHud; 2],
+    /// One entry per player, in port order.
+    pub players: Vec<PlayerHud>,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Outcome {
-    /// Index into the match's two players.
+    /// Index into the match's players.
     Winner(usize),
+    /// A team battle's winning team (0 red, 1 blue, 2 green).
+    Team(u8),
     Draw,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Results {
     pub outcome: Outcome,
     pub hud: Hud,
@@ -83,7 +82,7 @@ struct Loading {
     progress: LoadProgress,
 }
 
-pub const DEFAULT_STOCKS: u8 = 4;
+pub use crate::players::DEFAULT_STOCKS;
 
 pub struct App {
     screen: Screen,
@@ -94,8 +93,8 @@ pub struct App {
     previews: Previews,
     /// Whether a host took the preview job for this disc.
     previews_started: bool,
-    slots: [Slot; 2],
-    stocks: u8,
+    /// The character select slots and the rules.
+    lineup: Lineup,
     loading: Option<Loading>,
     /// The last match's configuration, for a rematch.
     last_config: Option<MatchConfig>,
@@ -124,8 +123,7 @@ impl App {
             art: Art::new(),
             previews: Previews::default(),
             previews_started: false,
-            slots: [Slot::default(); 2],
-            stocks: DEFAULT_STOCKS,
+            lineup: Lineup::default(),
             loading: None,
             last_config: None,
             session: None,
@@ -284,48 +282,42 @@ impl App {
 
     // --- Character select -----------------------------------------------
 
-    pub fn slots(&self) -> [Slot; 2] {
-        self.slots
+    pub fn slots(&self) -> [Slot; SLOTS] {
+        self.lineup.slots
+    }
+    pub fn rules(&self) -> Rules {
+        self.lineup.rules
     }
     pub fn stocks(&self) -> u8 {
-        self.stocks
+        self.lineup.rules.stocks
     }
-    fn taken_by_other(&self, player: usize, character: Character, costume: u8) -> bool {
-        let other = self.slots[1 - player];
-        other.character == Some(character) && other.costume == costume
-    }
-    fn check_player(player: usize) -> Result<(), String> {
-        if player < 2 {
-            Ok(())
-        } else {
-            Err(format!("player {} does not exist", player + 1))
-        }
-    }
-    /// Pick a character; the costume becomes the first one the other player
-    /// is not wearing (retail Versus never shows two identical fighters).
+    /// Pick a character; the costume becomes the first one no other player
+    /// is wearing (retail Versus never shows two identical fighters).
+    /// Picking for an empty slot joins it as a human.
     pub fn choose_character(&mut self, player: usize, character: Character) -> Result<(), String> {
         self.expect(Screen::Characters, "choose a character")?;
-        Self::check_player(player)?;
-        let costume = (0..character.costume_count())
-            .find(|&c| !self.taken_by_other(player, character, c))
-            .unwrap_or(0);
-        self.slots[player] = Slot {
-            character: Some(character),
-            costume,
-        };
+        check_player(player)?;
+        let costume = self.lineup.free_costume(player, character);
+        let slot = &mut self.lineup.slots[player];
+        if !slot.is_active() {
+            slot.controller = Controller::Human;
+        }
+        slot.character = Some(character);
+        slot.costume = costume;
         Ok(())
     }
     /// Clear a player's pick.
     pub fn unchoose_character(&mut self, player: usize) -> Result<(), String> {
         self.expect(Screen::Characters, "clear a character")?;
-        Self::check_player(player)?;
-        self.slots[player] = Slot::default();
+        check_player(player)?;
+        self.lineup.slots[player].character = None;
+        self.lineup.slots[player].costume = 0;
         Ok(())
     }
     pub fn set_costume(&mut self, player: usize, costume: u8) -> Result<(), String> {
         self.expect(Screen::Characters, "change costumes")?;
-        Self::check_player(player)?;
-        let character = self.slots[player]
+        check_player(player)?;
+        let character = self.lineup.slots[player]
             .character
             .ok_or("choose a character before a costume")?;
         if costume >= character.costume_count() {
@@ -335,65 +327,104 @@ impl App {
                 character.costume_count()
             ));
         }
-        if self.taken_by_other(player, character, costume) {
-            return Err("the other player is wearing that costume".into());
+        if self.lineup.taken_by_other(player, character, costume) {
+            return Err("another player is wearing that costume".into());
         }
-        self.slots[player].costume = costume;
+        self.lineup.slots[player].costume = costume;
         Ok(())
     }
-    /// Step through costumes (`step` is +1 or -1), skipping the other
-    /// player's.
+    /// Step through costumes (`step` is +1 or -1), skipping other players'.
     pub fn cycle_costume(&mut self, player: usize, step: i32) -> Result<(), String> {
         self.expect(Screen::Characters, "change costumes")?;
-        Self::check_player(player)?;
-        let character = self.slots[player]
+        check_player(player)?;
+        let character = self.lineup.slots[player]
             .character
             .ok_or("choose a character before a costume")?;
         let count = i32::from(character.costume_count());
-        let mut costume = i32::from(self.slots[player].costume);
+        let mut costume = i32::from(self.lineup.slots[player].costume);
         for _ in 0..count {
             costume = (costume + step.signum()).rem_euclid(count);
-            if !self.taken_by_other(player, character, costume as u8) {
-                self.slots[player].costume = costume as u8;
+            if !self.lineup.taken_by_other(player, character, costume as u8) {
+                self.lineup.slots[player].costume = costume as u8;
                 break;
             }
         }
         Ok(())
     }
-    pub fn set_stocks(&mut self, stocks: u8) -> Result<(), String> {
-        if !(1..=99).contains(&stocks) {
-            return Err("stocks must be 1 to 99".into());
+    /// Human, CPU or off. A slot that joins keeps its pick, moving to a
+    /// free costume if another player now wears its own.
+    pub fn set_controller(&mut self, player: usize, controller: Controller) -> Result<(), String> {
+        self.expect(Screen::Characters, "change players")?;
+        check_player(player)?;
+        self.lineup.slots[player].controller = controller;
+        let slot = self.lineup.slots[player];
+        if let Some(character) = slot.character {
+            if slot.is_active() && self.lineup.taken_by_other(player, character, slot.costume) {
+                self.lineup.slots[player].costume = self.lineup.free_costume(player, character);
+            }
         }
-        self.stocks = stocks;
         Ok(())
     }
+    pub fn set_cpu_level(&mut self, player: usize, level: u8) -> Result<(), String> {
+        self.expect(Screen::Characters, "change CPU levels")?;
+        check_player(player)?;
+        if !(1..=crate::players::MAX_CPU_LEVEL).contains(&level) {
+            return Err("a CPU level is 1 to 9".into());
+        }
+        self.lineup.slots[player].cpu_level = level;
+        Ok(())
+    }
+    pub fn set_team(&mut self, player: usize, team: u8) -> Result<(), String> {
+        self.expect(Screen::Characters, "change teams")?;
+        check_player(player)?;
+        if team >= crate::players::TEAMS {
+            return Err("a team is 0 (red), 1 (blue) or 2 (green)".into());
+        }
+        self.lineup.slots[player].team = team;
+        Ok(())
+    }
+    /// Replace the rules (on the menus, not during a match).
+    pub fn set_rules(&mut self, rules: Rules) -> Result<(), String> {
+        if !matches!(
+            self.screen,
+            Screen::Disc | Screen::Characters | Screen::Stages
+        ) {
+            return Err(wrong_screen("change the rules", self.screen));
+        }
+        rules.validate()?;
+        self.lineup.rules = rules;
+        Ok(())
+    }
+    pub fn set_stocks(&mut self, stocks: u8) -> Result<(), String> {
+        self.set_rules(Rules {
+            stocks,
+            ..self.lineup.rules
+        })
+    }
     pub fn characters_ready(&self) -> bool {
-        self.slots.iter().all(|slot| slot.character.is_some())
+        self.lineup.not_ready().is_none()
+    }
+    /// Why the picks cannot go on to stage select, or `None` when they can.
+    pub fn characters_not_ready(&self) -> Option<&'static str> {
+        self.lineup.not_ready()
     }
     pub fn confirm_characters(&mut self) -> Result<(), String> {
         self.expect(Screen::Characters, "confirm characters")?;
-        if !self.characters_ready() {
-            return Err("both players need a character".into());
+        if let Some(reason) = self.lineup.not_ready() {
+            return Err(reason.into());
         }
         self.screen = Screen::Stages;
         Ok(())
     }
+    /// Why `stage` cannot host the current picks (CPU players where the CPU
+    /// is not witnessed yet), or `None` when it can.
+    pub fn stage_unavailable(&self, stage: Stage) -> Option<&'static str> {
+        self.lineup.stage_unavailable(stage)
+    }
 
     /// The configuration the current picks describe.
     pub fn config(&self, stage: Stage, seed: u32) -> Result<MatchConfig, String> {
-        let players: [PlayerConfig; 2] = std::array::from_fn(|i| {
-            let slot = self.slots[i];
-            let mut player =
-                PlayerConfig::new(Port::ALL[i], slot.character.unwrap_or(Character::Fox));
-            player.costume = Costume(slot.costume);
-            player
-        });
-        if !self.characters_ready() {
-            return Err("both players need a character".into());
-        }
-        let config = MatchConfig::versus(stage, players)
-            .with_stocks(self.stocks)
-            .with_seed(Seed(seed));
+        let config = self.lineup.config(stage, seed)?;
         melee_lib::GameAssets::files(&config).map_err(|e| e.to_string())?;
         Ok(config)
     }
@@ -562,9 +593,38 @@ impl App {
     pub fn session_mut(&mut self) -> Option<&mut Session> {
         self.session.as_mut()
     }
-    pub fn set_action(&mut self, player: usize, action: Action, down: bool) {
+    /// The controller ports of the match's human players, in port order:
+    /// input device `n` (keyboard layout `n`, gamepad `n`) drives the
+    /// `n`th. CPU players read no device.
+    pub fn human_ports(&self) -> Vec<usize> {
+        self.session.as_ref().map_or_else(Vec::new, |session| {
+            session
+                .game()
+                .config()
+                .players
+                .iter()
+                .filter(|p| p.cpu_level.is_none())
+                .map(|p| p.port.index())
+                .collect()
+        })
+    }
+    /// A logical keyboard action from keyboard layout `device`.
+    pub fn set_action(&mut self, device: usize, action: Action, down: bool) {
+        let Some(&port) = self.human_ports().get(device) else {
+            return;
+        };
         if let Some(session) = &mut self.session {
-            session.set_action(player, action, down);
+            session.set_action(port, action, down);
+        }
+    }
+    /// Gamepad `device`'s state (in connection order), or `None` when it
+    /// is disconnected. Hosts report every connected pad each frame.
+    pub fn set_gamepad(&mut self, device: usize, pad: Option<Gamepad>) {
+        let Some(&port) = self.human_ports().get(device) else {
+            return;
+        };
+        if let Some(session) = &mut self.session {
+            session.set_gamepad(port, pad);
         }
     }
     /// Run the simulation for `elapsed` host time. A fault stops the match
@@ -591,10 +651,9 @@ impl App {
                         None => Outcome::Draw,
                     }
                 }
-                // The app's menus start free-for-all matches only.
-                MatchOutcome::TeamWinner(_) | MatchOutcome::Draw | MatchOutcome::SuddenDeath => {
-                    Outcome::Draw
-                }
+                MatchOutcome::TeamWinner(team) => Outcome::Team(team),
+                // The menus start no timed match, so no Sudden Death.
+                MatchOutcome::Draw | MatchOutcome::SuddenDeath => Outcome::Draw,
             };
             self.results = Some(Results { outcome, hud });
             self.screen = Screen::Results;
@@ -620,9 +679,13 @@ impl App {
                 costume: pick.costume.0,
                 percent: fighter.percent(),
                 stocks: fighter.stocks(),
+                cpu: pick.cpu_level.is_some(),
+                team: pick.team,
             })
         };
-        let players = [player(0)?, player(1)?];
+        let players = (0..config.players.len())
+            .map(player)
+            .collect::<Option<Vec<_>>>()?;
         Some(Hud {
             tick: view.tick.0,
             paused: session.is_paused(),
@@ -630,7 +693,7 @@ impl App {
         })
     }
     pub fn results(&self) -> Option<Results> {
-        self.results
+        self.results.clone()
     }
     /// Start the same match over, with fresh state and no recorded inputs.
     pub fn restart(&mut self) -> Result<(), String> {
@@ -692,6 +755,7 @@ impl App {
 mod tests {
     use super::*;
     use gc_disc::synthetic::ImageBuilder;
+    use melee_lib::{Costume, ItemRules, PlayerConfig};
 
     /// A Melee-shaped synthetic disc holding every file `config` names, with
     /// junk contents: enough for the flow, not for starting a match.
@@ -982,6 +1046,114 @@ mod tests {
         app.back();
         app.open_disc(disc_for(&[])).unwrap();
         assert!(app.stage_preview_job().is_none());
+    }
+
+    #[test]
+    fn cpu_players_join_with_a_level_and_only_on_cpu_stages() {
+        let mut app = App::new();
+        app.open_disc(disc_for(&[])).unwrap();
+        app.choose_character(0, Character::Fox).unwrap();
+        app.choose_character(1, Character::Falco).unwrap();
+        app.set_controller(1, Controller::Cpu).unwrap();
+        assert!(app.set_cpu_level(1, 0).is_err());
+        assert!(app.set_cpu_level(1, 10).is_err());
+        app.set_cpu_level(1, 9).unwrap();
+        app.confirm_characters().unwrap();
+        for &stage in crate::catalog::stages() {
+            let reason = app.stage_unavailable(stage);
+            assert_eq!(reason.is_none(), stage.cpu_supported(), "{stage:?}");
+        }
+        let error = app.choose_stage(Stage::DreamLand, 1).unwrap_err();
+        assert!(error.contains("CPU"), "{error}");
+        let config = app.config(Stage::Battlefield, 3).unwrap();
+        assert_eq!(config.players[0].cpu_level, None);
+        assert_eq!(config.players[1].cpu_level, Some(9));
+        // Back to human: every stage again.
+        app.back();
+        app.set_controller(1, Controller::Human).unwrap();
+        assert!(app.stage_unavailable(Stage::DreamLand).is_none());
+    }
+
+    #[test]
+    fn four_slots_make_free_for_alls_and_team_battles_with_items() {
+        let mut app = App::new();
+        app.open_disc(disc_for(&[])).unwrap();
+        assert_eq!(app.slots().map(|s| s.controller), {
+            use Controller::*;
+            [Human, Human, Off, Off]
+        });
+        app.choose_character(0, Character::Fox).unwrap();
+        assert_eq!(
+            app.characters_not_ready(),
+            Some("every player needs a character")
+        );
+        app.set_controller(1, Controller::Off).unwrap();
+        assert_eq!(
+            app.characters_not_ready(),
+            Some("a match needs at least two players")
+        );
+        // Picking for an empty slot joins it; costumes stay distinct across
+        // every active slot, and an off slot's costume is free.
+        app.choose_character(3, Character::Fox).unwrap();
+        assert_eq!(app.slots()[3].controller, Controller::Human);
+        assert_eq!(app.slots()[3].costume, 1);
+        app.choose_character(2, Character::Fox).unwrap();
+        assert_eq!(app.slots()[2].costume, 2);
+        app.set_controller(2, Controller::Cpu).unwrap();
+        assert!(app.characters_ready());
+        let config = app.lineup.config(Stage::Battlefield, 1).unwrap();
+        let ports: Vec<_> = config.players.iter().map(|p| p.port).collect();
+        assert_eq!(ports, [Port::P1, Port::P3, Port::P4]);
+        assert!(config.players.iter().all(|p| p.team.is_none()));
+        assert_eq!(config.rules.items, ItemRules::OFF);
+
+        // Teams: everyone on red is not a battle; split them and it is.
+        let teams = Rules {
+            teams: true,
+            friendly_fire: true,
+            item_frequency: Some(4),
+            ..app.rules()
+        };
+        app.set_rules(teams).unwrap();
+        for player in 0..SLOTS {
+            app.set_team(player, 0).unwrap();
+        }
+        assert_eq!(
+            app.characters_not_ready(),
+            Some("a team battle needs two teams")
+        );
+        assert!(app.set_team(3, 3).is_err());
+        app.set_team(3, 2).unwrap();
+        // Items are witnessed with two players only.
+        let three = app.lineup.config(Stage::Battlefield, 1).unwrap_err();
+        assert!(three.contains("two players only"), "{three}");
+        app.set_rules(Rules {
+            item_frequency: None,
+            ..app.rules()
+        })
+        .unwrap();
+        let config = app.lineup.config(Stage::Battlefield, 1).unwrap();
+        let teams: Vec<_> = config.players.iter().map(|p| p.team).collect();
+        assert_eq!(teams, [Some(0), Some(0), Some(2)]);
+        assert!(config.rules.friendly_fire);
+        // Two players: items on, with only the ported kinds switched on.
+        app.set_controller(2, Controller::Off).unwrap();
+        app.set_rules(Rules {
+            item_frequency: Some(4),
+            ..app.rules()
+        })
+        .unwrap();
+        let config = app.lineup.config(Stage::Battlefield, 1).unwrap();
+        assert_eq!(config.rules.items, melee_lib::ported_item_switch(4));
+        let sword = 1 << melee_lib::PORTED_RANDOM_ITEMS[7] as i32;
+        assert_ne!(config.rules.items.mask & sword, 0);
+        assert!(app
+            .set_rules(Rules {
+                item_frequency: Some(5),
+                ..app.rules()
+            })
+            .is_err());
+        assert!(app.set_stocks(0).is_err());
     }
 
     #[test]

@@ -11,8 +11,9 @@ use melee_platform::{
     art::{ArtKind, Piece},
     catalog,
     disc::{DiscFiles, FileRequest},
+    players::{Controller, Rules},
     preview,
-    session::{panic_replay, Action},
+    session::{panic_replay, Action, Gamepad},
     surface::WindowRenderer,
 };
 use std::{future::Future, time::Duration};
@@ -95,7 +96,7 @@ fn next_task() -> impl Future<Output = ()> {
     }
 }
 
-/// `{characters: [{id, name, key, costumes, row, column}], stages: [{id, name, key}]}`.
+/// `{characters: [{id, name, key, costumes, row, column}], stages: [{id, name, key, cpuSupported}]}`.
 #[wasm_bindgen]
 pub fn catalog() -> JsValue {
     let characters: Array = catalog::characters()
@@ -121,6 +122,7 @@ pub fn catalog() -> JsValue {
                 ("id", (id as u32).into()),
                 ("name", s.display_name().into()),
                 ("key", format!("{s:?}").into()),
+                ("cpuSupported", s.cpu_supported().into()),
             ])
         })
         .collect();
@@ -174,6 +176,8 @@ fn hud_object(hud: &Hud) -> JsValue {
                 ("costume", p.costume.into()),
                 ("percent", p.percent.into()),
                 ("stocks", p.stocks.into()),
+                ("cpu", p.cpu.into()),
+                ("team", p.team.map_or(-1, i32::from).into()),
             ])
         })
         .collect();
@@ -276,7 +280,9 @@ impl WebApp {
     }
 
     // --- Character select
-    /// `{players: [{character (id or -1), costume}], stocks, ready}`.
+    /// `{players: [{controller (0 off, 1 human, 2 CPU), character (id or
+    /// -1), costume, cpuLevel, team}] (four), ready, notReady (why not, or
+    /// null)}`.
     pub fn selection(&self) -> JsValue {
         let players: Array = self
             .app
@@ -284,6 +290,7 @@ impl WebApp {
             .iter()
             .map(|slot| {
                 object(&[
+                    ("controller", (slot.controller as u32).into()),
                     (
                         "character",
                         slot.character
@@ -291,14 +298,69 @@ impl WebApp {
                             .into(),
                     ),
                     ("costume", slot.costume.into()),
+                    ("cpuLevel", slot.cpu_level.into()),
+                    ("team", slot.team.into()),
                 ])
             })
             .collect();
         object(&[
             ("players", players.into()),
-            ("stocks", self.app.stocks().into()),
             ("ready", self.app.characters_ready().into()),
+            (
+                "notReady",
+                self.app
+                    .characters_not_ready()
+                    .map_or(JsValue::NULL, JsValue::from),
+            ),
         ])
+    }
+    /// 0 off, 1 human, 2 CPU.
+    pub fn set_controller(&mut self, player: u32, controller: u32) -> Result<(), JsError> {
+        let controller = Controller::from_u32(controller).ok_or(error("no such controller"))?;
+        self.app
+            .set_controller(player as usize, controller)
+            .map_err(error)
+    }
+    pub fn set_cpu_level(&mut self, player: u32, level: u8) -> Result<(), JsError> {
+        self.app.set_cpu_level(player as usize, level).map_err(error)
+    }
+    /// 0 red, 1 blue, 2 green.
+    pub fn set_team(&mut self, player: u32, team: u8) -> Result<(), JsError> {
+        self.app.set_team(player as usize, team).map_err(error)
+    }
+    /// `{stocks, teams, friendlyFire, itemFrequency (-1 off, 0..4)}`.
+    pub fn rules(&self) -> JsValue {
+        let rules = self.app.rules();
+        object(&[
+            ("stocks", rules.stocks.into()),
+            ("teams", rules.teams.into()),
+            ("friendlyFire", rules.friendly_fire.into()),
+            (
+                "itemFrequency",
+                rules.item_frequency.map_or(-1, i32::from).into(),
+            ),
+        ])
+    }
+    /// The fields of [`WebApp::rules`]; missing ones keep their value.
+    pub fn set_rules(&mut self, rules: JsValue) -> Result<(), JsError> {
+        let current = self.app.rules();
+        let field = |name: &str| Reflect::get(&rules, &name.into()).ok().filter(|v| !v.is_undefined());
+        let number = |name: &str| field(name).and_then(|v| v.as_f64());
+        let flag = |name: &str| field(name).and_then(|v| v.as_bool());
+        let rules = Rules {
+            stocks: number("stocks").map_or(current.stocks, |v| v as u8),
+            teams: flag("teams").unwrap_or(current.teams),
+            friendly_fire: flag("friendlyFire").unwrap_or(current.friendly_fire),
+            item_frequency: number("itemFrequency").map_or(current.item_frequency, |v| {
+                (v >= 0.0).then_some(v as u8)
+            }),
+        };
+        self.app.set_rules(rules).map_err(error)
+    }
+    /// Why `stage` cannot host the current picks, or null when it can.
+    pub fn stage_unavailable(&self, stage: u32) -> Option<String> {
+        let stage = catalog::stage(stage)?;
+        self.app.stage_unavailable(stage).map(str::to_owned)
     }
     /// `character` -1 clears the pick.
     pub fn choose_character(&mut self, player: u32, character: i32) -> Result<(), JsError> {
@@ -317,9 +379,6 @@ impl WebApp {
     }
     pub fn cycle_costume(&mut self, player: u32, step: i32) -> Result<(), JsError> {
         self.app.cycle_costume(player as usize, step).map_err(error)
-    }
-    pub fn set_stocks(&mut self, stocks: u8) -> Result<(), JsError> {
-        self.app.set_stocks(stocks).map_err(error)
     }
     pub fn confirm_characters(&mut self) -> Result<(), JsError> {
         self.app.confirm_characters().map_err(error)
@@ -423,10 +482,40 @@ impl WebApp {
         self.app.screen() == Screen::Match && self.app.session().is_some_and(|s| s.needs_frame())
     }
     /// `action`: 0 left, 1 right, 2 up, 3 down, 4 attack, 5 special, 6 jump, 7 shield, 8 grab.
-    pub fn action(&mut self, player: u32, action: u32, down: bool) {
+    /// Keyboard layout `device` drives the match's `device`th human player.
+    pub fn action(&mut self, device: u32, action: u32, down: bool) {
         if let Ok(action) = Action::try_from(action) {
-            self.app.set_action(player as usize, action, down);
+            self.app.set_action(device as usize, action, down);
         }
+    }
+    /// Gamepad `device` (the page's connection order) drives the match's
+    /// `device`th human player. `buttons` are `melee_pad_button_e` bits;
+    /// sticks -1..1 (up positive), triggers 0..1. Call every frame.
+    #[allow(clippy::too_many_arguments)]
+    pub fn gamepad(
+        &mut self,
+        device: u32,
+        buttons: u32,
+        stick_x: f32,
+        stick_y: f32,
+        cstick_x: f32,
+        cstick_y: f32,
+        trigger_l: f32,
+        trigger_r: f32,
+    ) {
+        self.app.set_gamepad(
+            device as usize,
+            Some(Gamepad {
+                buttons,
+                stick: [stick_x, stick_y],
+                cstick: [cstick_x, cstick_y],
+                triggers: [trigger_l, trigger_r],
+            }),
+        );
+    }
+    /// Gamepad `device` disconnected.
+    pub fn gamepad_lost(&mut self, device: u32) {
+        self.app.set_gamepad(device as usize, None);
     }
     pub fn set_paused(&mut self, paused: bool) {
         if let Some(session) = self.app.session_mut() {
@@ -444,20 +533,25 @@ impl WebApp {
     pub fn faulted(&self) -> bool {
         self.app.session().is_some_and(|s| s.failure().is_some())
     }
-    /// `{tick, paused, players: [{port, character, costume, percent, stocks}]}` or null.
+    /// `{tick, paused, players: [{port, character, costume, percent, stocks, cpu, team}]}` or null.
     pub fn hud(&self) -> JsValue {
         self.app.hud().map_or(JsValue::NULL, |hud| hud_object(&hud))
     }
-    /// `{winner (player index or -1), hud}` or null.
+    /// `{winner (player index or -1), winningTeam (team or -1), hud}` or null.
     pub fn results(&self) -> JsValue {
         let Some(results) = self.app.results() else {
             return JsValue::NULL;
         };
-        let winner = match results.outcome {
-            Outcome::Winner(index) => index as i32,
-            Outcome::Draw => -1,
+        let (winner, team) = match results.outcome {
+            Outcome::Winner(index) => (index as i32, -1),
+            Outcome::Team(team) => (-1, i32::from(team)),
+            Outcome::Draw => (-1, -1),
         };
-        object(&[("winner", winner.into()), ("hud", hud_object(&results.hud))])
+        object(&[
+            ("winner", winner.into()),
+            ("winningTeam", team.into()),
+            ("hud", hud_object(&results.hud)),
+        ])
     }
     pub fn restart(&mut self) -> Result<(), JsError> {
         self.app.restart().map_err(error)

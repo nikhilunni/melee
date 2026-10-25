@@ -4,7 +4,8 @@ use melee_lib::{Character, Stage};
 use melee_platform::{
     app::{App, Screen},
     disc::DiscFiles,
-    session::Action,
+    players::{Controller, Rules},
+    session::{Action, Gamepad, PadButton},
 };
 use std::{path::PathBuf, time::Duration};
 
@@ -91,7 +92,7 @@ fn the_hud_shows_one_entry_per_player_when_players_own_two_fighters() {
     load(&mut app);
     app.advance(Duration::from_nanos(16_666_667)).unwrap();
     let hud = app.hud().unwrap();
-    let players = hud.players.map(|p| (p.port, p.character));
+    let players: Vec<_> = hud.players.iter().map(|p| (p.port, p.character)).collect();
     assert_eq!(
         players,
         [
@@ -99,4 +100,127 @@ fn the_hud_shows_one_entry_per_player_when_players_own_two_fighters() {
             (melee_lib::Port::P2, Character::IceClimbers),
         ]
     );
+}
+
+const FRAME: Duration = Duration::from_nanos(16_666_667);
+
+#[test]
+fn a_cpu_plays_on_final_destination_and_reads_no_keyboard() {
+    let Some(iso) = iso() else {
+        return;
+    };
+    let mut app = App::new();
+    app.open_disc(DiscFiles::open_path(&iso).unwrap()).unwrap();
+    app.choose_character(0, Character::Fox).unwrap();
+    app.set_controller(0, Controller::Cpu).unwrap();
+    app.set_cpu_level(0, 9).unwrap();
+    app.choose_character(1, Character::Marth).unwrap();
+    app.confirm_characters().unwrap();
+    assert!(app.stage_unavailable(Stage::DreamLand).is_some());
+    app.choose_stage(Stage::FinalDestination, 99).unwrap();
+    load(&mut app);
+    // Keyboard layout 0 drives the first human: port 2, not the CPU.
+    assert_eq!(app.human_ports(), [1]);
+    app.set_action(0, Action::Left, true);
+    for _ in 0..600 {
+        app.advance(FRAME).unwrap();
+    }
+    let hud = app.hud().unwrap();
+    assert_eq!(hud.tick, 600);
+    assert!(hud.players[0].cpu && !hud.players[1].cpu);
+    let recording = app.session().unwrap().recording();
+    let samples = recording.samples();
+    assert!(samples.iter().all(|s| s.inputs().0[0] == Default::default()));
+    assert!(samples.iter().any(|s| s.inputs().0[1].stick.x < 0.0));
+}
+
+#[test]
+fn four_players_play_a_team_battle_driven_by_gamepads() {
+    let Some(iso) = iso() else {
+        return;
+    };
+    let mut app = App::new();
+    app.open_disc(DiscFiles::open_path(&iso).unwrap()).unwrap();
+    for (player, character) in [
+        Character::Fox,
+        Character::Marth,
+        Character::Peach,
+        Character::Falco,
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        app.choose_character(player, character).unwrap();
+        app.set_team(player, (player % 2) as u8).unwrap();
+    }
+    app.set_rules(Rules {
+        teams: true,
+        item_frequency: Some(4),
+        ..app.rules()
+    })
+    .unwrap();
+    app.confirm_characters().unwrap();
+    // Items are witnessed with two players only: the menu says so.
+    let reason = app.stage_unavailable(Stage::Battlefield).unwrap();
+    assert!(reason.contains("two players"), "{reason}");
+    app.back();
+    app.set_rules(Rules {
+        item_frequency: None,
+        ..app.rules()
+    })
+    .unwrap();
+    app.confirm_characters().unwrap();
+    app.choose_stage(Stage::Battlefield, 2026).unwrap();
+    load(&mut app);
+    assert_eq!(app.human_ports(), [0, 1, 2, 3]);
+    assert_eq!(app.session().unwrap().game().config().players.len(), 4);
+    // Gamepad 3 drives port 4: a held jump with the stick right.
+    app.set_gamepad(
+        3,
+        Some(Gamepad {
+            buttons: PadButton::X.bit(),
+            stick: [1.0, 0.0],
+            ..Gamepad::default()
+        }),
+    );
+    for _ in 0..900 {
+        app.advance(FRAME).unwrap();
+    }
+    let hud = app.hud().unwrap();
+    assert_eq!(hud.tick, 900);
+    let teams: Vec<_> = hud.players.iter().map(|p| p.team).collect();
+    assert_eq!(teams, [Some(0), Some(1), Some(0), Some(1)]);
+    let samples = app.session().unwrap().recording().samples();
+    assert!(samples.iter().any(|s| s.inputs().0[3].stick.x == 1.0));
+}
+
+#[test]
+fn random_items_fall_in_a_two_player_match() {
+    let Some(iso) = iso() else {
+        return;
+    };
+    let mut app = App::new();
+    app.open_disc(DiscFiles::open_path(&iso).unwrap()).unwrap();
+    app.choose_character(0, Character::Fox).unwrap();
+    app.choose_character(1, Character::Marth).unwrap();
+    app.set_rules(Rules {
+        item_frequency: Some(4),
+        ..app.rules()
+    })
+    .unwrap();
+    app.confirm_characters().unwrap();
+    assert!(app.stage_unavailable(Stage::DreamLand).is_some());
+    app.choose_stage(Stage::FinalDestination, 31).unwrap();
+    load(&mut app);
+    assert_eq!(app.session().unwrap().game().config().rules.items.frequency, 4);
+    let mut seen = 0;
+    for _ in 0..1800 {
+        if app.advance(FRAME).is_err() {
+            // An unwitnessed item branch fails closed; the replay is kept.
+            break;
+        }
+        let view = app.session().unwrap().game().observe().unwrap();
+        seen = seen.max(view.items().count());
+    }
+    assert!(seen > 0, "Very High spawns an item within 30 seconds");
 }
