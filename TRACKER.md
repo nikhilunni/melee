@@ -4,82 +4,90 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-24, wave 16 integrated; functional checkpoint complete)
+## Current state (2026-10-25, waves 17–18 integrated)
 
-- **Two more breadth slices are integrated:** Kongo's saved live barrel
-  animation clock and actual catches/holds/launches (`cefbc068`), and neutral
-  left-facing Party Ball FALL/REST (`93683489`). Source is `93683489`;
-  evidence and limits: `docs/PORT_NOTES/WAVE16_BREADTH.md` and
-  `PARTY_BALL_FALL_REST.md`. The earlier handoffs and wave 15 slices remain
-  integrated; their reports preserve historical measurements.
-- **Combined sweep:** 3,488 scenarios, **3,307 particle-exact**, 115 not
-  comparable, 65 unchanged local failures and one unchanged particle fault.
-  **Zero regressions, 14 fixes** against `486aaba1`; **242 fixes** against
-  startup `0a99db31`. Three new cold scenarios share their warm captures.
-  Incomplete recordings and local failures are not accepted divergences.
-- **Replay corpora remain unchanged:** `public-v3.7` completes **108/108**
-  (964,782 matched frames); `public-v3.7-b` completes **486/502**
+- **Five capabilities are integrated at production `2c10dd58`:** Kongo
+  log-standing, script color installation timing, revival-platform floor
+  entry, retained running-item program identity, and pinned mouth-victim
+  bottom death with its required cache and immediate-effect ordering fixes.
+  Evidence and admission limits: `docs/PORT_NOTES/WAVE17_18_BREADTH.md`
+  and the individual feature notes.
+- **Fresh combined sweep:** 3,490 scenarios, **3,314 particle-exact**, 115
+  not comparable, 60 existing local failures and one existing particle
+  fault. **Zero regressions, five fixes** against `77c3ef37`; **247 fixes**
+  against startup `0a99db31`. Incomplete recordings and local failures are
+  not accepted divergences. Source, executable and scenario provenance are
+  under `target/wave18/main/final/`; canonical baseline is
+  `target/sweeps/2c10dd58b7e090c91045df8ae95146128a0b2a21.*`.
+- **Fresh replay corpora remain unchanged:** `public-v3.7` completes
+  **108/108** (964,782 matched frames); `public-v3.7-b` completes **486/502**
   (5,102,652 frames), retaining every path's category and matched count.
   CPU replay setup and stock sharing remain refused capabilities.
-- **Parity inventory** (`target/parity/wave16-integrated/`,
+- **Parity inventory** (`target/parity/wave17-18-integrated/`,
   `docs/PARITY.md`): all retail **29.3% ported/partial, 38.0% with body/row**;
-  historical in-game subtotal **44.9% / 57.0%**. Of 19,827 functions:
-  4,208 ported, 201 partial, 1,362 body, 1,381 row, 229 referenced and
-  12,446 not started. **269 fail-closed sites**: 250 unimplemented, 19 bail.
-  New explicit Party Ball guards increase the count while its witnessed
-  path becomes exact. Citations and retail bytes are a proxy for progress.
-- **Combined release checkpoint passes:** 1,947 workspace tests, zero
-  failures, one existing ignore; m4 345 and m5 299. Workspace all-target
+  historical in-game subtotal **45.0% / 57.0%**. Of 19,827 functions:
+  4,209 ported, 201 partial, 1,363 body, 1,381 row, 229 referenced and
+  12,444 not started. **268 fail-closed sites**: 249 unimplemented, 19 bail.
+  Citations and retail bytes are a proxy for progress, not witnessed branch
+  coverage; every reporting group remains in scope.
+- **Combined release checkpoint passes:** 1,971 workspace tests, zero
+  failures, one existing ignore; m4 345 and m5 304. Workspace all-target
   clippy is clean; harness 407 and schema zero layout violations. WASM pure
   suites, four expected spline traps, 6,003 identical native/WASM hash lines
-  and the release web check pass. Actual API allocation/capture checks pass.
+  and the release web check pass. Actual API step/observe/capture remains
+  allocation-free; live pinned and suspended-item clones continue
+  independently. Clone creation is not included in those allocation counts.
   Release only; no debug run.
-- **Performance gate retains existing budget failures:** at `93683489`,
-  time passes (18.775 ms per 600 ticks; 55.560 ms load). Stripped size is
-  7,639,936 bytes and text size 6,881,280 bytes, above unchanged ceilings;
+- **Quiet performance retains existing budget failures:** at `2c10dd58`,
+  time passes (18.373 ms per 600 ticks; 56.350 ms load). Stripped size is
+  7,640,128 bytes and text size 6,881,280 bytes, above unchanged ceilings;
   Kirby's one duplicate label still exceeds baseline zero. Shared-code
   duplication passes: 20 melee-ft labels, 94 across crates. The complete
   report is appended to `docs/PERF.md`; no budget was increased.
 
 ## Next (breadth before individual replay fixes)
 
-1. [x] Close wave 16 documentation and quiet performance measurement.
-   Verified sweep/replay artifacts are under `target/sweeps/93683489*`;
-   merged worktrees are removed after preserving their acceptance evidence.
-2. [ ] **Kongo log-standing:** wire the existing `Log::stood_on` callback,
-   preserve Sink/Remove guards, and prove the complete 2,829-tick capture
-   plus cold initialization. Plan: `target/wave16/kongo-log-search/plan.md`.
-3. [ ] **Revival-floor entry:** copy resolved position, grant protection
-   and color, then reuse normal landing/Wait entry. The 1,679-tick recording
-   ends on the actual transition; it provides no later floor-exit ticks.
-   Plan: `target/wave16/revival-floor-search/plan.md`.
-4. [ ] Continue heavy pickup/carry/throws, other item-use rows and random
+1. [~] **Shared ordinary-contact handling:** clear pending phantom damage
+   before invincibility/shell early returns, as retail does. Two complete
+   existing captures (360/699 ticks) witness the same ordering defect.
+   Implementation/review is isolated; it is not part of this checkpoint.
+   Plans: `target/wave18/stone-phantom-search/plan.md` and
+   `target/wave18/kirby-ys-collision-search/plan.md`.
+2. [x] **Kongo log-standing:** complete 2,829-tick warm/cold witness;
+   Sink/Remove and second-live-log paths remain guarded.
+3. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
+   actual floor transition on its last tick. No later floor-exit proof.
+4. [!] **Ness current yo-yo binding:** raw data proves overlapping old/new
+   instances, but the only overlap capture has 4,775 expected/raw/ledger
+   ticks and only 3,340 particle/meta ticks. Whole acceptance requires an
+   add-only new recording; approval remains pending. Do not truncate it.
+   Evidence: `target/wave18/yoyo-witness-search/plan.md`.
+5. [ ] Continue heavy pickup/carry/throws, other item-use rows and random
    kinds, **19 remaining Versus stages**, copied Sheik Needle Storm, wider
    CPU stage awareness, modes, retail menus/results/single-player and pause.
    Monster births, heavy entries and held aerial entries do not prove
-   later callbacks. CPU audit `target/wave16/cpu-next-search/plan.md` finds
-   no eligible new CPU branch in existing complete recordings; human/Nana
-   data is not configured CPU control evidence. Nothing is out of scope.
-   **No new recordings are authorized in the current task**; a concrete
-   scratch recording pack is prepared, with permission pending.
-5. [ ] Replay depth after breadth: five existing stops remain in the second
+   later callbacks. CPU audit found no eligible additional branch in
+   existing complete configured-CPU recordings. Nothing is out of scope.
+   **No new recordings are authorized in the current task**; the concrete
+   scratch recording pack awaits permission. Second-log lifetime evidence
+   is being checked separately; creation alone is insufficient.
+6. [ ] Replay depth after breadth: five existing stops remain in the second
    corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
    unconsumed controller polls; two one-ulp Nana positions). Other
-   unfinished games are refused capabilities. Preserve the distinction
-   between replay stops, exact retail witnesses and unsupported setups
-   (`docs/SLIPPI.md`).
+   unfinished games are refused capabilities. Preserve replay/retail
+   witness/unsupported-setup distinctions (`docs/SLIPPI.md`).
 
 ## Status by area
 
 **Characters:** all 26 are registered. Movement, combat and character
 specials have recorded witness families. Kirby has **24/25 copied neutral
 specials**; copied Sheik Needle Storm remains unported despite an existing
-start boundary (`docs/PORT_NOTES/KIRBY.md`). Inhale/item and hand-pose gaps
-remain. Character differences use static tables and family crates.
+start boundary (`docs/PORT_NOTES/KIRBY.md`). Pinned mouth-victim bottom cleanup is witnessed; other Inhale/item and
+hand-pose gaps remain. Character differences use static tables and family crates.
 
 **Stages:** ten supported Versus stages: the six tournament stages, Yoshi's
 Island 64, Kongo Jungle 64, Kongo Jungle and Jungle Japes. Supported does
-not mean every hazard is enabled: Kongo barrels/log/event and other
+not mean every hazard is enabled: Kongo barrel/log Sink/Remove, second-log/event and other
 unwitnessed branches retain explicit guards. Nineteen stages remain.
 Stadium form-archive read completion is a recorded external input; ordinary
 runs use documented default latency (`docs/APP.md`).
@@ -91,7 +99,9 @@ Sword admissions add only common AttackLw3 (57), AttackHi4 (63) and their
 witnessed throw routing; private, aerial, Hi3 and Lw4 rows stay guarded.
 Barrel ownership adds only a primary article owner to an unowned REST
 barrel; other ownership contexts remain guarded. Party Ball now has bounded neutral left-facing FALL/REST coverage;
-its other states, other random kinds and heavy fighter rows remain backlog. Entry-only recordings do not
+its other states, other random kinds and heavy fighter rows remain backlog.
+Running Barrel scripts retain their original program across witnessed rolling
+drops; this adds no new item kind or heavy/aerial fighter admission. Entry-only recordings do not
 prove later callbacks.
 
 **CPU:** Nana follow/recovery behavior remains. Versus CPU players are now
