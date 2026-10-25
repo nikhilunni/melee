@@ -13,6 +13,7 @@ it-shell = { path = "../it-shell" }
 it-freeze = { path = "../it-freeze" }
 it-msbomb = { path = "../it-msbomb" }
 it-heal = { path = "../it-heal" }
+it-wstar = { path = "../it-wstar" }
 it-container = { path = "../it-container" }
 it-monsters = { path = "../it-monsters" }
 it-klap = { path = "../it-klap" }

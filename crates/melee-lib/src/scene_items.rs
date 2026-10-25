@@ -34,6 +34,7 @@ melee_it::item_kinds! {
         Heart: it_heal::HeartContainer,
         Tomato: it_heal::MaximTomato,
         Foods: it_heal::Food,
+        WStar: it_wstar::WarpStar,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -683,6 +684,16 @@ impl Resources {
                     ItemKind::Foods,
                     &it_heal::foods::ARTICLE_STATES,
                     it_heal::foods::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::WStar,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::WStar,
+                    &it_wstar::ARTICLE_STATES,
+                    it_wstar::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (

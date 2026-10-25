@@ -7128,6 +7128,8 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_items_tomato_cold", 600),
     ("start_fd_items_foods", 600),
     ("start_fd_items_foods_cold", 600),
+    ("start_fd_items_wstar", 600),
+    ("start_fd_items_wstar_cold", 600),
     // Green Shells: stomped from rest and while sliding (ft_80081A00 ->
     // it_8028CF68), struck, thrown, dropped, clanking with each other
     // (it_8026FE68, sparks in call order), bounced off shields, reflected,

@@ -1573,6 +1573,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-wstar"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-yaku"
 version = "0.0.1"
 dependencies = [
@@ -1952,6 +1962,7 @@ dependencies = [
  "it-shell",
  "it-sword",
  "it-tools",
+ "it-wstar",
  "it-yaku",
  "it-yoshieggthrow",
  "it-yoshistar",

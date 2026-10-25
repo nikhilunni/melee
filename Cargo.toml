@@ -26,6 +26,7 @@ members = [
     "crates/it-freeze",
     "crates/it-msbomb",
     "crates/it-heal",
+    "crates/it-wstar",
     "crates/it-container",
     "crates/it-monsters",
     "crates/it-klap",
