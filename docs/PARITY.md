@@ -1,8 +1,11 @@
 # Function-level parity inventory
 
 How far the port is from all of retail Melee, measured per retail function.
-Measured 2026-10-24 on main at `969a065e`. The objective here is breadth: every
-function retail runs, not only what the gate exercises.
+Measured 2026-10-24 after all six handoffs were integrated on main
+(`bf98d61d`, including the shared-callback cleanup). Evidence is in
+`target/parity/wave14-integrated/`, refreshed after the full release checkpoint. The objective here is breadth: every function
+retail runs, not only what the gate exercises. Runtime gates and their
+checkpoint results are tracked separately in `TRACKER.md`.
 
 ```sh
 cargo run -q --release -p melee-lib --example motion_rows > target/parity/motion_rows.tsv
@@ -72,30 +75,29 @@ does not name them; `gm_1601.c` (match flow), `gm_16AE.c`, `gmmain_lib.c`
 (save data and rules) and the unnamed `hsd_3A94`/`hsd_3B*` files stay in game
 logic.
 
-**Fail-closed sites.** Every `unimplemented!` and `todo!` in non-test,
-non-tooling code (300), every `bail!` in a simulation crate or `melee-lib`
-(20; `bail!` elsewhere is input validation) and every
-`Error::UnsupportedFeature` in `hsd-particle` (11): 331 sites. `unreachable!`
-is an invariant, not a gap, and is left out. Each resolves to a retail
-function by, in order: a symbol or address in its message (238), a
-`file.c:line` in its message or the comment above it, mapped to the C
-function whose body holds that line (included in the 238), or the comment
-block of the enclosing Rust fn (32). 61 do not resolve: generic dispatch arms
-(`item control for this kind`) and the boundary importer.
+**Fail-closed sites.** The current inventory has **253 sites**: 234
+`unimplemented!` and 19 `bail!`. The tool also detects `todo!` in non-test,
+non-tooling code and `Error::UnsupportedFeature` in `hsd-particle`; neither
+adds a current site. `bail!` is counted in simulation crates and `melee-lib`,
+while other crates' input validation is excluded. `unreachable!` is an
+invariant, not a gap, and is left out. A site resolves by a symbol/address
+or C line in its message/comment, then its enclosing Rust function's doc.
+Current resolution: 202 by message/C line, 13 by enclosing context, 38
+unresolved dispatch/import sites. New explicit guards can increase this
+count even while more retail behavior is ported.
 
 ## Accuracy
 
-**Citations.** 22,671 function citations; 96.7% resolve to a function in the
-symbol table. The rest are 480 decomp `static inline` helpers (no retail
-function of their own, e.g. `ftCommon_GroundToAirStateChange`) and 268 stale
-or invented names: `Fighter_ProcessHit` (47), `Fighter_UnkProcessDeath`
-(11), `Fighter_UnkInitReset` (9), `Fighter_UnkProcessGrab` (4) are older
-decomp names since renamed; others are state names written as symbols
-(`ftNs_SpecialAirHi`, `ftCo_Cliff`), struct fields (`unknown_float`) and one
-run-together pair. Not counted as function citations: 394 data symbols and
-2,458 decomp identifiers that are types, fields, enums or macros.
+**Citations.** 24,062 of 24,915 function-citation candidates resolve to
+retail functions (96.6%); 546 name decomp inline helpers without their own
+retail symbol, and 307 names remain unresolved. Stale names include
+`Fighter_ProcessHit`, `Fighter_UnkProcessDeath` and `Fighter_UnkInitReset`;
+other unresolved tokens are state names or fields rather than functions.
+Not counted as function citations: 473 data references and 2,595 other
+decomp identifiers. Counts come from the current generated summary, not
+the earlier calibration sample below.
 
-**Spot check.** Three calibration rounds (64 random functions) found the
+**Historical spot check.** Three calibration rounds (64 random functions) found the
 systematic errors the `body` and `row` statuses and the module-doc rule now
 fix: state callbacks and one-call wrappers the port implements through a row
 without naming them, and callees named only inside the caller's body (with
@@ -120,105 +122,119 @@ outside state tables (`ftCo_8009856C`, a DownAttack entry helper; Jigglypuff's
 hat getter). Families whose crates cite with wildcards (`ftMs_SpecialS*_Coll`)
 undercount most.
 
-## Totals
+## Current totals
 
-All functions (19,827; 3,783 KiB): 3,864 ported, 246 partial, 1,207 body,
-1,154 row, 235 referenced, 13,121 not started. By bytes, **27.6% ported or
-partial, 34.8% with body and row**.
+All functions (19,827; 3,783 KiB): **4,200 ported, 204 partial, 1,361 body,
+1,378 row, 221 referenced, 12,463 not started**. By retail bytes,
+**29.2% ported/partial, 37.9% with body/row**.
 
-In-game logic only (14,399 functions; 2,432 KiB): **41.8% ported or partial,
-52.2% with body and row**. The excluded families (5,428 functions, 1,351 KiB)
-are 2.0% done (3.6% with body and row), mostly rendering ported for the app.
+The historical in-game measurement group (14,399 functions; 2,432 KiB) is
+**44.9% / 56.9%**. The remaining 5,428 functions are still in scope; their
+reporting groups appear below. These figures count citations and code bytes,
+not directly witnessed branches or a percentage of gameplay completeness.
 
-| area (in-game) | functions | ported | partial | body | row | referenced | not started | KiB | ported+partial | with body+row |
+| area | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| it items (kinds) | 3802 | 711 | 35 | 121 | 99 | 32 | 2804 | 473 | 36.9% | 41.8% |
-| ft characters | 3672 | 1613 | 45 | 348 | 714 | 64 | 888 | 445 | 58.8% | 77.8% |
-| gr stages | 1760 | 101 | 3 | 62 | 0 | 26 | 1568 | 340 | 12.0% | 14.0% |
-| ft common states | 1471 | 482 | 92 | 181 | 320 | 8 | 388 | 248 | 57.9% | 72.8% |
-| ft engine | 1108 | 302 | 41 | 196 | 21 | 45 | 503 | 237 | 50.2% | 64.1% |
-| HSD (sysdolphin) | 499 | 136 | 4 | 28 | 0 | 16 | 315 | 180 | 34.6% | 45.2% |
-| mp collision | 229 | 212 | 1 | 2 | 0 | 2 | 12 | 102 | 92.5% | 92.9% |
-| gm match flow | 617 | 12 | 1 | 18 | 0 | 4 | 582 | 98 | 4.9% | 10.4% |
-| it engine | 475 | 113 | 8 | 107 | 0 | 10 | 237 | 88 | 41.0% | 56.5% |
-| lb | 211 | 60 | 4 | 33 | 0 | 1 | 113 | 58 | 47.2% | 59.9% |
-| ef effects | 65 | 14 | 6 | 30 | 0 | 0 | 15 | 49 | 73.2% | 91.3% |
-| if HUD | 163 | 5 | 0 | 6 | 0 | 4 | 148 | 49 | 5.6% | 20.6% |
-| cm camera | 127 | 20 | 1 | 13 | 0 | 4 | 89 | 35 | 30.0% | 37.3% |
-| pl player | 191 | 9 | 1 | 17 | 0 | 6 | 158 | 29 | 8.5% | 16.6% |
-| MSL math | 9 | 4 | 0 | 5 | 0 | 0 | 0 | 1 | 82.0% | 100.0% |
-| **total** | 14399 | 3794 | 242 | 1167 | 1154 | 222 | 7820 | 2432 | 41.8% | 52.2% |
+| it items | 3802 | 798 | 22 | 132 | 114 | 30 | 2706 | 473 | 39.0% | 44.5% |
+| ft characters | 3672 | 1715 | 35 | 411 | 921 | 53 | 537 | 445 | 62.5% | 87.5% |
+| gr | 1760 | 148 | 9 | 89 | 0 | 28 | 1486 | 340 | 17.9% | 20.6% |
+| ft common states | 1471 | 513 | 82 | 190 | 322 | 8 | 356 | 248 | 62.0% | 77.8% |
+| ft engine | 1108 | 340 | 26 | 214 | 21 | 43 | 464 | 237 | 54.7% | 69.3% |
+| HSD (sysdolphin) | 499 | 141 | 2 | 27 | 0 | 15 | 314 | 180 | 35.4% | 45.4% |
+| mp | 229 | 212 | 1 | 2 | 0 | 2 | 12 | 102 | 92.5% | 92.9% |
+| gm | 617 | 15 | 2 | 28 | 0 | 6 | 566 | 98 | 6.0% | 13.9% |
+| it engine | 475 | 127 | 15 | 108 | 0 | 11 | 214 | 88 | 47.3% | 62.3% |
+| lb | 211 | 61 | 2 | 36 | 0 | 1 | 111 | 58 | 47.2% | 60.1% |
+| ef | 65 | 14 | 5 | 33 | 0 | 0 | 13 | 49 | 72.7% | 93.1% |
+| if | 163 | 5 | 0 | 10 | 0 | 1 | 147 | 49 | 5.6% | 27.2% |
+| cm | 127 | 21 | 1 | 13 | 0 | 4 | 88 | 35 | 30.2% | 37.5% |
+| pl | 191 | 9 | 1 | 19 | 0 | 6 | 156 | 29 | 8.5% | 17.4% |
+| MSL | 9 | 4 | 0 | 5 | 0 | 0 | 0 | 1 | 82.0% | 100.0% |
+| **total** | 14399 | 4123 | 203 | 1317 | 1378 | 208 | 7170 | 2432 | 44.9% | 56.9% |
 
-| family outside historical in-game subtotal | functions | KiB | ported+partial | with body+row |
-|---|---:|---:|---:|---:|
-| single-player and modes | 1520 | 278 | 0.0% | 0.0% |
-| menus | 530 | 260 | 0.1% | 4.8% |
-| rendering | 795 | 206 | 11.4% | 13.6% |
-| OS, hardware, loading | 746 | 165 | 2.0% | 3.7% |
-| results | 352 | 102 | 0.0% | 2.0% |
-| trophies | 151 | 97 | 0.0% | 0.0% |
-| audio | 336 | 84 | 0.2% | 0.5% |
-| single-player fighters | 557 | 51 | 0.3% | 0.3% |
-| memory card | 168 | 44 | 0.0% | 0.0% |
-| debug | 153 | 37 | 0.0% | 0.4% |
-| cutscenes | 84 | 20 | 0.0% | 0.0% |
-| pause | 36 | 7 | 0.0% | 0.0% |
+### Every reporting group remains in scope
 
-Characters, by the estimate (ported, partial, body, row): Nana, Mewtwo,
-Jigglypuff, Mario, Bowser, Captain Falcon, Sheik, Samus, Link and Zelda
-93-99%; Ice Climbers, Pikachu, Ness, Peach, Luigi, Game & Watch and Yoshi
-90-93%; Fox (with the Falco code it shares) 81%; Donkey Kong 75%; Marth (with
-Roy's shared code) 72%; Kirby 47% (the copy abilities, 79 KiB, are 38%).
-Fox, Donkey Kong and Marth are fully playable and exact on their witnesses, so
-their lower numbers are mostly uncited helpers (`ftMs_SpecialS_801376E8`
-and its siblings), the undercount the spot check describes. The clone files
-(Falco, Ganondorf, Roy, Pichu, Dr. Mario, Young Link: 32-59%) are small and
-hold their own load and attribute hooks.
+| scope | functions | ported | partial | body | row | referenced | not started | KiB | bytes ported+partial | with body+row |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| in-game | 14399 | 4123 | 203 | 1317 | 1378 | 208 | 7170 | 2432 | 44.9% | 56.9% |
+| single-player and modes | 1520 | 5 | 0 | 2 | 0 | 1 | 1512 | 278 | 0.1% | 0.2% |
+| menus | 530 | 1 | 0 | 10 | 0 | 2 | 517 | 260 | 0.1% | 4.8% |
+| rendering | 795 | 42 | 1 | 11 | 0 | 6 | 735 | 206 | 4.5% | 13.6% |
+| OS, hardware, loading | 746 | 27 | 0 | 12 | 0 | 3 | 704 | 165 | 2.0% | 3.7% |
+| results | 352 | 0 | 0 | 5 | 0 | 0 | 347 | 102 | 0.0% | 2.0% |
+| trophies | 151 | 0 | 0 | 0 | 0 | 0 | 151 | 97 | 0.0% | 0.0% |
+| audio | 336 | 1 | 0 | 2 | 0 | 1 | 332 | 84 | 0.2% | 0.5% |
+| single-player fighters | 557 | 1 | 0 | 0 | 0 | 0 | 556 | 51 | 0.3% | 0.3% |
+| memory card | 168 | 0 | 0 | 0 | 0 | 0 | 168 | 44 | 0.0% | 0.0% |
+| debug | 153 | 0 | 0 | 2 | 0 | 0 | 151 | 37 | 0.0% | 0.5% |
+| cutscenes | 84 | 0 | 0 | 0 | 0 | 0 | 84 | 20 | 0.0% | 0.0% |
+| pause | 36 | 0 | 0 | 0 | 0 | 0 | 36 | 7 | 0.0% | 0.0% |
+| **total** | 19827 | 4200 | 204 | 1361 | 1378 | 221 | 12463 | 3783 | 29.2% | 37.9% |
 
-## Biggest not-started areas
+Character-family percentages are sensitive to shared code and citation
+style: Fox/Falco, Marth/Roy and other family crates can implement behavior
+without naming each clone symbol. All 26 registered characters have recorded
+witness families; that does not close their partial/unwitnessed branches.
+Kirby now has 24/25 copied neutrals, with Sheik still unported. Do not reuse
+the older copy-ability percentages as the current state.
 
-1. **Stages other than the six tournament ones**: 2,190 functions, 342 KiB at
-   2% (Big Blue 41 KiB, Corneria 25, Brinstar 18, Icicle Mountain 16, Peach's
-   Castle 15, Green Greens 15, Venom 14, Kongo Jungle 13, Mute City 12,
-   Rainbow Cruise 11, Great Bay 10, Onett 8, ...). The six
-   tournament stages are 68% (72%); the shared stage code (`ground.c`,
-   `grlib.c`, `granime.c`, ...) 22% (29%).
-2. **Item kinds never touched**: 100 of 166 item source files, 2,611
-   functions, 255 KiB at 0%: every random item (shells, Bob-omb launcher
-   aside, Hammer, Star Rod, Ray Gun, Super Scope, Fire Flower, Mushrooms,
-   Poké Ball and its 30-odd Pokémon, Party Ball, barrels and crates), stage
-   enemies and the adventure enemies (ReDead, Like Like). The 66 item files
-   the port has started are 80% (91%).
-3. **Match flow (`gm`, `pl`, `if`)**: 971 functions, 176 KiB at 5-9%. The port
-   runs its own match shell; retail's `gm_1601.c` (36 KiB: time, stock and
-   KO bookkeeping, sudden death), `gm_16F1`/`gm_16A2`/`gm_16AE`, `player.c`
-   (23 KiB) and the HUD (`ifstock`, `ifstatus`, `iftime`, the magnifier) are
-   mostly not ported function by function; what the gate needs is
-   reproduced inside `melee-lib`.
-4. **HSD**: 315 of 499 in-game functions not started, notably `cobj.c`
-   (camera objects, 78% not started), `robj.c`, the unnamed `hsd_3A94.c`
-   (37 KiB) and `hsd_3B34.c`/`hsd_3B5C.c`.
-5. **Kirby's copy abilities**: 579 functions, 79 KiB at 9% (38%): 17 of the
-   25 copied neutral specials, 94 of Kirby's 102 unimplemented rows.
-6. **Item use by fighters**: 112 of 341 common motion rows are
-   unimplemented, nearly all item states: heavy items (HeavyGet, HeavyThrow
-   x8), five swing items x4 rows, Ray Gun, Fire Flower, Super Scope (16
-   rows), Screw Attack, Parasol item, Hammer (7), Mushrooms (8), Warp Star,
-   barrels, being carried (Lift), and captures by enemies and bosses.
-7. **CPU players**: `ftCo_0A01.c`, `ftcpuattack.c` and `ftcmdscript.c` are
-   111 KiB at 56%; what exists serves Nana. 44 fail-closed sites.
-8. **Camera** (`camera.c`, 35 KiB): 60% not started (single-player framing,
-   pause and debug cameras, quake helpers).
+## Largest remaining breadth areas
 
-## Fail-closed backlog
+1. **Stages:** ten Versus stages are supported, with explicit guards for
+   unwitnessed hazards; 19 remain. Large untouched files include Big Blue
+   (41.2 KiB), Corneria (24.8), Brinstar (18.1), Icicle Mountain (16.2),
+   Peach's Castle (15.2), Green Greens (14.5) and Venom (14.0). The whole
+   historical in-game `gr` group is 17.9% / 20.6% by bytes.
+2. **Items:** 2,706 of 3,802 item-kind functions are not started; the group
+   is 39.0% / 44.5%. Capsule/Box/Barrel and random spawning are integrated
+   within witnessed setup bounds. Party Ball, other random kinds,
+   shooting items, heavy carry/throws, stage/enemy items and many fighter
+   use rows remain. The first proposed slice is 23 existing ground Sword
+   witnesses, admitting only held AttackLw3 (57) and AttackHi4 (63).
+3. **Modes, menus and match shell:** the historical in-game `gm` group is
+   6.0% / 13.9%; other mode, menu, results and pause families are reported
+   separately above. FFA and witnessed teams/doubles are integrated;
+   stock sharing and timed-team ranking remain guarded. The app's own
+   menus do not count as retail ports.
+4. **HSD and camera:** 314 of 499 historical in-game HSD functions are not
+   started. The unnamed `hsd_3A94.c` and `hsd_3B34.c` remain wholly
+   uncited, while `camera.c` is 60% not started. Display, single-player,
+   pause and debug behavior all remain in scope.
+5. **Kirby and CPU edges:** copied Sheik Needle Storm remains unported;
+   its start boundary is not an ability witness. CPU players now run in
+   the guarded FD/Battlefield Versus envelope, with static character
+   profiles and 95 registered witnesses. Remaining CPU stage, command,
+   item and recovery paths stay explicit guards; CPU replay setup lacks
+   a recorded level. The CPU crate still has 39 fail-closed sites.
+6. **Shared engine sequencing:** the next prepared work includes narrow
+   primary-owner transfer to an unowned REST Barrel, Party Ball FALL/REST
+   from an existing left-facing 600-tick capture, and the container Resume
+   phase correction. New call sites need direct retail branch witnesses;
+   the 25 held aerial entry captures do not authorize the missing later
+   throw-first IASA branch. No new recordings are authorized in this task.
 
-331 sites, clustered into work items a single worktree agent can take. Each
-row names its sites' files; `fail_closed.tsv` has every line, message and
-retail function. The 258 unimplemented motion rows fail closed through one
-site (`state/row.rs:110`) and are counted as "+N rows" in the items they
-belong to: 132 item and status rows (19 + 30 + 22 + 4 + 57; the common
-table's 112 plus Donkey Kong's heavy carry and Falcon's and Ganondorf's
-swing rows), 102 of Kirby's (94 + 6 + 2) and 24 other character rows.
+The current `summary.md` and `inventory.tsv` list not-started source files
+and functions; `fail_closed.tsv` lists exact current guards. The historical
+packet map below is a discovery aid only.
+
+## Current fail-closed backlog
+
+**253 current sites** are enumerated in
+`target/parity/wave14-integrated/fail_closed.tsv` (234 unimplemented,
+19 bail). A site may guard an entire family of motion rows or setup states;
+site count is not branch count. Do not infer current row totals or agent
+scope from the older packets below. Check current source and complete
+recordings before enabling anything.
+
+### Historical 32-packet map (before the six handoff integrations)
+
+The following map was measured at `969a065e`: **331 historical sites**,
+including 258 unimplemented motion rows counted through shared dispatch.
+Its counts, line numbers, capability descriptions and reachability are
+historical and are not reconciled to the 253-site inventory above. Several
+packets have now landed partly or fully (CPU, copied specials, match flow,
+random items, Kongo/Japes and common grab edges). Keep it as an index of
+retail families, not a current assignment list or completion claim.
 
 | # | work item | sites | where | retail |
 |---|---|---:|---|---|
@@ -255,8 +271,7 @@ swing rows), 102 of Kirby's (94 + 6 + 2) and 24 other character rows.
 | 31 | Stage and camera leftovers: Battlefield light kinds, animated stage lights, stage spline animation, Battlefield demo background, zoomed single-player camera | 5 | `melee-gr/`, `scene_stage/battle.rs`, `melee-cm/standard.rs` | `LObjLoad`, `Ground_801C466C`, `JObjSortAnim`, `grBattle_OnLoad`, `Camera_8002B1F8` |
 | 32 | Match flow: final stock and elimination, a second fighter's revival at its own spawn, more than nine camera subjects | 4 | `fighter/life.rs`, `frame/partner_fighters.rs`, `frame.rs:3424` | `gm_80167320`, `Player_80032070` |
 
-The first 32 rows hold all 331 sites. Rows 2, 15 and the CPU and stage
-items in 1-4 only become reachable once the stages and items they depend on
-exist; closing the not-started stages and items (the first two areas above)
-is the larger part of the remaining work and is not in this list, which
-covers only code the port already knows it lacks.
+These 32 rows accounted for the old 331-site snapshot. The current
+not-started inventory remains broader than known guards: whole stages,
+items and modes can be absent without a dedicated fail-closed site. No
+historical measurement group or packet excludes that work from the goal.
