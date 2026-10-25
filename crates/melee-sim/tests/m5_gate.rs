@@ -2133,6 +2133,8 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
     // supported stage (boundaries, explorer matches: Temple routes and
     // waypoints, Fourside's height and air dodge, Kongo's barrel, Flat
     // Zone's off-camera escape, r5 after sloped floors).
+    // A CPU in DownDamage bounced off a wall (fn_800C7DC4).
+    ("corpus_v3_w26_start_bd_fox_cpu9fox4_e75fb4a9a_p0", 417),
     ("corpus_v3_w26_start_dl_fox_cpu9fox4_e75fb4a9a_p1", 6001),
     ("corpus_v3_w26_start_dl_fox_cpu9fox4_ef89b3e70_p0", 4943),
     ("corpus_v3_w26_start_dl_fox_cpu9fox4_ef89b3e70_p2", 3602),
@@ -5375,7 +5377,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 839] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 841] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6706,6 +6708,10 @@ static CORPUS_V3_MATCHES: [(&str, usize); 839] = [
     ("corpus_v3_bd_fox_marth4_ec3145eb3_p0", 5506),
     ("corpus_v3_bd_fox_marth4_edb2b114a_p2", 6001),
     ("corpus_v3_bd_fox_marth4_ef89b3e70_p0", 6001),
+    // A prone fighter in DownDamage knocked into a wall bounces off it
+    // (fn_800C7DC4 with the damage scratch carried into DownReflect).
+    ("corpus_v3_bd_fox_marth4_e005a4f43_p2", 4525),
+    ("corpus_v3_bd_fox_marth4_e0dee256e_p2", 1372),
     // Flat Zone (grflatzone.c): whole Fox-Marth matches. The platforms
     // cycle their layouts (grFlatzone_802174EC); the controller alternates
     // the hazards (grFlatzone_802171D4). Tools fall, land, blink out, hit

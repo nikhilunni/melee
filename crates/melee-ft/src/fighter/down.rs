@@ -573,16 +573,17 @@ impl Fighter {
         assets: &FighterAssets,
         map: &mut melee_mp::CollMap,
     ) -> Result<()> {
-        let MotionData::Down {
-            wait_remaining,
-            retained_word,
-            ..
-        } = self.core.state_data
-        else {
-            unimplemented!(
-                "fn_800C7DC4 (ftCo_800C7CA0.c:60-110): DownReflect out of DownDamage \
-                 (its mv.co.damage words carried)"
-            );
+        // Fighter_ChangeMotionState leaves the scratch alone: mv+0 and mv+4
+        // are DownWait's countdown and word, or out of DownDamage its
+        // hitstun and mv.co.damage.x4.
+        let (wait_remaining, retained_word) = match &self.core.state_data {
+            MotionData::Down {
+                wait_remaining,
+                retained_word,
+                ..
+            } => (*wait_remaining, *retained_word),
+            MotionData::Damage(damage) => (damage.hitstun, Some(f32::from_bits(damage.mv_word))),
+            other => unreachable!("ftCo_800C7CA0 runs only from Down states, not {other:?}"),
         };
         self.leave_ground();
         let p = self.core.physics.position;
