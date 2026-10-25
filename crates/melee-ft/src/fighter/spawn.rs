@@ -1413,6 +1413,8 @@ impl FighterCore {
             barrel_fire_request: false,
             fell: false,
             stamina_out: false,
+            stamina_ko_pending: false,
+            stamina_knocked_out: false,
             fall_credit: None,
             fatal_action: super::ActionId(0),
             released_link: None,
@@ -1876,7 +1878,7 @@ impl FighterCore {
                 self.physics.facing,
                 self.physics.ground_or_air == GroundOrAir::Ground,
             );
-            self.apply_script_damage();
+            self.apply_script_damage(assets);
         }
         // The entry step/seek/control batch calls ftCo_800BFFD0 as its
         // commands run. Publish those installs without an extra color step.

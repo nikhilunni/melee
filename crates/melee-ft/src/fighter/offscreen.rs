@@ -31,7 +31,8 @@ impl FighterCore {
     /// fighter.c:1595-1610. A player's second fighter (x221F_b4, Nana) takes
     /// none and counts nothing: retail 0x8006A830 tests the bit before the
     /// camera's zoom.
-    pub(crate) fn apply_magnifier_damage(&mut self, parameters: &MagnifierDamage) {
+    pub(crate) fn apply_magnifier_damage(&mut self, assets: &super::assets::FighterAssets) {
+        let parameters = &assets.magnifier;
         if self.player.secondary || !self.offscreen.camera_unzoomed {
             return;
         }
@@ -45,7 +46,7 @@ impl FighterCore {
             offscreen.magnified_ticks = 0;
         }
         if offscreen.magnified_ticks >= parameters.ticks_per_hit {
-            self.take_percent_damage(parameters.damage as f32);
+            self.take_percent_damage(parameters.damage as f32, assets);
             self.offscreen.magnified_ticks = 0;
         }
     }
@@ -89,25 +90,30 @@ impl FighterCore {
 
     /// The subaction self-damage (ftAction_80072BF4) the last command step
     /// ran, in script order.
-    pub(super) fn apply_script_damage(&mut self) {
+    pub(super) fn apply_script_damage(&mut self, assets: &super::assets::FighterAssets) {
         for amount in self.commands.self_damage.take_all() {
-            self.take_percent_damage(amount);
+            self.take_percent_damage(amount, assets);
         }
     }
 
     /// Fighter_TakeDamage_8006CC7C (0x8006CC7C): add percent, capped at 999.
-    /// Metal and stamina bookkeeping (x2226_b4, metal_health, x2034/x2038,
-    /// ftCo_800C8C84) belong to modes the port does not reach.
-    pub(crate) fn take_percent_damage(&mut self, amount: f32) {
-        self.physics.percent += amount;
-        if self.physics.percent > MAX_PERCENT {
-            self.physics.percent = MAX_PERCENT;
-        }
+    /// Metal bookkeeping (x2226_b4, metal_health, x2034/x2038) belongs to
+    /// modes the port does not reach.
+    pub(crate) fn take_percent_damage(
+        &mut self,
+        amount: f32,
+        assets: &super::assets::FighterAssets,
+    ) {
+        self.physics.percent = capped_percent(self.physics.percent + amount);
         // Player_SetHPByIndex then ftCo_800C8C84 (fighter.c:2663-2667):
-        // a Stamina fighter whose hit points are gone.
-        if self.stamina_spent() {
-            unimplemented!("ftCo_800C8C84 (ft_0C8C.c:29): a Stamina fighter's KO");
-        }
+        // a Stamina fighter whose hit points are gone, launched when a
+        // knockback hit is pending (dmg.kb_applied).
+        let launched = self
+            .combat
+            .pending
+            .as_ref()
+            .is_some_and(|hit| hit.knockback != 0.0);
+        self.check_stamina_knockout(launched, assets);
     }
 
     /// ftCo_800C8C84's test (x18F0, the healing timer, is never set in
@@ -115,8 +121,13 @@ impl FighterCore {
     /// Player_GetRemainingHPByIndex (hit points less the truncated percent,
     /// floored at 0) is 0.
     pub fn stamina_spent(&self) -> bool {
+        self.stamina_spent_at(self.physics.percent)
+    }
+
+    /// [`Self::stamina_spent`] for the percent `percent`.
+    pub(crate) fn stamina_spent_at(&self, percent: f32) -> bool {
         self.player.stamina.is_some_and(|hp| {
-            let spent = gekko_math::msl::fctiwz(self.physics.percent) as i16;
+            let spent = gekko_math::msl::fctiwz(percent) as i16;
             !self.stamina_out && i32::from(hp) - i32::from(spent) <= 0
         })
     }
@@ -134,3 +145,12 @@ impl FighterCore {
 
 /// The damage meter's ceiling.
 const MAX_PERCENT: f32 = 999.0;
+
+/// Fighter_TakeDamage_8006CC7C's cap on the sum.
+pub(crate) fn capped_percent(percent: f32) -> f32 {
+    if percent > MAX_PERCENT {
+        MAX_PERCENT
+    } else {
+        percent
+    }
+}

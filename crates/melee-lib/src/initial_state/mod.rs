@@ -166,6 +166,11 @@ pub struct InitialState {
     pub(crate) eliminated_at: [Option<u32>; 6],
     /// lb_804329F0's game timer: which loop passes tick.
     pub(crate) frame_timer: crate::frame_timer::FrameTimer,
+    /// A Stamina match's scene object (gm_804975F8, fn_801B96E8).
+    pub(crate) stamina: Option<crate::stamina::StaminaRules>,
+    /// lbl_8046B6A0.terminate_match (gm_8016B328): the next scene frame
+    /// decides OUTCOME_TERMINATED.
+    pub(crate) match_terminated: bool,
     /// `SlippiCodes::offscreen_damage_by_camera_limits` (match setup, not
     /// saved state).
     pub(crate) offscreen_damage_by_camera_limits: bool,
@@ -877,6 +882,7 @@ impl InitialState {
                     accumulated: wide(8),
                     requested: wide(0x38),
                     step: wide(0x40),
+                    requested_in_tick: false,
                 };
                 let speed = setup.special.map_or(1.0, crate::SpecialMelee::game_speed);
                 ensure!(
@@ -888,6 +894,25 @@ impl InitialState {
             eliminated_at: std::array::from_fn(|slot| {
                 let frame = word(saved.bytes(0x8045_3080 + slot as u32 * 0xE90 + 0x88, 4), 0);
                 (frame != u32::MAX).then_some(frame)
+            }),
+            match_terminated: false,
+            stamina: (setup.special == Some(crate::SpecialMelee::Stamina)).then(|| {
+                let (address, len) = crate::stamina::StaminaRules::SAVED_RANGE;
+                let rules = crate::stamina::StaminaRules::saved(saved.bytes(address, len));
+                // A match-start boundary predates fn_801B9850 (its empty
+                // slots are not yet marked out).
+                if match_start {
+                    assert!(
+                        rules == Default::default(),
+                        "a match-start Stamina boundary after fn_801B9850"
+                    );
+                    crate::stamina::StaminaRules::starting(std::array::from_fn(|slot| {
+                        // StaticPlayer +8, slot_type: Gm_PKind_NA is 3.
+                        word(saved.bytes(0x8045_3080 + slot as u32 * 0xE90 + 8, 4), 0) != 3
+                    }))
+                } else {
+                    rules
+                }
             }),
             offscreen_damage_by_camera_limits: setup.slippi.offscreen_damage_by_camera_limits,
             radial_forces,

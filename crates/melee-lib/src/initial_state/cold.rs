@@ -288,6 +288,15 @@ impl InitialState {
             );
         }
         let rendered_camera = camera.render_camera(&assets.stage_camera);
+        // fn_801B9850, the Stamina scene's on_match_start.
+        let stamina = (scenario.special == Some(crate::SpecialMelee::Stamina)).then(|| {
+            crate::stamina::StaminaRules::starting(std::array::from_fn(|slot| {
+                scenario
+                    .fighters
+                    .iter()
+                    .any(|f| usize::from(f.slot) == slot)
+            }))
+        });
         Ok(Self {
             items,
             article_poses: Box::new(crate::article_pose::ArticlePoses::new(
@@ -348,6 +357,8 @@ impl InitialState {
             dween_previous_x: [0.0; 4],
             ko_counts: Default::default(),
             eliminated_at: [None; 6],
+            stamina,
+            match_terminated: false,
             frame_timer: crate::frame_timer::FrameTimer::entering(
                 scenario.special.map_or(1.0, crate::SpecialMelee::game_speed),
             ),

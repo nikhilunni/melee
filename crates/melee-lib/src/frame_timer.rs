@@ -29,6 +29,9 @@ pub(crate) struct FrameTimer {
     /// x38: the period gm_SetGameSpeed asked for, which lb_80019628 takes
     /// up at the next loop iteration's poll count (lb_80019894).
     pub requested: u64,
+    /// `requested` came from a proc of the last tick (gm_SetGameSpeed
+    /// during the scene's pass), after this pass's poll was modelled.
+    pub requested_in_tick: bool,
 }
 
 impl FrameTimer {
@@ -42,7 +45,15 @@ impl FrameTimer {
             step: frame,
             accumulated: 0,
             requested: Self::period_for(speed),
+            requested_in_tick: false,
         }
+    }
+
+    /// gm_SetGameSpeed from a proc of the tick this pass ran: the next
+    /// iteration's lb_80019894 takes it up before its lb_80019900.
+    pub(crate) fn request(&mut self, speed: f32) {
+        self.requested = Self::period_for(speed);
+        self.requested_in_tick = true;
     }
 
     /// lb_80019880(OSSecondsToTicks(1 / 60.0F / speed)).
@@ -53,6 +64,9 @@ impl FrameTimer {
     /// lb_80019900 for x0[0]: whether this pass runs the game's tick; then
     /// the next iteration's lb_80019628 takes up a requested period.
     pub(crate) fn pass(&mut self) -> bool {
+        if std::mem::take(&mut self.requested_in_tick) {
+            self.take_request();
+        }
         self.accumulated += self.step;
         let due = if self.accumulated >= self.period {
             self.accumulated -= self.period;

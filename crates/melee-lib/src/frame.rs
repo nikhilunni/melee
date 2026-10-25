@@ -2288,13 +2288,21 @@ impl Runtime {
                     grab_pairs::release_from_dead_partner(state, player, index)?;
                 }
                 partner_fighters::share_fall(state, player);
-                // Every Fighter_TakeDamage_8006CC7C ends in ftCo_800C8C84: a
-                // Stamina fighter whose hit points are gone is knocked out.
+                // Every Fighter_TakeDamage_8006CC7C ends in ftCo_800C8C84,
+                // which marks a Stamina fighter whose hit points are gone
+                // (x2224_b3); a percent the port added elsewhere would leave
+                // one unmarked.
                 if crate::scene_fighter::with_fighter!(&state.fighters[player], |f| f
                     .core
-                    .stamina_spent())
+                    .stamina_spent()
+                    && !f.core.stamina_ko_pending)
                 {
-                    unimplemented!("ftCo_800C8C84 (ft_0C8C.c:29): a Stamina fighter's KO");
+                    unimplemented!("ftCo_800C8C84 (ft_0C8C.c:29): a percent added outside Fighter_TakeDamage_8006CC7C");
+                }
+                // fn_800C8_inline's gm_80167470: gm_801B97C4 for the
+                // player's own fighter (x221F_b4 clear).
+                if std::mem::take(&mut state.fighters[player].0.stamina_knocked_out) {
+                    knock_out_stamina_player(state, player);
                 }
                 if proc == FighterProc::Animation {
                     partner_fighters::complete_death(state, player)?;
@@ -3932,7 +3940,9 @@ impl Simulation {
         // (gm_16AE.c:886-891); the results rank teams by fn_80165E7C's
         // team scores (`standings::ranks`, `Match::status`).
         // The pause takes effect next tick.
-        let finished = runtime.state.clock.timed_out()
+        // gm_GetMatchOutcome: OUTCOME_TERMINATED (gm_8016B328) first.
+        let finished = runtime.state.match_terminated
+            || runtime.state.clock.timed_out()
             || stock_outcome_decided(
                 runtime
                     .state
@@ -4032,6 +4042,8 @@ impl Simulation {
                 .score_popups
                 .tick(&state.assets.score_popups, &mut effects.gobjs);
         }
+        // fn_801B96E8 (s_link 0x15, the last proc of the pass).
+        run_stamina_rules(state);
         runtime.frame += 1;
         Ok(())
     }
@@ -4072,6 +4084,84 @@ impl Simulation {
                 (name, seed)
             })
             .collect()
+    }
+}
+
+/// gm_801B97C4 for the fighter at `index`, whose hit points ran out: a
+/// player's own fighter slows the game (Player_UpdateMatchFrameCount, then
+/// gm_SetGameSpeed(0.4F)) the first time.
+fn knock_out_stamina_player(state: &mut InitialState, index: usize) {
+    let player = &state.fighters[index].player;
+    if player.secondary {
+        return;
+    }
+    let slot = usize::from(player.id);
+    let Some(rules) = state.stamina.as_mut() else {
+        unimplemented!("gm_80167470: a Stamina KO outside GM_STAMINA_VS");
+    };
+    if let Some(speed) = rules.knocked_out(slot) {
+        state.eliminated_at[slot].get_or_insert(state.clock.frame_count);
+        state.frame_timer.request(speed);
+    }
+}
+
+/// fn_801B96E8, a Stamina match's scene proc; then the motion states a
+/// knocked-out fighter is known to take (their x2224_b2 readers ported).
+fn run_stamina_rules(state: &mut InitialState) {
+    let Some(rules) = state.stamina.as_mut() else {
+        return;
+    };
+    let mut players = [None; 4];
+    for fighter in &state.fighters {
+        let player = &fighter.player;
+        if !player.secondary {
+            players[usize::from(player.id)] = Some((player.stocks, player.team));
+        }
+    }
+    let (speed, ends) = rules.tick(players);
+    if let Some(speed) = speed {
+        state.frame_timer.request(speed);
+    }
+    if ends {
+        state.match_terminated = true;
+    }
+    for fighter in &state.fighters {
+        use melee_types::CommonMotionState as S;
+        if fighter.stamina_out
+            && !matches!(
+                fighter.motion_state.id,
+                S::DamageFall
+                    | S::DownBoundU
+                    | S::DownBoundD
+                    | S::DownWaitU
+                    | S::DownWaitD
+                    | S::DownDamageU
+                    | S::DownDamageD
+                    | S::DamageHi1
+                    | S::DamageHi2
+                    | S::DamageHi3
+                    | S::DamageN1
+                    | S::DamageN2
+                    | S::DamageN3
+                    | S::DamageLw1
+                    | S::DamageLw2
+                    | S::DamageLw3
+                    | S::DamageAir1
+                    | S::DamageAir2
+                    | S::DamageAir3
+                    | S::DamageFlyHi
+                    | S::DamageFlyN
+                    | S::DamageFlyLw
+                    | S::DamageFlyTop
+                    | S::DamageFlyRoll
+            )
+        {
+            unimplemented!(
+                "x2224_b2 (ftCo_Wait.c:37, ftCo_Fall.c:34, ftCo_FallSpecial.c:34, ft_08A1.c:74, \
+                 ft_081B.c, ftcoll.c:1589, ...): a knocked-out Stamina fighter in {:?}",
+                fighter.motion_state.id
+            );
+        }
     }
 }
 

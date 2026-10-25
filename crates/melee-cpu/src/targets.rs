@@ -18,11 +18,13 @@ fn unavailable(f: &Fighter) -> bool {
     f.core.out_of_play() || f.core.status.disabled
 }
 
-/// inlineD1 (ftCo_0A01.c:2415): x221F_b3, a stamina KO (x2224_b2, never
-/// in stock rules), the cloaking device flickering (ftCo_800A0F00: needs
-/// the item) or a death motion (ftLib_8008732C).
+/// inlineD1 (ftCo_0A01.c:2415): x221F_b3, a Stamina KO (x2224_b2), the
+/// cloaking device flickering (ftCo_800A0F00: needs the item) or a death
+/// motion (ftLib_8008732C).
 fn not_targetable(f: &Fighter) -> bool {
-    f.core.status.disabled || f.core.motion_state.action.0 <= S::DeadUpFallHitCameraIce as u16
+    f.core.status.disabled
+        || f.core.stamina_out
+        || f.core.motion_state.action.0 <= S::DeadUpFallHitCameraIce as u16
 }
 
 /// What ftCo_800A4A40 reads of another fighter.

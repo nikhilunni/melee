@@ -891,6 +891,12 @@ impl Fighter {
             if is_tumble(self.core.motion_state.id) || self.core.motion_state.id == S::DamageFall {
                 return self.tumble_landing(assets);
             }
+            // ftCo_Damage_Coll (ftCo_Damage.c:1096): a knocked-out Stamina
+            // fighter (x2224_b2) always lands in DownBound (ftCo_80097D40).
+            // No witness yet.
+            if self.core.stamina_out {
+                unimplemented!("ftCo_Damage_Coll (ftCo_Damage.c:1096): a knocked-out Stamina fighter lands from Damage");
+            }
             let v = self.core.physics.knockback_velocity;
             // retail 8008FBD4..E0: two fmuls then fadds, no contraction.
             let magnitude = sqrtf(v.x * v.x + v.y * v.y);
@@ -1007,7 +1013,8 @@ impl Fighter {
             map,
             &mut self.core.skeleton,
             self.core.animation.root,
-            self.core.status.ledge_cooldown == 0,
+            // ft_081B.c:138: x2224_b2 (a knocked-out Stamina fighter) takes no ledge.
+            self.core.status.ledge_cooldown == 0 && !self.core.stamina_out,
         );
         self.core.collision.data.ledge_snap_height = ledge_height;
         Some(landed)
@@ -1102,6 +1109,10 @@ impl Fighter {
                 hitlag_multiplier = assets.damage.electric_hitlag_scale;
             }
             if hit.knockback != 0.0 {
+                // fighter.c:2856: Fighter_UnkTakeDamage_8006CC30 ends in
+                // ftCo_800C8C84 with kb_applied set, before the knockback.
+                self.core
+                    .check_stamina_knockout_before_launch(hit.percent_damage, assets);
                 // fighter.c:2860: ftKb_SpecialN_800F5BA4.
                 if let Some(draw) = self.character.table().damage_draw {
                     let cape = hit.descriptor.element == melee_types::HitElement::Cape;
@@ -1266,6 +1277,21 @@ impl Fighter {
             let ground_or_air = self.core.physics.ground_or_air;
             self.core.combat.ko_source.clear_if_grounded(ground_or_air);
         }
+        // fighter.c:2959's Fighter_UnkTakeDamage_8006CC30 ends in
+        // ftCo_800C8C84 without kb_applied. A knockback hit was checked
+        // before its reaction: a branch adding other than its damage would
+        // reach here with the hit points gone.
+        if self.core.stamina_spent() {
+            if received_knockback {
+                unimplemented!(
+                    "ftCo_800C8C84: a Stamina KO by a knockback hit outside the \
+                     ordinary reaction"
+                );
+            }
+            self.core.check_stamina_knockout(false, assets);
+        }
+        // fighter.c:2963.
+        self.complete_stamina_knockout(assets)?;
         // Fighter_ProcessHit: received damage and shield impact precede clank;
         // clank precedes ordinary damage dealt. Every path consumes the scratch.
         if !received_knockback
@@ -1552,6 +1578,13 @@ impl Fighter {
             panic!("damage scratch missing")
         };
         if !self.core.animation.frames_remaining(&self.core.skeleton) && damage.hitstun <= 0.0 {
+            // ftCo_Damage_Anim (ftCo_Damage.c:1003): a knocked-out Stamina
+            // fighter (x2224_b2) drops into DamageFall ahead of inlineC0;
+            // grounded, ft_8008A2BC takes DownSpot (ft_08A1.c:74). No
+            // witness yet.
+            if self.core.stamina_out && !is_tumble(self.core.motion_state.id) {
+                unimplemented!("ftCo_Damage_Anim (ftCo_Damage.c:1003): a knocked-out Stamina fighter's Damage ends");
+            }
             // ftCo_Damage_Anim / DamageFly_Anim inlineC0: consume a stored
             // jump only at animation end. DamageFlyRoll has no buffer branch.
             if self.core.physics.ground_or_air == GroundOrAir::Air
@@ -1676,7 +1709,8 @@ impl Fighter {
             map,
             &mut self.core.skeleton,
             self.core.animation.root,
-            self.core.status.ledge_cooldown == 0,
+            // ft_081B.c:138: x2224_b2 (a knocked-out Stamina fighter) takes no ledge.
+            self.core.status.ledge_cooldown == 0 && !self.core.stamina_out,
         );
         if landed {
             if !self.try_tech(assets)? {
@@ -3329,6 +3363,11 @@ impl FighterCore {
         element: melee_types::HitElement,
         assets: &FighterAssets,
     ) {
+        if self.stamina_ko_pending {
+            // inlineB2 / inlineF0 / ftCo_8008E9D0 / ftCo_8008EB58 drop the
+            // fighter (ftCo_800C8D00) ahead of their flash and capture checks.
+            unimplemented!("ftCo_8008EC90 (ftCo_Damage.c:699-811): a Stamina KO without a launch");
+        }
         if damage == 0.0 {
             return;
         }
@@ -3352,7 +3391,7 @@ impl FighterCore {
     /// Fighter_UnkTakeDamage_8006CC30: the hit's damage and flash without a
     /// reaction; the motion continues into hitlag.
     fn absorb_hit(&mut self, hit: &ReceivedHit, assets: &FighterAssets) {
-        // ftCo_800C8D00 returns at once without x2224_b3 (no supported mode).
+        // ftCo_800C8D00 (a Stamina KO) fails closed in the flash.
         // The capture states (0xE0/0xE1, 0xE3/0xE4) are unarmored.
         self.physics.percent += hit.percent_damage;
         // kb_applied is zero here: armor absorbed all of it.

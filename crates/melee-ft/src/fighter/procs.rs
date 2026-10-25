@@ -395,7 +395,7 @@ impl FighterCore {
         // ftAction_80071A14 -> ftColl_8007B62C -> ftCo_800BFFD0 installs
         // immediately; the later color proc alone executes the program.
         self.install_requested_color_overlays(assets);
-        self.apply_script_damage();
+        self.apply_script_damage(assets);
         self.apply_airborne_commands();
         self.apply_dynamic_commands(assets);
         self.animation
@@ -729,7 +729,7 @@ impl FighterCore {
                 self.combat.color_overlay.flash_expired = true;
             }
         }
-        self.apply_magnifier_damage(&assets.magnifier);
+        self.apply_magnifier_damage(assets);
         // fighter.c:1658: x2219_b5, the hitlag flag, gates the rest.
         if self.in_hitlag() {
             return false;
@@ -767,6 +767,8 @@ impl FighterCore {
             &assets.input,
             InputContext {
                 save_and_clear: self.status.input_frozen,
+                // fighter.c:1784: a Stamina fighter knocked out reads nothing.
+                freeze_sample: self.stamina_out,
                 hitlag,
                 cpu_controlled,
                 // UCF 0.84: lwz 0x4 == 19 (Zelda), lwz 0x10 == 349.

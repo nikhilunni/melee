@@ -6656,6 +6656,10 @@ static CORPUS_V3_MATCHES: [(&str, usize); 866] = [
     // Stamina to a blast-zone KO: 150 HP on the HUD, knockback from PlCo
     // +6D4 (the HP-out KO stays guarded).
     ("corpus_v3_fd_stamina_fox_marth_e89a89d0e_p0", 1153),
+    // Stamina's HP-out KO (ftCo_800C8C84): DamageFall, frozen input, the
+    // 0.4 slowdown for 100 ticks, a prone hit with PlCo +6D8 and the
+    // match's end 100 ticks after (fn_801B96E8).
+    ("corpus_v3_fd_stamina_fox_marth_ef89b3e70_p0", 4042),
     // Jungle Japes: the Klaptrap's bite lands (the stage material item's
     // ALDYakuAll hitbox, 30 damage) and KOs through the river, whose
     // current still carries a dead body (DeadDown's procUpdate tail).

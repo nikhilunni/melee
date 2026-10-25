@@ -178,8 +178,8 @@ impl FighterCore {
     /// ftCo_800C0408's primary-slot loop: run the program; when it ends or its
     /// frame count runs out, clear the slot (lb_80014498) and install the
     /// invincibility flash if the fighter is still protected, then run that.
-    /// Retail's other fallbacks (0x7A, 8, 0x6B) need states the port does not
-    /// reach (CPU input takeover, x18F0, x221D_b6).
+    /// Retail's other fallbacks (8, 0x6B) need states the port does not
+    /// reach (x18F0, x221D_b6).
     pub(super) fn advance_color_overlay(&mut self, assets: &super::assets::FighterAssets) {
         let table = &assets.color_overlays;
         // fighter.c:1470/1481: ftCo_800C0694(fp) == 9 -> ftCo_800C0200(fp, 9),
@@ -238,10 +238,14 @@ impl FighterCore {
         }
     }
 
-    /// lb_80014498 on the primary slot, then ftCo_800C0408's fallback: the
-    /// flash returns while the fighter is intangible or invincible.
+    /// lb_80014498 on the primary slot, then ftCo_800C0408's fallbacks: a
+    /// Stamina fighter's KO color (x2224_b2), then the flash while the
+    /// fighter is intangible or invincible.
     fn clear_color_overlay(&mut self, table: &ColorOverlayTable) {
         self.combat.color_overlay = ColorOverlaySlot::default();
+        if self.stamina_out {
+            self.install_color_overlay(super::stamina::STAMINA_OUT_COLOR, 0, table);
+        }
         if self.status.revival_invincibility != 0 || self.status.ledge_intangibility != 0 {
             self.install_color_overlay(INVINCIBILITY_FLASH, 0, table);
         }

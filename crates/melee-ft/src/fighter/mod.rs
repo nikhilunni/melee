@@ -73,6 +73,7 @@ mod snapshot;
 mod spawn;
 pub mod squat;
 mod stage_wind;
+pub mod stamina;
 pub mod state;
 pub mod stop_ceil;
 pub mod stop_wall;
@@ -1254,6 +1255,12 @@ pub struct FighterCore {
     /// x2224_b2: a Stamina fighter whose hit points ran out
     /// (fn_800C8E74), reset at a revival (fighter.c:483).
     pub stamina_out: bool,
+    /// x2224_b3: ftCo_800C8C84 found the hit points gone; the next
+    /// ProcessHit's ftCo_800C8D00 drops the fighter (`stamina`).
+    pub stamina_ko_pending: bool,
+    /// fn_800C8_inline ran in this proc: the scene's gm_80167470
+    /// (gm_801B97C4 in a Stamina match) slows the game for this player.
+    pub stamina_knocked_out: bool,
     /// The motion a death interrupted, which ftCo_800D331C (0x800D34B4)
     /// writes into the motion scratch at fp+236C before the Dead entry.
     pub fatal_action: ActionId,

@@ -258,10 +258,15 @@ impl Fighter {
                 self.core.status.grab_exclusions = super::ledge::GrabExclusions(1);
             }
         } else {
+            let stamina_out = self.core.stamina_out;
             let MotionData::Down { wait_remaining, .. } = &mut self.core.state_data else {
                 panic!("down scratch");
             };
-            *wait_remaining -= 1.0;
+            // ftCo_DownWait_Anim: a knocked-out Stamina fighter (x2224_b2)
+            // never counts down.
+            if !stamina_out {
+                *wait_remaining -= 1.0;
+            }
             if *wait_remaining <= 0.0 {
                 let state = if self.core.motion_state.id == S::DownWaitU {
                     S::DownStandU
@@ -293,8 +298,8 @@ impl FighterCore {
         ) {
             return None;
         }
-        // x2224_b2 (the input-replay mode) also selects this; never set in versus.
-        if frame_damage >= assets.damage.down_damage_limit as f32 {
+        // x2224_b2: a knocked-out Stamina fighter takes any hit lying down.
+        if !self.stamina_out && frame_damage >= assets.damage.down_damage_limit as f32 {
             return None;
         }
         Some(if state == S::DownWaitU {
@@ -310,16 +315,23 @@ impl Fighter {
     /// then fall when airborne, or lie back down (DownWait keeps the same
     /// scratch word as its timer) or stand once it has run out.
     pub(super) fn down_damage_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+        let stamina_out = self.core.stamina_out;
         let MotionData::Damage(damage) = &mut self.core.state_data else {
             panic!("down damage scratch");
         };
-        damage.hitstun -= 1.0;
+        // A knocked-out Stamina fighter (x2224_b2) never counts down.
+        if !stamina_out {
+            damage.hitstun -= 1.0;
+        }
         let remaining = damage.hitstun;
         if self.core.animation.frames_remaining(&self.core.skeleton) {
             return Ok(());
         }
         let up = self.core.motion_state.id == S::DownDamageU;
         if self.core.physics.ground_or_air == melee_types::GroundOrAir::Air {
+            if stamina_out {
+                unimplemented!("ftCo_DownDamage_Anim (ftCo_DownDamage.c:56): a knocked-out Stamina fighter's DownDamage ends airborne");
+            }
             return self.change_motion_state(S::Fall.into(), assets);
         }
         if remaining <= 0.0 {

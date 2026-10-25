@@ -5,6 +5,7 @@ mod banner;
 mod score_popup_timelines;
 mod frame_timer;
 mod special_melee;
+mod stamina;
 mod standings;
 pub use special_melee::SpecialMelee;
 pub mod diagnostics;

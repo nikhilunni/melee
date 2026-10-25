@@ -102,7 +102,7 @@ pub fn resolve_linked_hit(
                     // fighter.c:2856): ftColl_80079C70 reads x1830_percent
                     // with it, and the record's damage adds after it.
                     let own_damage = hit.percent_damage;
-                    fighter.core.take_percent_damage(own_damage);
+                    fighter.core.take_percent_damage(own_damage, fighter_assets);
                     fighter.combat.pending_percent_taken = true;
                     take_captor_throw_hit(fighter, partner, fighter_assets, partner_assets);
                     assert!(
@@ -227,7 +227,7 @@ fn take_captor_throw_hit(
     hit.facing = -captor.physics.facing;
     hit.facing_override = None;
     hit.height = melee_coll::hurtbox::HurtHeight::Middle;
-    captured.core.take_percent_damage(damage);
+    captured.core.take_percent_damage(damage, captured_assets);
     captor.credit_hit(captured.spawn_number, captor_assets);
 }
 
