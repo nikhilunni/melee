@@ -22,6 +22,8 @@ members = [
     "crates/it-foxillusion",
     "crates/it-bombhei",
     "crates/it-sword",
+    "crates/it-shell",
+    "crates/it-freeze",
     "crates/it-container",
     "crates/it-monsters",
     "crates/it-klap",

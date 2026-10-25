@@ -2,11 +2,10 @@
 //! spawn's fall, the hold, throwing and dropping (a thrown Mr. Saturn pops
 //! back off what it hits), landing into the walk, turning at edges and
 //! walls, falling off the floor, being hit (knocked up, then lying still
-//! until it walks again) and sliding down a floor (state 6). The states of
-//! a Mr. Saturn nobody has held fail closed: the spawn's fall (8), the
-//! idle (7), the look-round (9) and their slide (10). Peach's pull is in
-//! her hand before its first proc, and a pickup sets xDC8 x19 for good, so
-//! none of them is entered (docs/INTERACTION_MATRIX.md).
+//! until it walks again) and sliding down a floor (state 6); a random
+//! item's spawn fall (8), its sitting (7) and its look round (9) before
+//! the first walk. A slope under a Mr. Saturn nobody has held (state 10)
+//! fails closed.
 //!
 //! The model's turn to its facing (HSD_JObjSetRotationY) is drawing only;
 //! the rotation about the spin axis also aims the ECB (it_80274990) and is
@@ -43,8 +42,12 @@ mod motion {
     pub const THROWN: u16 = 5;
     /// Carried down a floor by its slope (itDosei_Logic7_EnteredAir).
     pub const SLIDE: u16 = 6;
+    /// Sitting where the spawn's fall landed (itDosei_80282CD4).
+    pub const IDLE: u16 = 7;
     /// The spawn's fall (itDosei_80282BFC).
     pub const SPAWN_FALL: u16 = 8;
+    /// Looking round before its first walk (itDosei_80282DE4).
+    pub const LOOK: u16 = 9;
     /// Knocked up by a hit (itDosei_Logic7_DmgReceived).
     pub const KNOCKED: u16 = 11;
 }
@@ -69,6 +72,11 @@ impl Attributes<'_> {
     /// unk8: the walking speed.
     fn walk_speed(&self) -> f32 {
         self.0[2]
+    }
+    /// unkC (an int): the look-round's steps (it turns by pi / unkC a
+    /// frame).
+    fn look_steps(&self) -> i32 {
+        self.0[3].to_bits() as i32
     }
     /// unk10 (an int): a hit's horizontal speed along the facing.
     fn knock_speed_x(&self) -> i32 {
@@ -132,6 +140,24 @@ static STATES: [ItemStateRow; 12] = {
         physics: no_physics,
         collision: slide_collision,
     };
+    rows[motion::IDLE as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[7],
+        animation: idle_animation,
+        physics: no_physics,
+        collision: idle_collision,
+    };
+    rows[motion::SPAWN_FALL as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[8],
+        animation: spawn_fall_animation,
+        physics: gravity_physics,
+        collision: spawn_fall_collision,
+    };
+    rows[motion::LOOK as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[9],
+        animation: look_animation,
+        physics: no_physics,
+        collision: look_collision,
+    };
     rows[motion::THROWN as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[5],
         animation: no_animation,
@@ -156,9 +182,7 @@ impl ItemLogic for Dosei {
             ..Default::default()
         });
         item.grabbable = true;
-        change(item, motion::SPAWN_FALL, UNK_0X1 | ANIM_UPDATE, assets);
-        item.animation_rate = 1.0;
-        item.owner = None;
+        start_spawn_fall(item, assets);
     }
     /// it_802BD4AC's Mr. Saturn (Peach's pull): xDE0 takes the item's scale
     /// after it_80274594 (a unit owner scale in every supported mode).
@@ -628,6 +652,115 @@ fn stunned_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) ->
 fn stunned_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
         start_falling(item, ctx.assets);
+    }
+    item.lean_with_floor();
+    false
+}
+
+/// itDosei_80282BFC (80282BFC): the spawn's fall, owner forgotten.
+fn start_spawn_fall(item: &mut ItemCore, assets: &ItemAssets) {
+    change(item, motion::SPAWN_FALL, UNK_0X1 | ANIM_UPDATE, assets);
+    item.animation_rate = 1.0;
+    item.owner = None;
+}
+
+/// itDosei_UnkMotion8_Anim (80282C68).
+fn spawn_fall_animation(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
+    remember_position(item);
+    false
+}
+
+/// itDosei_UnkMotion8_Coll (80282CB0) -> it_8026E15C: a settled landing
+/// sits (itDosei_80282CD4).
+fn spawn_fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    let cell = ctx.rng.expect("it_8026DDFC draws");
+    let mut rng = cell.get();
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, ctx.entered_air, &mut rng);
+    cell.set(rng);
+    match landing {
+        AirLanding::Airborne | AirLanding::Sliding => false,
+        AirLanding::Broken => true,
+        AirLanding::Landed => {
+            // itDosei_80282CD4 (80282CD4): still, on the floor, state 7.
+            item.velocity = Vec3::ZERO;
+            item.land_on_floor();
+            change(item, motion::IDLE, UNK_0X1 | ANIM_UPDATE, ctx.assets);
+            item.animation_rate = 1.0;
+            item.owner = None;
+            false
+        }
+    }
+}
+
+/// itDosei_UnkMotion7_Anim (80282D18): unk4 frames, then it looks round.
+fn idle_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    remember_position(item);
+    let state = dosei_mut(item);
+    if state.idle_countdown > 0 {
+        state.idle_countdown -= 1;
+    } else {
+        start_looking(item, ctx.assets);
+    }
+    false
+}
+
+/// itDosei_UnkMotion7_Coll (80282DA8): it_8026D62C (off the floor the
+/// spawn's fall again), then the lean (it_80276CB8).
+fn idle_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
+        unimplemented!("itDosei_UnkMotion7_Coll (itdosei.c:560): a sitting Mr. Saturn leaving the floor is not witnessed");
+    }
+    item.lean_with_floor();
+    false
+}
+
+/// itDosei_80282DE4 (80282DE4): turning (xDD8 1) through a quarter turn,
+/// still, its spin locked to the facing (xDC8 x17, x19), state 9, the
+/// model's rotation cleared (its turn about Y is drawing only).
+fn start_looking(item: &mut ItemCore, assets: &ItemAssets) {
+    let state = dosei_mut(item);
+    state.turn_phase = 1;
+    state.turn_angle = core::f32::consts::FRAC_PI_2;
+    item.velocity.x = 0.0;
+    item.rotation_axis = 1;
+    item.spin_ignores_facing = true;
+    item.owner = None;
+    change(item, motion::LOOK, UNK_0X1 | ANIM_UPDATE, assets);
+    item.animation_rate = 1.0;
+    item.rotation = Vec3::ZERO;
+}
+
+/// itDosei_UnkMotion9_Anim (80282EC8): the angle closes by pi / unkC (in
+/// double precision); at zero it walks off at unk8 (xDD8 2). The cycle
+/// restarts when it ends.
+fn look_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    remember_position(item);
+    let a = Attributes(&ctx.assets.special_attributes);
+    let state = dosei_mut(item);
+    state.turn_angle =
+        (f64::from(state.turn_angle) - core::f64::consts::PI / f64::from(a.look_steps())) as f32;
+    if state.turn_phase == 1 && state.turn_angle <= 0.0 {
+        state.turn_phase = 2;
+        // retail: fmuls.
+        item.velocity.x = item.facing * a.walk_speed();
+    }
+    if animation_ended(item, ctx.assets) {
+        change(item, motion::LOOK, ANIM_UPDATE, ctx.assets);
+    }
+    false
+}
+
+/// itDosei_UnkMotion9_Coll (80283008): it_8026D62C falls off the floor
+/// (itDosei_80282074); walking off, it walks from the look's frame
+/// (itDosei_SetupWalk_FC, Item_80268DD4); then the lean.
+fn look_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
+        unimplemented!("itDosei_UnkMotion9_Coll (itdosei.c:615): a looking Mr. Saturn leaving the floor is not witnessed");
+    }
+    if dosei(item).turn_phase == 2 {
+        let frame = item.animation_frame;
+        start_walking(item, ctx.assets);
+        item.jump_animation_to(frame);
     }
     item.lean_with_floor();
     false

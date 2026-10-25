@@ -27,6 +27,9 @@ melee_it::item_kinds! {
         Harisen: it_sword::Harisen,
         StarRod: it_sword::StarRod,
         StarRodStar: it_sword::StarRodStar,
+        GShell: it_shell::GreenShell,
+        RShell: it_shell::RedShell,
+        Freeze: it_freeze::Freezie,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -604,6 +607,37 @@ impl Resources {
                     ItemKind::Sword,
                     &it_sword::ARTICLE_STATES,
                     it_sword::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            // Random items.
+            (
+                ItemKind::GShell,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::GShell,
+                    &it_shell::green_assets::ARTICLE_STATES,
+                    it_shell::green_assets::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::RShell,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::RShell,
+                    &it_shell::red_assets::ARTICLE_STATES,
+                    it_shell::red_assets::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Freeze,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Freeze,
+                    &it_freeze::ARTICLE_STATES,
+                    it_freeze::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (

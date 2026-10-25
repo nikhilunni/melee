@@ -1333,6 +1333,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-freeze"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-gamewatch"
 version = "0.0.1"
 dependencies = [
@@ -1505,6 +1515,16 @@ dependencies = [
  "hsd-types",
  "melee-it",
  "melee-lb",
+ "melee-types",
+]
+
+[[package]]
+name = "it-shell"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
  "melee-types",
 ]
 
@@ -1889,6 +1909,7 @@ dependencies = [
  "it-drmariopill",
  "it-foxillusion",
  "it-foxlaser",
+ "it-freeze",
  "it-gamewatch",
  "it-heiho",
  "it-kirby",
@@ -1905,6 +1926,7 @@ dependencies = [
  "it-pikachu",
  "it-samus",
  "it-seak",
+ "it-shell",
  "it-sword",
  "it-tools",
  "it-yaku",

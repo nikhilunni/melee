@@ -3,9 +3,10 @@
 //! (it_8027D670), the lit fuse on the ground, in the air and in a fighter's
 //! hand, the unlit hold, throw and drop of a pulled Bob-omb, landing (a
 //! soft landing starts the walk), the walk and turn on the ground, the
-//! walk timer lighting the fuse (it_8027F8E0) and the explosion. Leaving
-//! the ground while walking or turning (states 1, 0, 3 and 12: a moving or
-//! vanishing floor) stays `unimplemented!`.
+//! walk timer lighting the fuse (it_8027F8E0) and the explosion; the
+//! random item's fall, standing wait and turn to face its way (states 1, 0
+//! and 3), and leaving the ground while walking or turning. Sliding down a
+//! slope (state 12) stays `unimplemented!`.
 use gekko_math::msl::{fabsf, fctiwz};
 use hsd_types::Vec3;
 use melee_it::{desc::ItemAssets, state_change::*, *};
@@ -22,7 +23,11 @@ pub const SPECIAL_ATTRIBUTES: u32 = 11;
 const UNK_0X1: u32 = 1;
 
 mod motion {
+    /// Standing where it landed, unlit (itBombhei_UnkMotion0).
+    pub const STAND: u16 = 0;
     pub const FALL: u16 = 1;
+    /// Turning to face its way before the first walk (itBombhei_UnkMotion3).
+    pub const FACE: u16 = 3;
     pub const LIT: u16 = 5;
     /// Held unlit / lit (itBombhei_Logic6_PickedUp).
     pub const HELD: u16 = 7;
@@ -87,11 +92,23 @@ static STATES: [ItemStateRow; 13] = {
         collision: unported_collision,
     };
     let mut rows = [UNPORTED; 13];
+    rows[motion::STAND as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[0],
+        animation: stand_animation,
+        physics: no_physics,
+        collision: stand_collision,
+    };
     rows[motion::FALL as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[1],
         animation: no_animation,
-        physics: unported_physics,
-        collision: unported_collision,
+        physics: gravity,
+        collision: fall_collision,
+    };
+    rows[motion::FACE as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[3],
+        animation: face_animation,
+        physics: no_physics,
+        collision: face_collision,
     };
     rows[motion::WALK as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[2],
@@ -575,10 +592,118 @@ fn walk_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
         start_turning(item, ctx.assets);
     }
     if !grounded {
-        unimplemented!("itBombhei_UnkMotion2_Coll: a walking Bob-omb leaving the ground");
+        // itBombhei_UnkMotion1_Setup (from state 2 it changes nothing),
+        // then the fall.
+        start_falling(item, ctx.assets);
+        return false;
     }
     if item.wall_bits() != 0 {
         start_turning(item, ctx.assets);
+    }
+    item.lean_with_floor();
+    false
+}
+
+/// it_8027DE18 (8027DE18): from standing or facing its way the model's
+/// spin axis and facing lock and its spin stops (it_80274740); from facing
+/// its way the walk's timer starts (x14); then the fall.
+fn start_falling(_item: &mut ItemCore, _assets: &ItemAssets) {
+    // it_8027DE18 (itbombhei.c:195) out of a walk, a turn, the stand or the
+    // turn to face: the spin and facing lock (from states 0 and 3), the
+    // walk timer (from state 3), state 1.
+    unimplemented!("it_8027DE18 (itbombhei.c:195): a Bob-omb leaving the floor is not witnessed")
+}
+
+/// itBombhei_UnkMotion1_Phys -> it_80272860: gravity only.
+fn gravity(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
+    item.fall(ctx.assets.fall_acceleration, ctx.assets.fall_speed_limit);
+}
+
+/// itBombhei_UnkMotion1_Coll (8027DE9C): before its first walk a settled
+/// landing (it_8026E15C) stands it still (fn_8027DAC8); after, a landing
+/// (it_8026E414) walks on or, fast, detonates (fn_80280974).
+fn fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if bomb(item).walked {
+        return thrown_collision(item, ctx);
+    }
+    let cell = ctx.rng.expect("it_8026DDFC draws");
+    let mut rng = cell.get();
+    let landing = item.air_collision_with_landing(ctx.map, ctx.assets, ctx.entered_air, &mut rng);
+    cell.set(rng);
+    match landing {
+        AirLanding::Airborne | AirLanding::Sliding => false,
+        AirLanding::Broken => true,
+        AirLanding::Landed => {
+            // fn_8027DAC8 (8027DAC8): grabbable, still, standing.
+            item.grabbable = true;
+            item.velocity = Vec3::ZERO;
+            change(item, motion::STAND, ANIM_UPDATE, ctx.assets);
+            false
+        }
+    }
+}
+
+/// itBombhei_UnkMotion0_Anim (8027DB24): the standing timer (x10), then it
+/// turns to face its way (it_8027E978). Bone 11's squash is drawing only.
+fn stand_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    if bomb(item).countdown <= 0 {
+        start_facing(item, ctx.assets);
+    } else {
+        let state = bomb_mut(item);
+        state.countdown -= 1;
+        state.life_frames -= 1.0;
+    }
+    false
+}
+
+/// itBombhei_UnkMotion0_Coll: it_8026D62C; off the floor it falls.
+fn stand_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
+        start_falling(item, ctx.assets);
+    }
+    false
+}
+
+/// it_8027E978 (8027E978): grounded, x4 frames of turning by a quarter
+/// turn toward its facing (in double precision, then frsp), walked from
+/// now on, state 3.
+fn start_facing(item: &mut ItemCore, assets: &ItemAssets) {
+    item.land_on_floor();
+    let frames = fctiwz(Attributes(&assets.special_attributes).turn_frames());
+    let state = bomb_mut(item);
+    state.countdown = frames;
+    let facing = f64::from(item.facing);
+    let state = bomb_mut(item);
+    state.turn_step = ((std::f64::consts::FRAC_PI_2 * facing) / f64::from(frames)) as f32;
+    state.walked = true;
+    change(item, motion::FACE, ANIM_UPDATE, assets);
+}
+
+/// The walk's sound (Item_8026AE84(ip, 0xF0, ...)).
+const WALK_SOUND: u32 = 0xF0;
+
+/// itBombhei_UnkMotion3_Anim (8027EBCC): the root turns; at the turn's end
+/// the model's facing locks, the walk timer starts (x14) and it walks
+/// (it_8027EE04) with its sound.
+fn face_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
+    item.rotation.y += bomb(item).turn_step;
+    let state = bomb_mut(item);
+    state.countdown -= 1;
+    state.life_frames -= 1.0;
+    if state.countdown <= 0 {
+        item.spin_ignores_facing = true;
+        bomb_mut(item).countdown = fctiwz(Attributes(&ctx.assets.special_attributes).walk_frames());
+        start_walking(item, ctx.assets);
+        item.sound_requests.push(WALK_SOUND);
+    }
+    false
+}
+
+/// itBombhei_UnkMotion3_Coll: it_8026D62C (off the floor it falls), then
+/// the lean (it_80276CB8).
+fn face_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
+        start_falling(item, ctx.assets);
     }
     item.lean_with_floor();
     false
@@ -610,7 +735,7 @@ fn turn_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
 /// itBombhei_UnkMotion4_Coll (8027F8A0): it_8026D62C, then the lean.
 fn turn_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
-        unimplemented!("it_8027DE18: a turning Bob-omb leaving the ground");
+        start_falling(item, ctx.assets);
     }
     item.lean_with_floor();
     false
