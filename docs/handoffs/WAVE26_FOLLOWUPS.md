@@ -1,0 +1,11 @@
+- Brinstar Depths explorer: e005a4f43_p2, e0dee256e_p2 stop at fn_800C7DC4 (DownReflect out of DownDamage), unported on every stage.
+- Lip's Stick: draft port diverges at tick 269 (falling y 4.6986 vs 4.7154; suspect collision box aimed by root joint rotation); spore unported. Unregistered boundary start_fd_items_lipstick. Parasol item unstarted (start_fd_items_parasol recorded, unregistered).
+- Dropped Fan landing fails closed: branches on uninitialised item field xD4C (heap history).
+- Empty Star Rod puff (effect 1032) unwitnessed.
+- Six fan explorer recordings incomplete/stopped under load (corpus_v3_fd_items_harisen_e2b3eb8a9_p1, _e0602a9de_p0, _e1937d147_p1, _ebf31d7ca_p1, _e34114802_p1): unregistered.
+- App: no gamepad menu navigation on either host; pad Start can't resume a paused macOS match; after Sudden Death the saved replay covers only the Sudden Death.
+- Kongo second map-1 log (grKongo_801D5340, scene_stage/kongo.rs::create_object): needs several copies of one map's model/GObj/proc/particle joints and the shared collision joint rebound to the newest log; only corpus_v3_kj_fox_marth4_e255c070a_p1 (tick 3634) reaches it.
+- Mushroom Kingdom: corpus_v3_mk_fox_marth4_e19f8579b_p0 off 0.0015 in Fox y at tick 238 (Illusion off a descending lift; likely general moving-floor collision). Unregistered.
+- Onett: corpus_v3_onett_fox_marth4_ef89b3e70_p0 one ulp off in Fox x at tick 3745 (sliding on the roof during its crack animation). Unregistered.
+- Mushroom Kingdom II needs Birdo and her egg (itkyasarin, itkyasarinegg); boundary start_mk2_fox_marth4 exists.
+- Scratch scenario mkcam_e9943b4ab_p1 left in harness/scenarios (has traces; passes).

@@ -4,115 +4,66 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 24 integrated; wave 26 running)
+## Current state (2026-10-25, wave 26 closed at `e7e3a37d`)
 
-- **Wave 26 running (2026-10-25):** the user ended the pause; six agents (the cap) resume Ness, ReDead and copied Sheik and start heavy carry/throw, Flat Zone and more stages (`target/wave26/`).
-- **Original command-owner invariants are verified at source `f570da10`:**
-  Swing42 and Smash42 missing static rows are proven retail assertions,
-  with original asset ownership, entry/reset and asynchronous-writer proofs.
-  Both still panic on malformed ownership; no new gameplay is admitted.
-  Complete live controls and limits: `docs/PORT_NOTES/WAVE24_BREADTH.md`.
-- **Common held Sword Down Air entry and ordered effect teardown are
-  integrated at checkpoint source `914421b4`:** five original whole Sword
-  captures (5,769 ticks) match through actual common row 69 entry. A static
-  character-table capability preserves Link/YoungLink's normal entry and
-  direct bounce-restart refusals. Later common callbacks stay guarded;
-  immutable entry history remains separate from a midair catch. The shared
-  effect drain now runs prior teardown before motion-sealed effects, fixing
-  the complete 700-tick Yoshi's Story capture. Details and limits:
-  `docs/PORT_NOTES/WAVE23_BREADTH.md`.
-- **Fresh combined sweep:** 3,490 scenarios, **3,354 particle-exact**, 115
-  not comparable, 21 existing local failures and **zero particle faults**.
-  **Zero changed rows** against wave 23 (`55fe9480`); **287 fixes** against
-  startup `0a99db31`. Missing/incomplete recordings, startup limitations and
-  existing depth stops do not authorize divergent behavior. Fresh source,
-  executable and scenario provenance is under `target/wave24/final-main/`;
-  canonical baseline is
-  `target/sweeps/f570da10b93561b33a35501bc0e6c9ac01d81562.*`.
-- **Fresh replay corpora remain unchanged:** `public-v3.7` completes
-  **108/108** (964,782 matched frames); `public-v3.7-b` completes **486/502**
-  (5,102,652 frames), preserving every path/category/matched/total-frame
-  tuple. CPU replay setup and stock sharing remain refused capabilities.
-- **Parity inventory** (`target/parity/wave24-combined/`,
-  `docs/PARITY.md`): all retail **29.4% ported/partial, 38.1%
-  with body/row**; historical in-game subtotal **45.2% / 57.2%**. Of 19,827
-  functions: 4,212 ported, 224 partial, 1,372 body, 1,381 row, 231 referenced
-  and 12,407 not started. **297 fail-closed sites**: 278 unimplemented,
-  19 bail. Two guards become proven invariants; one already counted function
-  moves from partial to ported, with no covered-byte increase. Counts are not
-  witnessed branch coverage; every
-  reporting group remains in scope.
-- **Combined release checkpoint passes:** 2,020 workspace tests, zero
-  failures, one existing ignore; m4 345 and m5 314. Workspace all-target
-  clippy is clean; harness 407 and schema zero layout violations. WASM pure
-  suites, **five expected spline traps**, 6,003 identical native/WASM hash
-  lines and the release web check pass. All nine library worktree data-path
-  failures pass again in MAIN without optout; the prior character-path resolutions remain recorded. Actual API
-  step/observe/capture is allocation-free with independent before-event
-  clones; clone creation is outside measured windows. Active draw ranges
-  agree; unused presentation backing capacity is not active geometry.
-  Release only; no debug run.
-- **Fresh quiet performance passes at source `7c06907b`:** 19.084 ms per
-  600 ticks, 54.833 ms load, 7,675,616 stripped bytes and 6,897,664 text bytes.
-  The user approved baselines of 7,605,760 / 6,848,512 bytes and Kirby
-  duplicate-label allowance one; +5% size tolerance, timing and all other
-  duplication limits are unchanged. Shared duplication remains 20/94.
-  `docs/PERF.md` retains both historical failures and the fresh PASS report.
-- **Fresh capture evidence is complete:** eight successful capture chains,
-  9,725 ticks total: Ness 4,775; Heavy 600/800; Sword 750; ReDead 700;
-  copied Sheik 900; Flat Zone helper 600 and per-tick 600. Capture completion
-  does not admit behavior. New ports remain unmerged; the last full sweep
-  covers the original 3,490 scenarios, not these new cases. The two generated
-  Flat Zone start SCNs remain local, unregistered and unsupported. See the
-  paused handoff for exact validation limits and paths.
-- **New captures remain authorized (user, 2026-10-25):** no further capture
-  approval is needed when work resumes. Use fresh names, retain existing
-  data and failed attempts, and keep game data out of Git. The current pause
-  takes precedence over this standing authority.
+- **Wave 26 (six, then five, concurrent agents; `target/wave26/`) landed on
+  main:** Ness's current yo-yo binding; Kirby's copied Needle Storm (**all 25
+  copied specials**); heavy items carried and thrown (HeavyGet, Lift*, all
+  eight heavy throws); ReDead's lifecycle and CaptureLeadead; the Beam Sword's
+  remaining rows, Home-Run Bat, Fan and Star Rod; Green and Red Shells,
+  Freezie, random Bob-omb and Mr. Saturn, the Motion-Sensor Bomb, Heart
+  Container, Maxim Tomato, Food and the Warp Star's fall and rest, with
+  fighters stomping items; **seven more stages** (Flat Zone, Hyrule Temple,
+  Fourside, Brinstar Depths, Yoshi's Island, Mushroom Kingdom, Onett: 17
+  supported); **CPU players on all 17 stages** with every recovery special;
+  Time mode, team stock steal, handicap and Damage Ratio, timed teams,
+  Stamina (with its KO), Lightning, Slo-Mo, Super Sudden Death, Single
+  Button, Invisible, Giant and Tiny; and in both apps CPU players, four slots
+  with teams, random items and these modes. Shared fixes: DownReflect out of
+  DownDamage, no leg IK in hitlag, the repeated-hit push before the moving
+  floor, mid-match allocations on four stages, the item attribute file read
+  from ItCo.usd. Details: `docs/PORT_NOTES/` (WAVE26_STAGES, WAVE26_REDEAD,
+  VERSUS_RULES, CPU_PLAYERS, FLAT_ZONE, RANDOM_ITEMS, KIRBY).
+- **Gates at `e7e3a37d`:** sweep 4,062 scenarios, **3,751 exact**, 118 not
+  comparable, **0 regressions** against `09deaa39` (77 fixed); the 193
+  failing are local scenarios not on main (guarded stops, unmerged branches'
+  recordings, unrecorded explorer TOMLs). `public-v3.7` replays **108/108**
+  (checked at `9377e5cd`). `melee-lib` suite passes, including 28
+  allocation tests; `melee-platform` tests and the wasm check pass. Not rerun
+  this wave: the debug gate, full `m5_gate`, `public-v3.7-b`, perf gate.
+- **Parity inventory** (`docs/PARITY.md`, rerun at `e7e3a37d`): all retail
+  **32.0% ported/partial, 41.0% with body/row** (29.4 / 38.1 at wave 25);
+  in-game **49.2% / 61.7%** (45.2 / 57.2). 4,635 ported, 275 partial, 11,696
+  not started of 19,827. **366 fail-closed sites** (297): new code arrives with
+  its unwitnessed branches guarded.
+- **Performance:** last measured at `7c06907b` (19.084 ms per 600 ticks;
+  user-approved size baselines 7,605,760 / 6,848,512). Not rerun after this
+  wave's new crates.
+- **New captures are authorized (user, 2026-10-25):** use fresh names,
+  keep existing data and failed attempts, never commit game data. Record with
+  `record_many.py --jobs 2` or less when agents share the machine: under
+  heavy load recordings have differed between runs.
 
 ## Next (breadth before individual replay fixes)
 
-1. [x] **Shared ordinary-contact handling:** both complete 360/699-tick
-   captures, genuine phantom controls, raw state, API and full checkpoint
-   pass. The item analogue refuses unsupported mixed early returns.
-2. [x] **HeavyGet terminal entry:** five original complete captures, raw
-   scratch/flags/ownership, genuine RNG and strict whole particles pass.
-   Next Animation/IASA, attachment, carry and throws remain guarded.
-3. [x] **Item mixed-contact refusal:** source-proven missing-clear
-   early-return paths refuse until witnessed. Four complete ordinary item
-   controls stay exact; the bounded 45-scene search found no eligible whole
-   mixed-contact witness. No new item behavior is admitted.
-4. [x] **Kongo log-standing:** complete 2,829-tick warm/cold witness;
-   Sink/Remove and second-live-log paths remain guarded.
-5. [x] **Revival-floor entry:** complete 1,679-tick recording, with the
-   actual floor transition on its last tick. No later floor-exit proof.
-6. [~] **Ness current yo-yo binding — paused:** fresh full 4,775-tick
-   recording validates all five streams and all 200,210 RNG draws. Triage
-   confirms both yo-yos are removed at 924 while retail keeps the older one.
-   Uncommitted instance-routing/string-storage edits are unbuilt and untested;
-   do not merge or treat them as verified. Preserve the old incomplete data.
-7. [x] **Common held Sword F/B/Hi/Lw terminal entry and sealed-effect
-   ordering:** complete original witnesses, callback/identity controls,
-   allocation checks and root checkpoint pass. Link/YoungLink direct
-   restart remains refused. Peach's private float policy is pre-existing
-   and outside the new common-row proof. Later held callbacks stay guarded.
-8. [x] **Original command-owner invariants:** Swing42 and Smash42 source,
-   asset, writer and complete live controls pass; neither admits gameplay.
-9. [~] **Further breadth — paused with fresh evidence:** ReDead 700 includes
-   the coupled fighter CaptureLeadead state and release; copied Sheik 900
-   proves ground charge/release and needle cleanup; Heavy 800 proves carry
-   and forward throw; Sword 750 proves landing/ledge continuation, with no
-   unlocked airborne throw window. Flat Zone has a new boundary and full
-   per-tick 600/bones/camera evidence, but remains unported. ReDead and Kirby
-   worktrees are clean; no wave-25 implementation has passed acceptance.
-   All 19 remaining stages, wider CPU awareness, modes, retail menus/results,
-   single-player and pause remain in scope. Second-log coexistence is still
-   unwitnessed. See `docs/handoffs/WAVE25_PAUSED.md` before resuming.
-10. [ ] Replay depth after breadth: five existing stops remain in the second
-   corpus (Kirby/Game & Watch aerial Fire near FoD's edge; two proven
-   unconsumed controller polls; two one-ulp Nana positions). Other
-   unfinished games are refused capabilities. Preserve replay/retail
-   witness/unsupported-setup distinctions (`docs/SLIPPI.md`).
+1. [ ] **Merge the handed-off branches** (each has a note in
+   `docs/handoffs/`): `app-guarded-paths.md` (Party Ball lifecycle, CPUs in
+   3-4 player matches, items on every stage; one WIP commit to split, guard
+   and register), `VERSUS_RULES.md` (Coin mode WIP, partial Sudden Death,
+   Camera mode), `gamepads.md` (core done; macOS and web hosts unfinished;
+   the user requires full pad-only parity), `random-item-wstar.md` (the Warp
+   Star ride and spin joint), `WAVE26_MK2.md` (Mushroom Kingdom II plan).
+2. [ ] **More stages:** Mushroom Kingdom II, Great Bay, Princess Peach's
+   Castle, Rainbow Cruise, Brinstar, Corneria, Venom, Icicle Mountain, Green
+   Greens, Poké Floats, Mute City, Big Blue (12 remain).
+3. [ ] **More items:** Super/Poison Mushroom, Lip's Stick, Parasol item,
+   Poké Ball and its Pokémon, Ray Gun, Fire Flower, Super Scope, Hammer,
+   Screw Attack, Bunny Hood, Cloaking Device, Metal Box, Starman, Flipper,
+   Barrel Cannon; the dropped Fan's landing (reads uninitialised xD4C).
+4. [ ] **Open divergences** (`docs/handoffs/WAVE26_FOLLOWUPS.md`): Mushroom Kingdom
+   0.0015 at tick 238, Onett one ulp at 3745, Kongo's second log.
+5. [ ] Replay depth after breadth: five existing stops in `public-v3.7-b`
+   (`docs/SLIPPI.md`).
 
 ## Status by area
 
