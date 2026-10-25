@@ -95,6 +95,9 @@ pub struct Kirby {
     /// Fighter +22EC (u.kb.xC0): the copied Ice Shot's block, held until
     /// it leaves.
     pub ice_held: bool,
+    /// The copied Needle Storm: u.kb.xB4 (the charge), xB8 (the bundle in
+    /// hand) and mv.kb.specialhi.
+    pub needles: crate::copied::needle_storm::KirbyNeedles,
     /// Fighter +22F4 (u.kb.xC8): how far below the usual height a
     /// repeated aerial Ice Shot makes its block.
     pub ice_drop: f32,
@@ -127,6 +130,8 @@ pub enum Accessory {
     NayrusLoveAirCrystal,
     /// fn_801090D4: the copied Ice Shot's script commands.
     IceShot,
+    /// fn_80106DB0: the copied Needle Storm's throws.
+    ThrowNeedles,
 }
 impl Kirby {
     pub fn new(attributes: KirbyAttributes) -> Self {
@@ -171,6 +176,7 @@ impl Kirby {
             fire_breath: Default::default(),
             ice_held: false,
             ice_drop: 0.0,
+            needles: Default::default(),
         }
     }
 }
@@ -362,6 +368,7 @@ impl CharacterCallbacks for Kirby {
             Accessory::NayrusLoveCrystal => crate::copied::nayrus_love::crystal(f, false),
             Accessory::NayrusLoveAirCrystal => crate::copied::nayrus_love::crystal(f, true),
             Accessory::IceShot => crate::copied::ice_shot::accessory(f, assets),
+            Accessory::ThrowNeedles => crate::copied::needle_storm::throw_needle(f, rng),
             Accessory::None => {}
         }
     }

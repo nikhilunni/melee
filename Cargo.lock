@@ -604,6 +604,7 @@ dependencies = [
  "hsd-archive",
  "hsd-types",
  "it-drmariopill",
+ "it-seak",
  "melee-cm",
  "melee-coll",
  "melee-ef",

@@ -31,9 +31,10 @@ pub fn color(kirby: &Kirby) -> Option<u8> {
         FighterKind::Mewtwo => {
             (kirby.shadow_ball_charge as f32 == a.shadow_ball.full_charge).then_some(MEWTWO_FULL)
         }
-        // `xB4 == 6` (colour 87): no copied Needle Storm is ported, so
-        // xB4 is 0.
-        FighterKind::Seak => None,
+        // `xB4 == 6`.
+        FighterKind::Seak => (kirby.needles.count
+            == crate::copied::needle_storm::MAX_NEEDLES)
+            .then_some(crate::copied::needle_storm::FULL_CHARGE_COLOR),
         _ => None,
     }
 }

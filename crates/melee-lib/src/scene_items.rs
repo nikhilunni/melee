@@ -123,6 +123,8 @@ melee_it::item_kinds! {
         KirbyCLinkBow: it_link::KirbyYoungLinkBow,
         KirbyKoopaFlame: it_koopaflame::KirbyKoopaFlame,
         KirbyIceClimberIce: it_climbersice::KirbyClimbersIce,
+        KirbySeakNeedleThrow: it_seak::KirbySeakNeedleThrow,
+        KirbySeakNeedleHeld: it_seak::KirbySeakNeedleHeld,
     }
 }
 
@@ -138,7 +140,7 @@ pub(crate) struct KirbyCopyArchive {
 
 /// ftKb_SpecialN_800F16D0's registrations, by copied kind. A new copied
 /// special whose code spawns an article adds its kind's row here.
-pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 16] = [
+pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 17] = [
     KirbyCopyArchive {
         kind: melee_types::FighterKind::Fox,
         file: "PlKbCpFx.dat",
@@ -281,6 +283,17 @@ pub(crate) const KIRBY_COPY_ARCHIVES: [KirbyCopyArchive; 16] = [
         // hats[9]->hat_dynamics[0]: the ice block's four states, as Popo's.
         articles: &[(ItemKind::KirbyIceClimberIce, 0, 4)],
     },
+    KirbyCopyArchive {
+        kind: melee_types::FighterKind::Seak,
+        file: "PlKbCpSk.dat",
+        symbol: "ftDataKirbyCopySeak",
+        // hats[6]->hat_dynamics[0, 1]: the thrown needle's five states and
+        // the bundle's one, as Sheik's own.
+        articles: &[
+            (ItemKind::KirbySeakNeedleThrow, 0, 5),
+            (ItemKind::KirbySeakNeedleHeld, 1, 1),
+        ],
+    },
 ];
 
 /// A copy article whose ItemStateTable's anim_id column is not its motion
@@ -352,6 +365,13 @@ fn kirby_copy_article_layout(kind: ItemKind) -> Option<(&'static [i32], u32)> {
             &it_climbersice::ARTICLE_STATES,
             it_climbersice::SPECIAL_ATTRIBUTES,
         )),
+        // As ftSk_Init_OnLoad registers Sheik's own: the needle's three
+        // words, the bundle's none (and no animation).
+        ItemKind::KirbySeakNeedleThrow => Some((
+            &it_seak::needle::THROWN_ARTICLE_STATES,
+            it_seak::needle::THROWN_SPECIAL_ATTRIBUTES,
+        )),
+        ItemKind::KirbySeakNeedleHeld => Some((&it_seak::needle::HELD_ARTICLE_STATES, 0)),
         _ => None,
     }
 }
@@ -398,6 +418,10 @@ fn kirby_copy_article_finish(
                 .read_pose(archive)
                 .map_err(|e| anyhow::anyhow!("Kirby's Thunder Jolt crawler pose: {e}"))?;
         }
+        // As Sheik's own: the needle's hitbox rides its model's child joint.
+        ItemKind::KirbySeakNeedleThrow => assets
+            .read_pose(archive)
+            .map_err(|e| anyhow::anyhow!("Kirby's copied needle pose: {e}"))?,
         // The flash's and the explosion's DPtcl keys, as Ness's articles.
         ItemKind::KirbyNessPKFlush | ItemKind::KirbyNessPKFlushExplode => assets
             .read_particle_tracks(archive)

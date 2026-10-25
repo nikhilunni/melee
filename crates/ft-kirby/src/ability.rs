@@ -44,6 +44,9 @@ fn reset_copied_scratch(f: &mut Fighter) {
     // xC0, xC8: the copied Ice Shot's block and drop.
     state.ice_held = false;
     state.ice_drop = 0.0;
+    // xB4, xB8: the copied Needle Storm's charge and bundle.
+    state.needles.count = 0;
+    state.needles.held = false;
     state.charge_shot = Default::default();
     state.giant_punch_swings = 0;
     state.shadow_ball_held = false;
@@ -98,6 +101,11 @@ fn put_away_charge(f: &mut Fighter, kind: FighterKind) -> bool {
             crate::copied::samus::put_away(f);
             true
         }
+        // ftKb_SpecialNSk_8010603C.
+        FighterKind::Seak => {
+            crate::copied::needle_storm::put_away(f);
+            true
+        }
         _ => false,
     }
 }
@@ -124,10 +132,7 @@ fn put_away_article(f: &mut Fighter, kind: FighterKind) {
 
 /// ftKb_SpecialN_800F19AC (800F19AC): the copied special is put away, from
 /// the death callback and ftKb_SpecialN_800F5D04 (`put_away_article`).
-/// The other kinds whose arm only releases an article or a held fighter
-/// (Sheik) do nothing while their copied special is not
-/// ported: their scratch is always at rest. Yoshi's
-/// (801093B4: the hat's animation, drawn only; 8010A8BC: an item on the
+/// Yoshi's arm (801093B4: the hat's animation, drawn only; 8010A8BC: an item on the
 /// tongue, which the port never catches) has nothing to do.
 fn put_away(f: &mut Fighter) {
     let kind = f.character.get::<Kirby>().copied;

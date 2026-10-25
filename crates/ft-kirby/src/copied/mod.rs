@@ -27,6 +27,7 @@ pub mod bow;
 pub mod nayrus_love;
 pub mod fire_breath;
 pub mod ice_shot;
+pub mod needle_storm;
 
 /// One kind's entry in ftKb_Init_803C9DD0 / 803C9E54.
 #[derive(Clone, Copy)]
@@ -64,7 +65,7 @@ pub static NEUTRAL: [CopiedNeutral; FighterKind::MAX as usize] = [
     // Link
     CopiedNeutral::Ported(bow::enter),
     // Sheik
-    unported("ftKb_SpecialNSk_8010612C", "ftKb_SpecialNSk_801061E4"),
+    CopiedNeutral::Ported(needle_storm::enter),
     // Ness
     CopiedNeutral::Ported(pk_flash::enter),
     // Peach
@@ -170,6 +171,8 @@ pub fn item_owner(f: &mut Fighter) -> melee_it::ItemOwner {
             steering_article: pk_flash::steering(f),
             // The copied bow's ftKb_SpecialNLk800FB394.
             article_stage: bow::stage(f),
+            // ftKb_SpecialNSk_80105FF0, for the copied needle bundle.
+            holds_needles: needle_storm::holds_bundle(f),
             ..melee_ft::fighter::default_item_owner(f)
         })
 }

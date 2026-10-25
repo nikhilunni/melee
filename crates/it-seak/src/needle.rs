@@ -3,6 +3,14 @@
 //! each needle she throws or drops (It_Kind_Seak_NeedleThrow,
 //! itseakneedlethrown.c, 802AFD8C..802B1890). A thrown needle flies
 //! straight; at a floor it sticks or bounces, as it may off what it hits.
+//!
+//! Kirby's copy (It_Kind_Kirby_SeakNeedleThrow / SeakNeedleHeld, 152 and
+//! 153, from ftkirbyspecialseak.c) runs the same code: the held bundle's
+//! kind picks the owner's test (ftKb_SpecialNSk_80105FF0 for
+//! ftSk_SpecialS_80111F70, both "the hand is empty"), and the thrown
+//! needle's logic has no kind test at all.
+use std::marker::PhantomData;
+
 use gekko_math::{
     fma::{fmadds, fnmsubs},
     msl::{cosf, sinf},
@@ -18,8 +26,31 @@ use melee_it::{
 use melee_lb::trigf::atan2f;
 use melee_types::ItemKind;
 
-pub struct SeakNeedleHeld;
-pub struct SeakNeedleThrow;
+/// The needle bundle in `O`'s hand (Sheik's, or Kirby's copy).
+pub struct SeakNeedleHeld<O = Sheik>(PhantomData<O>);
+/// A needle `O` threw or dropped.
+pub struct SeakNeedleThrow<O = Sheik>(PhantomData<O>);
+/// Kirby's copied needles.
+pub type KirbySeakNeedleHeld = SeakNeedleHeld<Kirby>;
+pub type KirbySeakNeedleThrow = SeakNeedleThrow<Kirby>;
+
+/// Whose needles: the two item kinds.
+pub trait NeedleOwner: 'static {
+    const THROWN: ItemKind;
+    const HELD: ItemKind;
+}
+/// It_Kind_Seak_NeedleThrow / It_Kind_Seak_NeedleHeld.
+pub struct Sheik;
+impl NeedleOwner for Sheik {
+    const THROWN: ItemKind = ItemKind::SeakNeedleThrow;
+    const HELD: ItemKind = ItemKind::SeakNeedleHeld;
+}
+/// It_Kind_Kirby_SeakNeedleThrow / It_Kind_Kirby_SeakNeedleHeld.
+pub struct Kirby;
+impl NeedleOwner for Kirby {
+    const THROWN: ItemKind = ItemKind::KirbySeakNeedleThrow;
+    const HELD: ItemKind = ItemKind::KirbySeakNeedleHeld;
+}
 
 /// ftData.x48_items indices (ftSk_Init_OnLoad registers the thrown needle
 /// first, the held bundle second).
@@ -136,8 +167,8 @@ static HELD_STATES: [ItemStateRow; 1] = [ItemStateRow {
     collision: no_collision,
 }];
 
-impl ItemLogic for SeakNeedleHeld {
-    const KIND: ItemKind = ItemKind::SeakNeedleHeld;
+impl<O: NeedleOwner> ItemLogic for SeakNeedleHeld<O> {
+    const KIND: ItemKind = O::HELD;
     const STATES: &'static [ItemStateRow] = &HELD_STATES;
     fn pickup_possible(item: &ItemCore) -> bool {
         !item.held
@@ -148,8 +179,9 @@ impl ItemLogic for SeakNeedleHeld {
     }
 }
 
-/// itSeakneedleheld_UnkMotion0_Anim (802B1A80): the bundle goes once Sheik
-/// lets go of it (ftSk_SpecialS_80111F70); it_802B18B0 shows one needle
+/// itSeakneedleheld_UnkMotion0_Anim (802B1A80): the bundle goes once its
+/// owner lets go of it (ftSk_SpecialS_80111F70, or Kirby's
+/// ftKb_SpecialNSk_80105FF0: u.kb.xB8 cleared); it_802B18B0 shows one needle
 /// per charge and the model follows her scale.
 fn held_anim(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bool {
     let _ = item;
@@ -189,8 +221,8 @@ static THROWN_STATES: [ItemStateRow; 5] = [
     },
 ];
 
-impl ItemLogic for SeakNeedleThrow {
-    const KIND: ItemKind = ItemKind::SeakNeedleThrow;
+impl<O: NeedleOwner> ItemLogic for SeakNeedleThrow<O> {
+    const KIND: ItemKind = O::THROWN;
     const STATES: &'static [ItemStateRow] = &THROWN_STATES;
     /// The logic row has no pickup callback.
     fn pickup_possible(_item: &ItemCore) -> bool {

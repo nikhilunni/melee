@@ -6,5 +6,5 @@ pub mod needle;
 pub mod vanish;
 
 pub use chain::SeakChain;
-pub use needle::{SeakNeedleHeld, SeakNeedleThrow};
+pub use needle::{KirbySeakNeedleHeld, KirbySeakNeedleThrow, SeakNeedleHeld, SeakNeedleThrow};
 pub use vanish::SeakVanish;

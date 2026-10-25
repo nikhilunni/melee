@@ -21,6 +21,7 @@ ft-zelda-family = { path = "../ft-zelda-family" }
 ft-koopa-family = { path = "../ft-koopa-family" }
 ft-iceclimbers-family = { path = "../ft-iceclimbers-family" }
 it-drmariopill = { path = "../it-drmariopill" }
+it-seak = { path = "../it-seak" }
 ft-samus-family = { path = "../ft-samus-family" }
 ft-donkey-family = { path = "../ft-donkey-family" }
 ft-mewtwo-family = { path = "../ft-mewtwo-family" }

@@ -78,6 +78,8 @@ pub struct KirbyAttributes {
     /// +3E4 / +3E8 (`specialn_gw_frame_on_repeat`,
     /// `specialn_gw_max_sausages_per_use`): the copied Chef.
     pub gamewatch_chef: ft_gamewatch_family::chef::ChefAttributes,
+    /// +290..+2A4 (`specialn_sk_*`): the copied Needle Storm.
+    pub needle_storm: crate::copied::needle_storm::NeedleStormAttributes,
     /// +2A4..+2B0 (`specialn_zd_*`): the copied Nayru's Love.
     pub nayrus_love: ft_zelda_family::nayrus_love::NayrusLoveAttributes,
     /// +118..+13C (`specialn_kp_*`): the copied Fire Breath.
@@ -336,6 +338,13 @@ impl KirbyAttributes {
             },
             fire_breath: ft_koopa_family::fire_breath::FireBreathAttributes::read(&r, 0x118)?,
             ice_shot: ft_iceclimbers_family::ice_shot::IceShotAttributes::read(&r, 0x39C)?,
+            needle_storm: crate::copied::needle_storm::NeedleStormAttributes {
+                ground_offset_x: r.f32(0x290)?,
+                ground_offset_y: r.f32(0x294)?,
+                air_offset_x: r.f32(0x298)?,
+                air_offset_y: r.f32(0x29C)?,
+                landing_lag: r.f32(0x2A0)?,
+            },
             nayrus_love: ft_zelda_family::nayrus_love::NayrusLoveAttributes::read(&r, 0x2A4)?,
             nayrus_love_reflection: melee_ft::desc::fox_attributes::ReflectionAttributes::read_at(
                 r, 0x400,

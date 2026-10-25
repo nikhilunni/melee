@@ -3092,6 +3092,12 @@ const KIRBY_WITNESSES: &[(&str, usize)] = &[
     ("kirby_copy_iceshot_air_fd_iceclimbers4", 760),
     ("kirby_copy_iceshot_edge_fd_iceclimbers4", 780),
     ("kirby_copy_iceshot_struck_fd_iceclimbers4", 700),
+    // The copied Needle Storm (ftkirbyspecialseak.c, Kirby's own rows
+    // 467..474, u.kb.xB4/xB8, It_Kind_Kirby_SeakNeedleHeld (153) in the
+    // right hand and It_Kind_Kirby_SeakNeedleThrow (152) from PlKbCpSk.dat,
+    // colour 87), from `start_fd_kirby_sheik4`: a six-needle grounded
+    // charge and volley, then a one-needle tap.
+    ("w25_kirby_sheik_ground_v01", 900),
 ];
 
 #[test]
