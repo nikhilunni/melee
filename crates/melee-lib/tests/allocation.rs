@@ -886,6 +886,57 @@ fn every_stage_and_character_steps_without_allocating() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// Every ported Special Melee mode (Stamina's HP-out KO and slowdown, the
+/// model scales, the cloak, Single Button, Lightning, Slo-Mo, Super Sudden
+/// Death) steps random play without allocating.
+#[test]
+fn special_melee_modes_step_without_allocating() {
+    let root = data_root();
+    let files = root.join("harness/roms/files");
+    if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+        return;
+    }
+    const TICKS: usize = 3600;
+    let mut failures = Vec::new();
+    for (index, mode) in SpecialMelee::ALL.into_iter().filter(|m| m.ported()).enumerate() {
+        let mut config = MatchConfig::versus(
+            Stage::FinalDestination,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox),
+                PlayerConfig::new(Port::P2, Character::Marth),
+            ],
+        )
+        .with_seed(Seed(0x5eed + index as u32));
+        config.rules.special = Some(mode);
+        let assets = GameAssets::load(&files, &config).unwrap();
+        let mut game = Match::new(&assets, config).unwrap();
+        let mut choices = Choices(0x9e37_79b9 ^ (index as u32 + 1));
+        let mut held = [(ControllerState::default(), 0); 2];
+        let mut first = None;
+        for tick in 0..TICKS {
+            if !game.status().is_running() {
+                break;
+            }
+            let mut inputs = Inputs::default();
+            for (port, (pad, remaining)) in held.iter_mut().enumerate() {
+                if *remaining == 0 {
+                    (*pad, *remaining) = choices.pad();
+                }
+                *remaining -= 1;
+                inputs.0[port] = *pad;
+            }
+            let count = measure(&mut game, &inputs);
+            if count != 0 {
+                first.get_or_insert((tick, count));
+            }
+        }
+        if let Some((tick, count)) = first {
+            failures.push(format!("{mode:?}: first allocating tick {tick} ({count})"));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// The public API clones an actual suspended Barrel program after the drop,
 /// then steps both independent copies through its delayed command and End.
 #[test]
