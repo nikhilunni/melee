@@ -5,17 +5,21 @@
 # generation and differs from wasip1 only in libm, which gekko-math avoids.
 #   tools/wasm-check.sh                 tests, then 3 matches x 2000 ticks
 #   tools/wasm-check.sh --tests-only
+#   tools/wasm-check.sh --release-only
 #   WASM_CHECK_TICKS=500 tools/wasm-check.sh
 # wasmtime is not installed by this script: put it on PATH or point
 # MELEE_WASMTIME at the binary (a release from
 # https://github.com/bytecodealliance/wasmtime/releases, unpacked anywhere).
 set -euo pipefail
 tests_only=0
-case ${1:-} in
-    --tests-only) tests_only=1 ;;
-    '') ;;
-    *) echo "usage: tools/wasm-check.sh [--tests-only]" >&2; exit 2 ;;
-esac
+release_only=0
+for option in "$@"; do
+    case $option in
+        --tests-only) tests_only=1 ;;
+        --release-only) release_only=1 ;;
+        *) echo "usage: tools/wasm-check.sh [--tests-only] [--release-only]" >&2; exit 2 ;;
+    esac
+done
 cd "$(dirname "$0")/.."
 root=$PWD
 
@@ -41,16 +45,56 @@ runner="$wasmtime run --dir $root::$root"
 [[ $data_root != "$root" ]] && runner+=" --dir $data_root::$data_root"
 [[ -n ${MELEE_ALLOW_MISSING_DATA:-} ]] && runner+=" --env MELEE_ALLOW_MISSING_DATA=$MELEE_ALLOW_MISSING_DATA"
 export CARGO_TARGET_WASM32_WASIP1_RUNNER=$runner
+target_dir=${CARGO_TARGET_DIR:-$root/target}
+out=$target_dir/wasm-check
+mkdir -p "$out"
 
 # Pure crates whose suites run under WASI. Their native-C oracles skip
 # themselves (no subprocesses); disc-data tests read through the preopen.
 # melee-lb is out: its dynamics oracle needs a native subprocess. Release
 # too: LLVM folds (the fnmadds negation, select-to-max) need optimization.
 crates=(-p gekko-math -p hsd-types -p melee-types -p hsd-gobj -p hsd-anim -p melee-mp -p melee-cmd -p melee-coll)
-echo "== cargo test (debug, wasm32-wasip1): ${crates[*]}"
-cargo test -q --target wasm32-wasip1 "${crates[@]}"
+if [[ $release_only == 0 ]]; then
+    echo "== cargo test (debug, wasm32-wasip1): ${crates[*]}"
+    cargo test -q --target wasm32-wasip1 "${crates[@]}"
+fi
 echo "== cargo test (release, wasm32-wasip1): ${crates[*]}"
 cargo test -q --release --target wasm32-wasip1 "${crates[@]}"
+
+# Panic-catching cannot run on WASI's abort target. libtest excludes
+# should_panic tests there; execute each spline guard in its own process
+# and require its exact guard diagnostic, rather than accepting any trap.
+cargo test -q --release --target wasm32-wasip1 -p hsd-anim --lib \
+    --no-run --message-format=json >"$out/spline-test-artifacts.jsonl"
+spline_test_binary=$(python3 - "$out/spline-test-artifacts.jsonl" <<'PY'
+import json, sys
+artifacts = [json.loads(line) for line in open(sys.argv[1])]
+tests = [a['executable'] for a in artifacts
+         if a.get('reason') == 'compiler-artifact' and a.get('executable')
+         and a['target']['name'] == 'hsd_anim' and a['profile']['test']]
+if len(tests) != 1:
+    raise SystemExit('expected one hsd-anim WASI unit-test executable')
+print(tests[0])
+PY
+)
+for curve in bezier cardinal; do
+    case $curve in bezier) kind=Bezier ;; cardinal) kind=Cardinal ;; esac
+    for operation in point arc_length; do
+        test_name="${curve}_${operation}_requires_a_retail_witness"
+        log_file="$out/$test_name.log"
+        if $wasmtime run "$spline_test_binary" --ignored --exact \
+            "spline::tests::$test_name" --nocapture >"$log_file" 2>&1; then
+            echo "expected a WASI trap from $test_name" >&2
+            exit 1
+        fi
+        if ! grep -Fq "$kind needs a retail witness" "$log_file"; then
+            cat "$log_file" >&2
+            echo "missing spline guard diagnostic from $test_name" >&2
+            exit 1
+        fi
+    done
+done
+echo 'verified: four WASI spline guards trap with their expected diagnostics'
 [[ $tests_only == 1 ]] && exit 0
 
 files=$data_root/harness/roms/files
@@ -59,9 +103,6 @@ if [[ ! -f $files/PlCo.dat ]]; then
     exit 1
 fi
 ticks=${WASM_CHECK_TICKS:-2000}
-target_dir=${CARGO_TARGET_DIR:-$root/target}
-out=$target_dir/wasm-check
-mkdir -p "$out"
 echo "== cross_target_hash: 3 matches x $ticks ticks, native vs wasm32-wasip1"
 cargo build -q --release -p melee-lib --example cross_target_hash
 cargo build -q --release -p melee-lib --example cross_target_hash --target wasm32-wasip1

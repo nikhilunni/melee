@@ -251,20 +251,66 @@ mod tests {
             assert_eq!(linear_point(&spline, distance), expected);
         }
     }
-    #[test]
-    fn unwitnessed_curve_kinds_fail_closed() {
-        for kind in [SplineKind::Bezier, SplineKind::Cardinal] {
-            let spline = Spline {
-                kind,
-                knots: 2,
-                tension: 0.0,
-                points: vec![p(0.0, 0.0); 4],
-                total_length: 3.0,
-                lengths: vec![0.0, 1.0],
-                polynomials: vec![[0.0; 5]],
-            };
-            assert!(std::panic::catch_unwind(|| spline_point(&spline, 0.5)).is_err());
-            assert!(std::panic::catch_unwind(|| arc_length_parameter(&spline, 0.5)).is_err());
+    fn unwitnessed_curve(kind: SplineKind) -> Spline {
+        Spline {
+            kind,
+            knots: 2,
+            tension: 0.0,
+            points: vec![p(0.0, 0.0); 4],
+            total_length: 3.0,
+            lengths: vec![0.0, 1.0],
+            polynomials: vec![[0.0; 5]],
         }
+    }
+
+    // WASI aborts on panic. wasm-check.sh also runs these four tests as
+    // expected-trap subprocesses and requires the specific guard message.
+    #[test]
+    #[cfg_attr(
+        not(target_family = "wasm"),
+        should_panic(expected = "Bezier needs a retail witness")
+    )]
+    #[cfg_attr(
+        target_family = "wasm",
+        ignore = "wasm-check.sh runs this as an expected-trap subprocess"
+    )]
+    fn bezier_point_requires_a_retail_witness() {
+        spline_point(&unwitnessed_curve(SplineKind::Bezier), 0.5);
+    }
+    #[test]
+    #[cfg_attr(
+        not(target_family = "wasm"),
+        should_panic(expected = "Bezier needs a retail witness")
+    )]
+    #[cfg_attr(
+        target_family = "wasm",
+        ignore = "wasm-check.sh runs this as an expected-trap subprocess"
+    )]
+    fn bezier_arc_length_requires_a_retail_witness() {
+        arc_length_parameter(&unwitnessed_curve(SplineKind::Bezier), 0.5);
+    }
+    #[test]
+    #[cfg_attr(
+        not(target_family = "wasm"),
+        should_panic(expected = "Cardinal needs a retail witness")
+    )]
+    #[cfg_attr(
+        target_family = "wasm",
+        ignore = "wasm-check.sh runs this as an expected-trap subprocess"
+    )]
+    fn cardinal_point_requires_a_retail_witness() {
+        spline_point(&unwitnessed_curve(SplineKind::Cardinal), 0.5);
+    }
+    #[test]
+    #[cfg_attr(
+        not(target_family = "wasm"),
+        should_panic(expected = "Cardinal needs a retail witness")
+    )]
+    #[cfg_attr(
+        target_family = "wasm",
+        ignore = "wasm-check.sh runs this as an expected-trap subprocess"
+    )]
+    fn cardinal_arc_length_requires_a_retail_witness() {
+        arc_length_parameter(&unwitnessed_curve(SplineKind::Cardinal), 0.5);
     }
 }
