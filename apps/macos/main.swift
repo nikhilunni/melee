@@ -8,7 +8,16 @@ import UniformTypeIdentifiers
 
 /// The CAMetalLayer-backed view the core draws the match into.
 final class GameView: NSView {
-    weak var model: AppModel?
+    weak var model: AppModel? {
+        didSet {
+            gamepads.onStart = { [weak self] in
+                guard let self, let model = self.model, model.screen == .match else { return }
+                model.togglePause()
+                self.synchronize()
+            }
+        }
+    }
+    private let gamepads = Gamepads()
     private var displayLink: CADisplayLink?
     private var attached = false
     override var acceptsFirstResponder: Bool { true }
@@ -83,6 +92,7 @@ final class GameView: NSView {
     }
 
     @objc private func step(_ link: CADisplayLink) {
+        if let model, model.screen == .match { gamepads.poll(model) }
         draw()
         synchronize()
     }
@@ -432,12 +442,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 
     @objc func showHelp(_ sender: Any?) {
         controller.alert("Playing", """
-            Open your Super Smash Bros. Melee NTSC-U 1.02 disc image (.iso), pick two fighters \
-            and a stage.
+            Open your Super Smash Bros. Melee NTSC-U 1.02 disc image (.iso), pick up to four \
+            fighters (human or CPU; Rules for teams, items and modes) and a stage.
 
-            P1: W A S D move · K attack · J special · Space jump · L shield · I grab
-            P2: arrows move · N attack · M special · , jump · . shield · / grab
-            Esc pauses. Gamepads are not supported yet.
+            Keyboards and gamepads drive the human players in port order: the first keyboard \
+            layout and the first gamepad the first human, and so on. CPU players need none.
+            1st: W A S D move · K attack · J special · Space jump · L shield · I grab
+            2nd: arrows move · N attack · M special · , jump · . shield · / grab
+            Gamepads: left stick, right stick (C), A B X Y, shoulders Z, triggers L/R.
+            Esc or a pad's Menu button pauses.
             """)
     }
 }
@@ -566,8 +579,17 @@ enum Autostart {
     /// after 1 s, then the result 1 s later (development: real hit-testing
     /// without global synthetic events).
     private static func click(_ spec: String, model: AppModel) {
-        let values = spec.split(separator: ",").compactMap { Double($0) }
-        guard values.count == 2 else { return fail("MELEE_APP_CLICK wants x,y fractions") }
+        // Several clicks: x,y;x,y;... one per MELEE_APP_CLICK_INTERVAL seconds (default 1).
+        let interval = ProcessInfo.processInfo.environment["MELEE_APP_CLICK_INTERVAL"].flatMap(Double.init) ?? 1
+        for (index, point) in spec.split(separator: ";").enumerated() {
+            let values = point.split(separator: ",").compactMap { Double($0) }
+            guard values.count == 2 else { return fail("MELEE_APP_CLICK wants x,y fractions (;-separated)") }
+            DispatchQueue.main.asyncAfter(deadline: .now() + interval * Double(index)) {
+                click(at: values, model: model)
+            }
+        }
+    }
+    private static func click(at values: [Double], model: AppModel) {
         DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
             guard let window = NSApp.windows.first(where: { $0.contentView != nil }),
                   let content = window.contentView else { return fail("no window") }
@@ -580,8 +602,18 @@ enum Autostart {
                                                      eventNumber: 0, clickCount: 1, pressure: 1) else { continue }
                 window.sendEvent(event)
             }
-            DispatchQueue.main.asyncAfter(deadline: .now() + 1) {
-                print("click: screen \(model.screen) sheet \(window.attachedSheet != nil)")
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.5) {
+                let slots = model.selection.players.enumerated().map { index, slot in
+                    "P\(index + 1) \(slot.controller)\(slot.controller == .cpu ? "\(slot.cpuLevel)" : "")" +
+                        " \(model.character(slot.character)?.key ?? "-")"
+                }.joined(separator: ", ")
+                let hud = model.core.hud.map { hud in
+                    " tick \(hud.tick) " + hud.players.map { "P\($0.port + 1)\($0.cpu ? " CPU" : "") \(Int($0.percent))%" }
+                        .joined(separator: ", ")
+                } ?? ""
+                print("click \(values): screen \(model.screen) sheet \(window.attachedSheet != nil) " +
+                      "rules [\(RulesCard.summary(model.rules))] showingRules \(model.showingRules) " +
+                      "slots [\(slots)]\(hud)")
                 fflush(stdout)
             }
         }

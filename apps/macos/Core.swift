@@ -26,18 +26,70 @@ struct StageInfo: Identifiable, Hashable {
     let id: UInt32
     let name: String
     let key: String
+    /// CPU players are witnessed here.
+    let cpuSupported: Bool
+}
+
+/// What drives a slot (melee_controller_e).
+enum Controller: UInt32 {
+    case off = 0, human, cpu
 }
 
 struct Slot: Equatable {
+    var controller: Controller = .off
     var character: Int32?
-    var costume: Int
+    var costume: Int = 0
+    var cpuLevel: Int = 3
+    /// 0 red, 1 blue, 2 green.
+    var team: Int = 0
+    /// 1-9, or 0 for none.
+    var handicap: Int = 0
+    var active: Bool { controller != .off }
 }
 
+/// Four slots, one per controller port.
+let slotCount = Int(MELEE_SLOTS)
+
 struct Selection: Equatable {
-    var players: [Slot] = [Slot(character: nil, costume: 0), Slot(character: nil, costume: 0)]
-    var stocks: Int = 4
+    var players: [Slot] = [Slot(controller: .human), Slot(controller: .human), Slot(), Slot()]
     var ready = false
+    /// Why the picks cannot go on yet.
+    var notReady: String?
 }
+
+/// How a match is won (melee_mode_e).
+enum MatchMode: UInt8 { case stock = 0, time }
+
+/// The Special Melee modes the core offers (melee_special_e).
+enum SpecialMode: UInt8, CaseIterable {
+    case none = 0, superSuddenDeath, lightning, slomo
+    var title: String {
+        switch self {
+        case .none: "Off"
+        case .superSuddenDeath: "Super Sudden Death"
+        case .lightning: "Lightning"
+        case .slomo: "Slo-Mo"
+        }
+    }
+}
+
+/// Versus rules (melee_rules_s).
+struct Rules: Equatable {
+    var mode: MatchMode = .stock
+    var stocks = 4
+    /// 0 for no limit (stock only).
+    var timeMinutes = 0
+    var teams = false
+    var friendlyFire = false
+    /// -1 off, 0 very low .. 4 very high.
+    var itemFrequency = -1
+    /// Tenths, 5-20.
+    var damageRatio = 10
+    var special: SpecialMode = .none
+}
+
+/// Team colours, by team number.
+let teamNames = ["Red", "Blue", "Green"]
 
 struct LoadProgress: Equatable {
     var filesDone = 0, filesTotal = 0
@@ -51,6 +103,11 @@ struct PlayerHud: Equatable {
     var costume: Int
     var percent: Float
     var stocks: Int
+    var cpu = false
+    /// 0 red, 1 blue, 2 green; nil outside a team battle.
+    var team: Int?
+    /// A Time match's KOs minus falls.
+    var score = 0
 }
 
 struct Hud: Equatable {
@@ -58,12 +115,28 @@ struct Hud: Equatable {
     var paused: Bool
     var faulted: Bool
     var players: [PlayerHud]
+    var secondsLeft: Int?
+    var timedScores = false
+    var suddenDeath = false
 }
 
 struct MatchResults: Equatable {
-    /// Player index of the winner, or nil for a draw.
+    /// Player index of the winner, or nil for a draw or a team win.
     var winner: Int?
+    /// A team battle's winning team.
+    var winningTeam: Int? = nil
     var hud: Hud
+}
+
+/// A gamepad as a GameCube controller (melee_gamepad_s).
+struct GamepadState: Equatable {
+    var buttons: UInt32 = 0
+    var stick = (x: Float(0), y: Float(0))
+    var cstick = (x: Float(0), y: Float(0))
+    var triggers = (l: Float(0), r: Float(0))
+    static func == (a: Self, b: Self) -> Bool {
+        a.buttons == b.buttons && a.stick == b.stick && a.cstick == b.cstick && a.triggers == b.triggers
+    }
 }
 
 struct DiscInfo: Equatable {
@@ -93,11 +166,15 @@ private func text<T>(_ tuple: T) -> String {
 }
 
 private func makeHud(_ raw: melee_hud_s) -> Hud {
-    let players = [raw.players.0, raw.players.1].map {
+    let all = [raw.players.0, raw.players.1, raw.players.2, raw.players.3]
+    let players = all.prefix(Int(raw.player_count)).map {
         PlayerHud(port: Int($0.port), character: Int32($0.character), costume: Int($0.costume),
-                  percent: $0.percent, stocks: Int($0.stocks))
+                  percent: $0.percent, stocks: Int($0.stocks), cpu: $0.cpu,
+                  team: $0.team < 0 ? nil : Int($0.team), score: Int($0.score))
     }
-    return Hud(tick: raw.tick, paused: raw.paused, faulted: raw.faulted, players: players)
+    return Hud(tick: raw.tick, paused: raw.paused, faulted: raw.faulted, players: Array(players),
+               secondsLeft: raw.seconds_left < 0 ? nil : Int(raw.seconds_left),
+               timedScores: raw.timed_scores, suddenDeath: raw.sudden_death)
 }
 
 final class Core {
@@ -113,7 +190,8 @@ final class Core {
     static let stages: [StageInfo] = (0..<melee_stage_count()).compactMap { id in
         var info = melee_stage_info_s()
         guard melee_stage_info(id, &info) else { return nil }
-        return StageInfo(id: id, name: String(cString: info.name), key: String(cString: info.key))
+        return StageInfo(id: id, name: String(cString: info.name), key: String(cString: info.key),
+                         cpuSupported: info.cpu_supported)
     }
 
     init() {
@@ -209,14 +287,58 @@ final class Core {
     var stagePreviewsReady: Bool { melee_app_stage_previews_ready(app) }
     func stagePreview(_ stage: UInt32) -> CGImage? { art(.stagePreview, id: stage) }
 
+    /// A reason string the core copies out (0 length: none).
+    private func reason(_ copy: (UnsafeMutablePointer<CChar>?, Int) -> Int) -> String? {
+        var buffer = [CChar](repeating: 0, count: 256)
+        let length = copy(&buffer, buffer.count)
+        return length == 0 ? nil : String(cString: buffer)
+    }
+
     // Character select
     var selection: Selection {
         var raw = melee_selection_s()
         melee_app_selection(app, &raw)
-        let slots = [raw.players.0, raw.players.1].map {
-            Slot(character: $0.character < 0 ? nil : $0.character, costume: Int($0.costume))
+        let all: [melee_slot_s] = [raw.players.0, raw.players.1, raw.players.2, raw.players.3]
+        let slots = all.map { (s: melee_slot_s) -> Slot in
+            let character: Int32? = s.character < 0 ? nil : s.character
+            return Slot(controller: Controller(rawValue: s.controller) ?? .off, character: character,
+                        costume: Int(s.costume), cpuLevel: Int(s.cpu_level), team: Int(s.team),
+                        handicap: Int(s.handicap))
         }
-        return Selection(players: slots, stocks: Int(raw.stocks), ready: raw.ready)
+        let notReady = reason { melee_app_characters_not_ready(app, $0, $1) }
+        return Selection(players: slots, ready: raw.ready, notReady: notReady)
+    }
+    func setController(player: Int, _ controller: Controller) throws {
+        try check(melee_app_set_controller(app, UInt32(player), melee_controller_e(rawValue: controller.rawValue)))
+    }
+    func setCpuLevel(player: Int, level: Int) throws {
+        try check(melee_app_set_cpu_level(app, UInt32(player), UInt8(clamping: level)))
+    }
+    func setTeam(player: Int, team: Int) throws {
+        try check(melee_app_set_team(app, UInt32(player), UInt8(clamping: team)))
+    }
+    func setHandicap(player: Int, handicap: Int) throws {
+        try check(melee_app_set_handicap(app, UInt32(player), UInt8(clamping: handicap)))
+    }
+    var rules: Rules {
+        var raw = melee_rules_s()
+        melee_app_rules(app, &raw)
+        return Rules(mode: MatchMode(rawValue: raw.mode) ?? .stock, stocks: Int(raw.stocks),
+                     timeMinutes: Int(raw.time_minutes), teams: raw.teams, friendlyFire: raw.friendly_fire,
+                     itemFrequency: Int(raw.item_frequency), damageRatio: Int(raw.damage_ratio_tenths),
+                     special: SpecialMode(rawValue: raw.special) ?? .none)
+    }
+    func setRules(_ rules: Rules) throws {
+        var raw = melee_rules_s(mode: rules.mode.rawValue, stocks: UInt8(clamping: rules.stocks),
+                                time_minutes: UInt8(clamping: rules.timeMinutes), teams: rules.teams,
+                                friendly_fire: rules.friendlyFire, item_frequency: Int8(clamping: rules.itemFrequency),
+                                damage_ratio_tenths: UInt8(clamping: rules.damageRatio),
+                                special: rules.special.rawValue)
+        try check(melee_app_set_rules(app, &raw))
+    }
+    /// Why a stage cannot host the current picks, or nil.
+    func stageUnavailable(_ stage: UInt32) -> String? {
+        reason { melee_app_stage_unavailable(app, stage, $0, $1) }
     }
     func choose(player: Int, character: Int32?) throws {
         try check(melee_app_choose_character(app, UInt32(player), character ?? -1))
@@ -227,7 +349,6 @@ final class Core {
     func cycleCostume(player: Int, step: Int32) throws {
         try check(melee_app_cycle_costume(app, UInt32(player), step))
     }
-    func setStocks(_ stocks: Int) throws { try check(melee_app_set_stocks(app, UInt8(clamping: stocks))) }
     func confirmCharacters() throws { try check(melee_app_confirm_characters(app)) }
     func back() { melee_app_back(app) }
 
@@ -260,6 +381,15 @@ final class Core {
     func action(player: Int, _ action: GameAction, down: Bool) {
         melee_app_action(app, UInt32(player), melee_action_e(rawValue: action.rawValue), down)
     }
+    /// Gamepad `device` (connection order) drives the match's nth human; nil
+    /// when it disconnects.
+    func gamepad(device: Int, _ state: GamepadState?) {
+        guard let state else { return melee_app_gamepad(app, UInt32(device), nil) }
+        var raw = melee_gamepad_s(buttons: state.buttons, stick_x: state.stick.x, stick_y: state.stick.y,
+                                  cstick_x: state.cstick.x, cstick_y: state.cstick.y,
+                                  trigger_l: state.triggers.l, trigger_r: state.triggers.r)
+        melee_app_gamepad(app, UInt32(device), &raw)
+    }
     func setPaused(_ paused: Bool) { melee_app_set_paused(app, paused) }
     func setFocused(_ focused: Bool) { melee_app_set_focused(app, focused) }
     var hud: Hud? {
@@ -269,7 +399,8 @@ final class Core {
     var results: MatchResults? {
         var raw = melee_results_s()
         guard melee_app_results(app, &raw) else { return nil }
-        return MatchResults(winner: raw.winner < 0 ? nil : Int(raw.winner), hud: makeHud(raw.hud))
+        return MatchResults(winner: raw.winner < 0 ? nil : Int(raw.winner),
+                            winningTeam: raw.winning_team < 0 ? nil : Int(raw.winning_team), hud: makeHud(raw.hud))
     }
     func restart() throws { try check(melee_app_restart(app)) }
     func rematch() throws { try check(melee_app_rematch(app, UInt32.random(in: .min ... .max))) }

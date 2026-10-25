@@ -19,5 +19,5 @@ xcrun swiftc -O -module-name Melee \
     -import-objc-header crates/melee-platform/include/melee_platform.h \
     apps/macos/*.swift -L target/release -lmelee_platform \
     -framework AppKit -framework SwiftUI -framework QuartzCore -framework Metal -framework IOKit \
-    -framework Security -o "$bundle/Contents/MacOS/Melee"
+    -framework Security -framework GameController -o "$bundle/Contents/MacOS/Melee"
 printf '%s\n' "$bundle"

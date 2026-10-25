@@ -39,6 +39,17 @@ struct CharacterSelectView: View {
             }
             .padding(.horizontal, pad)
             .padding(.bottom, m(16))
+            .overlay {
+                if model.showingRules {
+                    ZStack {
+                        Color.black.opacity(0.45).ignoresSafeArea()
+                            .onTapGesture { model.showingRules = false }
+                        RulesCard(model: model, m: m)
+                    }
+                    .transition(.opacity)
+                }
+            }
+            .animation(.easeInOut(duration: 0.15), value: model.showingRules)
         }
     }
 
@@ -57,7 +68,17 @@ struct CharacterSelectView: View {
                 .buttonStyle(SlantButtonStyle(kind: .glass, size: m(15)))
                 .accessibilityLabel("Back to the disc screen")
                 Spacer()
-                StockStepper(model: model, m: m)
+                HStack(spacing: m(10)) {
+                    StockStepper(model: model, m: m)
+                    Button { model.showingRules = true } label: {
+                        HStack(spacing: m(6)) {
+                            Image(systemName: "slider.horizontal.3").font(.system(size: m(13), weight: .bold))
+                            Text("Rules")
+                        }
+                    }
+                    .buttonStyle(SlantButtonStyle(kind: .glass, size: m(15)))
+                    .accessibilityLabel("Rules: \(RulesCard.summary(model.rules))")
+                }
             }
         }
         .frame(height: m(54))
@@ -82,9 +103,10 @@ struct CharacterSelectView: View {
     // MARK: Panels
 
     private func panels(_ m: MenuMetrics) -> some View {
-        HStack(spacing: m(36)) {
-            PlayerPanel(model: model, player: 0, m: m)
-            PlayerPanel(model: model, player: 1, m: m)
+        HStack(spacing: m(18)) {
+            ForEach(0..<slotCount, id: \.self) { player in
+                PlayerPanel(model: model, player: player, m: m)
+            }
         }
         .frame(minHeight: m(200), maxHeight: m(420))
     }
@@ -96,10 +118,11 @@ struct CharacterSelectView: View {
                     : .asymmetric(insertion: .offset(x: -m(120), y: 0).combined(with: .opacity),
                                   removal: .opacity))
         } else {
-            // Who picks next, in their colour.
+            // Who picks next, in their colour, or what is missing.
             HStack(spacing: m(10)) {
                 PortCoin(port: model.picking, size: m(26))
-                Text("Choose your fighter")
+                Text(model.selection.players[model.picking].character == nil || model.selection.notReady == nil
+                     ? "Choose your fighter" : (model.selection.notReady ?? "").capitalizedFirst)
                     .displayStyle(m(24), bold: true)
                     .foregroundStyle(Palette.text.opacity(0.75))
             }
@@ -115,7 +138,7 @@ struct CharacterSelectView: View {
         HStack(spacing: m(16)) {
             legendItem(["←", "→", "↑", "↓"], "Move", m)
             legendItem(["⏎"], model.selection.ready ? "Stage select" : "Pick", m)
-            legendItem(["Tab"], "Switch player", m)
+            legendItem(["Tab"], "Next player", m)
             legendItem(["Q", "E"], "Costume", m)
             legendItem(["⌫"], "Clear", m)
                         legendItem(["Esc"], "Back", m)
@@ -141,26 +164,29 @@ struct StockStepper: View {
     let m: MenuMetrics
 
     var body: some View {
-        let stocks = model.selection.stocks
+        let timed = model.rules.mode == .time
+        let stocks = timed ? model.rules.timeMinutes : model.rules.stocks
+        let set: (Int) -> Void = timed ? { minutes in model.update { $0.timeMinutes = minutes } } : model.setStocks
         HStack(spacing: m(10)) {
-            Text("Stock").font(.displayBold(m(15))).tracking(m(1)).textCase(.uppercase)
+            Text(timed ? "Time" : "Stock").font(.displayBold(m(15))).tracking(m(1)).textCase(.uppercase)
                 .foregroundStyle(Palette.textDim)
-            arrow("arrowtriangle.left.fill", enabled: stocks > 1) { model.setStocks(stocks - 1) }
-                .accessibilityLabel("Fewer stocks")
+            arrow("arrowtriangle.left.fill", enabled: stocks > 1) { set(stocks - 1) }
+                .accessibilityLabel(timed ? "Fewer minutes" : "Fewer stocks")
             Text("\(stocks)")
                 .font(.display(m(26)))
                 .monospacedDigit()
                 .frame(minWidth: m(30))
                 .contentTransition(.numericText(value: Double(stocks)))
                 .animation(.spring(response: 0.3, dampingFraction: 0.8), value: stocks)
-            arrow("arrowtriangle.right.fill", enabled: stocks < 99) { model.setStocks(stocks + 1) }
-                .accessibilityLabel("More stocks")
+            arrow("arrowtriangle.right.fill", enabled: stocks < 99) { set(stocks + 1) }
+                .accessibilityLabel(timed ? "More minutes" : "More stocks")
+            if timed { Text("min").font(.ui(m(12))).foregroundStyle(Palette.textDim) }
         }
         .padding(.horizontal, m(20))
         .frame(height: m(40))
         .glass(Slanted(radius: m(20)))
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Stocks \(stocks)")
+        .accessibilityLabel(timed ? "Time \(stocks) minutes" : "Stocks \(stocks)")
     }
 
     private func arrow(_ symbol: String, enabled: Bool, action: @escaping () -> Void) -> some View {
@@ -185,7 +211,9 @@ struct CharacterTile: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let pickedBy = (0..<2).filter { model.selection.players[$0].character == character.id }
+        let pickedBy = (0..<slotCount).filter {
+            model.selection.players[$0].active && model.selection.players[$0].character == character.id
+        }
         let focused = model.cursor == character.id
         let active = Palette.port(model.picking)
         let shape = Slanted(radius: m(9))
@@ -274,13 +302,14 @@ struct PlayerPanel: View {
     @State private var parallax: CGFloat = 0
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    private var mirrored: Bool { player == 1 }
+    private var mirrored: Bool { player % 2 == 1 }
 
     var body: some View {
         let slot = model.selection.players[player]
-        let character = model.character(slot.character)
+        let character = slot.active ? model.character(slot.character) : nil
         let active = model.picking == player
-        let color = Palette.port(player)
+        let color = model.rules.teams && slot.active ? Palette.team(slot.team)
+            : slot.active ? Palette.port(player) : Palette.cpu
         let shape = Slanted(radius: m(14), maxShift: m(34))
         GeometryReader { geo in
             let lean = shape.shift(height: geo.size.height)
@@ -290,8 +319,13 @@ struct PlayerPanel: View {
                     portrait(character, costume: slot.costume, color: color, size: geo.size)
                     namePlate(character, color: color, lean: lean)
                 } else {
-                    empty(active: active, size: geo.size)
+                    empty(active: active, slot: slot, size: geo.size)
                 }
+                SlotControls(model: model, player: player, m: m)
+                    .padding(.top, m(10))
+                    .padding(.leading, mirrored ? lean + m(12) : 0)
+                    .padding(.trailing, mirrored ? 0 : m(12))
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: mirrored ? .topLeading : .topTrailing)
             }
             .onContinuousHover { phase in
                 guard !reduceMotion else { return }
@@ -303,13 +337,15 @@ struct PlayerPanel: View {
         }
         .clipShape(shape)
         .glass(shape, tint: color, tintAmount: active ? (character == nil ? 0.16 : 0.26) : 0.12)
+        .opacity(slot.active ? 1 : 0.6)
         .overlay { shape.strokeBorder(color.opacity(active ? 0.9 : 0.0), lineWidth: 2) }
         .shadow(color: active ? color.opacity(0.45) : .black.opacity(0.3), radius: active ? m(22) : m(10))
         .contentShape(shape)
         .onTapGesture { model.activate(player: player) }
         .animation(.spring(response: 0.35, dampingFraction: 0.8), value: active)
         .accessibilityElement(children: .contain)
-        .accessibilityLabel("Player \(player + 1)\(active ? ", choosing" : "")")
+        .accessibilityLabel("Player \(player + 1)\(active ? ", choosing" : "")" +
+                            (slot.controller == .cpu ? ", CPU level \(slot.cpuLevel)" : slot.active ? "" : ", off"))
         .accessibilityValue(character?.name ?? "no fighter")
         .accessibilityAddTraits(.isButton)
     }
@@ -398,17 +434,21 @@ struct PlayerPanel: View {
     }
 
     /// No fighter yet: our emblem, large and faint.
-    private func empty(active: Bool, size: CGSize) -> some View {
+    private func empty(active: Bool, slot: Slot, size: CGSize) -> some View {
         ZStack {
             EmblemShape()
                 .fill(.white.opacity(active ? 0.08 : 0.04))
                 .frame(width: size.height * 0.62, height: size.height * 0.62)
                 .position(x: size.width * 0.5, y: size.height * 0.45)
             VStack(spacing: m(6)) {
-                Text(active ? "Click a fighter" : "Waiting")
+                Text(!slot.active ? "Not playing" : active ? "Click a fighter" : "Waiting")
                     .displayStyle(m(26))
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.6)
                     .foregroundStyle(Palette.text.opacity(active ? 0.9 : 0.4))
-                Text(active ? "or press Enter on the grid" : "Tab or click to choose")
+                Text(!slot.active ? "Pick a fighter or set HMN/CPU to join" :
+                        active ? "or press Enter on the grid" : "Tab or click to choose")
+                    .multilineTextAlignment(.center)
                     .font(.ui(m(12)))
                     .foregroundStyle(Palette.textDim.opacity(active ? 1 : 0.6))
             }
@@ -427,10 +467,10 @@ struct CostumeChips: View {
     let m: MenuMetrics
 
     var body: some View {
-        let other = model.selection.players[1 - player]
-        HStack(spacing: m(6)) {
+        let others = model.selection.players.indices.filter { $0 != player }.map { model.selection.players[$0] }
+        HStack(spacing: m(4)) {
             ForEach(0..<character.costumeCount, id: \.self) { costume in
-                let taken = other.character == character.id && other.costume == costume
+                let taken = others.contains { $0.active && $0.character == character.id && $0.costume == costume }
                 let selected = costume == current
                 Button { model.setCostume(player: player, costume: costume) } label: {
                     ZStack {
@@ -441,7 +481,7 @@ struct CostumeChips: View {
                             Text("\(costume + 1)").font(.ui(12, .bold))
                         }
                     }
-                    .frame(width: m(32), height: m(32))
+                    .frame(width: m(28), height: m(28))
                     .overlay(Circle().strokeBorder(selected ? Palette.port(player) : .white.opacity(0.18),
                                                    lineWidth: selected ? 2.5 : 1))
                     .shadow(color: selected ? Palette.port(player).opacity(0.7) : .clear, radius: 6)
@@ -471,9 +511,11 @@ struct ControlsLegend: View {
 
     var body: some View {
         VStack(alignment: .trailing, spacing: m(5)) {
+            Text("Gamepads and keyboards drive the human players in port order")
+                .font(.ui(m(11))).foregroundStyle(Palette.textDim)
             ForEach(0..<2, id: \.self) { player in
                 HStack(spacing: m(4)) {
-                    Text("P\(player + 1)").font(.display(m(13))).foregroundStyle(Palette.port(player))
+                    Text(player == 0 ? "1st" : "2nd").font(.display(m(13))).foregroundStyle(Palette.port(player))
                         .padding(.trailing, m(2))
                     ForEach(Self.rows[player].indices, id: \.self) { index in
                         let item = Self.rows[player][index]
@@ -534,5 +576,212 @@ struct ReadyBanner: View {
         .animation(.spring(response: 0.3, dampingFraction: 0.75), value: hover)
         .padding(.horizontal, m(32))
         .accessibilityLabel("Ready to fight: choose a stage")
+    }
+}
+
+extension String {
+    var capitalizedFirst: String { prefix(1).uppercased() + dropFirst() }
+}
+
+// MARK: Slot controls
+
+/// A panel's top row: HMN / CPU / OFF, the CPU level, the team colour in a
+/// team battle and the handicap when one is set.
+struct SlotControls: View {
+    @ObservedObject var model: AppModel
+    let player: Int
+    let m: MenuMetrics
+
+    var body: some View {
+        let slot = model.selection.players[player]
+        VStack(alignment: .trailing, spacing: m(6)) {
+            HStack(spacing: m(2)) {
+                ForEach([Controller.human, .cpu, .off], id: \.self) { controller in
+                    let selected = slot.controller == controller
+                    Button { model.setController(player: player, controller) } label: {
+                        Text(label(controller))
+                            .font(.displayBold(m(13))).tracking(m(0.5))
+                            .padding(.horizontal, m(7)).frame(height: m(22))
+                            .background(Capsule().fill(selected ? (controller == .off ? Palette.cpu : Palette.port(player)).opacity(0.85)
+                                                       : .black.opacity(0.35)))
+                            .foregroundStyle(selected ? .white : Palette.textDim)
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("P\(player + 1) \(label(controller))\(selected ? ", selected" : "")")
+                }
+            }
+            if slot.controller == .cpu {
+                stepper("LV", value: slot.cpuLevel, range: 1...9, name: "CPU level") {
+                    model.setCpuLevel(player: player, level: $0)
+                }
+            }
+            if slot.active && model.rules.teams {
+                Button { model.cycleTeam(player: player) } label: {
+                    Text(teamNames[min(slot.team, teamNames.count - 1)])
+                        .font(.displayBold(m(13))).textCase(.uppercase)
+                        .padding(.horizontal, m(9)).frame(height: m(22))
+                        .background(Capsule().fill(Palette.team(slot.team)))
+                        .foregroundStyle(.white)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("P\(player + 1) team \(teamNames[min(slot.team, teamNames.count - 1)])")
+            }
+            if slot.active && model.showsHandicap {
+                stepper("HC", value: slot.handicap, range: 0...9, name: "handicap") {
+                    model.setHandicap(player: player, handicap: $0)
+                }
+            }
+        }
+    }
+
+    private func label(_ controller: Controller) -> String {
+        switch controller {
+        case .human: "HMN"
+        case .cpu: "CPU"
+        case .off: "OFF"
+        }
+    }
+
+    private func stepper(_ title: String, value: Int, range: ClosedRange<Int>, name: String,
+                         set: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: m(4)) {
+            Text(title).font(.displayBold(m(12))).foregroundStyle(Palette.textDim)
+            Button { set(value - 1) } label: { Image(systemName: "minus").frame(width: m(18), height: m(18)) }
+                .buttonStyle(.plain).disabled(value <= range.lowerBound)
+                .accessibilityLabel("Lower P\(player + 1) \(name)")
+            Text(value == 0 ? "–" : "\(value)").font(.display(m(16))).monospacedDigit().frame(minWidth: m(14))
+            Button { set(value + 1) } label: { Image(systemName: "plus").frame(width: m(18), height: m(18)) }
+                .buttonStyle(.plain).disabled(value >= range.upperBound)
+                .accessibilityLabel("Raise P\(player + 1) \(name)")
+        }
+        .font(.system(size: m(10), weight: .heavy))
+        .padding(.horizontal, m(6)).frame(height: m(24))
+        .background(Capsule().fill(.black.opacity(0.35)))
+    }
+}
+
+// MARK: Rules
+
+/// The rules card over character select: mode, stocks or time, teams,
+/// items, damage ratio and Special Melee. One row per setting, so match
+/// modes the simulator gains later add a row each.
+struct RulesCard: View {
+    @ObservedObject var model: AppModel
+    let m: MenuMetrics
+
+    static func summary(_ rules: Rules) -> String {
+        var parts = [rules.mode == .time ? "Time \(rules.timeMinutes) min" : "\(rules.stocks) stock"]
+        if rules.teams { parts.append("teams") }
+        if rules.itemFrequency >= 0 { parts.append("items") }
+        if rules.special != .none { parts.append(rules.special.title) }
+        return parts.joined(separator: ", ")
+    }
+
+    private static let frequencies = ["Off", "Very low", "Low", "Medium", "High", "Very high"]
+
+    var body: some View {
+        let rules = model.rules
+        VStack(alignment: .leading, spacing: m(14)) {
+            ScreenTitle(text: "Rules", size: m(40)).padding(.bottom, m(4))
+            row("Mode") {
+                choice(["Stock", "Time"], selected: Int(rules.mode.rawValue)) { index in
+                    model.update {
+                        $0.mode = index == 1 ? .time : .stock
+                        if index == 1 && $0.timeMinutes == 0 { $0.timeMinutes = 2 }
+                    }
+                }
+            }
+            if rules.mode == .stock {
+                row("Stocks") { number(rules.stocks, range: 1...99) { v in model.update { $0.stocks = v } } }
+            }
+            row(rules.mode == .time ? "Time" : "Time limit") {
+                number(rules.timeMinutes, range: (rules.mode == .time ? 1 : 0)...99, zero: "None", unit: "min") { v in
+                    model.update { $0.timeMinutes = v }
+                }
+            }
+            row("Teams") {
+                choice(["Off", "On"], selected: rules.teams ? 1 : 0) { index in model.update { $0.teams = index == 1 } }
+            }
+            if rules.teams {
+                row("Friendly fire") {
+                    choice(["Off", "On"], selected: rules.friendlyFire ? 1 : 0) { index in
+                        model.update { $0.friendlyFire = index == 1 }
+                    }
+                }
+            }
+            row("Items") {
+                choice(Self.frequencies, selected: rules.itemFrequency + 1) { index in
+                    model.update { $0.itemFrequency = index - 1 }
+                }
+            }
+            row("Damage ratio") {
+                number(rules.damageRatio, range: 5...20, format: { String(format: "%.1f×", Double($0) / 10) }) { v in
+                    model.update { $0.damageRatio = v }
+                }
+            }
+            row("Handicap") {
+                choice(["Off", "On"], selected: model.showsHandicap ? 1 : 0) { index in
+                    model.setHandicapRule(index == 1)
+                }
+            }
+            row("Special") {
+                choice(SpecialMode.allCases.map(\.title), selected: Int(rules.special.rawValue)) { index in
+                    model.update { $0.special = SpecialMode(rawValue: UInt8(index)) ?? .none }
+                }
+            }
+            Text("Items and CPU players are offered where the simulator is verified; stage select says where.")
+                .font(.ui(m(12))).foregroundStyle(Palette.textDim)
+                .fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Spacer()
+                Button("Done") { model.showingRules = false }
+                    .buttonStyle(SlantButtonStyle(kind: .accent, size: m(16), minWidth: m(140)))
+            }
+        }
+        .padding(.horizontal, m(36))
+        .padding(.vertical, m(26))
+        .frame(maxWidth: m(760))
+        .glass(Slanted(radius: m(16), maxShift: m(30)))
+        .shadow(color: .black.opacity(0.5), radius: m(30), y: m(10))
+    }
+
+    private func row<Content: View>(_ title: String, @ViewBuilder content: () -> Content) -> some View {
+        HStack(spacing: m(16)) {
+            Text(title).font(.displayBold(m(17))).textCase(.uppercase).tracking(m(0.6))
+                .foregroundStyle(Palette.textDim)
+                .frame(width: m(150), alignment: .leading)
+            content()
+            Spacer(minLength: 0)
+        }
+    }
+
+    private func choice(_ options: [String], selected: Int, set: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: m(4)) {
+            ForEach(options.indices, id: \.self) { index in
+                let on = index == selected
+                Button { set(index) } label: {
+                    Text(options[index]).font(.ui(m(13), .bold))
+                        .padding(.horizontal, m(10)).frame(height: m(28))
+                        .background(Capsule().fill(on ? AnyShapeStyle(Palette.accent) : AnyShapeStyle(Color.black.opacity(0.3))))
+                        .foregroundStyle(on ? Color(hex: 0x1d0b00) : Palette.text)
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(options[index])\(on ? ", selected" : "")")
+            }
+        }
+    }
+
+    private func number(_ value: Int, range: ClosedRange<Int>, zero: String? = nil, unit: String = "",
+                        format: ((Int) -> String)? = nil, set: @escaping (Int) -> Void) -> some View {
+        HStack(spacing: m(8)) {
+            Button { set(value - 1) } label: { Image(systemName: "arrowtriangle.left.fill") }
+                .buttonStyle(.plain).disabled(value <= range.lowerBound)
+            Text(value == 0 && zero != nil ? zero! : (format?(value) ?? "\(value)\(unit.isEmpty ? "" : " " + unit)"))
+                .font(.display(m(22))).monospacedDigit().frame(minWidth: m(70))
+            Button { set(value + 1) } label: { Image(systemName: "arrowtriangle.right.fill") }
+                .buttonStyle(.plain).disabled(value >= range.upperBound)
+        }
+        .font(.system(size: m(12)))
+        .foregroundStyle(Palette.accentStart)
     }
 }

@@ -239,6 +239,9 @@ impl Lineup {
         if self.has_cpu() && !stage.cpu_supported() {
             return Some("no CPU players here yet");
         }
+        if self.has_cpu() && self.active().count() > Stage::CPU_MAX_PLAYERS {
+            return Some("CPU players in matches of two only, so far");
+        }
         if self.rules.item_frequency.is_some() && !stage.items_supported(self.active().count()) {
             return Some(
                 if (2..=4).contains(&self.active().count()) && stage.items_supported(2) {

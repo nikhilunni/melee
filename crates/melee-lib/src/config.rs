@@ -354,6 +354,10 @@ impl Stage {
     pub fn is_ported(self) -> bool {
         self.descriptor().is_some()
     }
+    /// The most players a match with CPU players may have: a CPU choosing
+    /// among two or more opponents ranks them by the standings
+    /// (ftCo_800A53DC, gm_8016C6C0), which `melee-cpu` still guards.
+    pub const CPU_MAX_PLAYERS: usize = 2;
     /// Whether the Item Switch is witnessed for `players` players on the
     /// stage (it_8026D018's weights scale with the player count); starting
     /// elsewhere with items on fails closed. The single list menus read.

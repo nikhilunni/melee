@@ -14,10 +14,13 @@ struct LoadingView: View {
             let m = MenuMetrics(size: geo.size)
             ZStack {
                 stageBackdrop(m)
+                let active = model.selection.players.indices.filter { model.selection.players[$0].active }
                 HStack(spacing: 0) {
-                    fighter(0, m: m, height: geo.size.height * 0.6)
-                    vs(m)
-                    fighter(1, m: m, height: geo.size.height * 0.6)
+                    ForEach(Array(active.enumerated()), id: \.element) { order, player in
+                        if order > 0 { vs(m, small: active.count > 2) }
+                        fighter(player, order: order, m: m,
+                                height: geo.size.height * (active.count > 2 ? 0.42 : 0.6))
+                    }
                 }
                 .frame(maxHeight: .infinity)
                 progress(m)
@@ -45,9 +48,9 @@ struct LoadingView: View {
         }
     }
 
-    private func fighter(_ player: Int, m: MenuMetrics, height: CGFloat) -> some View {
+    private func fighter(_ player: Int, order: Int, m: MenuMetrics, height: CGFloat) -> some View {
         let slot = model.selection.players[player]
-        let color = Palette.port(player)
+        let color = model.rules.teams ? Palette.team(slot.team) : Palette.port(player)
         return VStack(spacing: m(6)) {
             if let id = slot.character {
                 ZStack {
@@ -58,23 +61,23 @@ struct LoadingView: View {
                     FighterPortrait(model: model, character: id, costume: slot.costume, tint: color)
                         .frame(height: height)
                         .fadedCutEdges()
-                        // P2 mirrored: the two face each other.
-                        .scaleEffect(x: player == 1 ? -1 : 1, y: 1)
+                        // Later players mirrored: the sides face each other.
+                        .scaleEffect(x: order % 2 == 1 ? -1 : 1, y: 1)
                         .shadow(color: color.opacity(0.5), radius: m(20))
                 }
-                .staggerIn(player)
+                .staggerIn(order)
                 Text(model.character(id)?.name ?? "")
                     .displayStyle(m(34))
                     .shadow(color: .black.opacity(0.7), radius: m(4), y: m(2))
-                    .staggerIn(player + 1)
+                    .staggerIn(order + 1)
             }
         }
         .frame(maxWidth: .infinity)
     }
 
-    private func vs(_ m: MenuMetrics) -> some View {
+    private func vs(_ m: MenuMetrics, small: Bool = false) -> some View {
         Text("VS")
-            .font(.display(m(110)))
+            .font(.display(m(small ? 60 : 110)))
             .foregroundStyle(Palette.accent)
             .shadow(color: Palette.accentEnd.opacity(0.6), radius: m(24))
             .shadow(color: .black.opacity(0.6), radius: m(3), y: m(3))
@@ -151,11 +154,11 @@ struct HudBar: View {
     @ObservedObject var model: AppModel
     var body: some View {
         if let hud = model.hud {
-            HStack(spacing: 64) {
+            HStack(spacing: hud.players.count > 2 ? 36 : 64) {
                 ForEach(0..<hud.players.count, id: \.self) { index in
                     var player = hud.players[index]
                     let _ = model.previewPercents.map { player.percent = $0[min(index, $0.count - 1)] }
-                    PlayerPlate(model: model, player: player)
+                    PlayerPlate(model: model, player: player, timed: hud.timedScores)
                 }
             }
             .padding(.bottom, 16)
@@ -165,13 +168,33 @@ struct HudBar: View {
 
 /// One player's plate: stock icons, the face on a port-coloured slanted
 /// plate, and the outlined percent.
+/// The match timer and Sudden Death banner, top centre.
+struct MatchTimer: View {
+    @ObservedObject var model: AppModel
+    var body: some View {
+        VStack(spacing: 4) {
+            if let seconds = model.hud?.secondsLeft {
+                OutlinedText(text: String(format: "%d:%02d", seconds / 60, seconds % 60), font: .display(40),
+                             color: seconds <= 10 ? Palette.danger : .white)
+                    .monospacedDigit()
+                    .accessibilityLabel("\(seconds) seconds left")
+            }
+            if model.hud?.suddenDeath == true {
+                OutlinedText(text: "SUDDEN DEATH", font: .display(28), color: Palette.accentEnd)
+            }
+        }
+        .padding(.top, titleBarInset + 8)
+    }
+}
+
 struct PlayerPlate: View {
     @ObservedObject var model: AppModel
     let player: PlayerHud
+    var timed = false
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let color = Palette.port(player.port)
+        let color = player.team.map(Palette.team) ?? Palette.port(player.port)
         let percent = Int(player.percent)
         HStack(alignment: .bottom, spacing: -6) {
             face(color)
@@ -182,7 +205,8 @@ struct PlayerPlate: View {
             .padding(.trailing, 4)
         }
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("Player \(player.port + 1), \(percent) percent, \(player.stocks) stocks")
+        .accessibilityLabel("Player \(player.port + 1)\(player.cpu ? ", CPU" : ""), \(percent) percent, " +
+                            (timed ? "score \(player.score)" : "\(player.stocks) stocks"))
     }
 
     /// The outlined percent; a quick shake when it jumps.
@@ -213,7 +237,7 @@ struct PlayerPlate: View {
             FaceCrop(model: model, character: player.character, costume: player.costume,
                      size: CGSize(width: 70, height: 60), span: 0.66)
                 .clipShape(shape)
-            Text("P\(player.port + 1)")
+            Text(player.cpu ? "CPU" : "P\(player.port + 1)")
                 .font(.display(13))
                 .foregroundStyle(.white)
                 .shadow(color: .black, radius: 1)
@@ -227,7 +251,10 @@ struct PlayerPlate: View {
 
     @ViewBuilder private var stocks: some View {
         HStack(spacing: 2) {
-            if player.stocks > 5 {
+            if timed {
+                OutlinedText(text: player.score > 0 ? "+\(player.score)" : "\(player.score)", font: .display(20),
+                             color: .white, outline: 1.5)
+            } else if player.stocks > 5 {
                 stockIcon
                 Text("×\(player.stocks)").font(.display(16)).shadow(color: .black, radius: 2)
             } else {
@@ -255,7 +282,7 @@ struct MatchOverlay: View {
 
     var body: some View {
         ZStack {
-            VStack { Spacer(); HudBar(model: model) }.allowsHitTesting(false)
+            VStack { MatchTimer(model: model); Spacer(); HudBar(model: model) }.allowsHitTesting(false)
             if model.paused {
                 // The game view blurs itself while paused (GameView.blurred);
                 // this dims it.
@@ -331,8 +358,10 @@ struct ResultsView: View {
     }
 
     private func content(_ results: MatchResults, m: MenuMetrics, size: CGSize) -> some View {
+        let team = results.winningTeam
         let winner = results.winner.map { results.hud.players[$0] }
-        let color = winner.map { Palette.port($0.port) } ?? Palette.cpu
+            ?? team.flatMap { t in results.hud.players.first { $0.team == t } }
+        let color = team.map(Palette.team) ?? winner.map { Palette.port($0.port) } ?? Palette.cpu
         return HStack(spacing: m(24)) {
             hero(winner, color: color, m: m, height: size.height * 0.78)
                 .frame(width: size.width * 0.44)
@@ -341,10 +370,11 @@ struct ResultsView: View {
                     .font(.displayBold(m(22))).tracking(m(3)).textCase(.uppercase)
                     .foregroundStyle(color)
                     .staggerIn(1)
-                ScreenTitle(text: winner.flatMap { model.character($0.character)?.name } ?? "Draw", size: m(96))
+                ScreenTitle(text: team.map { "\(teamNames[min($0, teamNames.count - 1)]) team" }
+                                ?? winner.flatMap { model.character($0.character)?.name } ?? "Draw", size: m(96))
                     .staggerIn(1)
-                if let winner {
-                    Text("Player \(winner.port + 1) wins")
+                if let winner, team == nil {
+                    Text(winner.cpu ? "CPU \(winner.port + 1) wins" : "Player \(winner.port + 1) wins")
                         .font(.ui(m(15), .semibold)).foregroundStyle(Palette.textDim)
                         .padding(.top, -m(10))
                         .staggerIn(1)
@@ -396,7 +426,7 @@ struct ResultsView: View {
             GridRow {
                 Text("")
                 Text("Fighter")
-                Text("Stocks").gridColumnAlignment(.trailing)
+                Text(results.hud.timedScores ? "Score" : "Stocks").gridColumnAlignment(.trailing)
                 Text("Damage").gridColumnAlignment(.trailing)
             }
             .font(.ui(m(11), .bold)).tracking(m(1)).textCase(.uppercase).foregroundStyle(Palette.textDim)
@@ -404,6 +434,9 @@ struct ResultsView: View {
                 let player = results.hud.players[index]
                 GridRow {
                     PortCoin(port: player.port, size: m(24))
+                        .overlay(alignment: .bottomTrailing) {
+                            if let team = player.team { Circle().fill(Palette.team(team)).frame(width: m(9), height: m(9)) }
+                        }
                     HStack(spacing: m(8)) {
                         if let icon = model.core.stockIcon(character: player.character, costume: player.costume) {
                             ArtImage(image: icon, pixel: true).frame(width: 24, height: 24)
@@ -411,7 +444,7 @@ struct ResultsView: View {
                         Text(model.character(player.character)?.name ?? "")
                             .font(.displayBold(m(20))).textCase(.uppercase)
                     }
-                    Text("\(player.stocks)").font(.display(m(24))).monospacedDigit()
+                    Text("\(results.hud.timedScores ? player.score : player.stocks)").font(.display(m(24))).monospacedDigit()
                     Text("\(Int(player.percent))%").font(.display(m(24))).monospacedDigit()
                         .foregroundStyle(percentColor(player.percent))
                 }

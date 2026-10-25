@@ -74,21 +74,27 @@ struct Matchup: View {
     let m: MenuMetrics
 
     var body: some View {
+        let active = model.selection.players.indices.filter { model.selection.players[$0].active }
         HStack(spacing: m(10)) {
-            ForEach(0..<2, id: \.self) { player in
+            ForEach(Array(active.enumerated()), id: \.element) { order, player in
                 let slot = model.selection.players[player]
-                if player == 1 { Text("vs").font(.display(m(18))).foregroundStyle(Palette.textDim) }
+                if order > 0 { Text("vs").font(.display(m(18))).foregroundStyle(Palette.textDim) }
                 HStack(spacing: m(6)) {
                     if let id = slot.character, let icon = model.core.stockIcon(character: id, costume: slot.costume) {
                         ArtImage(image: icon, pixel: true).frame(width: 24, height: 24)
                     }
-                    Text(model.character(slot.character)?.name ?? "?")
-                        .font(.displayBold(m(16))).textCase(.uppercase).tracking(m(0.5))
-                        .foregroundStyle(Palette.text)
+                    if active.count <= 2 {
+                        Text(model.character(slot.character)?.name ?? "?")
+                            .font(.displayBold(m(16))).textCase(.uppercase).tracking(m(0.5))
+                            .foregroundStyle(Palette.text)
+                    }
+                    if slot.controller == .cpu {
+                        Text("CPU \(slot.cpuLevel)").font(.ui(m(11), .bold)).foregroundStyle(Palette.textDim)
+                    }
                 }
             }
             Text("·").foregroundStyle(Palette.textDim)
-            Text("\(model.selection.stocks) stock\(model.selection.stocks == 1 ? "" : "s")")
+            Text(RulesCard.summary(model.rules))
                 .font(.ui(m(13), .semibold)).foregroundStyle(Palette.textDim)
         }
         .padding(.horizontal, m(18))
@@ -240,6 +246,7 @@ struct StageTile: View {
         let stage = index < model.stages.count ? model.stages[index] : nil
         let focused = model.stageCursor == index
         let shuffled = model.shuffling == index
+        let unavailable = stage.flatMap { model.stageUnavailable($0) }
         let shape = Slanted(radius: m(10))
         let height = (width * 0.62).rounded()
         Button { model.activateStageTile(index) } label: {
@@ -261,6 +268,8 @@ struct StageTile: View {
                     .minimumScaleFactor(0.7)
                     .foregroundStyle(focused ? Palette.text : Palette.textDim)
             }
+            .opacity(unavailable == nil ? 1 : 0.35)
+            .saturation(unavailable == nil ? 1 : 0)
             .offset(y: focused && !reduceMotion ? -m(8) : 0)
             .scaleEffect(focused && !reduceMotion ? 1.04 : 1)
         }
@@ -268,7 +277,8 @@ struct StageTile: View {
         .onHover { if $0 && model.shuffling == nil { model.stageCursor = index } }
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.7),
                    value: focused)
-        .accessibilityLabel(stage?.name ?? "Random stage")
+        .help(unavailable.map { "Not with these players and rules: \($0)" } ?? "")
+        .accessibilityLabel((stage?.name ?? "Random stage") + (unavailable.map { ", unavailable: \($0)" } ?? ""))
     }
 
     @ViewBuilder private func art(_ stage: StageInfo?) -> some View {

@@ -23,6 +23,9 @@ final class AppModel: ObservableObject {
 
     @Published private(set) var screen: Screen = .disc
     @Published private(set) var selection = Selection()
+    @Published private(set) var rules = Rules()
+    /// The rules card is open over character select.
+    @Published var showingRules = false
     @Published private(set) var progress = LoadProgress()
     @Published private(set) var hud: Hud?
     @Published private(set) var results: MatchResults?
@@ -77,6 +80,7 @@ final class AppModel: ObservableObject {
         let previous = screen
         screen = core.screen
         selection = core.selection
+        rules = core.rules
         disc = core.disc
         progress = core.progress
         results = core.results
@@ -99,6 +103,7 @@ final class AppModel: ObservableObject {
     private func enter(_ screen: Screen) {
         focus = 0
         shuffling = nil
+        if screen != .characters { showingRules = false }
         if screen == .characters, let pick = selection.players[picking].character { cursor = pick }
         if screen == .stages { pollPreviews() } else { previewTimer?.invalidate(); previewTimer = nil }
     }
@@ -160,8 +165,10 @@ final class AppModel: ObservableObject {
     func choose(_ character: CharacterInfo) {
         cursor = character.id
         perform { try core.choose(player: picking, character: character.id) }
-        // Move the cursor to the other player while they still need a pick.
-        if selection.players[1 - picking].character == nil { picking = 1 - picking }
+        // Move on to the next player in the match who still needs a pick.
+        let waiting = (1..<slotCount).map { (picking + $0) % slotCount }
+            .first { selection.players[$0].active && selection.players[$0].character == nil }
+        if let waiting { picking = waiting }
     }
     func clear(player: Int) {
         perform { try core.choose(player: player, character: nil) }
@@ -174,7 +181,44 @@ final class AppModel: ObservableObject {
     }
     func setCostume(player: Int, costume: Int) { perform { try core.setCostume(player: player, costume: costume) } }
     func cycleCostume(player: Int, step: Int32) { perform { try core.cycleCostume(player: player, step: step) } }
-    func setStocks(_ stocks: Int) { perform { try core.setStocks(stocks) } }
+    func setStocks(_ stocks: Int) { update { $0.stocks = stocks } }
+    func setController(player: Int, _ controller: Controller) {
+        perform { try core.setController(player: player, controller) }
+    }
+    /// Human, CPU, off, around again.
+    func cycleController(player: Int) {
+        let next: Controller = switch selection.players[player].controller {
+        case .human: .cpu
+        case .cpu: .off
+        case .off: .human
+        }
+        setController(player: player, next)
+    }
+    func setCpuLevel(player: Int, level: Int) { perform { try core.setCpuLevel(player: player, level: level) } }
+    func setTeam(player: Int, team: Int) { perform { try core.setTeam(player: player, team: team) } }
+    func cycleTeam(player: Int) { setTeam(player: player, team: (selection.players[player].team + 1) % teamNames.count) }
+    func setHandicap(player: Int, handicap: Int) {
+        perform { try core.setHandicap(player: player, handicap: handicap) }
+    }
+    /// Change the rules; the core checks them.
+    func update(_ change: (inout Rules) -> Void) {
+        var next = core.rules
+        change(&next)
+        perform { try core.setRules(next) }
+    }
+    /// Handicap is a per-player setting; the rules card's switch only
+    /// shows the steppers (off clears every handicap).
+    @Published private(set) var handicapRule = false
+    var showsHandicap: Bool { handicapRule || selection.players.contains { $0.handicap != 0 } }
+    func setHandicapRule(_ on: Bool) {
+        handicapRule = on
+        guard !on else { return }
+        for player in 0..<slotCount where selection.players[player].handicap != 0 {
+            setHandicap(player: player, handicap: 0)
+        }
+    }
+    /// Why a stage cannot host the current picks, or nil.
+    func stageUnavailable(_ stage: StageInfo) -> String? { core.stageUnavailable(stage.id) }
     func confirmCharacters() { perform { try core.confirmCharacters() } }
     func back() { core.back(); sync() }
 
@@ -187,8 +231,8 @@ final class AppModel: ObservableObject {
 
     /// The Random tile: a quick shuffle along the row, then the pick.
     func chooseRandomStage(reduceMotion: Bool) {
-        guard shuffling == nil, !stages.isEmpty else { return }
-        let target = Int.random(in: 0..<stages.count)
+        let playable = stages.indices.filter { stageUnavailable(stages[$0]) == nil }
+        guard shuffling == nil, let target = playable.randomElement() else { return }
         if reduceMotion { return chooseStage(stages[target]) }
         let steps = stages.count + target
         for step in 0...steps {
@@ -263,6 +307,7 @@ final class AppModel: ObservableObject {
     }
     var needsFrame: Bool { core.needsFrame }
     func action(player: Int, _ action: GameAction, down: Bool) { core.action(player: player, action, down: down) }
+    func gamepad(device: Int, _ state: GamepadState?) { core.gamepad(device: device, state) }
     func setPaused(_ value: Bool) {
         guard screen == .match else { return }
         core.setPaused(value)

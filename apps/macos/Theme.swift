@@ -27,6 +27,9 @@ enum Palette {
     static let danger = Color(hex: 0xff4d6d)
 
     static func port(_ index: Int) -> Color { players[min(max(index, 0), players.count - 1)] }
+    /// Team battle colours: red, blue, green.
+    static let teams = [Color(hex: 0xff3b3b), Color(hex: 0x3b7bff), Color(hex: 0x2fd36a)]
+    static func team(_ index: Int) -> Color { teams[min(max(index, 0), teams.count - 1)] }
 }
 
 // MARK: Type

@@ -65,7 +65,12 @@ extension AppModel {
         if showsResults { return resultsKey(key) }
         switch screen {
         case .disc: return buttonKey(key, count: discActions.count) { perform(discActions[$0]) }
-        case .characters: return characterKey(key)
+        case .characters:
+            if showingRules {
+                if key == .escape || key == .enter { showingRules = false }
+                return true
+            }
+            return characterKey(key)
         case .stages: return stageKey(key)
         case .loading:
             if key == .escape { back(); return true }
@@ -134,14 +139,14 @@ extension AppModel {
             } else if let character = character(cursor) {
                 choose(character)
             }
-        case .tab, .backTab: activate(player: 1 - picking)
+        case .tab: activate(player: (picking + 1) % slotCount)
+        case .backTab: activate(player: (picking + slotCount - 1) % slotCount)
         case .costumePrevious, .costumeNext:
-            let player = selection.players[picking].character != nil ? picking : 1 - picking
-            guard selection.players[player].character != nil else { return true }
-            cycleCostume(player: player, step: key == .costumeNext ? 1 : -1)
+            guard selection.players[picking].character != nil else { return true }
+            cycleCostume(player: picking, step: key == .costumeNext ? 1 : -1)
         case .clear: clear(player: picking)
-        case .fewerStocks: setStocks(max(1, selection.stocks - 1))
-        case .moreStocks: setStocks(min(99, selection.stocks + 1))
+        case .fewerStocks: setStocks(max(1, rules.stocks - 1))
+        case .moreStocks: setStocks(min(99, rules.stocks + 1))
         case .escape: back()
         }
         return true
@@ -154,6 +159,9 @@ extension AppModel {
 
     func activateStageTile(_ index: Int) {
         if index < stages.count {
+            if let reason = stageUnavailable(stages[index]) {
+                return present(stages[index].name, "Not with these players and rules: \(reason).")
+            }
             chooseStage(stages[index])
         } else {
             chooseRandomStage(reduceMotion: NSWorkspace.shared.accessibilityDisplayShouldReduceMotion)
