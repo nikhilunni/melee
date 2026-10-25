@@ -1553,16 +1553,6 @@ seed = 524309065
 cpu_levels = [7, 3]
 
 [[boundary]]
-name = "start_fd_iceclimbers_cpu9fox4"
-cold = "start_fd_iceclimbers_cpu9fox4_cold"
-savestate = "harness/roms/start_fd_iceclimbers_cpu9fox4.sav"
-stage = "FinalDestination"
-players = ["IceClimbers", "Fox"]
-stocks = 4
-seed = 3269633353
-cpu_levels = [0, 9]
-
-[[boundary]]
 name = "start_bf_sheik_cpu9fox4"
 cold = "start_bf_sheik_cpu9fox4_cold"
 savestate = "harness/roms/start_bf_sheik_cpu9fox4.sav"

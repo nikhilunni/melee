@@ -165,6 +165,12 @@ frame-zero dump has completed initialization. The importer explicitly
 rejects that unfinished saved construction and directs callers to the
 verified cold twin; it does not borrow the later trace row.
 
+This save is not in `harness/boundaries.toml`: registered explorer boundaries
+must also pass the warm/cold initial-state comparison. The standalone warm
+scenario remains a rejection regression and its cold twin remains in the
+95 strict CPU witnesses. A properly completed save is needed before restoring
+named explorer access and automatic boundary selection for this setup.
+
 
 Initial extra reach (ftCo_800A101C, retail 800A1774 onward) also comes
 from the static CPU profile: 3.5 by default, 8.5 for Donkey Kong and Bowser.

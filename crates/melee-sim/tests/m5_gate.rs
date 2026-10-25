@@ -2063,6 +2063,19 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
 
 #[test]
 fn cpu_unfinished_primary_creation_requires_cold_construction() {
+    // Registered boundaries promise a warm/cold initial-state comparison.
+    // This save interrupts primary Fighter_Create; retain its cold oracle
+    // witness, but do not advertise it as an importable explorer boundary.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let registry: toml::Value = toml::from_str(
+        &std::fs::read_to_string(root.join("harness/boundaries.toml")).unwrap(),
+    ).unwrap();
+    assert!(
+        !registry["boundary"].as_array().unwrap().iter().any(|b| {
+            b["name"].as_str() == Some("start_fd_iceclimbers_cpu9fox4")
+        }),
+        "unfinished primary creation must not be a registered warm boundary"
+    );
     let path = Path::new(env!("CARGO_MANIFEST_DIR"))
         .join("../../harness/scenarios/start_fd_iceclimbers_cpu9fox4.toml");
     let scenario = Scenario::load(&path).unwrap();
