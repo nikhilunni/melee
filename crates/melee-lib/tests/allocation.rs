@@ -1088,7 +1088,7 @@ fn stone_contact_step_and_capture_allocate_nothing_after_live_clone() {
 /// Clone construction is outside the counter; both independent terminal
 /// entries and their public step/observe/presentation capture allocate nothing.
 #[test]
-fn heavy_pickup_terminal_entry_step_capture_and_clone_allocate_nothing() {
+fn heavy_pickup_terminal_entry_step_and_capture_allocate_nothing_after_live_clone() {
     let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
         || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
         std::path::PathBuf::from,
