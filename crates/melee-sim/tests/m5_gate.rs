@@ -6783,3 +6783,83 @@ fn barrel_article_owner_transfer_full_fields_particles_and_ordered_draws() {
     combat_gate_ticks("corpus_v3_bf_items_sword_e44c79d87_p2", 252);
     combat_gate_ticks("corpus_v3_fd_items_sword_e3b85eba6_p1", 282);
 }
+
+/// A rolling barrel's command pointer survives its drop; both complete
+/// captures reach the original program's delayed variable and termination.
+#[test]
+fn barrel_drop_retains_item_script_full_fields_particles_and_ordered_rng() {
+    for (name, ticks) in [
+        ("corpus_v3_bf_items_sword_e5993e1bc_p2", 398),
+        ("corpus_v3_fd_items_taru_e17844051_p1", 369),
+    ] {
+        if combat_gate_ticks(name, ticks).is_none() {
+            continue;
+        }
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR"))
+                .join(format!("../../harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        assert!(!scenario.is_cold() && scenario.boundary_seed.is_none());
+        // These captures include Ground_801C24F8's setup draw in row zero.
+        // Its incoming seed is independently observed before the first tick,
+        // not reconstructed by reversing the LCG or read from port output.
+        let initial_path = scenario.trace_path("particles.jsonl.initial.jsonl");
+        let initial: serde_json::Value = serde_json::from_str(
+            melee_test_support::trace::read_to_string(&initial_path)
+                .unwrap()
+                .trim(),
+        )
+        .unwrap();
+        let metadata: serde_json::Value = serde_json::from_str(
+            &melee_test_support::trace::read_to_string(
+                &scenario.trace_path("particles.jsonl.initial.jsonl.meta.json"),
+            )
+            .unwrap(),
+        )
+        .unwrap();
+        assert_eq!(metadata["sampling"], "savestate_loaded_before_first_tick");
+        let seed = initial["state"]["rng.seed"]["v"].as_u64().unwrap();
+        assert_eq!(metadata["particles"]["seed"], seed);
+        // The importer also checks this boundary's recorded initial seed
+        // against the savestate sidecar and actual RAM 0x804D5F90.
+        let boundary: serde_json::Value = serde_json::from_str(
+            melee_test_support::trace::read_to_string(
+                &scenario.boundary_path("particles.jsonl.initial.jsonl"),
+            )
+            .unwrap()
+            .trim(),
+        )
+        .unwrap();
+        assert_eq!(boundary["state"]["rng.seed"]["v"], seed);
+        let mut rng = gekko_math::HsdRng::new(seed.try_into().unwrap());
+        let ledger = scenario.trace_path("ledger.raw.jsonl");
+        let rows = melee_test_support::trace::read_to_string(&ledger).unwrap();
+        assert_eq!(rows.lines().count(), ticks);
+        let mut simulation = trace::simulation_displayed_as(&scenario, &ledger).unwrap();
+        for (tick, line) in rows.lines().enumerate() {
+            let row: serde_json::Value = serde_json::from_str(line).unwrap();
+            assert_eq!(row["frame"], tick);
+            let draws = row["rng_draws"].as_array().unwrap();
+            if tick == 0 {
+                assert_eq!(draws.len(), 1, "one observed stage setup draw");
+                assert_eq!(draws[0]["lr"], 0x801C_26B0_u64);
+            }
+            for draw in draws {
+                rng.rand();
+                assert_eq!(
+                    u64::from(rng.seed),
+                    draw["seed"].as_u64().unwrap(),
+                    "{name} tick {tick}: every ordered raw LCG edge including setup"
+                );
+            }
+            let expected = row["seed"].as_u64().unwrap();
+            assert_eq!(u64::from(rng.seed), expected);
+            assert_eq!(
+                simulation.tick().unwrap().state["rng.seed"],
+                melee_diff::Value::UInt(expected),
+                "{name} tick {tick}: full ledger draw count and final seed"
+            );
+        }
+    }
+}

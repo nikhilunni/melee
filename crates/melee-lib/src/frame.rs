@@ -5236,3 +5236,6 @@ mod revival_floor_tests;
 
 #[cfg(test)]
 mod script_color_tests;
+
+#[cfg(test)]
+mod item_script_tests;

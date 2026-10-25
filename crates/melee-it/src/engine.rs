@@ -910,6 +910,10 @@ pub struct ItemCore {
     /// The owner already heard of this item's end (`ItemLogic::NOTICE_AT_ONCE`).
     pub owner_notified: bool,
     pub script: ScriptState,
+    /// The motion row whose decoded program owns the script's indices.
+    /// Item_80268E5C preserves x524_cmd.u without ANIM_UPDATE/CMD_UPDATE,
+    /// even when the current motion names a different command program.
+    pub script_source_motion: Option<u16>,
     pub command_variables: [u32; 4],
     pub hitboxes: [Option<HitCapsule>; 4],
     pub scratch: ItemScratch,
@@ -1241,14 +1245,24 @@ impl ItemCore {
         self.flush_queued_effects();
         self.article_state = usize::from(motion);
         self.animation_frame = 0.0;
+        self.restart_script(motion, assets);
+        self.advance_script(assets);
+    }
+    fn clear_script(&mut self) {
         self.script = ScriptState::default();
+        self.script_source_motion = None;
+    }
+    /// Retail 0x80269314..28 / 0x80269340..54 replace the command pointer
+    /// and reset its control state together; the motion alone does neither.
+    fn restart_script(&mut self, motion: u16, assets: &ItemAssets) {
+        self.clear_script();
         if assets
             .scripts
-            .get(motion as usize)
+            .get(usize::from(motion))
             .is_some_and(|s| !s.is_empty())
         {
+            self.script_source_motion = Some(motion);
             self.script.restart(0);
-            self.advance_script(assets);
         }
     }
     /// it_80274740 (80274740): the spin joint's angle about xDC8 x17's axis
@@ -1346,7 +1360,7 @@ impl ItemCore {
             }
         }
         if article_state < 0 {
-            self.script = ScriptState::default();
+            self.clear_script();
             return;
         }
         self.article_state = article_state as usize;
@@ -1359,14 +1373,7 @@ impl ItemCore {
         };
         self.emit_particle_keys(assets, self.position);
         if flags & (state_change::ANIM_UPDATE | state_change::CMD_UPDATE) != 0 {
-            self.script = ScriptState::default();
-            if assets
-                .scripts
-                .get(motion as usize)
-                .is_some_and(|s| !s.is_empty())
-            {
-                self.script.restart(0);
-            }
+            self.restart_script(motion, assets);
         }
         self.advance_script(assets);
     }
@@ -1470,7 +1477,7 @@ impl ItemCore {
     /// further script command runs until the next state change.
     pub fn pose_article_frame(&mut self, frame: f32) {
         self.animation_frame = frame;
-        self.script = ScriptState::default();
+        self.clear_script();
     }
     /// it_80274484 (80274484): the model at `scale`; every live hitbox
     /// takes x3C, the command size, as its radius (it_80275534), the grab
@@ -1544,9 +1551,10 @@ impl ItemCore {
     }
     /// Item_802799E4: shared command timing, item-owned application.
     fn advance_script(&mut self, assets: &ItemAssets) {
-        let Some(script) = assets.scripts.get(self.motion as usize) else {
+        let Some(source) = self.script_source_motion.map(usize::from) else {
             return;
         };
+        let script = &assets.scripts[source];
         self.script.begin_frame(self.animation_frame, 1.0);
         while let Some(command) = self.script.next(script, 1.0) {
             match command {
@@ -1599,8 +1607,7 @@ impl ItemCore {
                         .instruction
                         .expect("emitted command has continuation")
                         - 1;
-                    self.hit_flags[*id] =
-                        assets.hit_flags[self.motion as usize][index].expect("item hit flags");
+                    self.hit_flags[*id] = assets.hit_flags[source][index].expect("item hit flags");
                     // it_802790C0: created after link 11's refresh, the
                     // capsule is placed at once.
                     if self.past_hitbox_refresh {
@@ -1719,10 +1726,7 @@ impl ItemPool {
     /// The common data beside mutable items, for passes that read both.
     pub fn common_and_iter_mut(
         &mut self,
-    ) -> (
-        &ItemCommonData,
-        impl DoubleEndedIterator<Item = &mut ItemCore>,
-    ) {
+    ) -> (&ItemCommonData, impl DoubleEndedIterator<Item = &mut ItemCore>) {
         (&self.common, self.items.iter_mut())
     }
     pub fn len(&self) -> usize {
@@ -1867,6 +1871,7 @@ impl ItemPool {
             effects_destroyed: false,
             owner_notified: false,
             script: ScriptState::default(),
+            script_source_motion: None,
             command_variables: [0; 4],
             hitboxes: std::array::from_fn(|_| None),
             scratch: ItemScratch::None,
@@ -2428,7 +2433,7 @@ mod tests {
         const STATES: &'static [ItemStateRow] = &[];
     }
     item_kinds! { enum TestKinds { Inert:InertTestItem } }
-    fn assets() -> ItemAssets {
+    pub(super) fn assets() -> ItemAssets {
         ItemAssets {
             visual: Default::default(),
             scripts: Vec::new(),
@@ -2590,3 +2595,7 @@ mod tests {
         melee_mp::CollMap::load(b.build(), 1.0, melee_types::GrKind::Last)
     }
 }
+
+#[cfg(test)]
+#[path = "item_script_tests.rs"]
+mod item_script_tests;

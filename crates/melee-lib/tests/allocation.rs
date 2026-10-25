@@ -891,3 +891,58 @@ fn every_stage_and_character_steps_without_allocating() {
     }
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
+
+/// The public API clones an actual suspended Barrel program after the drop,
+/// then steps both independent copies through its delayed command and End.
+#[test]
+fn retained_item_program_step_capture_and_clone_allocate_nothing() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    for (name, drop_tick) in [
+        ("corpus_v3_bf_items_sword_e5993e1bc_p2", 375),
+        ("corpus_v3_fd_items_taru_e17844051_p1", 353),
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        if !melee_test_support::require_files(scenario.required_files()) {
+            return;
+        }
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut view = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        let mut branch = None;
+        let mut continued = 0;
+        for frame in 0..scenario.frames {
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} tick {frame}");
+            if let Some(cloned) = branch.as_mut() {
+                assert_eq!(measure(cloned, &inputs), 0, "{name} cloned tick {frame}");
+                assert_eq!(
+                    diagnostics::inspect(&game).unwrap(),
+                    diagnostics::inspect(cloned).unwrap()
+                );
+                continued += 1;
+            }
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let result = view.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            result.unwrap();
+            assert_eq!(COUNT.with(Cell::get), 0, "{name} capture {frame}");
+            if frame == drop_tick {
+                assert!(game
+                    .observe()
+                    .unwrap()
+                    .items()
+                    .any(|item| item.kind().0 == 2));
+                branch = Some(game.clone());
+            }
+        }
+        assert_eq!(continued, scenario.frames - 1 - drop_tick);
+        assert!(branch.is_some());
+    }
+}
