@@ -549,7 +549,8 @@ impl FighterCore {
 
 /// A private character row can share a common identity but run different
 /// callbacks (Game & Watch's Manhole is row 345, identity AttackLw3). Only
-/// the actual common down-tilt/up-smash rows have held-Sword witnesses.
+/// the actual common down-tilt/up-smash rows and Back Air entry have
+/// Sword witnesses.
 fn held_item_state_is_audited(
     kind: melee_types::ItemKind,
     action: ActionId,
@@ -562,7 +563,7 @@ fn held_item_state_is_audited(
             HELD_ITEM_STATES.contains(&state)
                 || (kind == melee_types::ItemKind::Sword
                     && action == ActionId(state as u16)
-                    && matches!(state, S::AttackLw3 | S::AttackHi4))
+                    && matches!(state, S::AttackLw3 | S::AttackHi4 | S::AttackAirB))
         }
     }
 }
@@ -908,17 +909,23 @@ mod held_state_tests {
     use super::*;
 
     #[test]
-    fn sword_ground_audit_does_not_admit_private_or_unwitnessed_rows() {
+    fn sword_audit_admits_common_back_air_entry_but_not_private_or_other_aerial_rows() {
         use melee_types::ItemKind;
-        // Common down tilt/up smash are witnessed; private rows and other
-        // ordinary attacks retain their guards, even with the same identity.
+        // Common down tilt/up smash and Back Air entry are witnessed;
+        // private and other aerial rows keep their guards, even with the
+        // same common identity. Back Air's callbacks separately refuse.
         for (action, state, expected) in [
             (57, S::AttackLw3, true),
             (63, S::AttackHi4, true),
             (345, S::AttackLw3, false), // Game & Watch's Manhole callbacks.
             (56, S::AttackHi3, false),
             (64, S::AttackLw4, false),
-            (67, S::AttackAirB, false),
+            (67, S::AttackAirB, true), // Entry only; next Anim/IASA refuse.
+            (348, S::AttackAirB, false), // Game & Watch's Turtle row.
+            (65, S::AttackAirN, false),
+            (66, S::AttackAirF, false),
+            (68, S::AttackAirHi, false),
+            (69, S::AttackAirLw, false),
             (72, S::LandingAirB, false),
         ] {
             assert_eq!(
@@ -932,6 +939,12 @@ mod held_state_tests {
             ActionId(57),
             S::AttackLw3,
             Some(false),
+        ));
+        assert!(!held_item_state_is_audited(
+            ItemKind::Dosei,
+            ActionId(67),
+            S::AttackAirB,
+            None,
         ));
         assert!(!held_item_state_is_audited(
             ItemKind::Dosei,

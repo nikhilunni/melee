@@ -1430,6 +1430,9 @@ pub enum MotionData {
     },
     Aerial {
         retained_drop_timer: f32,
+        /// Immutable ownership of this move entry, not the current hand.
+        /// A catch during an existing aerial does not change it.
+        held_on_entry: bool,
     },
     Damage(damage::DamageState),
     Rebound(clank::State),

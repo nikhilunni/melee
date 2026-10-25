@@ -207,6 +207,7 @@ impl FighterCore {
             MotionData::Jump(jump) => f32::from_bits(jump.physics_started),
             MotionData::Aerial {
                 retained_drop_timer,
+                ..
             }
             | MotionData::Pass {
                 retained_drop_timer,
@@ -344,6 +345,7 @@ impl Fighter {
             }
             MotionData::Aerial {
                 retained_drop_timer,
+                ..
             }
             | MotionData::Pass {
                 retained_drop_timer,

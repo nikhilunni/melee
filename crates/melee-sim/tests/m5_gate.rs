@@ -7114,3 +7114,43 @@ fn heavy_pickup_terminal_entries_full_fields_particles_and_ordered_rng() {
         }
     }
 }
+
+
+/// Each original whole capture ends after direct Back Air entry; later
+/// callbacks stay refused. None is a truncated continuation prefix.
+#[test]
+fn held_sword_common_back_air_entry_complete_captures() {
+    for (name, frames, expected_draws) in [
+        ("corpus_v3_bf_items_sword_e2a47e4f9_p1", 1294, 18_481),
+        ("corpus_v3_fd_items_sword_e26ea92b1_p1", 969, 38_376),
+        ("corpus_v3_fd_items_sword_e46028c49_p0", 1545, 59_534),
+        ("corpus_v3_fd_items_sword_e8d30e8ed_p0", 1387, 54_343),
+        ("corpus_v3_fd_items_sword_ed97ea327_p1", 1103, 47_281),
+        ("corpus_v3_fd_items_sword_nocont_e8f0de8c6_p2", 621, 29_272),
+        ("corpus_v3_fd_items_sword_nocont_ef9b6d16d_p1", 974, 42_792),
+    ] {
+        complete_capture_with_initial_rng_gate(name, frames);
+        let scenario = Scenario::load(
+            &Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        let ledger = melee_test_support::trace::read_to_string(&scenario.trace_path("ledger.raw.jsonl"))
+            .unwrap();
+        let draws = ledger
+            .lines()
+            .map(|line| {
+                let row: serde_json::Value = serde_json::from_str(line).unwrap();
+                row["rng_draws"].as_array().unwrap().len()
+            })
+            .sum::<usize>();
+        assert_eq!(draws, expected_draws, "{name} complete raw ledger");
+    }
+}
+
+
+/// The preexisting item-free aerial catches a Sword without entering a new
+/// motion. Its full capture must retain that separate ownership contract.
+#[test]
+fn sword_catch_during_existing_back_air_complete_capture() {
+    complete_capture_with_initial_rng_gate("corpus_v3_fd_items_sword_e0144d061_p1", 1344);
+}
