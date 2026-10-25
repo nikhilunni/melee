@@ -38,8 +38,8 @@ pub mod behavior {
 
 /// ftCo_800ADE48 (0x800ADE48). True when it set (or kept) a behaviour.
 pub fn choose_behavior(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bool {
-    let probe_hit = validate_destination(fp, scene);
-    scene.stale.after_floor_probe(scene.stage(), probe_hit);
+    validate_destination(fp, scene);
+    scene.stale.after_floor_probe();
     note_destination_distance(fp);
     note_kills(fp, scene);
     roll_xf8_b5(fp, scene, rng);
@@ -167,15 +167,15 @@ fn switch(fp: &mut Fighter, behavior: i32) -> bool {
 /// to 5 below, in bounds) falls back to the floor under an airborne
 /// fighter, or to the fighter itself. That also clears xFA_b2.
 ///
-/// Returns whether its last mpCheckFloor found a floor (`StaleStack`).
-fn validate_destination(fp: &mut Fighter, scene: &mut Scene) -> bool {
+/// Its last mpCheckFloor leaves r5 for `StaleStack::after_floor_probe`.
+fn validate_destination(fp: &mut Fighter, scene: &mut Scene) {
     let destination = fp.core.cpu.destination;
     // 800ADE9C..800ADEB4: y -/+ 5.0 in double, rounded.
     let below = (f64::from(destination.y) - 5.0) as f32;
     let above = (5.0 + f64::from(destination.y)) as f32;
     let floor = scene.check_usable_floor(destination.x, above, destination.x, below);
     if floor.is_some() && !scene.outside(destination.x, destination.y, fp.core.cpu.half_size) {
-        return true;
+        return;
     }
     fp.core.cpu.xfa_b2 = false;
     let position = fp.core.physics.position;
@@ -186,10 +186,8 @@ fn validate_destination(fp: &mut Fighter, scene: &mut Scene) -> bool {
             Some(hit) => Vec2::new(hit.pos.x, hit.pos.y),
             None => Vec2::new(position.x, position.y),
         };
-        below.is_some()
     } else {
         fp.core.cpu.destination = Vec2::new(position.x, position.y);
-        floor.is_some()
     }
 }
 
@@ -288,11 +286,23 @@ pub fn recovery_needed(fp: &Fighter, scene: &mut Scene) -> bool {
     if cpu.over_stage {
         return false;
     }
-    if matches!(
-        scene.stage(),
-        melee_types::GrKind::Inishie1 | melee_types::GrKind::Fourside
-    ) {
-        unimplemented!("ftCo_800A2C80: Mushroom Kingdom and Fourside heights");
+    match scene.stage() {
+        melee_types::GrKind::Inishie1 => {
+            unimplemented!("ftCo_800A2C80: Mushroom Kingdom's height (ftCo_0A01.c:1559)")
+        }
+        // 800A2E20..800A2E34: below y = -35 on Fourside (fcmpo, bge: an
+        // unordered y counts as below).
+        melee_types::GrKind::Fourside => {
+            const FOURSIDE_FLOOR_Y: f32 = -35.0;
+            let y = fp.core.physics.position.y;
+            if !matches!(
+                y.partial_cmp(&FOURSIDE_FLOOR_Y),
+                Some(core::cmp::Ordering::Greater | core::cmp::Ordering::Equal)
+            ) {
+                return true;
+            }
+        }
+        _ => {}
     }
     let direction = melee_lb::vector::normalize(delta);
     let data = &fp.core.collision.data;

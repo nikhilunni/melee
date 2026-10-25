@@ -14,6 +14,7 @@
 mod arrived;
 mod attack;
 mod awareness;
+mod barrel;
 mod behave;
 mod captured;
 mod charge;
@@ -36,6 +37,7 @@ mod roll;
 mod route;
 pub mod script;
 mod select;
+mod stage_route;
 mod targets;
 mod tumble;
 mod up_special;

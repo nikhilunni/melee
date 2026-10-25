@@ -42,7 +42,7 @@ pub use mpcoll::{
     terrain_footstep, terrain_speed_scale, update_floor_skip, BoneLookup, DynamicAttrHook,
     TerrainEffects, TerrainFootstep, TERRAIN_SPEED_SCALE,
 };
-pub use query::{FloorWalk, LedgeHit, LineFilter, LineHit, SurfaceProbe};
+pub use query::{FloorWalk, LedgeHit, LineFilter, LineHit, SurfaceProbe, SweepR5};
 
 #[cfg(test)]
 mod tests;

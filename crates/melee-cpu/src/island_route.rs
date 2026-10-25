@@ -48,7 +48,7 @@ pub(crate) fn toward_other_island(fp: &mut Fighter, scene: &mut Scene) {
         if ceiling {
             if near_island_end(fp, scene, 1.0) {
                 turn_around(fp);
-            } else if temple_waypoint(scene) {
+            } else if temple_waypoint(fp, scene) {
                 jump(fp, scene);
             } else {
                 walk_forward(fp);
@@ -105,11 +105,70 @@ pub(crate) fn near_island_end(fp: &Fighter, scene: &Scene, scale: f32) -> bool {
     f64::from(distance) < 5.0 * f64::from(scale)
 }
 
-/// ftCo_800AAF48 (0x800AAF48): a waypoint up the Temple's ledges; no other
-/// stage has one.
-fn temple_waypoint(scene: &Scene) -> bool {
-    if scene.stage() == GrKind::Shrine {
-        unimplemented!("ftCo_800AAF48: the Temple's island waypoints");
+/// ftCo_800AAF48 (0x800AAF48): on the Temple, the first floor island
+/// whose near end lies ahead and above within a jump (2 * x558 + x568 up,
+/// 5 * x564 across: fmadds, fmuls) and in clear sight (no ceiling, no wall
+/// facing the CPU) becomes a 300-frame waypoint, as ftCo_800A1CC4's do.
+fn temple_waypoint(fp: &mut Fighter, scene: &mut Scene) -> bool {
+    if fp.core.cpu.route_timer != 0 || scene.stage() != GrKind::Shrine {
+        return false;
+    }
+    const WAYPOINT_FRAMES: i32 = 300;
+    const WAYPOINT_RADIUS: f32 = 5.0;
+    let facing_right = f64::from(fp.core.physics.facing) > 0.0;
+    let position = fp.core.physics.position;
+    let cpu = &fp.core.cpu;
+    let jump_reach = gekko_math::fma::fmadds(2.0, cpu.jump_height, cpu.hurtbox_extents[3]);
+    let reach_across = 5.0 * cpu.hurtbox_extents[2];
+    let mut next = scene.map.floor_islands().next();
+    while let Some(node) = next {
+        let island = *scene.map.island(node);
+        next = island.next;
+        // 800AAFFC/800AB114: fsubs, away from the CPU toward the end.
+        let (end, across) = if facing_right {
+            (island.left, island.left.x - position.x)
+        } else {
+            (island.right, position.x - island.right.x)
+        };
+        let up = if facing_right {
+            end.y - position.y
+        } else {
+            position.y - end.y
+        };
+        if across < 0.0 || up < 0.0 {
+            continue;
+        }
+        if scene
+            .map
+            .check_ceiling(position.x, position.y, end.x, end.y, -1, -1)
+            .is_some()
+        {
+            continue;
+        }
+        let wall = if facing_right {
+            scene
+                .map
+                .check_right_wall(position.x, position.y, end.x, end.y, -1, -1)
+        } else {
+            scene
+                .map
+                .check_left_wall(position.x, position.y, end.x, end.y, -1, -1)
+        };
+        if wall.is_some() {
+            continue;
+        }
+        // fcmpo, bge: an unordered distance is too far.
+        if up.partial_cmp(&jump_reach) != Some(core::cmp::Ordering::Less)
+            || across.partial_cmp(&reach_across) != Some(core::cmp::Ordering::Less)
+        {
+            continue;
+        }
+        let cpu = &mut fp.core.cpu;
+        cpu.route_timer = WAYPOINT_FRAMES;
+        cpu.route_destination = cpu.destination;
+        cpu.destination = hsd_types::Vec2::new(end.x, end.y);
+        cpu.destination_radius = WAYPOINT_RADIUS;
+        return true;
     }
     false
 }

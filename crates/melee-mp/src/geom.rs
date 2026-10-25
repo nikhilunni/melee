@@ -87,8 +87,51 @@ pub fn line_intersection(
     b1x: f32,
     b1y: f32,
 ) -> Option<(f32, f32)> {
-    let mut b1_below_a = false;
+    line_intersection_r5(a0x, a0y, a1x, a1y, b0x, b0y, b1x, b1y).0
+}
+
+/// [`line_intersection`], with the r5 it returns in: retail keeps its
+/// "b ends above a" flag there (0x8004E98C: li r5, 0; 0x8004EAB8: li r5,
+/// 1), which `mpCheckFloor` leaves to its caller after a sloped line.
+#[allow(clippy::too_many_arguments)]
+pub fn line_intersection_r5(
+    a0x: f32,
+    a0y: f32,
+    a1x: f32,
+    a1y: f32,
+    b0x: f32,
+    b0y: f32,
+    b1x: f32,
+    b1y: f32,
+) -> (Option<(f32, f32)>, bool) {
     let mut b2_above_a = false;
+    let hit = line_intersection_body(
+        a0x,
+        a0y,
+        a1x,
+        a1y,
+        b0x,
+        b0y,
+        b1x,
+        b1y,
+        &mut b2_above_a,
+    );
+    (hit, b2_above_a)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn line_intersection_body(
+    a0x: f32,
+    a0y: f32,
+    a1x: f32,
+    a1y: f32,
+    b0x: f32,
+    b0y: f32,
+    b1x: f32,
+    b1y: f32,
+    b2_above_a: &mut bool,
+) -> Option<(f32, f32)> {
+    let mut b1_below_a = false;
 
     // b entirely left/right of a
     if a0x <= a1x {
@@ -131,7 +174,7 @@ pub fn line_intersection(
         if hs_b1_a > 0.1 {
             return None;
         }
-        b2_above_a = true;
+        *b2_above_a = true;
     }
 
     // check if a and b are colinear
@@ -151,7 +194,7 @@ pub fn line_intersection(
 
     let bw: f64 = f64::from(b1x - b0x);
     let bh: f64 = f64::from(b1y - b0y);
-    if !((bw == 0.0 && bh == 0.0) || (b1_below_a && b2_above_a) || (hs_b0_a >= 0.0 && b2_above_a)) {
+    if !((bw == 0.0 && bh == 0.0) || (b1_below_a && *b2_above_a) || (hs_b0_a >= 0.0 && *b2_above_a)) {
         // retail 0x8004EB50/58: fmul + fmsub.
         let area: f64 = fmsub(bw, ah, bh * aw);
 

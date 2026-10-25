@@ -96,11 +96,29 @@ pub fn toward_destination_in_air(
             use_available_jump(fp);
             return;
         }
-        match scene.stage() {
-            GrKind::Shrine | GrKind::Fourside => {
-                unimplemented!("ftCo_800A9CB4: the Temple and Fourside recoveries")
+        // ftCo_800A9CB4_inline0 (800A9E3C..800A9FB4): out of jumps under
+        // the Temple's left arch (x strictly between -150 and -90) or on
+        // Fourside, air dodge up (Fourside's forward too).
+        const TEMPLE_ARCH: (f32, f32) = (-150.0, -90.0);
+        let x = fp.core.physics.position.x;
+        let dodge_forward = match scene.stage() {
+            GrKind::Shrine if x > TEMPLE_ARCH.0 && x < TEMPLE_ARCH.1 => Some(false),
+            GrKind::Fourside => Some(true),
+            _ => None,
+        };
+        if let Some(forward) = dodge_forward {
+            let cpu = &mut fp.core.cpu;
+            script::neutral_stick(cpu);
+            script::command1(cpu, C::WaitFor, 1);
+            if forward {
+                script::command1(cpu, C::LstickXForward, 0x50);
             }
-            _ => {}
+            script::command1(cpu, C::SetLstickY, 0x7F);
+            script::command(cpu, C::PressR);
+            script::command1(cpu, C::WaitFor, 1);
+            script::command(cpu, C::ReleaseR);
+            finish_with_neutral_y(fp);
+            return;
         }
         // ftCo_800A9CB4_inline1: not under a ceiling (xFA_b6), and shrunk
         // (x34_scale.y < 1), or on Icicle Mountain or Rainbow Cruise.

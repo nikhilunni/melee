@@ -38,6 +38,7 @@ pub fn write_script(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
         B::RECOVER => crate::recover::recover(fp, scene, rng),
         B::EDGE_GUARD => crate::edge_guard::run(fp, scene),
         B::DEFEND => crate::defend::defend(fp, scene, rng),
+        B::BARREL => crate::barrel::ride(fp, scene, rng),
         behavior @ (2..=19) => {
             unimplemented!("ftCo_800B2790: behaviour {behavior}")
         }

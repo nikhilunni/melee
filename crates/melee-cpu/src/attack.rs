@@ -172,9 +172,16 @@ fn target_over_no_floor(scene: &mut Scene, target_index: usize) -> bool {
 
 /// ftCo_800B89CC (0x800B89CC): an aerial attack is on (the target on the
 /// ledge, or xF9_b4 at level 4 or more; Bowser only over the stage).
+/// On Kongo Jungle only between x = -25 and 25 (800B89F8..800B8A18: the
+/// barrel's range, two single fcmpo).
 fn air_attack_ready(fp: &Fighter, scene: &Scene) -> bool {
-    if scene.stage() == melee_types::GrKind::Kongo {
-        unimplemented!("ftCo_800B89CC: Kongo Jungle's barrel range");
+    const KONGO_HALF_WIDTH: f32 = 25.0;
+    let x = fp.core.physics.position.x;
+    // Two ordered compares: an unordered x stays in range.
+    #[allow(clippy::manual_range_contains)]
+    let outside_barrel_range = x > KONGO_HALF_WIDTH || x < -KONGO_HALF_WIDTH;
+    if scene.stage() == melee_types::GrKind::Kongo && outside_barrel_range {
+        return false;
     }
     let target = fp.core.cpu.target.map(|index| scene.fighter(index));
     if target.is_some_and(|t| ledge_state(t) != 0) {

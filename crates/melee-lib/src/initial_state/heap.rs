@@ -57,6 +57,22 @@ static AFTER_BOOT: &[BootAddress] = &[
     BootAddress { stage: G::Last, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_0980 },
     BootAddress { stage: G::Battle, before: &[(K::Fox, costumes(&[0]))], address: 0x80CA_18A0 },
     BootAddress { stage: G::Last, before: &[(K::Fox, costumes(&[0])), (K::Popo, costumes(&[0]))], address: 0x80CE_2280 },
+    // The same on the other stages (2026-10-25: the `w26_start_*_fox_cpu9fox4`
+    // boundaries, a CPU Fox in costume 1 second).
+    BootAddress { stage: G::Story, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_1A20 },
+    BootAddress { stage: G::OldPupupu, before: &[(K::Fox, costumes(&[0]))], address: 0x80CA_76C0 },
+    BootAddress { stage: G::Izumi, before: &[(K::Fox, costumes(&[0]))], address: 0x80CC_2C00 },
+    BootAddress { stage: G::PStadium, before: &[(K::Fox, costumes(&[0]))], address: 0x80CA_9DC0 },
+    BootAddress { stage: G::OldYoshi, before: &[(K::Fox, costumes(&[0]))], address: 0x80CA_7180 },
+    BootAddress { stage: G::OldKongo, before: &[(K::Fox, costumes(&[0]))], address: 0x80CA_6780 },
+    BootAddress { stage: G::Kongo, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_E9A0 },
+    BootAddress { stage: G::Garden, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_E120 },
+    BootAddress { stage: G::Shrine, before: &[(K::Fox, costumes(&[0]))], address: 0x80CA_FB80 },
+    BootAddress { stage: G::Fourside, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_7DC0 },
+    BootAddress { stage: G::Kraid, before: &[(K::Fox, costumes(&[0]))], address: 0x80CC_5180 },
+    BootAddress { stage: G::Flatzone, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_53A0 },
+    // A CPU Zelda's Sheik after a person's Fox (`start_fd_fox_cpu9zelda4`).
+    BootAddress { stage: G::Last, before: &[(K::Fox, costumes(&[0])), (K::Zelda, costumes(&[0]))], address: 0x80CF_E8E0 },
     // The second player after a first of another kind (2026-10-24).
     BootAddress { stage: G::Last, before: &[(K::Mars, costumes(&[0]))], address: 0x80CB_7840 },
     BootAddress { stage: G::Battle, before: &[(K::Falco, costumes(&[0]))], address: 0x80C9_D460 },

@@ -10,10 +10,25 @@ use hsd_types::Vec3;
 use melee_types::mp::{joint_flag, line_flag, line_kind, LineSection, NO_ID};
 
 use crate::geom::{
-    differs_by_more_than_1e4, line_intersection, line_intersection_h, line_intersection_v,
+    differs_by_more_than_1e4, line_intersection, line_intersection_h, line_intersection_r5,
+    line_intersection_v,
     line_normal, remap_2d, sq,
 };
 use crate::map::{CollMap, F32_MAX};
+
+/// What `mpCheckFloor` leaves in r5 for its caller, which one CPU branch
+/// reads as data (`melee-cpu` `tumble.rs`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SweepR5 {
+    /// No line passed the filters: what the bounding check or the caller
+    /// left.
+    Unknown,
+    /// The last line tested was horizontal: mpCheckFloor's own r1 + 0x44
+    /// (0x8004F188), which mpLineIntersectionH leaves alone.
+    OwnFrame,
+    /// The last line tested was sloped: mpLineIntersection's flag.
+    Flag(bool),
+}
 
 /// Result of a segment sweep against the map: the `vec_out`, `line_id_out`,
 /// `flags_out`, `normal_out` quartet every `mpCheck*` writes on success.
@@ -430,7 +445,42 @@ impl CollMap {
         line_id_skip: i32,
         joint_id_skip: i32,
         joint_id_only: i32,
+        cb: LineFilter<'_, '_>,
+    ) -> Option<LineHit> {
+        let mut r5 = SweepR5::Unknown;
+        self.sweep_traced(
+            surf,
+            remap,
+            ax,
+            ay,
+            bx,
+            by,
+            y_offset,
+            line_id_skip,
+            joint_id_skip,
+            joint_id_only,
+            cb,
+            &mut r5,
+        )
+    }
+
+    /// [`Self::sweep`], following what r5 holds when the sweep returns
+    /// (`mpCheckFloor` only: its line loop at 0x8004F17C..0x8004F1F0).
+    #[allow(clippy::too_many_arguments)]
+    fn sweep_traced(
+        &mut self,
+        surf: Surface,
+        remap: bool,
+        ax: f32,
+        ay: f32,
+        bx: f32,
+        by: f32,
+        y_offset: f32,
+        line_id_skip: i32,
+        joint_id_skip: i32,
+        joint_id_only: i32,
         mut cb: LineFilter<'_, '_>,
+        r5: &mut SweepR5,
     ) -> Option<LineHit> {
         let mut min_dist2 = F32_MAX;
         let mut result: Option<LineHit> = None;
@@ -506,9 +556,12 @@ impl CollMap {
                     Surface::Floor | Surface::Ceiling => differs_by_more_than_1e4(y0, y1),
                     Surface::LeftWall | Surface::RightWall => differs_by_more_than_1e4(x0, x1),
                 };
+                // 0x8004F188: mpLib_8004ED5C takes r1 + 0x44 in r5.
+                *r5 = SweepR5::OwnFrame;
                 let candidate: Option<(f32, f32, Vec3)> = if sloped {
-                    line_intersection(x0, y0, x1, y1, ax, ay, bx, by)
-                        .map(|(ix, iy)| (ix, iy, line_normal(x0, y0, x1, y1)))
+                    let (hit, above) = line_intersection_r5(x0, y0, x1, y1, ax, ay, bx, by);
+                    *r5 = SweepR5::Flag(above);
+                    hit.map(|(ix, iy)| (ix, iy, line_normal(x0, y0, x1, y1)))
                 } else {
                     let gate = match surf {
                         Surface::Floor => ay >= by,
@@ -594,6 +647,27 @@ impl CollMap {
             joint_id_only,
             cb,
         )
+    }
+
+    /// [`Self::check_floor`] with no line, joint or callback filter, and
+    /// what it leaves in r5 ([`SweepR5`]).
+    pub fn check_floor_r5(&mut self, ax: f32, ay: f32, bx: f32, by: f32) -> (Option<LineHit>, SweepR5) {
+        let mut r5 = SweepR5::Unknown;
+        let hit = self.sweep_traced(
+            Surface::Floor,
+            false,
+            ax,
+            ay,
+            bx,
+            by,
+            0.0,
+            NO_ID,
+            NO_ID,
+            NO_ID,
+            None,
+            &mut r5,
+        );
+        (hit, r5)
     }
 
     /// `mpCheckFloorRemap` (retail `0x8004F400`, `mplib.c:1756`): as

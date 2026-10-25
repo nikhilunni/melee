@@ -83,6 +83,9 @@ pub struct Scene<'a> {
     pub player_kills: i32,
     /// p_ftCommonData->horizontal_stick_deadzone.
     pub horizontal_deadzone: f32,
+    /// stage_info.x73C (Ground_801C4DA0): the barrel cannon's aim on the
+    /// Kongo Jungles, 0 elsewhere.
+    pub barrel_aim: f32,
     /// Stack words this think's callees leave behind, which retail later
     /// reads uninitialized.
     pub stale: StaleStack,
@@ -122,25 +125,29 @@ pub struct StaleStack {
     pub caller_frame: core::cell::Cell<Option<u32>>,
     /// The Versus think's r1 (ftCo_800B24B8 or ftCo_800AEFB8).
     pub think_frame: core::cell::Cell<Option<u32>>,
+    /// What the last mpCheckFloor left in r5 (`Scene::check_floor`).
+    pub floor_r5: core::cell::Cell<Option<melee_mp::SweepR5>>,
 }
 
 /// seed_ptr's value (the address of `seed`), which HSD_Randf leaves in r5.
 pub const SEED_POINTER: u32 = 0x804D_5F90;
 
 impl StaleStack {
-    /// r5 after ftCo_800ADE48's floor probes: mpCheckFloor's last floor
-    /// line test passes its own r1 + 0x44 (8004F188) to mpLib_8004ED5C;
-    /// on a horizontal line nothing writes r5 again (8004F1CC to
-    /// mpLineIntersectionH). ADE48's frame is 0x90 and mpCheckFloor's 0xF0
-    /// below the caller's r1. Only Final Destination's and Battlefield's
-    /// floors are all horizontal here; an unknown caller or a probe that
-    /// met no floor line leaves r5 unknown.
+    /// r5 after ftCo_800ADE48's floor probes, as the last mpCheckFloor
+    /// left it: after a horizontal floor line its own r1 + 0x44 (8004F188;
+    /// ADE48's frame is 0x90 and mpCheckFloor's 0xF0 below the caller's
+    /// r1), after a sloped one mpLineIntersection's 0 or 1. An unknown
+    /// caller or a probe that tested no line leaves r5 unknown.
     /// Retail, `corpus_v3_bf_fox_cpu9fox4_e89a89d0e_p1` tick 252: x = 0x44.
-    pub fn after_floor_probe(&self, stage: GrKind, hit: bool) {
-        let flat = matches!(stage, GrKind::Last | GrKind::Battle);
-        self.r5.set(match self.caller_frame.get() {
-            Some(frame) if hit && flat => Some(frame - 0x90 - 0xF0 + 0x44),
-            _ => None,
+    pub fn after_floor_probe(&self) {
+        use melee_mp::SweepR5;
+        self.r5.set(match self.floor_r5.get() {
+            Some(SweepR5::OwnFrame) => self
+                .caller_frame
+                .get()
+                .map(|frame| frame - 0x90 - 0xF0 + 0x44),
+            Some(SweepR5::Flag(above)) => Some(u32::from(above)),
+            Some(SweepR5::Unknown) | None => None,
         });
     }
 }
@@ -180,7 +187,9 @@ impl Scene<'_> {
     }
     /// mpCheckFloor with no line, joint or callback filter.
     pub fn check_floor(&mut self, ax: f32, ay: f32, bx: f32, by: f32) -> Option<LineHit> {
-        self.map.check_floor(ax, ay, bx, by, 0.0, -1, -1, -1, None)
+        let (hit, r5) = self.map.check_floor_r5(ax, ay, bx, by);
+        self.stale.floor_r5.set(Some(r5));
+        hit
     }
     /// mpCheckFloor, then drop a floor the CPU ignores (the inline pattern
     /// of ftCo_800B33B0, ftCo_800A7AAC and others).

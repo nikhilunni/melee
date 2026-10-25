@@ -73,6 +73,11 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         data: &state.assets.cpu,
         player_kills,
         horizontal_deadzone: deadzone,
+        barrel_aim: match &state.stage {
+            crate::scene_stage::SceneStage::Kongo(stage) => stage.barrel_angle,
+            crate::scene_stage::SceneStage::OldKongo(stage) => stage.cannon_aim,
+            _ => 0.0,
+        },
         stale: Default::default(),
     };
     melee_cpu::think(&mut own.0, &mut scene, &mut state.rng);

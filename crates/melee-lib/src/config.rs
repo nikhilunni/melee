@@ -240,6 +240,29 @@ impl Stage {
         Self::BrinstarDepths,
         Self::FlatZone,
     ];
+    /// The ported stages where CPU players are witnessed against retail
+    /// (docs/PORT_NOTES/CPU_PLAYERS.md); hosts offer a CPU only here.
+    /// Listed by hand: porting a stage does not witness a CPU on it.
+    pub const CPU_SUPPORTED: [Self; 14] = [
+        Self::Battlefield,
+        Self::FinalDestination,
+        Self::DreamLand,
+        Self::FountainOfDreams,
+        Self::PokemonStadium,
+        Self::YoshisStory,
+        Self::YoshisIsland64,
+        Self::KongoJungle64,
+        Self::JungleJapes,
+        Self::KongoJungle,
+        Self::HyruleTemple,
+        Self::Fourside,
+        Self::BrinstarDepths,
+        Self::FlatZone,
+    ];
+    /// Whether a CPU player is witnessed on this stage ([`Self::CPU_SUPPORTED`]).
+    pub fn cpu_supported(self) -> bool {
+        Self::CPU_SUPPORTED.contains(&self)
+    }
     /// Every Versus stage (the 29 of the stage select screen), `StKind` order.
     pub const VERSUS: [Self; 29] = [
         Self::FountainOfDreams,

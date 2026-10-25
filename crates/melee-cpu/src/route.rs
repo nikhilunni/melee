@@ -19,11 +19,9 @@ pub fn set_destination(fp: &mut Fighter, scene: &mut Scene, x: f32, y: f32, radi
 }
 
 /// ftCo_800A1CC4 (0x800A1CC4) with ftCo_803C6594[grkind]: only Great Bay
-/// and the Temple carry route tables.
-pub fn stage_route(_fp: &mut Fighter, scene: &mut Scene) {
-    if matches!(scene.stage(), GrKind::GreatBay | GrKind::Shrine) {
-        unimplemented!("ftCo_800A1CC4: ftCo_803C6594 stage routes");
-    }
+/// and the Temple carry route tables (`stage_route`).
+pub fn stage_route(fp: &mut Fighter, scene: &mut Scene) {
+    crate::stage_route::apply(fp, scene);
 }
 
 /// ftCo_800A2718 (0x800A2718): whether the island is unsafe: an armed
