@@ -3,8 +3,8 @@ use melee_lib::{presentation::Presentation, *};
 use melee_replay::Recording;
 use std::{path::Path, time::Duration};
 
-pub use crate::input::{Action, Gamepad, PadButton};
 use crate::input::PortInputs;
+pub use crate::input::{Action, Gamepad, PadButton};
 
 #[derive(Default)]
 struct TickClock {
@@ -26,6 +26,9 @@ impl TickClock {
 }
 pub struct Session {
     seed: Seed,
+    /// The match as configured; a Sudden Death continues from it.
+    config: MatchConfig,
+    assets: GameAssets,
     game: Match,
     presentation: Presentation,
     inputs: PortInputs,
@@ -51,10 +54,12 @@ impl Session {
         let assets = GameAssets::load_from(source, &config).map_err(|e| e.to_string())?;
         let recording = Recording::new(&config, &assets);
         let seed = config.seed;
-        let game = Match::new(&assets, config).map_err(|e| e.to_string())?;
+        let game = Match::new(&assets, config.clone()).map_err(|e| e.to_string())?;
         let presentation = Presentation::new(&game).map_err(|e| e.to_string())?;
         Ok(Self {
             seed,
+            config,
+            assets,
             game,
             presentation,
             inputs: PortInputs::default(),
@@ -67,6 +72,10 @@ impl Session {
     }
     pub fn game(&self) -> &Match {
         &self.game
+    }
+    /// The match as configured (a Sudden Death's [`Match::config`] differs).
+    pub fn configured(&self) -> &MatchConfig {
+        &self.config
     }
     pub fn presentation(&self) -> &Presentation {
         &self.presentation
@@ -165,7 +174,29 @@ impl Session {
             self.game.tick().0
         ))
     }
+    /// Whether the running match is a Sudden Death continuing the
+    /// configured one.
+    pub fn in_sudden_death(&self) -> bool {
+        self.game.config() != &self.config
+    }
+    /// A timed-out tie continues into Sudden Death among the tied players
+    /// (`Match::sudden_death`). The replay starts over with it: a replay
+    /// holds one configuration. Fails (the match stays finished) where
+    /// the simulator refuses that Sudden Death.
+    pub fn continue_sudden_death(&mut self) -> Result<(), String> {
+        let game = self.game.sudden_death().map_err(|e| e.to_string())?;
+        self.presentation = Presentation::new(&game).map_err(|e| e.to_string())?;
+        self.recording = Recording::new(game.config(), &self.assets);
+        self.game = game;
+        self.clock = TickClock::default();
+        Ok(())
+    }
     pub fn reset(&mut self) -> Result<(), String> {
+        if self.in_sudden_death() {
+            self.game = Match::new(&self.assets, self.config.clone()).map_err(|e| e.to_string())?;
+            self.presentation = Presentation::new(&self.game).map_err(|e| e.to_string())?;
+            self.recording = Recording::new(&self.config, &self.assets);
+        }
         self.game.reset(self.seed).map_err(|e| e.to_string())?;
         self.recording.reset();
         self.failure = None;

@@ -11,7 +11,7 @@ use melee_platform::{
     art::{ArtKind, Piece},
     catalog,
     disc::{DiscFiles, FileRequest},
-    players::{Controller, Rules},
+    players::{Controller, Mode, Rules, SPECIAL_MODES},
     preview,
     session::{panic_replay, Action, Gamepad},
     surface::WindowRenderer,
@@ -83,7 +83,8 @@ fn next_task() -> impl Future<Output = ()> {
             let receiver = Reflect::get(&channel, &"port1".into())?;
             let sender = Reflect::get(&channel, &"port2".into())?;
             Reflect::set(&receiver, &"onmessage".into(), &resolve)?;
-            let post: js_sys::Function = Reflect::get(&sender, &"postMessage".into())?.dyn_into()?;
+            let post: js_sys::Function =
+                Reflect::get(&sender, &"postMessage".into())?.dyn_into()?;
             post.call1(&sender, &0.into())?;
             Ok(())
         })();
@@ -178,6 +179,7 @@ fn hud_object(hud: &Hud) -> JsValue {
                 ("stocks", p.stocks.into()),
                 ("cpu", p.cpu.into()),
                 ("team", p.team.map_or(-1, i32::from).into()),
+                ("score", p.score.into()),
             ])
         })
         .collect();
@@ -185,6 +187,12 @@ fn hud_object(hud: &Hud) -> JsValue {
         ("tick", (hud.tick as f64).into()),
         ("paused", hud.paused.into()),
         ("players", players.into()),
+        (
+            "secondsLeft",
+            hud.seconds_left.map_or(JsValue::NULL, |s| (s as f64).into()),
+        ),
+        ("timedScores", hud.timed_scores.into()),
+        ("suddenDeath", hud.sudden_death.into()),
     ])
 }
 
@@ -300,6 +308,7 @@ impl WebApp {
                     ("costume", slot.costume.into()),
                     ("cpuLevel", slot.cpu_level.into()),
                     ("team", slot.team.into()),
+                    ("handicap", slot.handicap.into()),
                 ])
             })
             .collect();
@@ -322,16 +331,36 @@ impl WebApp {
             .map_err(error)
     }
     pub fn set_cpu_level(&mut self, player: u32, level: u8) -> Result<(), JsError> {
-        self.app.set_cpu_level(player as usize, level).map_err(error)
+        self.app
+            .set_cpu_level(player as usize, level)
+            .map_err(error)
+    }
+    /// 1..9, or 0 for none.
+    pub fn set_handicap(&mut self, player: u32, handicap: u8) -> Result<(), JsError> {
+        self.app
+            .set_handicap(player as usize, handicap)
+            .map_err(error)
     }
     /// 0 red, 1 blue, 2 green.
     pub fn set_team(&mut self, player: u32, team: u8) -> Result<(), JsError> {
         self.app.set_team(player as usize, team).map_err(error)
     }
-    /// `{stocks, teams, friendlyFire, itemFrequency (-1 off, 0..4)}`.
+    /// `{mode (0 stock, 1 time), stocks, timeMinutes (0 none, 1..99), teams,
+    /// friendlyFire, itemFrequency (-1 off, 0..4), damageRatio (tenths,
+    /// 5..20), special (0 none, 1 Super Sudden Death, 2 Lightning, 3 Slo-Mo)}`.
     pub fn rules(&self) -> JsValue {
         let rules = self.app.rules();
+        let special = rules.special.map_or(0, |mode| {
+            SPECIAL_MODES
+                .iter()
+                .position(|&m| m == mode)
+                .map_or(0, |i| i as u32 + 1)
+        });
         object(&[
+            ("mode", (rules.mode as u32).into()),
+            ("timeMinutes", rules.time_minutes.unwrap_or(0).into()),
+            ("damageRatio", rules.damage_ratio_tenths.into()),
+            ("special", special.into()),
             ("stocks", rules.stocks.into()),
             ("teams", rules.teams.into()),
             ("friendlyFire", rules.friendly_fire.into()),
@@ -344,16 +373,38 @@ impl WebApp {
     /// The fields of [`WebApp::rules`]; missing ones keep their value.
     pub fn set_rules(&mut self, rules: JsValue) -> Result<(), JsError> {
         let current = self.app.rules();
-        let field = |name: &str| Reflect::get(&rules, &name.into()).ok().filter(|v| !v.is_undefined());
+        let field = |name: &str| {
+            Reflect::get(&rules, &name.into())
+                .ok()
+                .filter(|v| !v.is_undefined())
+        };
         let number = |name: &str| field(name).and_then(|v| v.as_f64());
         let flag = |name: &str| field(name).and_then(|v| v.as_bool());
+        let mode = match number("mode") {
+            Some(v) => Mode::from_u32(v as u32).ok_or(error("no such match mode"))?,
+            None => current.mode,
+        };
+        let special = match number("special") {
+            Some(v) if v >= 1.0 => Some(
+                *SPECIAL_MODES
+                    .get(v as usize - 1)
+                    .ok_or(error("no such Special Melee mode"))?,
+            ),
+            Some(_) => None,
+            None => current.special,
+        };
         let rules = Rules {
+            mode,
+            special,
+            time_minutes: number("timeMinutes")
+                .map_or(current.time_minutes, |v| (v >= 1.0).then_some(v as u8)),
+            damage_ratio_tenths: number("damageRatio")
+                .map_or(current.damage_ratio_tenths, |v| v as u8),
             stocks: number("stocks").map_or(current.stocks, |v| v as u8),
             teams: flag("teams").unwrap_or(current.teams),
             friendly_fire: flag("friendlyFire").unwrap_or(current.friendly_fire),
-            item_frequency: number("itemFrequency").map_or(current.item_frequency, |v| {
-                (v >= 0.0).then_some(v as u8)
-            }),
+            item_frequency: number("itemFrequency")
+                .map_or(current.item_frequency, |v| (v >= 0.0).then_some(v as u8)),
         };
         self.app.set_rules(rules).map_err(error)
     }
@@ -438,7 +489,11 @@ impl WebApp {
     /// Advance by `elapsed_ms` of page time and draw at the canvas size.
     pub fn frame(&mut self, elapsed_ms: f64, width: u32, height: u32) -> Result<(), JsError> {
         // Page time can step backwards, and NaN must not reach Duration.
-        let seconds = if elapsed_ms > 0.0 { elapsed_ms / 1000.0 } else { 0.0 };
+        let seconds = if elapsed_ms > 0.0 {
+            elapsed_ms / 1000.0
+        } else {
+            0.0
+        };
         let elapsed = Duration::from_secs_f64(seconds);
         let advanced = self.app.advance(elapsed);
         self.sync_scene();
@@ -622,7 +677,11 @@ impl WebApp {
             web_sys::console::log_1(
                 &format!(
                     "stage previews: {} in {:.0} ms, at most {:.0} ms between pauses",
-                    if previews.ready() { "ready" } else { "incomplete" },
+                    if previews.ready() {
+                        "ready"
+                    } else {
+                        "incomplete"
+                    },
                     js_sys::Date::now() - start,
                     longest.get()
                 )

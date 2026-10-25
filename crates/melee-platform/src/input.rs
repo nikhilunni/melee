@@ -203,12 +203,7 @@ impl PortInputs {
                 ..gamepad
             }
             .sample(),
-            _ => ControllerState::from_origin_adjusted(
-                Buttons(buttons),
-                [x, y],
-                [0, 0],
-                [0, 0],
-            ),
+            _ => ControllerState::from_origin_adjusted(Buttons(buttons), [x, y], [0, 0], [0, 0]),
         }
     }
 }
@@ -240,7 +235,11 @@ mod tests {
         assert_eq!((state.stick.x, state.stick.y), (-0.5, 0.25));
         assert_eq!(state.cstick.y, 1.0);
         assert_eq!(state.left_trigger, 70.0 / 140.0);
-        assert_eq!(sample.0[0], ControllerState::default(), "other ports neutral");
+        assert_eq!(
+            sample.0[0],
+            ControllerState::default(),
+            "other ports neutral"
+        );
         // A tap between ticks still lands; a held R is a full press.
         inputs.set_gamepad(2, Some(Gamepad::default()));
         inputs.set_gamepad(

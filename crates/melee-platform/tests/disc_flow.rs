@@ -4,7 +4,7 @@ use melee_lib::{Character, Stage};
 use melee_platform::{
     app::{App, Screen},
     disc::DiscFiles,
-    players::{Controller, Rules},
+    players::{Controller, Mode, Rules},
     session::{Action, Gamepad, PadButton},
 };
 use std::{path::PathBuf, time::Duration};
@@ -130,7 +130,9 @@ fn a_cpu_plays_on_final_destination_and_reads_no_keyboard() {
     assert!(hud.players[0].cpu && !hud.players[1].cpu);
     let recording = app.session().unwrap().recording();
     let samples = recording.samples();
-    assert!(samples.iter().all(|s| s.inputs().0[0] == Default::default()));
+    assert!(samples
+        .iter()
+        .all(|s| s.inputs().0[0] == Default::default()));
     assert!(samples.iter().any(|s| s.inputs().0[1].stick.x < 0.0));
 }
 
@@ -212,7 +214,10 @@ fn random_items_fall_in_a_two_player_match() {
     assert!(app.stage_unavailable(Stage::DreamLand).is_some());
     app.choose_stage(Stage::FinalDestination, 31).unwrap();
     load(&mut app);
-    assert_eq!(app.session().unwrap().game().config().rules.items.frequency, 4);
+    assert_eq!(
+        app.session().unwrap().game().config().rules.items.frequency,
+        4
+    );
     let mut seen = 0;
     for _ in 0..1800 {
         if app.advance(FRAME).is_err() {
@@ -223,4 +228,51 @@ fn random_items_fall_in_a_two_player_match() {
         seen = seen.max(view.items().count());
     }
     assert!(seen > 0, "Very High spawns an item within 30 seconds");
+}
+
+#[test]
+fn a_tied_time_match_continues_into_sudden_death() {
+    let Some(iso) = iso() else {
+        return;
+    };
+    let mut app = App::new();
+    app.open_disc(DiscFiles::open_path(&iso).unwrap()).unwrap();
+    app.choose_character(0, Character::Fox).unwrap();
+    app.choose_character(1, Character::Marth).unwrap();
+    app.set_handicap(1, 9).unwrap();
+    app.set_rules(Rules {
+        mode: Mode::Time,
+        time_minutes: Some(1),
+        damage_ratio_tenths: 15,
+        ..app.rules()
+    })
+    .unwrap();
+    app.confirm_characters().unwrap();
+    app.choose_stage(Stage::FinalDestination, 8).unwrap();
+    load(&mut app);
+    let config = app.session().unwrap().game().config().clone();
+    assert_eq!(config.rules.time_limit_seconds, Some(60));
+    assert_eq!(config.players[1].handicap, Some(9));
+    let hud = app.hud().unwrap();
+    assert!(hud.timed_scores && !hud.sudden_death);
+    assert_eq!(hud.seconds_left, Some(60));
+    let generation = app.generation();
+    // Nobody moves: 0-0 at TIME!, and the tie plays on.
+    for _ in 0..(60 * 60 + 600) {
+        app.advance(FRAME).unwrap();
+        if app.generation() != generation {
+            break;
+        }
+    }
+    assert_eq!(app.screen(), Screen::Match, "{:?}", app.notice());
+    let hud = app.hud().unwrap();
+    assert!(hud.sudden_death);
+    assert_eq!(hud.players.len(), 2);
+    assert!(hud.players.iter().all(|p| p.stocks == 1));
+    for _ in 0..120 {
+        app.advance(FRAME).unwrap();
+    }
+    // Restart goes back to the configured Time match.
+    app.restart().unwrap();
+    assert!(!app.hud().unwrap().sudden_death);
 }

@@ -11,12 +11,12 @@
 use crate::{
     art::{Art, ArtFile, Image, Piece},
     disc::{DiscFiles, FileRequest},
-    preview::{self, Previews},
     players::{check_player, Controller, Lineup, Rules, Slot, SLOTS},
+    preview::{self, Previews},
     session::{Action, Gamepad, Session},
 };
-use std::sync::Arc;
 use melee_lib::{Character, MatchConfig, MatchOutcome, MatchStatus, Port, Seed, Stage};
+use std::sync::Arc;
 use std::{collections::VecDeque, time::Duration};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -51,14 +51,22 @@ pub struct PlayerHud {
     pub cpu: bool,
     /// The team in a team battle (0 red, 1 blue, 2 green).
     pub team: Option<u8>,
+    /// A Time match's score (KOs minus falls); stocks left otherwise.
+    pub score: i32,
 }
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct Hud {
     pub tick: u64,
     pub paused: bool,
-    /// One entry per player, in port order.
+    /// One entry per player, in port order (a Sudden Death's players only).
     pub players: Vec<PlayerHud>,
+    /// Whole seconds left on the match timer, when there is one.
+    pub seconds_left: Option<u32>,
+    /// A Time match: show scores rather than stocks.
+    pub timed_scores: bool,
+    /// The match is a Sudden Death continuing a timed-out tie.
+    pub sudden_death: bool,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -374,6 +382,16 @@ impl App {
         self.lineup.slots[player].cpu_level = level;
         Ok(())
     }
+    /// Handicap 1..=9, or 0 for none.
+    pub fn set_handicap(&mut self, player: usize, handicap: u8) -> Result<(), String> {
+        self.expect(Screen::Characters, "change handicaps")?;
+        check_player(player)?;
+        if handicap > 9 {
+            return Err("a handicap is 1 to 9, or 0 for none".into());
+        }
+        self.lineup.slots[player].handicap = handicap;
+        Ok(())
+    }
     pub fn set_team(&mut self, player: usize, team: u8) -> Result<(), String> {
         self.expect(Screen::Characters, "change teams")?;
         check_player(player)?;
@@ -599,8 +617,7 @@ impl App {
     pub fn human_ports(&self) -> Vec<usize> {
         self.session.as_ref().map_or_else(Vec::new, |session| {
             session
-                .game()
-                .config()
+                .configured()
                 .players
                 .iter()
                 .filter(|p| p.cpu_level.is_none())
@@ -642,6 +659,20 @@ impl App {
             self.notice = Some(error.clone());
             return Err(error);
         }
+        if session.game().status() == MatchStatus::Finished(MatchOutcome::SuddenDeath) {
+            match session.continue_sudden_death() {
+                Ok(()) => {
+                    // A new scene: the host's renderer follows the generation.
+                    self.generation += 1;
+                    return Ok(());
+                }
+                Err(error) => {
+                    // The tie stands as a draw; the notice says why.
+                    self.notice = Some(format!("No Sudden Death: {error}"));
+                }
+            }
+        }
+        let session = self.session.as_ref().ok_or("no match is running")?;
         if let MatchStatus::Finished(outcome) = session.game().status() {
             let hud = self.hud().expect("a finished match is observable");
             let outcome = match outcome {
@@ -652,7 +683,7 @@ impl App {
                     }
                 }
                 MatchOutcome::TeamWinner(team) => Outcome::Team(team),
-                // The menus start no timed match, so no Sudden Death.
+                // A Sudden Death the simulator refuses stays a draw.
                 MatchOutcome::Draw | MatchOutcome::SuddenDeath => Outcome::Draw,
             };
             self.results = Some(Results { outcome, hud });
@@ -666,6 +697,7 @@ impl App {
         // One entry per configured player. A player may own several fighters
         // (Nana, the sleeping Zelda/Sheik form): show the one that leads.
         let config = session.game().config();
+        let scores = session.game().scores();
         let player = |index: usize| -> Option<PlayerHud> {
             let pick = &config.players[index];
             let fighter = view
@@ -681,6 +713,7 @@ impl App {
                 stocks: fighter.stocks(),
                 cpu: pick.cpu_level.is_some(),
                 team: pick.team,
+                score: scores[index],
             })
         };
         let players = (0..config.players.len())
@@ -690,6 +723,9 @@ impl App {
             tick: view.tick.0,
             paused: session.is_paused(),
             players,
+            seconds_left: session.game().seconds_left(),
+            timed_scores: config.rules.mode == melee_lib::MatchKind::Time,
+            sudden_death: session.in_sudden_death(),
         })
     }
     pub fn results(&self) -> Option<Results> {
@@ -1041,7 +1077,10 @@ mod tests {
         assert!(!app.stage_previews_ready());
         let job = app.stage_preview_job().expect("every preview file is in");
         assert_eq!(job.files.len(), preview::files().len());
-        assert!(app.stage_preview_job().is_none(), "handed out once per disc");
+        assert!(
+            app.stage_preview_job().is_none(),
+            "handed out once per disc"
+        );
         // A new disc starts over.
         app.back();
         app.open_disc(disc_for(&[])).unwrap();
@@ -1154,6 +1193,88 @@ mod tests {
             })
             .is_err());
         assert!(app.set_stocks(0).is_err());
+    }
+
+    #[test]
+    fn the_rules_offer_time_handicap_ratio_and_the_playable_special_modes() {
+        use crate::players::{Mode, SPECIAL_MODES};
+        let mut app = App::new();
+        app.open_disc(disc_for(&[])).unwrap();
+        let time_without_limit = Rules {
+            mode: Mode::Time,
+            ..app.rules()
+        };
+        assert!(app.set_rules(time_without_limit).is_err());
+        for (rules, ok) in [
+            (
+                Rules {
+                    time_minutes: Some(0),
+                    ..Rules::default()
+                },
+                false,
+            ),
+            (
+                Rules {
+                    damage_ratio_tenths: 4,
+                    ..Rules::default()
+                },
+                false,
+            ),
+            (
+                Rules {
+                    damage_ratio_tenths: 20,
+                    ..Rules::default()
+                },
+                true,
+            ),
+            (
+                Rules {
+                    special: Some(melee_lib::SpecialMelee::Stamina),
+                    ..Rules::default()
+                },
+                false,
+            ),
+            (
+                Rules {
+                    special: Some(melee_lib::SpecialMelee::Giant),
+                    ..Rules::default()
+                },
+                false,
+            ),
+        ] {
+            assert_eq!(app.set_rules(rules).is_ok(), ok, "{rules:?}");
+        }
+        for mode in SPECIAL_MODES {
+            assert!(mode.ported());
+        }
+        app.set_rules(Rules {
+            mode: Mode::Time,
+            time_minutes: Some(3),
+            teams: true,
+            special: Some(SPECIAL_MODES[1]),
+            ..Rules::default()
+        })
+        .unwrap();
+        for (player, character) in [
+            Character::Fox,
+            Character::Falco,
+            Character::Marth,
+            Character::Roy,
+        ]
+        .into_iter()
+        .enumerate()
+        {
+            app.choose_character(player, character).unwrap();
+            app.set_team(player, (player / 2) as u8).unwrap();
+        }
+        assert!(app.set_handicap(0, 10).is_err());
+        app.set_handicap(0, 2).unwrap();
+        let config = app.config(Stage::FinalDestination, 1).unwrap();
+        assert_eq!(config.rules.mode, melee_lib::MatchKind::Time);
+        assert_eq!(config.rules.time_limit_seconds, Some(180));
+        assert_eq!(config.rules.special, Some(SPECIAL_MODES[1]));
+        assert_eq!(config.players[0].handicap, Some(2));
+        assert_eq!(config.players[1].handicap, None);
     }
 
     #[test]

@@ -6,7 +6,7 @@ use crate::{
     catalog,
     disc::DiscFiles,
     panic_text,
-    players::{Controller, Rules, SLOTS},
+    players::{Controller, Mode, Rules, SLOTS, SPECIAL_MODES},
     session::{Action, Gamepad},
     surface::WindowRenderer,
 };
@@ -70,6 +70,7 @@ pub struct Slot {
     costume: u8,
     cpu_level: u8,
     team: u8,
+    handicap: u8,
 }
 #[repr(C)]
 pub struct Selection {
@@ -78,10 +79,14 @@ pub struct Selection {
 }
 #[repr(C)]
 pub struct RulesC {
+    mode: u8,
     stocks: u8,
+    time_minutes: u8,
     teams: bool,
     friendly_fire: bool,
     item_frequency: i8,
+    damage_ratio_tenths: u8,
+    special: u8,
 }
 #[repr(C)]
 pub struct GamepadC {
@@ -110,6 +115,7 @@ pub struct PlayerHud {
     stocks: u8,
     cpu: bool,
     team: i8,
+    score: i32,
 }
 #[repr(C)]
 #[derive(Default)]
@@ -117,6 +123,9 @@ pub struct HudOut {
     tick: u64,
     paused: bool,
     faulted: bool,
+    timed_scores: bool,
+    sudden_death: bool,
+    seconds_left: i32,
     player_count: u8,
     players: [PlayerHud; SLOTS],
 }
@@ -218,17 +227,25 @@ impl Handle {
             tick: hud.tick,
             paused: hud.paused,
             faulted: self.app.session().is_some_and(|s| s.failure().is_some()),
+            timed_scores: hud.timed_scores,
+            sudden_death: hud.sudden_death,
+            seconds_left: hud
+                .seconds_left
+                .map_or(-1, |s| s.min(i32::MAX as u32) as i32),
             player_count: hud.players.len() as u8,
             players: std::array::from_fn(|i| {
-                hud.players.get(i).map_or_else(PlayerHud::default, |p| PlayerHud {
-                    port: p.port.index() as u8,
-                    character: catalog::character_id(p.character),
-                    costume: p.costume,
-                    percent: p.percent,
-                    stocks: p.stocks,
-                    cpu: p.cpu,
-                    team: p.team.map_or(-1, |t| t as i8),
-                })
+                hud.players
+                    .get(i)
+                    .map_or_else(PlayerHud::default, |p| PlayerHud {
+                        port: p.port.index() as u8,
+                        character: catalog::character_id(p.character),
+                        costume: p.costume,
+                        percent: p.percent,
+                        stocks: p.stocks,
+                        cpu: p.cpu,
+                        team: p.team.map_or(-1, |t| t as i8),
+                        score: p.score,
+                    })
             }),
         }
     }
@@ -464,6 +481,7 @@ pub unsafe extern "C" fn melee_app_selection(app: *const Handle, out: *mut Selec
             costume: slot.costume,
             cpu_level: slot.cpu_level,
             team: slot.team,
+            handicap: slot.handicap,
         }),
         ready: h.app.characters_ready(),
     };
@@ -489,7 +507,8 @@ pub unsafe extern "C" fn melee_app_set_controller(
     controller: u32,
 ) -> bool {
     handle!(app).perform(|h| {
-        let controller = Controller::from_u32(controller).ok_or("no controller with that number")?;
+        let controller =
+            Controller::from_u32(controller).ok_or("no controller with that number")?;
         h.app.set_controller(player as usize, controller)
     })
 }
@@ -498,6 +517,16 @@ pub unsafe extern "C" fn melee_app_set_controller(
 #[no_mangle]
 pub unsafe extern "C" fn melee_app_set_cpu_level(app: *mut Handle, player: u32, level: u8) -> bool {
     handle!(app).perform(|h| h.app.set_cpu_level(player as usize, level))
+}
+/// # Safety
+/// `app` is null or live.
+#[no_mangle]
+pub unsafe extern "C" fn melee_app_set_handicap(
+    app: *mut Handle,
+    player: u32,
+    handicap: u8,
+) -> bool {
+    handle!(app).perform(|h| h.app.set_handicap(player as usize, handicap))
 }
 /// # Safety
 /// `app` is null or live.
@@ -514,10 +543,19 @@ pub unsafe extern "C" fn melee_app_rules(app: *const Handle, out: *mut RulesC) {
     };
     let rules = h.app.rules();
     *out = RulesC {
+        mode: rules.mode as u8,
         stocks: rules.stocks,
+        time_minutes: rules.time_minutes.unwrap_or(0),
         teams: rules.teams,
         friendly_fire: rules.friendly_fire,
         item_frequency: rules.item_frequency.map_or(-1, |f| f as i8),
+        damage_ratio_tenths: rules.damage_ratio_tenths,
+        special: rules.special.map_or(0, |mode| {
+            SPECIAL_MODES
+                .iter()
+                .position(|&m| m == mode)
+                .map_or(0, |i| i as u8 + 1)
+        }),
     };
 }
 /// # Safety
@@ -530,11 +568,23 @@ pub unsafe extern "C" fn melee_app_set_rules(app: *mut Handle, rules: *const Rul
         return false;
     };
     h.perform(|h| {
+        let special = match rules.special {
+            0 => None,
+            n => Some(
+                *SPECIAL_MODES
+                    .get(usize::from(n) - 1)
+                    .ok_or("no Special Melee mode with that number")?,
+            ),
+        };
         h.app.set_rules(Rules {
+            mode: Mode::from_u32(rules.mode.into()).ok_or("no match mode with that number")?,
             stocks: rules.stocks,
+            time_minutes: (rules.time_minutes != 0).then_some(rules.time_minutes),
             teams: rules.teams,
             friendly_fire: rules.friendly_fire,
             item_frequency: u8::try_from(rules.item_frequency).ok(),
+            damage_ratio_tenths: rules.damage_ratio_tenths,
+            special,
         })
     })
 }

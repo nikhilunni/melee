@@ -261,6 +261,32 @@ impl Match {
     pub fn config(&self) -> &MatchConfig {
         &self.config
     }
+    /// The match timer's whole seconds left (lbl_8046B6A0 +0x28), when the
+    /// match has a time limit. Read-only, for a HUD.
+    pub fn seconds_left(&self) -> Option<u32> {
+        self.engine.state().clock.timer.map(|timer| timer.seconds)
+    }
+    /// Each configured player's score as gm_80166378 ranks it now
+    /// (fn_8016588C): a Time match's KOs minus falls with the self-destruct
+    /// penalty, a stock match's stocks left. Read-only, for a HUD.
+    pub fn scores(&self) -> Vec<i32> {
+        let state = self.engine.state();
+        let (players, count) = crate::standings::records(state);
+        let tallies =
+            crate::standings::tallies(&players[..count], &state.ko_counts, state.clock.frame_count);
+        let scoring = state.clock.scoring;
+        self.config
+            .players
+            .iter()
+            .map(|player| {
+                let tally = &tallies[player.port.index()];
+                match scoring.match_kind {
+                    crate::MatchKind::Time => tally.time_score(scoring.self_destruct_penalty),
+                    _ => i32::from(tally.stocks),
+                }
+            })
+            .collect()
+    }
     pub fn status(&self) -> MatchStatus {
         if self.engine.is_faulted() {
             return MatchStatus::Faulted;

@@ -180,6 +180,7 @@ typedef struct {
     uint8_t costume;
     uint8_t cpu_level;    /* 1-9, used while the slot is a CPU */
     uint8_t team;         /* 0 red, 1 blue, 2 green; used in a team battle */
+    uint8_t handicap;     /* 1-9, or 0 for none */
 } melee_slot_s;
 typedef struct {
     melee_slot_s players[MELEE_SLOTS];
@@ -196,16 +197,32 @@ bool melee_app_cycle_costume(melee_app_t *app, uint32_t player, int32_t step);
 bool melee_app_set_controller(melee_app_t *app, uint32_t player, melee_controller_e controller);
 bool melee_app_set_cpu_level(melee_app_t *app, uint32_t player, uint8_t level);
 bool melee_app_set_team(melee_app_t *app, uint32_t player, uint8_t team);
+bool melee_app_set_handicap(melee_app_t *app, uint32_t player, uint8_t handicap);
 bool melee_app_confirm_characters(melee_app_t *app);
 
-/* Versus rules; settable on the disc, character and stage screens. Match
- * modes (time, stamina, coins, handicap) join this struct as they are
- * ported (with a version bump). */
+/* Versus rules; settable on the disc, character and stage screens. Modes
+ * the simulator does not play yet (Coin, Stamina, Giant, Tiny, Invisible,
+ * Single Button, Camera) join this struct as they are ported (with a
+ * version bump). */
+typedef enum {
+    MELEE_MODE_STOCK = 0,   /* the last player with stocks wins */
+    MELEE_MODE_TIME = 1,    /* most KOs when the timer runs out */
+} melee_mode_e;
+typedef enum {
+    MELEE_SPECIAL_NONE = 0,
+    MELEE_SPECIAL_SUPER_SUDDEN_DEATH = 1,  /* everyone at 300% */
+    MELEE_SPECIAL_LIGHTNING = 2,           /* 1.25x speed */
+    MELEE_SPECIAL_SLOMO = 3,               /* half speed */
+} melee_special_e;
 typedef struct {
-    uint8_t stocks;         /* 1-99 */
+    uint8_t mode;           /* melee_mode_e */
+    uint8_t stocks;         /* 1-99, a stock match's */
+    uint8_t time_minutes;   /* 1-99; 0 for no limit (stock only) */
     bool teams;             /* team battle: every slot's team counts */
     bool friendly_fire;     /* team battle: teammates' attacks land */
     int8_t item_frequency;  /* Item Switch: -1 off, 0 very low .. 4 very high */
+    uint8_t damage_ratio_tenths; /* 5-20: launch scale 0.5x-2.0x */
+    uint8_t special;        /* melee_special_e */
 } melee_rules_s;
 void melee_app_rules(const melee_app_t *app, melee_rules_s *out);
 bool melee_app_set_rules(melee_app_t *app, const melee_rules_s *rules);
@@ -245,11 +262,15 @@ typedef struct {
     uint8_t stocks;
     bool cpu;
     int8_t team;        /* 0 red, 1 blue, 2 green; -1 outside a team battle */
+    int32_t score;      /* a Time match's KOs minus falls; stocks otherwise */
 } melee_player_hud_s;
 typedef struct {
     uint64_t tick;
     bool paused;
     bool faulted;       /* stopped on a fault; see the notice */
+    bool timed_scores;  /* a Time match: show scores, not stocks */
+    bool sudden_death;  /* a Sudden Death continuing a timed-out tie */
+    int32_t seconds_left; /* match timer, or -1 without one */
     uint8_t player_count;
     melee_player_hud_s players[MELEE_SLOTS];  /* the first player_count, port order */
 } melee_hud_s;

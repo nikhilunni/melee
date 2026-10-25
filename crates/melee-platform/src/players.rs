@@ -3,7 +3,8 @@
 //! [`crate::app::App`] owns one [`Lineup`]; hosts read and change it
 //! through the app so its checks run on every change.
 use melee_lib::{
-    Character, Costume, ItemRules, MatchConfig, PlayerConfig, Port, Seed, Stage,
+    Character, Costume, ItemRules, MatchConfig, MatchKind, PlayerConfig, Port, Seed, SpecialMelee,
+    Stage,
 };
 
 /// Character select slots, one per controller port.
@@ -47,6 +48,8 @@ pub struct Slot {
     pub cpu_level: u8,
     /// 0 red, 1 blue, 2 green; used in a team battle.
     pub team: u8,
+    /// Handicap 1..=9 (PlayerInitData handicap), or 0 for none.
+    pub handicap: u8,
 }
 impl Slot {
     fn new(controller: Controller, team: u8) -> Self {
@@ -56,6 +59,7 @@ impl Slot {
             costume: 0,
             cpu_level: DEFAULT_CPU_LEVEL,
             team,
+            handicap: 0,
         }
     }
     /// Whether the slot takes part in the match.
@@ -64,11 +68,44 @@ impl Slot {
     }
 }
 
-/// The Versus rules the menus offer. Match modes (time, stamina, coins,
-/// handicap) join here as the simulator gains them.
+/// How a match is won: the last player with stocks, or the most KOs when
+/// the timer runs out. (Coin and Bonus matches are not ported.)
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[repr(u32)]
+pub enum Mode {
+    #[default]
+    Stock = 0,
+    Time = 1,
+}
+impl Mode {
+    pub fn from_u32(value: u32) -> Option<Self> {
+        Some(match value {
+            0 => Self::Stock,
+            1 => Self::Time,
+            _ => return None,
+        })
+    }
+}
+
+/// The Special Melee modes the menus offer, in menu order: those the
+/// simulator plays through. Stamina is ported but its KO at 0 HP is still
+/// guarded, so it waits.
+pub const SPECIAL_MODES: [SpecialMelee; 3] = [
+    SpecialMelee::SuperSuddenDeath,
+    SpecialMelee::Lightning,
+    SpecialMelee::SloMo,
+];
+
+/// The Versus rules the menus offer. Further modes join here as the
+/// simulator gains them.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Rules {
+    pub mode: Mode,
+    /// Stocks in a stock match, 1..=99.
     pub stocks: u8,
+    /// The time limit in minutes, 1..=99: a Time match's length, or an
+    /// optional limit on a stock match.
+    pub time_minutes: Option<u8>,
     /// A team battle: every player is on one of [`TEAMS`] teams.
     pub teams: bool,
     /// In a team battle, teammates' attacks land.
@@ -76,26 +113,51 @@ pub struct Rules {
     /// The Item Switch frequency: `None` off, `Some(0)` Very Low ..
     /// `Some(4)` Very High; every ported item kind switched on.
     pub item_frequency: Option<u8>,
+    /// Damage Ratio in tenths, 5..=20 (10 is 1.0x).
+    pub damage_ratio_tenths: u8,
+    /// One of [`SPECIAL_MODES`] instead of a plain Melee.
+    pub special: Option<SpecialMelee>,
 }
 impl Default for Rules {
     fn default() -> Self {
         Self {
+            mode: Mode::Stock,
             stocks: DEFAULT_STOCKS,
+            time_minutes: None,
             teams: false,
             friendly_fire: false,
             item_frequency: None,
+            damage_ratio_tenths: 10,
+            special: None,
         }
     }
 }
 /// The Item Switch's highest frequency (Very High).
 pub const MAX_ITEM_FREQUENCY: u8 = 4;
+/// A Time match's default length, as retail's rules screen starts.
+pub const DEFAULT_TIME_MINUTES: u8 = 2;
 impl Rules {
     pub fn validate(&self) -> Result<(), String> {
         if !(1..=99).contains(&self.stocks) {
             return Err("stocks must be 1 to 99".into());
         }
+        if self.time_minutes.is_some_and(|m| !(1..=99).contains(&m)) {
+            return Err("a time limit is 1 to 99 minutes".into());
+        }
+        if self.mode == Mode::Time && self.time_minutes.is_none() {
+            return Err("a Time match needs a time limit".into());
+        }
         if self.item_frequency.is_some_and(|f| f > MAX_ITEM_FREQUENCY) {
             return Err("item frequency must be 0 (very low) to 4 (very high)".into());
+        }
+        if !(5..=20).contains(&self.damage_ratio_tenths) {
+            return Err("the damage ratio is 0.5 to 2.0".into());
+        }
+        if self
+            .special
+            .is_some_and(|mode| !SPECIAL_MODES.contains(&mode))
+        {
+            return Err("that Special Melee mode is not playable yet".into());
         }
         Ok(())
     }
@@ -178,11 +240,13 @@ impl Lineup {
             return Some("no CPU players here yet");
         }
         if self.rules.item_frequency.is_some() && !stage.items_supported(self.active().count()) {
-            return Some(if (2..=4).contains(&self.active().count()) && stage.items_supported(2) {
-                "items here with two players only, so far"
-            } else {
-                "no items here yet"
-            });
+            return Some(
+                if (2..=4).contains(&self.active().count()) && stage.items_supported(2) {
+                    "items here with two players only, so far"
+                } else {
+                    "no items here yet"
+                },
+            );
         }
         None
     }
@@ -205,13 +269,25 @@ impl Lineup {
             if self.rules.teams {
                 player = player.with_team(slot.team);
             }
+            if slot.handicap != 0 {
+                player.handicap = Some(slot.handicap);
+            }
             player
         });
         let mut config = MatchConfig::versus(stage, players.collect::<Vec<_>>())
             .with_stocks(self.rules.stocks)
             .with_seed(Seed(seed));
-        config.rules.friendly_fire = self.rules.teams && self.rules.friendly_fire;
-        config.rules.items = self.rules.items();
+        let rules = &mut config.rules;
+        rules.mode = match self.rules.mode {
+            Mode::Stock => MatchKind::Stock,
+            Mode::Time => MatchKind::Time,
+        };
+        rules.time_limit_seconds = self.rules.time_minutes.map(|m| u32::from(m) * 60);
+        rules.friendly_fire = self.rules.teams && self.rules.friendly_fire;
+        rules.items = self.rules.items();
+        rules.damage_ratio_tenths = self.rules.damage_ratio_tenths;
+        rules.special = self.rules.special;
+        config.validate().map_err(|e| e.to_string())?;
         Ok(config)
     }
 }

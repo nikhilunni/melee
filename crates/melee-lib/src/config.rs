@@ -522,6 +522,11 @@ impl MatchConfig {
         self.seed = seed;
         self
     }
+    /// The checks `Match::new` makes of the configuration alone (no
+    /// assets): a menu can refuse an unsupported combination before loading.
+    pub fn validate(&self) -> Result<(), StartError> {
+        self.setup().map(|_| ())
+    }
     pub(crate) fn setup(&self) -> Result<Setup, StartError> {
         if !(2..=4).contains(&self.players.len()) {
             return Err(StartError::InvalidConfig("a match has two to four players"));
