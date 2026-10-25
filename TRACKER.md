@@ -4,13 +4,9 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 24 integrated; wave 25 paused)
+## Current state (2026-10-25, wave 24 integrated; wave 26 running)
 
-- **Paused at the user's request:** no agent, build, sweep or capture is
-  running. MAIN is verified through wave 24; wave-25 ports are not merged.
-  Ness has uncommitted, unbuilt edits in its isolated worktree; ReDead and
-  copied-Sheik worktrees are clean. Resume details and evidence are in
-  `docs/handoffs/WAVE25_PAUSED.md`. Do not resume without user instruction.
+- **Wave 26 running (2026-10-25):** the user ended the pause; six agents (the cap) resume Ness, ReDead and copied Sheik and start heavy carry/throw, Flat Zone and more stages (`target/wave26/`).
 - **Original command-owner invariants are verified at source `f570da10`:**
   Swing42 and Smash42 missing static rows are proven retail assertions,
   with original asset ownership, entry/reset and asynchronous-writer proofs.
