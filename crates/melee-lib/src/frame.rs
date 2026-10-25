@@ -4284,14 +4284,11 @@ fn resolve_issued_sounds(
     // flush created their effects too (efAsync_QueueFlush, newest first).
     let sealed_graphics = below_link_9 && f.resolve_graphics_commands_before_seal(assets, rng);
     if (sound_waits || sealed_graphics) && below_link_9 {
-        // A teardown queued ahead of those graphics ran before the change
-        // (Luigi's Green Missile landing: efLib_DestroyAll, then the motion
-        // change whose flush creates the landing dust).
-        let timing = if sealed_graphics {
-            melee_ef::EffectTiming::SealedAfterTeardown
-        } else {
-            melee_ef::EffectTiming::Sealed
-        };
+        // A teardown queued before the motion change runs before its sealed
+        // effects, including when only a new sound waits behind the flush.
+        // Retail 0x800E3E7C destroys old Gerudo Dragon effects before the
+        // landing entry flushes pending graphics (fighter.c:951).
+        let timing = melee_ef::EffectTiming::SealedAfterTeardown;
         effects.flush::<melee_ft::fighter::RetailTrig>(
             timing,
             player,
@@ -4319,8 +4316,10 @@ fn resolve_issued_graphics(
     rng: &mut gekko_math::HsdRng,
 ) -> Result<()> {
     if !f.commands.graphics.is_empty() || !f.commands.landing_effects.is_empty() {
+        // Pending graphics may already have been resolved by Animation:
+        // their seal still follows any explicit teardown before this entry.
         effects.flush::<melee_ft::fighter::RetailTrig>(
-            melee_ef::EffectTiming::Sealed,
+            melee_ef::EffectTiming::SealedAfterTeardown,
             player,
             &mut f.core,
             &scene_assets.common_particle_bank,
@@ -5381,3 +5380,6 @@ mod klaptrap_birth_tests;
 
 #[cfg(test)]
 mod held_down_entry_tests;
+
+#[cfg(test)]
+mod particle_order_tests;

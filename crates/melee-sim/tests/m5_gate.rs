@@ -7339,3 +7339,91 @@ fn held_sword_down_entries_complete_captures() {
         assert_eq!(draws, expected_draws, "{name} whole raw ledger");
     }
 }
+
+/// ftCa_SpecialAirS_Coll800E3E50 destroys old effects before the landing
+/// motion flushes a pending0x414; its new225 family must survive that teardown.
+#[test]
+fn explicit_teardown_before_motion_flush_whole_700_and_genuine_rng() {
+    const NAME: &str = "corpus_v3_ys_ganondorf_fox4_e281b1a7a_p1";
+    assert_eq!(combat_gate_ticks(NAME, 700), Some(10_596));
+    let path =
+        Path::new(env!("CARGO_MANIFEST_DIR")).join(format!("../../harness/scenarios/{NAME}.toml"));
+    let scenario = Scenario::load(&path).unwrap();
+    let metadata = scenario.trace_path("particles.jsonl.initial.jsonl.meta.json");
+    let initial: serde_json::Value =
+        serde_json::from_str(&melee_test_support::trace::read_to_string(&metadata).unwrap())
+            .unwrap();
+    assert_eq!(initial["sampling"], "savestate_loaded_before_first_tick");
+    // Independent pre-tick observation, not an inverted final-seed chain.
+    let mut rng = gekko_math::HsdRng::new(initial["particles"]["seed"].as_u64().unwrap() as u32);
+    assert_eq!(rng.seed, 3_998_583_921);
+    let boundary_initial: serde_json::Value = serde_json::from_str(
+        &melee_test_support::trace::read_to_string(
+            &scenario.boundary_path("particles.jsonl.initial.jsonl"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let boundary_metadata: serde_json::Value = serde_json::from_str(
+        &melee_test_support::trace::read_to_string(
+            &scenario.boundary_path("particles.jsonl.initial.jsonl.meta.json"),
+        )
+        .unwrap(),
+    )
+    .unwrap();
+    let saved_metadata: serde_json::Value = serde_json::from_str(
+        &std::fs::read_to_string(scenario.savestate_path().with_extension("sav.json")).unwrap(),
+    )
+    .unwrap();
+    assert_eq!(boundary_initial["state"]["rng.seed"]["v"], rng.seed);
+    assert_eq!(boundary_metadata["particles"]["seed"], rng.seed);
+    assert_eq!(saved_metadata["seed"], rng.seed);
+    // The importer independently validates this same recorded seed against
+    // saved RAM804D5F90; warm Scenario.seed is not a setup override.
+    let _saved_boundary = InitialState::from_savestate_traces(&scenario).unwrap();
+    // Row0 below has no draws and compares the public tick snapshot's seed
+    // too; no private simulator field is needed to validate the boundary.
+
+
+    let ledger = scenario.trace_path("ledger.raw.jsonl");
+    let rows = melee_test_support::trace::read_to_string(&ledger).unwrap();
+    let mut simulation = trace::simulation_displayed_as(&scenario, &ledger).unwrap();
+    let mut draws = 0;
+    let mut count = 0;
+    for (frame, line) in rows.lines().enumerate() {
+        let row: serde_json::Value = serde_json::from_str(line).unwrap();
+        assert_eq!(row["frame"], frame);
+        let raw_draws = row["rng_draws"].as_array().unwrap();
+        if frame == 0 {
+            assert!(raw_draws.is_empty());
+        }
+        for draw in raw_draws {
+            rng.rand();
+            assert_eq!(
+                u64::from(rng.seed),
+                draw["seed"].as_u64().unwrap(),
+                "tick{frame}"
+            );
+            let pc = draw["pc"].as_u64().unwrap();
+            assert!(matches!(pc, 0x8038_054C | 0x8038_059C));
+            let caller = draw["lr"].as_u64().unwrap() - 4;
+            if (0x8039_8F8C..0x8039_F6CC).contains(&caller) {
+                // The ordered caller sequence is checked by combat_gate_ticks;
+                // its retail draws all enter the HSD_Rand kernel at this PC.
+                assert_eq!(pc, 0x8038_054C);
+            }
+            draws += 1;
+        }
+        assert_eq!(u64::from(rng.seed), row["seed"].as_u64().unwrap());
+        let actual = simulation.tick().unwrap();
+        assert_eq!(
+            actual.state["rng.seed"],
+            melee_diff::Value::UInt(u64::from(rng.seed)),
+            "tick{frame}"
+        );
+        count += 1;
+    }
+    assert_eq!(count, 700);
+    assert_eq!(draws, 11_383);
+    assert_eq!(rng.seed, 1_884_807_614);
+}

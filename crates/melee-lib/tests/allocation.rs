@@ -1684,3 +1684,93 @@ fn held_down_entry_step_observe_and_capture_allocate_nothing_after_live_clone() 
         );
     }
 }
+
+#[test]
+fn sealed_effect_teardown_step_and_capture_allocate_nothing_after_live_clone() {
+    let root = std::env::var_os("MELEE_DATA_ROOT").map_or_else(
+        || Path::new(env!("CARGO_MANIFEST_DIR")).join("../.."),
+        std::path::PathBuf::from,
+    );
+    let scenario = melee_sim::scenario::Scenario::load(
+        &root.join("harness/scenarios/corpus_v3_ys_ganondorf_fox4_e281b1a7a_p1.toml"),
+    )
+    .unwrap();
+    assert!(melee_test_support::require_files(scenario.required_files()));
+    assert_eq!(scenario.frames, 700);
+    let mut game = diagnostics::import_match(&scenario).unwrap();
+    let mut capture = presentation::Presentation::new(&game).unwrap();
+    let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+    let mut branch = None;
+    for tick in 0..700 {
+        if tick == 598 {
+            // Clone construction/preparation is intentionally outside the
+            // measured intervals; both branches independently cross landing.
+            let cloned = game.clone();
+            let cloned_capture = presentation::Presentation::new(&cloned).unwrap();
+            assert_eq!(
+                diagnostics::inspect(&game).unwrap(),
+                diagnostics::inspect(&cloned).unwrap()
+            );
+            branch = Some((cloned, cloned_capture));
+        }
+        let inputs = Inputs(std::array::from_fn(|port| pads.sample(tick, port)));
+        assert_eq!(measure(&mut game, &inputs), 0, "step{tick}");
+        COUNT.with(|v| v.set(0));
+        ENABLED.with(|v| v.set(true));
+        let observed = game.observe().map(|v| v.fighters().count());
+        let result = capture.capture(&game);
+        ENABLED.with(|v| v.set(false));
+        assert_eq!(observed.unwrap(), 2);
+        result.unwrap();
+        assert_eq!(COUNT.with(Cell::get), 0, "observe/capture{tick}");
+        if let Some((cloned, cloned_capture)) = &mut branch {
+            assert_eq!(measure(cloned, &inputs), 0, "clone step{tick}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let observed = cloned.observe().map(|v| v.fighters().count());
+            let result = cloned_capture.capture(cloned);
+            ENABLED.with(|v| v.set(false));
+            assert_eq!(observed.unwrap(), 2);
+            result.unwrap();
+            assert_eq!(COUNT.with(Cell::get), 0, "clone observe/capture{tick}");
+            assert_eq!(
+                diagnostics::inspect(&game).unwrap(),
+                diagnostics::inspect(cloned).unwrap(),
+                "independent continuation{tick}"
+            );
+            assert_eq!(capture.visibility(), cloned_capture.visibility());
+            // Presentation keeps unused instance capacity between captures;
+            // a newly prepared clone starts those inactive slots at zero.
+            // Every actual draw range and its matrices must still be equal.
+            for mesh in capture.meshes() {
+                let range = capture.instance_range(mesh.instance_group);
+                assert_eq!(range, cloned_capture.instance_range(mesh.instance_group));
+                assert_eq!(
+                    &capture.instances()[range.start as usize..range.end as usize],
+                    &cloned_capture.instances()[range.start as usize..range.end as usize],
+                    "active draw group{} tick{tick}",
+                    mesh.instance_group,
+                );
+            }
+            assert_eq!(capture.instances().len(), cloned_capture.instances().len());
+            for (index, (original, cloned)) in capture
+                .instances()
+                .iter()
+                .zip(cloned_capture.instances())
+                .enumerate()
+            {
+                if original != cloned {
+                    assert!(
+                        capture.meshes().iter().all(|mesh| {
+                            !capture
+                                .instance_range(mesh.instance_group)
+                                .contains(&(index as u32))
+                        }),
+                        "different active backing slot{index} tick{tick}"
+                    );
+                }
+            }
+        }
+    }
+    assert!(branch.is_some());
+}
