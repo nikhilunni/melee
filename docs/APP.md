@@ -1,8 +1,8 @@
 # The playable app: one core, native hosts
 
 The game ships as a macOS app and a web page with the same flow: give it a
-Super Smash Bros. Melee NTSC-U 1.02 disc image, pick two characters and a
-stage, play, see the results. Nothing is hard-coded: no ISO path, no
+Super Smash Bros. Melee NTSC-U 1.02 disc image, pick up to four players
+(human or CPU) and the rules, pick a stage, play, see the results. Nothing is hard-coded: no ISO path, no
 extracted files directory.
 
 The structure follows Ghostty (libghostty plus a native "apprt" per
@@ -28,7 +28,8 @@ the game into. Hosts hold no game or menu rules.
                                 |                                |
             apps/macos: Swift + AppKit (SwiftUI views)   crates/melee-web/www: HTML/CSS/JS
             NSWindow, menu bar, open panel, Dock drop,   drop zone, file picker, DOM menus,
-            CAMetalLayer, CADisplayLink, keyboard        WebGPU canvas, rAF loop, keyboard
+            CAMetalLayer, CADisplayLink, keyboard,       WebGPU canvas, rAF loop, keyboard,
+            GameController pads                          Gamepad API pads
 ```
 
 ## The flow (`app::App`)
@@ -43,11 +44,33 @@ Disc -> Characters -> Stages -> Loading -> Match -> Results
   1.01), region (PAL, Japanese), game, a Wii disc, or a container format
   (.zip, .7z, .rvz, .wia, .gcz, .ciso, .wbfs, NKit). A short image fails
   before any file is read.
-- **Characters.** Two keyboard players. Character ids are indices into
+- **Characters.** Four slots (`players.rs`), one per port: human, CPU
+  (level 1-9) or off; slots 1-2 start human. Character ids are indices into
   `Character::ALL` (the retail CSS reading order; `catalog::grid_cell`
-  gives the retail 9/9/7 grid, Sheik in Kirby's cell). Picking the other
-  player's character moves to the first costume they are not wearing;
-  costume changes skip theirs. Stocks 1 to 99.
+  gives the retail 9/9/7 grid, Sheik in Kirby's cell). Picking for an off
+  slot joins it; a pick moves to the first costume no other active slot
+  wears, and costume changes skip theirs. A match needs two active slots
+  with characters (two teams in a team battle). Each slot also holds a
+  team colour and a handicap.
+- **Rules** (`players::Rules`, settable on the menu screens): Stock (1-99)
+  or Time (1-99 minutes, with Sudden Death on a tie; a stock match may
+  also have a limit), teams and friendly fire, the Item Switch (off, very
+  low .. very high, every ported kind on: `melee_lib::ported_item_switch`),
+  Damage Ratio and the Special Melee modes the simulator plays (Super
+  Sudden Death, Lightning, Slo-Mo). New modes add a field and a row.
+  `MatchConfig::validate` refuses a combination before loading.
+- **What the simulator witnesses.** CPU players, items and player counts
+  are offered only inside melee-lib's single lists: `Stage::cpu_supported`
+  and `Stage::CPU_MAX_PLAYERS` (a CPU among three or more players hits the
+  guarded opponent ranking, ftCo_800A53DC), `Stage::items_supported`
+  (two players on FD or Battlefield). `App::stage_unavailable` names why
+  a stage cannot host the picks; hosts grey it out with that reason.
+- **Input.** Input device n (keyboard layout n, gamepad n in connection
+  order) drives the match's nth human player; CPU ports read nothing and
+  record neutral. A gamepad is reported as a GameCube controller
+  (`input::Gamepad`: sticks -1..1 scaled to retail's 80 units, analog
+  triggers to 140, L/R clicked at a full press); the keyboard leads while
+  in use.
 - **Stages.** Choosing one builds the `MatchConfig` with a host-random seed
   (recorded in the replay) and lists the files to read
   (`GameAssets::files`, minus those already fetched).
@@ -112,7 +135,7 @@ page blocked at most about 0.35 s at a time by one step: posing the scene or
 building the renderer). Until a preview is rendered the art call fails (C)
 or returns null (wasm); a preview that fails stays so and is logged.
 `melee_app_stage_previews_ready` / `stage_previews_ready()` turn
-true when all six are settled. `examples/stage_previews.rs` writes them to
+true when every preview is settled. `examples/stage_previews.rs` writes them to
 `target/` for inspection (never commit them).
 
 Everything above is unit-tested without a GPU (`cargo test -p
@@ -126,7 +149,7 @@ and determinism, compared in memory).
 ## The C API
 
 `crates/melee-platform/include/melee_platform.h`, version
-`MELEE_API_VERSION` (3; bump on any incompatible change, hosts check it at
+`MELEE_API_VERSION` (4; bump on any incompatible change, hosts check it at
 start). One opaque `melee_app_t` on one thread; plain structs out; static
 strings in catalog structs; calls that can fail return `bool` and leave
 the message in `melee_app_last_error`; user-facing notices come from
@@ -180,9 +203,10 @@ the running match after `MELEE_APP_SCREEN_DELAY` seconds; results are a
 preview with P1 winning); `MELEE_APP_PREVIEW_PERCENTS=57,142` shows those
 HUD percents. `MELEE_APP_KEYS=right,down,enter,tab,e,...` feeds menu keys
 to the model 0.25 s apart and prints the cursor after each.
-`MELEE_APP_CLICK=x,y` (fractions of the window content, top-left origin)
-delivers one real left click to the window after 1 s and prints the screen
-and whether a sheet opened: it exercises hit-testing, which `MELEE_APP_KEYS`
+`MELEE_APP_CLICK=x,y` (fractions of the window content, top-left origin;
+several as `x,y;x,y;...`, one per `MELEE_APP_CLICK_INTERVAL` seconds,
+default 1) delivers real left clicks to the window and prints after each
+the screen, whether a sheet opened, the rules, the slots and the live HUD: it exercises hit-testing, which `MELEE_APP_KEYS`
 bypasses (e.g. `0.438,0.758` is Open Disc… at 1280x800 with a recent disc).
 Never test with global synthetic events (`osascript` key codes, `CGEvent`):
 they reach whatever app is frontmost.
@@ -261,9 +285,16 @@ FNV-1a of `diagnostics::inspect` and `observe`.
   (`melee-sim`/`Recording::replay`). The page must be reloaded.
 - **Loading blocks briefly.** Building the match (parsing, scene upload)
   runs on the main thread after the files are read; a few hundred ms.
-- **Input.** Two players on one keyboard; gamepads are not supported yet.
-- **Rendering.** Some characters and stages cannot be presented yet;
-  the app reports the error and returns to stage select.
+- **Input.** Two keyboard layouts; more humans need gamepads. Menus are
+  driven by keyboard and pointer, not pads; a pad's Start pauses a running
+  match but cannot resume a paused one (the display loop stops).
+- **Rendering.** Every catalog character and stage loads and draws
+  (`tests/render_smoke.rs`, a frame per pick under wgpu validation). A
+  renderer failure still returns to stage select with the error.
+- **Sudden Death.** A timed-out tie continues into `Match::sudden_death`;
+  its replay starts with the Sudden Death (one configuration per replay).
+  One among some of the players is refused by the simulator and stays a
+  draw with a notice.
 - **Art.** The core decodes the menu art and renders the stage previews
   (above); both bindings hand them out (`melee_app_art`, `WebApp.art`).
   On the web the preview steps run on the page's thread, so the menus
