@@ -5338,3 +5338,6 @@ mod held_back_air_tests;
 
 #[cfg(test)]
 mod held_f_hi_entry_tests;
+
+#[cfg(test)]
+mod giant_punch_invariant_tests;

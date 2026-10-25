@@ -296,14 +296,15 @@ fn charge_hitboxes<C: GiantPunchUser>(f: &mut Fighter) {
     let bonus = C::scratch(f).swings * C::attributes(f).damage_per_swing;
     for index in 0..2 {
         if C::scratch(f).base_damage[index] == -1 {
-            // x914[index] is read whatever its state: a capsule the script
-            // has not made keeps its last damage.
+            // Retail reads x914[1] after testing only x914[0]. Original
+            // PlDk.dat and PlKb.dat punch scripts create/clear the pair in
+            // one command batch; their SkipHit transitions retain both.
             let damage = f.commands.hitboxes[index]
                 .as_ref()
                 .map(|hit| hit.descriptor.damage)
                 .unwrap_or_else(|| {
-                    unimplemented!(
-                        "ftdonkeyspecialn.c:165: Giant Punch hitbox {index} not created with hitbox 0"
+                    unreachable!(
+                        "ftdonkeyspecialn.c:165: Giant Punch paired-hitbox invariant: hitbox {index} missing with hitbox 0 active"
                     )
                 });
             C::scratch(f).base_damage[index] = gekko_math::msl::fctiwz(damage);
@@ -313,9 +314,9 @@ fn charge_hitboxes<C: GiantPunchUser>(f: &mut Fighter) {
     }
 }
 
-/// ftDk_SpecialN_Anim (8010EB98), ftDk_SpecialNFull_Anim (8010ED04),
-/// ftDk_SpecialAirN_Anim (8010EF40) and ftDk_SpecialAirNFull_Anim
-/// (8010F0D0), and Kirby's ftKb_Dk* twins. `CHARGED`: the partial punch
+/// ftDk_SpecialN_Anim (8010E930), ftDk_SpecialNFull_Anim (8010EB0C),
+/// ftDk_SpecialAirN_Anim (8010EDD8) and ftDk_SpecialAirNFull_Anim
+/// (8010EF7C), and Kirby's ftKb_Dk* twins. `CHARGED`: the partial punch
 /// scales its hitboxes (the full punch's script carries its own damage).
 /// Only the grounded rows lunge.
 fn punch_anim<C: GiantPunchUser, const AIR: bool, const CHARGED: bool>(
