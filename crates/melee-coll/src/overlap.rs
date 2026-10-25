@@ -27,6 +27,10 @@ pub struct OverlapBody {
     pub linked: bool,
     pub ignore_others: bool,
     pub hitlag: bool,
+    /// x2219_b1: dead, waiting to respawn, entering or on the revival
+    /// platform. ftCommon_8007E0E4 does not nudge such a fighter, though
+    /// others still count it.
+    pub out_of_play: bool,
     /// player_id: fighters of one player never push each other
     /// (ftLib_80086FD4).
     pub player: u8,
@@ -67,7 +71,9 @@ pub fn nudge(
 ) -> Vec2 {
     let body = &bodies[slot];
     let mut velocity = Vec2::ZERO;
-    if !body.eligible || body.hitlag {
+    // ftCommon_8007E0E4: x2219_b1, x2219_b5 and the ground (x221F_b3
+    // fighters run no procs).
+    if !body.eligible || body.hitlag || body.out_of_play {
         return velocity;
     }
     let (depth_step, depth_limit) = if body.secondary {
