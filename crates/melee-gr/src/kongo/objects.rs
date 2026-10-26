@@ -15,6 +15,31 @@ pub fn log_joint(map: u8) -> i32 {
         _ => unreachable!("Kongo Jungle log map {map}"),
     }
 }
+/// The scheduler keys a log may take: its map's own, then a second one per
+/// map for a log that comes while the last still floats (Ground_GetStageGObj
+/// makes a new GObj and model each time).
+pub const LOG_KEYS: [u8; 4] = [1, 2, 12, 13];
+/// The slot in `Kongo::logs` of a log key.
+pub fn log_slot(key: u8) -> Option<usize> {
+    LOG_KEYS.iter().position(|&k| k == key)
+}
+/// The map a log key shows.
+pub fn log_map(key: u8) -> u8 {
+    match key {
+        1 | 12 => 1,
+        2 | 13 => 2,
+        _ => unreachable!("Kongo Jungle log key {key}"),
+    }
+}
+/// The keys a map's logs may take, the map's own first.
+pub fn log_keys(map: u8) -> [u8; 2] {
+    match map {
+        1 => [1, 12],
+        2 => [2, 13],
+        _ => unreachable!("Kongo Jungle log map {map}"),
+    }
+}
+
 /// grKongo_801D7E78: the descendant whose world translation places a log
 /// or a passer-by.
 pub const PLACE_JOINT: usize = 2;
@@ -33,6 +58,8 @@ pub struct Log {
     pub age: i16,
     /// gp+CC: its x offset.
     pub offset: f32,
+    /// Its place in the order logs were made (`Kongo::log_births`).
+    pub born: u32,
 }
 
 /// What a log step asks of the engine.
@@ -66,6 +93,7 @@ impl Log {
             last_stood: 0,
             age: 0,
             offset,
+            born: 0,
         }
     }
 

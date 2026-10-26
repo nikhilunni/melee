@@ -148,20 +148,37 @@ impl InitialState {
         // it_8026D018 draws its first interval when it creates the spawner.
         let spawner_draws =
             usize::from(create_item_spawner(scenario, &assets, &mut HsdRng::default()).is_some());
-        let mut rng = HsdRng::new(before_setup(
-            boundary_seed,
-            setup_draws(
-                assets.stage_desc.kind,
-                scenario.roster().iter().map(|entry| entry.descriptor.kind),
-            )? + spawner_draws,
-        ));
+        let fixed_draws = setup_draws(
+            assets.stage_desc.kind,
+            scenario.roster().iter().map(|entry| entry.descriptor.kind),
+        )? + spawner_draws;
+        // grinishie1.c:465: Mushroom Kingdom's first `?` blocks.
+        let hatena = assets.stage_desc.kind == GrKind::Inishie1
+            && !scenario.sudden_death
+            && scenario.items.common_switched_on();
+        let hatena_draws = if hatena {
+            hatena_setup_draws(boundary_seed, fixed_draws, spawner_draws)?
+        } else {
+            0
+        };
+        let mut rng = HsdRng::new(before_setup(boundary_seed, fixed_draws + hatena_draws));
         // fn_8016E730: Item_80266FCC, then it_8026D018 (the random item
         // spawner), after the stage's files load (Stage_802251E8) and before
         // its maps are created (Stage_8022524C), where every stage draws.
         let item_spawner = create_item_spawner(scenario, &assets, &mut rng);
         let mut particles = ParticleSystem::default();
-        let (mut stage, mut stage_animations) =
-            initialize_stage(&assets, &scenario.slippi, item_spawner.is_some(), &mut rng, &mut particles, &mut map)?;
+        let (mut stage, mut stage_animations) = initialize_stage(
+            &assets,
+            &scenario.slippi,
+            if assets.stage_desc.kind == GrKind::Inishie1 {
+                hatena
+            } else {
+                item_spawner.is_some()
+            },
+            &mut rng,
+            &mut particles,
+            &mut map,
+        )?;
         if let SceneStage::Stadium(stadium) = &mut stage {
             if scenario.slippi.stadium_preload {
                 // Init isLoaded Bool.asm (0x801D14C8), in map 2's init.
@@ -466,6 +483,38 @@ pub(crate) fn boundary_seed_after(
     Ok(rng.seed)
 }
 
+/// The longest run of grInishie1_801FAD84's second-brick redraws tried.
+const HATENA_MAX_DRAWS: usize = 64;
+
+/// grInishie1_801FAD84's draws (grinishie1.c:465-492): a brick, then
+/// redraws until a different one. Their count varies, so it is the one
+/// that, run from the seed it implies, consumes exactly that many draws
+/// (between the spawner's interval and the fixed draws after). Two
+/// consistent counts would leave the boundary ambiguous.
+fn hatena_setup_draws(boundary_seed: u32, fixed_draws: usize, before: usize) -> Result<usize> {
+    let consumed = |draws: usize| {
+        let mut rng = HsdRng::new(before_setup(boundary_seed, fixed_draws + draws));
+        for _ in 0..before {
+            rng.rand();
+        }
+        let first = rng.randi(19);
+        let mut count = 2;
+        while rng.randi(19) == first && count <= HATENA_MAX_DRAWS {
+            count += 1;
+        }
+        count
+    };
+    let mut consistent = (2..=HATENA_MAX_DRAWS).filter(|&draws| consumed(draws) == draws);
+    let draws = consistent
+        .next()
+        .ok_or_else(|| anyhow::anyhow!("grInishie1_801FAD84: no draw count fits the boundary seed"))?;
+    ensure!(
+        consistent.next().is_none(),
+        "grInishie1_801FAD84: the boundary seed fits two draw counts"
+    );
+    Ok(draws)
+}
+
 fn before_setup(mut seed: u32, draws: usize) -> u32 {
     const INVERSE_MULTIPLIER: u32 = 0xB9B3_3155;
     for _ in 0..draws {
@@ -708,7 +757,7 @@ fn initialize_stage(
         }
         GrKind::Inishie1 => {
             let (stage, animations) =
-                crate::scene_stage::inishie1::initialize(assets, map, items_on)?;
+                crate::scene_stage::inishie1::initialize(assets, map, items_on, rng)?;
             stage_animations = animations;
             stage
         }

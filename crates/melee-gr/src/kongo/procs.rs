@@ -6,7 +6,7 @@ use crate::last::procs::ProcRegistration;
 pub fn map_callback(map: u8) -> Option<(&'static str, u32)> {
     match map {
         0 => None,
-        1 | 2 => Some(("grKongo_801D6198", 0x801D6198)),
+        1 | 2 | 12 | 13 => Some(("grKongo_801D6198", 0x801D6198)),
         3 => Some(("grKongo_801D606C", 0x801D606C)),
         4 => Some(("grKongo_801D5FDC", 0x801D5FDC)),
         5 => Some(("grKongo_801D577C", 0x801D577C)),

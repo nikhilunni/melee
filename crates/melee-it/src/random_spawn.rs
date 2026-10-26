@@ -36,6 +36,12 @@ impl ItemRules {
     pub fn enabled(&self) -> bool {
         self.frequency >= 0
     }
+    /// it_8026D324 for some kind from It_Common_Start to It_Common_End
+    /// (Capsule up to, not including, It_Kind_L_Gun_Ray), with the mask
+    /// it_8026D018 stores outside Sudden Death (grinishie1.c:465).
+    pub fn common_switched_on(&self) -> bool {
+        self.enabled() && self.mask & ((1u64 << PICKABLE_KINDS) - 1) != 0
+    }
     /// The Item Switch frequencies the spawner reads interval ranges for.
     pub fn validate(&self) -> Result<(), String> {
         if !(-1..=4).contains(&self.frequency) {

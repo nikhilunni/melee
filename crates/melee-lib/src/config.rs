@@ -374,12 +374,11 @@ impl Stage {
     /// Whether the Item Switch is witnessed for `players` players on the
     /// stage (it_8026D018's weights scale with the player count); starting
     /// elsewhere with items on fails closed. The single list menus read.
-    /// Every ported stage but Mushroom Kingdom, whose `?` blocks hand out
-    /// items (grinishie1.c:465, not ported); two players on each
+    /// Every ported stage: two players on each
     /// (`w26_start_<Stage>_items_all`, `w27_start_<Stage>_items_all`), three
     /// and four on Final Destination, Battlefield and Kongo Jungle.
     pub fn items_supported(self, players: usize) -> bool {
-        (2..=4).contains(&players) && self.is_ported() && self != Self::MushroomKingdom
+        (2..=4).contains(&players) && self.is_ported()
     }
     pub(crate) fn descriptor(self) -> Option<&'static crate::scene_stage::StageDescriptor> {
         crate::scene_stage::descriptor(self.name())

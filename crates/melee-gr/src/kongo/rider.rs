@@ -25,10 +25,11 @@ impl Rider {
     /// grKongo_801D651C: Randi3 selects real pair7/4,8/5,9/6.
     pub fn new(rng: &mut HsdRng) -> Self {
         let choice = rng.randi(3);
+        // grKg_803B7FD4's pairs (7, 4), (8, 5), (9, 6): the file's spline.
         let spline = match choice {
             0 => 4,
-            2 => 6,
-            _ => unimplemented!("grKongo_801D651C: path choice1 lacks a complete witness"),
+            1 => 5,
+            _ => 6,
         };
         Self {
             spline,
@@ -67,11 +68,11 @@ impl Rider {
         if self.min_z > position.z {
             self.min_z = position.z;
         }
-        if self.max_y - previous.y < AUDIO_DROP_DISTANCE
-            && self.max_y - position.y > AUDIO_DROP_DISTANCE
-        {
-            unimplemented!("grKongo_801D6668: Ground_801C5440 audio envelope is unwitnessed");
-        }
+        // Ground_801C5440(gp, 0, 0x5A550) and Ground_801C5630 once the rider
+        // falls AUDIO_DROP_DISTANCE below its peak: a sound and its volume
+        // (lbAudioAx_800237A8 draws nothing), no state.
+        let _drop_sound = self.max_y - previous.y < AUDIO_DROP_DISTANCE
+            && self.max_y - position.y > AUDIO_DROP_DISTANCE;
         (position, rotation)
     }
 }
@@ -88,8 +89,9 @@ pub fn orientation(spline: &Spline, parameter: f32) -> (Vec3, Vec3) {
     } else {
         forward.y
     };
+    // A steep tangent takes z as its reference instead of y.
     let reference = if f64::from(y) > VERTICAL_REFERENCE_LIMIT {
-        unimplemented!("Ground_801C4B50: vertical tangent reference is unwitnessed")
+        Vec3::new(0.0, 0.0, 1.0)
     } else {
         Vec3::new(0.0, 1.0, 0.0)
     };
@@ -98,21 +100,30 @@ pub fn orientation(spline: &Spline, parameter: f32) -> (Vec3, Vec3) {
     let yaw = asinf(side.z);
     let z = if side.z < 0.0 { -side.z } else { side.z };
     if z >= EULER_SINGULAR_LIMIT {
-        unimplemented!("Ground_801C4B50: singular Euler branch is unwitnessed");
+        // ground.c:2861-2867: pitch from the tangent alone, no roll.
+        let mut pitch = asinf(-forward.y);
+        if (forward.x * cosf(pitch)) * gekko_math::msl::sinf(yaw) < 0.0 {
+            pitch = pi_minus(pitch);
+        }
+        return (position, Vec3::new(pitch, yaw, 0.0));
     }
     let cos_yaw = cosf(yaw);
-    let pitch = asinf(up.z / cos_yaw);
+    let mut pitch = asinf(up.z / cos_yaw);
     let cos_yaw = cosf(yaw); // retail4CB4 before cos(pitch)4CC0.
     let cos_pitch = cosf(pitch);
     if (forward.z * cos_pitch) * cos_yaw < 0.0 {
-        unimplemented!("Ground_801C4B50: double PI-pitch branch is unwitnessed");
+        pitch = pi_minus(pitch);
     }
     let cos_yaw = cosf(yaw);
-    let roll = asinf(-side.y / cos_yaw);
+    let mut roll = asinf(-side.y / cos_yaw);
     let cos_roll = cosf(roll); // retail4D04 before cos(yaw)4D10.
     let cos_yaw = cosf(yaw);
     if (-side.x * cos_yaw) * cos_roll < 0.0 {
-        unimplemented!("Ground_801C4B50: double PI-roll branch is unwitnessed");
+        roll = pi_minus(roll);
     }
     (position, Vec3::new(pitch, yaw, roll))
+}
+/// `M_PI - angle` in double, then frsp (retail 4C84 / 4CE0 / 4D34).
+fn pi_minus(angle: f32) -> f32 {
+    (core::f64::consts::PI - f64::from(angle)) as f32
 }

@@ -45,6 +45,9 @@ impl ArticleModel {
                 let material = hsd_anim::load::material_animation(archive, anim).map_err(error)?;
                 tree.add_anim_all(root, None, Some(&material));
             }
+            // Room for one step's keys (the Klaptrap's bite sets bytes):
+            // capture clears them, so the tick path never grows the list.
+            tree.events.reserve(POSE_EVENT_CAPACITY);
             states.push(tree);
         }
         if copy != 0 {
@@ -171,6 +174,8 @@ pub(super) struct ItemPose {
     /// The rest pose followed by one tree per visual state.
     states: Vec<JObjTree>,
 }
+/// Animation keys one capture step may fire.
+const POSE_EVENT_CAPACITY: usize = 64;
 impl ItemPose {
     pub fn new(
         archive: &Archive,
@@ -252,6 +257,8 @@ impl ItemPose {
         }
         tree.req_anim_all(self.root, item.animation_frame);
         tree.anim_all::<melee_ft::fighter::RetailTrig>(self.root);
+        // Drawing reads no key the step fired.
+        tree.events.clear();
         clear_root_srt(tree, self.root);
     }
 }

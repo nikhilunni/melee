@@ -6749,6 +6749,27 @@ static CORPUS_V3_MATCHES: [(&str, usize); 888] = [
     ("corpus_v3_kj_fox_marth4_e726cfdde_p2", 1666),
     ("corpus_v3_kj_fox_marth4_e9943b4ab_p0", 1666),
     ("corpus_v3_kj_fox_marth4_ec13743d5_p1", 1666),
+    // A second map-1 log while the first floats (grKongo_801D5340 makes a
+    // new Ground; the scheduler's second log key).
+    ("corpus_v3_kj_fox_marth4_e255c070a_p1", 3635),
+    // Both logs of map 1 afloat: the newer lands and takes collision joint
+    // 0 and its callback, the older sinks (disabling the joint), goes
+    // (Ground_801C4A08) and the newer floats on; logs sinking when stood
+    // on, old or crowded (grKongo_801D7F78 over logs, passers-by and the
+    // rider); the path rider on grKg_803B7FD4's second spline, its drop
+    // sound and Ground_801C4B50's steep and corrected angles; the Klaptrap
+    // switching bite and ride at its loop's wrap (lb_8000B134), letting go
+    // past z 0 (it_802E1C84), falling out of the blast zone and taking the
+    // rider with it (grKongo_801D8058). Particle dumps capped or partial;
+    // the RNG ledgers are complete.
+    ("w27k_kj_e2b9e1400_p1", 3449),
+    ("w27k_kj_ee2e29518_p2", 4363),
+    ("w27k_kj_ef89b3e70_p0", 2218),
+    ("w27k_kj_ef89b3e70_p2", 4139),
+    // A riding Klaptrap struck (it_2725_Logic10_DmgReceived: it_8027B798's
+    // launch and two random turns, tumbling out of the blast zone).
+    ("w27k_kjcpu_e1cda1301_p0", 2917),
+    ("w27k_kjcpu_eb4935276_p0", 2644),
     // Hyrule Temple (grshrine.c): static maps and the permanent stage wind
     // (grShrine_80201C64's lb_80011A50), which keeps Marth's cape dynamic.
     ("corpus_v3_ht_fox_marth4_ef89b3e70_p0", 5686),
@@ -8027,6 +8048,10 @@ const WIDENED_LAYOUT_BOUNDARIES: &[(&str, usize)] = &[
     ("w27_start_Onett_items_all", 600),
     ("w27_start_YoshisIsland_items_all_cold", 600),
     ("w27_start_YoshisIsland_items_all", 600),
+    // Mushroom Kingdom's first two `?` blocks (grInishie1_801FAD84's draws
+    // and Grounds, warm and cold).
+    ("w27_start_MushroomKingdom_items_all_cold", 600),
+    ("w27_start_MushroomKingdom_items_all", 600),
 ];
 
 /// Explorer matches from those layouts: the Party Ball's lifecycle
@@ -8153,6 +8178,15 @@ const WIDENED_LAYOUT_MATCHES: &[(&str, usize)] = &[
     ("w27s_YoshisIsland_items_all_e89a89d0e_p1", 1501),
     ("w27s_YoshisIsland64_items_all_e89a89d0e_p1", 1501),
     ("w27s_YoshisStory_items_all_e89a89d0e_p2", 1501),
+    // Mushroom Kingdom's `?` blocks: broken into a contents-table item
+    // (grInishie1_801FB0AC -> it_8026F7C8), their waits, and the brick each
+    // wait turns next (HATENA_APPEAR_CHECKLOOP).
+    ("w27k_mk_e46703f61_p0", 1154),
+    ("w27k_mk_e6aa92c64_p1", 1187),
+    ("w27k_mk_e44ea74fc_p0", 1313),
+    // Both waits ending within all_hatena_window: every brick turns
+    // (grInishie1_801FB3F0's all-`?` event, 19 `?` Grounds at once).
+    ("w27k_mkall_ee6ff560c_p2", 981),
 ];
 
 #[test]

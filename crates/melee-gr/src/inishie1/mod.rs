@@ -3,8 +3,9 @@
 //! material item each) that break when bumped from below or hit and come
 //! back after a random wait, and the two lifts on a pulley that tip under
 //! weight, fall past the blast zone when they tip too far and return.
-//! With items on, `?` blocks appear among the bricks and drop items; every
-//! ported boundary has items off, so that half stays fail-closed.
+//! With items on, `?` blocks appear among the bricks and drop items
+//! ([`hatena`]).
+pub mod hatena;
 pub mod procs;
 use gekko_math::HsdRng;
 
@@ -54,7 +55,7 @@ pub struct Parameters {
 
 /// `rand_range(a, b)` (gr/inlines.h) as grInishie1_SetRespawnTimer
 /// writes it: `a + HSD_Randi(b - a)` between the two, else `b`.
-fn rand_range(min: i32, max: i32, rng: &mut HsdRng) -> i32 {
+pub(crate) fn rand_range(min: i32, max: i32, rng: &mut HsdRng) -> i32 {
     let draw = |n: i32, rng: &mut HsdRng| if n != 0 { rng.randi(n) } else { 0 };
     if max > min {
         min + draw(max - min, rng)
@@ -100,7 +101,8 @@ pub struct Brick {
     /// xC / x10: the bump's offset and speed (unreachable).
     pub offset: f32,
     pub speed: f32,
-    /// x18 `status`: 0 a brick, 1..3 a `?` block.
+    /// +0 `status`: 0 a brick, 1 or 2 the `?` block of the first or second
+    /// wait, 3 one of the all-`?` event's.
     pub hatena: i16,
     /// x20: ticks before a broken brick may return.
     pub respawn: i16,
@@ -147,12 +149,13 @@ impl Brick {
                     self.phase = BrickPhase::Returning;
                     self.flicker = p.return_flicker as i16;
                 }
-                assert_eq!(self.hatena, 0, "grinishie1.c:704: a `?` block's model");
+                // grinishie1.c:704: a `?` block's model stays hidden
+                // (drawing only).
             }
             BrickPhase::Returning => {
                 if self.flicker > 0 {
-                    // The DObjs blink (drawing only).
-                    assert_eq!(self.hatena, 0, "grinishie1.c:723: a `?` block's flicker");
+                    // The DObjs, or a `?` block's model, blink (drawing
+                    // only).
                     self.flicker -= 1;
                 } else {
                     self.phase = BrickPhase::Solid;
@@ -162,11 +165,12 @@ impl Brick {
         }
     }
 
-    /// grInishie1_801FB0AC then 801FBCEC's controller half (0x801FBCEC):
-    /// broken, with its wait drawn. Returns nothing; the scene hides the
+    /// 801FBCEC's controller half (0x801FBCEC): broken, with its wait
+    /// drawn. The `?` half (grInishie1_801FB0AC) ran first and cleared
+    /// `hatena`, so 801FBCEC's own drop never runs. The scene hides the
     /// model, stops its hits and makes the effect and the quake.
     pub fn break_apart(&mut self, p: &Parameters, rng: &mut HsdRng) {
-        assert_eq!(self.hatena, 0, "grinishie1.c:640: a `?` block breaks");
+        debug_assert_eq!(self.hatena, 0, "grInishie1_801FB0AC clears the status first");
         self.phase = BrickPhase::Broken;
         // x20 is an s16.
         self.respawn =

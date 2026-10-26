@@ -1,7 +1,10 @@
 //! grInishie1_801FA90C (0x801FA90C): Ground creation and callback order.
 //! Maps 0 and 3 (setupStageCallbacks); map 2, the `?` block, is created
 //! only with items on.
-use super::{Brick, Lifts, Parameters};
+use super::{
+    hatena::{HatenaObject, HATENA_KEY_BASE, HATENA_MAP},
+    Brick, Lifts, Parameters,
+};
 use crate::last::procs::ProcRegistration;
 
 pub const MAP_ORDER: [u8; 2] = [0, 3];
@@ -70,6 +73,8 @@ pub fn map_callback(map: u8) -> (&'static str, u32) {
     match map {
         0 => ("grInishie1_801FAAD4", 0x801F_AAD4),
         3 => ("grInishie1_801FAB68", DYNAMICS_PROC),
+        // A `?` block's Ground (map 2), under its scheduler key.
+        HATENA_MAP | HATENA_KEY_BASE.. => ("grInishie1_801FAC58", 0x801F_AC58),
         _ => unreachable!("Mushroom Kingdom map {map}"),
     }
 }
@@ -86,6 +91,13 @@ pub struct Inishie1Stage {
     pub hatena_waits: [i16; 2],
     /// xD8: the all-`?` cooldown.
     pub all_hatena_cooldown: i32,
+    /// xCA / xCC: the brick each wait turned last (-1 none).
+    pub hatena_last: [i16; 2],
+    /// Each brick's `?` Ground (`block.hatena_gobj`).
+    pub hatena_objects: [Option<HatenaObject>; 19],
+    /// The live `?` Grounds' bricks in creation order (the scheduler's).
+    pub hatena_order: [u8; 19],
+    pub hatena_count: u8,
     /// xC4 b0 of grInishie1_801FCB10: the hurry-up music was decided.
     pub music_decided: bool,
     pub lights: Vec<crate::battle::lights::Light>,
@@ -113,10 +125,15 @@ impl Inishie1Stage {
             row(0, 3, None, "Ground_801C461C", 0x801C461C),
             row(0, 4, None, "fn_801CADBC", 0x801CADBC),
         ];
-        for map in MAP_ORDER {
+        // The `?` Grounds map 3's creation made follow it.
+        let keys: Vec<u8> = MAP_ORDER
+            .into_iter()
+            .chain(self.hatena_blocks().iter().map(|&b| HATENA_KEY_BASE + b))
+            .collect();
+        for &map in &keys {
             rows.push(row(1, 5, Some(map), "Ground_801C1CD0", 0x801C1CD0));
         }
-        for map in MAP_ORDER {
+        for &map in &keys {
             let (name, address) = map_callback(map);
             rows.push(row(4, 5, Some(map), "Ground_801C1D38", 0x801C1D38));
             rows.push(row(4, 5, Some(map), name, address));

@@ -110,8 +110,15 @@ pub struct Kongo {
     pub barrel_angle: f32,
     /// ftCo_800C0764 registered the barrel's catch at the match start.
     pub catch_active: bool,
-    /// The logs afloat (maps 1 and 2).
-    pub logs: [Option<objects::Log>; 2],
+    /// The logs afloat (maps 1 and 2), by scheduler key
+    /// ([`objects::LOG_KEYS`]): a map's log may come again while its last
+    /// one still floats.
+    pub logs: [Option<objects::Log>; 4],
+    /// The key of the log whose landing callback each log collision joint
+    /// calls (mpJointSetCb1 / mpJointClearCb1 on joints 0 and 1).
+    pub log_joint_owner: [Option<u8>; 2],
+    /// Logs made so far (their creation order).
+    pub log_births: u32,
     /// The passers-by on screen (maps 7, 8, 9).
     pub passersby: [bool; 3],
 }
@@ -124,7 +131,7 @@ impl Kongo {
     pub fn live(&self, map: u8) -> bool {
         match map {
             11 => self.rider.is_some(),
-            1 | 2 => self.logs[usize::from(map - 1)].is_some(),
+            1 | 2 => self.logs.iter().flatten().any(|log| log.map == map),
             7..=9 => self.passersby[usize::from(map - 7)],
             _ => false,
         }

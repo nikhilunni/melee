@@ -387,6 +387,19 @@ impl Runtime {
                 position
             })
             .filter(|position| !state.map.is_point_inside_solid(position));
+            // mpColl_8004D024's pass rises three units into the marker: a
+            // joint ceiling it meets takes its callback at once (Mushroom
+            // Kingdom's bricks break before the item exists).
+            crate::scene_stage::apply_ceiling_events(
+                state,
+                crate::scene_stage::yorster::Collider::Other,
+                false,
+                crate::scene_stage::inishie1::Scheduler {
+                    world,
+                    item_objects: &mut self.item_objects,
+                    stage_objects: &mut self.stage_objects,
+                },
+            )?;
             if let Some(position) = position {
                 // it_8026B684 -> ftLib_800864A8.
                 let facing = crate::scene_items::facing_toward_fighters(
@@ -1267,7 +1280,7 @@ impl Runtime {
         }
         Ok(())
     }
-    fn dispatch_item(&mut self, id: u32, phase: u8) -> Result<()> {
+    fn dispatch_item(&mut self, id: u32, phase: u8, world: &mut World) -> Result<()> {
         use crate::scene_items::SceneItems;
         // A clinging ReDead's bones (hitboxes at 11, hurt capsules at 13)
         // and a hit's release (14) read the fighter it holds.
@@ -1636,7 +1649,17 @@ impl Runtime {
                     let fighter = fighter.and_then(|(slot, secondary)| {
                         crate::scene_items::owner_index(&state.fighters, slot, secondary)
                     });
-                    crate::scene_stage::material_hit(state, id, fighter, damage)?;
+                    crate::scene_stage::material_hit(
+                        state,
+                        id,
+                        fighter,
+                        damage,
+                        crate::scene_stage::inishie1::Scheduler {
+                            world,
+                            item_objects: &mut self.item_objects,
+                            stage_objects: &mut self.stage_objects,
+                        },
+                    )?;
                 }
                 if material_dealt {
                     crate::scene_stage::material_dealt(state, id);
@@ -1708,6 +1731,9 @@ impl Runtime {
     }
 
     fn dispatch(&mut self, row: Registration, world: &mut World) -> Result<()> {
+        // Whether this proc draws, for a stage callback that retail makes
+        // inside it (Mushroom Kingdom's bricks).
+        let entry_seed = self.state.rng.seed;
         // fn_8016CFE0 -> gm_801A4634(4); gm_803DA888[4] freezes gameplay procs.
         const ELIMINATION_PAUSE_MASK: u64 = 0x800FFA;
         if self.match_finished
@@ -1742,7 +1768,7 @@ impl Runtime {
         let mut spawner_teardown: Option<(u32, [Option<melee_it::ItemEvent>; 2])> = None;
         match row.callback {
             Callback::Item { id, phase } => {
-                self.dispatch_item(id, phase)?;
+                self.dispatch_item(id, phase, world)?;
                 self.notify_owner_at_once(id, false)?;
                 if let Some(item) = self.state.items.get_mut(id) {
                     let spawns = item
@@ -2906,7 +2932,15 @@ impl Runtime {
                     } else if matches!(state.stage, SceneStage::Yorster(_)) {
                         crate::scene_stage::yorster::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Inishie1(_)) {
-                        crate::scene_stage::inishie1::run_proc(state, map_id)?;
+                        crate::scene_stage::inishie1::run_proc(
+                            state,
+                            map_id,
+                            crate::scene_stage::inishie1::Scheduler {
+                                world,
+                                item_objects: &mut self.item_objects,
+                                stage_objects: &mut self.stage_objects,
+                            },
+                        )?;
                     } else if matches!(state.stage, SceneStage::Onett(_)) {
                         crate::scene_stage::onett::run_proc(state, map_id, &mut self.particle_draws)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
@@ -3139,7 +3173,17 @@ impl Runtime {
             Callback::Item { id, .. } => crate::scene_stage::yorster::Collider::Item(id),
             _ => crate::scene_stage::yorster::Collider::Other,
         };
-        crate::scene_stage::apply_ceiling_events(&mut self.state, collider)?;
+        let drew = self.state.rng.seed != entry_seed;
+        crate::scene_stage::apply_ceiling_events(
+            &mut self.state,
+            collider,
+            drew,
+            crate::scene_stage::inishie1::Scheduler {
+                world,
+                item_objects: &mut self.item_objects,
+                stage_objects: &mut self.stage_objects,
+            },
+        )?;
         let state = &mut self.state;
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {
@@ -3476,6 +3520,22 @@ impl Runtime {
                     .expire_item_joint(item.id, &mut state.particles);
             }
             state.effects.forget_item(item.id);
+            // itKlap_Logic10_Destroyed (Item_8026A8EC's callback, before the
+            // GObj goes): the rider the Klaptrap rode goes first.
+            if item.kind == melee_types::ItemKind::Klap {
+                let parent = state
+                    .items
+                    .get_mut(destroyed)
+                    .and_then(|item| it_klap::Klaptrap::stage_parent_of(item));
+                if let Some(parent) = parent {
+                    crate::scene_stage::kongo::release_rider(
+                        state,
+                        parent,
+                        world,
+                        &mut self.stage_objects,
+                    );
+                }
+            }
             crate::scene_items::cleanup(
                 &mut state.items,
                 &mut state.effects.gobjs,
@@ -3904,7 +3964,7 @@ impl Simulation {
             callback_trace: None,
             radial_forces: state.radial_forces.clone(),
             item_objects: Default::default(),
-            stage_objects: Default::default(),
+            stage_objects: std::array::from_fn(|_| None),
             stage_start_rows: start_rows.clone(),
             state,
             interface,
@@ -4123,6 +4183,9 @@ impl Simulation {
                                     melee_gr::kongo::procs::map_callback(map)
                                         .expect("an event map's gobj proc")
                                         .1
+                                }
+                                SceneStage::Inishie1(_) => {
+                                    melee_gr::inishie1::procs::map_callback(map).1
                                 }
                                 _ => melee_gr::last::procs::map_callback(map),
                             },

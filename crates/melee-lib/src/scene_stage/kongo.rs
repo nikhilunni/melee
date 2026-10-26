@@ -200,7 +200,9 @@ pub(crate) fn initialize(
             barrel_position,
             barrel_angle: 0.0,
             catch_active: false,
-            logs: [None; 2],
+            logs: [None; 4],
+            log_joint_owner: [None; 2],
+            log_births: 0,
             passersby: [false; 3],
         })),
         animations,
@@ -215,6 +217,16 @@ pub(crate) fn load_reserved(assets: &Assets, animations: &mut Animations) -> Res
         model.clear_animation();
         model.set_hidden(true);
         animations.insert(map, model);
+    }
+    // A second log of a map while its first still floats.
+    for key in melee_gr::kongo::objects::LOG_KEYS {
+        if animations.contains_key(&key) {
+            continue;
+        }
+        let mut model = load(assets, melee_gr::kongo::objects::log_map(key))?;
+        model.clear_animation();
+        model.set_hidden(true);
+        animations.insert(key, model);
     }
     let mut identity =
         BackgroundAnimation::identity_root(&assets.stage, assets.stage_desc.parameters.map_scale)
@@ -248,7 +260,7 @@ pub(crate) fn run_proc(
         model.set_gobj_rotation(rotation);
         return Ok(());
     }
-    if matches!(map, 1 | 2) {
+    if melee_gr::kongo::objects::log_slot(map).is_some() {
         return step_log(state, map, world, objects);
     }
     if matches!(map, 7..=9) {
@@ -336,20 +348,32 @@ fn create_object(
     let SceneStage::Kongo(stage) = &state.stage else {
         unreachable!()
     };
-    anyhow::ensure!(
-        !stage.live(map),
-        "grKongo_801D5340: a second map-{map} object while the first lives"
-    );
+    // Ground_GetStageGObj makes a new GObj and model each time: a log may
+    // come again while its map's last one floats, under a second key.
+    let key = if map <= 2 {
+        melee_gr::kongo::objects::log_keys(map)
+            .into_iter()
+            .find(|&key| {
+                stage.logs[melee_gr::kongo::objects::log_slot(key).unwrap()].is_none()
+            })
+            .ok_or_else(|| anyhow::anyhow!("grKongo_801D5340: a third map-{map} log"))?
+    } else {
+        anyhow::ensure!(
+            !stage.live(map),
+            "grKongo_801D5340: a second map-{map} object while the first lives"
+        );
+        map
+    };
     let object = world.create(3, 5, 0);
     state.stage_gobjs.create(&mut state.effects.gobjs, map);
     for (index, link) in [1, 4, 4].into_iter().enumerate() {
-        world.add_tagged_proc(object, link, super::last::TAG_BASE + usize::from(map) * 3 + index);
+        world.add_tagged_proc(object, link, super::last::TAG_BASE + usize::from(key) * 3 + index);
     }
-    objects[usize::from(map)] = Some(object);
-    let model = state.stage_animations.get_mut(&map).unwrap();
+    objects[usize::from(key)] = Some(object);
+    let model = state.stage_animations.get_mut(&key).unwrap();
     for joint in 0..model.joint_count() {
         anyhow::ensure!(
-            !state.particles.has_joint_attachment(crate::initial_state::stage::joint_id(map, joint)),
+            !state.particles.has_joint_attachment(crate::initial_state::stage::joint_id(key, joint)),
             "grKongo_801D5340: map {map} recreated while generators hold its retired JObjs"
         );
     }
@@ -361,7 +385,7 @@ fn create_object(
     let requests = model.evaluate_initial_frame::<RetailTrig>().to_vec();
     super::garden::spawn_keys(
         &requests,
-        map,
+        key,
         &state.assets,
         &mut state.particles,
         Some(&mut state.effects.events),
@@ -372,8 +396,10 @@ fn create_object(
         unreachable!()
     };
     let offset = if map <= 2 {
-        let log = melee_gr::kongo::objects::Log::new(map, &mut state.rng);
-        stage.logs[usize::from(map - 1)] = Some(log);
+        let mut log = melee_gr::kongo::objects::Log::new(map, &mut state.rng);
+        log.born = stage.log_births;
+        stage.log_births = stage.log_births.wrapping_add(1);
+        stage.logs[melee_gr::kongo::objects::log_slot(key).unwrap()] = Some(log);
         log.offset
     } else {
         // grAnime_801C78FC: the passer-by runs once.
@@ -381,7 +407,7 @@ fn create_object(
         stage.passersby[usize::from(map - 7)] = true;
         melee_gr::kongo::objects::passerby_offset(map, &mut state.rng)
     };
-    let model = state.stage_animations.get_mut(&map).unwrap();
+    let model = state.stage_animations.get_mut(&key).unwrap();
     let mut translation = model.gobj_translation();
     translation.x = offset;
     model.set_gobj_translate(translation);
@@ -393,20 +419,38 @@ fn create_object(
 /// freed. Generators still bound to its JObjs keep their last matrices.
 fn remove_object(
     state: &mut InitialState,
-    map: u8,
+    key: u8,
     world: &mut hsd_gobj::TaggedWorld,
     objects: &mut crate::scene_stage::StageObjects,
 ) {
+    let SceneStage::Kongo(stage) = &state.stage else {
+        unreachable!()
+    };
+    let (map, older) = match melee_gr::kongo::objects::log_slot(key) {
+        Some(slot) => {
+            let log = stage.logs[slot].expect("a live log");
+            // Its GObj among its map's, oldest first.
+            let older = stage
+                .logs
+                .iter()
+                .flatten()
+                .filter(|other| other.map == log.map && other.born < log.born)
+                .count();
+            (log.map, older)
+        }
+        None => (key, 0),
+    };
+    // Ground_801C3128: every joint bound to the map, a newer log's too.
     for binding in bindings(map) {
         state.map.joint_list_remove(i32::from(binding.joint_index));
     }
-    state.stage_gobjs.destroy(&mut state.effects.gobjs, map);
-    if let Some(object) = objects[usize::from(map)].take() {
+    state.stage_gobjs.destroy_nth(&mut state.effects.gobjs, map, older);
+    if let Some(object) = objects[usize::from(key)].take() {
         world.destroy(object);
     }
-    let model = state.stage_animations.get_mut(&map).unwrap();
+    let model = state.stage_animations.get_mut(&key).unwrap();
     for joint in 0..model.joint_count() {
-        let id = crate::initial_state::stage::joint_id(map, joint);
+        let id = crate::initial_state::stage::joint_id(key, joint);
         if state.particles.has_joint_attachment(id) {
             let matrix = model.released_joint_matrix(joint);
             state.effects.events.update_joint(id, matrix);
@@ -418,10 +462,24 @@ fn remove_object(
     let SceneStage::Kongo(stage) = &mut state.stage else {
         unreachable!()
     };
-    match map {
-        1 | 2 => stage.logs[usize::from(map - 1)] = None,
-        _ => stage.passersby[usize::from(map - 7)] = false,
+    match melee_gr::kongo::objects::log_slot(key) {
+        Some(slot) => stage.logs[slot] = None,
+        None if key == 11 => stage.rider = None,
+        None => stage.passersby[usize::from(map - 7)] = false,
     }
+}
+
+/// grKongo_801D8058 (0x801D8058) from itKlap_Logic10_Destroyed: the
+/// Klaptrap's end removes the path rider it rode (Ground_801C4A08).
+pub(crate) fn release_rider(
+    state: &mut InitialState,
+    parent: melee_it::StageParent,
+    world: &mut hsd_gobj::TaggedWorld,
+    objects: &mut crate::scene_stage::StageObjects,
+) {
+    assert_eq!(parent.map, 11, "a Klaptrap rides the path rider");
+    assert_eq!(objects[11], Some(parent.object), "the Klaptrap's rider is the live one");
+    remove_object(state, 11, world, objects);
 }
 
 /// grKongo_801D7E78 (0x801D7E78): where an event object stands.
@@ -430,40 +488,63 @@ fn object_position(state: &mut InitialState, map: u8) -> Vec3 {
     world_position(model, melee_gr::kongo::objects::PLACE_JOINT)
 }
 
-/// grKongo_801D6198 (0x801D6198): a log's step.
+/// grKongo_801D6198 (0x801D6198): the step of the log under `key`.
 fn step_log(
     state: &mut InitialState,
-    map: u8,
+    key: u8,
     world: &mut hsd_gobj::TaggedWorld,
     objects: &mut crate::scene_stage::StageObjects,
 ) -> Result<()> {
-    use melee_gr::kongo::objects::{log_joint, LogStep};
+    use melee_gr::kongo::objects::{log_joint, log_map, log_slot, LogStep, LOG_KEYS};
+    let map = log_map(key);
     let joint = log_joint(map);
-    // fn_801D7E60's landings since the last step.
-    let stood = state
-        .map
-        .take_joint_events(joint)
-        .iter()
-        .any(|event| event.ground_kind == 2);
-    let ended = state.stage_animations[&map].ended();
-    let position = object_position(state, map);
     let SceneStage::Kongo(stage) = &state.stage else {
         unreachable!()
     };
-    let live = melee_gr::kongo::EVENT_MAPS.map(|other| other != map && stage.live(other));
-    let mut positions = [Vec3::ZERO; 5];
+    // fn_801D7E60's landings since the last step reach the log the joint's
+    // callback names (mpJointSetCb1: the last to land).
+    let owner = stage.log_joint_owner[joint as usize] == Some(key);
+    let stood = owner
+        && state
+            .map
+            .take_joint_events(joint)
+            .iter()
+            .any(|event| event.ground_kind == 2);
+    let ended = state.stage_animations[&key].ended();
+    let position = object_position(state, key);
+    // grKongo_801D7F78's walk over the other Grounds: logs, passers-by and
+    // the path rider (its JObj's own translation, grKongo_801D7E78).
+    let SceneStage::Kongo(stage) = &state.stage else {
+        unreachable!()
+    };
+    let mut others = [None; 8];
     let mut count = 0;
-    for (other, live) in melee_gr::kongo::EVENT_MAPS.into_iter().zip(live) {
-        if live {
-            positions[count] = object_position(state, other);
+    for other in LOG_KEYS {
+        if other != key && stage.logs[log_slot(other).unwrap()].is_some() {
+            others[count] = Some(other);
             count += 1;
         }
+    }
+    for other in 7..=9 {
+        if stage.live(other) {
+            others[count] = Some(other);
+            count += 1;
+        }
+    }
+    let rider = stage.rider.is_some();
+    let mut positions = [Vec3::ZERO; 8];
+    for (slot, other) in others[..count].iter().enumerate() {
+        positions[slot] = object_position(state, other.unwrap());
+    }
+    if rider {
+        positions[count] = state.stage_animations[&11].gobj_translation();
+        count += 1;
     }
     let SceneStage::Kongo(stage) = &mut state.stage else {
         unreachable!()
     };
     let parameters = stage.parameters.clone();
-    let log = stage.logs[usize::from(map - 1)]
+    let log = stage.logs[log_slot(key).unwrap()]
         .as_mut()
         .expect("a live log");
     if stood {
@@ -474,15 +555,14 @@ fn step_log(
     let step = log.step(&parameters, ended, || {
         melee_gr::kongo::objects::crowded(position, positions[..count].iter().copied())
     });
-    if matches!(step, LogStep::Sink | LogStep::Remove) {
-        unimplemented!("grKongo_801D6198 (grkongo.c:579): log lifecycle {step:?} needs a retail witness");
-    }
     match step {
         LogStep::Nothing => {}
         LogStep::Land => {
             // Ground_801C2ED0 (bind, transform, snapshot), Ground_801C2FE0,
-            // mpJointListAdd and the landing callback.
-            let model = state.stage_animations.get_mut(&map).unwrap();
+            // mpJointListAdd and the landing callback: the joint follows
+            // this log, even while an older one of its map floats.
+            stage.log_joint_owner[joint as usize] = Some(key);
+            let model = state.stage_animations.get_mut(&key).unwrap();
             for binding in bindings(map) {
                 model.update_collision(&mut state.map, std::slice::from_ref(binding));
                 state.map.joint_snapshot_prev_pos(i32::from(binding.joint_index));
@@ -492,7 +572,10 @@ fn step_log(
             state.map.record_joint_events(joint, true);
         }
         LogStep::Sink => {
-            let model = state.stage_animations.get_mut(&map).unwrap();
+            // grAnime_801C8138(gobj, map, 1), mpLib_80057BC0 and
+            // mpJointClearCb1: the joint goes whichever log it follows.
+            stage.log_joint_owner[joint as usize] = None;
+            let model = state.stage_animations.get_mut(&key).unwrap();
             model
                 .select_animation(
                     &state.assets.stage,
@@ -505,7 +588,7 @@ fn step_log(
             state.map.joint_list_remove(joint);
             state.map.record_joint_events(joint, false);
         }
-        LogStep::Remove => remove_object(state, map, world, objects),
+        LogStep::Remove => remove_object(state, key, world, objects),
     }
     Ok(())
 }

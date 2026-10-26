@@ -38,6 +38,9 @@ pub struct ItemPose {
     /// Article states whose animation loops, sampled for `LOOP_SAMPLES`
     /// steps only.
     pub looping: Vec<usize>,
+    /// Per article state and step: whether a joint's AObj rewound in that
+    /// step (AOBJ_REWINDED, which lb_8000B134 tests).
+    pub rewinds: Vec<Vec<bool>>,
 }
 
 /// The item's root transform: HSD_JObjSetTranslate / Rotation / Scale on
@@ -101,17 +104,26 @@ impl ItemPose {
             .collect();
         let mut states = Vec::with_capacity(visual.states.len());
         let mut looping = Vec::new();
+        let mut rewinds = Vec::with_capacity(visual.states.len());
         for state in &visual.states {
             let Some(anim) = &state.joint else {
                 states.push(None);
+                rewinds.push(Vec::new());
                 continue;
             };
+            let mut rewound = Vec::new();
             let (mut tree, root) = hsd_anim::load::load_joint_tree(archive, &visual.model)?;
             hsd_anim::load::attach_anim_joint(&mut tree, root, anim, archive)?;
             tree.req_anim_all(root, 0.0);
             let mut steps = Vec::new();
             loop {
                 let running = tree.anim_all::<RetailTrig>(root).running != 0;
+                rewound.push((0..joints.len()).any(|index| {
+                    tree.get(tree.bone(root, index).expect("joint"))
+                        .aobj
+                        .as_ref()
+                        .is_some_and(|aobj| aobj.flags & hsd_anim::aobj::AOBJ_REWINDED != 0)
+                }));
                 steps.push(
                     joints
                         .iter()
@@ -138,6 +150,7 @@ impl ItemPose {
                 }
             }
             states.push(Some(steps));
+            rewinds.push(rewound);
         }
         Ok(Self {
             parents,
@@ -145,7 +158,22 @@ impl ItemPose {
             states,
             rest,
             looping,
+            rewinds,
         })
+    }
+
+    /// lb_8000B134 after `steps` steps of `state`: a joint's AObj rewound
+    /// in the last one (a looping animation's wrap).
+    pub fn rewound(&self, state: usize, steps: u32) -> bool {
+        let rewinds = &self.rewinds[state];
+        assert!(
+            !self.looping.contains(&state) || (steps as usize) <= rewinds.len(),
+            "item pose: a looping animation played past its samples"
+        );
+        rewinds
+            .get(steps.max(1) as usize - 1)
+            .copied()
+            .unwrap_or(false)
     }
 
     /// `bone`'s world matrix `steps` animation steps into article state
@@ -435,6 +463,7 @@ mod unmodified_pose_tests {
             states: vec![Some(vec![locals.clone()])],
             rest: locals,
             looping: vec![],
+            rewinds: vec![vec![false]],
         }
     }
     fn root() -> RootSrt {

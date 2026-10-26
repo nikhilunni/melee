@@ -232,7 +232,8 @@ fn random_item_spawns_and_container_capture_allocate_nothing() {
 /// The layouts wave 27 opened: items with three and four players, items
 /// on the other stages, CPUs among three and four players and CPUs with
 /// items; the Party Ball's shower, the Fan's drops and the Goomba's walk,
-/// stomp and throw.
+/// stomp and throw; Mushroom Kingdom's `?` blocks; Kongo Jungle's second
+/// log, path rider and Klaptrap.
 #[test]
 fn widened_item_and_cpu_layouts_step_and_capture_allocate_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
@@ -251,6 +252,11 @@ fn widened_item_and_cpu_layouts_step_and_capture_allocate_nothing() {
         "corpus_v3_fd_items_harisen_e34114802_p1",
         "w27g_fd_items_all_fox_marth_falco_peach_eecfcf1ea_p1",
         "w27d_throwing_holder",
+        // Mushroom Kingdom's `?` blocks: Grounds made and freed, items dropped.
+        "w27k_mk_e6aa92c64_p1",
+        // Kongo Jungle: a second log, the path rider and the Klaptrap's fall.
+        "w27k_kj_e2b9e1400_p1",
+        "w27k_kj_ef89b3e70_p0",
     ] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),

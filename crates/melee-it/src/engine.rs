@@ -314,8 +314,11 @@ pub struct MonsterState {
 }
 #[derive(Clone, Debug)]
 pub enum MonsterBehavior {
+    /// itKlap: x20 the Ground it rides (the path rider, map 11); x24 / x28
+    /// the tumble's turn per frame about y and z.
     Klaptrap {
         parent: Option<crate::StageParent>,
+        spins: [f32; 2],
     },
     /// itOldkuri: xDF4 the walk speed, xDF8 the stand's countdown, xDFC
     /// whether the walk has run a whole cycle (and may turn).
@@ -1567,6 +1570,15 @@ impl ItemCore {
             .copied()
             .flatten()
             .is_some_and(|end| self.animation_frame >= end)
+    }
+    /// lb_8000B134 on the model: a joint animation rewound (looped) in the
+    /// step just taken.
+    pub fn article_animation_rewound(&self, assets: &ItemAssets) -> bool {
+        assets
+            .pose
+            .as_ref()
+            .expect("an article with a sampled pose")
+            .rewound(self.article_state, self.pose_steps)
     }
     /// it_80274658 (80274658): the spin speed for `degrees` per frame at
     /// spin_spd, reversed when the item moves against its facing and, unless

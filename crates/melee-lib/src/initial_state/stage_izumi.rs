@@ -45,6 +45,8 @@ pub(super) struct SavedGround {
     pub(super) jobj: u32,
     pub(super) ground: u32,
     pub(super) map: u32,
+    /// The GObj itself.
+    pub(super) gobj: u32,
 }
 
 /// The Ground GObjs in p_link order.
@@ -61,6 +63,7 @@ pub(super) fn ground_list(saved: &SavedPose) -> Result<Vec<SavedGround>> {
                 jobj: word(object, 0x28),
                 ground,
                 map: word(saved.bytes(ground + 0x14, 4), 0),
+                gobj,
             });
         }
         gobj = word(object, 8);

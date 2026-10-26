@@ -387,16 +387,9 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
         let mut slot_rng = gekko_math::HsdRng::new(10_000);
         let mut expected_rng = slot_rng;
         assert_eq!(expected_rng.randi(3), 1);
-        guard(
-            || {
-                melee_gr::kongo::rider::Rider::new(&mut slot_rng);
-            },
-            "path choice1",
-        );
-        assert_eq!(
-            slot_rng, expected_rng,
-            "refusal follows the actual selection draw"
-        );
+        // grKg_803B7FD4's second pair: file 8, spline 5.
+        assert_eq!(melee_gr::kongo::rider::Rider::new(&mut slot_rng).spline, 5);
+        assert_eq!(slot_rng, expected_rng, "one selection draw");
         let SceneStage::Kongo(stage) = &state.stage else {
             unreachable!()
         };
@@ -405,12 +398,10 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
         // Synthetic envelope values trigger the real source predicate on the
         // actual witnessed path, rather than admitting or simulating audio.
         audio_rider.max_y = 100_000.0;
-        guard(
-            || {
-                audio_rider.advance(spline, 0.0, Vec3::new(0.0, 100_000.0, 0.0));
-            },
-            "Ground_801C5440 audio",
-        );
+        // Ground_801C5440's sound changes no state.
+        let before = audio_rider.clone();
+        audio_rider.advance(spline, 0.0, Vec3::new(0.0, 100_000.0, 0.0));
+        assert_eq!(audio_rider.max_y, before.max_y);
         guard(
             || {
                 hsd_anim::spline::bspline_tangent(spline, 1.0);
@@ -459,23 +450,9 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
             bounds: &bounds,
             rng: &rng,
         };
-        // The captured article loops and has no end. A synthetic finite
-        // descriptor exercises the explicit unported transition, without
-        // claiming that a recorded birth takes it.
-        let mut ended_assets = assets.clone();
-        ended_assets.animation_ends[0] = Some(0.0);
-        let ended_context = melee_it::ItemPhysicsContext {
-            assets: &ended_assets,
-            ..context
-        };
-        copy.animation_frame = 0.0;
-        guard(
-            || {
-                (logic.states[0].physics)(&mut copy, &ended_context);
-            },
-            "ended animation/Randi100",
-        );
-        for motion in 1..logic.states.len() {
+        // Row 3 (the barrel's hold) stays guarded.
+        {
+            let motion = 3;
             guard(
                 || {
                     (logic.states[motion].physics)(&mut copy, &context);
@@ -504,33 +481,32 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
         }
         copy = item.clone();
         let parent = (logic.stage_parent)(item).unwrap();
-        guard(
-            || {
-                (logic.states[0].collision)(
-                    &mut copy,
-                    &mut melee_it::ItemCollisionContext {
-                        stage_parent: Some(melee_it::StageParentView {
-                            parent,
-                            translation: Vec3::new(0.0, 5.0, 100.0),
-                            rotation: Vec3::ZERO,
-                        }),
-                        owner: None,
-                        stage_contact: false,
-                        map: &mut map,
-                        assets,
-                        bounds: &bounds,
-                        rng: Some(&rng),
-                        half_life_scale: 0.5,
-                        entered_air: None,
-                    },
-                );
+        // it_802E1C84: past the screen plane it lets go and falls.
+        (logic.states[0].collision)(
+            &mut copy,
+            &mut melee_it::ItemCollisionContext {
+                stage_parent: Some(melee_it::StageParentView {
+                    parent,
+                    translation: Vec3::new(0.0, 5.0, 100.0),
+                    rotation: Vec3::ZERO,
+                }),
+                owner: None,
+                stage_contact: false,
+                map: &mut map,
+                assets,
+                bounds: &bounds,
+                rng: Some(&rng),
+                half_life_scale: 0.5,
+                entered_air: None,
             },
-            "child Z >= 0",
         );
+        assert_eq!(copy.motion, 2);
+        assert!(copy.blast_zone_checked);
+        copy = item.clone();
         let melee_it::ItemScratch::Monster(base) = &mut copy.scratch else {
             unreachable!()
         };
-        base.behavior = melee_it::MonsterBehavior::Klaptrap { parent: None };
+        base.behavior = melee_it::MonsterBehavior::Klaptrap { parent: None, spins: [0.0; 2] };
         guard(
             || {
                 (logic.states[0].collision)(
@@ -550,21 +526,11 @@ fn complete_klaptrap_birth_raw_parent_pose_and_actual_scheduler_order() {
             },
             "NULL Klaptrap Ground parent",
         );
-        guard(
-            || {
-                (logic.destroyed)(&mut copy);
-            },
-            "itKlap_Logic10_Destroyed",
-        );
-        guard(
-            || {
-                (logic.damage_received)(
-                    &mut copy,
-                    &melee_it::ItemEventContext::new(assets, state.items.common()),
-                );
-            },
-            "it_2725_Logic10_DmgReceived",
-        );
+        (logic.destroyed)(&mut copy);
+        let mut context = melee_it::ItemEventContext::new(assets, state.items.common());
+        context.rng = Some(&rng);
+        (logic.damage_received)(&mut copy, &context);
+        assert_eq!(copy.motion, 4, "it_802E1E94: a hit sends it tumbling");
         // The rider's Ground animation runs on (Ground_801C1CD0).
         simulation.tick_without_snapshot().unwrap();
     }

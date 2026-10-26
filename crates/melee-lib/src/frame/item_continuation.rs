@@ -202,7 +202,8 @@ fn party_ball_settle_draws_spread_before_flushing_the_pre_pitch_root() {
     for _ in 0..495 {
         simulation.tick_without_snapshot().unwrap();
     }
-    let runtime = &mut simulation.runtime;
+    let engine = &mut simulation.engine;
+    let (runtime, world) = (&mut engine.runtime, &mut engine.world);
     let id = runtime
         .state
         .items
@@ -213,8 +214,8 @@ fn party_ball_settle_draws_spread_before_flushing_the_pre_pitch_root() {
     // Retail ledger tick494 end, then tick495's three request-side draws at
     // 80278A30/54/78, before the first generator/interpreter draw.
     assert_eq!(runtime.state.rng.seed, 0x6b99_22fb);
-    runtime.dispatch_item(id, 4).unwrap();
-    runtime.dispatch_item(id, 5).unwrap();
+    runtime.dispatch_item(id, 4, world).unwrap();
+    runtime.dispatch_item(id, 5, world).unwrap();
     assert_eq!(runtime.state.rng.seed, 0xc6ea_cedc);
     let ball = runtime.state.items.get_mut(id).unwrap();
     assert_eq!(ball.motion, 0);

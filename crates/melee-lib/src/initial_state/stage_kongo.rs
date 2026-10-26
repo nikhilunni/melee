@@ -275,7 +275,9 @@ pub(super) fn restore(
             barrel_position,
             barrel_angle,
             catch_active: false,
-            logs: [None; 2],
+            logs: [None; 4],
+            log_joint_owner: [None; 2],
+            log_births: 0,
             passersby: [false; 3],
         })),
         {

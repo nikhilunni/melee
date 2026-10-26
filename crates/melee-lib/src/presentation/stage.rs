@@ -6,8 +6,9 @@ use crate::{scene_stage::SceneStage, Match};
 use melee_gr::last::animation::BackgroundAnimation;
 use melee_types::GrKind;
 
-/// Ground scheduler keys a stage may use (`scene_stage::StageObjects`).
-const KEYS: u8 = 16;
+/// Ground scheduler keys a stage may use (`scene_stage::StageObjects`):
+/// map ids, then Mushroom Kingdom's `?` Grounds.
+const KEYS: u8 = 40;
 
 /// `Ground.x11_flags.b012 == 2`: the main camera draws these maps first, in
 /// its background pass (`fn_800301D0`, 0x800301D0: passes 2, 1, then 0).
@@ -72,10 +73,18 @@ fn drawn_by_main_camera(kind: GrKind, map: u8) -> bool {
 }
 
 /// The model behind a Ground scheduler key: Fountain of Dreams' second
-/// platform is another instance of map 4 (melee_gr::izumi::procs).
+/// platform is another instance of map 4 (melee_gr::izumi::procs); Kongo
+/// Jungle's second logs (keys 12, 13) are maps 1 and 2;
+/// Mushroom Kingdom's `?` Grounds are each an instance of map 2.
 fn model_map(kind: GrKind, key: u8) -> Option<u8> {
+    use melee_gr::inishie1::hatena::{HATENA_KEY_BASE, HATENA_MAP};
     if kind == GrKind::Izumi {
         melee_gr::izumi::procs::model(key)
+    } else if kind == GrKind::Inishie1 && key >= HATENA_KEY_BASE {
+        Some(HATENA_MAP)
+    } else if kind == GrKind::Kongo && matches!(key, 12 | 13) {
+        // A second log of map 1 or 2.
+        Some(melee_gr::kongo::objects::log_map(key))
     } else {
         Some(key)
     }

@@ -73,7 +73,9 @@ pub(crate) fn live_drop_markers(
 
 /// Live Ground GObjs by scheduler key: map ids, plus Fountain of Dreams'
 /// star and second platform (melee_gr::izumi::procs).
-pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 16];
+/// Keyed by map id, or a stage's extra key (Mushroom Kingdom's `?`
+/// Grounds, `melee_gr::inishie1::hatena::HATENA_KEY_BASE` + brick).
+pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 40];
 
 /// The addresses of the map GObjs a stage created during the match
 /// (Ground_GetStageGObj, 0x801C14D0: GObj_Create(HSD_GOBJ_CLASS_STAGE, 5,
@@ -81,7 +83,7 @@ pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 16];
 /// of the match has had.
 #[derive(Clone, Default)]
 pub(crate) struct StageGObjs {
-    created: melee_types::fixed::FixedVec<(u8, hsd_gobj::GObjAddress), 16>,
+    created: melee_types::fixed::FixedVec<(u8, hsd_gobj::GObjAddress), 32>,
 }
 
 impl StageGObjs {
@@ -393,10 +395,13 @@ impl SceneStage {
 pub(crate) fn apply_ceiling_events(
     state: &mut crate::initial_state::InitialState,
     collider: yorster::Collider,
+    // The proc drew from the random stream.
+    drew: bool,
+    scheduler: inishie1::Scheduler<'_>,
 ) -> Result<()> {
     match state.stage {
         SceneStage::Yorster(_) => yorster::apply_bumps(state, collider),
-        SceneStage::Inishie1(_) => inishie1::apply_bumps(state),
+        SceneStage::Inishie1(_) => inishie1::apply_bumps(state, collider, drew, scheduler),
         _ => Ok(()),
     }
 }
@@ -407,13 +412,14 @@ pub(crate) fn material_hit(
     item: u32,
     fighter: Option<usize>,
     damage: i32,
+    scheduler: inishie1::Scheduler<'_>,
 ) -> Result<()> {
     match state.stage {
         SceneStage::Yorster(_) => {
             yorster::material_hit(state, item, fighter, damage);
             Ok(())
         }
-        SceneStage::Inishie1(_) => inishie1::material_hit(state, item),
+        SceneStage::Inishie1(_) => inishie1::material_hit(state, item, scheduler),
         _ => Ok(()),
     }
 }
