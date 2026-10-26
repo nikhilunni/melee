@@ -166,7 +166,7 @@ impl InitialState {
                     let n = variable_stage_draws(GrKind::Pura, at_stage);
                     HsdRng::new(before_setup(boundary_seed, fixed_draws + n)) == start
                 });
-            rng = start.context("Poké Floats: no sky draw count reaches the boundary seed")?;
+            rng = start.ok_or(UnreachableSeed("Poké Floats: no sky draw count reaches the boundary seed"))?;
         }
         if assets.stage_desc.kind == GrKind::Icemt {
             let draws = icemt_controller_draws(&assets, boundary_seed, fixed_draws, spawner_draws)?;
@@ -600,7 +600,8 @@ fn icemt_controller_draws(
 ) -> Result<usize> {
     const MOST: usize = 64;
     let parameters = crate::scene_stage::icemt::read_parameters(assets)?;
-    let mut found = None;
+    // Like the Poké Floats sky, the first count that fits wins: either is a
+    // retail start that reaches the boundary seed.
     for draws in 2..=MOST {
         let mut rng = HsdRng::new(before_setup(boundary_seed, other_draws + draws));
         for _ in 0..spawner_draws {
@@ -615,16 +616,22 @@ fn icemt_controller_draws(
             taken += 1;
         }
         if taken == draws {
-            ensure!(
-                found.is_none(),
-                "stageGObj9_OnInit: {} and {draws} draws both fit the boundary seed",
-                found.unwrap_or(0)
-            );
-            found = Some(draws);
+            return Ok(draws);
         }
     }
-    found.ok_or_else(|| anyhow::anyhow!("stageGObj9_OnInit: no draw count fits the boundary seed"))
+    Err(UnreachableSeed("stageGObj9_OnInit: no draw count fits the boundary seed").into())
 }
+
+/// No draw count of a variable-draw stage reaches the boundary seed
+/// ([`crate::StartError::UnreachableSeed`]).
+#[derive(Debug)]
+pub(crate) struct UnreachableSeed(pub &'static str);
+impl std::fmt::Display for UnreachableSeed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(self.0)
+    }
+}
+impl std::error::Error for UnreachableSeed {}
 
 fn before_setup(mut seed: u32, draws: usize) -> u32 {
     const INVERSE_MULTIPLIER: u32 = 0xB9B3_3155;

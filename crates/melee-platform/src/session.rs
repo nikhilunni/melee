@@ -38,6 +38,25 @@ pub struct Session {
     recording: Recording,
     failure: Option<String>,
 }
+/// Seeds tried after the host's own when no retail start reaches it.
+const SEED_RETRIES: u32 = 64;
+
+/// Start `config`'s match. A stage that draws a variable number of times
+/// at creation reaches only some boundary seeds; on one it cannot reach,
+/// the next seed is tried, and `config` keeps the seed that started.
+pub(crate) fn start(assets: &GameAssets, config: &mut MatchConfig) -> Result<Match, String> {
+    let mut tries = 0;
+    loop {
+        match Match::new(assets, config.clone()) {
+            Err(StartError::UnreachableSeed(_)) if tries < SEED_RETRIES => {
+                config.seed = Seed(config.seed.0.wrapping_add(1));
+                tries += 1;
+            }
+            result => return result.map_err(|e| e.to_string()),
+        }
+    }
+}
+
 impl Session {
     /// The match the app starts when nothing else is chosen.
     pub fn default_config() -> MatchConfig {
@@ -50,11 +69,11 @@ impl Session {
         )
         .with_seed(Seed(42))
     }
-    pub fn new(source: &dyn FileSource, config: MatchConfig) -> Result<Self, String> {
+    pub fn new(source: &dyn FileSource, mut config: MatchConfig) -> Result<Self, String> {
         let assets = GameAssets::load_from(source, &config).map_err(|e| e.to_string())?;
+        let game = start(&assets, &mut config)?;
         let recording = Recording::new(&config, &assets);
         let seed = config.seed;
-        let game = Match::new(&assets, config.clone()).map_err(|e| e.to_string())?;
         let presentation = Presentation::new(&game).map_err(|e| e.to_string())?;
         Ok(Self {
             seed,

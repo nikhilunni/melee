@@ -1,7 +1,7 @@
 //! Restore the owned, local savestate boundary. See ../M3.md.
 mod camera;
 pub use camera::{decode_camera, decode_subject, magnified};
-mod cold;
+pub(crate) mod cold;
 pub(crate) use cold::boundary_seed_after;
 #[cfg(test)]
 mod cold_tests;

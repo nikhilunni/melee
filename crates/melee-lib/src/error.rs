@@ -9,6 +9,10 @@ pub enum StartError {
     Initialization(String),
     /// A Versus stage the port has not ported (fails closed, naming it).
     UnportedStage(Stage),
+    /// No retail start reaches this seed: a stage whose creation draws a
+    /// variable number of times (Poké Floats' sky, Icicle Mountain's
+    /// controller) has no draw count that ends on it. Another seed will do.
+    UnreachableSeed(String),
 }
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum StepError {
@@ -32,6 +36,7 @@ impl std::fmt::Display for StartError {
             Self::Load(reason) => write!(f, "loading game assets: {reason}"),
             Self::Initialization(reason) => write!(f, "initializing match: {reason}"),
             Self::UnportedStage(stage) => write!(f, "{}", unported_stage(*stage)),
+            Self::UnreachableSeed(reason) => write!(f, "initializing match: {reason}"),
         }
     }
 }

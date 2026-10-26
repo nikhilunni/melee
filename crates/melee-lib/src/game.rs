@@ -209,7 +209,13 @@ impl Match {
             Ok::<_, anyhow::Error>(engine)
         }))
         .map_err(|p| StartError::Initialization(panic_message(p)))?
-        .map_err(|e| StartError::Initialization(format!("{e:#}")))?;
+        .map_err(|e| {
+            if e.chain().any(|c| c.is::<crate::initial_state::cold::UnreachableSeed>()) {
+                StartError::UnreachableSeed(format!("{e:#}"))
+            } else {
+                StartError::Initialization(format!("{e:#}"))
+            }
+        })?;
         Ok(Self {
             engine,
             assets: assets.clone(),
