@@ -171,6 +171,41 @@ Wind (Zelda, ftCo_800A949C), the Green Missile (Luigi), none (Yoshi), and
 the diagonal (Samus, ftCo_800A963C writes the same script). Witnessed by
 `w26cpu_rec_<kind>_*` (explorer cases from `start_fd_fox_cpu9<kind>4`).
 
+## Wave 27's stages
+
+Boundaries `w27s_start_<stage>_fox_cpu9fox4` (a person's Fox against a
+level-9 CPU Fox) on Mushroom Kingdom II, Great Bay, Icicle Mountain,
+Brinstar, Venom, Mute City and Poké Floats, warm and cold; explorer
+matches from each gate whole (`corpus_v3_w27s_start_*`). Ported:
+
+- ftCo_800A229C's stage arms: Great Bay's turtle away from its rest
+  (grGreatBay_801F66A4, map 1's xC4, right of x = -5), Brinstar's acid
+  above the bottom blast zone (Ground_801C4368: always, so a Brinstar CPU
+  escapes every think and keeps its attack modes), Icicle Mountain within
+  `0.4 * |scroll| + 0.4` of the blast zone the stage scrolls toward.
+- ftCo_800A8210 for them: grounded, the farthest safe island end from the
+  danger (ftCo_800A6700); on Icicle Mountain the nearest platform above
+  (ftCo_800A6A98) or island below (ftCo_800A6D2C, a Randf per island).
+- ftCo_800A2718's Brinstar islands (an end the acid covers within 90
+  frames, ftCo_800A1F98) and Great Bay's route table (ft_3C61.c list1_*).
+- grVenom_80206D10 in ftCo_800A1B38: Venom's floors on joints 3 and 4 are
+  ignored; a CPU recovering onto one jumps off it (ftCo_800B2790 case 4,
+  ftCo_800A0148).
+- The Fighter address of a CPU after a person's Fox on each of the seven.
+- A savestate import keeps the island lists in retail's saved order
+  (`initial_state/islands.rs`): Brinstar's five joint restores each ran
+  mpIsland_8005B334, which reverses the static lists, and the CPU's
+  recovery took the first island of the reversed list.
+
+Mushroom Kingdom II, Mute City and Poké Floats need nothing of their own.
+`CPU_SUPPORTED` gains Mushroom Kingdom II, Great Bay, Brinstar, Mute City
+and Poké Floats. Icicle Mountain and Venom stay out: their boundaries gate
+exact, but `corpus_v3_w27s_start_im_fox_cpu9fox4_ef89b3e70_p0` diverges at
+tick 1197 (p1.cur_pos.y) and `..._venom_..._edb2b114a_p0` at tick 4238,
+not yet triaged (docs/handoffs/w27-stage-cpus.md).
+Not CPU faults, left for the owner: a reflected Arwing laser
+(itarwinglaser.c:600) stops one Venom explorer case.
+
 ## Still fail-closed
 
 Kirby's mouthful in
