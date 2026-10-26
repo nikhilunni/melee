@@ -1175,6 +1175,14 @@ impl Fighter {
                 self.core.combat.pending_from_captor = false;
                 self.enter_damage_bind(&hit, assets)?;
                 hit_damage = self.core.combat.frame_max_damage;
+            } else if self.core.modified_knockback(hit.knockback, assets) != 0.0
+                && self.screwed(hit.descriptor.element)
+            {
+                // ftCo_8008EC90 (ftCo_Damage.c:854): ftCo_800D2FA4, after
+                // the bind: thrown straight up, not launched.
+                self.core.combat.pending_from_captor = false;
+                self.enter_damage_screw(hit.percent_damage, assets)?;
+                hit_damage = self.core.combat.frame_max_damage;
             } else if std::mem::take(&mut self.core.combat.pending_from_captor) || light_capture_hit
             {
                 // ftCo_8008EC90: the captor's hit, or any light hit (inlineB1),

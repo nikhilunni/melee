@@ -716,6 +716,45 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         physics: callbacks::physics::fall,
         ..rows[S::FireFlowerShoot as usize]
     };
+    // ftData_MotionStateList[154..=157]: ftCo_SM_ItemScrew (144) on,
+    // ftCo_ItemScrew.c and ftCo_DamageScrew.c. ItemScrew is a jump
+    // (ftCo_Jump_IASA, ftCo_Jump_Phys_Inner) that falls like Fall
+    // (ft_800831CC); ItemScrewAir takes JumpAerial's IASA and ft_80084DB0.
+    rows[S::ItemScrew as usize] = MotionRow {
+        action: ActionId(S::ItemScrew as u16),
+        id: S::ItemScrew,
+        animation: 144,
+        anim: callbacks::animation::pass,
+        iasa: callbacks::input::aerial,
+        physics: callbacks::physics::fall,
+        collision: callbacks::collision::fall,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::ItemScrewAir as usize] = MotionRow {
+        action: ActionId(S::ItemScrewAir as u16),
+        id: S::ItemScrewAir,
+        animation: 145,
+        anim: callbacks::animation::screw_air,
+        ..rows[S::ItemScrew as usize]
+    };
+    rows[S::DamageScrew as usize] = MotionRow {
+        action: ActionId(S::DamageScrew as u16),
+        id: S::DamageScrew,
+        animation: 146,
+        anim: callbacks::animation::damage_screw,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::fall,
+        collision: callbacks::collision::damage_screw,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::DamageScrewAir as usize] = MotionRow {
+        action: ActionId(S::DamageScrewAir as u16),
+        id: S::DamageScrewAir,
+        animation: 147,
+        ..rows[S::DamageScrew as usize]
+    };
     // ftData_MotionStateList[158..=173]: ftCo_SM_ItemScopeStart (149) on,
     // the Super Scope's start, rapid, fire and end rows, on the ground and
     // in the air, then their empty twins.

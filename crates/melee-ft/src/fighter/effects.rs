@@ -276,6 +276,21 @@ impl super::FighterCore {
                 );
                 continue;
             }
+            if matches!(id, 0x438 | 0x439) {
+                // ftCo_09F7.c block_66: efAsync kind 3, always 0x438, with
+                // x34_scale.y (the player scale) times co_attrs x144 (fmuls).
+                let parameter = self.player.scale * self.attributes.items.unknown_144;
+                self.push_graphics_request_with(
+                    sealed,
+                    issued,
+                    EffectRequest::AttachedParameter {
+                        id: 0x438,
+                        bone,
+                        parameter,
+                    },
+                );
+                continue;
+            }
             if !(id < 0x250
                 || id / 1000 == 30
                 || matches!(

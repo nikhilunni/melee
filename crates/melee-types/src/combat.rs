@@ -177,6 +177,8 @@ pub enum StaleMove {
     LGunShoot,
     /// FtMoveId_FireFlowerShoot (0x5A): the Fire Flower's flames.
     FireFlowerShoot,
+    /// FtMoveId_Screw (0x5B): the Screw Attack's jumps.
+    Screw,
     /// FtMoveId_ScopeRapid / ScopeFire (0x5C / 0x5D): the Super Scope's
     /// rapid shots and charged shot.
     ScopeRapid,

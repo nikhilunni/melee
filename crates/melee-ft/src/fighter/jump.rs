@@ -101,13 +101,18 @@ impl Fighter {
             panic!("KneeBend data missing")
         };
         let short_hop = squat.short_hop;
-        let state = self.jump_direction(assets, false);
+        // ft_800D2D0C: with a Screw Attack, ftCo_ItemScrew_Enter (800D2D50)
+        // jumps at PlCo +800's share (ftCo_800CB110(gobj, false, x800)).
+        let (state, multiplier) = if self.holding_screw_attack() {
+            (CommonMotionState::ItemScrew, assets.screw_jump_multiplier)
+        } else {
+            (self.jump_direction(assets, false), 1.0)
+        };
         self.leave_ground();
         self.change_motion_state(state.into(), assets)?;
         // ftCo_800CB110: retail 800CB140/144,174/180,18C/198,1A8,1B8;
         // products and sum are separately rounded, with no fusion.
         let attrs = &self.core.attributes.jumping;
-        let multiplier = 1.0;
         let momentum = self.core.physics.self_velocity.x
             * (attrs.ground_to_air_jump_momentum_multiplier * multiplier);
         let horizontal = momentum
@@ -146,6 +151,13 @@ impl Fighter {
     /// `CharacterCallbacks::aerial_jump_style`.
     pub(super) fn enter_aerial_jump(&mut self, assets: &FighterAssets) -> Result<()> {
         let style = self.character.aerial_jump_style();
+        if self.holding_screw_attack() {
+            if style == super::AerialJumpStyle::MultiJump {
+                unimplemented!("ftCo_JumpAerialF1.c:46: a multijumper's Screw Attack jump");
+            }
+            // ftCo_JumpAerial.c:93-101, ahead of the kind dispatch.
+            return self.enter_screw_air_jump(assets);
+        }
         if style == super::AerialJumpStyle::MultiJump {
             return self.enter_multi_jump(assets);
         }
@@ -407,7 +419,7 @@ impl FighterCore {
         // scratch and never skip.
         let jumping = matches!(
             self.motion_state.id,
-            CommonMotionState::JumpF | CommonMotionState::JumpB
+            CommonMotionState::JumpF | CommonMotionState::JumpB | CommonMotionState::ItemScrew
         );
         if let MotionData::Jump(jump) = &mut self.state_data {
             if jumping && jump.physics_started == 0 {

@@ -130,3 +130,22 @@ switches between their ground and air rows (flags 0x0C4C5080) are in
   end (ftCo_800C8A64) returns from Fighter_8006A360, skipping that frame's
   animation callback. Its colour animations and refraction are
   presentation; a second cloak while cloaked fails closed.
+
+## Screw Attack (wave 27)
+
+- Item (itscball.c): falls, rests, held, thrown (state 3) until a floor;
+  gone on a hit or a clank, it_80273030 on a reflect, a bounce off a
+  shield or the victim. Its slope slide (EnteredAir, state 4) is guarded.
+- Holding it (ft_800D2D0C), KneeBend's end enters ItemScrew
+  (ftCo_ItemScrew_Enter: ftCo_800CB110 with PlCo +800 as the jump's
+  multiplier, a Jump in its physics' first-frame skip, Fall's collision)
+  and an aerial jump enters ItemScrewAir (ft_800D2E7C, ahead of the kind
+  dispatch: the impulse times PlCo +800, ftCo_800CBAC4). A multijumper's
+  screw jump (ftCo_JumpAerialF1.c:46) is guarded. Both rows stale as
+  FtMoveId_Screw (0x5B) and spawn graphic 0x438 (ftCo_09F7.c block_66:
+  model 0x22 on the joint, efLib_Cb_SetScale_FromParamX with the player
+  scale times co_attrs x144).
+- A HitElement_Scball hit outside motion groups 11 and 12 (ftCo_800D2FA4,
+  after the bind check) takes DamageScrew / DamageScrewAir: straight up at
+  screw_attack_launch_velocity, ft_80083B68 until a command sets
+  cmd_vars[0], then AirCatchHit's landing; its end is ftCo_800968C8.

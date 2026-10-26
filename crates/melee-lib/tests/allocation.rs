@@ -175,8 +175,8 @@ fn shooters_and_power_ups_step_and_capture_allocate_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
     let root = data_root();
     // LGun 16, LGunRay 35, FFlower 25, LGunBeam 39, SScope 21, SScopeBeam 38,
-    // Star 10, Spycloak 33.
-    const KINDS: [u32; 8] = [16, 35, 25, 39, 21, 38, 10, 33];
+    // Star 10, Spycloak 33, ScBall 30.
+    const KINDS: [u32; 9] = [16, 35, 25, 39, 21, 38, 10, 33, 30];
     let mut seen = [false; KINDS.len()];
     for name in [
         "w27_lgun_shots",
@@ -184,6 +184,7 @@ fn shooters_and_power_ups_step_and_capture_allocate_nothing() {
         "w27_sscope_fire",
         "w27_starman_touch",
         "w27_spycloak_hits",
+        "w27_scball_screw",
     ] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),

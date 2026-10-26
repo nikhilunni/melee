@@ -7399,6 +7399,13 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_fflower_e2af099ca_p1", 4421),
     ("corpus_v3_fd_items_fflower_e721bca4f_p0", 6001),
     ("corpus_v3_fd_items_fflower_ece1e43b7_p1", 6001),
+    // Screw Attacks (it-scball): picked up, a jump is ItemScrew and a
+    // double jump ItemScrewAir (their 0x438 spin model), staled as 0x5B;
+    // thrown into Marth it is gone and he rises in DamageScrew to the
+    // special fall (ftCo_800D2FA4).
+    ("start_fd_items_scball", 600),
+    ("start_fd_items_scball_cold", 600),
+    ("w27_scball_screw", 800),
 ];
 
 #[test]

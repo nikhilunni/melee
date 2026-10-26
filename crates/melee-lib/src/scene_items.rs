@@ -43,6 +43,7 @@ melee_it::item_kinds! {
         SScopeBeam: it_sscope::SuperScopeBeam,
         Star: it_star::Starman,
         Spycloak: it_spycloak::CloakingDevice,
+        ScBall: it_scball::ScrewAttack,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -793,6 +794,16 @@ impl Resources {
                     ItemKind::Spycloak,
                     &it_spycloak::ARTICLE_STATES,
                     it_spycloak::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::ScBall,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::ScBall,
+                    &it_scball::ARTICLE_STATES,
+                    it_scball::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (

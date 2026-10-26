@@ -80,6 +80,9 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     }
     rows[S::FireFlowerShoot as usize] = Some(GroundMove::FireFlowerShoot);
     rows[S::FireFlowerShootAir as usize] = Some(GroundMove::FireFlowerShoot);
+    // [154..=155]: 0x5B, the Screw Attack's jumps.
+    rows[S::ItemScrew as usize] = Some(GroundMove::Screw);
+    rows[S::ItemScrewAir as usize] = Some(GroundMove::Screw);
     // [158..=173]: the Super Scope's rapid rows 0x5C, fire rows 0x5D; its
     // start and end rows have none.
     rows[S::ItemScopeRapid as usize] = Some(GroundMove::ScopeRapid);

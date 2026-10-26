@@ -1575,6 +1575,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-scball"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-seak"
 version = "0.0.1"
 dependencies = [
@@ -2040,6 +2050,7 @@ dependencies = [
  "it-peach",
  "it-pikachu",
  "it-samus",
+ "it-scball",
  "it-seak",
  "it-shell",
  "it-spycloak",

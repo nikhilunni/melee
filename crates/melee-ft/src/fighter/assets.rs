@@ -240,6 +240,9 @@ pub struct FighterAssets {
     pub flower: FlowerTiming,
     /// PlCo +7CC: the Cloaking Device's frames (ftCo_800C88D4).
     pub cloak_frames: i32,
+    /// PlCo +800: a Screw Attack jump's share of a jump (ftCo_ItemScrew_Enter,
+    /// ft_800D2E7C).
+    pub screw_jump_multiplier: f32,
     /// PlCo +5B8 / +5BC: the Super Scope's full charge and rapid shots.
     pub scope: ScopeTiming,
     /// CommonBehavior's item hand slots and held-item idle choice.
@@ -797,6 +800,7 @@ impl FighterAssets {
                 rapid_shots: common.reader().s32(common_data + 0x5BC)?,
             },
             cloak_frames: common.reader().s32(common_data + 0x7CC)?,
+            screw_jump_multiplier: common.reader().f32(common_data + 0x800)?,
             flower: FlowerTiming {
                 min_flames: common.reader().s32(common_data + 0x5A4)?,
                 flame_interval: common.reader().f32(common_data + 0x5A8)?,

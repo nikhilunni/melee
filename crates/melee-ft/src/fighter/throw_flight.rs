@@ -242,7 +242,7 @@ impl FighterCore {
     /// (mpColl_800476B4 with fn_800DD6E4, which refuses platforms): an
     /// airborne collision that never lands. True when it touched a floor
     /// (Collide_FloorMask). The item landing (ft_80081A00) is not modelled.
-    fn stay_airborne(&mut self, map: &mut melee_mp::CollMap, refuse_platforms: bool) -> bool {
+    pub(super) fn stay_airborne(&mut self, map: &mut melee_mp::CollMap, refuse_platforms: bool) -> bool {
         crate::collision::air::begin_map(
             &self.physics,
             &mut self.collision,

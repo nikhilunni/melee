@@ -51,6 +51,7 @@ pub mod item_pickup;
 pub mod item_flower;
 pub mod power_up;
 pub mod item_scope;
+pub mod item_screw;
 pub mod item_shoot;
 pub mod item_swing;
 pub mod item_throw;

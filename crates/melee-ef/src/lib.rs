@@ -108,6 +108,8 @@ fn runs_through_hitlag(model: u32) -> bool {
 fn on_ko_link(descriptor: u32) -> bool {
     matches!(descriptor, 0x19 | 0x1A)
 }
+/// efAsync_Dispatch 0x438: the Screw Attack's spin, a common model.
+const SCREW_SPIN_MODEL: u32 = 0x22;
 /// efAsync_Dispatch 0x415: the ice block's common model.
 const ICE_BLOCK_MODEL: u32 = 0x25;
 /// efsync.c:504-521 (efSync 0x501): the model's life and the bone its
@@ -136,6 +138,10 @@ struct Effect {
     oriented: bool,
     scale_attachment: bool,
     callback_rotation: Option<Vec3>,
+    /// efLib_Cb_SetScale_FromParamX (eflib.c:1077): after each update's
+    /// animation, the root's scale is multiplied by params.x (fmuls per
+    /// axis).
+    scale_from_param: Option<f32>,
     /// efLib_Cb_ftMr_SpecialLw (eflib.c:1279): root rotation Z from the
     /// owner's floor after each update's animation.
     callback_rotation_z: Option<f32>,
@@ -616,6 +622,49 @@ impl Effects {
                 self.spawn_kirby_dash_attack::<T>(
                     player, bone, matrix, parameter, fighter, bank, particles, rng,
                 )?;
+                continue;
+            }
+            if let EffectRequest::AttachedParameter {
+                id: 0x438,
+                bone,
+                parameter,
+            } = request
+            {
+                // efAsync_Dispatch 0x438 (efasync.c:717-730), the Screw
+                // Attack's spin: efLib_Create_Attach 0x22 on the joint, the
+                // fighter root's rotation Y, and efLib_Cb_SetScale_FromParamX
+                // with the fighter's scaled x144.
+                let mut effect = self.acquire(SCREW_SPIN_MODEL, particles);
+                effect.joint_base = FIRST_EFFECT_JOINT + self.next_joint;
+                self.next_joint += effect.tree.len();
+                effect.owner = Some(ModelOwner::Fighter(player));
+                effect.hitlag_pause = HitlagPause::Active;
+                effect.attachment = Some(player);
+                effect.attachment_bone = Some(bone);
+                effect.scale_attachment = false;
+                effect.scale_from_param = Some(parameter);
+                // The fighter root's rotation Y: a quarter turn by facing.
+                effect.tree.set_rotation_y(
+                    effect.root,
+                    fighter.effect_facing() * std::f32::consts::FRAC_PI_2,
+                );
+                let matrix = resolved_matrix.unwrap_or(fighter.effect_matrix(Some(bone)));
+                effect.tree.set_translate(
+                    effect.root,
+                    &Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]),
+                );
+                effect.animate_banks::<T>(
+                    resources::Banks {
+                        common: bank,
+                        characters: &self.character_banks,
+                    },
+                    particles,
+                    rng,
+                    &mut self.draws,
+                    &mut self.events,
+                    &mut self.animation_events,
+                )?;
+                self.instances.push(effect);
                 continue;
             }
             if let EffectRequest::AttachedParameter {
@@ -2103,7 +2152,15 @@ impl Effects {
                 let z = step + effect.tree.translation(child).z;
                 effect.tree.set_translate_z(child, z);
             }
+            if let Some(factor) = effect.scale_from_param {
+                let scale = effect.tree.scale(effect.root);
+                effect.tree.set_scale(
+                    effect.root,
+                    &Vec3::new(factor * scale.x, factor * scale.y, factor * scale.z),
+                );
+            }
             if effect.callback_rotation.is_some()
+                || effect.scale_from_param.is_some()
                 || effect.child_drift_z.is_some()
                 || effect.callback_rotation_z.is_some()
                 || effect.facing_rotation.is_some()
@@ -2283,6 +2340,7 @@ impl Effect {
             oriented: false,
             scale_attachment: true,
             callback_rotation: None,
+            scale_from_param: None,
             callback_rotation_z: None,
             facing_rotation: None,
             follow_bone: None,

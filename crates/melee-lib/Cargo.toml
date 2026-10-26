@@ -18,6 +18,7 @@ it-lgun = { path = "../it-lgun" }
 it-fflower = { path = "../it-fflower" }
 it-sscope = { path = "../it-sscope" }
 it-star = { path = "../it-star" }
+it-scball = { path = "../it-scball" }
 it-spycloak = { path = "../it-spycloak" }
 it-container = { path = "../it-container" }
 it-monsters = { path = "../it-monsters" }

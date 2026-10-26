@@ -384,6 +384,23 @@ pub fn pass(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<W
     Ok(None)
 }
 
+/// ftData_MotionStateList: ftCo_MS_ItemScrewAir (155).
+pub fn screw_air(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.advance_smash_charge(assets);
+    fighter.screw_air_animation(assets)?;
+    Ok(None)
+}
+
+/// ftData_MotionStateList: ftCo_MS_DamageScrew (156), DamageScrewAir (157).
+pub fn damage_screw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.damage_screw_animation(assets)?;
+    Ok(None)
+}
+
 /// ftData_MotionStateList: ftCo_MS_Fall (29), ftCo_MS_FallAerial (32), ftCo_MS_FallSpecial
 /// (35).
 pub fn fall(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {

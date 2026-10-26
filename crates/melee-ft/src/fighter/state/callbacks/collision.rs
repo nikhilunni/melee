@@ -286,6 +286,17 @@ pub fn ray_gun(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     fighter.ray_gun_collision(phase.map, assets)
 }
 
+/// ftData_MotionStateList: ftCo_MS_DamageScrew (156), DamageScrewAir (157).
+/// ftCo_DamageScrew_Coll (800D30DC): once a command sets cmd_vars[0], the
+/// landing of ftCo_AirCatchHit_Coll; before, ft_80083B68.
+pub fn damage_screw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    if fighter.core.commands.variables[0] != 0 {
+        return air_catch_hit(fighter, phase);
+    }
+    fighter.damage_screw_collision(phase.map);
+    Ok(())
+}
+
 /// ftData_MotionStateList: ftCo_MS_FireFlowerShoot (152, 153):
 /// ftCo_FireFlowerShoot_Coll / ftCo_FireFlowerShootAir_Coll.
 pub fn flower_shoot(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {

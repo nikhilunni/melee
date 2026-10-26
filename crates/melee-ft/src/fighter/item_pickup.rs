@@ -155,8 +155,15 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 212] = [
+const HELD_ITEM_STATES: [S; 216] = [
     S::LightGet,
+    // ftCo_ItemScrew.c / ftCo_DamageScrew.c: the Screw Attack's jumps keep
+    // it, and a victim thrown up keeps a light item (only ftCo_8009750C's
+    // heavy drop).
+    S::ItemScrew,
+    S::ItemScrewAir,
+    S::DamageScrew,
+    S::DamageScrewAir,
     // ftpickupitem.c and ftCo_Lift.c: a heavy item is lifted, carried,
     // turned and thrown (ftCo_ItemThrow.c); every one drops it when hit.
     S::HeavyGet,
