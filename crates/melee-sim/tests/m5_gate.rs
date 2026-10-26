@@ -7446,6 +7446,16 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_items_rabbitc", 600),
     ("start_fd_items_rabbitc_cold", 600),
     ("w27_rabbitc_hoods", 1500),
+    // Starman explorer matches, round 2: no grab reaches an invincible
+    // fighter (ftcoll.c:1587).
+    ("corpus_v3_fd_items_starman_e0fcbde24_p0", 4816),
+    ("corpus_v3_fd_items_starman_e2af099ca_p0", 4684),
+    ("corpus_v3_fd_items_starman_e4213e6a5_p0", 5038),
+    ("corpus_v3_fd_items_starman_e46703f61_p0", 4600),
+    ("corpus_v3_fd_items_starman_e50814092_p0", 4141),
+    ("corpus_v3_fd_items_starman_ece1e43b7_p0", 4424),
+    ("corpus_v3_fd_items_starman_ef89b3e70_p0", 6001),
+    ("corpus_v3_fd_items_starman_ef9b6d16d_p0", 5878),
 ];
 
 #[test]
