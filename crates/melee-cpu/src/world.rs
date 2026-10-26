@@ -27,6 +27,9 @@ pub struct ItemView {
     pub motion: u16,
     /// xD44_lifeTimer.
     pub life_timer: f32,
+    /// it_8026B960's Bob-omb case (`ItemLogic::fuse`): xDEC unless
+    /// exploding, else -1.
+    pub bomb_fuse: f32,
 }
 
 /// One of an item's hit capsules (x5D4_hitboxes[i].hit) as the CPU's
@@ -60,6 +63,7 @@ impl ItemView {
         hitboxes: [None; 4],
         motion: 0,
         life_timer: 0.0,
+        bomb_fuse: -1.0,
     };
 }
 
@@ -81,6 +85,9 @@ pub struct Scene<'a> {
     pub data: &'a crate::desc::CpuData,
     /// gm_8016C75C: the thinking fighter's player's KO total.
     pub player_kills: i32,
+    /// gm_8016C5C0 for each player slot: how many players (or teams) score
+    /// above it in the standings, ties sharing a rank.
+    pub standings: [u8; 6],
     /// p_ftCommonData->horizontal_stick_deadzone.
     pub horizontal_deadzone: f32,
     /// stage_info.x73C (Ground_801C4DA0): the barrel cannon's aim on the

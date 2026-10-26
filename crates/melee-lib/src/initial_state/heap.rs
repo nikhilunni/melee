@@ -78,7 +78,30 @@ static AFTER_BOOT: &[BootAddress] = &[
     BootAddress { stage: G::Battle, before: &[(K::Falco, costumes(&[0]))], address: 0x80C9_D460 },
     BootAddress { stage: G::Last, before: &[(K::Popo, costumes(&[0])), (K::Nana, costumes(&[0]))], address: 0x80CC_E780 },
     BootAddress { stage: G::Battle, before: &[(K::Seak, costumes(&[0])), (K::Zelda, costumes(&[0]))], address: 0x80CE_7320 },
+    // A third and fourth player after Fox and Marth (2026-10-25: the
+    // `w26_start_{fd,bf}_*_cpu9falco*` boundaries), as two players would
+    // have them (see `extra_player_shift`).
+    BootAddress { stage: G::Last, before: &[(K::Fox, costumes(&[0])), (K::Mars, costumes(&[0]))], address: 0x80CF_C820 },
+    BootAddress { stage: G::Last, before: &[(K::Fox, costumes(&[0])), (K::Mars, costumes(&[0])), (K::Falco, costumes(&[0]))], address: 0x80D3_CFA0 },
+    BootAddress { stage: G::Battle, before: &[(K::Fox, costumes(&[0])), (K::Mars, costumes(&[0]))], address: 0x80CE_DB60 },
+    BootAddress { stage: G::Battle, before: &[(K::Fox, costumes(&[0])), (K::Mars, costumes(&[0])), (K::Falco, costumes(&[0]))], address: 0x80D2_E2E0 },
 ];
+
+/// How far every Fighter block moves for each player past two, where the
+/// recordings show it: on Final Destination 0x40 (Fox first at 0x80C6B960,
+/// 0x80C6B9A0 and 0x80C6B9E0 with two, three and four players; Marth second
+/// and Falco third move alike), on Battlefield not at all. Elsewhere no
+/// recording has more than two players, so none of those scenes has an
+/// address.
+fn extra_player_shift(stage: G, players: usize) -> Option<u32> {
+    let extra = u32::try_from(players.checked_sub(2)?).ok()?;
+    match stage {
+        _ if extra == 0 => Some(0),
+        G::Last => Some(0x40 * extra),
+        G::Battle => Some(0),
+        _ => None,
+    }
+}
 
 /// The first fighter's block, which depends on the stage alone
 /// (docs/PORT_NOTES/STALE_HEAP.md: 174 boundaries).
@@ -99,14 +122,15 @@ fn first_after_boot(stage: G) -> Option<u32> {
 /// partner, or a CPU player).
 pub(super) fn fighter_address_after_boot(setup: &Setup, index: usize) -> Option<u32> {
     let roster = setup.roster();
+    let shift = extra_player_shift(setup.stage.kind, setup.fighters.len())?;
     if index == 0 {
-        return first_after_boot(setup.stage.kind);
+        return first_after_boot(setup.stage.kind).map(|address| address + shift);
     }
     let before: Vec<(K, u8)> = roster[..index]
         .iter()
         .map(|entry| (entry.descriptor.kind, setup.fighters[entry.player].costume))
         .collect();
-    after_boot(setup.stage.kind, &before)
+    after_boot(setup.stage.kind, &before).map(|address| address + shift)
 }
 
 /// A fighter's address given the stage and the kind and costume of each

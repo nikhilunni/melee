@@ -39,6 +39,7 @@ pub mod script;
 mod select;
 mod stage_route;
 mod targets;
+mod throw_item;
 mod tumble;
 mod up_special;
 mod versus;

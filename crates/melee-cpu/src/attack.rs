@@ -1,7 +1,7 @@
 //! ftcpuattack.c: whether and how the CPU attacks its target.
 use crate::{desc::AttackEntry, world::Scene};
 use gekko_math::{
-    fma::{fmadd, fmadds, fnmsub},
+    fma::{fmadd, fmadds, fmsubs, fnmsub},
     msl::{fctiwz, sqrtf},
     HsdRng,
 };
@@ -96,8 +96,15 @@ pub fn close_attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bo
         return chosen.is_some();
     }
     let holding = crate::facts::held_kind(fp);
-    if holding.is_some_and(swing_weapon) {
-        unimplemented!("ftCo_800B52AC: a swing weapon's attacks (ftcpuattack.c:1844)");
+    // ftcpuattack.c:1844: a swing weapon (ftCo_800A59E4) reaches further
+    // by its PlCo +24 bonus, through the weapon attacks (+18).
+    if let Some(reach) = holding.and_then(weapon_reach_index) {
+        let reach = data.weapon_reach[reach];
+        let list = data.weapon[kind].as_deref();
+        if let Some(script) = choose_with(fp, scene, target_index, list, Some(reach), rng) {
+            fp.core.cpu.xa4 = script;
+            return true;
+        }
     }
     let target = scene.fighter(target_index);
     if fp.core.cpu.level > 5 && shielding(target) {
@@ -132,13 +139,19 @@ pub fn close_attack(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) -> bo
 }
 
 /// ftCo_800A59E4 (0x800A59E4): the fan, the Star Rod, the Lip's Stick, the
-/// bat, the Beam Sword or the parasol.
-fn swing_weapon(kind: melee_types::ItemKind) -> bool {
+/// bat, the Beam Sword or the parasol, each with its entry in PlCo +24's
+/// reach table (ftcpuattack.c:1849-1868).
+fn weapon_reach_index(kind: melee_types::ItemKind) -> Option<usize> {
     use melee_types::ItemKind as I;
-    matches!(
-        kind,
-        I::Harisen | I::StarRod | I::LipStick | I::Bat | I::Sword | I::Parasol
-    )
+    Some(match kind {
+        I::Harisen => 0,
+        I::LipStick => 1,
+        I::StarRod => 2,
+        I::Sword => 3,
+        I::Bat => 4,
+        I::Parasol => 5,
+        _ => return None,
+    })
 }
 
 /// ftCo_800A3200 (0x800A3200): 1 in CliffCatch, 2 in CliffWait.
@@ -207,6 +220,19 @@ fn choose(
     list: Option<&[AttackEntry]>,
     rng: &mut HsdRng,
 ) -> Option<i32> {
+    choose_with(fp, scene, target_index, list, None, rng)
+}
+
+/// ftCo_800B4AB0, or with `reach` ftCo_800B52AC (0x800B52AC): the same
+/// choice, the attack's box reaching `reach` further ahead and above.
+fn choose_with(
+    fp: &mut Fighter,
+    scene: &Scene,
+    target_index: usize,
+    list: Option<&[AttackEntry]>,
+    reach: Option<f32>,
+    rng: &mut HsdRng,
+) -> Option<i32> {
     let cpu = &mut fp.core.cpu;
     cpu.x74 = hsd_types::Vec2::new(0.0, 0.0);
     cpu.x6c = hsd_types::Vec2::new(0.0, 0.0);
@@ -252,14 +278,21 @@ fn choose(
         } else {
             fmadds(them.vy, t, them.y) - my_y
         };
-        let (mut front, mut back) = if facing > 0.0 {
-            (entry.front * scale, entry.back * scale)
-        } else {
-            (-entry.back * scale, -entry.front * scale)
+        let (mut front, mut back) = match (facing > 0.0, reach) {
+            (true, None) => (entry.front * scale, entry.back * scale),
+            (false, None) => (-entry.back * scale, -entry.front * scale),
+            // 800B5704/08: fmuls, fmadds.
+            (true, Some(reach)) => (entry.front * scale, fmadds(entry.back, scale, reach)),
+            // 800B5724/28: fmsubs on the negated x0C, fmuls.
+            (false, Some(reach)) => (fmsubs(-entry.back, scale, reach), -entry.front * scale),
         };
         front *= grow;
         back *= grow;
-        let high = entry.high * scale * grow;
+        let high = match reach {
+            None => entry.high * scale * grow,
+            // 800B5740: fmadds, then fmuls.
+            Some(reach) => fmadds(entry.high, scale, reach) * grow,
+        };
         let low = entry.low * scale * grow;
         if !(high > relative_y
             && low < relative_y + target_height

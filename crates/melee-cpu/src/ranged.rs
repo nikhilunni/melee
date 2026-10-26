@@ -319,7 +319,7 @@ fn thrown_at_angle(kind: melee_types::ItemKind) -> bool {
 fn fuse(item: &crate::world::ItemView) -> f32 {
     use melee_types::ItemKind as I;
     match item.kind {
-        I::BombHei => unimplemented!("it_8026B960: a Bob-omb's fuse (xDEC)"),
+        I::BombHei => item.bomb_fuse,
         I::LinkBomb if item.motion != 5 => item.life_timer,
         _ => -1.0,
     }

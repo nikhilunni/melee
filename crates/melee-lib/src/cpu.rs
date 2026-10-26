@@ -38,6 +38,7 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
             hitboxes,
             motion: item.motion,
             life_timer: item.life_timer,
+            bomb_fuse: (<crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(item.kind).fuse)(item),
         };
         item_count += 1;
     }
@@ -49,6 +50,8 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         teams[usize::from(f.player.id)] = f.player.team;
     }
     let player_kills = state.ko_counts.total(state.fighters[index].player.id, &teams);
+    // gm_8016C6C0 (ftCo_800A53DC's ranking): the standings as they stand.
+    let standings = crate::standings::current_ranks(state);
     let count = state.fighters.len();
     let deadzone = state.assets.fighters[index]
         .input
@@ -72,6 +75,7 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         items: &items[..item_count],
         data: &state.assets.cpu,
         player_kills,
+        standings,
         horizontal_deadzone: deadzone,
         barrel_aim: match &state.stage {
             crate::scene_stage::SceneStage::Kongo(stage) => stage.barrel_angle,

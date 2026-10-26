@@ -248,6 +248,7 @@ pub fn star_carrier(_fp: &Fighter, _scene: &Scene) -> Option<usize> {
 /// the players a person controls (not ftCo_800A2040), then among all.
 pub fn attack_target(fp: &Fighter, scene: &Scene) -> Option<usize> {
     let candidates = |humans_only: bool| {
+        // (index, rank, distance) of the best so far.
         let mut best: Option<(usize, u8, f32)> = None;
         for (index, other) in scene.others() {
             let p = other.core.physics.position;
@@ -260,22 +261,20 @@ pub fn attack_target(fp: &Fighter, scene: &Scene) -> Option<usize> {
             {
                 continue;
             }
-            // 800A55E4: ftCo_800A1AB4.
+            // 800A55E4: ftCo_800A1AB4. gm_8016C6C0 ranks the player's slot
+            // (ftLib_80086BE0), so one player's two fighters (Popo and
+            // Nana) rank alike: the better placed wins, then the strictly
+            // nearer.
             let d = distance(fp.core.physics.position, p);
-            let player = other.core.player.id;
-            match best {
-                None => best = Some((index, player, d)),
-                // gm_8016C6C0 ranks a player's slot (ftLib_80086BE0): one
-                // player's two fighters (Popo and Nana) rank alike, and the
-                // strictly nearer wins.
-                Some((_, best_player, best_d)) if best_player == player => {
-                    if best_d > d {
-                        best = Some((index, player, d));
-                    }
+            let rank = scene.standings[usize::from(other.core.player.id)];
+            let better = match best {
+                None => true,
+                Some((_, best_rank, best_d)) => {
+                    best_rank > rank || (best_rank == rank && best_d > d)
                 }
-                Some(_) => unimplemented!(
-                    "ftCo_800A53DC: two players' opponents ranked by gm_8016C6C0's standings"
-                ),
+            };
+            if better {
+                best = Some((index, rank, d));
             }
         }
         best.map(|(index, _, _)| index)
