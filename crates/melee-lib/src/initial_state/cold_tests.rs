@@ -197,6 +197,9 @@ fn setup_snapshot(state: &InitialState) -> Record {
         SceneStage::Castle(stage) => {
             sink.field("stage.castle.platform_y", &stage.platforms[0].position);
         }
+        SceneStage::RCruise(stage) => {
+            sink.field("stage.rcruise.scroll_x", &stage.scroll.x);
+        }
         SceneStage::Greens(greens) => {
             sink.field("stage.greens.block_timer", &greens.stage.blocks.timer);
         }
@@ -478,6 +481,16 @@ fn start_pc_fox_marth4_cold_600() {
 #[test]
 fn start_gg_fox_marth4_cold_600() {
     verify("start_gg_fox_marth4");
+}
+
+#[test]
+fn start_rc_fox_marth4_cold_600() {
+    verify("start_rc_fox_marth4");
+}
+
+#[test]
+fn start_rc_iceclimbers_fox4_cold_600() {
+    verify("start_rc_iceclimbers_fox4");
 }
 
 #[test]

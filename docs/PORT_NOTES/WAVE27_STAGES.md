@@ -169,3 +169,39 @@ the countdown ends.
   and rests; ECB rotation follows the spin, whose landing rate is ItCo +74
   (it_8026DC24). A healing apple needs items on and fails closed
   (itwhispyapple.c:110).
+
+## Rainbow Cruise (grrcruise.c)
+
+Creation order 3 (the camera path, hidden), 3 (the scroll controller), 0,
+2, 5, 1, 6, 4; no setup draws. The scroll (grRCruise_801FFADC) projects the
+path's eye through its interest onto z = 0 and translates maps 2, 1, 5, 6,
+4 by the negated projection; its change is the stage's drift
+(grRCruise_80201918, which the Nana / CPU destination rides off a floor).
+
+- Map 1's collision joints come from GrRc.dat and grRc_803E4DA8, the stage
+  table bound after the archive's (Ground_801C2ED0): joints 0..4, 6..23 sit
+  on the table's bones. The deferred grRCruise_801FF444 hooks the deck's
+  and the clouds' floor callbacks; then the deck tilts (grRCruise_8020071C,
+  bone 8 of maps 1 and 5), the seventeen clouds fall after a stand and
+  return blinking, the twenty appearing blocks come and go with the camera
+  bounds (grRCruise_80201588), the three swings (map 4) start on a landing
+  and blink back. The flag's directional field (0.4) wanders as Peach's
+  Castle's (grRCruise_80201110). The tilt's mode 1 is never set
+  (grrcruise.c:743) and fails closed.
+- Fighters enter standing on the ship and ride it in Entry
+  (Fighter_procUpdate's grounded tail, mpGetSpeed). The Ice Climbers'
+  spawn points sit at different heights on the moving deck: the EntryStart
+  / EntryEnd accessory (fn_800C69F4 / fn_800C6F34) raises Popo to a Nana
+  above him, sets Nana to Popo's height, and puts the root at cur_pos. An
+  entry's x2219_b1 lasts only through the entry motions (the scratch stays
+  in Wait), so Nana standing on Popo steps behind him from the first Wait
+  (ftCommon_8007DFD0); `start_rc_iceclimbers_fox4` witnesses both.
+- The stage clears stage_info.unk8C.b5: each player's revival tracks its
+  marker (x2135 != -1, Player_80032FA4), so Rebirth takes no map pass
+  (ftCo_Rebirth_Coll), RebirthWait resets the collision position again
+  (ftCo_800D5600) and the next death takes no support probe
+  (fighter.c:530). Markers 4..7 are map 0's, which nothing moves, so the
+  per-frame re-aim gives the entry's target.
+- A CPU on Rainbow Cruise fails closed (ftCo_800A6FC4, grRCruise_80201988's
+  floors); a recovering Nana uses the up special (ftCo_800A9CB4_inline1).
+  Item xDD1 b1 (the item drift, item.c:1420) has no setter in the decomp.

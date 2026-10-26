@@ -142,6 +142,20 @@ impl BackgroundAnimation {
         let joint = self.tree.parent(self.root).unwrap_or(self.root);
         self.tree.set_translate_y(joint, y);
     }
+    /// `grAnime_801C7BA0(gobj, bone, 1, frame)` (0x801C7BA0):
+    /// HSD_JObjReqAnimByFlags(0x81) on that joint alone.
+    pub fn request_joint_frame(&mut self, bone: usize, frame: f32) {
+        self.tree.req_anim_by_flags(self.joints[bone], 0x81, frame);
+    }
+    /// `grAnime_801C752C(jobj, 1, ..., HSD_AObjSetFlags, 3, AOBJ_LOOP)`: every
+    /// joint clock of the model loops.
+    pub fn loop_all(&mut self) {
+        for &joint in &self.joints {
+            if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
+                aobj.flags |= hsd_anim::aobj::AOBJ_LOOP;
+            }
+        }
+    }
     /// grAnime_801C7A94 affects one joint's rate, without rewinding its clock.
     pub fn set_joint_rate(&mut self, bone: usize, rate: f32) {
         if let Some(a) = &mut self.tree.get_mut(self.joints[bone]).aobj {

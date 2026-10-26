@@ -2587,3 +2587,21 @@ stage = "GreenGreens"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 4084183430
+
+[[boundary]]
+name = "start_rc_fox_marth4"
+cold = "start_rc_fox_marth4_cold"
+savestate = "harness/roms/start_rc_fox_marth4.sav"
+stage = "RainbowCruise"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 474766000
+
+[[boundary]]
+name = "start_rc_iceclimbers_fox4"
+cold = "start_rc_iceclimbers_fox4_cold"
+savestate = "harness/roms/start_rc_iceclimbers_fox4.sav"
+stage = "RainbowCruise"
+players = ["IceClimbers", "Fox"]
+stocks = 4
+seed = 586359003

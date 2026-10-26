@@ -139,8 +139,10 @@ pub fn toward_destination_in_air(
                         return;
                     }
                 }
+                // Rainbow Cruise always recovers by the up special.
                 GrKind::RCruise => {
-                    unimplemented!("ftCo_800A9CB4: Rainbow Cruise recovery");
+                    crate::up_special::up_special(fp, rng);
+                    return;
                 }
                 _ => {}
             }

@@ -122,7 +122,8 @@ fn ride_destination_floor(fp: &mut Fighter, scene: &mut Scene) {
 fn stage_drift(stage: GrKind) -> hsd_types::Vec3 {
     match stage {
         GrKind::RCruise | GrKind::BigBlue | GrKind::Icemt => {
-            // Icicle Mountain's scene passes its drift (Scene::stage_drift).
+            // Icicle Mountain's and Rainbow Cruise's scenes pass their drift
+            // (Scene::stage_drift).
             unimplemented!("grLib_801C9E60: stage drift of {stage:?}")
         }
         _ => hsd_types::Vec3::ZERO,

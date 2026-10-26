@@ -594,6 +594,36 @@ pub fn read_greens_parameters(archive: &Archive) -> ReadResult<crate::greens::Pa
 pub fn read_greens(archive: &Archive) -> ReadResult<StageDesc> {
     read_stage(archive, GrKind::Greens, 6)
 }
+/// `grRCruise_YakumonoParam` (grrcruise.c) as the asm reads it.
+pub fn read_rcruise_parameters(archive: &Archive) -> ReadResult<crate::rcruise::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    let i = |at: u32| r.s32(p + at);
+    Ok(crate::rcruise::Parameters {
+        tilt_gain: f(0x0)?,
+        tilt_max: f(0x4)?,
+        tilt_return: f(0x8)?,
+        swing_wait: i(0xC)?,
+        swing_blink_time: i(0x10)?,
+        swing_blink: i(0x14)?,
+        swing_end_time: i(0x18)?,
+        swing_end_blink: i(0x1C)?,
+        cloud_wait: i(0x20)?,
+        cloud_shake_time: i(0x24)?,
+        cloud_shake_period: i(0x28)?,
+        cloud_shake: [f(0x2C)?, f(0x30)?],
+        cloud_fall_acceleration: f(0x34)?,
+        cloud_fall_max: f(0x38)?,
+        cloud_away: i(0x3C)?,
+        cloud_blink_time: i(0x40)?,
+        cloud_blink: i(0x44)?,
+    })
+}
+/// grRc_StageData: GrRc.dat. grRc_StageCallbacks[1] carries 0xC0000000.
+pub fn read_rcruise(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::RCruise, 1)
+}
 /// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
 /// carries flags 0xC0000000, so map 1 selects the lights and fog.
 pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {

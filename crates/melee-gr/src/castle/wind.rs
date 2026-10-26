@@ -51,6 +51,17 @@ impl Gusts {
     /// field's phase: turn it a degree (clamped to +-60), flip the turn
     /// on a coin every 30 ticks, toggle strong gusts every 300, then gust.
     pub fn steer(&mut self, field: &mut ForceField, rng: &mut HsdRng) {
+        self.steer_with(field, rng, Self::calm_castle);
+    }
+
+    /// The castle's calm gust: `0.05 * r` (fmul in double).
+    fn calm_castle(r: f64) -> f64 {
+        0.05 * r
+    }
+
+    /// [`Self::steer`] with the calm gust a stage gives (Rainbow Cruise's
+    /// grRCruise_80201110 has its own).
+    pub fn steer_with(&mut self, field: &mut ForceField, rng: &mut HsdRng, calm: fn(f64) -> f64) {
         let direction = &mut field.direction_or_center;
         let mut angle = melee_lb::trigf::atan2f(direction.z, direction.x) + self.turn;
         if f64::from(angle) > LIMIT_DOUBLE {
@@ -72,17 +83,21 @@ impl Gusts {
                 self.strong = true;
             }
         }
-        self.gust(field, rng);
+        self.gust_with(field, rng, calm);
     }
 
     /// grCastle_801D0D24 (0x801D0D24): the field's strength, `0.3 * r +
     /// 0.2` (retail 0x801D0D4C: fmadd in double) or `0.05 * r`.
     pub fn gust(&self, field: &mut ForceField, rng: &mut HsdRng) {
+        self.gust_with(field, rng, Self::calm_castle);
+    }
+
+    fn gust_with(&self, field: &mut ForceField, rng: &mut HsdRng, calm: fn(f64) -> f64) {
         let r = f64::from(rng.randf());
         field.strength = if self.strong {
             fmadd(0.3, r, 0.2) as f32
         } else {
-            (0.05 * r) as f32
+            calm(r) as f32
         };
     }
 }

@@ -280,16 +280,20 @@ impl Assets {
             ],
             // stage_info.unk8C.b4: set by grlast.c:233 and grbattle.c:147,
             // cleared by grstory.c:77 and groldpupupu.c:145.
+            // grrcruise.c:153 sets it too.
             player_revival_markers: matches!(
                 stage_desc.kind,
-                melee_types::GrKind::Last | melee_types::GrKind::Battle
+                melee_types::GrKind::Last | melee_types::GrKind::Battle | melee_types::GrKind::RCruise
             ),
             // stage_info.unk8C.b5 stays clear (Ground_801BFFB0,
             // ground.c:225) on Mute City (grmutecity.c:368) and Fountain of
             // Dreams (grshrine.c never sets it).
             tracked_revival_markers: matches!(
                 stage_desc.kind,
-                melee_types::GrKind::MuteCity | melee_types::GrKind::Shrine
+                melee_types::GrKind::MuteCity
+                    | melee_types::GrKind::Shrine
+                    // grrcruise.c:154 clears it too.
+                    | melee_types::GrKind::RCruise
             ),
         };
         if stage_desc.kind == melee_types::GrKind::Icemt {

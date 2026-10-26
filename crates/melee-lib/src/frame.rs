@@ -2040,6 +2040,10 @@ impl Runtime {
                                 // grZebes_801D9758, then fn_801D94F0.
                                 crate::scene_stage::zebes::start(state);
                             }
+                            if matches!(state.stage, SceneStage::RCruise(_)) {
+                                // grRCruise_801FF444.
+                                crate::scene_stage::rcruise::start(state);
+                            }
                             if matches!(state.stage, SceneStage::Greens(_)) {
                                 // fn_80214658.
                                 crate::scene_stage::greens::start(state);
@@ -2872,6 +2876,14 @@ impl Runtime {
                         if f.reviving() {
                             f.match_partner_height();
                         }
+                        // fn_800C69F4 / fn_800C6F34 (accessory1 entering).
+                        if matches!(
+                            f.motion_state.id,
+                            melee_types::CommonMotionState::EntryStart
+                                | melee_types::CommonMotionState::EntryEnd
+                        ) {
+                            f.match_partner_height_on_entry();
+                        }
                         f.update_revival_platform();
                         // Fighter_CallAcessoryCallbacks_8006C624: hitlag
                         // (x2219_b5) runs accessory3 instead of accessory1.
@@ -3109,6 +3121,7 @@ impl Runtime {
                         || address == melee_gr::greatbay::procs::DYNAMICS_PROC
                         || address == melee_gr::castle::procs::DYNAMICS_PROC
                         || address == melee_gr::greens::procs::DYNAMICS_PROC
+                        || address == melee_gr::rcruise::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -3226,6 +3239,8 @@ impl Runtime {
                             &mut self.stage_objects,
                             &mut self.item_objects,
                         )?;
+                    } else if matches!(state.stage, SceneStage::RCruise(_)) {
+                        crate::scene_stage::rcruise::run_proc(state, map_id, &mut self.radial_forces)?;
                     } else if matches!(state.stage, SceneStage::Greens(_)) {
                         crate::scene_stage::greens::run_proc(
                             state,

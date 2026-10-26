@@ -88,6 +88,7 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
             crate::scene_stage::SceneStage::IceMt(stage) => {
                 Some(hsd_types::Vec3::new(0.0, -stage.controller.scroll.speed, 0.0))
             }
+            crate::scene_stage::SceneStage::RCruise(stage) => Some(stage.drift),
             _ => None,
         },
         stale: Default::default(),

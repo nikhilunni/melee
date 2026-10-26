@@ -50,6 +50,22 @@ impl FighterCore {
     /// fn_800D54A4 / fn_800D55B4 (800D54A4 / 800D55B4), the revival
     /// accessory's first half: the leader rises to an awake partner above
     /// it; the second fighter rises to its leader.
+    /// fn_800C69F4 / fn_800C6F34 (800C69F4 / 800C6F34), the EntryStart /
+    /// EntryEnd accessory's first half: the leader rises to an awake
+    /// partner above it; the second fighter takes its leader's height.
+    /// Fighter_CallAcessoryCallbacks then sets the root's translation to
+    /// cur_pos.
+    pub fn match_partner_height_on_entry(&mut self) {
+        if let Some(partner) = self.partner {
+            // The leader rises only to an awake partner above it.
+            let rises = !partner.asleep && partner.height > self.physics.position.y;
+            if self.player.secondary || rises {
+                self.physics.position.y = partner.height;
+            }
+        }
+        self.skeleton.set_translate(self.animation.root, &self.physics.position);
+    }
+
     pub fn match_partner_height(&mut self) {
         let Some(partner) = self.partner else {
             return;

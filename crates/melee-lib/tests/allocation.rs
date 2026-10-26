@@ -2161,7 +2161,14 @@ fn wave27_stage_hazards_step_without_allocating() {
         return;
     }
     const TICKS: usize = 14_000;
-    for (index, stage) in [Stage::PrincessPeachsCastle, Stage::GreenGreens].into_iter().enumerate() {
+    // Whether the stage makes material items. Rainbow Cruise has none, and
+    // its ship leaves idle fighters behind: that match ends by stocks.
+    let stages = [
+        (Stage::PrincessPeachsCastle, true),
+        (Stage::GreenGreens, true),
+        (Stage::RainbowCruise, false),
+    ];
+    for (index, (stage, makes_items)) in stages.into_iter().enumerate() {
         let config = MatchConfig::versus(
             stage,
             [
@@ -2201,6 +2208,11 @@ fn wave27_stage_hazards_step_without_allocating() {
         }
         // The stage's material items (a switch, a Bill, a block, an apple)
         // came and went.
-        assert!(ran == TICKS && items > 0, "{}: {ran} ticks, {items} items", stage.display_name());
+        let finished = ran == TICKS || (!makes_items && !game.status().is_running());
+        assert!(
+            finished && (items > 0 || !makes_items),
+            "{}: {ran} ticks, {items} items",
+            stage.display_name()
+        );
     }
 }

@@ -19,6 +19,7 @@ pub(crate) mod oldyoshi;
 pub(crate) mod onett;
 pub(crate) mod pupupu;
 pub(crate) mod pura;
+pub(crate) mod rcruise;
 pub(crate) mod shrine;
 pub(crate) mod stadium;
 pub(crate) mod yorster;
@@ -340,6 +341,14 @@ pub const GREEN_GREENS: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Greens,
     read: melee_gr::desc::read_greens,
 };
+/// grRc_StageData: GrRc.dat; StageParam row 0x0B (StKind).
+pub const RAINBOW_CRUISE: StageDescriptor = StageDescriptor {
+    name: "RainbowCruise",
+    file: "GrRc.dat",
+    music_id: 0x0B,
+    kind: melee_types::GrKind::RCruise,
+    read: melee_gr::desc::read_rcruise,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -368,6 +377,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &ICICLE_MOUNTAIN,
         &PRINCESS_PEACHS_CASTLE,
         &GREEN_GREENS,
+        &RAINBOW_CRUISE,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -400,6 +410,7 @@ pub enum SceneStage {
     IceMt(Box<melee_gr::icemt::procs::IceMtStage>),
     Castle(Box<melee_gr::castle::procs::CastleStage>),
     Greens(Box<greens::Greens>),
+    RCruise(Box<melee_gr::rcruise::procs::RCruiseStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -410,7 +421,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) | Self::Castle(_) | Self::Greens(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) | Self::Castle(_) | Self::Greens(_) | Self::RCruise(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -441,6 +452,7 @@ impl SceneStage {
             Self::IceMt(s) => s.proc_table(),
             Self::Castle(s) => s.proc_table(),
             Self::Greens(s) => s.stage.proc_table(),
+            Self::RCruise(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -491,6 +503,7 @@ impl SceneStage {
             Self::IceMt(_) => unreachable!("Icicle Mountain callbacks run in scene_stage::icemt"),
             Self::Castle(_) => unreachable!("Peach's Castle callbacks run in scene_stage::castle"),
             Self::Greens(_) => unreachable!("Green Greens callbacks run in scene_stage::greens"),
+            Self::RCruise(_) => unreachable!("Rainbow Cruise callbacks run in scene_stage::rcruise"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -535,6 +548,10 @@ pub(crate) fn apply_ceiling_events(
         }
         SceneStage::Greens(_) => {
             greens::apply_bumps(state);
+            Ok(())
+        }
+        SceneStage::RCruise(_) => {
+            rcruise::apply_contacts(state);
             Ok(())
         }
         _ => Ok(()),

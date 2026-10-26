@@ -117,6 +117,9 @@ impl FighterCore {
             self.motion_state.id,
             S::Rebirth | S::RebirthWait
         );
+        // The entry's scratch outlives it too (Wait keeps it): the
+        // entry motions set the flag, the next motion change clears it.
+        let entering = matches!(self.motion_state.id, S::Entry | S::EntryStart | S::EntryEnd);
         matches!(
             self.state_data,
             MotionData::Life(
@@ -124,8 +127,9 @@ impl FighterCore {
                     | LifeState::StarKo { .. }
                     | LifeState::ScreenKo(_)
                     | LifeState::AwaitingRespawn
-            ) | MotionData::Entry(_)
+            )
         ) || on_platform
+            || entering
     }
 
     /// x221E_b2, which hides the fighter from the display pass

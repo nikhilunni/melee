@@ -40,6 +40,7 @@ mod stage_greatbay;
 mod stage_icemt;
 mod stage_castle;
 mod stage_greens;
+mod stage_rcruise;
 mod stock;
 use hsd_types::Vec3;
 /// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
@@ -467,6 +468,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::Greens {
             stage_greens::restore_collision(&saved, &assets, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::RCruise {
+            stage_rcruise::restore_collision(&saved, &assets, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;

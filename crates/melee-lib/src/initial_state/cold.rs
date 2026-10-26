@@ -202,6 +202,12 @@ impl InitialState {
         if matches!(stage, SceneStage::Castle(_)) {
             radial_forces.insert_directional(melee_gr::castle::wind::field());
         }
+        // grRCruise_801FF5B4's lb_80011A50: the ship's flag's wind.
+        if matches!(stage, SceneStage::RCruise(_)) {
+            let mut field = melee_gr::castle::wind::field();
+            field.strength = melee_gr::rcruise::procs::FIELD_STRENGTH;
+            radial_forces.insert_directional(field);
+        }
         // Fountain of Dreams and the N64 stages bind their collision
         // joints during creation.
         let archive_bindings = !matches!(
@@ -225,6 +231,7 @@ impl InitialState {
                 | SceneStage::IceMt(_)
                 | SceneStage::Castle(_)
                 | SceneStage::Greens(_)
+                | SceneStage::RCruise(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -563,6 +570,8 @@ fn setup_draws(
         // grGreens_80214B58's eighteen layout draws, the first block wait,
         // Whispy's wait and side (grGreens_802139C4).
         GrKind::Greens => 21,
+        // The maps' frame-zero keys.
+        GrKind::RCruise => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -698,6 +707,10 @@ fn live_spawn_position(
     if matches!(stage, SceneStage::IceMt(_)) && (0..4).contains(&slot) {
         // grIceMt_801F98A8: Ground_801C2D0C(0..3) on the view's segment.
         return crate::scene_stage::icemt::spawn_point(stage, stage_animations, slot as usize);
+    }
+    if assets.stage_desc.kind == GrKind::RCruise {
+        // grRCruise_801FF7A4's Ground_801C2D0C: map 6's bones, scrolled.
+        return crate::scene_stage::rcruise::spawn_point(stage_animations, slot);
     }
     if assets.stage_desc.kind != GrKind::Kongo {
         return None;
@@ -940,6 +953,12 @@ fn initialize_stage(
         GrKind::Castle => {
             let (stage, animations) =
                 crate::scene_stage::castle::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::RCruise => {
+            let (stage, animations) =
+                crate::scene_stage::rcruise::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

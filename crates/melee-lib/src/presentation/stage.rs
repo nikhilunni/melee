@@ -31,9 +31,9 @@ pub(super) fn is_background(kind: GrKind, map: u8) -> bool {
         GrKind::OldPupupu => matches!(map, 2 | 3),
         // grIzumi_801CCB18: the star field.
         GrKind::Izumi => map == IZUMI_STAR,
-        // grCastle_801CD5BC, grGreens_802138BC.
+        // grCastle_801CD5BC, grGreens_802138BC, grRCruise_801FF3F0.
         GrKind::Castle => map == 4,
-        GrKind::Greens => map == 2,
+        GrKind::Greens | GrKind::RCruise => map == 2,
         _ => false,
     }
 }
@@ -81,6 +81,9 @@ fn model_map(kind: GrKind, key: u8) -> Option<u8> {
         melee_gr::izumi::procs::model(key)
     } else if kind == GrKind::Pura {
         Some(melee_gr::pura::procs::model(key))
+    } else if kind == GrKind::RCruise && key == melee_gr::rcruise::procs::SCROLL_KEY {
+        // The second map-3 GObj, the scroll controller.
+        Some(3)
     } else {
         Some(key)
     }
@@ -137,6 +140,8 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::Castle => 3,
         // grGr_callbacks[6] carries 0xC0000000.
         GrKind::Greens => 6,
+        // grRc_StageCallbacks[1] carries 0xC0000000.
+        GrKind::RCruise => 1,
         _ => return Err(error("stage light set unknown")),
     })
 }

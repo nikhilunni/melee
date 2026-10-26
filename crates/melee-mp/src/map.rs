@@ -59,6 +59,8 @@ pub struct JointEvent {
     pub collision_type: u8,
     /// `coll->cur_pos.x`.
     pub x: f32,
+    /// `coll->cur_pos.y`.
+    pub y: f32,
     /// The callback's `delta_y` (`cur_pos.y - last_pos.y` from mpCollEnd,
     /// 0 from mpColl_80043558).
     pub delta_y: f32,
@@ -1048,6 +1050,7 @@ impl CollMap {
                 ground_kind,
                 collision_type: coll.x34_flags.b1234,
                 x: coll.cur_pos.x,
+                y: coll.cur_pos.y,
                 delta_y: 0.0,
                 x50: coll.x50 as i32,
                 env_flags: coll.env_flags as u32,
@@ -1069,6 +1072,7 @@ impl CollMap {
                 ground_kind: MpLibGroundEnum::CEILING,
                 collision_type: coll.x34_flags.b1234,
                 x: coll.cur_pos.x,
+                y: coll.cur_pos.y,
                 delta_y,
                 x50: coll.x50 as i32,
                 env_flags: coll.env_flags as u32,

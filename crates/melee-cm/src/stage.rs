@@ -126,6 +126,16 @@ impl StageCamera {
     pub fn contains(&self, position: hsd_types::Vec3) -> bool {
         crate::standard::outside_bounds(position, self) == crate::standard::INSIDE
     }
+    /// Camera_8003118C (0x8003118C) with an integer `distance`: each bound
+    /// moved out by it (in by a negative one), compared strictly as
+    /// Camera_80029124 does.
+    pub fn contains_within(&self, position: hsd_types::Vec3, distance: i32) -> bool {
+        let d = distance as f32;
+        !(position.x < self.left() - d
+            || position.x > self.right() + d
+            || position.y > self.top() + d
+            || position.y < self.framing_floor() - d)
+    }
     /// Ground_801C4368 + 1.0 in double, then the higher of it and the
     /// bottom bound: the lowest point a subject may frame.
     pub(crate) fn framing_floor(&self) -> f32 {

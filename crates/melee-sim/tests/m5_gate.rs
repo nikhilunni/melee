@@ -5435,7 +5435,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 1043] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 1059] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -7070,6 +7070,26 @@ static CORPUS_V3_MATCHES: [(&str, usize); 1043] = [
     ("corpus_v3_gg_fox_marth4_e0fcf0c70_p0", 4864),
     ("corpus_v3_gg_fox_marth4_eb8786a38_p1", 4389),
     ("corpus_v3_gg_fox_marth4_e70b3084c_p2", 6001),
+    // Rainbow Cruise (grrcruise.c): the camera path's scroll, the ship's
+    // tilt, clouds, appearing blocks and swings; fighters riding the ship in
+    // Entry; revivals tracking their markers (no Rebirth map pass); the
+    // Ice Climbers entering at different heights and Nana following.
+    ("corpus_v3_rc_fox_marth4_e00f31913_p1", 3601),
+    ("corpus_v3_rc_fox_marth4_e1611c835_p0", 3696),
+    ("corpus_v3_rc_fox_marth4_e3e74affa_p2", 4347),
+    ("corpus_v3_rc_fox_marth4_e7ff378da_p1", 3840),
+    ("corpus_v3_rc_fox_marth4_ec3145eb3_p0", 3745),
+    ("corpus_v3_rc_fox_marth4_edb2b114a_p2", 3996),
+    ("corpus_v3_rc_fox_marth4_ee62c6106_p2", 3623),
+    ("corpus_v3_rc_fox_marth4_ef89b3e70_p0", 3890),
+    ("corpus_v3_rc_fox_marth4_e0fcf0c70_p0", 2829),
+    ("corpus_v3_rc_fox_marth4_eb8786a38_p1", 4851),
+    ("corpus_v3_rc_fox_marth4_e70b3084c_p2", 1917),
+    ("corpus_v3_rc_iceclimbers_fox4_e00f31913_p0", 837),
+    ("corpus_v3_rc_iceclimbers_fox4_ef89b3e70_p0", 3627),
+    ("corpus_v3_rc_iceclimbers_fox4_ecdf8887e_p1", 3718),
+    ("corpus_v3_rc_iceclimbers_fox4_e005a4f43_p1", 3924),
+    ("corpus_v3_rc_iceclimbers_fox4_ec3145eb3_p2", 3466),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

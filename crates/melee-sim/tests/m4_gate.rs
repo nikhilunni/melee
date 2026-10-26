@@ -1329,6 +1329,24 @@ fn start_gg_fox_marth4_600() {
     movement_gate_ticks("start_gg_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_gg_fox_marth4", 600, "ledger600");
 }
+/// Rainbow Cruise's start boundary: the ship's creation (no draws), the
+/// camera path's first projection and the scroll; Fox rides the ship's
+/// mast in his entry.
+#[test]
+fn start_rc_fox_marth4_600() {
+    movement_gate_ticks("start_rc_fox_marth4", 600);
+    movement_gate_ticks("start_rc_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_rc_fox_marth4", 600, "ledger600");
+}
+/// Rainbow Cruise with the Ice Climbers: Nana lands on the ship first and
+/// Popo's entry accessory raises him to her (fn_800C6F34); standing
+/// together after the entry she steps behind him (ftCommon_8007DFD0).
+#[test]
+fn start_rc_iceclimbers_fox4_600() {
+    movement_gate_ticks("start_rc_iceclimbers_fox4", 600);
+    movement_gate_ticks("start_rc_iceclimbers_fox4_cold", 600);
+    particle_rng_sites_with_ledger("start_rc_iceclimbers_fox4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

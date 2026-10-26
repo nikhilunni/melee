@@ -451,14 +451,23 @@ impl FighterCore {
         );
         self.finish_air_update(assets, wind);
     }
+    /// The entry states' Phys, then Fighter_procUpdate's tail: a fighter the
+    /// platform carries in standing on a floor (Rainbow Cruise's ship) rides
+    /// it by mpGetSpeed (0x8006BE48), as the capture states do.
     fn physics_entry(&mut self, phase: PhysicsPhase<'_>) {
-        let PhysicsPhase {
-            assets,
-            map: _,
-            wind,
-        } = phase;
+        let PhysicsPhase { assets, map, wind } = phase;
         self.entry_physics(assets.entry);
-        self.finish_air_update(assets, wind);
+        if self.physics.ground_or_air == melee_types::GroundOrAir::Ground {
+            crate::physics::grounded::finish_ground_update(
+                &mut self.physics,
+                &self.collision.data,
+                &GroundedParameters::from_attributes(&self.attributes, &assets.common),
+                map,
+                wind,
+            );
+        } else {
+            self.finish_air_update(assets, wind);
+        }
     }
 }
 

@@ -510,13 +510,14 @@ impl FighterCore {
             &mut self.skeleton,
             self.animation.root,
         );
+        let rebirth = self.motion_state.id == melee_types::CommonMotionState::Rebirth;
         let cd = &mut self.collision.data;
         cd.last_pos = cd.cur_pos;
         cd.cur_pos = self.physics.position;
         let pose =
             crate::collision::ecb::EcbPose::read(&mut self.skeleton, self.animation.root, cd);
         let position = |i| pose.position(i);
-        let landed = if self.motion_state.id == melee_types::CommonMotionState::Rebirth {
+        let landed = if rebirth {
             map.air_collide_stay_ecb5(cd, Some(&position));
             false
         } else {
