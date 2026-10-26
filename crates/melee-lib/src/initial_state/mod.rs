@@ -9,6 +9,7 @@ mod collision;
 mod cpu;
 mod fighter;
 mod heap;
+mod islands;
 mod particle_resume;
 pub(crate) use fighter::import as import_fighter;
 pub(crate) use melee_mp::CollMap;
@@ -497,6 +498,7 @@ impl InitialState {
         if assets.stage_desc.kind == melee_types::GrKind::Flatzone {
             stage_flatzone::restore_collision(&saved, &assets, &mut map)?;
         }
+        islands::restore_order(&saved, &mut map)?;
         let mut rng = HsdRng::new(word(saved.bytes(0x804D_5F90, 4), 0));
         let mut fighters: Vec<SceneFighter> = (0..roster.len())
             .map(|p| {

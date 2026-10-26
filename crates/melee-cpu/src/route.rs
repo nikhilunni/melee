@@ -42,12 +42,23 @@ pub fn island_unsafe(scene: &mut Scene, island: Option<usize>) -> bool {
     }
     match scene.stage() {
         GrKind::Story => scene.map.island_joint_moved(island),
-        GrKind::Zebes | GrKind::Onett => {
+        GrKind::Zebes => {
+            // The acid covers either end within 90 frames (ftCo_800A1F98,
+            // the right end's y first: 800A27D8, then 800A27F4).
+            let acid = scene.acid.expect("Brinstar's scene carries its acid");
+            let ends = scene.map.island(island);
+            acid.will_cover(ACID_LOOKAHEAD, ends.right.y)
+                || acid.will_cover(ACID_LOOKAHEAD, ends.left.y)
+        }
+        GrKind::Onett => {
             unimplemented!("ftCo_800A2718: {:?}'s hazard islands", scene.stage())
         }
         _ => false,
     }
 }
+
+/// ftCo_800A2718's look-ahead on Brinstar (li r3, 0x5A).
+const ACID_LOOKAHEAD: i32 = 90;
 
 /// ftCo_800A2170 (0x800A2170): both fighters stand on one island.
 pub fn same_island(scene: &Scene, a: &Fighter, b: &Fighter) -> bool {

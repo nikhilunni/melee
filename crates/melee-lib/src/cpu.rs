@@ -91,6 +91,19 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
             crate::scene_stage::SceneStage::RCruise(stage) => Some(stage.drift),
             _ => None,
         },
+        turtle_away: match &state.stage {
+            crate::scene_stage::SceneStage::GreatBay(stage) => {
+                stage.turtle.phase != melee_gr::greatbay::turtle::Phase::Surface
+            }
+            _ => false,
+        },
+        acid: match &state.stage {
+            crate::scene_stage::SceneStage::Zebes(stage) => Some(melee_cpu::Acid {
+                surface: stage.floor,
+                motion: stage.floor_motion(),
+            }),
+            _ => None,
+        },
         stale: Default::default(),
     };
     melee_cpu::think(&mut own.0, &mut scene, &mut state.rng);

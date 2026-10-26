@@ -109,12 +109,19 @@ fn ride_destination_floor(fp: &mut Fighter, scene: &mut Scene) {
             .map
             .line_speed(hit.line_id, &hit.pos)
             .unwrap_or_default(),
-        None => scene.stage_drift.unwrap_or_else(|| stage_drift(scene.stage())),
+        None => stage_drift_of(scene),
     };
     let cpu = &mut fp.core.cpu;
     // 800B379C/800B37AC: fadds.
     cpu.destination.x += speed.x;
     cpu.destination.y += speed.y;
+}
+
+/// grLib_801C9E60 (0x801C9E60) as the scene knows it.
+pub(crate) fn stage_drift_of(scene: &Scene) -> hsd_types::Vec3 {
+    scene
+        .stage_drift
+        .unwrap_or_else(|| stage_drift(scene.stage()))
 }
 
 /// grLib_801C9E60 (0x801C9E60): Rainbow Cruise, Big Blue and Icicle
