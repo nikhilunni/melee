@@ -4,7 +4,7 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-26, wave 27 closed at `56abf9e7`)
+## Current state (2026-10-26, wave 27 closed at `ffcfe8a8`)
 
 - **Wave 27 (seven concurrent agents; `target/wave27/`) landed on main:**
   **eleven more stages** (Brinstar, Venom, Mute City, Poké Floats, Mushroom
@@ -14,23 +14,24 @@ and `docs/PORT_NOTES/`.
   Device, Screw Attack, Metal Box, Bunny Hood (not yet in the pool), the
   Warp Star ride, Lip's Stick, Parasol, the Party Ball and the Goomba (pool:
   18 kinds); items with 2-4 players on the wave-26 stages; CPUs with up to
-  four players on FD/Battlefield and on five new stages (MK2, Great Bay,
-  Brinstar, Mute City, Poké Floats); Coin mode and Sudden Death among only
+  four players on FD/Battlefield; Coin mode and Sudden Death among only
   the tied players; full gamepad parity in both apps (API 6). Shared fixes:
   item hits honour x42_b6 (grabbable hurtboxes only), the item spin joint
   from ItemModelDesc xC, a death's motion change runs ChangeMotionState's
-  tail, star/screen KOs ride moving floors, savestate imports keep retail's
-  island order, unreachable app seeds retry (`StartError::UnreachableSeed`).
+  tail, star/screen KOs ride moving floors, unreachable app seeds retry (`StartError::UnreachableSeed`).
   Details: `docs/PORT_NOTES/` (WAVE27_*, VERSUS_RULES, CPU_PLAYERS,
   RANDOM_ITEM_KINDS).
 - **Gates:** at `329c16e2` the full sweep had **0 regressions** against
   `e7e3a37d` (61 fixed); `m4_gate` 364 and `m5_gate` 321 pass at
   `208d7a84`, with `melee-lib` and `melee-platform`; every merged branch
-  reported `public-v3.7` 108/108 (964,782 frames). The closing checkpoint at
-  `56abf9e7` (sweep `target/sweeps/56abf9e7.tsv`, replays, m4/m5) was
-  started when the session ended: **check it first next session**; Big Blue
-  and the CPU island-order change rely on it. Not rerun: debug gate,
-  `public-v3.7-b`, perf gate, parity inventory.
+  reported `public-v3.7` 108/108 (964,782 frames). Closing checkpoint at
+  `56abf9e7`: `public-v3.7` **108/108**; sweep 6 regressions (Yoshi's Story
+  CPU and Ice Climbers' Nana) and Green Greens' start boundary failing, all
+  from the CPU stages merge's savestate island-order restore, so that merge
+  is **reverted** (`ffcfe8a8`); after the revert the six and the boundary
+  gate exact and `m4_gate` passes 365. Big Blue had no regression. Not
+  rerun: full `m5_gate` after the revert, debug gate, `public-v3.7-b`, perf
+  gate, parity inventory.
 - **Disk:** traces are ~205 GB; the wave filled the disk once. Engrams
   worktrees were removed (user, 2026-10-26; 21 dirty ones stashed as
   `cleanup-2026-10-26:*` in engrams). Keep `record_many --jobs 1-2`.
@@ -52,8 +53,11 @@ and `docs/PORT_NOTES/`.
      blocks, Kongo guards; stopped mid-debug, unverified.
    - `worktree-agent-a2e9b841e1b181e99` WIP `6227e7a6`: two Big Blue
      scenarios to gate (`wave27-big-blue.md`).
-   - CPU on Icicle Mountain and Venom: two divergences
-     (`w27-stage-cpus.md`).
+   - `worktree-agent-a00a7da3dbc67e2bf` (`b2936f4a`, `6fbf6217`): CPUs on
+     MK2, Great Bay, Brinstar, Mute City, Poké Floats; **reverted from main**:
+     its import island-order restore broke Yoshi's Story CPU/Nana and Green
+     Greens' saved islands. Fix that, then Icicle Mountain and Venom's two
+     divergences (`w27-stage-cpus.md` on the branch).
 2. [ ] **Items:** Poké Ball and its Pokémon, Flipper, Barrel Cannon
    (`WAVE27_RIDE_ITEMS.md`); items on the wave-27 stages; Bunny Hood into the
    pool.
@@ -89,9 +93,10 @@ Box, Bunny Hood, the Warp Star ride, Lip's Stick, Parasol and the Goomba.
 Items run with 2-4 players on the wave-26 stages except Mushroom Kingdom;
 the wave-27 stages refuse items until witnessed.
 
-**CPU:** Versus CPU players on wave 26's 17 stages plus MK2, Great Bay,
-Brinstar, Mute City and Poké Floats (`Stage::cpu_supported()`); up to four
-players on FD/Battlefield, two elsewhere (`Stage::cpu_max_players`). CPU replay admission is still refused
+**CPU:** Versus CPU players on wave 26's 17 stages (`Stage::cpu_supported()`);
+up to four players on FD/Battlefield, two elsewhere
+(`Stage::cpu_max_players`). The wave-27 stages' CPUs are on a reverted
+branch. CPU replay admission is still refused
 because Slippi lacks CPU levels.
 
 **Match flow:** FFA, teams/doubles, the team stock steal, Time (two-player
