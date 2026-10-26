@@ -22,6 +22,9 @@ pub enum HitSource {
     Fighter(u32),
     /// Entry kind 2: an item's hitbox.
     Item(ItemSource),
+    /// Entry kind 3: a stage's collision device (ftCo_800C08A0), by its
+    /// device type (DmgLogEntry.kind): Brinstar's acid is 3.
+    Stage(u32),
 }
 
 /// The item behind a logged hit, as retail keeps it: the item's GObj

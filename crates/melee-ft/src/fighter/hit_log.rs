@@ -90,6 +90,11 @@ impl FighterCore {
     fn resolve_hit_log(&mut self, assets: &FighterAssets) {
         let log = std::mem::take(&mut self.combat.hit_log);
         for entry in log.iter() {
+            // ftColl_8007A06C: a stage device's entry (kind 3) spawns no
+            // hit effect.
+            if matches!(entry.source, HitSource::Stage(_)) {
+                continue;
+            }
             let knockback = self.logged_knockback(entry, assets);
             self.push_hit_effects(
                 entry.position,

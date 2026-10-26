@@ -75,6 +75,7 @@ pub mod smash;
 mod snapshot;
 mod spawn;
 pub mod squat;
+pub mod stage_hazard;
 mod stage_wind;
 pub mod stamina;
 pub mod state;

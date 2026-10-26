@@ -56,6 +56,17 @@ pub fn fctiwz(x: f32) -> i32 {
     }
 }
 
+/// `(int) d` of a double MWCC never rounds to single first: `fctiwz` on
+/// the double register. NaN converts to the most negative integer.
+#[inline]
+pub fn fctiwz_double(x: f64) -> i32 {
+    if x.is_nan() {
+        i32::MIN
+    } else {
+        x as i32
+    }
+}
+
 /// `(long long) d` as MWCC compiles it: a call to `__cvt_dbl_usll`
 /// (`src/Runtime/runtime.c`, retail `0x80322E54`).
 ///

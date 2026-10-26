@@ -32,6 +32,8 @@ pub(super) type PreparedSelections = std::sync::Arc<[Option<Vec<PreparedAttachme
 pub(super) struct PreparedSubtree {
     bone: usize,
     index: usize,
+    /// The bone's own track only (grAnime_801C8098's switch).
+    single: bool,
     attachments: Vec<PreparedAttachment>,
 }
 pub(super) type PreparedSubtrees = std::sync::Arc<[PreparedSubtree]>;
@@ -136,6 +138,19 @@ impl BackgroundAnimation {
         bone: usize,
         index: usize,
     ) -> crate::desc::ReadResult<()> {
+        self.prepare_switch(archive, model, bone, index, false)
+    }
+
+    /// [`Self::prepare_subtree`], or with `single` the bone's own track
+    /// alone (grAnime_801C8098).
+    pub(super) fn prepare_switch(
+        &mut self,
+        archive: &Archive,
+        model: &crate::desc::ModelDesc,
+        bone: usize,
+        index: usize,
+        single: bool,
+    ) -> crate::desc::ReadResult<()> {
         let animation = crate::desc::animation_subtree(archive, model, index, bone as u32)?;
         let mut scratch = (*self.rest).clone();
         let root = scratch.bone(self.root, bone).expect("stage animation bone");
@@ -148,15 +163,24 @@ impl BackgroundAnimation {
             archive,
         )
         .expect("a stage subtree animation attaches to its own model");
+        let attachments = if single {
+            attachments
+                .into_iter()
+                .filter(|attachment| attachment.joint == root)
+                .collect()
+        } else {
+            attachments
+        };
         let mut subtrees: Vec<PreparedSubtree> = self
             .subtrees
             .iter()
-            .filter(|s| (s.bone, s.index) != (bone, index))
+            .filter(|s| (s.bone, s.index, s.single) != (bone, index, single))
             .cloned()
             .collect();
         subtrees.push(PreparedSubtree {
             bone,
             index,
+            single,
             attachments,
         });
         self.subtrees = subtrees.into();
@@ -172,7 +196,7 @@ impl BackgroundAnimation {
         let subtrees = std::sync::Arc::clone(&self.subtrees);
         let subtree = subtrees
             .iter()
-            .find(|s| (s.bone, s.index) == (bone, index))
+            .find(|s| (s.bone, s.index, s.single) == (bone, index, false))
             .expect("a subtree switch prepared at load");
         self.replay_attachments(&subtree.attachments);
         let root = self
@@ -191,6 +215,28 @@ impl BackgroundAnimation {
         let root = self.joints[bone];
         self.tree.req_anim_all(root, frame);
         self.set_subtree_rate(bone, rate);
+    }
+
+    /// A prepared switch's joint tracks, as grAnime_801C6A54_inner attaches
+    /// them: a joint the animation has no clock for keeps its own.
+    pub(super) fn replay_tracks(&mut self, bone: usize, index: usize, single: bool) {
+        let subtrees = std::sync::Arc::clone(&self.subtrees);
+        let subtree = subtrees
+            .iter()
+            .find(|s| (s.bone, s.index, s.single) == (bone, index, single))
+            .expect("a joint track switch prepared at load");
+        for attachment in &subtree.attachments {
+            if let Some(aobj) = attachment.aobj.as_ref() {
+                let joint = attachment.joint;
+                self.tree.replace_aobj_prepared(joint, Some(aobj));
+                if attachment.classical_scale {
+                    self.tree.set_flags(joint, JOBJ_CLASSICAL_SCALE);
+                } else {
+                    self.tree.clear_flags(joint, JOBJ_CLASSICAL_SCALE);
+                }
+                self.tree.get_mut(joint).path_reference = attachment.path_reference;
+            }
+        }
     }
 
     /// What `attach_anim_joint` leaves on each joint, replayed into the

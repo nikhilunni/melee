@@ -4,6 +4,7 @@
 pub mod animation;
 pub mod background;
 pub mod init;
+mod joint_tracks;
 pub mod lights;
 mod prepared;
 mod selection;

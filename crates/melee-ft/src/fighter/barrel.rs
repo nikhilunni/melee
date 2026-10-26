@@ -27,6 +27,9 @@ pub struct Parameters {
     pub camera_vertical: Vec3,
     /// +5E0 (bury_timer_unk2): frames after a shot before another catch.
     pub catch_cooldown: u32,
+    /// +5E4 (bury_timer_unk3): frames after a stage device's hit before
+    /// it hurts again (ftCo_800C08A0, BuryType_Unk3), in bury_timer_2 too.
+    pub hazard_cooldown: u32,
 }
 impl Parameters {
     pub fn read(archive: &hsd_archive::Archive, base: u32) -> Result<Self> {
@@ -39,6 +42,7 @@ impl Parameters {
                 r.f32(base + 0x4EC)?,
             ),
             catch_cooldown: r.u32(base + 0x5E0)?,
+            hazard_cooldown: r.u32(base + 0x5E4)?,
         })
     }
 }
