@@ -48,6 +48,10 @@ pub mod hitbox;
 pub mod hitlag_link;
 pub mod item_hits;
 pub mod item_pickup;
+pub mod item_flower;
+pub mod power_up;
+pub mod item_scope;
+pub mod item_shoot;
 pub mod item_swing;
 pub mod item_throw;
 pub mod jump;
@@ -1028,6 +1032,16 @@ pub struct Status {
     /// (Fighter_8006CF5C adds, Fighter_8006A360 spends); reset 0
     /// (fighter.c:313).
     pub heal_remaining: i32,
+    /// x221D_b6: a Starman's invincibility (ftColl_8007B7FC); reset 0
+    /// (fighter.c:391).
+    pub star_invincible: bool,
+    /// x2004: the Starman's frames left.
+    pub star_frames: i32,
+    /// x2226_b4: cloaked by a Cloaking Device (or the Invisible Special
+    /// Melee); percent damage is not taken (Fighter_TakeDamage_8006CC7C).
+    pub cloaked: bool,
+    /// x2030: the cloak's frames left.
+    pub cloak_frames: i32,
 }
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
@@ -1062,6 +1076,10 @@ impl Status {
             hazard_cooldown: 0,
             capture_timer: 0,
             heal_remaining: 0,
+            star_invincible: false,
+            star_frames: 0,
+            cloaked: false,
+            cloak_frames: 0,
         }
     }
 }
@@ -1352,6 +1370,12 @@ pub struct FighterCore {
     /// deal_dmg_cb = ft_800CD65C and take_dmg_cb = ft_800CD604 while a
     /// Fan swing runs; every Fighter_ChangeMotionState disarms them.
     pub fan_callbacks_armed: bool,
+    /// take_dmg_cb = ftCo_800CE620 while the Fire Flower fires: the flower
+    /// closes (it_80292EAC). Every Fighter_ChangeMotionState disarms it.
+    pub flower_close_armed: bool,
+    /// take_dmg_cb = fn_800D7938 while the Super Scope charges: the charge
+    /// is spent. Every Fighter_ChangeMotionState disarms it.
+    pub scope_charge_armed: bool,
     /// take_dmg_cb = ftCo_800974C4 after the entry of HeavyGet, a lift
     /// state or a heavy throw; every motion change clears this common
     /// callback before entry commands run.
@@ -1481,6 +1505,10 @@ pub enum MotionData {
     Lift(lift::LiftState),
     /// SwordSwing1..SwordSwingDash (mv.co.swing).
     Swing(item_swing::SwingState),
+    /// mv.co.itemthrow as ftCo_800CE650 uses it: the Fire Flower's firing.
+    FlowerShoot(item_flower::FlowerShootState),
+    /// mv at fp+2340 while the Super Scope charges or fires.
+    Scope(item_scope::ScopeState),
     Capture(grab_escape::CaptureState),
     /// Bury and BuryWait (mv.co.bury and the grab timer).
     Bury(bury::BuryState),

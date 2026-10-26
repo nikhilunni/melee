@@ -313,7 +313,9 @@ macro_rules! blaster {
                     | ItemControl::SwingAnimation { .. }
                     | ItemControl::SwingRest
                     | ItemControl::SwingSwell
-                    | ItemControl::SwingShrink => {
+                    | ItemControl::SwingShrink
+                    | ItemControl::Recoil
+                    | ItemControl::Spend(_) => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }

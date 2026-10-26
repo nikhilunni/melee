@@ -78,3 +78,55 @@ came down onto a stompable item without the test having run.
   placeholder model has no attach joint, so `attachment_translation` is
   an Option. Guarded: dropped and sliding healing items, x1978 (a second
   held item), consuming the other use-kind-5 kinds.
+
+## Shooters (wave 27)
+
+Use kind 3 (it_8026B30C): a jab, side tilt or side smash on the ground
+(ftCo_Attack_800CDD14, after ftpickupitem_80094790's pickup) and a neutral or
+forward aerial (ftCo_AttackAir_CheckItemThrowInput -> ftCo_800CDDA0) shoot;
+the vertical tilts and smashes, the dash attack and the other aerials are the
+ordinary attacks with the item kept. An empty shooter is smash-thrown
+(ftCo_AttackS4.c:123) and, after the launch draw spares it, a second
+Randi(PlCo +41C) can knock it loose (Fighter_8006CDA4). Shots and the
+switches between their ground and air rows (flags 0x0C4C5080) are in
+`melee-ft/src/fighter/item_shoot.rs`, `item_flower.rs` and `item_scope.rs`.
+
+- Ray Gun (itlgun.c, itlgunray.c): LGunShoot's accessory (ftCo_800CE1D4)
+  fires on throw flag b0; the ray is a ray item like Fox's laser
+  (Item_UpdateRayAnimation with divisor 7), reflected and bounced off
+  shields; its destroy effect 0x436 (it_80278800's block_59C, generator
+  0x153) and the muzzle flash 0x431 (common model 0x21, particle 308) are in
+  melee-ef. Guarded: a slope's slide, an absorbed ray.
+- Fire Flower (itfflower.c; its flames are It_Kind_L_Gun_Beam,
+  itlgunbeam.c): the flame's draws (two Randf, a Randi for its generator)
+  and the mouth flame (efSync 0x473 on the flower's bone 4) come between
+  the holder's puff and the first flame's flash and spark, which go after
+  the item requests (`effects_after_items`). The flower's model is posed in
+  the hand once per article state (`ArticleSkeleton::load_states`), its
+  authored RObj constraints left out (`load_joint_tree_without_constraints`:
+  bone 4 lies below none of them, and a read below one fails closed); a
+  looping state re-entered resets its tree (Item_80268D34's lb_8000B804).
+  Six flames share a hit group; the flower renews it
+  (`ItemRequest::Shot`).
+- Super Scope (itsscope.c, itsscopebeam.c): the charge (fn_800D79B4,
+  PlCo +5B8), rapid fire (PlCo +5BC shots per A press) and charged shots;
+  the charge table is `melee_it::scope::ScopeCharges`. Guarded: a shot along
+  a floor (itsscopebeam.c:153-184), absorbed, reflected or shield-bounced
+  shots, a charge no level affords (it_80291DAC's fallthrough).
+
+## Power-ups (wave 27)
+
+- Starman (itstar.c): the bounce along the floor (it_8026DA08, a Randi(2)
+  direction at spawn, the last creation draw); walls and ceilings are
+  guarded. A touch (use kind 4, ftColl_80077C60's first branch) records
+  the fighter, disables the hitbox, sets xC34 and gives x221D_b6 / x2004
+  (ftColl_8007B7FC) under colour 0x6B; hits on the fighter are invincible
+  contacts. The countdown (fighter.c:1486-1498) clears the colour if it owns
+  the slot. The Super and Poison Mushrooms' touches fail closed
+  (ftcoll.c:1127-1136).
+- Cloaking Device (itspycloak.c): consumed by the pickup like a healing
+  item (ftCo_800C88D4 with PlCo +7CC frames). Cloaked (x2226_b4) a hit adds
+  no percent (fighter.c:2650, every hit path's `add_hit_percent`); its
+  end (ftCo_800C8A64) returns from Fighter_8006A360, skipping that frame's
+  animation callback. Its colour animations and refraction are
+  presentation; a second cloak while cloaked fails closed.

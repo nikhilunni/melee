@@ -236,6 +236,12 @@ pub struct FighterAssets {
     /// PlCo +5A0: how long the Fan stays swollen after its hit
     /// (ft_800CD65C).
     pub fan_swell_frames: f32,
+    /// PlCo +5A4..+5B4: the Fire Flower's firing (ftCo_800CE650).
+    pub flower: FlowerTiming,
+    /// PlCo +7CC: the Cloaking Device's frames (ftCo_800C88D4).
+    pub cloak_frames: i32,
+    /// PlCo +5B8 / +5BC: the Super Scope's full charge and rapid shots.
+    pub scope: ScopeTiming,
     /// CommonBehavior's item hand slots and held-item idle choice.
     /// CommonBehavior::fixed_shield_size.
     pub fixed_shield_size: bool,
@@ -786,6 +792,18 @@ impl FighterAssets {
             ],
             dash_swing_friction: common.reader().f32(common_data + 0x420)?,
             fan_swell_frames: common.reader().f32(common_data + 0x5A0)?,
+            scope: ScopeTiming {
+                full_charge: common.reader().f32(common_data + 0x5B8)?,
+                rapid_shots: common.reader().s32(common_data + 0x5BC)?,
+            },
+            cloak_frames: common.reader().s32(common_data + 0x7CC)?,
+            flower: FlowerTiming {
+                min_flames: common.reader().s32(common_data + 0x5A4)?,
+                flame_interval: common.reader().f32(common_data + 0x5A8)?,
+                puff_interval: common.reader().f32(common_data + 0x5AC)?,
+                release_frames: common.reader().f32(common_data + 0x5B0)?,
+                flames_per_instance: common.reader().s32(common_data + 0x5B4)?,
+            },
             item_hand: descriptor.common_behavior.item_hand,
             fixed_shield_size: descriptor.common_behavior.fixed_shield_size,
             idle_variants_while_holding: descriptor.common_behavior.idle_variants_while_holding,
@@ -981,3 +999,27 @@ fn read_sfx_array(data: &Archive, root: u32, offset: u32) -> Result<Vec<u32>> {
 
 #[cfg(test)]
 mod swing42_asset_tests;
+
+/// PlCo +5A4..+5B4 (ftCo_800CE650): the Fire Flower's firing.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct FlowerTiming {
+    /// +5A4: the flames it fires at least before A's release can stop it.
+    pub min_flames: i32,
+    /// +5A8: frames between flames.
+    pub flame_interval: f32,
+    /// +5AC: frames between the holder's puffs (efSync 0x3FF / 0x405).
+    pub puff_interval: f32,
+    /// +5B0: frames since the last A press that let it stop.
+    pub release_frames: f32,
+    /// +5B4: flames per attack instance (ft_800892A0).
+    pub flames_per_instance: i32,
+}
+
+/// PlCo +5B8 / +5BC: the Super Scope.
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub struct ScopeTiming {
+    /// +5B8: frames of charge that fire on their own at the start's end.
+    pub full_charge: f32,
+    /// +5BC: rapid shots per A press (mv.co.common.x0).
+    pub rapid_shots: i32,
+}

@@ -2438,3 +2438,68 @@ stage = "PokeFloats"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 161380360
+
+# Items on, Ray Guns alone (make_boundary.py --item-frequency very-high
+# --items L_Gun --no-containers).
+[[boundary]]
+name = "start_fd_items_lgun"
+cold = "start_fd_items_lgun_cold"
+savestate = "harness/roms/start_fd_items_lgun.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2473879136
+item_frequency = 4
+item_mask = "0xfffffff800010000"
+
+# Items on, Fire Flowers alone (make_boundary.py --item-frequency very-high
+# --items F_Flower --no-containers).
+[[boundary]]
+name = "start_fd_items_fflower"
+cold = "start_fd_items_fflower_cold"
+savestate = "harness/roms/start_fd_items_fflower.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2334644695
+item_frequency = 4
+item_mask = "0xfffffff802000000"
+
+# Items on, Super Scopes alone (make_boundary.py --item-frequency very-high
+# --items S_Scope --no-containers).
+[[boundary]]
+name = "start_fd_items_sscope"
+cold = "start_fd_items_sscope_cold"
+savestate = "harness/roms/start_fd_items_sscope.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3216536079
+item_frequency = 4
+item_mask = "0xfffffff800200000"
+
+# Items on, Starmen alone (make_boundary.py --item-frequency very-high
+# --items Star --no-containers).
+[[boundary]]
+name = "start_fd_items_starman"
+cold = "start_fd_items_starman_cold"
+savestate = "harness/roms/start_fd_items_starman.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2519078007
+item_frequency = 4
+item_mask = "0xfffffff800000400"
+
+# Items on, Cloaking Devices alone (make_boundary.py --item-frequency very-high
+# --items Spycloak --no-containers).
+[[boundary]]
+name = "start_fd_items_spycloak"
+cold = "start_fd_items_spycloak_cold"
+savestate = "harness/roms/start_fd_items_spycloak.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2136755532
+item_frequency = 4
+item_mask = "0xfffffffa00000000"

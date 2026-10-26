@@ -731,6 +731,12 @@ impl FighterCore {
                 self.combat.color_overlay.flash_expired = true;
             }
         }
+        // fighter.c:1486-1498: the Starman's countdown.
+        self.tick_starman();
+        // fighter.c:1562-1574: the cloak's; its end skips the rest.
+        if !self.tick_cloak() {
+            return false;
+        }
         self.apply_magnifier_damage(assets);
         self.tick_heal(assets);
         // fighter.c:1658: x2219_b5, the hitlag flag, gates the rest.

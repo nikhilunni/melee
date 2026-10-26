@@ -96,6 +96,16 @@ impl FighterCore {
         }
     }
 
+    /// A hit's percent (Fighter_TakeDamage_8006CC7C's add, uncapped where
+    /// the hit paths add it): none while cloaked (fighter.c:2650), unless
+    /// the Special Melee keeps the fighter invisible (x2226_b3).
+    pub(crate) fn add_hit_percent(&mut self, amount: f32) {
+        if self.status.cloaked && !self.player.invisible {
+            return;
+        }
+        self.physics.percent += amount;
+    }
+
     /// Fighter_TakeDamage_8006CC7C (0x8006CC7C): add percent, capped at 999.
     /// Metal bookkeeping (x2226_b4, metal_health, x2034/x2038) belongs to
     /// modes the port does not reach.
@@ -104,6 +114,11 @@ impl FighterCore {
         amount: f32,
         assets: &super::assets::FighterAssets,
     ) {
+        // fighter.c:2650: a cloaked fighter takes no percent, unless the
+        // Special Melee keeps it invisible (x2226_b3).
+        if self.status.cloaked && !self.player.invisible {
+            return;
+        }
         self.physics.percent = capped_percent(self.physics.percent + amount);
         // Player_SetHPByIndex then ftCo_800C8C84 (fighter.c:2663-2667):
         // a Stamina fighter whose hit points are gone, launched when a

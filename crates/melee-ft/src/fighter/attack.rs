@@ -85,8 +85,11 @@ impl Fighter {
                     && input.current.cstick.y <= assets.input.down_smash_threshold
             };
             // ftCo_80094E54 throws a throwable item on A alone; a battering
-            // item keeps it through the common smash.
-            if held.use_kind == 0 || super::item_swing::is_swing_item(held.kind) {
+            // item or a shooter keeps it through the common smash.
+            if held.use_kind == 0
+                || held.use_kind == 3
+                || super::item_swing::is_swing_item(held.kind)
+            {
                 let up = predicate == P::SmashUp;
                 if self.core.item_throw_pressed() || cstick_throw {
                     return self.enter_item_throw(
@@ -119,12 +122,16 @@ impl Fighter {
                 // ftCo_AttackS3_CheckInput: a battering item swings.
                 return self.enter_item_swing(super::item_swing::SwingInput::Tilt, assets);
             }
+            if !throws && predicate == P::TiltSide && held.use_kind == 3 {
+                // ftCo_AttackS3_CheckInput: a shooter shoots.
+                return self.enter_item_shoot(assets);
+            }
             if !throws {
                 // retail ftCo_AttackLw3_CheckInput 0x8008BBB0..8008BBF0:
                 // a Sword is not throwable by A alone. The ordinary entry
                 // retains its pickup check and repeat/new-attack ordering.
                 // ftCo_AttackHi3_CheckInput likewise enters doEnter.
-                if super::item_swing::is_swing_item(held.kind) {
+                if super::item_swing::is_swing_item(held.kind) || held.use_kind == 3 {
                     let state = if predicate == P::TiltDown {
                         S::AttackLw3
                     } else {
@@ -154,6 +161,9 @@ impl Fighter {
         }
         if held.use_kind == 2 {
             return self.enter_item_swing(super::item_swing::SwingInput::Jab, assets);
+        }
+        if held.use_kind == 3 {
+            return self.enter_item_shoot(assets);
         }
         unimplemented!(
             "ftCo_Attack1_CheckInput: using a held item of kind {}",
@@ -187,7 +197,16 @@ impl Fighter {
             self.core.physics.facing = sign;
             return self.enter_item_swing(super::item_swing::SwingInput::Smash, assets);
         }
-        if held.use_kind != 0 && !shoulder && !cstick_throw {
+        // ftCo_AttackS4.c:123: an empty shooter (it_8026B594) is thrown.
+        if held.use_kind == 3 && held.ammo > 0 && !shoulder && !cstick_throw {
+            if !main {
+                unimplemented!("checkItemThrow: a C-stick smash with a shooter");
+            }
+            self.core.physics.facing = sign;
+            return self.enter_item_shoot(assets);
+        }
+        let empty_shooter = held.use_kind == 3 && held.ammo <= 0;
+        if held.use_kind != 0 && !empty_shooter && !shoulder && !cstick_throw {
             unimplemented!(
                 "checkItemThrow: a smash with a held item of kind {}",
                 held.use_kind
@@ -416,13 +435,18 @@ impl Fighter {
         assets: &FighterAssets,
         context: &WaitContext,
     ) -> Result<()> {
-        // ftCo_800952DC throws a held item first; no supported fighter holds one here.
         let shield = self
             .core
             .input
             .current
             .held
             .intersects(crate::input::Buttons::SHIELD);
+        // ftCo_800952DC (800952DC): a held item with a shoulder held is
+        // dash-thrown first (a shooter keeps its item through the dash
+        // attack, ftCo_AttackDash_CheckInput).
+        if shield && self.core.held_item.is_some() {
+            return self.enter_item_throw(S::LightThrowDash, assets);
+        }
         // fn_800D8E94 returns before the window's countdown.
         if self.core.tether_article {
             return self.tilt_input(assets, context);

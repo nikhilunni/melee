@@ -164,6 +164,11 @@ pub enum ItemEvent {
     /// efAsync kind 0 (EF_SPAWN_ATTACH) on one of the model's bones
     /// (xBBC_dynamicBoneTable->bones[bone]): efAlt's attached generator.
     BoneGenerator { id: u16, bone: usize },
+    /// efSync_Spawn(id, gobj, jobj, &facing, &scale) through
+    /// efLib_CreateGenerator_AppSRT_SetFacingDirScale: a generator on the
+    /// item's root whose AppSRT turns to the facing (+-M_PI_2) and takes a
+    /// uniform scale (a Fire Flower flame, 0x44E..0x451).
+    FacingGenerator { id: u16, facing: f32, scale: f32 },
     /// efAsync kind 0 on a joint of the model for an efAlt row that makes
     /// a model with the item as its parent (efLib_Create_AttachChild: the
     /// hammer of Kirby's side special, 0x498 / 0x499). `bone` is the
@@ -312,6 +317,14 @@ pub enum ItemScratch {
     /// A healing item's xDD4 scratch: what eating it heals (it_8026B47C)
     /// and, for Food, which dish it is (xDD4_itemVar.foods.x0).
     Heal { amount: i32, dish: u32 },
+    /// The Fire Flower's xDD4 (itfflower.c): x0 flames since its hit group
+    /// changed, x4 its mouth flame (efSync 0x473) made.
+    FireFlower { flames: i32, mouth_lit: bool },
+    /// itStar_ItemVars: the direction it bounces along (dir) and the
+    /// invincibility it gives (it_80272818, its attributes' x0).
+    Starman { direction: f32, frames: i32 },
+    /// A Fire Flower flame's xDD4 (itlgunbeam.c).
+    Flame(FlameState),
     Monster(MonsterState),
     /// Item.xDD4_itemVar.it_2E5A: a Coin match's coin.
     Coin(crate::coin::CoinState),
@@ -528,6 +541,22 @@ pub struct KoopaFlameState {
     pub effect_spawned: bool,
     /// x48: which of the four flame generators it carries.
     pub effect: i32,
+}
+/// itLGunBeam_ItemVars (itlgunbeam.c): one Fire Flower flame.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct FlameState {
+    /// x0: where this step began (the physics callback's position0).
+    pub origin: hsd_types::Vec3,
+    /// xC: the touched surfaces' normal (it_802993E0).
+    pub normal: hsd_types::Vec3,
+    /// x18: the velocity's unit vector.
+    pub heading: hsd_types::Vec3,
+    /// x24: the flight's angle from straight up, clockwise.
+    pub angle: f32,
+    /// x28: the flight's speed.
+    pub speed: f32,
+    /// x2C: the lifetime it was given.
+    pub lifetime: f32,
 }
 /// Mr. Game & Watch's Judgment sign (itgamewatchjudge.c).
 #[derive(Clone, Copy, Debug, Default)]

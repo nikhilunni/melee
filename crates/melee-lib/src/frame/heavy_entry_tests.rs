@@ -195,6 +195,7 @@ fn pickup_entry_clears_every_throw_flag_and_common_damage_owner_replaces_charact
             damage_multiplier: 1.0,
             ammo: 0,
             shot_offset: hsd_types::Vec3::ZERO,
+            scope: None,
         }));
         assert!(f.try_item_pickup(assets).unwrap());
         assert_eq!(f.motion_state.action.0, if heavy { 93 } else { 92 });
@@ -240,6 +241,7 @@ fn pickup_entry_clears_every_throw_flag_and_common_damage_owner_replaces_charact
             damage_multiplier: 1.0,
             ammo: 0,
             shot_offset: hsd_types::Vec3::ZERO,
+            scope: None,
             heal: 0,
         });
         // ftCo_800974C4: the lifted item drops with xC44 0.

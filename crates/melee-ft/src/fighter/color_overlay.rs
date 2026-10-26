@@ -97,6 +97,9 @@ pub struct ColorOverlaySlot {
     /// A protection timer ran out this frame (Fighter_8006A360); the flash
     /// is cleared before the next step if it still owns the slot.
     pub flash_expired: bool,
+    /// The Starman ran out this frame (Fighter_8006A360); its colour is
+    /// cleared before the next step if it still owns the slot.
+    pub starman_expired: bool,
 }
 
 impl FighterCore {
@@ -137,6 +140,7 @@ impl FighterCore {
                 program: ChargeOverlay::default(),
                 frames_left: duration,
                 flash_expired: slot.flash_expired,
+                starman_expired: slot.starman_expired,
             };
         }
         installed
@@ -184,8 +188,15 @@ impl FighterCore {
         let table = &assets.color_overlays;
         // fighter.c:1470/1481: ftCo_800C0694(fp) == 9 -> ftCo_800C0200(fp, 9),
         // which clears the slot and reinstalls the flash if still protected.
+        // fighter.c:1490-1492: the Starman's colour likewise (it comes
+        // before the flash's in Fighter_8006A360? no: after; both deferred).
         if std::mem::take(&mut self.combat.color_overlay.flash_expired)
             && self.combat.color_overlay.id == INVINCIBILITY_FLASH
+        {
+            self.clear_color_overlay(table);
+        }
+        if std::mem::take(&mut self.combat.color_overlay.starman_expired)
+            && self.combat.color_overlay.id == super::power_up::STARMAN_COLOR
         {
             self.clear_color_overlay(table);
         }
@@ -250,6 +261,9 @@ impl FighterCore {
         }
         if self.status.heal_remaining != 0 {
             self.install_color_overlay(super::heal::HEALING_COLOR, 0, table);
+        }
+        if self.status.star_invincible {
+            self.install_color_overlay(super::power_up::STARMAN_COLOR, 0, table);
         }
         if self.status.revival_invincibility != 0 || self.status.ledge_intangibility != 0 {
             self.install_color_overlay(INVINCIBILITY_FLASH, 0, table);

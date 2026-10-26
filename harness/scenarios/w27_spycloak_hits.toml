@@ -1,0 +1,54 @@
+# Directed witness (wave 27): Fox picks up a Cloaking Device; cloaked, Marth's jabs and forward smashes launch him at 0%; after it runs out the smashes add percent.
+# Boundary start_fd_items_spycloak; 338 recorded ticks. Step frames count
+# tick records (input_clock = "tick", dolphin/tick_trace.py).
+name = "w27_spycloak_hits"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_items_spycloak.sav"
+frames = 1600
+render_every_tick = true
+seed = 1
+item_frequency = 4
+item_mask = "0xfffffffa00000000"
+stage = "FinalDestination"
+inputs = [
+  { frame = 470, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 497, port = 0, raw = { button = 0 } },
+  { frame = 530, port = 0, raw = { button = 256 } },
+  { frame = 531, port = 0, raw = { button = 0 } },
+  { frame = 560, port = 1, raw = { button = 0, stickX = -127 } },
+  { frame = 563, port = 1, raw = { button = 0 } },
+  { frame = 600, port = 1, raw = { button = 256 } },
+  { frame = 601, port = 1, raw = { button = 0 } },
+  { frame = 620, port = 1, raw = { button = 256 } },
+  { frame = 621, port = 1, raw = { button = 0 } },
+  { frame = 640, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 641, port = 1, raw = { button = 0 } },
+  { frame = 900, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 901, port = 1, raw = { button = 0 } },
+  { frame = 1120, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 1140, port = 0, raw = { button = 0 } },
+  { frame = 1200, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 1201, port = 1, raw = { button = 0 } },
+  { frame = 1420, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 1440, port = 0, raw = { button = 0 } },
+  { frame = 1500, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 1501, port = 1, raw = { button = 0 } },
+  { frame = 1720, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 1740, port = 0, raw = { button = 0 } },
+  { frame = 1800, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 1801, port = 1, raw = { button = 0 } },
+  { frame = 2020, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 2040, port = 0, raw = { button = 0 } },
+  { frame = 2100, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 2101, port = 1, raw = { button = 0 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

@@ -1331,6 +1331,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-fflower"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-types",
+]
+
+[[package]]
 name = "it-foxillusion"
 version = "0.0.1"
 dependencies = [
@@ -1426,6 +1438,17 @@ dependencies = [
  "melee-it",
  "melee-lb",
  "melee-mp",
+ "melee-types",
+]
+
+[[package]]
+name = "it-lgun"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
  "melee-types",
 ]
 
@@ -1564,6 +1587,37 @@ dependencies = [
 
 [[package]]
 name = "it-shell"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
+name = "it-spycloak"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
+name = "it-sscope"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-types",
+]
+
+[[package]]
+name = "it-star"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
@@ -1964,6 +2018,7 @@ dependencies = [
  "it-container",
  "it-dosei",
  "it-drmariopill",
+ "it-fflower",
  "it-foxillusion",
  "it-foxlaser",
  "it-freeze",
@@ -1973,6 +2028,7 @@ dependencies = [
  "it-kirby",
  "it-klap",
  "it-koopaflame",
+ "it-lgun",
  "it-link",
  "it-luigifire",
  "it-mariocape",
@@ -1986,6 +2042,9 @@ dependencies = [
  "it-samus",
  "it-seak",
  "it-shell",
+ "it-spycloak",
+ "it-sscope",
+ "it-star",
  "it-sword",
  "it-tools",
  "it-wstar",

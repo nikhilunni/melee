@@ -43,7 +43,7 @@ impl Fighter {
         hit: &ReceivedHit,
         assets: &FighterAssets,
     ) -> Result<()> {
-        self.core.physics.percent += hit.percent_damage;
+        self.core.add_hit_percent(hit.percent_damage);
         self.interrupt_actions(assets);
         // ftCo_8009750C: a heavy item would be dropped.
         if self.core.held_item.as_ref().is_some_and(|held| held.heavy) {

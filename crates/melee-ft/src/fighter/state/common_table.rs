@@ -667,6 +667,107 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         };
         i += 1;
     }
+    // ftData_MotionStateList[148..=151]: ftCo_SM_LGunShoot (138) on,
+    // ft_0CDF.c's callbacks: an empty IASA, ft_80084F3C / ft_80084DB0,
+    // ftCo_LGunShoot_Coll / ftCo_LGunShootAir_Coll.
+    const RAY_GUN_SHOTS: [(S, i32, bool); 4] = [
+        (S::LGunShoot, 138, false),
+        (S::LGunShootAir, 139, true),
+        (S::LGunShootEmpty, 140, false),
+        (S::LGunShootAirEmpty, 141, true),
+    ];
+    let mut i = 0;
+    while i < RAY_GUN_SHOTS.len() {
+        let (state, animation, air) = RAY_GUN_SHOTS[i];
+        rows[state as usize] = MotionRow {
+            action: ActionId(state as u16),
+            id: state,
+            animation,
+            anim: callbacks::animation::item_shoot,
+            iasa: callbacks::input::catch,
+            physics: if air {
+                callbacks::physics::fall
+            } else {
+                callbacks::physics::wait
+            },
+            collision: callbacks::collision::ray_gun,
+            camera: callbacks::camera::follow_fighter,
+            implemented: true,
+        };
+        i += 1;
+    }
+    // ftData_MotionStateList[152..=153]: ftCo_SM_FireFlowerShoot (142),
+    // ft_0CE3.c's callbacks.
+    rows[S::FireFlowerShoot as usize] = MotionRow {
+        action: ActionId(S::FireFlowerShoot as u16),
+        id: S::FireFlowerShoot,
+        animation: 142,
+        anim: callbacks::animation::flower_shoot,
+        iasa: callbacks::input::catch,
+        physics: callbacks::physics::wait,
+        collision: callbacks::collision::flower_shoot,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::FireFlowerShootAir as usize] = MotionRow {
+        action: ActionId(S::FireFlowerShootAir as u16),
+        id: S::FireFlowerShootAir,
+        animation: 143,
+        physics: callbacks::physics::fall,
+        ..rows[S::FireFlowerShoot as usize]
+    };
+    // ftData_MotionStateList[158..=173]: ftCo_SM_ItemScopeStart (149) on,
+    // the Super Scope's start, rapid, fire and end rows, on the ground and
+    // in the air, then their empty twins.
+    const SCOPE_ROWS: [S; 16] = [
+        S::ItemScopeStart,
+        S::ItemScopeRapid,
+        S::ItemScopeFire,
+        S::ItemScopeEnd,
+        S::ItemScopeAirStart,
+        S::ItemScopeAirRapid,
+        S::ItemScopeAirFire,
+        S::ItemScopeAirEnd,
+        S::ItemScopeStartEmpty,
+        S::ItemScopeRapidEmpty,
+        S::ItemScopeFireEmpty,
+        S::ItemScopeEndEmpty,
+        S::ItemScopeAirStartEmpty,
+        S::ItemScopeAirRapidEmpty,
+        S::ItemScopeAirFireEmpty,
+        S::ItemScopeAirEndEmpty,
+    ];
+    let mut i = 0;
+    while i < SCOPE_ROWS.len() {
+        let id = SCOPE_ROWS[i];
+        let state = id as usize;
+        let phase = i % 4;
+        let air = i % 8 >= 4;
+        rows[state] = MotionRow {
+            action: ActionId(state as u16),
+            id,
+            animation: state as i32 - 9,
+            anim: match phase {
+                0 => callbacks::animation::scope_start,
+                1 => callbacks::animation::scope_rapid,
+                _ => callbacks::animation::scope_fire,
+            },
+            iasa: match phase {
+                0 => callbacks::input::scope_start,
+                1 => callbacks::input::scope_rapid,
+                _ => callbacks::input::catch,
+            },
+            physics: if air {
+                callbacks::physics::fall
+            } else {
+                callbacks::physics::wait
+            },
+            collision: callbacks::collision::scope,
+            camera: callbacks::camera::follow_fighter,
+            implemented: true,
+        };
+        i += 1;
+    }
     rows[S::Attack11 as usize] = MotionRow {
         action: ActionId(44),
         id: S::Attack11,

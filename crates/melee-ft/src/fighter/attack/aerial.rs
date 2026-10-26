@@ -129,7 +129,7 @@ pub fn input(fighter: &mut Fighter, phase: InputPhase<'_>) {
         return;
     }
     if requested(&fighter.core.input, &phase.assets.input) {
-        (fighter.character.table().enter_aerial)(fighter, phase.assets).expect("aerial interrupt");
+        fighter.enter_aerial_attack(phase.assets).expect("aerial interrupt");
     } else if fighter.aerial_jump_requested(phase.assets) {
         fighter
             .enter_aerial_jump(phase.assets)

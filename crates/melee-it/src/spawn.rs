@@ -140,6 +140,10 @@ pub enum ItemControl {
     SwingSwell,
     /// it_8029282C: the Fan back to its normal size.
     SwingShrink,
+    /// it_8028E938: the Ray Gun's recoil (state 3 for 40 frames).
+    Recoil,
+    /// it_80291F14: the Super Scope spends a shot of this charge level.
+    Spend(i32),
 }
 
 /// Which of the Fan's swing animations the holder plays
@@ -164,6 +168,13 @@ pub enum ItemRequest {
     /// [`ItemRequest::NewHitGroup`] returned (Item_80268B18 copies it to
     /// xAC4_ignoreItemID): Bowser's flames of one breath cycle.
     SpawnInGroup(SpawnItem),
+    /// it_80292F14's shot from a held item: with shots left (xD4C > 0)
+    /// the `source` fires ([`ItemControl::Fire`]) and `spawn` joins the
+    /// source's hit group (SpawnItem.x40 = its xAC4); the Fire Flower's
+    /// group then renews every sixth flame. Without shots, nothing.
+    Shot { source: u32, spawn: SpawnItem },
+    /// [`ItemRequest::Shot`] as the scene resolves it: `spawn` in `group`.
+    SpawnInItemGroup { spawn: SpawnItem, group: u32 },
     SpawnHeld(SpawnItem),
     SpawnLaser {
         spawn: SpawnItem,

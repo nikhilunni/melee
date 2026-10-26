@@ -35,6 +35,14 @@ melee_it::item_kinds! {
         Tomato: it_heal::MaximTomato,
         Foods: it_heal::Food,
         WStar: it_wstar::WarpStar,
+        LGun: it_lgun::RayGun,
+        LGunRay: it_lgun::RayGunRay,
+        FFlower: it_fflower::FireFlower,
+        LGunBeam: it_fflower::FireFlowerFlame,
+        SScope: it_sscope::SuperScope,
+        SScopeBeam: it_sscope::SuperScopeBeam,
+        Star: it_star::Starman,
+        Spycloak: it_spycloak::CloakingDevice,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -499,7 +507,20 @@ fn candidate(
         hand_hold_kind: assets.hand_hold_kind,
         damage_multiplier: assets.collision_damage_multiplier,
         ammo: item.ammo,
-        shot_offset: it_sword::shot_offset(item.kind, assets),
+        shot_offset: shot_offset(item.kind, assets),
+        scope: (item.kind == ItemKind::SScope)
+            .then(|| melee_it::scope::ScopeCharges::from_attributes(&assets.special_attributes)),
+    }
+}
+
+/// Where a held shooter's shot leaves it, in the hand joint's frame: the
+/// Star Rod's tip (it_80292394), the Ray Gun's muzzle (it_8028E774).
+pub fn shot_offset(kind: ItemKind, assets: &melee_it::desc::ItemAssets) -> hsd_types::Vec3 {
+    match kind {
+        ItemKind::LGun => it_lgun::muzzle_offset(assets),
+        ItemKind::FFlower => it_fflower::MOUTH,
+        ItemKind::SScope => it_sscope::muzzle_offset(assets),
+        _ => it_sword::shot_offset(kind, assets),
     }
 }
 
@@ -755,6 +776,86 @@ impl Resources {
                 )?,
             ),
             (
+                ItemKind::LGun,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::LGun,
+                    &it_lgun::ARTICLE_STATES,
+                    it_lgun::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Spycloak,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Spycloak,
+                    &it_spycloak::ARTICLE_STATES,
+                    it_spycloak::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Star,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Star,
+                    &it_star::ARTICLE_STATES,
+                    it_star::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::SScope,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::SScope,
+                    &it_sscope::ARTICLE_STATES,
+                    it_sscope::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::SScopeBeam,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::SScopeBeam,
+                    &it_sscope::BEAM_ARTICLE_STATES,
+                    it_sscope::BEAM_SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::FFlower,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::FFlower,
+                    &it_fflower::ARTICLE_STATES,
+                    it_fflower::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::LGunBeam,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::LGunBeam,
+                    &it_fflower::FLAME_ARTICLE_STATES,
+                    it_fflower::FLAME_SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::LGunRay,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::LGunRay,
+                    &it_lgun::RAY_ARTICLE_STATES,
+                    it_lgun::RAY_SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
                 ItemKind::Dosei,
                 ItemAssets::from_common(
                     &common_archive,
@@ -783,6 +884,17 @@ impl Resources {
             (ItemKind::Leadead, std::sync::Arc::clone(&common_archive)),
         ];
         let mut article_skeletons = Vec::new();
+        // The Fire Flower's mouth flame (efSync 0x473) rides one of its
+        // bones while it is held: its model posed in the hand, once per
+        // animated article state.
+        if let Some((_, flower)) = kinds.iter().find(|(kind, _)| *kind == ItemKind::FFlower) {
+            article_skeletons.push(crate::article_pose::ArticleSkeleton::load_states(
+                ItemKind::FFlower,
+                &common_archive,
+                &flower.visual,
+                it_fflower::ANIMATED_STATES,
+            )?);
+        }
         for (file, symbol, laser, blaster, ghost, ghost_index) in [
             (
                 "PlFx.dat",
@@ -1827,6 +1939,32 @@ pub fn request(
     rng: &mut gekko_math::HsdRng,
 ) -> Option<u32> {
     let owner_context = &owner;
+    // it_80292F14: a held item's shot fires the item (its shots, its mouth
+    // flame) and the new article joins the item's hit group, which the
+    // Fire Flower renews every sixth flame (Item_8026AE60).
+    let request = match request {
+        ItemRequest::Shot { source, spawn } => {
+            let item = pool.get_mut(source).expect("the firing item");
+            if item.ammo <= 0 {
+                return None;
+            }
+            let kind = item.kind;
+            pool.control_instance::<SceneItems>(
+                source,
+                melee_it::ItemControl::Fire,
+                resources.get(kind),
+                owner_context.efasync_immediate,
+            );
+            let item = pool.get_mut(source).expect("the firing item");
+            let group = item.hit_group;
+            if it_fflower::count_flame(item) {
+                let renewed = pool.allocate_hit_group();
+                pool.get_mut(source).unwrap().hit_group = renewed;
+            }
+            ItemRequest::SpawnInItemGroup { spawn, group }
+        }
+        request => request,
+    };
     if let ItemRequest::SpawnChain {
         spawn,
         count,
@@ -1864,7 +2002,10 @@ pub fn request(
         return first;
     }
     let (spawn, ray, held_owner) = match request {
-        ItemRequest::Spawn(spawn) | ItemRequest::SpawnInGroup(spawn) => (spawn, None, None),
+        ItemRequest::Spawn(spawn)
+        | ItemRequest::SpawnInGroup(spawn)
+        | ItemRequest::SpawnInItemGroup { spawn, .. } => (spawn, None, None),
+        ItemRequest::Shot { .. } => unreachable!("resolved above"),
         ItemRequest::NewHitGroup => {
             let slot = owner.slot.expect("Item_8026AE60 from a fighter");
             pool.begin_owner_hit_group(slot, owner.secondary);
@@ -2152,6 +2293,9 @@ fn finish_spawn_request(
         &spawn,
         map,
     );
+    if let ItemRequest::SpawnInItemGroup { group, .. } = request {
+        pool.join_hit_group(id, group);
+    }
     if let ItemRequest::SpawnInGroup(_) = request {
         // Item_80268B18: xAC4_ignoreItemID = SpawnItem.x40, the id the
         // spawning fighter holds. The hitboxes the first script step

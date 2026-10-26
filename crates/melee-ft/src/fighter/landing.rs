@@ -222,6 +222,16 @@ impl FighterCore {
                 ..
             } => *retained_drop_timer,
             MotionData::Fall(fall) => fall.blend,
+            // mv.co.itemthrow.x4 while the Fire Flower fires: the puff timer.
+            MotionData::FlowerShoot(flower) => flower.puff_timer,
+            // The Super Scope's x2344: the charge's A-released flag, kept
+            // by the rapid and fire rows.
+            MotionData::Scope(super::item_scope::ScopeState::Charge { released, .. }) => {
+                f32::from_bits(u32::from(*released))
+            }
+            MotionData::Scope(super::item_scope::ScopeState::Shots { retained_word, .. }) => {
+                *retained_word
+            }
             // mv.co.captureleadead writes only x0 (+2340).
             MotionData::CaptureReDead(capture) => capture.retained_word?,
             // mv.co.bury.coll_box.top (+2344); BuryJump writes only +2340.

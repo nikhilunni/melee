@@ -70,6 +70,19 @@ pub fn standing_attacks(fighter: &mut Fighter, phase: InputPhase<'_>) {
 #[inline(never)] // one definition: character rows point at it too
 pub fn catch(_fighter: &mut Fighter, _phase: InputPhase<'_>) {}
 
+/// ftData_MotionStateList: ftCo_MS_ItemScopeStart (158 and its twins):
+/// fn_800D79B4.
+pub fn scope_start(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    fighter
+        .scope_start_input(phase.assets)
+        .expect("Super Scope charge");
+}
+
+/// ftData_MotionStateList: ftCo_MS_ItemScopeRapid (159 and its twins).
+pub fn scope_rapid(fighter: &mut Fighter, phase: InputPhase<'_>) {
+    fighter.scope_rapid_input(phase.assets);
+}
+
 /// ftData_MotionStateList: ftCo_MS_AttackHi3 (56), ftCo_MS_AttackS4S (60).
 /// ftData_MotionStateList: ftCo_MS_AttackDash (50).
 pub fn dash_attack(fighter: &mut Fighter, phase: InputPhase<'_>) {
@@ -290,7 +303,7 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
         WaitTransition::None => {}
         WaitTransition::AirSpecial => fighter.enter_buffered_special(assets, true),
         WaitTransition::Attack => {
-            (fighter.character.table().enter_aerial)(fighter, assets).expect("aerial attack")
+            fighter.enter_aerial_attack(assets).expect("aerial attack")
         }
         WaitTransition::Jump => fighter.enter_aerial_jump(assets).expect("aerial jump"),
         WaitTransition::Escape => fighter.enter_air_dodge(assets).expect("air dodge"),

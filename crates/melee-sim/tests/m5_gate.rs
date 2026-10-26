@@ -7313,7 +7313,87 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_tomato_e7ff378da_p0", 3883),
     ("corpus_v3_fd_items_foods_ec13743d5_p0", 2864),
     ("corpus_v3_fd_items_foods_e50814092_p0", 5586),
-    ("corpus_v3_fd_items_foods_e7ff378da_p0", 4998),
+    ("corpus_v3_fd_items_foods_e7ff378da_p0", 4998),    ("start_fd_items_lgun", 600),
+    ("start_fd_items_lgun_cold", 600),
+    // Ray Guns (it-lgun, docs/PORT_NOTES/RANDOM_ITEM_KINDS.md "Shooters"):
+    // picked up, its sixteen shots on the ground and in the air (one landing
+    // mid-shot), fired empty, thrown empty and vanishing, thrown and dropped
+    // with shots left, knocked loose; rays hitting fighters, bounced off
+    // shields and reflected by Fox's shine.
+    ("corpus_v3_fd_items_lgun_e00f160ee_p1", 1136),
+    ("corpus_v3_fd_items_lgun_e00f160ee_p2", 672),
+    ("corpus_v3_fd_items_lgun_e05625e18_p1", 339),
+    ("corpus_v3_fd_items_lgun_e09db17e3_p0", 6001),
+    ("corpus_v3_fd_items_lgun_e0dee256e_p0", 5056),
+    ("corpus_v3_fd_items_lgun_e0fcf0c70_p2", 1159),
+    ("corpus_v3_fd_items_lgun_e1502cb40_p2", 547),
+    ("corpus_v3_fd_items_lgun_e1611c835_p0", 461),
+    ("corpus_v3_fd_items_lgun_e1611c835_p1", 1189),
+    ("corpus_v3_fd_items_lgun_e3ef41ca4_p0", 4796),
+    ("corpus_v3_fd_items_lgun_e44cbc906_p0", 2740),
+    ("corpus_v3_fd_items_lgun_e45ec0dca_p1", 3597),
+    ("corpus_v3_fd_items_lgun_e52b08364_p2", 378),
+    ("corpus_v3_fd_items_lgun_e6a2d885d_p2", 3005),
+    ("corpus_v3_fd_items_lgun_e70b3084c_p0", 5746),
+    ("corpus_v3_fd_items_lgun_e75fb4a9a_p0", 6001),
+    ("corpus_v3_fd_items_lgun_e8089e993_p2", 558),
+    ("corpus_v3_fd_items_lgun_e89f997dc_p1", 1847),
+    ("corpus_v3_fd_items_lgun_e8f0de8c6_p2", 621),
+    ("corpus_v3_fd_items_lgun_e9943b4ab_p0", 447),
+    ("corpus_v3_fd_items_lgun_e9a8e5048_p0", 3934),
+    ("corpus_v3_fd_items_lgun_e9e9fbd4d_p2", 2736),
+    ("corpus_v3_fd_items_lgun_eae52f0ea_p2", 6001),
+    ("corpus_v3_fd_items_lgun_eb8786a38_p2", 569),
+    ("corpus_v3_fd_items_lgun_ec18b7097_p0", 1729),
+    ("corpus_v3_fd_items_lgun_ec21c8082_p1", 2474),
+    ("corpus_v3_fd_items_lgun_ecdf8887e_p1", 966),
+    ("corpus_v3_fd_items_lgun_ece1e43b7_p0", 2551),
+    ("corpus_v3_fd_items_lgun_ee62c6106_p1", 693),
+    ("corpus_v3_fd_items_lgun_ee98155f3_p2", 795),
+    ("corpus_v3_fd_items_lgun_ef5188d7f_p2", 6001),
+    ("corpus_v3_fd_items_lgun_efc6a328f_p0", 1520),
+    ("corpus_v3_fd_items_lgun_efc6a328f_p2", 3015),
+    ("w27_lgun_shots", 1300),
+    ("w27_lgun_reflect", 618),
+    ("w27_lgun_shieldbounce", 2791),
+    ("w27_lgun_shieldbounce2", 2714),
+    // Fire Flowers (it-fflower): held, opened and fired on the ground and
+    // in the air (landing mid-fire), flames bending along surfaces, six to a
+    // hit group, hitting and reflected; closed by damage; thrown, dropped and
+    // knocked loose, falling on in state 1 once their flight animation ends.
+    ("start_fd_items_fflower", 600),
+    ("start_fd_items_fflower_cold", 600),
+    ("w27_fflower_fire", 1550),
+    ("corpus_v3_fd_items_fflower_e00f31913_p1", 1882),
+    ("corpus_v3_fd_items_fflower_e1b05b110_p2", 1449),
+    ("corpus_v3_fd_items_fflower_e255c070a_p1", 3149),
+    ("corpus_v3_fd_items_fflower_e2bf046d4_p2", 1126),
+    ("corpus_v3_fd_items_fflower_e3e74affa_p0", 4401),
+    ("corpus_v3_fd_items_fflower_e9943b4ab_p0", 1517),
+    ("corpus_v3_fd_items_fflower_edb2b114a_p0", 4754),
+    ("corpus_v3_fd_items_fflower_ee62c6106_p2", 3637),
+    ("corpus_v3_fd_items_fflower_eecfcf1ea_p2", 1694),
+    ("corpus_v3_fd_items_fflower_ef5e3e043_p0", 2619),
+    ("corpus_v3_fd_items_fflower_ef89b3e70_p0", 4736),
+    ("corpus_v3_fd_items_fflower_ef9b6d16d_p1", 6001),
+    ("corpus_v3_fd_items_fflower_ef9b6d16d_p2", 508),
+    // Super Scopes (it-sscope): rapid fire, partial and full charges on the
+    // ground and in the air, the charged shots of each level.
+    ("start_fd_items_sscope", 600),
+    ("start_fd_items_sscope_cold", 600),
+    ("w27_sscope_fire", 1350),
+    // Starmen (it-star): the bounce along the stage, a touch giving Fox
+    // invincibility through jabs and a forward smash, which hits once it
+    // runs out (fighter.c:1486-1498).
+    ("start_fd_items_starman", 600),
+    ("start_fd_items_starman_cold", 600),
+    ("w27_starman_touch", 1500),
+    // Cloaking Devices (it-spycloak): consumed at LightGet's end; cloaked,
+    // hits launch at 0%; the cloak's end skips that frame's proc
+    // (fighter.c:1562-1569) and later hits add percent.
+    ("start_fd_items_spycloak", 600),
+    ("start_fd_items_spycloak_cold", 600),
+    ("w27_spycloak_hits", 1600),
 ];
 
 #[test]

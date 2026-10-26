@@ -304,7 +304,7 @@ pub(super) fn capture_damage(
             f.motion_state.id
         );
     }
-    f.core.physics.percent += hit.percent_damage;
+    f.core.add_hit_percent(hit.percent_damage);
     f.core.input.pressed = Buttons::default();
     f.core.input.released = Buttons::default();
     // ftCo_8008EC90 inlineB2, 8008ECD4..ED84: thrown states keep their
@@ -551,7 +551,7 @@ pub fn jump_input(f: &mut Fighter, phase: super::state::InputPhase<'_>) {
     if f.input.pressed.intersects(Buttons::DIGITAL_SHOULDERS) {
         f.enter_air_dodge(assets).expect("capture jump air dodge");
     } else if super::attack::aerial::requested(&f.input, &assets.input) {
-        (f.character.table().enter_aerial)(f, assets).expect("capture jump aerial");
+        f.enter_aerial_attack(assets).expect("capture jump aerial");
     } else if f.aerial_jump_requested(assets) {
         f.enter_aerial_jump(assets)
             .expect("capture jump aerial jump");

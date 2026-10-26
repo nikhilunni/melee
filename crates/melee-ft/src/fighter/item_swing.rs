@@ -402,7 +402,7 @@ impl Fighter {
 
     /// ftCommon_8007E7E4(gobj, 1) -> ftData_OnItemPickup: Fighter_OnItemPickup
     /// with the catch flag (ft/inlines.h:143).
-    fn show_held_item_in_hand(&mut self, assets: &FighterAssets) {
+    pub(super) fn show_held_item_in_hand(&mut self, assets: &FighterAssets) {
         let Some(held) = self.core.held_item else {
             return;
         };

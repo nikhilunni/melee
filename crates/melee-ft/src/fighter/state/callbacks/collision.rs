@@ -279,6 +279,27 @@ pub fn item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()
     fighter.item_throw_collision(phase.map, assets)
 }
 
+/// ftData_MotionStateList: ftCo_MS_LGunShoot (148..=151): ftCo_LGunShoot_Coll
+/// and ftCo_LGunShootAir_Coll.
+pub fn ray_gun(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let assets = phase.assets.expect("ray gun collision assets");
+    fighter.ray_gun_collision(phase.map, assets)
+}
+
+/// ftData_MotionStateList: ftCo_MS_FireFlowerShoot (152, 153):
+/// ftCo_FireFlowerShoot_Coll / ftCo_FireFlowerShootAir_Coll.
+pub fn flower_shoot(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let assets = phase.assets.expect("fire flower collision assets");
+    fighter.flower_shoot_collision(phase.map, assets)
+}
+
+/// ftData_MotionStateList: ftCo_MS_ItemScopeStart..ItemScopeAirEndEmpty
+/// (158..=173): each row's _Coll.
+pub fn scope(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
+    let assets = phase.assets.expect("Super Scope collision assets");
+    fighter.scope_collision(phase.map, assets)
+}
+
 /// ftCo_LightThrowAir_Coll (800962D4).
 pub fn air_item_throw(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let assets = phase.assets.expect("air item throw collision assets");

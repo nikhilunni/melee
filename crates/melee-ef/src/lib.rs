@@ -1747,8 +1747,9 @@ impl Effects {
                             .tree
                             .set_scale(effect.root, &Vec3::new(1.0, 1.0, 1.0));
                     }
-                    if id == 0x486 || id == 0x4A4 {
-                        // efAlt 0x486 (and Kirby's copy, 0x4A4):
+                    if id == 0x486 || id == 0x4A4 || id == 0x431 {
+                        // efAlt 0x486 (and Kirby's copy, 0x4A4), efAsync
+                        // 0x431 (the Ray Gun's flash):
                         // HSD_JObjSetRotationY of an f64 +-M_PI_2 by the
                         // facing, rounded.
                         effect.tree.set_rotation_y(

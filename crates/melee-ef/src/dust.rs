@@ -70,6 +70,37 @@ impl Effects {
         Ok(())
     }
 
+    /// efSync_Spawn(0x435..=0x437, item, &pos, &angle) -> efAsync_Dispatch
+    /// (efasync.c:694-716): generator 0x14E / 0x153 / 0x156 whose AppSRT takes
+    /// `position`, a quarter turn about Y (M_PI_2, rounded) and `angle`
+    /// about Z (a ray's burst, it_80278800's block_59C: pi facing left).
+    pub fn spawn_ray_burst<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        position: Vec3,
+        angle: f32,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let generator = match id {
+            0x435 => 0x14E,
+            0x436 => 0x153,
+            0x437 => 0x156,
+            _ => anyhow::bail!("efasync.c:694-716: not a ray burst {id:#x}"),
+        };
+        let mut spawn = SpawnRequest::new(0, generator, 0);
+        spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+            translation: position,
+            rotation: Vec3::new(0.0, core::f64::consts::FRAC_PI_2 as f32, angle),
+            status: 1,
+            ..Default::default()
+        });
+        self.events.spawn(&spawn, false, false);
+        spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+        Ok(())
+    }
+
     /// efSync_Spawn(0x3E8, item, &pos, &damage) -> efAsync_Dispatch: the
     /// plain hit spark an item shows when a hit lands on it (it_80270E30).
     /// One of two spark models at random, scaled by the damage.

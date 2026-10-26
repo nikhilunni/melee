@@ -188,6 +188,46 @@ pub fn item_throw(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Op
     Ok(None)
 }
 
+/// ftData_MotionStateList: ftCo_MS_LGunShoot (148..=151): ftCo_800CDE18.
+pub fn item_shoot(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.item_shoot_animation(assets)?;
+    Ok(None)
+}
+
+/// ftData_MotionStateList: ftCo_MS_FireFlowerShoot (152, 153).
+pub fn flower_shoot(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.flower_shoot_animation(assets)?;
+    Ok(None)
+}
+
+/// ftData_MotionStateList: ftCo_MS_ItemScopeStart (158 and its twins):
+/// an empty callback after the step.
+pub fn scope_start(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    fighter.step_animation(phase.assets);
+    Ok(None)
+}
+
+/// ftData_MotionStateList: ftCo_MS_ItemScopeRapid (159 and its twins).
+pub fn scope_rapid(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.scope_rapid_animation(assets)?;
+    Ok(None)
+}
+
+/// ftData_MotionStateList: ftCo_MS_ItemScopeFire / ItemScopeEnd (160, 161
+/// and their twins).
+pub fn scope_fire(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
+    let AnimationPhase { assets, .. } = phase;
+    fighter.step_animation(assets);
+    fighter.scope_fire_animation(assets)?;
+    Ok(None)
+}
+
 pub fn jab(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     let AnimationPhase { assets, .. } = phase;
     fighter.step_animation(assets);

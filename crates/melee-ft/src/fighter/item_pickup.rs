@@ -73,6 +73,8 @@ pub struct PickupCandidate {
     /// it_80292394 / it_80295748: where a shot leaves the item, in the hand
     /// joint's frame (the Star Rod's and Lip's Stick's attributes x4).
     pub shot_offset: Vec3,
+    /// The Super Scope's charge table, which its holder reads.
+    pub scope: Option<melee_it::scope::ScopeCharges>,
 }
 
 /// The items offered to the current proc, in the item list's order.
@@ -135,6 +137,8 @@ pub struct HeldItem {
     pub shot_offset: Vec3,
     /// The candidate's `heal`.
     pub heal: i32,
+    /// The candidate's `scope`.
+    pub scope: Option<melee_it::scope::ScopeCharges>,
 }
 
 /// fp->item_gobj holding one of the fighter's own articles (Peach's
@@ -151,7 +155,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 188] = [
+const HELD_ITEM_STATES: [S; 212] = [
     S::LightGet,
     // ftpickupitem.c and ftCo_Lift.c: a heavy item is lifted, carried,
     // turned and thrown (ftCo_ItemThrow.c); every one drops it when hit.
@@ -229,6 +233,34 @@ const HELD_ITEM_STATES: [S; 188] = [
     S::StarRodSwing3,
     S::StarRodSwing4,
     S::StarRodSwingDash,
+    // ft_0CDF.c: the Ray Gun's shots.
+    S::LGunShoot,
+    S::LGunShootAir,
+    S::LGunShootEmpty,
+    S::LGunShootAirEmpty,
+    // ft_0CE3.c: the Fire Flower's fire.
+    S::FireFlowerShoot,
+    S::FireFlowerShootAir,
+    // ftCo_ItemScope*.c: the Super Scope's charge, shots and end.
+    S::ItemScopeStart,
+    S::ItemScopeRapid,
+    S::ItemScopeFire,
+    S::ItemScopeEnd,
+    S::ItemScopeAirStart,
+    S::ItemScopeAirRapid,
+    S::ItemScopeAirFire,
+    S::ItemScopeAirEnd,
+    S::ItemScopeStartEmpty,
+    S::ItemScopeRapidEmpty,
+    S::ItemScopeFireEmpty,
+    S::ItemScopeEndEmpty,
+    S::ItemScopeAirStartEmpty,
+    S::ItemScopeAirRapidEmpty,
+    S::ItemScopeAirFireEmpty,
+    S::ItemScopeAirEndEmpty,
+    // ftCo_FlyReflect.c: a tumble off a wall or ceiling has no item branch.
+    S::FlyReflectWall,
+    S::FlyReflectCeil,
     // ftCo_Rebound.c: a clanked swing rebounds with the item in hand (its
     // take_dmg_cb gave the hand back in ftCommon_8007DB58); no item branch.
     S::ReboundStop,
@@ -628,11 +660,15 @@ fn held_item_state_is_audited(
     match special {
         Some(keeps_item) => keeps_item,
         None => {
+            let shooter = super::item_shoot::is_shooter(kind);
             HELD_ITEM_STATES.contains(&state)
-                || (super::item_swing::is_swing_item(kind)
+                || ((super::item_swing::is_swing_item(kind) || shooter)
                     && action == ActionId(state as u16)
                     && (SWING_ITEM_COMMON_STATES.contains(&state)
-                        || (state == S::AttackAirLw && common_down_air_animation)))
+                        || (state == S::AttackAirLw && common_down_air_animation)
+                        // ftCo_AttackDash_CheckInput: a shooter's dash is
+                        // the ordinary dash attack (decideFighter).
+                        || (shooter && state == S::AttackDash)))
         }
     }
 }
@@ -991,6 +1027,7 @@ impl FighterCore {
             ammo: item.ammo,
             shot_offset: item.shot_offset,
             heal: item.heal,
+            scope: item.scope,
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
         // Fighter_OnItemPickup (ft/inlines.h:143) and the Kirby and Purin

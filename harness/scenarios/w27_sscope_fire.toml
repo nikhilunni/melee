@@ -1,0 +1,56 @@
+# Directed witness (wave 27): Fox picks up a Super Scope and fires it: a tap (rapid fire), long and partial charges, an aerial shot that lands, rapid fire with A mashed, then smash-throws it.
+# Boundary start_fd_items_sscope; 338 recorded ticks. Step frames count
+# tick records (input_clock = "tick", dolphin/tick_trace.py).
+name = "w27_sscope_fire"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_items_sscope.sav"
+frames = 1350
+render_every_tick = true
+seed = 1
+item_frequency = 4
+item_mask = "0xfffffff800200000"
+stage = "FinalDestination"
+inputs = [
+  { frame = 320, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 347, port = 0, raw = { button = 0 } },
+  { frame = 380, port = 0, raw = { button = 256 } },
+  { frame = 381, port = 0, raw = { button = 0 } },
+  { frame = 420, port = 0, raw = { button = 256 } },
+  { frame = 421, port = 0, raw = { button = 0 } },
+  { frame = 520, port = 0, raw = { button = 256 } },
+  { frame = 610, port = 0, raw = { button = 0 } },
+  { frame = 680, port = 0, raw = { button = 256 } },
+  { frame = 710, port = 0, raw = { button = 0 } },
+  { frame = 780, port = 0, raw = { button = 1024 } },
+  { frame = 783, port = 0, raw = { button = 0 } },
+  { frame = 786, port = 0, raw = { button = 256 } },
+  { frame = 787, port = 0, raw = { button = 0 } },
+  { frame = 850, port = 0, raw = { button = 256 } },
+  { frame = 851, port = 0, raw = { button = 0 } },
+  { frame = 852, port = 0, raw = { button = 256 } },
+  { frame = 853, port = 0, raw = { button = 0 } },
+  { frame = 854, port = 0, raw = { button = 256 } },
+  { frame = 855, port = 0, raw = { button = 0 } },
+  { frame = 900, port = 0, raw = { button = 256 } },
+  { frame = 901, port = 0, raw = { button = 0 } },
+  { frame = 960, port = 0, raw = { button = 256 } },
+  { frame = 961, port = 0, raw = { button = 0 } },
+  { frame = 1020, port = 0, raw = { button = 256 } },
+  { frame = 1021, port = 0, raw = { button = 0 } },
+  { frame = 1080, port = 0, raw = { button = 256 } },
+  { frame = 1081, port = 0, raw = { button = 0 } },
+  { frame = 1140, port = 0, raw = { button = 256 } },
+  { frame = 1141, port = 0, raw = { button = 0 } },
+  { frame = 1200, port = 0, raw = { button = 0, substickX = -127 } },
+  { frame = 1201, port = 0, raw = { button = 0 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

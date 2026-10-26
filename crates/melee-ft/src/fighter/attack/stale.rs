@@ -71,6 +71,25 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows[S::LipstickSwing3 as usize] = Some(GroundMove::LipstickSwing3);
     rows[S::LipstickSwing4 as usize] = Some(GroundMove::LipstickSwing4);
     rows[S::LipstickSwingDash as usize] = Some(GroundMove::LipstickSwingDash);
+    // [148..=153]: x4 low bytes 0x59 (the Ray Gun's four rows) and 0x5A
+    // (the Fire Flower's two).
+    i = S::LGunShoot as usize;
+    while i <= S::LGunShootAirEmpty as usize {
+        rows[i] = Some(GroundMove::LGunShoot);
+        i += 1;
+    }
+    rows[S::FireFlowerShoot as usize] = Some(GroundMove::FireFlowerShoot);
+    rows[S::FireFlowerShootAir as usize] = Some(GroundMove::FireFlowerShoot);
+    // [158..=173]: the Super Scope's rapid rows 0x5C, fire rows 0x5D; its
+    // start and end rows have none.
+    rows[S::ItemScopeRapid as usize] = Some(GroundMove::ScopeRapid);
+    rows[S::ItemScopeAirRapid as usize] = Some(GroundMove::ScopeRapid);
+    rows[S::ItemScopeRapidEmpty as usize] = Some(GroundMove::ScopeRapid);
+    rows[S::ItemScopeAirRapidEmpty as usize] = Some(GroundMove::ScopeRapid);
+    rows[S::ItemScopeFire as usize] = Some(GroundMove::ScopeFire);
+    rows[S::ItemScopeAirFire as usize] = Some(GroundMove::ScopeFire);
+    rows[S::ItemScopeFireEmpty as usize] = Some(GroundMove::ScopeFire);
+    rows[S::ItemScopeAirFireEmpty as usize] = Some(GroundMove::ScopeFire);
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();

@@ -173,6 +173,14 @@ pub enum StaleMove {
     LipstickSwing3,
     LipstickSwing4,
     LipstickSwingDash,
+    /// FtMoveId_LGunShoot (0x59): the Ray Gun's shots.
+    LGunShoot,
+    /// FtMoveId_FireFlowerShoot (0x5A): the Fire Flower's flames.
+    FireFlowerShoot,
+    /// FtMoveId_ScopeRapid / ScopeFire (0x5C / 0x5D): the Super Scope's
+    /// rapid shots and charged shot.
+    ScopeRapid,
+    ScopeFire,
     /// FtMoveId_KbSpecialNMr..KbSpecialNGk (0x16..0x2F): Kirby's copied
     /// neutral specials, one id per copied kind in retail's order (the two
     /// Bowsers, the two Links and the rest each stale on their own).

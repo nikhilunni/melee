@@ -898,6 +898,10 @@ impl Fighter {
         }
     }
     fn finish_death_release(&mut self, assets: &FighterAssets) {
+        // ft_0D31.c:129-131: a cloak ends with the death (ftCo_800C8A64).
+        if self.core.status.cloaked {
+            self.core.end_cloak();
+        }
         self.core.clear_velocities();
         if let Some(held) = self.core.held_item {
             self.core
@@ -1040,7 +1044,7 @@ impl Fighter {
             true
         } else if super::attack::aerial::requested(&self.core.input, common) {
             // ftCo_RebirthWait_IASA (800D575C): AttackAir before aerial jump.
-            (self.character.table().enter_aerial)(self, assets)?;
+            self.enter_aerial_attack(assets)?;
             true
         } else if self.aerial_jump_requested(assets) {
             // ftCo_800CB870 -> ftCo_JumpAerial_CheckInput.

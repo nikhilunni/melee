@@ -473,7 +473,7 @@ pub fn egg_collision(f: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
 /// ftCo_800BC3D0 (800BC3D0) / fn_8010B16C (8010B16C, the same fnmsubs at
 /// 8010B18C) takes it, scaled, off the escape timer.
 pub(super) fn egg_hit(fighter: &mut FighterCore, hit: &melee_coll::damage::ReceivedHit) {
-    fighter.physics.percent += hit.percent_damage;
+    fighter.add_hit_percent(hit.percent_damage);
     let state = egg(fighter);
     // retail 800BC3F0: fnmsubs, timer = -(percentTemp * ratio - timer).
     state.timer = gekko_math::fma::fnmsubs(

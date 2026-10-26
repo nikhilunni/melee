@@ -24,10 +24,19 @@ use melee_types::ItemKind;
 #[derive(Clone)]
 pub(crate) struct ArticleSkeleton {
     pub kind: ItemKind,
-    tree: JObjTree,
+    /// The model with each article state's joint animation: one tree for
+    /// an article posed only in state 0 (Mario's cape), one per state for
+    /// a held item whose states each animate it (the Fire Flower).
+    trees: Vec<JObjTree>,
+    /// The article state `trees` is posing now.
+    current: usize,
     root: JObjId,
     /// ItemModelDesc x8: the depth-first index of the constrained bone.
     attach_bone: usize,
+    /// Joints whose authored RObj constraints were left out
+    /// (hsd_anim::load::load_joint_tree_without_constraints): no bone read
+    /// may lie below one.
+    unconstrained: Vec<JObjId>,
 }
 impl ArticleSkeleton {
     /// Item_80268D34's model with article state 0's joint animation.
@@ -36,24 +45,50 @@ impl ArticleSkeleton {
         archive: &hsd_archive::Archive,
         visual: &hsd_archive::desc::item_visual::ItemVisual,
     ) -> anyhow::Result<Self> {
-        let (mut tree, root) = hsd_anim::load::load_joint_tree(archive, &visual.model)
-            .map_err(|e| anyhow::anyhow!("article model: {e}"))?;
-        if let Some(anim) = visual.states[0].joint.as_ref() {
-            hsd_anim::load::attach_anim_joint(&mut tree, root, anim, archive)
-                .map_err(|e| anyhow::anyhow!("article animation: {e}"))?;
-        }
-        // Posing constrains the attach bone each tick; its slots exist
-        // from load so the tick never grows the constraint maps.
-        if let Some(attach) = tree.bone(root, visual.attachment_bone) {
-            tree.reserve_position_constraint(attach);
-            tree.reserve_orientation_constraint(attach);
+        Self::load_states(kind, archive, visual, 1)
+    }
+
+    /// The model once per article state, `states` of them, each with that
+    /// state's joint animation (Item_80268D34 of each state).
+    pub fn load_states(
+        kind: ItemKind,
+        archive: &hsd_archive::Archive,
+        visual: &hsd_archive::desc::item_visual::ItemVisual,
+        states: usize,
+    ) -> anyhow::Result<Self> {
+        let mut trees = Vec::with_capacity(states);
+        let mut root = None;
+        let mut unconstrained = Vec::new();
+        for state in 0..states {
+            let (mut tree, tree_root, skipped) =
+                hsd_anim::load::load_joint_tree_without_constraints(archive, &visual.model)
+                    .map_err(|e| anyhow::anyhow!("article model: {e}"))?;
+            unconstrained = skipped;
+            if let Some(anim) = visual.states[state].joint.as_ref() {
+                hsd_anim::load::attach_anim_joint_without_constraints(&mut tree, tree_root, anim, archive)
+                    .map_err(|e| anyhow::anyhow!("article animation: {e}"))?;
+            }
+            // Posing constrains the attach bone each tick; its slots exist
+            // from load so the tick never grows the constraint maps.
+            if let Some(attach) = tree.bone(tree_root, visual.attachment_bone) {
+                tree.reserve_position_constraint(attach);
+                tree.reserve_orientation_constraint(attach);
+            }
+            trees.push(tree);
+            root = Some(tree_root);
         }
         Ok(Self {
             kind,
-            tree,
-            root,
+            trees,
+            current: 0,
+            root: root.expect("an article with a state"),
             attach_bone: visual.attachment_bone,
+            unconstrained,
         })
+    }
+
+    fn tree_mut(&mut self) -> &mut JObjTree {
+        &mut self.trees[self.current]
     }
 }
 
@@ -76,12 +111,25 @@ pub(crate) struct ArticlePoses {
 
 /// Articles of one kind that may be posed at once (one per fighter).
 const SLOTS_PER_KIND: usize = 2;
+/// Common items posed per kind (the Fire Flower): each keeps its tree
+/// from its first pickup until it is gone, held or not.
+const SLOTS_PER_ITEM_KIND: usize = 16;
+
+/// Where the holder's part holds the article: its world matrix and its
+/// orientation target. `None` for a common item out of the hand, whose
+/// attach bone is no longer constrained.
+pub(crate) type Hand<'a> = Option<(&'a Mtx, hsd_anim::orientation::OrientationTarget)>;
 
 impl ArticlePoses {
     pub fn new(skeletons: &[ArticleSkeleton]) -> Self {
-        let mut slots = Vec::with_capacity(skeletons.len() * SLOTS_PER_KIND);
+        let mut slots = Vec::with_capacity(skeletons.len() * SLOTS_PER_ITEM_KIND);
         for skeleton in skeletons {
-            for _ in 0..SLOTS_PER_KIND {
+            let count = if skeleton.trees.len() > 1 {
+                SLOTS_PER_ITEM_KIND
+            } else {
+                SLOTS_PER_KIND
+            };
+            for _ in 0..count {
                 slots.push(Slot {
                     item: None,
                     skeleton: skeleton.clone(),
@@ -112,16 +160,28 @@ impl ArticlePoses {
         templates: &[ArticleSkeleton],
         bone: usize,
         tick: u64,
-        hand: &Mtx,
-        hand_orientation: hsd_anim::orientation::OrientationTarget,
+        hand: Hand<'_>,
     ) -> Mtx {
-        let skeleton = self.pose(item, templates, tick, hand, hand_orientation);
-        let joint = skeleton
-            .tree
-            .bone(skeleton.root, bone)
-            .expect("article bone");
-        skeleton.tree.setup_matrix(joint);
-        skeleton.tree.get(joint).mtx
+        let skeleton = self.pose(item, templates, tick, hand);
+        let root = skeleton.root;
+        let (kind, current) = (skeleton.kind, skeleton.current);
+        let ArticleSkeleton {
+            trees,
+            unconstrained,
+            ..
+        } = skeleton;
+        let tree = &mut trees[current];
+        let joint = tree.bone(root, bone).expect("article bone");
+        let mut above = Some(joint);
+        while let Some(id) = above {
+            assert!(
+                !unconstrained.contains(&id),
+                "{kind:?} bone {bone} lies below an RObj constraint the port leaves out"
+            );
+            above = tree.parent(id);
+        }
+        tree.setup_matrix(joint);
+        tree.get(joint).mtx
     }
 
     /// A display pass (HSD_JObjDispAll through the item's render callback)
@@ -134,12 +194,12 @@ impl ArticlePoses {
         item: &melee_it::ItemCore,
         templates: &[ArticleSkeleton],
         after_tick: u64,
-        hand: &Mtx,
-        hand_orientation: hsd_anim::orientation::OrientationTarget,
+        hand: Hand<'_>,
     ) {
-        let skeleton = self.pose(item, templates, after_tick, hand, hand_orientation);
-        for index in 0..skeleton.tree.len() {
-            skeleton.tree.setup_matrix(JObjId(index));
+        let skeleton = self.pose(item, templates, after_tick, hand);
+        let tree = skeleton.tree_mut();
+        for index in 0..tree.len() {
+            tree.setup_matrix(JObjId(index));
         }
     }
 
@@ -151,10 +211,9 @@ impl ArticlePoses {
         item: &melee_it::ItemCore,
         templates: &[ArticleSkeleton],
         tick: u64,
-        hand: &Mtx,
-        hand_orientation: hsd_anim::orientation::OrientationTarget,
+        hand: Hand<'_>,
     ) -> &mut ArticleSkeleton {
-        assert_eq!(item.article_state, 0, "posed article outside state 0");
+        let state = item.article_state;
         let index = match self.slots.iter().position(|s| s.item == Some(item.id)) {
             Some(index) => index,
             None => {
@@ -163,18 +222,31 @@ impl ArticlePoses {
                     .iter()
                     .position(|s| s.item.is_none() && s.skeleton.kind == item.kind)
                     .expect("a free posed-article slot");
-                let template = templates
-                    .iter()
-                    .find(|t| t.kind == item.kind)
-                    .expect("posed article template");
                 let slot = &mut self.slots[index];
-                reset(&mut slot.skeleton.tree, &template.tree);
                 slot.item = Some(item.id);
-                slot.steps = None;
-                slot.placed = None;
+                // Claimed: the state's tree is reset below.
+                slot.skeleton.current = usize::MAX;
                 index
             }
         };
+        let template = templates
+            .iter()
+            .find(|t| t.kind == item.kind)
+            .expect("posed article template");
+        assert!(
+            state < template.trees.len(),
+            "posed article {:?} in state {state} without its tree",
+            item.kind
+        );
+        let slot = &mut self.slots[index];
+        if slot.skeleton.current != state {
+            // Item_80268D34 for this article state: its tree from the rest
+            // pose and fresh playback.
+            slot.skeleton.current = state;
+            reset(&mut slot.skeleton.trees[state], &template.trees[state]);
+            slot.steps = None;
+            slot.placed = None;
+        }
         let slot = &mut self.slots[index];
         let skeleton = &mut slot.skeleton;
         let root = skeleton.root;
@@ -187,50 +259,53 @@ impl ArticlePoses {
             .expect("a posed article past its state change");
         let mut applied = match slot.steps {
             Some(steps) if steps <= target => steps,
-            _ => {
-                skeleton.tree.req_anim_all(root, 0.0);
-                skeleton
-                    .tree
-                    .anim_all::<melee_ft::fighter::RetailTrig>(root);
+            restart => {
+                if restart.is_some() && template.trees.len() > 1 {
+                    // A per-state article's state entered again (its
+                    // animation looping, Item_80268E5C -> Item_80268D34):
+                    // lb_8000B804's rest pose before the fresh playback.
+                    reset(&mut skeleton.trees[state], &template.trees[state]);
+                }
+                let tree = skeleton.tree_mut();
+                tree.req_anim_all(root, 0.0);
+                tree.anim_all::<melee_ft::fighter::RetailTrig>(root);
                 0
             }
         };
         while applied < target {
             skeleton
-                .tree
+                .tree_mut()
                 .anim_all::<melee_ft::fighter::RetailTrig>(root);
             applied += 1;
         }
         slot.steps = Some(applied);
-        skeleton.tree.events.clear();
+        skeleton.tree_mut().events.clear();
         if slot.placed == Some(tick) {
             return skeleton;
         }
         slot.placed = Some(tick);
         // The item's root: Item_80268E5C's translation, its rotation and scale.
-        skeleton.tree.set_translate(root, &item.root_translation);
-        skeleton.tree.set_rotation_x(root, item.rotation.x);
-        skeleton.tree.set_rotation_y(root, item.rotation.y);
-        skeleton.tree.set_rotation_z(root, item.rotation.z);
-        skeleton.tree.set_scale(root, &item.model_scale);
-        let attach = skeleton
-            .tree
-            .bone(root, skeleton.attach_bone)
-            .expect("article attach bone");
-        skeleton.tree.set_position_constraint(
+        let attach_bone = skeleton.attach_bone;
+        let tree = skeleton.tree_mut();
+        tree.set_translate(root, &item.root_translation);
+        tree.set_rotation_x(root, item.rotation.x);
+        tree.set_rotation_y(root, item.rotation.y);
+        tree.set_rotation_z(root, item.rotation.z);
+        tree.set_scale(root, &item.model_scale);
+        let attach = tree.bone(root, attach_bone).expect("article attach bone");
+        tree.set_position_constraint(
             attach,
-            Some(hsd_types::Vec3::new(
-                hand.0[0][3],
-                hand.0[1][3],
-                hand.0[2][3],
-            )),
+            hand.map(|(hand, _)| hsd_types::Vec3::new(hand.0[0][3], hand.0[1][3], hand.0[2][3])),
         );
-        skeleton.tree.set_orientation_constraint(
+        tree.set_orientation_constraint(
             attach,
-            Some((
-                hand_orientation,
-                hsd_anim::mtx::hsd_mtx_get_rotation::<melee_ft::fighter::RetailTrig>,
-            )),
+            hand.map(|(_, orientation)| {
+                (
+                    orientation,
+                    hsd_anim::mtx::hsd_mtx_get_rotation::<melee_ft::fighter::RetailTrig>
+                        as hsd_anim::jobj::OrientationRecovery,
+                )
+            }),
         );
         skeleton
     }
@@ -242,7 +317,7 @@ impl ArticlePoses {
     /// becomes the bone's own translation). `None` for an unposed item.
     pub fn detached_bone_matrix(&mut self, item: u32, bone: usize) -> Option<Mtx> {
         let slot = self.slots.iter_mut().find(|s| s.item == Some(item))?;
-        let tree = &slot.skeleton.tree;
+        let tree = slot.skeleton.trees.get(slot.skeleton.current)?;
         let joint = tree.bone(slot.skeleton.root, bone)?;
         let node = tree.get(joint);
         let mut matrix = Mtx::default();

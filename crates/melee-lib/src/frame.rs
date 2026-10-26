@@ -531,6 +531,22 @@ impl Runtime {
                                 &mut state.particles,
                                 &mut state.rng,
                             )?;
+                        } else if matches!(id, 0x435..=0x437) {
+                            // block_59C: efSync_Spawn(id, gobj, &pos, &angle),
+                            // the angle M_PI (rounded) facing left, else 0.
+                            let angle = if item.facing < 0.0 {
+                                core::f64::consts::PI as f32
+                            } else {
+                                0.0
+                            };
+                            state.effects.spawn_ray_burst::<RetailTrig>(
+                                id,
+                                position,
+                                angle,
+                                &state.assets.common_particle_bank,
+                                &mut state.particles,
+                                &mut state.rng,
+                            )?;
                         } else {
                             // block_4FC rows take the item's facing.
                             state.effects.spawn_positional_facing::<RetailTrig>(
@@ -680,6 +696,46 @@ impl Runtime {
                                 &mut state.particles,
                                 &mut state.rng,
                             )?;
+                    }
+                    melee_it::ItemEvent::BoneGenerator { id: 0x473, bone } => {
+                        let matrix = article_bone_matrix(
+                            &mut state.fighters,
+                            &mut state.article_poses,
+                            &state.assets.items.article_skeletons,
+                            &state.assets.items,
+                            item,
+                            bone,
+                            self.frame,
+                        );
+                        state.effects.spawn_item_common_bone_generator::<RetailTrig>(
+                            0x473,
+                            item.id,
+                            bone,
+                            matrix,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
+                    melee_it::ItemEvent::FacingGenerator { id, facing, scale } => {
+                        let mut matrix = hsd_types::Mtx::default();
+                        hsd_anim::mtx::hsd_mtx_srt(
+                            &mut matrix,
+                            &item.model_scale,
+                            &item.rotation,
+                            &item.position,
+                            None,
+                        );
+                        state.effects.spawn_item_facing_generator::<RetailTrig>(
+                            id,
+                            item.id,
+                            matrix,
+                            facing,
+                            scale,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
                     }
                     melee_it::ItemEvent::BoneGenerator { id, bone } => {
                         let matrix = article_bone_matrix(
@@ -2171,7 +2227,10 @@ impl Runtime {
                             state.items.share_group_victims(item_id, mark);
                         }
                         let item = state.items.common_and_item_mut(index).1;
-                        if let Some(contact) = hit {
+                        if hit.is_some_and(|contact| contact.power_up) {
+                            // ftColl_80077C60: xC34_damageDealt = 1.
+                            item.record_damage_dealt(1.0);
+                        } else if let Some(contact) = hit {
                             if contact.logged_damage {
                                 // plStale_UpdateStaleMovesFromItem: not when
                                 // the item strikes its own owner.
@@ -3257,6 +3316,8 @@ impl Runtime {
                     match &mut request {
                         melee_it::ItemRequest::Spawn(spawn)
                         | melee_it::ItemRequest::SpawnInGroup(spawn)
+                        | melee_it::ItemRequest::Shot { spawn, .. }
+                        | melee_it::ItemRequest::SpawnInItemGroup { spawn, .. }
                         | melee_it::ItemRequest::SpawnHeld(spawn)
                         | melee_it::ItemRequest::SpawnInHand { spawn, .. }
                         | melee_it::ItemRequest::SpawnChain { spawn, .. }
@@ -3395,7 +3456,8 @@ impl Runtime {
                                 use_kind: item.use_kind,
                                 damage_multiplier: item.collision_damage_multiplier,
                                 ammo,
-                                shot_offset: it_sword::shot_offset(kind, item),
+                                shot_offset: crate::scene_items::shot_offset(kind, item),
+                                scope: None,
                                 heal: 0,
                             },
                             catch_item,
@@ -3423,6 +3485,7 @@ impl Runtime {
                         // (efasync.c:1458, retail 800679B0's s_link test)
                         // dispatches before the next fighter's link 9 flush.
                         | melee_it::ItemEvent::ChildEffect { .. }
+                        | melee_it::ItemEvent::FacingGenerator { .. }
                 )
             })
         }) {
@@ -4615,13 +4678,18 @@ fn article_bone_matrix(
     if !crate::article_pose::ArticlePoses::poses_kind(templates, item.kind) {
         return crate::scene_items::free_item_bone_matrix(resources, item, bone);
     }
+    // A posed common item out of the hand (hold kind 0): its tree with no
+    // constraint on its attach bone.
+    if item.hold_kind == 0 && !item.held {
+        return poses.bone_matrix(item, templates, bone, tick, None);
+    }
     let holder = crate::scene_items::owner_index(fighters, item.owner, item.owner_secondary)
         .expect("a posed article's holder fighter");
     let fighter = &mut fighters[holder];
     let part = usize::from(item.holder_part);
     let hand = fighter.bone_matrix(Some(part));
     let orientation = fighter.orientation_target(part);
-    poses.bone_matrix(item, templates, bone, tick, &hand, orientation)
+    poses.bone_matrix(item, templates, bone, tick, Some((&hand, orientation)))
 }
 
 /// A display pass draws each held item at its holder part's matrix (the
@@ -4661,6 +4729,13 @@ fn display_posed_articles(state: &mut InitialState, after_tick: u64) {
         {
             continue;
         }
+        if item.hold_kind == 0 && !item.held {
+            // A posed common item out of the hand: set up unconstrained.
+            state
+                .article_poses
+                .display(item, templates, after_tick, None);
+            continue;
+        }
         let holder =
             crate::scene_items::owner_index(&state.fighters, item.owner, item.owner_secondary)
                 .expect("a posed article's holder fighter");
@@ -4670,7 +4745,7 @@ fn display_posed_articles(state: &mut InitialState, after_tick: u64) {
         let orientation = fighter.orientation_target(part);
         state
             .article_poses
-            .display(item, templates, after_tick, &hand, orientation);
+            .display(item, templates, after_tick, Some((&hand, orientation)));
     }
 }
 
@@ -5070,6 +5145,9 @@ fn dispatch_fighter(
                 && !f.screen_ko_accessory(limits.camera.bottom())
                 && !f.item_throw_accessory(assets)
                 && !f.swing_accessory()
+                && !f.shoot_accessory()
+                && !f.flower_accessory(assets)
+                && !f.scope_accessory()
                 && !f.core.egg_accessory()
             {
                 f.character_accessory(assets, rng);

@@ -1,0 +1,44 @@
+# Directed witness (wave 27): a Starman touches Fox, whose invincibility takes Marth's jabs and forward smash at 0%; once it runs out a forward smash hits.
+# Boundary start_fd_items_starman; 338 recorded ticks. Step frames count
+# tick records (input_clock = "tick", dolphin/tick_trace.py).
+name = "w27_starman_touch"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_items_starman.sav"
+frames = 1500
+render_every_tick = true
+seed = 1
+item_frequency = 4
+item_mask = "0xfffffff800000400"
+stage = "FinalDestination"
+inputs = [
+  { frame = 540, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 545, port = 0, raw = { button = 0 } },
+  { frame = 620, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 637, port = 0, raw = { button = 0 } },
+  { frame = 640, port = 1, raw = { button = 0, stickX = -127 } },
+  { frame = 642, port = 1, raw = { button = 0 } },
+  { frame = 680, port = 1, raw = { button = 256 } },
+  { frame = 681, port = 1, raw = { button = 0 } },
+  { frame = 700, port = 1, raw = { button = 256 } },
+  { frame = 701, port = 1, raw = { button = 0 } },
+  { frame = 720, port = 1, raw = { button = 256 } },
+  { frame = 721, port = 1, raw = { button = 0 } },
+  { frame = 760, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 761, port = 1, raw = { button = 0 } },
+  { frame = 820, port = 1, raw = { button = 256 } },
+  { frame = 821, port = 1, raw = { button = 0 } },
+  { frame = 1350, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 1351, port = 1, raw = { button = 0 } },
+  { frame = 1400, port = 1, raw = { button = 256 } },
+  { frame = 1401, port = 1, raw = { button = 0 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

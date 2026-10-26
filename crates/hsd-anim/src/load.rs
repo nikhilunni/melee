@@ -106,11 +106,30 @@ pub fn load_joint_tree(
     archive: &Archive,
     root: &desc::JObjDesc,
 ) -> Result<(JObjTree, JObjId), LoadError> {
+    load_joint_tree_with(archive, root, false).map(|(tree, root, _)| (tree, root))
+}
+
+/// [`load_joint_tree`] for a model whose authored RObj constraints
+/// (HSD_RObjLoadDesc, not ported) sit only on joints its consumer never
+/// reads through: they are left out, and the constrained joints are
+/// returned so the consumer can refuse a read below one.
+pub fn load_joint_tree_without_constraints(
+    archive: &Archive,
+    root: &desc::JObjDesc,
+) -> Result<(JObjTree, JObjId, Vec<JObjId>), LoadError> {
+    load_joint_tree_with(archive, root, true)
+}
+
+fn load_joint_tree_with(
+    archive: &Archive,
+    root: &desc::JObjDesc,
+    skip_constraints: bool,
+) -> Result<(JObjTree, JObjId, Vec<JObjId>), LoadError> {
     let mut tree = JObjTree::new();
     let mut first = None;
     let mut previous = None;
     for descriptor in root.siblings() {
-        let spec = joint_spec(archive, descriptor)?;
+        let spec = joint_spec(archive, descriptor, skip_constraints)?;
         let id = tree.load_joint(&spec);
         if let Some(previous) = previous {
             tree.get_mut(previous).next = Some(id);
@@ -128,11 +147,26 @@ pub fn load_joint_tree(
             tree.get_mut(id).spline = Some(spline);
         }
     }
-    Ok((tree, first.expect("root.siblings() includes root")))
+    let constrained = root
+        .siblings()
+        .flat_map(|j| j.descendants())
+        .filter(|descriptor| descriptor.robjdesc.is_some())
+        .map(|descriptor| {
+            (0..tree.len())
+                .map(JObjId)
+                .find(|&id| tree.get(id).id == descriptor.offset)
+                .unwrap()
+        })
+        .collect();
+    Ok((tree, first.expect("root.siblings() includes root"), constrained))
 }
 
 /// `JObjLoad` (`jobj.c:629-665`): build the owned inputs to the runtime loader.
-fn joint_spec(archive: &Archive, joint: &desc::JObjDesc) -> Result<JointSpec, LoadError> {
+fn joint_spec(
+    archive: &Archive,
+    joint: &desc::JObjDesc,
+    skip_constraints: bool,
+) -> Result<JointSpec, LoadError> {
     check_class(joint.class_name.as_deref(), "hsd_jobj", joint.offset)?;
     check_joint_flags(
         joint.flags
@@ -143,13 +177,13 @@ fn joint_spec(archive: &Archive, joint: &desc::JObjDesc) -> Result<JointSpec, Lo
             },
         joint.offset,
     )?;
-    if joint.robjdesc.is_some() {
+    if joint.robjdesc.is_some() && !skip_constraints {
         return Err(unsupported(joint.offset, "RObj constraints"));
     }
     let mut spec = joint_transforms(joint);
     spec.children = joint
         .children()
-        .map(|child| joint_spec(archive, child))
+        .map(|child| joint_spec(archive, child, skip_constraints))
         .collect::<Result<_, _>>()?;
     spec.dobj = load_dobj_chain(archive, joint.u.dobj())?;
     Ok(spec)
@@ -258,9 +292,31 @@ pub fn attach_anim_joint(
     tree: &mut JObjTree,
     root: JObjId,
     anim: &desc::AnimJoint,
-    _archive: &Archive,
+    archive: &Archive,
 ) -> Result<(), LoadError> {
-    let attachments = prepare_animation(tree, root, anim)?;
+    attach_anim_joint_with(tree, root, anim, archive, false)
+}
+
+/// [`attach_anim_joint`] for a tree loaded by
+/// [`load_joint_tree_without_constraints`]: the RObj animations of its
+/// constrained joints are left out with their constraints.
+pub fn attach_anim_joint_without_constraints(
+    tree: &mut JObjTree,
+    root: JObjId,
+    anim: &desc::AnimJoint,
+    archive: &Archive,
+) -> Result<(), LoadError> {
+    attach_anim_joint_with(tree, root, anim, archive, true)
+}
+
+fn attach_anim_joint_with(
+    tree: &mut JObjTree,
+    root: JObjId,
+    anim: &desc::AnimJoint,
+    _archive: &Archive,
+    skip_constraints: bool,
+) -> Result<(), LoadError> {
+    let attachments = prepare_animation(tree, root, anim, skip_constraints)?;
     let attachments = attachments
         .into_iter()
         .map(|(id, animation)| {
@@ -297,7 +353,7 @@ pub fn anim_joint_targets(
     root: JObjId,
     anim: &desc::AnimJoint,
 ) -> Result<Vec<(JObjId, u32)>, LoadError> {
-    Ok(prepare_animation(tree, root, anim)?
+    Ok(prepare_animation(tree, root, anim, false)?
         .into_iter()
         .map(|(id, animation)| (id, animation.flags))
         .collect())
@@ -308,6 +364,7 @@ fn prepare_animation(
     tree: &JObjTree,
     root: JObjId,
     anim: &desc::AnimJoint,
+    skip_constraints: bool,
 ) -> Result<Vec<(JObjId, AnimJoint)>, LoadError> {
     // The fourth field marks joints below an unrelocated child (see
     // [`desc::AnimJoint::unrelocated_child`]): they take no animation.
@@ -353,7 +410,7 @@ fn prepare_animation(
                 },
             joint.id,
         )?;
-        attachments.push((id, animation_node(animation)?));
+        attachments.push((id, animation_node(animation, skip_constraints)?));
         if follow_next {
             pending.push((joint.next, animation.next.as_deref(), true, false));
         }
@@ -367,8 +424,8 @@ fn prepare_animation(
 }
 
 /// `HSD_JObjAddAnim` (`jobj.c:303-313`): prepare AObj replacement and scale flags.
-fn animation_node(anim: &desc::AnimJoint) -> Result<AnimJoint, LoadError> {
-    if anim.robj_anim.is_some() {
+fn animation_node(anim: &desc::AnimJoint, skip_constraints: bool) -> Result<AnimJoint, LoadError> {
+    if anim.robj_anim.is_some() && !skip_constraints {
         return Err(unsupported(anim.offset, "RObj animation"));
     }
     Ok(AnimJoint {

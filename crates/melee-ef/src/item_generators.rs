@@ -350,6 +350,91 @@ impl Effects {
         Ok(())
     }
 
+    /// efSync_Spawn(0x473, gobj, bones[bone]) -> efAsync_Dispatch
+    /// (efasync.c:1106-1108): hsd_8039EFAC(0, 0, 0x82, jobj), a common
+    /// generator on one of the item's model bones (the Fire Flower's mouth
+    /// flame).
+    #[allow(clippy::too_many_arguments)] // The item, its bone and the particle state stay separate.
+    pub fn spawn_item_common_bone_generator<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        item: u32,
+        bone: usize,
+        matrix: Mtx,
+        common: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let generator = match id {
+            0x473 => 0x82,
+            _ => anyhow::bail!("efAsync {id:#x}: not a common item-bone generator"),
+        };
+        let joint = item_bone_joint(item, bone);
+        let mut spawn = SpawnRequest::new(0, generator, 0);
+        spawn.joint = Some((joint, matrix));
+        self.events.spawn(&spawn, false, false);
+        if spawn_particle::<T>(particles, common, spawn, rng, &mut self.draws)?.is_some()
+            && !self.item_bones.contains(&(item, bone as u8))
+        {
+            self.item_bones.push((item, bone as u8));
+        }
+        Ok(())
+    }
+
+    /// efSync_Spawn(0x44E..0x451, gobj, jobj, &facing, &scale) ->
+    /// efLib_CreateGenerator_AppSRT_SetFacingDirScale (eflib.c:837-855):
+    /// generator 0xDA..0xDD on the item's root with an AppSRT turned a
+    /// quarter turn toward the facing (an f64 +-M_PI_2, rounded) and the
+    /// uniform scale (a Fire Flower flame).
+    #[allow(clippy::too_many_arguments)] // The item, its joint and the particle state stay separate.
+    pub fn spawn_item_facing_generator<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        item: u32,
+        matrix: Mtx,
+        facing: f32,
+        scale: f32,
+        common: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let generator = match id {
+            0x44E | 0x457 => 0xDA,
+            0x44F | 0x458 => 0xDB,
+            0x450 | 0x459 => 0xDC,
+            0x451 | 0x45A => 0xDD,
+            _ => anyhow::bail!("efasync.c:866-881: not a facing generator {id:#x}"),
+        };
+        let joint = item_joint(item);
+        let mut spawn = SpawnRequest::new(0, generator, 0);
+        spawn.joint = Some((joint, matrix));
+        spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+            rotation: Vec3::new(
+                0.0,
+                if facing < 0.0 {
+                    -std::f64::consts::FRAC_PI_2 as f32
+                } else {
+                    std::f64::consts::FRAC_PI_2 as f32
+                },
+                0.0,
+            ),
+            scale: Vec3::new(scale, scale, scale),
+            ..Default::default()
+        });
+        self.events.spawn(&spawn, false, false);
+        if let Some(generator) = spawn_particle::<T>(particles, common, spawn, rng, &mut self.draws)? {
+            // eflib_create_generator_add_appsrt: PSAPPSRT_UNK_B9/B10
+            // cleared, B11 set.
+            self.events.flags(joint, 0x600, 0x800);
+            let generator = particles.generator_mut(generator).unwrap();
+            generator.flags = (generator.flags & !0x600) | 0x800;
+            if !self.item_joints.contains(&item) {
+                self.item_joints.push(item);
+            }
+        }
+        Ok(())
+    }
+
     /// The item bones generators follow, as (item, bone).
     pub fn followed_item_bones(&self) -> impl Iterator<Item = (u32, usize)> + '_ {
         self.item_bones

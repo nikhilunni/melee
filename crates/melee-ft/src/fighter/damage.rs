@@ -352,6 +352,9 @@ pub struct DamageParameters {
     /// PlCo +418: a hit of this much damage always knocks a held light item
     /// loose (Fighter_8006CDA4 draws Randi(+418) < damage).
     pub item_drop_range: i32,
+    /// PlCo +41C: an empty shooter (it_8026B30C 3, it_8026B594) is also
+    /// knocked loose on a 1-in-this draw (Fighter_8006CDA4).
+    pub empty_shooter_drop_range: i32,
     /// PlCo +414: the frames ftCo_800D705C's catch window stays open.
     pub catch_window_frames: i32,
     pub grounded_angle_threshold: f32,
@@ -469,6 +472,7 @@ impl DamageParameters {
             meteor_angles: [r.u32(p + 0x7E8)?, r.u32(p + 0x7EC)?],
             meteor_cancel_frames: r.s32(p + 0x7F0)?,
             item_drop_range: r.s32(p + 0x418)?,
+            empty_shooter_drop_range: r.s32(p + 0x41C)?,
             catch_window_frames: r.s32(p + 0x414)?,
             reaction_thresholds: [r.f32(p + 0x158)?, r.f32(p + 0x15c)?, r.f32(p + 0x160)?],
             grounded_angle_threshold: r.f32(p + 0x14c)?,
@@ -1216,7 +1220,7 @@ impl Fighter {
                             rng,
                         )?;
                     } else {
-                        self.core.physics.percent += hit.percent_damage;
+                        self.core.add_hit_percent(hit.percent_damage);
                     }
                     self.core.cape_turn(&hit, knockback, assets);
                 } else {
@@ -1440,6 +1444,14 @@ impl Fighter {
             // 0x800CD33C bl ftCommon_8007E7E4): the hand takes the held item
             // again before the damage entry.
             self.swing_restore_hand(assets);
+        }
+        if self.core.scope_charge_armed {
+            // take_dmg_cb = fn_800D7938: the charge so far is spent.
+            self.scope_charge_damaged(assets);
+        }
+        if self.core.flower_close_armed {
+            // take_dmg_cb = ftCo_800CE620: the held flower closes.
+            self.flower_close();
         }
         if self.core.fan_callbacks_armed {
             // take_dmg_cb = ft_800CD604: the Fan shrinks, rests and returns
@@ -1696,7 +1708,7 @@ impl Fighter {
                 }
                 Ok(())
             }
-            T::Attack => (self.character.table().enter_aerial)(self, assets),
+            T::Attack => self.enter_aerial_attack(assets),
             T::Jump => self.enter_aerial_jump(assets),
             T::Escape => self.enter_air_dodge(assets),
             T::Float => (self.character.table().enter_float)(self, assets),
@@ -2344,7 +2356,8 @@ fn detect_eligible_hit(
         // ftColl_80076ED8: x1988, x198C, x221D_b6 or the capsule's own state
         // (hit1->state) keep the hit out of the damage and phantom logs.
         let invincible = capsule_status == melee_types::combat::HurtStatus::Invincible
-            || victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal;
+            || victim.commands.hurt_status != melee_types::combat::HurtStatus::Normal
+            || victim.status.star_invincible;
         if contact.overlap < assets.damage.phantom_threshold {
             log_phantom_contact(victim, attacker, id, contact, height, invincible, origin);
             return;
@@ -2615,7 +2628,7 @@ impl FighterCore {
         // Fighter_ProcessHit: Fighter_UnkTakeDamage_8006CC30(fp, x1838_percentTemp).
         let percent_taken = std::mem::take(&mut self.combat.pending_percent_taken);
         if !percent_pending && !percent_taken {
-            self.physics.percent += hit.percent_damage;
+            self.add_hit_percent(hit.percent_damage);
         }
         let angle = assets.damage.launch_angle(
             self.combat
@@ -2751,7 +2764,13 @@ impl FighterCore {
             self.combat.armor == 0.0,
             "ftCo_8008E984: an armoured launch while holding"
         );
-        if rng.randi(assets.damage.item_drop_range) < damage {
+        // fighter.c:2689-2693: an empty shooter's second draw only when the
+        // first spared it.
+        if rng.randi(assets.damage.item_drop_range) < damage
+            || (held.use_kind == 3
+                && held.ammo <= 0
+                && rng.randi(assets.damage.empty_shooter_drop_range) == 0)
+        {
             self.drop_held_item(held, 1.0, assets);
         }
     }
@@ -2977,6 +2996,9 @@ pub struct ItemHurtContact {
     /// credits the item's owner: logged, or taken by the victim's shell
     /// (x221C_b4).
     pub logged_damage: bool,
+    /// A power-up's touch (ftColl_80077C60's first branch): xC34 = 1, no
+    /// hit and no xCB8.
+    pub power_up: bool,
 }
 
 impl Fighter {
@@ -3140,7 +3162,28 @@ impl Fighter {
             // spark is efSync_Spawn 0x41C (0x80078358).
             let invincible = self.status.revival_invincibility != 0
                 || self.commands.hurt_status != melee_types::combat::HurtStatus::Normal
+                || self.status.star_invincible
                 || capsule_status != melee_types::combat::HurtStatus::Normal;
+            // ftColl_80077C60 (ftcoll.c:1110-1141): a power-up's touch
+            // records the fighter on the hitbox (it_8026FAC4) and gives
+            // the power instead of a hit.
+            if super::power_up::is_power_up(item.kind) {
+                item.record_fighter_victim(id, hit.descriptor.group, self.spawn_number);
+                let frames = match item.scratch {
+                    melee_it::ItemScratch::Starman { frames, .. } => frames,
+                    _ => 0,
+                };
+                if self.touch_power_up(item.kind, frames, assets) {
+                    // hit->state = HitCapsule_Disabled.
+                    item.hitboxes[id] = None;
+                    return Some(ItemHurtContact {
+                        damage: 0.0,
+                        logged_damage: false,
+                        power_up: true,
+                    });
+                }
+                return None;
+            }
             if contact.overlap < assets.damage.phantom_threshold {
                 self.log_item_phantom_contact(
                     item, &hit, contact, height, invincible, assets, common,
@@ -3192,6 +3235,7 @@ impl Fighter {
                 return Some(ItemHurtContact {
                     damage: descriptor.damage,
                     logged_damage: false,
+                    power_up: false,
                 });
             }
             // ftColl_80077C60 (ftcoll.c:1273-1307): the count from before
@@ -3208,6 +3252,7 @@ impl Fighter {
                 return Some(ItemHurtContact {
                     damage: descriptor.damage,
                     logged_damage: true,
+                    power_up: false,
                 });
             };
             // ftColl_80077C60's ordinary branch: log for ftColl_8007AB48,
@@ -3243,6 +3288,7 @@ impl Fighter {
             return Some(ItemHurtContact {
                 damage: descriptor.damage,
                 logged_damage: true,
+                power_up: false,
             });
         }
         None
@@ -3444,7 +3490,7 @@ impl FighterCore {
     fn absorb_hit(&mut self, hit: &ReceivedHit, assets: &FighterAssets) {
         // ftCo_800C8D00 (a Stamina KO) fails closed in the flash.
         // The capture states (0xE0/0xE1, 0xE3/0xE4) are unarmored.
-        self.physics.percent += hit.percent_damage;
+        self.add_hit_percent(hit.percent_damage);
         // kb_applied is zero here: armor absorbed all of it.
         self.unlaunched_damage_flash(0.0, hit, assets);
         // ftCommon_800804FC: a grounded victim's KO credit goes.
@@ -3465,7 +3511,7 @@ impl FighterCore {
         knockback: f32,
         assets: &FighterAssets,
     ) {
-        self.physics.percent += hit.percent_damage;
+        self.add_hit_percent(hit.percent_damage);
         self.unlaunched_damage_flash(knockback, hit, assets);
         self.combat
             .ko_source

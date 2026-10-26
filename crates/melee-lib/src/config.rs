@@ -467,10 +467,10 @@ use crate::ItemRules;
 /// other kind fails closed (`spawn_random_item`). Containers draw their
 /// contents through the same switch, so these alone keep a match inside
 /// the port. Party Ball's monsters (Goomba, ReDead) are registered too.
-pub const PORTED_RANDOM_ITEMS: [melee_types::ItemKind; 10] = {
+pub const PORTED_RANDOM_ITEMS: [melee_types::ItemKind; 12] = {
     use melee_types::ItemKind::*;
     [
-        Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen,
+        Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen, LGun, FFlower,
     ]
 };
 /// An Item Switch at `frequency` (0 Very Low .. 4 Very High) with only

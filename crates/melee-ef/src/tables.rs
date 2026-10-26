@@ -246,7 +246,14 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 34] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 35] = [
+    // efasync.c:653-659: efLib_CreateGenerator_Translate_FacingDir(0x140)
+    // at the point (the Super Scope's muzzle flash, fn_800D84D4).
+    DustSpawn {
+        request: 0x430,
+        particle: 0x140,
+        directional: true,
+    },
     // efasync.c:691-693: efLib_CreateGenerator(0x14D) at the point (the
     // Fan's swing script, iteffect.c:286's 0x434).
     DustSpawn {
@@ -462,7 +469,7 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 34] = [
 ];
 // efsync.c efSync_Spawn rows that call efLib_Create_Attach_Pos: the
 // request id and the model it creates at the given point.
-pub(super) static POSITIONAL_MODELS: [(u16, u32); 5] = [
+pub(super) static POSITIONAL_MODELS: [(u16, u32); 6] = [
     // efasync.c:817-829: a buried fighter's dirt mound (common model 0x28).
     (0x447, 0x28),
     // efsync.c:433-435: Peach's vegetable pull.
@@ -473,6 +480,9 @@ pub(super) static POSITIONAL_MODELS: [(u16, u32); 5] = [
     (0x4A4, 0x84D0),
     // efsync.c:412-413: Mewtwo's Teleport flash.
     (0x4E8, 0x32CB),
+    // efasync.c:661-672: the Ray Gun's muzzle flash (ftCo_800CE1D4), common
+    // model 0x21 turned to the facing.
+    (0x431, 0x21),
 ];
 // efasync.c:282-287, live-joint generator dispatch.
 // efAsync_Dispatch80064E50..64: Fire body overlay uses attached generator0x37.
@@ -501,7 +511,7 @@ pub(super) static ATTACHED_CLEARS_B10: [u16; 1] = [0x4D4];
 // efLib_SpawnParticleEffect (8005D174), ordinary supported DPtcl outputs.
 // 418: Din's Fire's cast (model 0x426C) and Zelda's up-air.
 // 427: Nayru's Love's crystal (model 0x4268).
-pub(super) static PARTICLE_KINDS: [i32; 39] = [
+pub(super) static PARTICLE_KINDS: [i32; 40] = [
     2, 6, 8, 9, 10, 45, 46, 212, 261, 266, 267, 290, 306, 307, 364, 365, 366, 367, 368, 372, 373,
     374, 375, 376, 377, 445, 448, 449, 272, 295, 531, 418, 427,
     // Donkey Kong's models (EfDkData.dat): Headbutt's 96, Hand Slap's 273.
@@ -509,4 +519,6 @@ pub(super) static PARTICLE_KINDS: [i32; 39] = [
     // Mewtwo's models (EfMtData.dat): the dark burst's 387 (0x32CA), the
     // following orb's 391 (0x32C9) and Teleport's flash's 1 and 5 (0x32CB).
     387, 391, 1, 5,
+    // The Ray Gun's muzzle flash (common model 0x21): 308, attached.
+    308,
 ];

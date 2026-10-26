@@ -13,7 +13,7 @@ pub(super) const HEALING_COLOR: u8 = 8;
 /// ft_80088640(fp, 0x7D, 127, 64): the sound of each point healed.
 const HEAL_TICK_SOUND: u32 = 0x7D;
 /// it_8026B30C: the use kind of what the pickup consumes.
-const CONSUMED: u8 = 5;
+pub(super) const CONSUMED: u8 = 5;
 
 impl FighterCore {
     /// Fighter_8006CF5C (8006CF5C): unless its Stamina hit points ran out
@@ -65,10 +65,11 @@ impl FighterCore {
             return false;
         }
         match held.kind {
-            ItemKind::Heart | ItemKind::Tomato | ItemKind::Foods => {}
+            ItemKind::Heart | ItemKind::Tomato | ItemKind::Foods => self.heal(held.heal, assets),
+            // ftCo_800C88D4(gobj, PlCo +7CC, 1).
+            ItemKind::Spycloak => self.cloak(assets.cloak_frames),
             kind => unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:156-196): consuming {kind:?}"),
         }
-        self.heal(held.heal, assets);
         self.item_requests
             .push(melee_it::ItemRequest::Destroy { item: held.item });
         self.release_held_item(held.item, assets);
