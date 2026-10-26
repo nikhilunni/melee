@@ -603,10 +603,11 @@ impl Fighter {
         // ftCommon_8007E2FC; ftCommon_8007DB24 is the ice variant only.
         self.core.clear_velocities();
         // efAsync_Spawn(gobj, &x60C, 2, 0x42D, NULL, &cur_pos): efLib_CreateGenerator
-        // 0x121 at the fighter position (root-relative, zero offset).
+        // 0x121 at cur_pos as it stands now, copied into the queue (the NULL
+        // JObj leaves lb_8000B1CC the point itself).
         self.core.effects.push(EffectRequest::Landing {
             id: 0x42D,
-            offset: Vec3::ZERO,
+            offset: self.core.physics.position,
             floor_angle: 0.0,
         });
         // ftCo_800D4E50: a Coin match's payout, which no fighter can take.

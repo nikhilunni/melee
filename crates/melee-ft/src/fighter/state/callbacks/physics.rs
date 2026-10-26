@@ -13,38 +13,43 @@ pub fn capture(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 /// device (Jungle Japes' river) still carries the body.
 pub fn dead(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase { assets, map, wind } = phase;
-    if fighter.core.physics.ground_or_air == melee_types::GroundOrAir::Ground {
-        // A fighter KO'd while standing (Mushroom Kingdom's falling lift
-        // carries it past the blast zone): procUpdate's tail still rides
-        // the floor (fighter.c:2380-2390, mpGetSpeed).
-        let physics = &fighter.core.physics;
-        assert!(
-            physics.knockback_velocity.x == 0.0
-                && physics.knockback_velocity.y == 0.0
-                && physics.shield_knockback_velocity.x == 0.0
-                && physics.shield_knockback_velocity.y == 0.0,
-            "fighter.c:2209-2232: a grounded dead fighter's knockback friction"
-        );
-        crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
-        let speed = map.line_speed(
-            fighter.core.collision.data.floor.index,
-            &fighter.core.physics.position,
-        );
-        crate::physics::integrate::integrate_environment(&mut fighter.core.physics, speed, wind);
-        return;
+    if !ride_floor_dead(fighter, map, wind) {
+        fighter.core.free_flight_physics(assets, wind)
     }
-    fighter.core.free_flight_physics(assets, wind)
+}
+
+/// Fighter_procUpdate's tail for a fighter KO'd while standing (Mushroom
+/// Kingdom's falling lift, an Arwing's wing carrying it past the top): it
+/// still rides the floor (fighter.c:2380-2390, mpGetSpeed). False when the
+/// fighter is airborne.
+fn ride_floor_dead(fighter: &mut Fighter, map: &melee_mp::CollMap, wind: melee_gr::wind::Wind) -> bool {
+    if fighter.core.physics.ground_or_air != melee_types::GroundOrAir::Ground {
+        return false;
+    }
+    let physics = &fighter.core.physics;
+    assert!(
+        physics.knockback_velocity.x == 0.0
+            && physics.knockback_velocity.y == 0.0
+            && physics.shield_knockback_velocity.x == 0.0
+            && physics.shield_knockback_velocity.y == 0.0,
+        "fighter.c:2209-2232: a grounded dead fighter's knockback friction"
+    );
+    crate::physics::integrate::integrate_velocity(&mut fighter.core.physics);
+    let speed = map.line_speed(
+        fighter.core.collision.data.floor.index,
+        &fighter.core.physics.position,
+    );
+    crate::physics::integrate::integrate_environment(&mut fighter.core.physics, speed, wind);
+    true
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpStar (4): no retail callback; Fighter_procUpdate's
 /// tail still integrates the flight velocity.
 pub fn dead_star(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
-    let PhysicsPhase {
-        assets,
-        map: _,
-        wind,
-    } = phase;
-    fighter.core.free_flight_physics(assets, wind)
+    let PhysicsPhase { assets, map, wind } = phase;
+    if !ride_floor_dead(fighter, map, wind) {
+        fighter.core.free_flight_physics(assets, wind)
+    }
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpFall (6), ftCo_MS_DeadUpFallHitCamera (7),

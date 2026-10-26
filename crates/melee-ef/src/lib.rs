@@ -1488,11 +1488,17 @@ impl Effects {
             };
             if let Some((id, offset)) = positional_landing {
                 let mut position = Vec3::ZERO;
-                mtx_mult_vec(
-                    &resolved_matrix.unwrap_or(fighter.effect_matrix(None)),
-                    &offset,
-                    &mut position,
-                );
+                if id == 0x42D {
+                    // efAsync kind 2 with a NULL JObj: the queued point is
+                    // already in world space (lb_8000B1CC returns it).
+                    position = offset;
+                } else {
+                    mtx_mult_vec(
+                        &resolved_matrix.unwrap_or(fighter.effect_matrix(None)),
+                        &offset,
+                        &mut position,
+                    );
+                }
                 self.spawn_dust_generator::<T>(
                     id,
                     position,
