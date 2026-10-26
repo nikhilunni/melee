@@ -5389,7 +5389,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 879] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 888] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6678,6 +6678,22 @@ static CORPUS_V3_MATCHES: [(&str, usize); 879] = [
     ("corpus_v3_fd_sp_tiny_fox_marth4_ef89b3e70_p0", 4584),
     ("corpus_v3_fd_sp_tiny_fox_marth4_e89a89d0e_p0", 5166),
     ("corpus_v3_fd_sp_tiny_fox_marth4_e9943b4ab_p0", 5867),
+    // Coin matches to TIME!: every hit's spill (ftCommon_8007EA90, along
+    // the launch or straight up), the falls' payouts (ftCo_800D4E50), the
+    // coins' flight, bounces and rest (it_2E5A), the pickups on alternate
+    // frames (ft_8007C77C, lbColl_800067F8, effect 0x432) and the rank's
+    // multiplier from the coin standings.
+    ("corpus_v3_fd_coin1_fox_marth_e19f8579b_p0", 3725),
+    ("corpus_v3_fd_coin1_fox_marth_e50814092_p0", 3725),
+    ("corpus_v3_fd_coin1_fox_marth_e9943b4ab_p0", 3725),
+    ("corpus_v3_fd_coin1_fox_marth_ee133b82f_p0", 3725),
+    ("corpus_v3_fd_coin1_fox_marth_eeda0d0fc_p0", 3725),
+    ("corpus_v3_fd_coin1_fox_marth_ef89b3e70_p0", 3725),
+    // A star or screen KO's payout: coins no fighter can take, falling
+    // through the stage (it_803F8BD8 state 1, no map collision).
+    ("corpus_v3_fd_coin1_fox_marth_e05625e18_p1", 3725),
+    ("corpus_v3_fd_coin1_fox_marth_e44ea74fc_p0", 3725),
+    ("corpus_v3_fd_coin1_fox_marth_e70b3084c_p0", 3725),
     // Jungle Japes: the Klaptrap's bite lands (the stage material item's
     // ALDYakuAll hitbox, 30 damage) and KOs through the river, whose
     // current still carries a dead body (DeadDown's procUpdate tail).
