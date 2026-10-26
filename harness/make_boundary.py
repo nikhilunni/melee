@@ -626,7 +626,11 @@ def main(argv: list[str] | None = None) -> None:
     rules = {"mode": MODE_NAMES[summary["match_kind"]], "damage_ratio": summary["damage_ratio"]}
     if a.special:
         rules["special"] = a.special
-    if summary["match_kind"] != MODES[a.mode] or (
+    # Camera mode's match is an untimed Time match whatever the VS rules
+    # say (gm_PrepCameraModeVSScene: match_kind 0, timer_enabled off).
+    camera = a.special == "camera"
+    expected_kind = MODES["time"] if camera else MODES[a.mode]
+    if summary["match_kind"] != expected_kind or (camera and summary["timer_enabled"]) or (
             a.time_limit and summary["time_limit"] != a.time_limit * 60):
         sys.exit(f"the match did not start with the rules asked: {summary}")
     if a.handicaps:

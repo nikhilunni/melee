@@ -1,0 +1,25 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Time, 4 stocks, items off, normal Versus Entry, human ports, neutral pads.
+name = "w27_start_fd_sp_camera_fox_marth4_cold"
+expected = "w27_start_fd_sp_camera_fox_marth4"
+frames = 600
+seed = 3929830345
+mode = "time"
+special = "camera"
+stage = "FinalDestination"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"

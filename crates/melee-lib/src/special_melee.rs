@@ -5,7 +5,8 @@
 /// A Special Melee mode.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SpecialMelee {
-    /// GM_CAMERA_VS (0x2A).
+    /// GM_CAMERA_MODE (0x0A): an untimed Time match whose fourth port
+    /// drives the camera and snapshots (gmcameramode.c, gmcamera.c).
     Camera,
     /// GM_STAMINA_VS (0x1F): 150 HP, one stock (gmstamina.c).
     Stamina,
@@ -41,7 +42,7 @@ impl SpecialMelee {
     /// The mode's GameModeKind (gm/forward.h).
     pub fn game_mode(self) -> u8 {
         match self {
-            Self::Camera => 0x2A,
+            Self::Camera => 0x0A,
             Self::Stamina => 0x1F,
             Self::SuperSuddenDeath => 0x10,
             Self::Giant => 0x1E,

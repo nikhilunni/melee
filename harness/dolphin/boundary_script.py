@@ -104,6 +104,10 @@ except ImportError:  # importable outside Dolphin for tests
 SCENE_MACHINE = 0x80479D30
 GM_MENU, GM_VS = 1, 2                  # gm/forward.h GameModeKind
 VS_STATE_CSS, VS_STATE_SSS = 0, 1      # gmvsmode.h gmVsMode_StateId
+# GM_CAMERA_MODE (gmcameramode.c gm_Mode_Camera_States) opens on the camera
+# screen (state 0, GS_CAMERA_VS: A or Start goes on, gm_1A33.c:83), then its
+# CSS (1), SSS (2) and the match (3).
+CAMERA_STATE_INTRO, CAMERA_STATE_CSS, CAMERA_STATE_SSS = 0, 1, 2
 # mnmain.h MenuFlow mn_804A04F0: cur_menu +0, hovered_selection u16 +2.
 MENU_FLOW = symbols.addr("mn_804A04F0")
 MENU_MAIN, MENU_VS = 0, 2              # mn/forward.h MenuKind
@@ -112,7 +116,7 @@ SEL_MAIN_VS, SEL_VS_MELEE = 1, 0       # MainMenuSelection, VsMenuSelection
 # SpecialVsMenuSelection and the GameModeKind its CSS runs in.
 MENU_SPECIAL, SEL_VS_SPECIAL = 12, 2
 SPECIAL_MODES = {
-    "camera": (0, 0x2A), "stamina": (1, 0x1F), "super-sudden-death": (2, 0x10),
+    "camera": (0, 0x0A), "stamina": (1, 0x1F), "super-sudden-death": (2, 0x10),
     "giant": (3, 0x1E), "tiny": (4, 0x1D), "invisible": (5, 0x11),
     "single-button": (7, 0x2C), "lightning": (8, 0x13), "slomo": (9, 0x12),
 }
@@ -266,6 +270,10 @@ class BoundaryDriver:
         special = config.get("special")
         self.special = SPECIAL_MODES[special] if special else None
         self.major = self.special[1] if self.special else GM_VS
+        camera = special == "camera"
+        self.css_state = CAMERA_STATE_CSS if camera else VS_STATE_CSS
+        self.sss_state = CAMERA_STATE_SSS if camera else VS_STATE_SSS
+        self.intro_state = CAMERA_STATE_INTRO if camera else None
 
     # --- memory ----------------------------------------------------------
     def scene(self) -> tuple[int, int]:
@@ -303,7 +311,8 @@ class BoundaryDriver:
     def step(self) -> dict:
         self.frame += 1
         if self.frame > TIMEOUT_FRAMES:
-            raise BoundaryError(f"no boundary after {TIMEOUT_FRAMES} frames (phase {self.phase})")
+            raise BoundaryError(f"no boundary after {TIMEOUT_FRAMES} frames (phase {self.phase}, "
+                                f"scene {self.scene()}, menu {self.mem.read_u8(MENU_FLOW)})")
         if self.watching_creation and self.creation_hooked:
             # Not from inside the breakpoint's own callback.
             self.mem.remove_memcheck(MATCH_START_TEST)
@@ -331,7 +340,7 @@ class BoundaryDriver:
         if self.phase == "css":
             return self.select_characters(mode, state)
         if self.phase == "start":
-            if mode == self.major and state == VS_STATE_SSS and self.ptr(SSS_DATA_PTR):
+            if mode == self.major and state == self.sss_state and self.ptr(SSS_DATA_PTR):
                 self.mem.write_u8(self.ptr(SSS_DATA_PTR) + SSS_FORCE_STAGE, self.config["stkind"])
                 if self.hooks_creation():
                     self.mem.add_memcheck(MATCH_START_TEST)
@@ -493,7 +502,9 @@ class BoundaryDriver:
         return {first: {"Down" if hovered < target else "Up": True}}
 
     def select_characters(self, mode: int, state: int) -> dict:
-        if (mode, state) != (self.major, VS_STATE_CSS):
+        if mode == self.major and state == self.intro_state:
+            return self.pulse("A")
+        if (mode, state) != (self.major, self.css_state):
             raise BoundaryError(f"left the CSS early (mode {mode}, state {state})")
         players = self.config["players"]
         if self.player == len(players) and not self.costumes_done():
