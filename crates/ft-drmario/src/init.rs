@@ -60,6 +60,7 @@ impl MarioFamily for DrMario {
 }
 
 impl CharacterCallbacks for DrMario {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
@@ -195,3 +196,10 @@ fn damage_callback(f: &mut Fighter) {
     ft_mario_family::damage_callback::<DrMario>(f);
     crate::megavitamin::taunt_damage_callback(f);
 }
+
+/// ftDr_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 10] = [
+    0x00000071, 0x00000071, 0x00340111, 0x00340511, 0x00341012, 0x00341012, 0x00340213, 0x00340613,
+    0x00340214, 0x00340614,
+];

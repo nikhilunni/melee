@@ -63,6 +63,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Luigi>();
 
 impl CharacterCallbacks for Luigi {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         exclusions: &[ExclusionRule {
@@ -203,3 +204,11 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
         },
     ],
 };
+
+/// ftLg_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 18] = [
+    0x00340111, 0x00340511, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212,
+    0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340213, 0x00340613,
+    0x00340214, 0x00340614,
+];

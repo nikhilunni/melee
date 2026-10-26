@@ -73,6 +73,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Pichu>();
 
 impl CharacterCallbacks for Pichu {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         exclusions: &[ExclusionRule {
@@ -203,3 +204,12 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 const PART_COUNT: u32 = 54;
 /// ftData.x1C part-animation groups.
 const PART_ANIMATION_COUNT: usize = 2;
+
+/// ftPc_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 26] = [
+    0x00340111, 0x00340511, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340612,
+    0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340113, 0x00340113, 0x00340113, 0x00340513,
+    0x00340513, 0x00340513, 0x00340014, 0x00340014, 0x00340014, 0x00340014, 0x00340414, 0x00340414,
+    0x00340414, 0x00340414,
+];

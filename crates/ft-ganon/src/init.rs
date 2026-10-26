@@ -98,6 +98,7 @@ fn enter_taunt(f: &mut Fighter, assets: &FighterAssets) -> melee_ft::fighter::as
 }
 
 impl CharacterCallbacks for Ganondorf {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         exclusions: &[
@@ -223,3 +224,11 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 const PART_COUNT: u32 = 54;
 /// ftData.x1C part-animation groups.
 const PART_ANIMATION_COUNT: usize = 5;
+
+/// ftGn_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 23] = [
+    0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00000000, 0x00340211, 0x00340611,
+    0x00340212, 0x00340212, 0x00340612, 0x00340612, 0x00340013, 0x00340413, 0x00340013, 0x00340013,
+    0x00340214, 0x00340214, 0x00340614, 0x00340614, 0x00340614, 0x00340214, 0x00340614,
+];

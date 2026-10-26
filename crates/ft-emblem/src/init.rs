@@ -52,6 +52,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Roy>();
 
 impl CharacterCallbacks for Roy {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     fn table() -> &'static melee_ft::fighter::CharacterTable {
         &TABLE
     }
@@ -156,3 +157,12 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 const PART_COUNT: u32 = 54;
 /// ftDataEmblem.x1C part-animation groups (three, as Marth).
 const PART_ANIMATION_COUNT: usize = 3;
+
+/// ftFe_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 32] = [
+    0x00340211, 0x00340211, 0x00340211, 0x00340211, 0x00340611, 0x00340611, 0x00340611, 0x00340611,
+    0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212,
+    0x00340212, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612,
+    0x00340612, 0x00340612, 0x00340213, 0x00340613, 0x00340214, 0x00340214, 0x00340614, 0x00340614,
+];

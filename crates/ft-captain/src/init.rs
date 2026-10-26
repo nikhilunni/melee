@@ -63,6 +63,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<CaptainFalcon>();
 
 impl CharacterCallbacks for CaptainFalcon {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         exclusions: &[
@@ -189,3 +190,11 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
         },
     ],
 };
+
+/// ftCa_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 23] = [
+    0x00440842, 0x00440846, 0x0044084A, 0x0044084E, 0x00440852, 0x00440856, 0x00340211, 0x00340611,
+    0x00340212, 0x00340212, 0x00340612, 0x00340612, 0x00340013, 0x00340413, 0x00340013, 0x00340013,
+    0x00340214, 0x00340214, 0x00340614, 0x00340614, 0x00340614, 0x00340214, 0x00340614,
+];

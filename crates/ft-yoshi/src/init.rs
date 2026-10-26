@@ -79,6 +79,7 @@ fn knockback_exit(fighter: &mut Fighter, assets: &FighterAssets) {
 }
 
 impl CharacterCallbacks for Yoshi {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     /// ftCo_0A01.c / ftcpuattack.c: this character's CPU choices.
     const CPU_PROFILE: CpuProfile = CpuProfile {
         exclusions: &[ExclusionRule {
@@ -370,3 +371,12 @@ fn death(fighter: &mut Fighter) {
     crate::special_hi::drop_egg(fighter);
     crate::special_s::death(fighter);
 }
+
+/// ftYs_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 28] = [
+    0x00100000, 0x00180000, 0x00100000, 0x00100000, 0x00101073, 0x00340011, 0x00340011, 0x00340011,
+    0x00340011, 0x00340011, 0x00340411, 0x00340411, 0x00340411, 0x00340411, 0x00340411, 0x00340212,
+    0x00340212, 0x00340212, 0x00340212, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340113,
+    0x00340513, 0x00340214, 0x00340214, 0x00340614,
+];

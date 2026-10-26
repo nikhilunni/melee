@@ -43,6 +43,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Marth>();
 
 impl CharacterCallbacks for Marth {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     const KNOCKBACK_ENTER: fn(
         &mut melee_ft::fighter::Fighter,
         &melee_ft::fighter::assets::FighterAssets,
@@ -179,3 +180,12 @@ pub const DESCRIPTOR: melee_ft::fighter::assets::CharacterDescriptor =
             },
         ],
     };
+
+/// ftMs_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 32] = [
+    0x00340211, 0x00340211, 0x00340211, 0x00340211, 0x00340611, 0x00340611, 0x00340611, 0x00340611,
+    0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212, 0x00340212,
+    0x00340212, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612, 0x00340612,
+    0x00340612, 0x00340612, 0x00340213, 0x00340613, 0x00340214, 0x00340214, 0x00340614, 0x00340614,
+];

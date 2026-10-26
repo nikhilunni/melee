@@ -82,6 +82,7 @@ pub static TABLE: melee_ft::fighter::CharacterTable =
     melee_ft::fighter::CharacterTable::new::<Sheik>();
 
 impl CharacterCallbacks for Sheik {
+    const MOTION_FLAGS: &'static [u32] = &MOTION_FLAGS;
     /// ftCo_800ABA34 / ftCo_800ACD5C: the queued transformation input.
     const CPU_PROFILE: melee_ft::fighter::cpu_profile::CpuProfile =
         melee_ft::fighter::cpu_profile::CpuProfile {
@@ -273,3 +274,11 @@ pub const DESCRIPTOR: CharacterDescriptor = CharacterDescriptor {
 const PART_COUNT: u32 = 54;
 /// ftData.x1C part-animation groups.
 const PART_ANIMATION_COUNT: usize = 2;
+
+/// ftSk_Init_MotionStateTable[i].x4_flags (read from the retail DOL): the
+/// x2070 word each special row sets (ft_800895E0), from action 341.
+pub static MOTION_FLAGS: [u32; 24] = [
+    0x00340111, 0x003C0111, 0x00340111, 0x00340111, 0x00340511, 0x003C0511, 0x00340511, 0x00340511,
+    0x00340012, 0x003C0012, 0x00340012, 0x00340412, 0x003C0412, 0x00340412, 0x00340213, 0x00340213,
+    0x00340213, 0x00340613, 0x00340613, 0x00340613, 0x00340014, 0x00340014, 0x00340414, 0x00340414,
+];
