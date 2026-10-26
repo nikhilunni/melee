@@ -2641,3 +2641,17 @@ stage = "BigBlue"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 3657601642
+
+# Big Blue in an eight-minute timed match (make_boundary.py --stage BigBlue
+# --players Fox Marth --mode time --time-limit 8).
+[[boundary]]
+name = "start_bb_fox_marth_time8"
+cold = "start_bb_fox_marth_time8_cold"
+savestate = "harness/roms/start_bb_fox_marth_time8.sav"
+stage = "BigBlue"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2428875023
+time_limit = 480
+mode = "time"
+

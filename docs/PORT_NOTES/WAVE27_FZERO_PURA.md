@@ -143,8 +143,28 @@ that order at s_link 4, each followed by Ground_801C2FE0.
   fn_801EF60C (a fighter landing on a car, `coll x50` as a float).
 - Music rule 5 (Toy_803048C0(0x11A)): the trophy is read from the save
   data at a warm boundary; the cold start assumes it is not owned.
-- Unreachable: car states 2 and 3 (no caller enters them); the flyers'
-  items fail closed (items stay refused on Big Blue).
+- Witnesses: `start_bb_fox_marth4` and `start_bb_fox_marth_time8` (warm
+  and cold), `bb27_idle_fox_marth4` and eight explorer samples
+  (`corpus_v3_bb_fox_marth4_*`; ef89b3e70_p0 runs the loop through all its
+  collision stages). Probes over them reach every branch below except the
+  guarded ones.
+- Unreachable, with the reason in the code: car states 2 and 3 (no caller
+  enters them); two pace cars (801ECB50 makes one only while none paces);
+  an arrival without a right-rank bone (at most four of thirty are on the
+  road); the road's rotation past pi (its turn is never positive); a
+  segment drawn before GO (the first switch is 22 ticks after GO, from
+  the road's own joints alone); the road's floor clamp (x70 = 99999); the
+  route platform's arrival wait (set to 0, never raised).
+- Guarded (`unimplemented!` with the C line), not reached by any recorded
+  match: the Falcon Flyer coming back (grbigblue.c:1607; the flyers call
+  it from the seventh launch on, past the end of the explorer's matches:
+  360 cases, launched at most 7); the road rising above x8 (dir 1,
+  2488) and turning back up (2822); a car bone rank running dry
+  (3173/3192); a car fallen below -2000 (3924); a flyer tilted past -30
+  low (1072) or past 65 degrees (1076/1079); a flyer's spawn on the route
+  platform (2190). The explorer reaches the -30 tilt and the route
+  overlap (explore 3e74affa_p1, 1b05b110_p0); recording them was blocked
+  by a full disk. The flyers' items fail closed (items stay refused).
 - Fighters: x2219_b1 (`out_of_play`) holds only through the Entry motions;
   a fighter that stood still since the entry was exempt from the blast
   zone (the Falcon Flyer carried one past it).

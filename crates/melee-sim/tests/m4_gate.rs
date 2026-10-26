@@ -1355,6 +1355,8 @@ fn start_bb_fox_marth4_600() {
     movement_gate_ticks("start_bb_fox_marth4", 600);
     movement_gate_ticks("start_bb_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_bb_fox_marth4", 600, "ledger600");
+    movement_gate_ticks("start_bb_fox_marth_time8", 600);
+    movement_gate_ticks("start_bb_fox_marth_time8_cold", 600);
 }
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
