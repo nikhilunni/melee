@@ -424,6 +424,65 @@ pub fn bone_spline(
         _ => Err(error("bone without a spline")),
     }
 }
+/// grGb_StageData / grDatFiles_801C6038: GrGb.dat. grGb_StageCallbacks[2]
+/// carries flags 0xC0000000, so map 2 selects the lights and fog.
+pub fn read_greatbay(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::GreatBay, 2)
+}
+/// `grGb_StageAttr` (grgreatbay.c:153-190) as the asm reads it.
+pub fn read_greatbay_parameters(archive: &Archive) -> ReadResult<crate::greatbay::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    let h = |at: u32| r.s16(p + at);
+    let mut items = [(0i16, 0i16); 10];
+    for (i, item) in items.iter_mut().enumerate() {
+        let at = 0x7C + i as u32 * 4;
+        *item = (h(at)?, h(at + 2)?);
+    }
+    Ok(crate::greatbay::Parameters {
+        moon_fall_wait: [h(0)?, h(2)?],
+        float_landing_rate: f(0x4)?,
+        float_slant: [f(0x8)?, f(0xC)?, f(0x10)?, f(0x14)?, f(0x18)?],
+        float_slide: [f(0x1C)?, f(0x20)?, f(0x24)?, f(0x28)?, f(0x2C)?],
+        float_down: [f(0x30)?, f(0x34)?, f(0x38)?, f(0x3C)?, f(0x40)?],
+        turtle_wait: [h(0x44)?, h(0x46)?],
+        turtle_rebirth: [h(0x48)?, h(0x4A)?],
+        turtle_x: f(0x4C)?,
+        turtle_y: f(0x50)?,
+        turtle_x_offset_init: f(0x54)?,
+        turtle_x_lr_offset: [f(0x58)?, f(0x5C)?],
+        turtle_x_fb_offset: [f(0x60)?, f(0x64)?],
+        turtle_scale: f(0x68)?,
+        turtle_ud_scale: f(0x6C)?,
+        turtle_dir_prob: [h(0x70)?, h(0x72)?, h(0x74)?, h(0x76)?],
+        turtle_item_prob: f(0x78)?,
+        turtle_items: items,
+    })
+}
+/// grI2_StageData / grDatFiles_801C6038: GrI2.dat. grI2_StageCallbacks[2]
+/// carries flags 0xC0000000, so map 2 selects the lights and fog.
+pub fn read_inishie2(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Inishie2, 2)
+}
+/// `grInishie2_YakumonoParam` (grinishie2.c:166-181) as the asm reads it.
+pub fn read_inishie2_parameters(archive: &Archive) -> ReadResult<crate::inishie2::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let vec = |at: u32| -> ReadResult<hsd_types::Vec3> {
+        Ok(hsd_types::Vec3::new(r.f32(at)?, r.f32(at + 4)?, r.f32(at + 8)?))
+    };
+    Ok(crate::inishie2::Parameters {
+        lift_waits: [[r.s16(p)?, r.s16(p + 0x2)?], [r.s16(p + 0x4)?, r.s16(p + 0x6)?]],
+        birdo_wait: [r.s16(p + 0x8)?, r.s16(p + 0xA)?],
+        carpet_wait: [r.s16(p + 0xC)?, r.s16(p + 0xE)?],
+        lift_delays: [r.s16(p + 0x10)?, r.s16(p + 0x12)?],
+        birdo_spawn: [vec(p + 0x14)?, vec(p + 0x20)?],
+        birdo_platform_height: r.f32(p + 0x2C)?,
+        carpet_spawn: [vec(p + 0x30)?, vec(p + 0x3C)?],
+        carpet_turn_odds: [r.s16(p + 0x48)?, r.s16(p + 0x4A)?],
+    })
+}
 /// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
 /// carries flags 0xC0000000, so map 1 selects the lights and fog.
 pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {

@@ -442,6 +442,16 @@ impl ParticleSystem {
         self.park_cursor_at_tail();
         self.release_external_transforms();
     }
+    /// grLib_801C9874 (0x801C9874) -> hsd_8039D4DC: the generator marked
+    /// type 0x80 first, so its own particles go with it.
+    pub fn kill_generator(&mut self, id: usize) {
+        if let Some(index) = self.generators.iter().position(|g| g.id == id) {
+            self.generators[index].flags |= 0x80;
+            self.expire(index);
+        }
+        self.park_cursor_at_tail();
+        self.release_external_transforms();
+    }
     /// hsd_8039D688 (0x8039D688) over a joint no generator follows: it walks
     /// the whole list anyway, so only the insertion cursor moves (to the
     /// tail, or null when the list is empty).

@@ -323,6 +323,11 @@ impl BackgroundAnimation {
         self.tree
             .translation(self.tree.parent(self.root).unwrap_or(self.root))
     }
+    /// `HSD_JObjGetScale` / `HSD_JObjSetScale` on the Ground GObj's JObj.
+    pub fn gobj_scale(&self) -> hsd_types::Vec3 {
+        let node = self.tree.get(self.tree.parent(self.root).unwrap_or(self.root));
+        hsd_types::Vec3::new(node.scale.x, node.scale.y, node.scale.z)
+    }
     pub fn joint_count(&self) -> usize {
         self.joints.len()
     }

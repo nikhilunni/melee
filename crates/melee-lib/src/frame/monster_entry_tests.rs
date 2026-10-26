@@ -154,6 +154,12 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
                     melee_it::MonsterBehavior::Klaptrap { .. } => {
                         panic!("unexpected Klaptrap in crate birth witness")
                     }
+                    melee_it::MonsterBehavior::Kyasarin(_) => {
+                        panic!("unexpected Birdo in crate birth witness")
+                    }
+                    melee_it::MonsterBehavior::Tincle(_) => {
+                        panic!("unexpected Tingle in crate birth witness")
+                    }
                     melee_it::MonsterBehavior::Kuriboh {
                         walking_speed,
                         spawn_timer,

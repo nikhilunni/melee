@@ -35,6 +35,8 @@ mod stage_inishie1;
 mod stage_onett;
 mod stage_mutecity;
 mod stage_pura;
+mod stage_inishie2;
+mod stage_greatbay;
 mod stock;
 use hsd_types::Vec3;
 /// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
@@ -445,6 +447,12 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::Pura {
             stage_pura::restore_collision(&saved, &assets, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::Inishie2 {
+            stage_inishie2::restore_collision(&saved, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::GreatBay {
+            stage_greatbay::restore_collision(&saved, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;
@@ -876,6 +884,15 @@ impl InitialState {
             &mut effects.gobjs,
             &assets.items,
             &mut map,
+        );
+        // Great Bay's Tingle, waiting as the boundary saved him.
+        crate::scene_stage::greatbay::spawn_tingle(
+            &mut stage,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+            assets.stage_desc.parameters.map_scale,
         );
         // Mushroom Kingdom's bricks' material items, rebuilt on their bones.
         crate::scene_stage::inishie1::spawn_items(

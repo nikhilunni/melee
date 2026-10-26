@@ -242,6 +242,24 @@ pub enum ItemEvent {
         center: Vec3,
         position: Vec3,
     },
+    /// it_8027B5B0 from the item's callback: a stage enemy of `kind` made
+    /// at `position` (Birdo's egg, it_802EFA44), which the scene finishes
+    /// for its kind with `facing`.
+    SpawnZako {
+        kind: melee_types::ItemKind,
+        position: Vec3,
+        facing: f32,
+    },
+    /// efSync_Spawn(0x4D0, gobj, &pos) (efsync.c:229-292): Birdo's egg's
+    /// shell burst at `position`, whose twelve fragments' creation draws the
+    /// callback took from the stream at `seed`, where retail makes them.
+    EggShell { position: Vec3, seed: u32 },
+    /// A call from the item's callback into the stage that made it (Birdo's
+    /// knockout drops her platform: grInishie2_801FD4CC).
+    StageNotice(u8),
+    /// it_80276100(gobj, &pos) from a callback without the map (Birdo's
+    /// knockout): the item's map collision starts over at its position.
+    ResetCollision,
     /// The rest of the item's callback, which the scene runs through
     /// `ItemLogic::resumed` once the effects before it are made.
     Resume {
@@ -328,6 +346,8 @@ pub enum ItemScratch {
     Monster(MonsterState),
     /// Item.xDD4_itemVar.it_2E5A: a Coin match's coin.
     Coin(crate::coin::CoinState),
+    /// itKyasarinEgg_ItemVars x20: the egg is bursting (it_802EFD84).
+    KyasarinEgg { bursting: bool },
     Yaku(YakuAnchor),
     /// One float of a projectile's xDD4 scratch: the Star Rod star's spin
     /// per frame (HSD_JObjAddRotationZ), the spore's slowdown (xDD8).
@@ -362,6 +382,64 @@ pub enum MonsterBehavior {
         cycled: bool,
     },
     ReDead(ReDeadState),
+    Kyasarin(KyasarinState),
+    Tincle(TincleState),
+}
+/// Tingle on his balloon (itTincle_ItemVars x20..x68, it/itCommonItems.h).
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct TincleState {
+    /// x20: the state's frame count (a wait, a sink, the landed bounces).
+    pub timer: i32,
+    /// x24 / x28: a drift's length and the frames it has run.
+    pub drift_frames: i32,
+    pub drift_count: i32,
+    /// x2C: frames left of the bob's half cycle (or the rise's height).
+    pub half_cycle: i32,
+    /// x30: the motion state a sink interrupted (as a float).
+    pub saved_motion: f32,
+    /// x34: the drift's acceleration.
+    pub drift_acceleration: f32,
+    /// x38: the bob's (or a rise's) vertical acceleration.
+    pub acceleration: f32,
+    /// x3C: half cycles left before the bob turns.
+    pub bob_phase: f32,
+    /// x40 / x44 / x48: the bob a sink interrupted: x2C, vel.y and x38.
+    pub saved_half_cycle: f32,
+    pub saved_velocity_y: f32,
+    pub saved_acceleration: f32,
+    /// x4C: the height a sink started from.
+    pub sink_start: f32,
+    /// x50: the balloon's top above him (bone 11).
+    pub balloon_height: f32,
+    /// x54: the weight of those standing on him (grGreatBay_801F5600).
+    pub weight: f32,
+    /// x58: the middle of his range.
+    pub center_x: f32,
+    /// x5C: the height he floats at.
+    pub float_y: f32,
+    /// x68: his authored collision box (xC1C at creation).
+    pub collision_box: melee_types::mp::ItEcb,
+}
+/// Birdo (itKyasarin_ItemVars x20..x3C, it/itCommonItems.h), past the
+/// shared zako scratch.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct KyasarinState {
+    /// x20 != NULL: the stage platform (map 15) she rides on.
+    pub platform: bool,
+    /// x24: frames left of a wait (states 1 and 3).
+    pub wait: f32,
+    /// x28: frames before the next egg (state 6).
+    pub egg_timer: f32,
+    /// x2C: frames before she turns to leave (state 6).
+    pub turn_timer: f32,
+    /// x30: the facing she came in with.
+    pub entry_facing: f32,
+    /// x34: eggs left in the volley.
+    pub eggs: i32,
+    /// x38: the damage taken so far.
+    pub damage: i32,
+    /// x3C: the motion state a light hit interrupted.
+    pub resume_motion: u16,
 }
 /// A fighter a ReDead holds (itLeadead x38, xE14): its player slot and
 /// whether it is the player's second fighter, and the part it clings to.
@@ -1713,6 +1791,25 @@ impl ItemCore {
             self.restart_script(motion, assets);
         }
         self.advance_script(assets);
+    }
+    /// Item_80268E5C (80268E5C) with neither ITEM_ANIM_UPDATE nor
+    /// ITEM_CMD_UPDATE (Tingle's ITEM_UNK_0x1 changes): the model's joint
+    /// animation is not requested again, so it plays on through the
+    /// change's HSD_JObjAnimAll, and the pose, its particle keys and its end
+    /// (lb_8000B09C) follow the animation the model already plays; x5CC
+    /// reads that animation's frame again from the next step. The script
+    /// carries on, its step at the change seeing x5CC at zero.
+    pub fn change_motion_keeping_animation(&mut self, motion: u16, flags: u32, assets: &ItemAssets) {
+        assert_eq!(
+            flags & (state_change::ANIM_UPDATE | state_change::CMD_UPDATE),
+            0,
+            "a change that requests the animation"
+        );
+        let (article, frame) = (self.article_state, self.animation_frame);
+        self.change_motion_with(motion, article as i32, flags, assets);
+        if assets.model != 0 {
+            self.animation_frame = frame + self.animation_rate;
+        }
     }
     /// item.c foobar (Item_80268B18): common and hold-kind 6 items start
     /// intangible for ItCo +2C frames. The it_80279B88 colour flash is visual.

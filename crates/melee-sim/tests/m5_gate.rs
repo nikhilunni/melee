@@ -4151,6 +4151,23 @@ fn dream_land_wind_and_flyby_match_retail() {
     combat_gate_ticks("stage_dl_windright_fox_marth4", 2400);
 }
 
+/// Mushroom Kingdom II from the Fox/Marth start boundary over a full idle
+/// match: the carpet and lifts (grInishie2.c), and Birdo's arrivals, egg
+/// spitting and departures (itkyasarin.c, itkyasarinegg.c).
+#[test]
+fn mushroom_kingdom_ii_birdo_and_lifts_match_retail() {
+    combat_gate_ticks("mk2w_idle_6000", 6000);
+}
+
+/// Great Bay from the Fox/Marth start boundary over a full idle match: the
+/// turtle's surfacing and dives with its wake and splashes, the floating
+/// platform and Tingle's balloon drifting over the lab (grGreatBay.c,
+/// ittincle.c).
+#[test]
+fn great_bay_turtle_and_tingle_match_retail() {
+    combat_gate_ticks("gbw_idle_6000", 6000);
+}
+
 /// Fountain of Dreams from the Fox/Marth start boundary: both fighters ride
 /// the side platforms (grIzumi_801CC358) through waits, random steps up and
 /// down, a submerge below the stage and the resurfacing to the rest height.
@@ -5408,7 +5425,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 944] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 1006] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6914,6 +6931,79 @@ static CORPUS_V3_MATCHES: [(&str, usize); 944] = [
     ("corpus_v3_venom_fox_marth4_ebfeefc0e_p1", 12001),
     ("corpus_v3_venom_fox_marth4_e2af099ca_p2", 6740),
     ("corpus_v3_venom_fox_marth4_ea4d5d9ec_p2", 8679),
+    // Mushroom Kingdom II: Birdo walks out of her door, spits eggs, is knocked
+    // away and the carpet and lifts run (itkyasarin.c, grInishie2.c).
+    ("corpus_v3_mk2_fox_marth4_e00f31913_p1", 1614),
+    ("corpus_v3_mk2_fox_marth4_e3e74affa_p2", 3387),
+    ("corpus_v3_mk2_fox_marth4_e7ff378da_p2", 3353),
+    ("corpus_v3_mk2_fox_marth4_ec3145eb3_p0", 1618),
+    ("corpus_v3_mk2_fox_marth4_edafcfddf_p0", 1644),
+    ("corpus_v3_mk2_fox_marth4_edb2b114a_p2", 2183),
+    ("corpus_v3_mk2_fox_marth4_ef89b3e70_p0", 1739),
+    ("corpus_v3_mk2_fox_marth4_e9377da4f_p0", 1813),
+    ("corpus_v3_mk2_fox_marth4_ec21c8082_p2", 1929),
+    ("corpus_v3_mk2_fox_marth4_e8e745b78_p2", 1629),
+    ("corpus_v3_mk2_fox_marth4_ec0a10b25_p0", 1643),
+    ("corpus_v3_mk2_fox_marth4_e02112c2d_p1", 1770),
+    // Mushroom Kingdom II: a Birdo egg bursts into its shell (itkyasarinegg.c).
+    ("corpus_v3_mk2_fox_marth4_e1958634a_p2", 2413),
+    ("corpus_v3_mk2_fox_marth4_e50f774a0_p2", 1516),
+    ("corpus_v3_mk2_fox_marth4_ed97ea327_p1", 1722),
+    ("corpus_v3_mk2_fox_marth4_e09ed0cd4_p2", 1626),
+    ("corpus_v3_mk2_fox_marth4_e0e8bd8a9_p1", 1369),
+    ("corpus_v3_mk2_fox_marth4_e0fcf0c70_p0", 1939),
+    ("corpus_v3_mk2_fox_marth4_e25aa37fe_p2", 1684),
+    ("corpus_v3_mk2_fox_marth4_e371c0cb2_p0", 1363),
+    ("corpus_v3_mk2_fox_marth4_e45ec0dca_p2", 2033),
+    ("corpus_v3_mk2_fox_marth4_e4ef0d3e0_p0", 1740),
+    ("corpus_v3_mk2_fox_marth4_e50f774a0_p1", 1738),
+    ("corpus_v3_mk2_fox_marth4_e5507f07c_p1", 1376),
+    ("corpus_v3_mk2_fox_marth4_e6e4bdd56_p2", 1669),
+    ("corpus_v3_mk2_fox_marth4_e776f84ae_p1", 1882),
+    ("corpus_v3_mk2_fox_marth4_e7f8dc4fa_p1", 1550),
+    ("corpus_v3_mk2_fox_marth4_e880bbe09_p1", 1030),
+    ("corpus_v3_mk2_fox_marth4_e929b49af_p0", 2053),
+    ("corpus_v3_mk2_fox_marth4_e936421d6_p1", 1102),
+    ("corpus_v3_mk2_fox_marth4_e9a8e5048_p2", 1308),
+    ("corpus_v3_mk2_fox_marth4_eab94f536_p1", 1461),
+    ("corpus_v3_mk2_fox_marth4_eb8ea7748_p2", 1770),
+    ("corpus_v3_mk2_fox_marth4_ebac668de_p1", 1437),
+    ("corpus_v3_mk2_fox_marth4_ed5076307_p2", 1368),
+    ("corpus_v3_mk2_fox_marth4_ed536eb61_p2", 1461),
+    ("corpus_v3_mk2_fox_marth4_ee8d2a62f_p0", 1712),
+    ("corpus_v3_mk2_fox_marth4_eecb088b0_p0", 2673),
+    ("corpus_v3_mk2_fox_marth4_eee14f173_p1", 2329),
+    // Great Bay: Tingle comes down, bobs and is popped; the turtle dives
+    // and rises with its wake (grGreatBay.c, ittincle.c).
+    ("corpus_v3_gb_fox_marth4_e05625e18_p1", 1950),
+    ("corpus_v3_gb_fox_marth4_e09db17e3_p1", 1971),
+    ("corpus_v3_gb_fox_marth4_e121faf54_p2", 3471),
+    // Great Bay: the rising turtle pushes Tingle off the shell; its moved
+    // lines are reclassified (mpLib_80055E24), so line 68 becomes a floor.
+    ("corpus_v3_gb_fox_marth4_e75fb4a9a_p0", 2442),
+    ("corpus_v3_gb_fox_marth4_e9a8e5048_p2", 2160),
+    ("corpus_v3_gb_fox_marth4_eb17a6598_p0", 2076),
+    ("corpus_v3_gb_fox_marth4_ec0a10b25_p0", 2146),
+    ("corpus_v3_gb_fox_marth4_ecdf8887e_p2", 4032),
+    ("corpus_v3_gb_fox_marth4_edb2b114a_p1", 2228),
+    ("corpus_v3_gb_fox_marth4_edb2b114a_p2", 4198),
+    ("corpus_v3_gb_fox_marth4_ee32d950f_p1", 3146),
+    // Great Bay: Tingle lands on the turtle's shell and rides it; he never
+    // slides (it_802EB5C8 clears xD5C).
+    ("corpus_v3_gb_fox_marth4_ef89b3e70_p0", 2268),
+    ("corpus_v3_gb_fox_marth4_eb17a6598_p2", 3829),
+    ("corpus_v3_gb_fox_marth4_ecdf8887e_p1", 2791),
+    ("corpus_v3_gb_fox_marth4_eb8786a38_p0", 3043),
+    ("corpus_v3_gb_fox_marth4_e75fb4a9a_p1", 2984),
+    ("corpus_v3_gb_fox_marth4_e2b9e1400_p1", 2962),
+    ("corpus_v3_gb_fox_marth4_e0fcbde24_p0", 2485),
+    ("corpus_v3_gb_fox_marth4_e41b2c2b8_p0", 2487),
+    ("corpus_v3_gb_fox_marth4_e8f0de8c6_p2", 3314),
+    ("corpus_v3_gb_fox_marth4_e6007e4e9_p1", 3734),
+    ("corpus_v3_gb_fox_marth4_ee62c6106_p0", 2233),
+    // Great Bay: Tingle falls into the water and is made again at once
+    // (grGreatBay_801F5600, it_802ECA70).
+    ("corpus_v3_gb_fox_marth4_e58dc731e_p0", 2376),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

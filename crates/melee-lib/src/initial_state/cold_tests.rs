@@ -183,6 +183,13 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.pura.sky_from", &i32::from(stage.sky.from));
             sink.field("stage.pura.sky_to", &i32::from(stage.sky.to));
         }
+        SceneStage::GreatBay(stage) => {
+            sink.field("stage.greatbay.turtle_timer", &stage.turtle.timer);
+            sink.field("stage.greatbay.moon_timer", &stage.moon.timer);
+        }
+        SceneStage::Inishie2(stage) => {
+            sink.field("stage.inishie2.birdo_wait", &stage.controller.birdo.ticks);
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -436,6 +443,16 @@ fn start_mc_fox_marth4_cold_600() {
 #[test]
 fn start_pf_fox_marth4_cold_600() {
     verify("start_pf_fox_marth4");
+}
+
+#[test]
+fn start_gb_fox_marth4_cold_600() {
+    verify("start_gb_fox_marth4");
+}
+
+#[test]
+fn start_mk2_fox_marth4_cold_600() {
+    verify("start_mk2_fox_marth4");
 }
 
 #[test]

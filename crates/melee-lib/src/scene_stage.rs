@@ -3,7 +3,9 @@ pub(crate) mod battle;
 pub(crate) mod fourside;
 pub(crate) mod flatzone;
 pub(crate) mod garden;
+pub(crate) mod greatbay;
 pub(crate) mod inishie1;
+pub(crate) mod inishie2;
 pub(crate) mod izumi;
 pub(crate) mod kraid;
 pub(crate) mod kongo;
@@ -295,6 +297,22 @@ pub const POKE_FLOATS: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Pura,
     read: melee_gr::desc::read_pura,
 };
+/// grI2_StageData: GrI2.dat; StageParam row 0x14 (StKind).
+pub const MUSHROOM_KINGDOM_2: StageDescriptor = StageDescriptor {
+    name: "MushroomKingdom2",
+    file: "GrI2.dat",
+    music_id: 0x14,
+    kind: melee_types::GrKind::Inishie2,
+    read: melee_gr::desc::read_inishie2,
+};
+/// grGb_StageData: GrGb.dat; StageParam row 0x0D (StKind).
+pub const GREAT_BAY: StageDescriptor = StageDescriptor {
+    name: "GreatBay",
+    file: "GrGb.dat",
+    music_id: 0x0D,
+    kind: melee_types::GrKind::GreatBay,
+    read: melee_gr::desc::read_greatbay,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -318,6 +336,8 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &VENOM,
         &MUTE_CITY,
         &POKE_FLOATS,
+        &MUSHROOM_KINGDOM_2,
+        &GREAT_BAY,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -345,6 +365,8 @@ pub enum SceneStage {
     Venom(Box<melee_gr::venom::procs::VenomStage>),
     MuteCity(Box<melee_gr::mutecity::procs::MuteCityStage>),
     Pura(Box<melee_gr::pura::Pura>),
+    Inishie2(Box<melee_gr::inishie2::procs::Inishie2Stage>),
+    GreatBay(Box<melee_gr::greatbay::procs::GreatBayStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -355,7 +377,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -381,6 +403,8 @@ impl SceneStage {
             Self::Venom(s) => s.proc_table(),
             Self::MuteCity(s) => s.proc_table(),
             Self::Pura(s) => s.proc_table(),
+            Self::Inishie2(s) => s.proc_table(),
+            Self::GreatBay(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -424,6 +448,10 @@ impl SceneStage {
             Self::Venom(_) => unreachable!("Venom callbacks run in scene_stage::venom"),
             Self::MuteCity(_) => unreachable!("Mute City callbacks run in scene_stage::mutecity"),
             Self::Pura(_) => unreachable!("Poké Floats callbacks run in scene_stage::pura"),
+            Self::Inishie2(_) => {
+                unreachable!("Mushroom Kingdom II callbacks run in scene_stage::inishie2")
+            }
+            Self::GreatBay(_) => unreachable!("Great Bay callbacks run in scene_stage::greatbay"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -496,6 +524,22 @@ pub(crate) fn line_hazard(stage: &SceneStage, line: i32) -> Option<melee_types::
     match stage {
         SceneStage::MuteCity(stage) => stage.line_hazard(line),
         _ => None,
+    }
+}
+
+/// An item's call into the stage that made it ([`melee_it::ItemEvent::StageNotice`]).
+pub(crate) fn item_notice(
+    map: &mut melee_mp::CollMap,
+    stage: &SceneStage,
+    kind: melee_types::ItemKind,
+    code: u8,
+) {
+    match (stage, kind, code) {
+        // grInishie2_801FD4CC: mpLib_80057BC0(0xE).
+        (SceneStage::Inishie2(_), melee_types::ItemKind::Kyasarin, it_kyasarin::DROP_PLATFORM) => {
+            map.joint_list_remove(melee_gr::inishie2::procs::BIRDO_JOINT);
+        }
+        _ => unreachable!("{kind:?} notice {code} on this stage"),
     }
 }
 

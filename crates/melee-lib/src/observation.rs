@@ -202,4 +202,8 @@ impl ItemObservation<'_> {
     pub fn animation_frame(self) -> f32 {
         self.0.animation_frame
     }
+    /// The kind's motion state (its ItemStateTable row).
+    pub fn motion(self) -> u16 {
+        self.0.motion
+    }
 }

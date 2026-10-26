@@ -1442,6 +1442,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-kyasarin"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "it-lgun"
 version = "0.0.1"
 dependencies = [
@@ -1664,6 +1678,20 @@ dependencies = [
  "hsd-types",
  "melee-it",
  "melee-lb",
+ "melee-types",
+]
+
+[[package]]
+name = "it-tincle"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-test-support",
  "melee-types",
 ]
 
@@ -2058,6 +2086,7 @@ dependencies = [
  "it-kirby",
  "it-klap",
  "it-koopaflame",
+ "it-kyasarin",
  "it-lgun",
  "it-link",
  "it-luigifire",
@@ -2079,6 +2108,7 @@ dependencies = [
  "it-sscope",
  "it-star",
  "it-sword",
+ "it-tincle",
  "it-tools",
  "it-wstar",
  "it-yaku",

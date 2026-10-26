@@ -2542,3 +2542,21 @@ stocks = 4
 seed = 1989356271
 item_frequency = 4
 item_mask = "0xfffffff880000000"
+
+[[boundary]]
+name = "start_mk2_fox_marth4"
+cold = "start_mk2_fox_marth4_cold"
+savestate = "harness/roms/start_mk2_fox_marth4.sav"
+stage = "MushroomKingdom2"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1915543760
+
+[[boundary]]
+name = "start_gb_fox_marth4"
+cold = "start_gb_fox_marth4_cold"
+savestate = "harness/roms/start_gb_fox_marth4.sav"
+stage = "GreatBay"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1712236993

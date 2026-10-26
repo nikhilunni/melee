@@ -212,6 +212,8 @@ impl InitialState {
                 | SceneStage::Venom(_)
                 | SceneStage::MuteCity(_)
                 | SceneStage::Pura(_)
+                | SceneStage::Inishie2(_)
+                | SceneStage::GreatBay(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -310,6 +312,15 @@ impl InitialState {
             &mut effects.gobjs,
             &assets.items,
             &mut map,
+        );
+        // it_802ECA70: Tingle, with the draws the stage's creation took.
+        crate::scene_stage::greatbay::spawn_tingle(
+            &mut stage,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+            assets.stage_desc.parameters.map_scale,
         );
         // grInishie1_801FAD84: the bricks' material items.
         crate::scene_stage::inishie1::spawn_items(
@@ -496,6 +507,11 @@ fn setup_draws(
         // stageGObj1_OnInit's sky draws until its colours differ
         // (variable_stage_draws); GrPu.dat has no particle keys.
         GrKind::Pura => 0,
+        // grInishie2_801FCE04: lift A, lift B, Birdo, the carpet.
+        GrKind::Inishie2 => 4,
+        // grGreatBay_801F4694 (the turtle's wait), 801F5A00 (the moon's),
+        // it_802ECA70 (the facing coin, it_802EB6DC twice).
+        GrKind::GreatBay => 7,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -801,6 +817,17 @@ fn initialize_stage(
         GrKind::Pura => {
             let (stage, animations) =
                 crate::scene_stage::pura::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::GreatBay => {
+            let (stage, animations) =
+                crate::scene_stage::greatbay::initialize(assets, items_on, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Inishie2 => {
+            let (stage, animations) = crate::scene_stage::inishie2::initialize(assets, rng, map)?;
             stage_animations = animations;
             stage
         }

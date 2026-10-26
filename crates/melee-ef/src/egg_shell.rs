@@ -1,4 +1,5 @@
-//! efSync_Spawn (8005FDDC), efsync.c:228-292, request 0x4CF.
+//! efSync_Spawn (8005FDDC), efsync.c:228-292, requests 0x4CF (Yoshi's egg)
+//! and 0x4D0 (Birdo's).
 use super::*;
 // efLib_Create, eflib.c:524-528: 32 queued initial animations.
 const ANIMATION_QUEUE_CAPACITY: usize = 32;
@@ -23,7 +24,42 @@ impl Effects {
         seed: Option<u32>,
         owner: ModelOwner,
     ) -> Result<()> {
-        self.make_room(0x1E, SHELL_COUNT, particles);
+        self.spawn_shell_burst::<T>(YOSHI_SHELLS, bank, particles, rng, matrix, scale, seed, owner)
+    }
+
+    /// efSync_Spawn(0x4D0, gobj, &pos) (efsync.c:229-292): Birdo's egg
+    /// breaking, the shell burst with models 0x1C / 0x1D at scale 1.
+    #[allow(clippy::too_many_arguments)]
+    pub fn spawn_birdo_egg_shell<T: InverseTrig>(
+        &mut self,
+        item: u32,
+        position: Vec3,
+        seed: u32,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        let mut matrix = Mtx::default();
+        matrix.0[0][3] = position.x;
+        matrix.0[1][3] = position.y;
+        matrix.0[2][3] = position.z;
+        let owner = ModelOwner::Item(item);
+        self.spawn_shell_burst::<T>(BIRDO_SHELLS, bank, particles, rng, &matrix, 1.0, Some(seed), owner)
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn spawn_shell_burst<T: InverseTrig>(
+        &mut self,
+        models: [u32; 2],
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+        matrix: &Mtx,
+        scale: f32,
+        seed: Option<u32>,
+        owner: ModelOwner,
+    ) -> Result<()> {
+        self.make_room(models[0], SHELL_COUNT, particles);
         // The creation draws come from where retail made them when the
         // requester reserved them; the animations draw from the stream.
         let mut reserved = HsdRng {
@@ -36,7 +72,7 @@ impl Effects {
             } else {
                 &mut *rng
             };
-            let id = if creation.randf() < 0.5 { 0x1E } else { 0x1F };
+            let id = if creation.randf() < 0.5 { models[0] } else { models[1] };
             let y = (std::f64::consts::TAU * f64::from(creation.randf())) as f32;
             let x = (std::f64::consts::TAU * f64::from(creation.randf())) as f32;
             let mut effect = self.acquire(id, particles);
@@ -99,6 +135,10 @@ const ROOT_GENERATORS: [(u16, u32); 5] = [
 ];
 /// efSync_Spawn 0x4CF (efsync.c:228): the shell burst.
 const EGG_SHELL_REQUEST: u16 = 0x4CF;
+/// efsync.c:240-252: the two fragment models of each request's burst.
+const YOSHI_SHELLS: [u32; 2] = [0x1E, 0x1F];
+const BIRDO_SHELLS: [u32; 2] = [0x1C, 0x1D];
+
 
 impl Effects {
     /// efAsync_QueueProcessDeferred, EF_SPAWN_POS (kind 1) and

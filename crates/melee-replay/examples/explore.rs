@@ -100,6 +100,10 @@ fn stage_edges(stage: Stage) -> StageEdges {
         // The Pokémon float by and change every few seconds (an
         // approximation for the policies).
         Stage::PokeFloats => (70.0, 45.0),
+        // The main floor's ends (an approximation for the policies).
+        Stage::MushroomKingdom2 => (75.0, 55.0),
+        // The lab's floor ends (an approximation for the policies).
+        Stage::GreatBay => (75.0, 50.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {
@@ -323,6 +327,8 @@ struct ResultRow {
     status: String,
     actions: Vec<BTreeSet<u16>>,
     transitions: Vec<BTreeSet<(u16, u16)>>,
+    /// Every (item kind, motion state) the case reached.
+    items: BTreeSet<(i32, u16)>,
     fault: Option<String>,
 }
 #[derive(Serialize)]
@@ -436,6 +442,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     status: String::new(),
                     actions: vec![BTreeSet::new(); ports.len()],
                     transitions: vec![BTreeSet::new(); ports.len()],
+                    items: BTreeSet::new(),
                     fault: None,
                 };
                 let mut previous = vec![None; ports.len()];
@@ -443,6 +450,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                     let mut inputs = Inputs::default();
                     {
                         let view = game.observe()?;
+                        for item in view.items() {
+                            row.items.insert((item.kind().0, item.motion()));
+                        }
                         let fighters: Vec<_> =
                             ports.iter().map(|&p| view.fighter(p).unwrap()).collect();
                         // Each player plays against the next one still in the

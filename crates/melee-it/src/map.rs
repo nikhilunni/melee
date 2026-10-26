@@ -57,7 +57,8 @@ fn collision_category(kind: ItemKind, hold_kind: u8) -> u8 {
         3 if kind == ItemKind::PokemonRandom => 5,
         // itmaplib.c:205-206: a Coin match's coin (hold kind 12).
         12 if kind == ItemKind::Unk4 => 5,
-        // The Star Fox stages' lasers (Item_802674AC's hold kind 5): 4.
+        // The Star Fox stages' lasers (Item_802674AC's hold kind 5) up to
+        // kind 238 (itmaplib.c:215): 4, Birdo's egg among them.
         5 if (ItemKind::ArwingLaser as u32..238).contains(&(kind as u32)) => 4,
         _ => unimplemented!("it_80275E98: collision category for {kind:?}"),
     }
@@ -1226,6 +1227,18 @@ impl ItemCore {
         if let Some(collision) = &mut self.collision {
             melee_mp::set_facing_dir(collision, facing);
         }
+    }
+
+    /// it_80276100 (80276100): the collision's last position is `position`
+    /// (mpColl_80043670 clears its ECB history), an airborne pass
+    /// (mpColl_800471F8) from there, and the item takes the result.
+    pub fn restart_collision_at(&mut self, position: hsd_types::Vec3, map: &mut melee_mp::CollMap) {
+        let mut collision = self.collision.take().expect("item map collision");
+        collision.last_pos = position;
+        melee_mp::mark_ecb_clear(&mut collision);
+        map.air_collide_pass(&mut collision, None);
+        self.position = collision.cur_pos;
+        self.collision = Some(collision);
     }
 
     /// it_802762BC (802762BC): airborne, and no slide moves it (xDC8 x1F).

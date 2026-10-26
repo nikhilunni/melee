@@ -550,6 +550,27 @@ impl ItemAssets {
         Ok(())
     }
 
+    /// it_804D6D40 (itPublicData +0x10): what every stage enemy shares,
+    /// for a stage's own enemy (Birdo) as for the monster bank's.
+    pub fn read_monster_common(
+        &mut self,
+        archive: &Archive,
+        public: u32,
+    ) -> hsd_archive::desc::Result<()> {
+        let reader = archive.reader();
+        let common = reader.u32(public + 0x10)?;
+        self.monster_common = Some(MonsterCommonData {
+            bounce_limit: reader.s32(common)?,
+            launch_speed: reader.f32(common + 4)?,
+            screen_chance: reader.f32(common + 8)?,
+            sleep_damage: reader.f32(common + 0xC)?,
+            ground_damage: reader.f32(common + 0x10)?,
+            drop_odds: reader.f32(common + 0x14)?,
+            drop_cooldown: reader.f32(common + 0x18)?,
+        });
+        Ok(())
+    }
+
     /// it_804D6D38 (itPublicData +8): the separate monster article bank.
     /// itPublicData x8[kind - Kuriboh] (it_804D6D38, Item_80267978's
     /// character bank) for a kind ItCo itself carries: the Coin match's

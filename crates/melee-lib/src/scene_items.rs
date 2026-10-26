@@ -59,6 +59,9 @@ melee_it::item_kinds! {
         PeachToad: it_peach::PeachToad,
         PeachToadSpore: it_peach::PeachToadSpore,
         Heiho: it_heiho::Heiho,
+        Kyasarin: it_kyasarin::Kyasarin,
+        KyasarinEgg: it_kyasarin::egg::KyasarinEgg,
+        Tincle: it_tincle::Tincle,
         Tools: it_tools::Tools,
         ArwingLaser: it_arwinglaser::ArwingLaser,
         Yaku: it_yaku::Yaku,
@@ -1809,6 +1812,57 @@ impl Resources {
                 .map_err(|e| anyhow::anyhow!("Shy Guy gait: {e}"))?;
             kinds.push((ItemKind::Heiho, heiho));
         }
+        // Mushroom Kingdom II's Birdo (it_802ECD3C) and her egg
+        // (it_802EFA44), from GrI2.dat's itemdata.
+        if let Some(mut birdo) = ItemAssets::from_stage_item(
+            stage,
+            ItemKind::Kyasarin,
+            &it_kyasarin::ARTICLE_STATES,
+            it_kyasarin::SPECIAL_ATTRIBUTES,
+            &[],
+        )? {
+            birdo.read_monster_common(&common_archive, public)?;
+            birdo
+                .read_pose(stage)
+                .map_err(|e| anyhow::anyhow!("Birdo pose: {e}"))?;
+            birdo
+                .read_particle_tracks(stage)
+                .map_err(|e| anyhow::anyhow!("Birdo particle tracks: {e}"))?;
+            kinds.push((ItemKind::Kyasarin, birdo));
+            visual_archives.push((ItemKind::Kyasarin, std::sync::Arc::new(stage.clone())));
+        }
+        if let Some(mut egg) = ItemAssets::from_stage_item(
+            stage,
+            ItemKind::KyasarinEgg,
+            &it_kyasarin::egg::ARTICLE_STATES,
+            it_kyasarin::egg::SPECIAL_ATTRIBUTES,
+            &[],
+        )? {
+            egg.read_common_release(&common_archive, public)?;
+            egg.read_pose(stage)
+                .map_err(|e| anyhow::anyhow!("Birdo egg pose: {e}"))?;
+            egg.read_particle_tracks(stage)
+                .map_err(|e| anyhow::anyhow!("Birdo egg particle tracks: {e}"))?;
+            kinds.push((ItemKind::KyasarinEgg, egg));
+            visual_archives.push((ItemKind::KyasarinEgg, std::sync::Arc::new(stage.clone())));
+        }
+        // Great Bay's Tingle (it_802ECA70), from GrGb.dat's itemdata.
+        if let Some(mut tingle) = ItemAssets::from_stage_item(
+            stage,
+            ItemKind::Tincle,
+            &it_tincle::ARTICLE_STATES,
+            it_tincle::SPECIAL_ATTRIBUTES,
+            &[],
+        )? {
+            tingle
+                .read_pose(stage)
+                .map_err(|e| anyhow::anyhow!("Tingle pose: {e}"))?;
+            tingle
+                .read_particle_tracks(stage)
+                .map_err(|e| anyhow::anyhow!("Tingle particle tracks: {e}"))?;
+            kinds.push((ItemKind::Tincle, tingle));
+            visual_archives.push((ItemKind::Tincle, std::sync::Arc::new(stage.clone())));
+        }
         // Flat Zone's tools (it_802EEFA8), from GrFz.dat's itemdata.
         if let Some(tools) = ItemAssets::from_stage_item(
             stage,
@@ -2961,6 +3015,19 @@ pub(crate) fn tear_down(
     objects: &mut Objects,
     destroyed: u32,
 ) {
+    release_effects(state, destroyed);
+    crate::scene_items::cleanup(
+        &mut state.items,
+        &mut state.effects.gobjs,
+        world,
+        objects,
+        destroyed,
+    );
+}
+
+/// Item_8026A8EC's first part: the kind's Destroyed callback, the
+/// generators on its bones, its models and JObj.
+pub(crate) fn release_effects(state: &mut crate::initial_state::InitialState, destroyed: u32) {
     let item = state
         .items
         .iter()
@@ -3012,13 +3079,6 @@ pub(crate) fn tear_down(
             .expire_item_joint(item.id, &mut state.particles);
     }
     state.effects.forget_item(item.id);
-    crate::scene_items::cleanup(
-        &mut state.items,
-        &mut state.effects.gobjs,
-        world,
-        objects,
-        destroyed,
-    );
 }
 
 /// Item_8026A8EC's end for `item`, marked destroyed: its GObjs and its
@@ -3107,6 +3167,212 @@ pub(crate) fn spawn_klaptrap(
         true,
     );
     it_klap::attach_parent(state.items.get_mut(id).unwrap(), parent);
+}
+
+/// it_802ECA70 -> it_8027B5B0 at the stage's creation: Tingle at his spawn
+/// point (the facing drawn then, no fighter existing), the zako fields
+/// (no generator slot, x34 b1234 = 3). His scheduler object is made with
+/// the scene's ([`register_existing`]).
+pub(crate) fn spawn_tingle(
+    pool: &mut ItemPool,
+    gobjs: &mut hsd_gobj::GObjAddresses,
+    resources: &Resources,
+    map: &mut melee_mp::CollMap,
+    facing: f32,
+) -> u32 {
+    let position = it_tincle::SPAWN;
+    let spawn = melee_it::SpawnItem {
+        kind: ItemKind::Tincle,
+        // Item_802674AC: below It_Kind_Arwing_Laser, a stage enemy (4).
+        hold_kind: 4,
+        owner: None,
+        secondary_owner: None,
+        stale_source: None,
+        attack_from_spawner: false,
+        link_gobjs: 0,
+        spawn_variant: 0,
+        position,
+        previous_position: position,
+        velocity: hsd_types::Vec3::ZERO,
+        facing,
+        damage: 0,
+        auxiliary_damage: 0,
+        spawn_argument: 0,
+        initial_collision: true,
+        auxiliary_flags: [0; 3],
+        ground_or_air: melee_types::GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
+    };
+    let id = pool
+        .spawn_with_initial_collision::<SceneItems>(spawn, resources.get(ItemKind::Tincle), gobjs, map)
+        .expect("Tingle's item slot");
+    pool.get_mut(id)
+        .unwrap()
+        .collision
+        .as_mut()
+        .expect("Tingle's collision")
+        .x34_flags
+        .b1234 = 3;
+    id
+}
+
+/// it_802ECA70 during the match (grGreatBay_801F5600, Tingle lost): the
+/// facing query, Item_80268B18 with its scheduler object, the zako
+/// fields, his spawn callback's it_802EB6DC, the map's scale, it_802EB6DC.
+pub(crate) fn respawn_tingle(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+) -> u32 {
+    let position = it_tincle::SPAWN;
+    let facing = facing_toward_fighters(position, &mut state.fighters, &mut state.rng);
+    let spawn = melee_it::SpawnItem {
+        kind: ItemKind::Tincle,
+        hold_kind: 4,
+        owner: None,
+        secondary_owner: None,
+        stale_source: None,
+        attack_from_spawner: false,
+        link_gobjs: 0,
+        spawn_variant: 0,
+        position,
+        previous_position: position,
+        velocity: hsd_types::Vec3::ZERO,
+        facing,
+        damage: 0,
+        auxiliary_damage: 0,
+        spawn_argument: 0,
+        initial_collision: true,
+        auxiliary_flags: [0; 3],
+        ground_or_air: melee_types::GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
+    };
+    let assets = state.assets.items.get(ItemKind::Tincle);
+    let id = state
+        .items
+        .spawn_with_initial_collision::<SceneItems>(spawn, assets, &mut state.effects.gobjs, &mut state.map)
+        .expect("Tingle's item slot");
+    finish_spawn_request(
+        &mut state.items,
+        &state.assets.items,
+        &mut state.map,
+        world,
+        objects,
+        id,
+        spawn,
+        ItemRequest::Spawn(spawn),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        &mut state.rng,
+        None,
+        None,
+        true,
+    );
+    let assets = state.assets.items.get(ItemKind::Tincle);
+    let map_scale = state.assets.stage_desc.parameters.map_scale;
+    let item = state.items.get_mut(id).unwrap();
+    item.collision
+        .as_mut()
+        .expect("Tingle's collision")
+        .x34_flags
+        .b1234 = 3;
+    it_tincle::reset(item, assets, &mut state.rng);
+    it_tincle::start(item, map_scale);
+    it_tincle::reset(item, assets, &mut state.rng);
+    id
+}
+
+/// it_8027B5B0 (0x8027B5B0) for a stage enemy at `position`: the facing
+/// query (it_8026B684), Item_80268B18 with the creation pass, the zako
+/// fields (no generator slot, x34 b1234 = 3), then the kind's own start
+/// with `facing` (it_802ECD3C for Birdo, it_802EFA44 for her egg).
+pub(crate) fn spawn_zako(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    kind: ItemKind,
+    position: hsd_types::Vec3,
+    facing: f32,
+) -> Option<u32> {
+    let queried = facing_toward_fighters(position, &mut state.fighters, &mut state.rng);
+    let spawn = melee_it::SpawnItem {
+        kind,
+        // Item_802674AC: Birdo (below It_Kind_Arwing_Laser) holds as 4,
+        // her egg as 5.
+        hold_kind: if kind == ItemKind::Kyasarin { 4 } else { 5 },
+        owner: None,
+        secondary_owner: None,
+        stale_source: None,
+        attack_from_spawner: false,
+        link_gobjs: 0,
+        spawn_variant: 0,
+        position,
+        previous_position: position,
+        velocity: hsd_types::Vec3::ZERO,
+        facing: queried,
+        damage: 0,
+        auxiliary_damage: 0,
+        spawn_argument: 0,
+        initial_collision: true,
+        auxiliary_flags: [0; 3],
+        ground_or_air: melee_types::GroundOrAir::Air,
+        launch_draws: 0,
+        launch_seed: None,
+    };
+    let assets = state.assets.items.get(kind);
+    let Some(id) = state.items.spawn_with_initial_collision::<SceneItems>(
+        spawn,
+        assets,
+        &mut state.effects.gobjs,
+        &mut state.map,
+    ) else {
+        unimplemented!("it_8027B5B0: no item slot for {kind:?}");
+    };
+    finish_spawn_request(
+        &mut state.items,
+        &state.assets.items,
+        &mut state.map,
+        world,
+        objects,
+        id,
+        spawn,
+        ItemRequest::Spawn(spawn),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        &mut state.rng,
+        None,
+        None,
+        true,
+    );
+    let item = state.items.get_mut(id).unwrap();
+    item.collision
+        .as_mut()
+        .expect("a stage enemy's collision")
+        .x34_flags
+        .b1234 = 3;
+    let assets = state.assets.items.get(kind);
+    match kind {
+        ItemKind::Kyasarin => it_kyasarin::start(item, facing, assets),
+        ItemKind::KyasarinEgg => it_kyasarin::egg::start(item, facing, assets),
+        _ => unreachable!("it_8027B5B0 for {kind:?}"),
+    }
+    Some(id)
 }
 
 /// grFlatzone_80217EF0 -> it_802EEFA8 (0x802EEFA8): a falling tool, then

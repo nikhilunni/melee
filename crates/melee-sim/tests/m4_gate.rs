@@ -1286,6 +1286,22 @@ fn start_pf_fox_marth4_600() {
     movement_gate_ticks("start_pf_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_pf_fox_marth4", 600, "ledger600");
 }
+/// Mushroom Kingdom II's start boundary: the four timers' draws at
+/// creation, the first lift made and rising.
+#[test]
+fn start_mk2_fox_marth4_600() {
+    movement_gate_ticks("start_mk2_fox_marth4", 600);
+    movement_gate_ticks("start_mk2_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_mk2_fox_marth4", 600, "ledger600");
+}
+/// Great Bay's start boundary: Tingle's creation draws, the turtle's and
+/// the floating platform's timers, the giants and the moon's countdown.
+#[test]
+fn start_gb_fox_marth4_600() {
+    movement_gate_ticks("start_gb_fox_marth4", 600);
+    movement_gate_ticks("start_gb_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_gb_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

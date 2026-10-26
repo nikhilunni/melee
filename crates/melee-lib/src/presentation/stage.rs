@@ -114,6 +114,10 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::Yorster => 1,
         // grI1_StageCallbacks[3] carries 0xC0000000.
         GrKind::Inishie1 => 3,
+        // grI2_StageCallbacks[2] carries 0xC0000000.
+        GrKind::Inishie2 => 2,
+        // grGb_StageCallbacks[2] carries 0xC0000000.
+        GrKind::GreatBay => 2,
         // grOt_803E27E0[5] carries 0xC0000000.
         GrKind::Onett => 5,
         // grZe_callbacks[6] carries 0xC0000000.

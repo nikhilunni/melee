@@ -435,6 +435,15 @@ impl Runtime {
         // A container's release creates items, which the walk over the
         // pool cannot: it stops there, lets the items out, and goes on.
         while let Some((container, release)) = self.drain_item_events_to_release(flush)? {
+            if let melee_it::ItemEvent::SpawnZako {
+                kind,
+                position,
+                facing,
+            } = release
+            {
+                crate::scene_items::spawn_zako(&mut self.state, world, &mut self.item_objects, kind, position, facing);
+                continue;
+            }
             if matches!(release, melee_it::ItemEvent::PartyBallContents { .. }) {
                 self.release_party_ball(container, release, world)?;
             } else {
@@ -461,8 +470,21 @@ impl Runtime {
                 match item.events.remove(0) {
                     release @ (melee_it::ItemEvent::Release { .. }
                     | melee_it::ItemEvent::CrateContents { .. }
-                    | melee_it::ItemEvent::PartyBallContents { .. }) => {
+                    | melee_it::ItemEvent::PartyBallContents { .. }
+                    | melee_it::ItemEvent::SpawnZako { .. }) => {
                         return Ok(Some((item.id, release)));
+                    }
+                    melee_it::ItemEvent::ResetCollision => {
+                        // itKyasarin_FlipAndFall: coll->cur_pos = pos, then
+                        // it_80276100(gobj, &pos).
+                        let position = item.position;
+                        if let Some(collision) = item.collision.as_mut() {
+                            collision.cur_pos = position;
+                        }
+                        item.restart_collision_at(position, &mut state.map);
+                    }
+                    melee_it::ItemEvent::StageNotice(code) => {
+                        crate::scene_stage::item_notice(&mut state.map, &state.stage, item.kind, code);
                     }
                     melee_it::ItemEvent::Resume {
                         step,
@@ -799,6 +821,16 @@ impl Runtime {
                         state.effects.spawn_positional::<RetailTrig>(
                             state.effects.coin_hit_request(),
                             position,
+                            &state.assets.common_particle_bank,
+                            &mut state.particles,
+                            &mut state.rng,
+                        )?;
+                    }
+                    melee_it::ItemEvent::EggShell { position, seed } => {
+                        state.effects.spawn_birdo_egg_shell::<RetailTrig>(
+                            item.id,
+                            position,
+                            seed,
                             &state.assets.common_particle_bank,
                             &mut state.particles,
                             &mut state.rng,
@@ -1913,6 +1945,8 @@ impl Runtime {
                             // then Ground_801C0C2C's own GObj (ground.c:708).
                             let [on_start, ground] = *state.stage.start_gobjs();
                             state.effects.gobjs.create(on_start);
+                            // fn_801F4520: the water's fighter device.
+                            crate::scene_stage::greatbay::start(state);
                             if matches!(state.stage, SceneStage::Onett(_)) {
                                 // grOnett_801E41B0, then grOnett_801E3930.
                                 crate::scene_stage::onett::start(state);
@@ -2281,6 +2315,9 @@ impl Runtime {
                             )
                         });
                     }
+                    // ftColl_8007BAC0: the stage's fighter devices (Great
+                    // Bay's water).
+                    crate::scene_stage::greatbay::water_splash(state, player, &mut self.particle_draws)?;
                     // ftColl_8007AB48 / ftColl_8007AB80: resolve both logs.
                     with_fighter!(&mut state.fighters[player], |f| {
                         f.core.resolve_hit_logs(&assets.fighters[player])
@@ -2944,6 +2981,8 @@ impl Runtime {
                             && matches!(state.stage, SceneStage::Venom(_)))
                         || address == melee_gr::mutecity::procs::DYNAMICS_PROC
                         || address == melee_gr::pura::procs::SEQUENCE_PROC
+                        || address == melee_gr::inishie2::procs::DYNAMICS_PROC
+                        || address == melee_gr::greatbay::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -3037,6 +3076,22 @@ impl Runtime {
                         )?;
                     } else if matches!(state.stage, SceneStage::Pura(_)) {
                         crate::scene_stage::pura::run_proc(state, map_id)?;
+                    } else if matches!(state.stage, SceneStage::GreatBay(_)) {
+                        crate::scene_stage::greatbay::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                            world,
+                            &mut self.item_objects,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Inishie2(_)) {
+                        crate::scene_stage::inishie2::run_proc(
+                            state,
+                            map_id,
+                            world,
+                            &mut self.stage_objects,
+                            &mut self.item_objects,
+                        )?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and
@@ -3559,7 +3614,34 @@ impl Runtime {
         // release their owner's references. Each item goes in the order
         // Item_8026A8EC was called: its models, then its own GObjs.
         while let Some(destroyed) = state.items.next_destroyed() {
-            crate::scene_items::tear_down(state, world, &mut self.item_objects, destroyed);
+            let (tingle, birdo) = {
+                let item = state
+                    .items
+                    .iter()
+                    .find(|item| item.id == destroyed)
+                    .expect("a destroyed item");
+                (
+                    item.kind == melee_types::ItemKind::Tincle,
+                    item.kind == melee_types::ItemKind::Kyasarin && it_kyasarin::has_platform(item),
+                )
+            };
+            crate::scene_items::release_effects(state, destroyed);
+            // itKyasarin_Logic25_Destroyed -> grInishie2_801FD448: Birdo's
+            // platform goes with her.
+            if birdo {
+                crate::scene_stage::inishie2::birdo_gone(state, world, &mut self.stage_objects);
+            }
+            crate::scene_items::cleanup(
+                &mut state.items,
+                &mut state.effects.gobjs,
+                world,
+                &mut self.item_objects,
+                destroyed,
+            );
+            if tingle {
+                // grGreatBay_801F5600: Tingle lost is made again at once.
+                crate::scene_stage::greatbay::tingle_lost(state, world, &mut self.item_objects);
+            }
         }
         if spliced {
             let renamed = state.effects.gobjs.replay();
@@ -4203,6 +4285,9 @@ impl Simulation {
                                         .1
                                 }
                                 SceneStage::Venom(_) => melee_gr::venom::procs::map_callback(map).1,
+                                SceneStage::Inishie2(_) => {
+                                    melee_gr::inishie2::procs::map_callback(map).1
+                                }
                                 _ => melee_gr::last::procs::map_callback(map),
                             },
                         },
