@@ -193,6 +193,13 @@ pub trait ItemLogic {
     /// the owner (itGamewatchGreenhouse_PickedUp tests the owner's motion):
     /// the scene samples the owner for it.
     const PICKUP_READS_OWNER: bool = false;
+    /// The thrown and dropped callbacks read the holder (a stage enemy's
+    /// it_8027CB3C / it_8027CBA4 take its facing, ftLib_800865C0).
+    const RELEASE_READS_OWNER: bool = false;
+    /// The kind reads xD4C without writing it (itHarisen_UnkMotion8_Coll):
+    /// a new item of the kind takes the next stale heap word
+    /// (`ItemPool::set_heap_ammo_words`).
+    const READS_HEAP_AMMO: bool = false;
     fn dropped(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
         unimplemented!("dropped callback for this kind")
     }
@@ -274,6 +281,11 @@ pub trait ItemLogic {
     fn tracker(item: &ItemCore) -> Option<(u8, bool)> {
         item.owner.map(|owner| (owner, item.owner_secondary))
     }
+    /// it_8026B960 (0x8026B960): the frames before a held explosive blows,
+    /// which the CPU weighs before throwing it; -1 for a kind without one.
+    fn fuse(_item: &ItemCore) -> f32 {
+        -1.0
+    }
     /// The kind's on_accessory (Item_80269A9C, item link 9) is its owner's
     /// work: the scene runs the owner's ARTICLE_ACCESSORY hook in its place
     /// (Sheik's chain, whose links are the owner's).
@@ -331,10 +343,13 @@ pub trait ItemLogic {
         effect_joint_matrix: Self::effect_joint_matrix,
         notifies_owner: Self::notifies_owner,
         tracker: Self::tracker,
+        fuse: Self::fuse,
         link_received: Self::link_received,
         owner_accessory: Self::OWNER_ACCESSORY,
         owner_physics: Self::OWNER_PHYSICS,
         pickup_reads_owner: Self::PICKUP_READS_OWNER,
+        release_reads_owner: Self::RELEASE_READS_OWNER,
+        reads_heap_ammo: Self::READS_HEAP_AMMO,
     };
 }
 #[derive(Clone, Copy)]
@@ -397,10 +412,13 @@ pub struct ItemLogicRow {
     pub effect_joint_matrix: fn(&ItemCore, &ItemAssets, hsd_types::Mtx) -> hsd_types::Mtx,
     pub notifies_owner: fn(&ItemCore) -> bool,
     pub tracker: fn(&ItemCore) -> Option<(u8, bool)>,
+    pub fuse: fn(&ItemCore) -> f32,
     pub link_received: fn(&mut ItemCore, crate::LinkMessage, &ItemAssets) -> bool,
     pub owner_accessory: bool,
     pub owner_physics: bool,
     pub pickup_reads_owner: bool,
+    pub release_reads_owner: bool,
+    pub reads_heap_ammo: bool,
 }
 pub trait ItemDispatch {
     fn logic(kind: ItemKind) -> &'static ItemLogicRow;

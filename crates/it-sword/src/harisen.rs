@@ -1,8 +1,8 @@
 //! The Fan (It_Kind_Harisen), itharisen.c (802927E8..80292D2C). Unlike the
 //! sword and bat it plays its own swing animations, driven by the holder's
 //! HarisenSwing states (ftCo_HarisenSwing_Anim, ft_0CD3.c), swells on a hit
-//! (it_802927E8) and vanishes when dropped onto the floor (state 8 with no
-//! ammo, it_8026DF34).
+//! (it_802927E8) and, dropped, lands or vanishes on the floor by the stale
+//! heap word in its xD4C (state 8, it_8026E15C or it_8026DF34).
 use melee_it::{
     desc::ItemAssets,
     state_change::{ANIM_UPDATE, DROP_UPDATE},
@@ -91,6 +91,8 @@ const fn held_row(state: usize) -> ItemStateRow {
 impl ItemLogic for Harisen {
     const KIND: ItemKind = ItemKind::Harisen;
     const STATES: &'static [ItemStateRow] = &STATES;
+    /// itHarisen_UnkMotion8_Coll reads xD4C, which nothing writes for the fan.
+    const READS_HEAP_AMMO: bool = true;
     /// itHarisen_Logic24_Spawned -> it_8029290C: the fall, nothing else.
     fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
         change(item, motion::FALL, ANIM_UPDATE, assets);
@@ -238,20 +240,15 @@ fn falling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
 }
 
 /// itHarisen_UnkMotion8_Coll (80292AE8): with a nonzero xD4C the dropped
-/// fan lands as a thrown one (it_8026E15C); with zero the floor pass
-/// it_8026DF34 removes it on the first floor it touches. Nothing writes
-/// xD4C for the fan and Item_80268B5C does not clear it: it is whatever
-/// the pooled Item struct last held (retail traces show 0, 0xF1F1F1F1,
-/// 0xD8BAB3BF, ... for different fans), which the port cannot know. Both
-/// passes move the fan alike until it touches a surface; a touch fails
-/// closed.
+/// fan lands as a thrown one (it_8026E15C(it_8029287C)); with zero the
+/// floor pass it_8026DF34 removes it on the first floor it touches.
+/// Nothing writes xD4C for the fan: it is the stale heap word the pool
+/// gave it at creation (`ItemLogic::READS_HEAP_AMMO`).
 fn dropped_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if item.air_contact_bits(ctx.map) & 0xF != 0 {
-        unimplemented!(
-            "itHarisen_UnkMotion8_Coll (itharisen.c:139-147): a dropped fan's landing reads uninitialized xD4C"
-        );
+    if item.ammo != 0 {
+        return falling_collision(item, ctx);
     }
-    false
+    item.air_pass(ctx.map)
 }
 
 /// itHarisen_UnkMotion9_Coll -> it_8026E8C4(it_8029287C, it_8029290C).

@@ -151,7 +151,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 184] = [
+const HELD_ITEM_STATES: [S; 188] = [
     S::LightGet,
     // ftpickupitem.c and ftCo_Lift.c: a heavy item is lifted, carried,
     // turned and thrown (ftCo_ItemThrow.c); every one drops it when hit.
@@ -277,6 +277,15 @@ const HELD_ITEM_STATES: [S; 184] = [
     S::DamageFlyTop,
     S::DamageFlyRoll,
     S::DamageFall,
+    // ftCo_FlyReflect.c: ftCo_800C18A8's bounce off a wall or ceiling, then
+    // DamageFly's Anim and IASA; no item branch.
+    S::FlyReflectWall,
+    S::FlyReflectCeil,
+    // ftCo_800C7CA0.c: fn_800C7DC4's bounce while down; no item branch.
+    S::DownReflect,
+    // ftCo_BarrelWait.c (ftCo_8009EB18): inside Kongo Jungle's barrel the
+    // fighter is hidden and waits for a press; no item branch.
+    S::BarrelWait,
     // ftCo_Down*.c: bound, wait, damage, getups and spot never read the item.
     S::DownBoundU,
     S::DownWaitU,

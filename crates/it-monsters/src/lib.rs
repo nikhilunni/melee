@@ -1,18 +1,17 @@
-//! Stage enemies out of crates (itzako.c): the Goomba's constructor
-//! (itoldkuri.c; its lifecycle fails closed) and the ReDead (itleadead.c,
-//! see [`redead`]).
+//! Stage enemies out of crates (itzako.c): the Goomba (itoldkuri.c, see
+//! [`goomba`]) and the ReDead (itleadead.c, see [`redead`]).
+pub mod goomba;
 pub mod redead;
 mod zako;
 use hsd_types::Vec3;
 use melee_it::{
     desc::ItemAssets, state_change::ANIM_UPDATE, FacingConstructor, ItemAnimationContext,
-    ItemCollisionContext, ItemCore, ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow,
-    MonsterBehavior, MonsterState,
+    ItemCore, ItemLogic, ItemScratch, ItemStateRow, MonsterBehavior, MonsterState,
 };
 use melee_types::ItemKind;
 
-/// it_803F8320: only the constructor's motion0 is available.
-pub const KURIBOH_ARTICLE_STATES: [i32; 1] = [-1];
+/// it_803F8320's anim_id column.
+pub const KURIBOH_ARTICLE_STATES: [i32; 12] = goomba::ARTICLE_STATES;
 /// it_803F8EB0's anim_id column.
 pub const REDEAD_ARTICLE_STATES: [i32; 18] = redead::ARTICLE_STATES;
 pub const KURIBOH_SPECIAL_ATTRIBUTES: u32 = 4;
@@ -21,26 +20,6 @@ pub const REDEAD_SPECIAL_ATTRIBUTES: u32 = 8;
 pub struct Kuriboh;
 pub struct ReDead;
 
-/// Constructor-row continuation guards: itOldkuri_UnkMotion0_Anim
-/// (802D74D0, itoldkuri.c:82); no later row of its state table is admitted.
-fn unavailable_animation(_: &mut ItemCore, _: &mut ItemAnimationContext<'_>) -> bool {
-    unimplemented!("itoldkuri: monster Animation beyond the constructor capture")
-}
-/// itOldkuri_UnkMotion0_Phys (802D74D8, itoldkuri.c:87).
-fn unavailable_physics(_: &mut ItemCore, _: &ItemPhysicsContext<'_>) {
-    unimplemented!("itoldkuri: monster Physics beyond the constructor capture")
-}
-/// itOldkuri_UnkMotion0_Coll (802D7550, itoldkuri.c:102).
-fn unavailable_collision(_: &mut ItemCore, _: &mut ItemCollisionContext<'_>) -> bool {
-    unimplemented!("itoldkuri: monster Collision beyond the constructor capture")
-}
-const UNAVAILABLE: ItemStateRow = ItemStateRow {
-    animation_id: -1,
-    animation: unavailable_animation,
-    physics: unavailable_physics,
-    collision: unavailable_collision,
-};
-
 /// it_8027B730 (8027B730), before the constructor's own live facing query.
 fn begin_kuriboh(item: &mut ItemCore, _: &ItemAssets) {
     begin(
@@ -48,6 +27,7 @@ fn begin_kuriboh(item: &mut ItemCore, _: &ItemAssets) {
         MonsterBehavior::Kuriboh {
             walking_speed: 0.0,
             spawn_timer: 0,
+            cycled: false,
         },
     );
 }
@@ -112,12 +92,10 @@ fn finish_kuriboh(item: &mut ItemCore, assets: &ItemAssets) {
                 .is_none_or(|c| c.env_flags as u32 & melee_types::mp::collide::FLOOR_MASK == 0),
         "it_8027C0A8: grounded monster constructor is not witnessed"
     );
+    item.catchable = true; // it_80275270
     item.hurt_intangible = false; // it_802756E0
-    item.change_motion_with(0, -1, ANIM_UPDATE, assets);
-    // it_802D848C, after the state change: it_80274CAC (stompable), then
-    // the callback, which fails closed if a fighter lands on it.
-    item.stompable = true;
-    item.jumped_on = Some(unavailable_jumped_on);
+    // it_802D848C: standing, stompable (it_80274CAC) with it_802D8098.
+    goomba::change_stompable(item, goomba::motion::STAND, ANIM_UPDATE, assets);
 }
 
 /// it_802E8BCC (802E8BCC), after the facing query: turned to its facing
@@ -126,9 +104,6 @@ fn finish_kuriboh(item: &mut ItemCore, assets: &ItemAssets) {
 /// spin locked to its facing (x19); the lunge's cooldown starts, hurt
 /// capsule 0 and the ECB box are kept, and it falls (it_802E9308).
 fn finish_redead(item: &mut ItemCore, assets: &ItemAssets) {
-    if item.facing != -1.0 {
-        unimplemented!("it_802E8BCC (itleadead.c:145-152): a right-facing ReDead's birth is not witnessed");
-    }
     zako::face(item, item.facing);
     item.set_collision_facing(if item.facing == -1.0 { -1 } else { 1 });
     item.slide_mode = 0;
@@ -154,28 +129,10 @@ fn finish_redead(item: &mut ItemCore, assets: &ItemAssets) {
     redead::start_fall(item, assets);
 }
 
-/// it_802D8098 (802D8098, itoldkuri.c:429), installed by it_802D848C.
-fn unavailable_jumped_on(_: &mut ItemCore, _: &melee_it::ItemEventContext<'_>) -> bool {
-    unimplemented!("it_802D8098: jumped-on monster lifecycle is not witnessed")
-}
-/// it_2725_Logic9_Destroyed (8027C8B0, itzako.c:494) /
-/// itLeadead_Logic1_Destroyed (802EA41C, itleadead.c:849).
-fn unavailable_destroyed(_: &mut ItemCore) {
-    unimplemented!("itzako/itleadead: destroyed monster lifecycle is not witnessed")
-}
-/// it_2725_Logic0_DmgReceived (802D7F38, itoldkuri.c:405) /
-/// it_802E8CD8 (802E8CD8, itleadead.c:167).
-fn unavailable_damage(_: &mut ItemCore, _: &melee_it::ItemEventContext<'_>) -> bool {
-    unimplemented!(
-        "it_2725_Logic0_DmgReceived/it_802E8CD8: monster damage lifecycle is not witnessed"
-    )
-}
-
-// NonNULL pickup/drop/throw entries remain unavailable: itOldKuri_Logic0_PickedUp
-// (802D7C14, itoldkuri.c:292), it_2725_Logic0_Dropped / Thrown (c:311/324).
 impl ItemLogic for Kuriboh {
     const KIND: ItemKind = ItemKind::Kuriboh;
-    const STATES: &'static [ItemStateRow] = &[UNAVAILABLE];
+    const STATES: &'static [ItemStateRow] = &goomba::STATES;
+    const RELEASE_READS_OWNER: bool = true;
     const FACING_CONSTRUCTOR: Option<FacingConstructor> = Some(FacingConstructor {
         before_query: begin_kuriboh,
         after_query: finish_kuriboh,
@@ -183,22 +140,41 @@ impl ItemLogic for Kuriboh {
     fn spawned(_: &mut ItemCore, _: &ItemAssets) {
         unimplemented!("it_802D73F0: required live constructor context")
     }
+    /// Not grabbable (xDC8 x15): only a fighter's grab catches it.
     fn pickup_possible(_: &ItemCore) -> bool {
         false
     }
-    fn picked_up(_: &mut ItemCore, _: &mut ItemAnimationContext<'_>) {
-        unimplemented!("itOldKuri_Logic0_PickedUp/itLeadead_Logic1_PickedUp: monster pickup lifecycle is not witnessed")
+    /// itOldKuri_Logic0_PickedUp (802D7C14).
+    fn picked_up(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        goomba::picked_up(item, context)
     }
+    /// it_2725_Logic0_Dropped (802D7CB0).
+    fn dropped(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        goomba::dropped(item, context)
+    }
+    /// it_2725_Logic0_Thrown (802D7D1C).
+    fn thrown(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        goomba::thrown(item, context)
+    }
+    /// it_2725_Logic9_Destroyed (8027C8B0, itzako.c:494): the zako
+    /// generator keeps no slot for a crate's enemy (grZakoGenerator_801CAC14,
+    /// idx -1).
     fn destroyed(item: &mut ItemCore) {
-        unavailable_destroyed(item)
+        assert_eq!(
+            zako::monster(item).joint_index,
+            -1,
+            "grZakoGenerator_801CAC14: a generator's enemy"
+        );
     }
+    /// it_2725_Logic0_DmgReceived (802D7F38).
     fn damage_received(item: &mut ItemCore, context: &melee_it::ItemEventContext<'_>) -> bool {
-        unavailable_damage(item, context)
+        goomba::damage_received(item, context)
     }
 }
 impl ItemLogic for ReDead {
     const KIND: ItemKind = ItemKind::Leadead;
     const STATES: &'static [ItemStateRow] = &redead::STATES;
+    const RELEASE_READS_OWNER: bool = true;
     /// The walk's physics reads the nearest fighter (it_802EA674,
     /// it_802EA6F4: ftLib_8008627C).
     const LOCKS_ON: bool = true;

@@ -153,6 +153,7 @@ impl ScenarioSource for melee_sim::scenario::Scenario {
             friendly_fire: self.friendly_fire,
             items: self.item_rules().expect("validated item rules"),
             slippi: Default::default(),
+            heap_ammo_words: self.heap_ammo_words.iter().map(|&w| w as i32).collect(),
         })
     }
     fn is_cold(&self) -> bool {

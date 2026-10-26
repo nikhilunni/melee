@@ -43,6 +43,8 @@ fn bone_generator(id: u16) -> Result<(u8, u32, bool)> {
         0x4AE => (46, 0xB3B0, false),
         0x4AF => (46, 0xB3B1, false),
         0x4B0 => (46, 0xB3B6, true),
+        // efasync.c:688-690: the Party Ball's sparkle, common 0x115.
+        0x433 => (0, 0x115, false),
         _ => anyhow::bail!("efAsync kind 0 {id:#x} on an item bone"),
     })
 }
@@ -277,16 +279,18 @@ impl Effects {
     /// efAsync kind 0 on an item's model bone, dispatched at the item's
     /// queue flush: efAlt's hsd_8039EFAC(0, bank, generator, bone), a
     /// generator that follows the bone with no AppSRT.
+    #[allow(clippy::too_many_arguments)] // The item, its bone, the banks and the particle state stay separate.
     pub fn spawn_item_bone_generator<T: InverseTrig>(
         &mut self,
         id: u16,
         item: u32,
         bone: usize,
         matrix: Mtx,
+        common: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
-        self.spawn_item_bone_generator_facing::<T>(id, item, bone, matrix, None, particles, rng)
+        self.spawn_item_bone_generator_facing::<T>(id, item, bone, matrix, None, common, particles, rng)
     }
 
     /// [`Self::spawn_item_bone_generator`] with the facing an
@@ -301,6 +305,7 @@ impl Effects {
         bone: usize,
         matrix: Mtx,
         facing: Option<f32>,
+        common: &ParticleBank,
         particles: &mut ParticleSystem,
         rng: &mut HsdRng,
     ) -> Result<()> {
@@ -324,7 +329,11 @@ impl Effects {
             });
         }
         self.events.spawn(&spawn, false, false);
-        let particle_bank = resources::character_bank(&self.character_banks, i32::from(bank))?;
+        let banks = resources::Banks {
+            common,
+            characters: &self.character_banks,
+        };
+        let particle_bank = banks.get(i32::from(bank))?;
         let spawned = spawn_particle::<T>(particles, particle_bank, spawn, rng, &mut self.draws)?;
         if let Some(generator) = spawned {
             if facing_appsrt {

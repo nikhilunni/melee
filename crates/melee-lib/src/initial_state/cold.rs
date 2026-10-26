@@ -259,6 +259,7 @@ impl InitialState {
         );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
         items.fighter_scale = super::fighter_scale(&fighters, &assets);
+        items.set_heap_ammo_words(&scenario.heap_ammo_words);
         // grOnett_801E41C8: the cars' material items.
         crate::scene_stage::onett::spawn_items(
             &mut stage,
@@ -481,7 +482,7 @@ fn spawn_position(assets: &Assets, slot: i16) -> Result<Vec3> {
         .stage_desc
         .position_bindings
         .iter()
-        .find(|b| b.stage_position == slot)
+        .rfind(|b| b.stage_position == slot)
         .ok_or_else(|| anyhow::anyhow!("missing spawn marker {slot}"))?;
     let (mut tree, root) = load_joint_tree(
         &assets.stage,
@@ -512,7 +513,7 @@ fn live_spawn_position(
         .stage_desc
         .position_bindings
         .iter()
-        .find(|b| b.stage_position == slot)?;
+        .rfind(|b| b.stage_position == slot)?;
     let model = stage_animations.get_mut(&u8::try_from(binding.model_id).ok()?)?;
     let matrix = model.joint_matrix(binding.joint_index as usize);
     Some(Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]))

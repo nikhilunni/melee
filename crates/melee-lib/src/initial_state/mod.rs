@@ -821,6 +821,7 @@ impl InitialState {
         );
         let mut items = Box::new(melee_it::ItemPool::new(assets.items.common.clone()));
         items.fighter_scale = fighter_scale(&fighters, &assets);
+        items.set_heap_ammo_words(&setup.heap_ammo_words);
         // Onett's cars' material items, rebuilt on their bones.
         crate::scene_stage::onett::spawn_items(
             &mut stage,

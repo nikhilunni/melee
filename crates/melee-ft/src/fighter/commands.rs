@@ -411,7 +411,9 @@ impl CommandState {
                 | Command::AtFrame(_)
                 | Command::Call { .. }
                 | Command::Return => unreachable!("interpreter consumes control flow"),
-                Command::ItemSound { .. } => unreachable!("item scripts only"),
+                Command::ItemSound { .. } | Command::ItemColorOverlay(_) => {
+                    unreachable!("item scripts only")
+                }
                 Command::ThrowAccessory => {
                     self.throw_accessory = true;
                 }

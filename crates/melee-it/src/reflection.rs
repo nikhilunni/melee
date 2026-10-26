@@ -141,6 +141,7 @@ impl ItemCore {
         cap: u32,
         assets: &crate::desc::ItemAssets,
         common: &crate::desc::ItemCommonData,
+        rng: &core::cell::Cell<gekko_math::HsdRng>,
     ) {
         if !pending.preserve_owner {
             // No reflector is a player's second fighter.
@@ -153,6 +154,7 @@ impl ItemCore {
             reflected_facing: pending.facing,
             reflected_speed: pending.speed_multiplier,
             reflector_position: pending.reflector_position,
+            rng: Some(rng),
             ..ItemEventContext::new(assets, common)
         };
         self.destroyed |= (D::logic(self.kind).reflected)(self, &context);

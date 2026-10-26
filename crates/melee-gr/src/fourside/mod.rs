@@ -170,4 +170,8 @@ pub struct Fourside {
     pub crane: crane::Crane,
     pub heli: Heli,
     pub ufo: ufo::Ufo,
+    /// How many items had been created when the UFO's camera subject was
+    /// (Camera_80029020 puts the newest subject first): the camera's list
+    /// holds the items made since ahead of it, the older ones after.
+    pub ufo_subject_items: u32,
 }

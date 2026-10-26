@@ -864,6 +864,7 @@ fn scenario_of(cold: ColdScenario) -> Result<Scenario> {
         damage_ratio: None,
         item_frequency: None,
         item_mask: None,
+        heap_ammo_words: Vec::new(),
         spawn: Default::default(),
         stadium_preload: false,
         stadium_frozen: false,

@@ -302,14 +302,18 @@ pub(crate) fn run_proc(state: &mut InitialState, map: u8) -> Result<()> {
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum Collider {
     Fighter(usize),
-    Item,
+    /// An item's own proc, by its pool id.
+    Item(u32),
+    /// Another proc (the item spawner's first map pass of a new item).
     Other,
 }
 
 /// grYorster_802024F0 (0x802024F0), the blocks' ceiling callback, for
 /// every call `collider`'s proc made: a fighter (not in Entry) bumping
 /// with `pos_delta.y` at least `bump_speed` is frozen `bump_freeze`
-/// frames (ftLib_80086A4C), and the block gathers the bump.
+/// frames (ftLib_80086A4C), an item (collision type 2 or 3) bumping with
+/// `delta_y` that fast likewise (it_8026B718), and the block gathers the
+/// bump.
 pub(crate) fn apply_bumps(state: &mut InitialState, collider: Collider) -> Result<()> {
     let events = state.map.take_ceiling_events();
     if events.is_empty() {
@@ -338,9 +342,18 @@ pub(crate) fn apply_bumps(state: &mut InitialState, collider: Collider) -> Resul
                 }
                 delta
             }
-            (2 | 3, Collider::Item) => {
+            // it_8026B718: xCBC alone, without the hitlag flags.
+            (2 | 3, Collider::Item(id)) => {
                 if event.delta_y >= parameters.bump_speed {
-                    bail!("grYorster_802024F0: an item's bump freezes it (it_8026B718)");
+                    if let Some(item) = state.items.get_mut(id) {
+                        item.hitlag_frames = parameters.bump_freeze as f32;
+                    }
+                }
+                event.delta_y
+            }
+            (2 | 3, Collider::Other) => {
+                if event.delta_y >= parameters.bump_speed {
+                    bail!("grYorster_802024F0: a new item's bump freezes it (it_8026B718)");
                 }
                 event.delta_y
             }

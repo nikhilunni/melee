@@ -376,8 +376,10 @@ impl Runtime {
         if let Some(kind) = kind {
             // it_8026CB3C: a marker, flattened onto the stage plane, outside
             // solid stage (mpColl_8004D024).
+            let markers =
+                crate::scene_stage::live_drop_markers(&state.assets, &mut state.stage_animations);
             let position = melee_gr::bomb_rain::random_item_marker(
-                &state.assets.drop_markers,
+                &markers,
                 &mut state.rng,
             )
             .map(|mut position| {
@@ -433,7 +435,11 @@ impl Runtime {
         // A container's release creates items, which the walk over the
         // pool cannot: it stops there, lets the items out, and goes on.
         while let Some((container, release)) = self.drain_item_events_to_release(flush)? {
-            self.release_contents(container, release, world)?;
+            if matches!(release, melee_it::ItemEvent::PartyBallContents { .. }) {
+                self.release_party_ball(container, release, world)?;
+            } else {
+                self.release_contents(container, release, world)?;
+            }
         }
         Ok(())
     }
@@ -454,7 +460,8 @@ impl Runtime {
             while !item.events.is_empty() {
                 match item.events.remove(0) {
                     release @ (melee_it::ItemEvent::Release { .. }
-                    | melee_it::ItemEvent::CrateContents { .. }) => {
+                    | melee_it::ItemEvent::CrateContents { .. }
+                    | melee_it::ItemEvent::PartyBallContents { .. }) => {
                         return Ok(Some((item.id, release)));
                     }
                     melee_it::ItemEvent::Resume {
@@ -669,6 +676,7 @@ impl Runtime {
                                 CHILD,
                                 matrix,
                                 facing,
+                                &state.assets.common_particle_bank,
                                 &mut state.particles,
                                 &mut state.rng,
                             )?;
@@ -688,6 +696,7 @@ impl Runtime {
                             item.id,
                             bone,
                             matrix,
+                            &state.assets.common_particle_bank,
                             &mut state.particles,
                             &mut state.rng,
                         )?;
@@ -1891,19 +1900,26 @@ impl Runtime {
                 // (item.c foobar3), newest first; a stage subject created at
                 // the stage's start; then the fighters' subjects in reverse
                 // creation order.
-                let stage_subject = match &mut state.stage {
-                    SceneStage::Stadium(stage) => stage.screen.subject.as_mut(),
+                // The stage subject sits among the items by when it was made.
+                let (stage_subject, made_after) = match &mut state.stage {
+                    SceneStage::Stadium(stage) => (stage.screen.subject.as_mut(), 0),
                     // grFourside_801F3894: the arriving UFO.
-                    SceneStage::Fourside(stage) => stage.ufo.subject.as_mut(),
-                    // grOnett_801E3930: lane A's subject.
-                    SceneStage::Onett(stage) => stage.subject.as_mut(),
-                    _ => None,
+                    SceneStage::Fourside(stage) => {
+                        (stage.ufo.subject.as_mut(), stage.ufo_subject_items)
+                    }
+                    // grOnett_801E3930: lane A's subject, made at the stage's
+                    // start.
+                    SceneStage::Onett(stage) => (stage.subject.as_mut(), 0),
+                    _ => (None, 0),
                 };
-                let items = state.items.iter_mut().rev().filter_map(|i| i.camera.as_mut());
+                let (older, newer) = state.items.split_at_id_mut(made_after);
+                let newer = newer.iter_mut().rev().filter_map(|i| i.camera.as_mut());
+                let older = older.iter_mut().rev().filter_map(|i| i.camera.as_mut());
                 let fighters = state.fighters.iter_mut().rev().map(|f| &mut f.0.camera);
                 let camera = &mut state.camera;
                 let stage_camera = &state.assets.stage_camera;
-                with_subjects(items.chain(stage_subject).chain(fighters), |subjects| {
+                let subjects = newer.chain(stage_subject).chain(older).chain(fighters);
+                with_subjects(subjects, |subjects| {
                     camera.update_standard(subjects, stage_camera)
                 });
                 state
@@ -3120,7 +3136,7 @@ impl Runtime {
         // grYorster_802024F0: the ceiling calls this proc's collision made.
         let collider = match row.callback {
             Callback::Fighter { player, .. } => crate::scene_stage::yorster::Collider::Fighter(player),
-            Callback::Item { .. } => crate::scene_stage::yorster::Collider::Item,
+            Callback::Item { id, .. } => crate::scene_stage::yorster::Collider::Item(id),
             _ => crate::scene_stage::yorster::Collider::Other,
         };
         crate::scene_stage::apply_ceiling_events(&mut self.state, collider)?;
@@ -3218,10 +3234,15 @@ impl Runtime {
                         // it_8027CB3C / it_8027CBA4: a stage enemy thrown or
                         // dropped takes its holder's facing (ftLib_800865C0).
                         melee_it::ItemRequest::Throw { item, .. }
-                        | melee_it::ItemRequest::Drop { item, .. } => state
-                            .items
-                            .iter()
-                            .any(|i| i.id == *item && i.kind == melee_types::ItemKind::Leadead),
+                        | melee_it::ItemRequest::Drop { item, .. } => {
+                            state.items.iter().any(|i| {
+                                i.id == *item
+                                    && <crate::scene_items::SceneItems as melee_it::ItemDispatch>::logic(
+                                        i.kind,
+                                    )
+                                    .release_reads_owner
+                            })
+                        }
                         _ => false,
                     };
                     let owner =
@@ -5502,6 +5523,7 @@ mod yoshi_bones;
 
 mod grab_pairs;
 mod partner_fighters;
+mod party_ball_shower;
 mod transformation;
 #[cfg(test)]
 mod yoshi_state;

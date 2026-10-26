@@ -12,7 +12,8 @@
    N shortest per distinct fault message (default 2; 0 bridges every fault),
    plus K clean samples (evenly spread) as exactness checks.
 3. Records all of them at once with record_many.py, sets each scenario's
-   `frames` to its trace length, and runs `melee-sim triage` on each.
+   `frames` to its trace length and its Fans' stale heap words
+   (fan_heap_words.py), and runs `melee-sim triage` on each.
 4. Writes <out-dir>/summary.md: the explorer's outcome counts, each bridged
    case's gate result, and a triage report file per divergent case.
 
@@ -36,6 +37,7 @@ HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent
 sys.path.insert(0, str(HERE))
 import data_root  # noqa: E402
+import fan_heap_words  # noqa: E402
 import trace_io  # noqa: E402
 
 CASE = re.compile(r"^(?P<case>v3(?:sd)?-(?P<tag>\S+?)-explore(?P<seed>[0-9a-f]+)-profile(?P<profile>\d)): "
@@ -144,6 +146,8 @@ def main(argv: list[str] | None = None) -> None:
         ticks = sum(1 for _ in trace_io.open_text(expected))
         text = re.sub(r"^frames = \d+$", f"frames = {ticks}", scenario.read_text(), count=1, flags=re.M)
         scenario.write_text(text)
+        # The Fans' stale heap words (heap_ammo_words) are the recording's.
+        fan_heap_words.main([str(scenario)])
         gate = run([str(sim), "gate", str(scenario)], cwd=ROOT)
         verdict = gate.stdout.strip().splitlines()[-1] if gate.returncode == 0 else "DIVERGES"
         report = None

@@ -48,6 +48,8 @@ mod motion {
     pub const SPAWN_FALL: u16 = 8;
     /// Looking round before its first walk (itDosei_80282DE4).
     pub const LOOK: u16 = 9;
+    /// Carried down a floor before anyone held it (itDosei_UnkMotion10).
+    pub const SPAWN_SLIDE: u16 = 10;
     /// Knocked up by a hit (itDosei_Logic7_DmgReceived).
     pub const KNOCKED: u16 = 11;
 }
@@ -101,6 +103,12 @@ static STATES: [ItemStateRow; 12] = {
         animation: stunned_animation,
         physics: no_physics,
         collision: stunned_collision,
+    };
+    rows[motion::SPAWN_SLIDE as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[10],
+        animation: spawn_slide_animation,
+        physics: no_physics,
+        collision: spawn_slide_collision,
     };
     rows[motion::KNOCKED as usize] = ItemStateRow {
         animation_id: ARTICLE_STATES[11],
@@ -482,12 +490,12 @@ fn walk_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
 /// One that has been held (xDC8 x19) slides in state 6; one that has not,
 /// in state 10.
 fn start_sliding(item: &mut ItemCore, assets: &ItemAssets) {
-    if !item.spin_ignores_facing {
-        unimplemented!(
-            "itDosei_Logic7_EnteredAir: motion_id = 0xA (xDC8 x19 clear: a Mr. Saturn nobody has held)"
-        );
-    }
-    change(item, motion::SLIDE, UNK_0X1 | ANIM_UPDATE, assets);
+    let motion = if item.spin_ignores_facing {
+        motion::SLIDE
+    } else {
+        motion::SPAWN_SLIDE
+    };
+    change(item, motion, UNK_0X1 | ANIM_UPDATE, assets);
     item.animation_rate = 1.0;
     item.owner = None;
 }
@@ -681,15 +689,39 @@ fn spawn_fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>)
         AirLanding::Airborne | AirLanding::Sliding => false,
         AirLanding::Broken => true,
         AirLanding::Landed => {
-            // itDosei_80282CD4 (80282CD4): still, on the floor, state 7.
-            item.velocity = Vec3::ZERO;
-            item.land_on_floor();
-            change(item, motion::IDLE, UNK_0X1 | ANIM_UPDATE, ctx.assets);
-            item.animation_rate = 1.0;
-            item.owner = None;
+            sit(item, ctx.assets);
             false
         }
     }
+}
+
+/// itDosei_80282CD4 (80282CD4): still, on the floor, state 7.
+fn sit(item: &mut ItemCore, assets: &ItemAssets) {
+    item.velocity = Vec3::ZERO;
+    item.land_on_floor();
+    change(item, motion::IDLE, UNK_0X1 | ANIM_UPDATE, assets);
+    item.animation_rate = 1.0;
+    item.owner = None;
+}
+
+/// itDosei_UnkMotion10_Anim (itdosei.c:628): the position kept, the rate
+/// back to 1.
+fn spawn_slide_animation(item: &mut ItemCore, _ctx: &mut ItemAnimationContext<'_>) -> bool {
+    remember_position(item);
+    item.animation_rate = 1.0;
+    false
+}
+
+/// itDosei_UnkMotion10_Coll (itdosei.c:643) -> it_8026E8C4: a stopped
+/// slide sits (itDosei_80282CD4), off the floor the spawn's fall
+/// (itDosei_80282BFC).
+fn spawn_slide_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        SlidePass::Stopped => sit(item, ctx.assets),
+        SlidePass::Airborne => start_spawn_fall(item, ctx.assets),
+        SlidePass::Sliding => {}
+    }
+    false
 }
 
 /// itDosei_UnkMotion7_Anim (80282D18): unk4 frames, then it looks round.
@@ -708,7 +740,7 @@ fn idle_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
 /// spawn's fall again), then the lean (it_80276CB8).
 fn idle_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
-        unimplemented!("itDosei_UnkMotion7_Coll (itdosei.c:560): a sitting Mr. Saturn leaving the floor is not witnessed");
+        start_spawn_fall(item, ctx.assets);
     }
     item.lean_with_floor();
     false
@@ -751,11 +783,12 @@ fn look_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
 }
 
 /// itDosei_UnkMotion9_Coll (80283008): it_8026D62C falls off the floor
-/// (itDosei_80282074); walking off, it walks from the look's frame
-/// (itDosei_SetupWalk_FC, Item_80268DD4); then the lean.
+/// (itDosei_80282074); walking off (xDD8 2), it walks from the look's
+/// frame (itDosei_SetupWalk_FC, Item_80268DD4), even in the tick it fell;
+/// then the lean.
 fn look_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if !item.stay_grounded(ctx.map, ctx.assets, ctx.entered_air) {
-        unimplemented!("itDosei_UnkMotion9_Coll (itdosei.c:615): a looking Mr. Saturn leaving the floor is not witnessed");
+        start_falling(item, ctx.assets);
     }
     if dosei(item).turn_phase == 2 {
         let frame = item.animation_frame;

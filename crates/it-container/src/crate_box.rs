@@ -372,15 +372,17 @@ fn fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
 }
 
 /// itBox_UnkMotion3_Coll (itbox.c:331): thrown, a floor (it_8026DA08)
-/// breaks it. A ceiling (it_802763E0) would stop it rising and a wall
-/// (it_80276308) break it; neither is witnessed (Final Destination).
+/// breaks it; under a ceiling (it_802763E0) it stops rising; a wall
+/// (it_80276308) breaks it.
 fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     if item.air_pass(ctx.map) {
         try_open(item);
     } else if item.ceiling_bits() != 0 {
-        unimplemented!("itBox_UnkMotion3_Coll (itbox.c:338): a thrown Box under a ceiling");
+        if item.velocity.y > 0.0 {
+            item.velocity.y = 0.0;
+        }
     } else if item.wall_bits() != 0 {
-        unimplemented!("itBox_UnkMotion3_Coll (itbox.c:342): a thrown Box into a wall");
+        try_open(item);
     }
     false
 }
@@ -392,7 +394,7 @@ fn dropped_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
     if item.air_pass(ctx.map) {
         let speed = gekko_math::msl::fabsf(item.velocity.y);
         if speed > Attributes(&ctx.assets.special_attributes).break_speed() {
-            unimplemented!("itBox_UnkMotion4_Coll (itbox.c:364): a dropped Box landing hard");
+            try_open(item);
         } else {
             item.land_on_floor();
             rest(item, ctx.assets);
@@ -403,8 +405,13 @@ fn dropped_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
 
 /// itBox_UnkMotion5_Coll -> it_8026E8C4: a stopped slide rests, off the
 /// floor it falls.
-fn slide_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
-    unimplemented!("itBox_UnkMotion5_Coll: a sliding Box (itbox.c:566), unwitnessed")
+fn slide_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        melee_it::SlidePass::Stopped => rest(item, ctx.assets),
+        melee_it::SlidePass::Airborne => start_falling(item, ctx.assets),
+        melee_it::SlidePass::Sliding => {}
+    }
+    false
 }
 
 /// itBox_UnkMotion7_Anim: gone when the despawn timer runs out.

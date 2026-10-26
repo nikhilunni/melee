@@ -207,3 +207,39 @@ pub(crate) fn element_damage(item: &ItemCore, common: &MonsterCommonData) -> f32
     };
     extra as f32
 }
+
+/// it_8027C79C (8027C79C): every surface it meets (it_8026DAA8) cries out
+/// (it_8027C9D8) and bounces it on (it_8027B964(gobj, 1)); past
+/// it_804D6D40 +0 bounces it is gone (it_8027CC88 drops nothing outside
+/// 1P mode).
+pub(crate) fn tumble_bounce(item: &mut ItemCore, ctx: &mut melee_it::ItemCollisionContext<'_>) -> bool {
+    if item.air_contact_bits(ctx.map) & 0xF == 0 {
+        return false;
+    }
+    let common = ctx
+        .assets
+        .monster_common
+        .expect("it_804D6D40 for the monster bank");
+    hurt_voice(item, ctx.rng.expect("it_8027C9D8 draws"));
+    item.bounce_velocity(ctx.map, ctx.assets);
+    scale_launch(item, &common);
+    let state = monster_mut(item);
+    state.bounces += 1;
+    state.bounces > common.bounce_limit
+}
+
+/// it_8027BA54 (8027BA54): a velocity of 10 toward the camera's eye,
+/// jittered by up to 5 sideways (HSD_Randf in double: retail 8027BA84..90
+/// fsub, fmadd, frsp) and up to 30 up (fmadds).
+pub(crate) fn fly_at_screen(item: &mut ItemCore, context: &melee_it::ItemEventContext<'_>) {
+    let mut target = context
+        .camera_position
+        .expect("it_8027BA54 reads the camera");
+    let cell = context.rng.expect("it_8027BA54 draws");
+    let mut rng = cell.get();
+    target.x = gekko_math::fma::fmadd(10.0, f64::from(rng.randf()) - 0.5, f64::from(target.x)) as f32;
+    target.y = fmadds(30.0, rng.randf(), target.y);
+    cell.set(rng);
+    let toward = melee_lb::vector::normalize(melee_lb::vector::difference(target, item.position));
+    item.velocity = Vec3::new(toward.x * 10.0, toward.y * 10.0, toward.z * 10.0);
+}

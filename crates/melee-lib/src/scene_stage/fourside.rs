@@ -131,6 +131,7 @@ pub(crate) fn initialize(
         crane: crane.unwrap(),
         heli: heli.unwrap(),
         ufo: Ufo::create(&parameters),
+        ufo_subject_items: 0,
     };
     Ok((SceneStage::Fourside(Box::new(stage)), animations))
 }
@@ -257,11 +258,8 @@ pub(crate) fn run_proc(state: &mut InitialState, key: u8) -> Result<()> {
                 &mut engine,
             );
             if !was_framed && stage.ufo.subject.is_some() {
-                // Camera_80029020 links the subject after every item's.
-                ensure!(
-                    state.items.iter().all(|item| item.camera.is_none()),
-                    "grFourside_801F3894: the UFO's camera subject would follow a framed item's"
-                );
+                // Camera_80029020: the subject goes ahead of every older one.
+                stage.ufo_subject_items = state.items.issued_ids();
             }
             // Ground_801C2FE0, then x8 = 0.
             let animation = state.stage_animations.get_mut(&key).unwrap();

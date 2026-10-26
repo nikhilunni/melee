@@ -93,6 +93,13 @@ pub struct Scenario {
     /// that item kind spawn. Required with `item_frequency`.
     #[serde(default)]
     pub item_mask: Option<String>,
+    /// The xD4C word each new Fan read in the recording, in creation order:
+    /// stale heap no game state decides (itHarisen_UnkMotion8_Coll lands a
+    /// dropped Fan on nonzero, removes it on zero). `fan_heap_words.py`
+    /// writes it from the raw tick trace; past the list the port assumes
+    /// nonzero.
+    #[serde(default)]
+    pub heap_ammo_words: Vec<u32>,
     /// How players spawn (melee_lib::slippi::SpawnRule).
     #[serde(default, deserialize_with = "spawn_rule::deserialize")]
     pub spawn: melee_lib::slippi::SpawnRule,
@@ -623,6 +630,7 @@ impl Scenario {
                 fountain_level: self.fountain_level,
                 offscreen_damage_by_camera_limits: self.online_offscreen_damage,
             },
+            heap_ammo_words: self.heap_ammo_words.iter().map(|&w| w as i32).collect(),
         }
     }
 }

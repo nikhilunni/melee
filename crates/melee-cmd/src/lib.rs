@@ -147,6 +147,11 @@ pub enum Command {
     /// Item script opcode 16 (it_8027978C): play (sub-opcodes 0..2) or
     /// stop (10, 11) an item sound. Item scripts only.
     ItemSound { sub: u8, id: u32 },
+    /// Item script opcodes 24 and 25 (it_80279958 / it_802799A8): the
+    /// item's colour overlay on (it_80279B88 -> lb_800144C8 from
+    /// it_804D6D04, its index and argument in the word's low 26 bits) and
+    /// off (it_80279BBC). Item scripts only.
+    ItemColorOverlay(Option<u32>),
 }
 #[derive(Clone, Copy, Debug)]
 pub enum ChargePhase {

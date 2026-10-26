@@ -491,6 +491,13 @@ impl ItemCore {
         self.rest_normal = hsd_types::Vec3::new(0.0, 1.0, 0.0);
     }
 
+    /// The last map pass's ceiling contact (env_flags & 0x6000), read
+    /// without it_802763E0's write of xC30.
+    pub fn touches_ceiling(&self) -> bool {
+        let collision = self.collision.as_ref().expect("item map collision");
+        collision.env_flags as u32 & collide::CEILING_MASK != 0
+    }
+
     /// The last map pass's wall contact, either side (env_flags & 0x3F or
     /// 0xFC0), read without it_80276308's write of xC30.
     pub fn touches_wall(&self) -> bool {
@@ -795,12 +802,15 @@ impl ItemCore {
     }
 
     /// it_80276D9C (80276D9C): a contact already touching last pass nudges
-    /// the item 1.5 away instead of counting as a bounce.
+    /// the item 1.5 away instead of counting as a bounce. Pressed between
+    /// two walls, the box narrows to the walls instead and there is no
+    /// bounce.
     pub(crate) fn leave_repeated_contact(&mut self, bits: u32) -> bool {
         let collision = self.collision.as_ref().expect("item map collision");
         let env = collision.env_flags as u32;
         if env & collide::LEFT_WALL_MASK != 0 && env & collide::RIGHT_WALL_MASK != 0 {
-            unimplemented!("it_80276D9C: an item pressed between two walls");
+            self.squeeze_between_walls();
+            return false;
         }
         let previous = collision.prev_env_flags as u32;
         let mut bounced = true;
@@ -896,6 +906,42 @@ impl ItemCore {
         if floor {
             self.floor_line = collision.floor.index;
         }
+    }
+
+    /// it_80276D9C's two-wall branch (retail 0x80276DE0..0x80276F08): the
+    /// box's sides become the ECB's sides pulled 1 inward (fsubs / fadds,
+    /// then a sign flip below zero), swapped by the CollData's facing, and
+    /// the fixed ECB is set from the box unscaled (x 1.0), facing the
+    /// item's direction.
+    fn squeeze_between_walls(&mut self) {
+        fn abs(v: f32) -> f32 {
+            if v < 0.0 {
+                -v
+            } else {
+                v
+            }
+        }
+        let collision = self.collision.as_ref().expect("item map collision");
+        let inner_right = abs(collision.ecb.right.x - 1.0);
+        let inner_left = abs(1.0 + collision.ecb.left.x);
+        let (right, left) = if collision.facing_dir == 1 {
+            (inner_right, inner_left)
+        } else {
+            (inner_left, inner_right)
+        };
+        self.collision_box.right = right;
+        self.collision_box.left = left;
+        let b = self.collision_box;
+        let facing = if self.facing == -1.0 { -1 } else { 1 };
+        let collision = self.collision.as_mut().expect("item map collision");
+        melee_mp::set_ecb_source_fixed(
+            collision,
+            b.top * 1.0,
+            b.bottom * 1.0,
+            b.right * 1.0,
+            b.left * 1.0,
+        );
+        melee_mp::set_facing_dir(collision, facing);
     }
 
     /// it_80275DFC (80275DFC): the box saved at the last release (xC0C) is

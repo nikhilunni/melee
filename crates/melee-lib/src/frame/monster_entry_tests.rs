@@ -1,5 +1,5 @@
-//! Whole terminal crate births. The Goomba's later lifecycle stays guarded; the
-//! ReDead's runs on (w25_redead_fall_700_v01 gates it).
+//! Whole terminal crate births. The Goomba's and the ReDead's lifecycles run
+//! on past them.
 use super::*;
 use crate::scenario::Scenario;
 use melee_it::ItemDispatch;
@@ -17,16 +17,6 @@ fn root() -> PathBuf {
         PathBuf::from,
     )
 }
-fn expect_guard(f: impl FnOnce(), message: &str) {
-    let error = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f)).unwrap_err();
-    let text = error
-        .downcast_ref::<String>()
-        .map(String::as_str)
-        .or_else(|| error.downcast_ref::<&str>().copied())
-        .unwrap();
-    assert!(text.contains(message), "{text}");
-}
-
 #[test]
 fn complete_monster_births_match_raw_and_run_real_birth_procs() {
     // Independently read DOL @210 (804DC808), used by 8027C668 fmul/66C frsp.
@@ -167,6 +157,7 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
                     melee_it::MonsterBehavior::Kuriboh {
                         walking_speed,
                         spawn_timer,
+                        ..
                     } => {
                         assert_eq!(walking_speed.to_bits(), word(0xDF4));
                         assert_eq!(*spawn_timer as u32, word(0xDF8));
@@ -247,143 +238,9 @@ fn complete_monster_births_match_raw_and_run_real_birth_procs() {
             rows += 1;
         }
         assert_eq!((rows, births), (ticks, 1));
-        let state = simulation.state();
-        let monster = state.items.iter().find(|i| i.hold_kind == 6).unwrap();
-        if monster.kind == melee_types::ItemKind::Leadead {
-            // The ReDead's lifecycle runs on (w25_redead_fall_700_v01 gates
-            // it); only a right-facing birth stays refused.
-            let mut positive = monster.clone();
-            positive.facing = 1.0;
-            let logic = crate::scene_items::SceneItems::logic(positive.kind);
-            let assets = state.assets.items.get(positive.kind);
-            expect_guard(
-                || (logic.facing_constructor.unwrap().after_query)(&mut positive, assets),
-                "right-facing ReDead",
-            );
-            continue;
-        }
-        let assets = state.assets.items.get(monster.kind);
-        let mut item = monster.clone();
-        let logic = crate::scene_items::SceneItems::logic(item.kind);
-        let bounds = melee_it::ItemBounds {
-            left: f32::NEG_INFINITY,
-            right: f32::INFINITY,
-            bottom: f32::NEG_INFINITY,
-            top: f32::INFINITY,
-            camera_offset: Default::default(),
-        };
-        let rng = std::cell::Cell::new(state.rng);
-        expect_guard(
-            || {
-                (logic.states[usize::from(item.motion)].physics)(
-                    &mut item,
-                    &melee_it::ItemPhysicsContext {
-                        owner: None,
-                        targets: &Default::default(),
-                        assets,
-                        bounds: &bounds,
-                        rng: &rng,
-                    },
-                )
-            },
-            "monster Physics",
-        );
-        let mut map = state.map.clone();
-        expect_guard(
-            || {
-                (logic.states[usize::from(item.motion)].collision)(
-                    &mut item,
-                    &mut melee_it::ItemCollisionContext {
-                        stage_parent: None,
-                        owner: None,
-                        stage_contact: false,
-                        map: &mut map,
-                        assets,
-                        bounds: &bounds,
-                        rng: Some(&rng),
-                        half_life_scale: 0.5,
-                        entered_air: None,
-                    },
-                );
-            },
-            "monster Collision",
-        );
-        for callback in [logic.picked_up, logic.dropped, logic.thrown] {
-            expect_guard(
-                || {
-                    callback(
-                        &mut item,
-                        &mut melee_it::ItemAnimationContext {
-                            owner: None,
-                            holder: None,
-                            map: &mut map,
-                            assets,
-                            partner: None,
-                            rng: Some(&rng),
-                        },
-                    )
-                },
-                "not implemented",
-            );
-        }
-        let context = melee_it::ItemEventContext::new(assets, state.items.common());
-        expect_guard(
-            || {
-                (logic.damage_received)(&mut item, &context);
-            },
-            "monster damage lifecycle",
-        );
-        expect_guard(
-            || (logic.destroyed)(&mut item),
-            "destroyed monster lifecycle",
-        );
-        if let Some(jumped_on) = item.jumped_on {
-            expect_guard(
-                || {
-                    jumped_on(&mut item, &context);
-                },
-                "it_802D8098",
-            );
-        }
-        expect_guard(
-            || {
-                simulation.tick_without_snapshot().unwrap();
-            },
-            "monster Animation",
-        );
+        // Both lifecycles run on past the birth: the ReDead's
+        // (w25_redead_fall_700_v01 gates it) and the Goomba's (the w27g_*
+        // explorer matches).
     }
 }
 
-/// it_802E8BCC (itleadead.c:145-152): the witnessed ReDead birth faces left;
-/// the same birth facing right has no retail witness and stays refused.
-#[test]
-fn right_facing_redead_birth_stays_refused() {
-    let (name, ticks, _) = CASES[1];
-    let scenario = Scenario::load(&root().join(format!("harness/scenarios/{name}.toml"))).unwrap();
-    let raw = scenario.trace_path("tick.raw.jsonl");
-    let pads = crate::trace::pad_script(&scenario)
-        .unwrap()
-        .with_display_from(&raw)
-        .unwrap();
-    let mut simulation = TestSimulation::with_inputs(
-        InitialState::from_savestate_traces(&scenario).unwrap(),
-        pads,
-    );
-    for frame in 0..ticks as u64 {
-        let display = simulation.pads.display_pass(frame);
-        simulation.engine.set_display_pass(display);
-        simulation.tick_without_snapshot().unwrap();
-    }
-    let state = simulation.state();
-    let redead = state.items.iter().find(|i| i.hold_kind == 6).unwrap();
-    assert_eq!(redead.kind, melee_types::ItemKind::Leadead);
-    assert_eq!(redead.facing, -1.0, "the witnessed birth faces left");
-    let mut right = redead.clone();
-    right.facing = 1.0;
-    let logic = crate::scene_items::SceneItems::logic(right.kind);
-    let assets = state.assets.items.get(right.kind);
-    expect_guard(
-        || (logic.facing_constructor.unwrap().after_query)(&mut right, assets),
-        "right-facing ReDead",
-    );
-}

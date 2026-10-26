@@ -550,16 +550,20 @@ impl Resources {
                     it_bombhei::SPECIAL_ATTRIBUTES,
                 )?,
             ),
-            (
-                ItemKind::Kuriboh,
-                ItemAssets::from_monster(
+            (ItemKind::Kuriboh, {
+                // Its hitbox and hurt capsules ride joints below the root.
+                let mut assets = ItemAssets::from_monster(
                     &common_archive,
                     public,
                     ItemKind::Kuriboh,
                     &it_monsters::KURIBOH_ARTICLE_STATES,
                     it_monsters::KURIBOH_SPECIAL_ATTRIBUTES,
-                )?,
-            ),
+                )?;
+                assets
+                    .read_pose(&common_archive)
+                    .map_err(|e| anyhow::anyhow!("Goomba pose: {e}"))?;
+                assets
+            }),
             (ItemKind::Leadead, {
                 // Its hitbox and hurt capsules ride joints below the root.
                 let mut assets = ItemAssets::from_monster(
@@ -605,16 +609,18 @@ impl Resources {
                     it_container::box_assets::SPECIAL_ATTRIBUTES,
                 )?,
             ),
-            (
-                ItemKind::Kusudama,
-                ItemAssets::from_common(
+            (ItemKind::Kusudama, {
+                let mut assets = ItemAssets::from_common(
                     &common_archive,
                     public,
                     ItemKind::Kusudama,
                     &it_container::party_ball_assets::ARTICLE_STATES,
                     it_container::party_ball_assets::SPECIAL_ATTRIBUTES,
-                )?,
-            ),
+                )?;
+                // Its shower's sparkles follow bones 3 and 5.
+                assets.read_pose(&common_archive)?;
+                assets
+            }),
             // Peach's rare pulls.
             (
                 ItemKind::Sword,

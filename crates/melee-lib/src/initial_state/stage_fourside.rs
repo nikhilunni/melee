@@ -149,6 +149,8 @@ pub(super) fn restore(
         crane: crane.unwrap(),
         heli: heli.unwrap(),
         ufo: ufo.unwrap(),
+        // A boundary's subject came before any item.
+        ufo_subject_items: 0,
     };
     Ok((SceneStage::Fourside(Box::new(stage)), animations))
 }

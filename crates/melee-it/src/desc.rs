@@ -221,6 +221,19 @@ pub struct ReDeadAttributes {
     pub lunge_odds: i32,
 }
 
+/// itOldkuriAttributes (itoldkuri.c), with the pair its x0 points at.
+#[derive(Clone, Copy, Debug)]
+pub struct KuribohAttributes {
+    /// x0->x0: the damage (xC9C) beyond which a hit ends it.
+    pub health: i32,
+    /// x0->x4: the walking speed.
+    pub walk_speed: f32,
+    /// x8: the X speed a stomp in the air keeps (it_802D81FC).
+    pub stomp_air_speed_scale: f32,
+    /// xC: the frames it stands after a landing (fctiwz).
+    pub stand_frames: f32,
+}
+
 /// it_804D6D40 (itPublicData +10): what every stage enemy shares.
 #[derive(Clone, Copy, Debug, Default)]
 pub struct MonsterCommonData {
@@ -247,6 +260,7 @@ pub struct ItemAssets {
     pub hit_flags: Vec<Vec<Option<ItemHitFlags>>>,
     pub special_attributes: Vec<f32>,
     pub redead: Option<ReDeadAttributes>,
+    pub kuriboh: Option<KuribohAttributes>,
     /// it_804D6D40, for the monster bank's kinds.
     pub monster_common: Option<MonsterCommonData>,
     pub scale: f32,
@@ -286,6 +300,10 @@ pub struct ItemAssets {
     pub fall_spin_degrees: f32,
     /// Per article state: the frame its joint animation stops, if it does.
     pub animation_ends: Vec<Option<f32>>,
+    /// Per article state: whether its joint animation gives some joint an
+    /// AObj (lbFindJObjWithAObj finds one). Without one lbGetJObjCurrFrame
+    /// reads zero, so the item's x5CC stays zero through the state.
+    pub joint_animated: Vec<bool>,
     /// Article x8 (ItHurtBoneList, it_8027163C): at most two hurt capsules.
     pub hurtboxes: Vec<ItemHurtbox>,
     /// it_804D6D28->xE8 (it_80275BC8): the ECB scale for a released item's
@@ -416,6 +434,11 @@ fn depth_first_joint<'a>(
 }
 
 impl ItemAssets {
+    /// [`Self::joint_animated`] for `article_state`; a kind without
+    /// visual states (a test's bare assets) counts as animated.
+    pub fn has_joint_animation(&self, article_state: usize) -> bool {
+        self.joint_animated.get(article_state).copied().unwrap_or(true)
+    }
     /// it_80272C90 / it_2725_JObjGetTranslation: the local translation of
     /// the model's attach joint (ItemModelDesc x8), in depth-first order.
     pub fn attach_translation(&self) -> hsd_types::Vec3 {
@@ -582,6 +605,17 @@ impl ItemAssets {
             drop_odds: reader.f32(common + 0x14)?,
             drop_cooldown: reader.f32(common + 0x18)?,
         });
+        if kind == melee_types::ItemKind::Kuriboh {
+            let article = reader.u32(articles + index * 4)?;
+            let special = reader.u32(article + 4)?;
+            let pair = reader.u32(special)?;
+            assets.kuriboh = Some(KuribohAttributes {
+                health: reader.s32(pair)?,
+                walk_speed: reader.f32(pair + 4)?,
+                stomp_air_speed_scale: reader.f32(special + 8)?,
+                stand_frames: reader.f32(special + 0xC)?,
+            });
+        }
         if kind == melee_types::ItemKind::Leadead {
             let article = reader.u32(articles + index * 4)?;
             let special = reader.u32(article + 4)?;
@@ -726,6 +760,7 @@ impl ItemAssets {
         Ok(Self {
             hurtboxes,
             animation_ends: visual.states.iter().map(animation_end).collect(),
+            joint_animated: visual.states.iter().map(joint_animated).collect(),
             visual,
             scripts,
             hit_flags,
@@ -781,6 +816,7 @@ impl ItemAssets {
             particle_tracks: None,
             special_pointees: Vec::new(),
             redead: None,
+            kuriboh: None,
             monster_common: None,
         })
     }
@@ -961,6 +997,20 @@ fn animation_end(state: &hsd_archive::desc::item_visual::ItemVisualState) -> Opt
     end
 }
 
+/// Whether an article state's joint animation has an AObj on any joint
+/// (lbFindJObjWithAObj's depth-first search).
+fn joint_animated(state: &hsd_archive::desc::item_visual::ItemVisualState) -> bool {
+    let mut stack: Vec<&hsd_archive::desc::AnimJoint> = state.joint.iter().collect();
+    while let Some(joint) = stack.pop() {
+        if joint.aobjdesc.is_some() {
+            return true;
+        }
+        stack.extend(joint.child.as_deref());
+        stack.extend(joint.next.as_deref());
+    }
+    false
+}
+
 /// itanimlist.c uses the shared ten control commands and its own payload table.
 type DecodedScript = (Vec<Command>, Vec<Option<ItemHitFlags>>);
 /// Decode a state's script and every subroutine it calls or jumps to into
@@ -1094,6 +1144,10 @@ fn read_block(
                 id: ((word >> 16) & 0x3FF) as u16,
                 duration: word as u16,
             },
+            // it_80279958: one word, the overlay's index and argument
+            // (CommandInfo unk13); it_802799A8: one word.
+            24 => Command::ItemColorOverlay(Some(word & 0x03ff_ffff)),
+            25 => Command::ItemColorOverlay(None),
             _ => unimplemented!("itanimlist.c item script opcode {op}"),
         };
         commands.push(command);

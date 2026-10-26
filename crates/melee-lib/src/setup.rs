@@ -87,6 +87,11 @@ pub struct Setup {
     pub items: crate::ItemRules,
     /// Slippi codes the recording ran (all off in retail).
     pub slippi: crate::slippi::SlippiCodes,
+    /// The stale heap word each new Fan reads as xD4C, in creation order
+    /// (`melee_it::ItemPool::set_heap_ammo_words`): uninitialised memory
+    /// that no game state decides, named by a scenario from its recording.
+    /// Empty for a match the port starts itself.
+    pub heap_ammo_words: Vec<i32>,
 }
 /// One fighter GObj a match creates, in creation order (the fighter list
 /// order): each player's fighter, then its partner (Player_80031AD0 creates

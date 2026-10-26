@@ -1109,16 +1109,7 @@ fn start_tumble(item: &mut ItemCore, context: &ItemEventContext<'_>, common: &Mo
 /// retail 8027BA84..90 fsub, fmadd, frsp) and up to 30 up (fmadds).
 fn start_screen_flight(item: &mut ItemCore, context: &ItemEventContext<'_>) {
     item.enter_air();
-    let mut target = context
-        .camera_position
-        .expect("it_8027BA54 reads the camera");
-    let cell = context.rng.expect("it_8027BA54 draws");
-    let mut rng = cell.get();
-    target.x = gekko_math::fma::fmadd(10.0, f64::from(rng.randf()) - 0.5, f64::from(target.x)) as f32;
-    target.y = gekko_math::fma::fmadds(30.0, rng.randf(), target.y);
-    cell.set(rng);
-    let toward = melee_lb::vector::normalize(melee_lb::vector::difference(target, item.position));
-    item.velocity = Vec3::new(toward.x * 10.0, toward.y * 10.0, toward.z * 10.0);
+    zako::fly_at_screen(item, context);
     item.enter_air();
     change(item, motion::SCREEN, UNK_0X1 | ANIM_UPDATE, context.assets);
 }
@@ -1133,19 +1124,7 @@ fn screen_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 /// (it_8027B964(gobj, 1)); past it_804D6D40 +0 bounces it is gone
 /// (it_8027CC88 drops nothing outside 1P mode).
 fn tumble_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
-    if item.air_contact_bits(ctx.map) & 0xF == 0 {
-        return false;
-    }
-    let common = ctx
-        .assets
-        .monster_common
-        .expect("it_804D6D40 for the monster bank");
-    zako::hurt_voice(item, ctx.rng.expect("it_8027C9D8 draws"));
-    item.bounce_velocity(ctx.map, ctx.assets);
-    zako::scale_launch(item, &common);
-    let state = monster_mut(item);
-    state.bounces += 1;
-    state.bounces > common.bounce_limit
+    zako::tumble_bounce(item, ctx)
 }
 
 fn draw_randf(context: &ItemEventContext<'_>) -> f32 {

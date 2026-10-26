@@ -248,6 +248,11 @@ fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
 
 /// itCapsule_UnkMotion6_Coll -> it_8026E8C4: a stopped slide rests, off
 /// the floor it falls.
-fn slide_collision(_item: &mut ItemCore, _ctx: &mut ItemCollisionContext<'_>) -> bool {
-    unimplemented!("itCapsule_UnkMotion6_Coll: a sliding Capsule (itcapsule.c:259), unwitnessed")
+fn slide_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        melee_it::SlidePass::Stopped => come_to_rest(item, ctx.assets),
+        melee_it::SlidePass::Airborne => start_falling(item, ctx.assets),
+        melee_it::SlidePass::Sliding => {}
+    }
+    false
 }

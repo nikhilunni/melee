@@ -197,6 +197,23 @@ pub enum ItemEvent {
         position: Vec3,
         previous_position: Vec3,
     },
+    /// it_80289BE8 (itkusudama.c): an opened Party Ball's shower. A coin
+    /// match's coins aside, a monster may come out (it_8026F6BC at
+    /// `position` lowered by 10, after a small random drift); otherwise
+    /// HSD_Randi over the weights picks `count` of `kind`, ten to fourteen
+    /// Foods, or three or four draws from the contents table, each
+    /// created at `center` (the ECB centre) facing from `position`
+    /// lowered by 5, with its own random drift.
+    PartyBallContents {
+        /// x4, x0, x8: the weights of the attribute kind, of Foods and of
+        /// random items.
+        weights: [i32; 3],
+        /// x10 and x14: the attribute kind and how many of it.
+        kind: i32,
+        count: i32,
+        center: Vec3,
+        position: Vec3,
+    },
     /// The rest of the item's callback, which the scene runs through
     /// `ItemLogic::resumed` once the effects before it are made.
     Resume {
@@ -300,9 +317,12 @@ pub enum MonsterBehavior {
     Klaptrap {
         parent: Option<crate::StageParent>,
     },
+    /// itOldkuri: xDF4 the walk speed, xDF8 the stand's countdown, xDFC
+    /// whether the walk has run a whole cycle (and may turn).
     Kuriboh {
         walking_speed: f32,
         spawn_timer: i32,
+        cycled: bool,
     },
     ReDead(ReDeadState),
 }
@@ -1068,6 +1088,9 @@ pub struct ItemCore {
     pub in_hitlag: bool,
     pub sound_requests: melee_types::fixed::FixedVec<u32, 8>,
     pub animation_frame: f32,
+    /// The state's joint animation has no AObj (lbGetJObjCurrFrame finds
+    /// none): x5CC, which item scripts time their frames by, reads zero.
+    pub frame_without_aobj: bool,
     /// x5D0_animFrameSpeed: the joint animation's per-frame advance.
     pub animation_rate: f32,
     /// xDCF b2 (it_8027518C): the item ends without its destroy effect.
@@ -1166,12 +1189,16 @@ pub struct ItemCore {
     /// the hit-shield callback) refreshed before the item's procs.
     pub shield_anchor: Option<u8>,
     pub shield_view: Option<ShieldView>,
+    /// xDC0: what pushed it this frame (`push::PUSHED_BY_FIGHTER`,
+    /// `push::PUSHED_BY_ITEM`; it_802750E8 reads it).
+    pub push_contacts: u8,
     /// xD50: landings since the last throw or bounce-free touchdown
     /// (it_8026DDFC, it_8026DD5C).
     pub land_count: u32,
     /// xD4C: shots left (the Star Rod and Lip's Stick set it at spawn;
-    /// it_8026B594 reads it). Zero for every other kind: nothing else
-    /// writes it.
+    /// it_8026B594 reads it). The Fan reads it unwritten: a stale heap word
+    /// (`ItemPool::set_heap_ammo_words`). Zero for every other kind, which
+    /// never reads it.
     pub ammo: i32,
     /// xD54: throws since creation (it_80273F34).
     pub throw_count: u32,
@@ -1485,6 +1512,7 @@ impl ItemCore {
         self.flush_queued_effects();
         self.article_state = usize::from(motion);
         self.animation_frame = 0.0;
+        self.frame_without_aobj = !assets.has_joint_animation(self.article_state);
         self.restart_script(motion, assets);
         self.advance_script(assets);
     }
@@ -1521,6 +1549,7 @@ impl ItemCore {
     pub fn play_article_animation(&mut self, article_state: usize, assets: &ItemAssets) {
         self.article_state = article_state;
         self.animation_frame = 0.0;
+        self.frame_without_aobj = !assets.has_joint_animation(article_state);
         self.pose_steps = 1;
         self.emit_particle_keys(assets, self.root_translation);
     }
@@ -1602,10 +1631,12 @@ impl ItemCore {
             }
         }
         if article_state < 0 {
+            self.frame_without_aobj = false;
             self.clear_script();
             return;
         }
         self.article_state = article_state as usize;
+        self.frame_without_aobj = !assets.has_joint_animation(self.article_state);
         // Item_80268D34's HSD_JObjReqAnimAll(0) with ANIM_UPDATE, then the
         // HSD_JObjAnimAll every state change takes.
         if flags & state_change::ANIM_UPDATE != 0 {
@@ -1836,8 +1867,14 @@ impl ItemCore {
     pub fn advance_animation(&mut self, assets: &ItemAssets) {
         // lbGetJObjCurrFrame: an article without a model (Item_80267978's
         // bare JObj) has no AObj, so x5CC stays zero.
+        // A state whose joint animation has no AObj reads zero likewise
+        // (the Party Ball's hang times its opening by it).
         if assets.model != 0 {
-            self.animation_frame += self.animation_rate;
+            if self.frame_without_aobj {
+                self.animation_frame = 0.0;
+            } else {
+                self.animation_frame += self.animation_rate;
+            }
         }
         // Item_802694CC's HSD_JObjAnimAll, on the JObj the collision proc
         // last placed.
@@ -1979,6 +2016,9 @@ impl ItemCore {
                         self.sound_requests.push(*id);
                     }
                 }
+                // it_80279B88 / it_80279BBC: the colour overlay, drawing
+                // only (the Party Ball's flash).
+                Command::ItemColorOverlay(_) => {}
                 // `desc::read_block` decodes only the opcodes above; the
                 // shared flow commands (Command_00..09) stay in the script
                 // state machine.
@@ -2017,7 +2057,21 @@ pub struct ItemPool {
     /// were marked (`note_destroyed`): Item_8026A8EC frees each one's GObj
     /// where it is called, so that order is the allocator's.
     destroy_order: melee_types::fixed::FixedVec<u32, ITEM_CAPACITY>,
+    /// xD4C of each new item whose kind reads it unwritten (the Fan,
+    /// `ItemLogic::READS_HEAP_AMMO`), in creation order: whatever the heap
+    /// held where HSD_ObjAlloc placed the Item (Item_80268B5C leaves it).
+    /// Retail recordings show heap garbage (0x3B65664E, 0xF1F1F1F1, 0, ...)
+    /// that no game state decides, so a scenario names the words its
+    /// recording read (`Setup::heap_ammo_words`); past the list, or with
+    /// none, [`DEFAULT_HEAP_AMMO`].
+    heap_ammo_words: Vec<i32>,
+    heap_ammo_next: usize,
 }
+
+/// xD4C for a new Fan when no word is named: nonzero, as about three Fans
+/// in four read in the retail recordings, so a dropped Fan lands as a
+/// thrown one (it_8026E15C) instead of vanishing (it_8026DF34).
+pub const DEFAULT_HEAP_AMMO: i32 = 1;
 
 /// xC2C of an Item struct no item has used: whatever the heap held (retail
 /// traces show 0xC0C0C0C0, 0x8A97CE97 and 0x95428D21), which is no line.
@@ -2035,7 +2089,29 @@ impl ItemPool {
             freed_rest_lines: Vec::with_capacity(ITEM_CAPACITY),
             destroy_order: Default::default(),
             fighter_scale: None,
+            heap_ammo_words: Vec::new(),
+            heap_ammo_next: 0,
         }
+    }
+    /// The stale xD4C words new Fans read, in creation order (see
+    /// `heap_ammo_words`). Called once, before the match steps.
+    pub fn set_heap_ammo_words(&mut self, words: &[i32]) {
+        self.heap_ammo_words = words.to_vec();
+        self.heap_ammo_next = 0;
+    }
+    /// xD4C of a new item: the next named heap word for a kind that reads
+    /// it unwritten, else 0 (the ammo kinds write theirs in `spawned`).
+    fn heap_ammo(&mut self, reads_heap_ammo: bool) -> i32 {
+        if !reads_heap_ammo {
+            return 0;
+        }
+        let word = self
+            .heap_ammo_words
+            .get(self.heap_ammo_next)
+            .copied()
+            .unwrap_or(DEFAULT_HEAP_AMMO);
+        self.heap_ammo_next += 1;
+        word
     }
     /// it_804D6D28: ItCo's common item data.
     pub fn common(&self) -> &ItemCommonData {
@@ -2110,6 +2186,7 @@ impl ItemPool {
             "Item_8026A810: this constructor requires live facing context"
         );
         let mut item = self.prepare_spawn(spawn, assets, stale_multiplier, gobjs)?;
+        item.ammo = self.heap_ammo(D::logic(item.kind).reads_heap_ammo);
         item.update_spin(self.common.spawn_spin_degrees);
         (D::logic(item.kind).spawned)(&mut item, assets);
         Some(self.finish_spawn(item))
@@ -2126,6 +2203,7 @@ impl ItemPool {
     ) -> Option<u32> {
         assert!(D::logic(spawn.kind).constructor_reads_map);
         let mut item = self.prepare_spawn(spawn, assets, 1.0, gobjs)?;
+        item.ammo = self.heap_ammo(D::logic(item.kind).reads_heap_ammo);
         item.initialize_collision(spawn, assets, map);
         item.set_root_translation(item.position);
         item.update_spin(self.common.spawn_spin_degrees);
@@ -2148,6 +2226,7 @@ impl ItemPool {
             .facing_constructor
             .expect("a table-owned constructor requiring live facing context");
         let mut item = self.prepare_spawn(spawn, assets, 1.0, gobjs)?;
+        item.ammo = self.heap_ammo(D::logic(item.kind).reads_heap_ammo);
         item.initialize_collision(spawn, assets, map);
         item.set_root_translation(item.position);
         item.update_spin(self.common.spawn_spin_degrees);
@@ -2251,6 +2330,7 @@ impl ItemPool {
             in_hitlag: false,
             sound_requests: Default::default(),
             animation_frame: 0.0,
+            frame_without_aobj: false,
             animation_rate: 1.0,
             destroy_effect_suppressed: false,
             owner_released: false,
@@ -2291,6 +2371,7 @@ impl ItemPool {
             rest_line: self.freed_rest_lines.pop().unwrap_or(UNUSED_REST_LINE),
             slide_reversals: 0,
             land_count: 0,
+            push_contacts: 0,
             ammo: 0,
             throw_count: 0,
             pending_shield_owner: None,
@@ -2416,6 +2497,7 @@ impl ItemPool {
             }) {
                 let context = ItemEventContext {
                     shield_normal: deflection.normal,
+                    rng: Some(rng),
                     ..ItemEventContext::new(assets, &common)
                 };
                 item.destroyed |= (D::logic(item.kind).shield_bounced)(item, &context);
@@ -2449,10 +2531,13 @@ impl ItemPool {
             };
             item.destroyed |= (D::logic(item.kind).damage_dealt)(item, &context);
         } else if let Some(reflection) = item.pending_reflection {
-            item.reflect::<D>(reflection, reflected_stale, cap, assets, &common);
+            item.reflect::<D>(reflection, reflected_stale, cap, assets, &common, rng);
         } else if item.pending_absorb.is_some() {
             // Item_8026A294: the kind's absorbed callback.
-            let context = ItemEventContext::new(assets, &common);
+            let context = ItemEventContext {
+                rng: Some(rng),
+                ..ItemEventContext::new(assets, &common)
+            };
             item.destroyed |= (D::logic(item.kind).absorbed)(item, &context);
         } else if item.touched_by.is_some() {
             // item.c:1836: xDCE b6 runs Item.touched.
@@ -2551,6 +2636,16 @@ impl ItemPool {
         if let Some(item) = self.get_mut(id) {
             item.destroyed = true;
         }
+    }
+    /// How many items the pool has created: the next item's id.
+    pub fn issued_ids(&self) -> u32 {
+        self.next_id
+    }
+    /// The live items split at the first created at or after id `id`:
+    /// (older, newer), each in creation order.
+    pub fn split_at_id_mut(&mut self, id: u32) -> (&mut [ItemCore], &mut [ItemCore]) {
+        let at = self.items.iter().position(|item| item.id >= id).unwrap_or(self.items.len());
+        self.items.split_at_mut(at)
     }
     pub fn get_mut(&mut self, id: u32) -> Option<&mut ItemCore> {
         self.items.iter_mut().find(|i| i.id == id)
@@ -2923,6 +3018,8 @@ impl Clone for ItemPool {
             freed_rest_lines: hsd_types::storage::clone_vec(&self.freed_rest_lines),
             destroy_order: self.destroy_order.clone(),
             fighter_scale: self.fighter_scale,
+            heap_ammo_words: hsd_types::storage::clone_vec(&self.heap_ammo_words),
+            heap_ammo_next: self.heap_ammo_next,
         }
     }
 }
@@ -2943,6 +3040,7 @@ mod tests {
             hit_flags: Vec::new(),
             special_attributes: Vec::new(),
             redead: None,
+            kuriboh: None,
             monster_common: None,
             scale: 1.0,
             model: 0,
@@ -2963,6 +3061,7 @@ mod tests {
             spin_rate: 0.0,
             fall_spin_degrees: 0.0,
             animation_ends: Vec::new(),
+            joint_animated: Vec::new(),
             hurtboxes: Vec::new(),
             release_box_scale: 0.0,
             throw_break: 0,

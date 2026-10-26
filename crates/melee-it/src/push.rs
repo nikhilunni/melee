@@ -141,6 +141,7 @@ impl ItemPool {
         };
         let item = &mut self.items[index];
         item.nudge = Vec3::ZERO;
+        item.push_contacts = 0;
         let grounded = item.ground_or_air == GroundOrAir::Ground;
         if !item.held && item.pushable && grounded {
             if item.pushed_by_fighters {
@@ -211,6 +212,7 @@ impl ItemPool {
         }
         if let Some(nudge) = nudge {
             self.items[index].nudge.x = nudge;
+            self.items[index].push_contacts |= PUSHED_BY_ITEM;
         }
     }
 
@@ -271,6 +273,7 @@ impl ItemPool {
         }
         if let Some(nudge) = nudge {
             self.items[index].nudge.x = nudge;
+            self.items[index].push_contacts |= PUSHED_BY_ITEM;
         }
     }
 }
@@ -312,5 +315,11 @@ fn push_from_fighters(
         };
         // retail: fmuls.
         item.nudge.x = push_speed * direction;
+        item.push_contacts |= PUSHED_BY_FIGHTER;
     }
 }
+
+/// xDC0 bit 0: a fighter pushed it this frame (it_80271B60).
+pub const PUSHED_BY_FIGHTER: u8 = 1;
+/// xDC0 bit 1: another item pushed it this frame (it_80271D2C, it_80271F78).
+pub const PUSHED_BY_ITEM: u8 = 2;

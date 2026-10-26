@@ -50,6 +50,10 @@ pub struct Assets {
     pub stage_camera: melee_cm::StageCamera,
     /// Ground_801C2D24 at the markers the Sudden Death rain reads.
     pub drop_markers: melee_gr::bomb_rain::DropMarkers,
+    /// The (model, joint) each drop marker is bound to, as `drop_markers`
+    /// orders them: on a model the stage animates the marker moves with
+    /// its joint (`crate::scene_stage::live_drop_markers`).
+    pub drop_marker_joints: DropMarkerJoints,
     /// The stage's random item weights and spawn interval scale.
     pub item_rates: melee_it::random_spawn::StageItemRates,
     /// One per fighter GObj, in fighter-list order (`Setup::roster`).
@@ -302,6 +306,21 @@ impl Assets {
                 Ok(None)
             }
         };
+        let binding_of = |index: i16| {
+            stage_desc
+                .position_bindings
+                .iter()
+                // Ground_801C34AC: a later pair takes the marker (x280[pair[1]]).
+                .rfind(|b| b.stage_position == index)
+                .map(|b| (b.model_id, b.joint_index as usize))
+        };
+        let mut drop_marker_joints = DropMarkerJoints::default();
+        for (i, slot) in drop_marker_joints.items.iter_mut().enumerate() {
+            *slot = binding_of(melee_gr::bomb_rain::ITEM_MARKER_FIRST + i as i16);
+        }
+        for (i, slot) in drop_marker_joints.spawns.iter_mut().enumerate() {
+            *slot = binding_of(i as i16);
+        }
         let mut drop_markers = melee_gr::bomb_rain::DropMarkers::default();
         for (i, slot) in drop_markers.items.iter_mut().enumerate() {
             *slot = bound_marker(melee_gr::bomb_rain::ITEM_MARKER_FIRST + i as i16)?;
@@ -350,6 +369,7 @@ impl Assets {
             arena,
             stage_camera,
             drop_markers,
+            drop_marker_joints,
             item_rates,
             fighters,
             stage,
@@ -564,6 +584,13 @@ fn stage_camera(
         },
     })
 }
+/// Each drop marker's (model, joint) binding, if the stage binds one.
+#[derive(Clone, Copy, Debug, Default)]
+pub struct DropMarkerJoints {
+    pub items: [Option<(usize, usize)>; melee_gr::bomb_rain::ITEM_MARKER_COUNT],
+    pub spawns: [Option<(usize, usize)>; melee_gr::bomb_rain::SPAWN_MARKER_COUNT],
+}
+
 pub(crate) fn stage_position(
     archive: &Archive,
     stage: &melee_gr::desc::StageDesc,
@@ -572,7 +599,8 @@ pub(crate) fn stage_position(
     let binding = stage
         .position_bindings
         .iter()
-        .find(|b| b.stage_position == index)
+        // Ground_801C34AC: the marker's last pair registers last (x280).
+        .rfind(|b| b.stage_position == index)
         .context("stage marker")?;
     let (mut tree, root) = load_joint_tree(archive, &stage.models[binding.model_id].joint)?;
     // grAnime_801C8138 evaluates frame zero before Ground_801C39C0 reads markers.

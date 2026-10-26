@@ -41,6 +41,8 @@ mod motion {
     pub const THROWN_LIT: u16 = 10;
     pub const LIT_FALL: u16 = 6;
     pub const EXPLODE: u16 = 11;
+    /// Sliding down a slope before its first walk (itBombhei_UnkMotion12).
+    pub const SLIDE: u16 = 12;
 }
 
 /// itBombHeiAttributes (special attributes, x0..x28).
@@ -165,6 +167,12 @@ static STATES: [ItemStateRow; 13] = {
         physics: no_physics,
         collision: no_collision,
     };
+    rows[motion::SLIDE as usize] = ItemStateRow {
+        animation_id: ARTICLE_STATES[12],
+        animation: no_animation,
+        physics: no_physics,
+        collision: slide_collision,
+    };
     rows
 };
 
@@ -174,11 +182,18 @@ impl ItemLogic for BombHei {
     /// it_3F14_Logic6_EnteredAir (80280E9C): state 12, keeping bone 11's
     /// height and tilt. Walking sets xD5C to 0 (fn_80280974, it_8027EE04),
     /// so only a Bob-omb standing on a slope before it walks gets here.
-    const ENTERED_AIR: Option<EnteredAir> = Some(|_item, _assets| {
-        unimplemented!(
-            "it_3F14_Logic6_EnteredAir: Item_80268E5C(arg0, 0xC, ITEM_ANIM_UPDATE), a Bob-omb sliding down a floor"
-        )
-    });
+    /// The squash joint it keeps is drawing only.
+    const ENTERED_AIR: Option<EnteredAir> =
+        Some(|item, assets| change(item, motion::SLIDE, ANIM_UPDATE, assets));
+    /// it_8026B960's Bob-omb case: xDEC, the whole life left, unless it
+    /// is exploding (state 11).
+    fn fuse(item: &ItemCore) -> f32 {
+        if item.motion == motion::EXPLODE {
+            -1.0
+        } else {
+            bomb(item).life_frames
+        }
+    }
     /// itBombhei_Logic6_Spawned (8027D758).
     fn spawned(item: &mut ItemCore, assets: &ItemAssets) {
         let a = Attributes(&assets.special_attributes);
@@ -585,7 +600,7 @@ fn walk_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> bo
 
 /// itBombhei_UnkMotion2_Coll (8027F270): a grounded pass that stops at
 /// edges; an edge or a wall turns it round (it_8027F42C) and it leans with
-/// the floor. Walking off the ground is not ported.
+/// the floor; off the ground it falls.
 fn walk_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let (grounded, edge) = item.walk_ground_pass(ctx.map);
     if edge {
@@ -605,13 +620,37 @@ fn walk_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
 }
 
 /// it_8027DE18 (8027DE18): from standing or facing its way the model's
-/// spin axis and facing lock and its spin stops (it_80274740); from facing
-/// its way the walk's timer starts (x14); then the fall.
-fn start_falling(_item: &mut ItemCore, _assets: &ItemAssets) {
-    // it_8027DE18 (itbombhei.c:195) out of a walk, a turn, the stand or the
-    // turn to face: the spin and facing lock (from states 0 and 3), the
-    // walk timer (from state 3), state 1.
-    unimplemented!("it_8027DE18 (itbombhei.c:195): a Bob-omb leaving the floor is not witnessed")
+/// spin axis and facing lock (xDC8 x19, x17) and its spin stops
+/// (it_80274740); from facing its way the walk's timer starts (x14); then
+/// the fall, state 1 (the squash joint it keeps is drawing only).
+fn start_falling(item: &mut ItemCore, assets: &ItemAssets) {
+    if matches!(item.motion, motion::FACE | motion::STAND) {
+        item.spin_ignores_facing = true;
+        item.rotation_axis = 1;
+        item.reset_spin();
+    }
+    if item.motion == motion::FACE {
+        bomb_mut(item).countdown = fctiwz(Attributes(&assets.special_attributes).walk_frames());
+    }
+    change(item, motion::FALL, ANIM_UPDATE, assets);
+}
+
+/// itBombhei_UnkMotion12_Coll (8028103C) -> it_8026E8C4: a stopped slide
+/// stands it still (fn_8027DAC8), off the floor it falls (it_8027DE18).
+fn slide_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
+    match item.ground_collision_with_slide(ctx.map, ctx.assets) {
+        SlidePass::Stopped => stand_still(item, ctx.assets),
+        SlidePass::Airborne => start_falling(item, ctx.assets),
+        SlidePass::Sliding => {}
+    }
+    false
+}
+
+/// fn_8027DAC8 (8027DAC8): grabbable, still, standing.
+fn stand_still(item: &mut ItemCore, assets: &ItemAssets) {
+    item.grabbable = true;
+    item.velocity = Vec3::ZERO;
+    change(item, motion::STAND, ANIM_UPDATE, assets);
 }
 
 /// itBombhei_UnkMotion1_Phys -> it_80272860: gravity only.
@@ -634,10 +673,7 @@ fn fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
         AirLanding::Airborne | AirLanding::Sliding => false,
         AirLanding::Broken => true,
         AirLanding::Landed => {
-            // fn_8027DAC8 (8027DAC8): grabbable, still, standing.
-            item.grabbable = true;
-            item.velocity = Vec3::ZERO;
-            change(item, motion::STAND, ANIM_UPDATE, ctx.assets);
+            stand_still(item, ctx.assets);
             false
         }
     }

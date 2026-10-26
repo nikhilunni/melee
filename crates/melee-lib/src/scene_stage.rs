@@ -42,6 +42,35 @@ pub(crate) fn publish_joint_matrices(
     }
 }
 
+/// Ground_801C2D24 (0x801C2D24) at the drop markers now: each marker is
+/// its joint's world translation (lb_8000B1CC). Kongo Jungle binds some to
+/// the platforms its animation moves, which the live models give; every
+/// other stage's marker joints stand still, so their positions at setup
+/// hold (each stage's `w26_start_*_items_all` boundary witnesses its drops).
+/// Pokemon Stadium's forms bind no markers (GrPs1..4.dat's map_head section
+/// 0 is empty for maps 3, 4 and 6..9), so its stay too.
+pub(crate) fn live_drop_markers(
+    assets: &crate::assets::Assets,
+    animations: &mut std::collections::BTreeMap<u8, melee_gr::last::animation::BackgroundAnimation>,
+) -> melee_gr::bomb_rain::DropMarkers {
+    let mut markers = assets.drop_markers.clone();
+    if assets.stage_desc.kind != melee_types::GrKind::Kongo {
+        return markers;
+    }
+    let joints = &assets.drop_marker_joints;
+    let slots = markers.items.iter_mut().zip(&joints.items);
+    for (slot, binding) in slots.chain(markers.spawns.iter_mut().zip(&joints.spawns)) {
+        let (Some(_), Some((model, joint))) = (*slot, *binding) else {
+            continue;
+        };
+        if let Some(animation) = u8::try_from(model).ok().and_then(|m| animations.get_mut(&m)) {
+            let m = animation.joint_matrix(joint);
+            *slot = Some(hsd_types::Vec3::new(m.0[0][3], m.0[1][3], m.0[2][3]));
+        }
+    }
+    markers
+}
+
 /// Live Ground GObjs by scheduler key: map ids, plus Fountain of Dreams'
 /// star and second platform (melee_gr::izumi::procs).
 pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 16];
