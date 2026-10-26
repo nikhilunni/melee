@@ -77,6 +77,7 @@
           <button data-action="stocks-up" class="stepper-arrow" aria-label="More">&#x25B6;</button>
         </div>
         <button data-action="rules" class="btn pill ghost" aria-haspopup="dialog"><span>Rules</span></button>
+        <button data-action="controllers" class="btn pill ghost" aria-haspopup="dialog"><span>Controllers</span></button>
       </div>
     </header>
     <div id="character-grid" class="character-grid enter" style="--i:1" role="grid" aria-label="Characters"></div>
@@ -97,7 +98,7 @@
         <kbd>Q</kbd><kbd>E</kbd> Costume <kbd>&#x232B;</kbd> Clear <kbd>Esc</kbd> Back</p>
       <p id="art-status" class="art-status" hidden></p>
       <div class="match-keys" aria-label="Match controls">
-        <p class="pads-note">Keyboards and gamepads drive the human players in port order</p>
+        <p class="pads-note">Keyboards drive the human players in port order; a gamepad joins with a button press</p>
         <p><b class="p1">1st</b> <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move <kbd>K</kbd> attack <kbd>J</kbd> special <kbd>Space</kbd> jump <kbd>L</kbd> shield <kbd>I</kbd> grab</p>
         <p><b class="p2">2nd</b> <kbd>&larr;&uarr;&darr;&rarr;</kbd> move <kbd>N</kbd> attack <kbd>M</kbd> special <kbd>,</kbd> jump <kbd>.</kbd> shield <kbd>/</kbd> grab</p>
       </div>
@@ -187,6 +188,23 @@
     </div>
   </section>
 </main>
+
+<!-- Gamepads: the controllers card, the app menu (the browser has no menu
+     bar for a pad), the join toast and context hints (pads.js). -->
+<dialog id="controllers" class="card glass rules-card controllers-card" aria-label="Controllers">
+  <div id="controllers-body"></div>
+</dialog>
+<dialog id="app-menu" class="card glass menu-card app-menu" aria-labelledby="app-menu-title">
+  <h1 id="app-menu-title" class="display title">Melee</h1>
+  <div class="menu-buttons">
+    <button data-action="controllers" class="btn accent"><span>Controllers&hellip;</span></button>
+    <button data-action="menu-fullscreen" class="btn"><span id="fullscreen-label">Full Screen</span></button>
+    <button data-action="menu-help" class="btn"><span>Help</span></button>
+    <button data-action="menu-close" class="btn"><span>Close</span></button>
+  </div>
+</dialog>
+<div id="toast" class="toast" role="status" hidden></div>
+<p id="pad-hints" class="pad-hints" aria-hidden="true" hidden></p>
 
 <!-- Messages: load errors, faults. -->
 <dialog id="message" class="card glass message" aria-labelledby="message-title">

@@ -4,7 +4,8 @@
 //
 // The menus are built once and updated in place (classes, text, image
 // sources), so hovers, focus and animations survive state changes.
-import init, { WebApp, catalog, header_len, fst_range, create_surface } from './pkg/melee_web.js';
+import init, { WebApp, catalog, header_len, fst_range, create_surface, pad_labels, focus_next } from './pkg/melee_web.js';
+import { Pads, FakePads, MENU, renderControllers, updateLive } from './pads.js';
 
 const SCREENS = ['disc', 'characters', 'stages', 'loading', 'match', 'results'];
 const ACTIONS = { left: 0, right: 1, up: 2, down: 3, attack: 4, special: 5, jump: 6, shield: 7, grab: 8 };
@@ -21,6 +22,8 @@ const canvas = $('game');
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const SPRING = 'cubic-bezier(0.2, 0.9, 0.25, 1.15)';
 let app, cat, discFile = null, picking = 0, lastFrame = null;
+// Gamepads (pads.js) and their labels; set up in main().
+let pads = null, padLabels = null;
 // One load at a time; a new token abandons the previous one.
 let loadActive = false, loadToken = 0;
 // The stage of the match being loaded or played (the loading backdrop).
@@ -306,6 +309,12 @@ async function openHandle(handle) {
   await openDisc(await handle.getFile());
 }
 async function chooseDisc() {
+  // A gamepad press is no user activation: the browser would ignore the picker.
+  if (navigator.userActivation && !navigator.userActivation.isActive) {
+    return message('Open a disc', 'Browsers open files only right after a click, a key press or a drop; a gamepad '
+      + 'button does not count. Click Open Disc, press Enter on it, or drop the image on the page. A disc opened '
+      + 'before is offered here as Continue or Open (Chrome and Edge remember it).');
+  }
   if (window.showOpenFilePicker) {
     try {
       const [handle] = await window.showOpenFilePicker({
@@ -406,6 +415,12 @@ function render() {
   }
   ({ disc: updateDisc, characters: updateCharacters, stages: updateStages, loading: updateLoading,
      match: updateMatch, results: updateResults })[screen](entered);
+  // A pad drives the menus: a new screen opens with something focused.
+  if (entered && document.body.classList.contains('pad-nav') && !anyDialogOpen()) {
+    const layer = topLayer();
+    if (!layer.contains(document.activeElement)) focusDefault(layer);
+  }
+  updatePadHints();
   if (real === 'loading' && !loadActive) {
     loadActive = true;
     load().finally(() => {
@@ -523,12 +538,28 @@ function slotControls(player, slot, rules) {
   if (slot.controller !== CONTROLLER.off && handicapShown()) {
     nodes.push(step('HC', slot.handicap, 0, 9, 'handicap', (v) => app.set_handicap(player, v)));
   }
+  const pad = pads?.count ? pads.list().find((p) => p.port === player) : null;
+  if (slot.controller === CONTROLLER.human && pads?.count) {
+    nodes.push(el('span', { className: `pad-chip ${pad ? 'joined' : ''}`, textContent: pad ? pad.name : 'Press a button to join' }));
+  }
   return nodes;
 }
 let handicapRule = false;
 const handicapShown = () => handicapRule || app.selection().players.some((p) => p.handicap > 0);
 
+/** A character-select control's identity across rebuilds (its panel and role). */
+function controlKey(button) {
+  const player = button.closest('[data-player]')?.dataset.player ?? '';
+  const role = button.dataset.controller !== undefined ? `controller ${button.dataset.controller}`
+    : button.classList.contains('team-chip') ? 'team'
+      : button.classList.contains('chip') ? `chip ${[...button.parentElement.children].indexOf(button)}`
+        : button.getAttribute('aria-label') ?? button.textContent;
+  return `${player}:${role}`;
+}
 function updateCharacters(entered) {
+  // Panels rebuild their controls when they change; focus stays on the same control.
+  const before = document.activeElement;
+  const lostKey = before?.closest?.('.player-panel') ? controlKey(before) : null;
   const selection = app.selection();
   const rules = app.rules();
   const ready = selection.ready;
@@ -563,7 +594,8 @@ function updateCharacters(entered) {
     panel.classList.toggle('off', off);
     if (rules.teams && !off) panel.dataset.team = slot.team; else delete panel.dataset.team;
     const controls = panel.querySelector('.slot-controls');
-    const controlSignature = JSON.stringify([slot, rules.teams, handicapShown()]);
+    const padSignature = pads?.count ? pads.list().map((p) => `${p.handle}:${p.port}`).join() : '';
+    const controlSignature = JSON.stringify([slot, rules.teams, handicapShown(), padSignature]);
     if (controls.dataset.signature !== controlSignature) {
       controls.dataset.signature = controlSignature;
       controls.replaceChildren(...slotControls(player, slot, rules));
@@ -613,6 +645,10 @@ function updateCharacters(entered) {
     if (mine >= 0) characterCursor = mine;
     (ready ? $('ready-banner') : tiles[characterCursor])?.focus({ preventScroll: true });
   }
+  if (lostKey && !before.isConnected) {
+    [...$('screen-characters').querySelectorAll('.player-panel button')]
+      .find((b) => !b.disabled && controlKey(b) === lostKey)?.focus({ preventScroll: true });
+  }
   updateArtStatus();
   art.hydrate($('screen-characters'));
 }
@@ -656,7 +692,15 @@ function buildRules() {
     updateCharacters();
   })]);
   rows.push(['Special', options(SPECIALS, rules.special, (i) => set({ special: i }))]);
+  // Rebuilt on every change: focus stays on the same row's same button.
+  const focused = document.activeElement?.dataset?.focusId;
+  for (const [label, control] of rows) {
+    control.querySelectorAll('button').forEach((button, i) => { button.dataset.focusId = `rules.${label}.${i}`; });
+  }
   $('rules-rows').replaceChildren(...rows.flatMap(([label, control]) => [el('span', { className: 'label', textContent: label }), control]));
+  const again = focused && $('rules-rows').querySelector(`[data-focus-id="${focused}"]`);
+  if (again && !again.disabled) again.focus({ preventScroll: true });
+  else if (focused?.startsWith('rules.')) $('rules-rows').querySelector(`[data-focus-id^="${focused.replace(/\d+$/, '')}"]:not(:disabled)`)?.focus({ preventScroll: true });
 }
 /** Arrow keys over the grid: the nearest tile in that direction. */
 function moveCursor(dx, dy) {
@@ -1052,6 +1096,12 @@ const ACTIONS_BY_NAME = {
   rematch: () => app.rematch(randomSeed()),
   'stage-select': () => { app.quit_to_menu(); app.confirm_characters(); },
   'save-replay': saveReplay,
+  controllers: () => openControllers(),
+  'controllers-done': () => closeDialog('controllers'),
+  'app-menu': () => openAppMenu(),
+  'menu-close': () => closeDialog('app-menu'),
+  'menu-fullscreen': () => toggleFullscreen(),
+  'menu-help': () => { closeDialog('app-menu'); showHelp(); },
 };
 document.addEventListener('click', (e) => {
   const action = e.target.closest('[data-action]')?.dataset.action;
@@ -1059,6 +1109,261 @@ document.addEventListener('click', (e) => {
   if (devView && action !== 'save-replay') { devView = null; devResults = null; }
   attempt(ACTIONS_BY_NAME[action]);
 });
+
+// ---- Gamepads: menu events to actions (docs/APP.md "Pad parity"). A pad
+// does everything the keyboard does: the D-pad or stick moves focus among
+// the controls of the top layer (dialogs first; the core's focus_next picks
+// the neighbour, as on macOS), A presses, B backs out, Start readies,
+// resumes and rematches, X/Y change costume, L/R change player (or stage,
+// or the pad being set up), Z or Select/Home open the app menu.
+
+const DIALOGS = ['message', 'controllers', 'app-menu', 'rules'];
+const anyDialogOpen = () => DIALOGS.some((id) => $(id).open);
+const currentScreen = () => devView ?? SCREENS[app.screen()];
+let toastTimer = 0;
+function toast(text) {
+  const node = $('toast');
+  node.textContent = text;
+  node.hidden = false;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { node.hidden = true; }, 2200);
+}
+function closeDialog(id) {
+  if ($(id).open) $(id).close();
+  updatePadHints();
+}
+function openAppMenu() {
+  if (currentScreen() === 'match' && !app.is_paused() && !app.faulted()) { app.set_paused(true); lastFrame = null; render(); }
+  $('fullscreen-label').textContent = document.fullscreenElement ? 'Exit Full Screen' : 'Full Screen';
+  if (!$('app-menu').open) $('app-menu').showModal();
+  $('app-menu').querySelector('.btn').focus({ preventScroll: true });
+  updatePadHints();
+}
+let lastPad = null;
+function openControllers() {
+  closeDialog('app-menu');
+  const body = $('controllers-body');
+  body.dataset.handle = lastPad ?? '';
+  if (!$('controllers').open) $('controllers').showModal();
+  refreshControllers();
+  updatePadHints();
+}
+function refreshControllers() {
+  if (!$('controllers').open) return;
+  const body = $('controllers-body');
+  renderControllers(body, pads, padLabels, body.dataset.handle === '' ? null : Number(body.dataset.handle),
+    { onDone: () => closeDialog('controllers') });
+}
+function refreshControllersLive() {
+  const body = $('controllers-body');
+  updateLive(body, pads.info(Number(body.dataset.handle)));
+}
+function toggleFullscreen() {
+  closeDialog('app-menu');
+  const request = document.fullscreenElement ? document.exitFullscreen() : document.documentElement.requestFullscreen();
+  request?.catch?.(() => message('Full screen', 'The browser allows full screen only right after a click or a key '
+    + 'press; a gamepad button does not count. Press F11 (or use the browser\'s View menu).'));
+}
+function showHelp() {
+  message('Playing', 'Open your Super Smash Bros. Melee NTSC-U 1.02 disc image (.iso), pick up to four fighters '
+    + '(human or CPU; Rules for teams, items and modes) and a stage.\n\n'
+    + 'Keyboards drive the human players in port order: 1st W A S D move, K attack, J special, Space jump, '
+    + 'L shield, I grab; 2nd arrows, N, M, comma, period, slash. Esc pauses.\n\n'
+    + 'Gamepads work as GameCube controllers, buttons by position: press a button on character select to join. '
+    + 'D-pad or stick moves, A chooses, B backs out, X/Y change costume, L/R change player, Start pauses and '
+    + 'readies, Z or Select/Home opens this menu (Controllers for mappings).');
+}
+function padsChanged() {
+  pads.save();
+  if (currentScreen() === 'characters') updateCharacters();
+  refreshControllers();
+  updatePadHints();
+}
+
+/** Context hints in GameCube terms while a pad is connected. */
+function updatePadHints() {
+  const node = $('pad-hints');
+  const screen = currentScreen();
+  const paused = screen === 'match' && !$('pause').hidden;
+  const hints = !pads?.count ? null
+    : $('message').open ? [['A', 'Choose'], ['B', 'Close']]
+      : $('controllers').open ? [['A', 'Choose'], ['B', 'Done'], ['L/R', 'Controller']]
+        : $('app-menu').open || $('rules').open ? [['A', 'Choose'], ['B', 'Close']]
+          : { disc: [['A', 'Choose'], ['Z', 'Menu']],
+            characters: [['A', 'Pick'], ['B', 'Back'], ['X/Y', 'Costume'], ['L/R', 'Player'], ['Start', 'Ready'], ['Z', 'Menu']],
+            stages: [['A', 'Fight'], ['B', 'Back'], ['L/R', 'Stage'], ['Z', 'Menu']],
+            loading: [['B', 'Cancel']],
+            match: paused ? [['A', 'Choose'], ['B', 'Resume'], ['Start', 'Resume'], ['Z', 'Menu']] : null,
+            results: [['A', 'Choose'], ['Start', 'Rematch'], ['B', 'Characters'], ['Z', 'Menu']] }[screen];
+  node.hidden = !hints;
+  const signature = JSON.stringify(hints);
+  if (!hints || node.dataset.signature === signature) return;
+  node.dataset.signature = signature;
+  node.replaceChildren(...hints.map(([glyph, text]) => el('span', { className: 'pad-hint' },
+    el('b', { className: `glyph glyph-${glyph.toLowerCase().replace('/', '')}`, textContent: glyph }), text)));
+}
+
+/** The layer pad focus moves in: an open dialog, the pause card, or the screen. */
+function topLayer() {
+  const dialog = DIALOGS.find((id) => $(id).open);
+  if (dialog) return $(dialog);
+  if (!$('screen-match').hidden && !$('pause').hidden) return $('pause');
+  return $(`screen-${currentScreen()}`);
+}
+const visible = (node) => node.getClientRects().length > 0 && getComputedStyle(node).visibility !== 'hidden';
+function focusables(layer) {
+  return [...layer.querySelectorAll('button, a.btn')].filter((b) => !b.disabled && visible(b));
+}
+/** Where focus lands in a layer: the grid or stage cursor, else the first accent button, else the first. */
+function focusDefault(layer) {
+  const items = focusables(layer);
+  const preferred = layer.id === 'screen-characters' ? (app.selection().ready ? $('ready-banner') : tiles[characterCursor])
+    : layer.id === 'screen-stages' ? stageTiles[stageCursor] : layer.querySelector('.btn.accent');
+  const target = items.includes(preferred) ? preferred : items[0];
+  target?.focus({ preventScroll: true });
+}
+const DIRECTIONS = { up: 0, down: 1, left: 2, right: 3 };
+function moveFocus(layer, direction) {
+  const items = focusables(layer);
+  const from = items.indexOf(document.activeElement);
+  if (from < 0) return focusDefault(layer);
+  const frames = new Float32Array(items.flatMap((item) => {
+    const box = item.getBoundingClientRect();
+    return [box.left, box.top, box.width, box.height];
+  }));
+  const next = focus_next(frames, from, direction);
+  if (next >= 0) items[next].focus({ preventScroll: true });
+}
+function activateFocus(layer) {
+  const focused = document.activeElement;
+  if (!layer.contains(focused) || !focusables(layer).includes(focused)) return focusDefault(layer);
+  // Ready on the grid: A goes to stage select, as Enter does.
+  if (focused.classList.contains('tile') && app.selection().ready) return attempt(ACTIONS_BY_NAME.confirm);
+  focused.click();
+}
+/** B: close the top card, else Melee's back (a pick comes off before leaving). */
+function padBack(layer, screen) {
+  if (layer.id === 'message') return closeDialog('message');
+  if (layer.id === 'rules') return attempt(ACTIONS_BY_NAME['rules-done']);
+  if (layer.id === 'controllers' || layer.id === 'app-menu') return closeDialog(layer.id);
+  if (layer.id === 'pause') return attempt(ACTIONS_BY_NAME.resume);
+  if (screen === 'characters') {
+    if (app.selection().players[picking].character >= 0) return attempt(() => app.choose_character(picking, -1));
+    return attempt(ACTIONS_BY_NAME.back);
+  }
+  if (screen === 'stages' || screen === 'loading') return attempt(ACTIONS_BY_NAME.back);
+  if (screen === 'results') { devView = null; return attempt(ACTIONS_BY_NAME.quit); }
+}
+/** Start: ready, resume, rematch; a card closes; elsewhere it presses the focused control. */
+function padStart(layer, screen) {
+  if (DIALOGS.includes(layer.id)) return padBack(layer, screen);
+  if (layer.id === 'pause') return attempt(ACTIONS_BY_NAME.resume);
+  if (screen === 'characters') return app.selection().ready ? attempt(ACTIONS_BY_NAME.confirm) : undefined;
+  if (screen === 'results') { devView = null; return attempt(ACTIONS_BY_NAME.rematch); }
+  if (screen !== 'loading') activateFocus(layer);
+}
+/** L and R: the player picking, the stage, or the pad being set up. */
+function padShoulder(layer, screen, step) {
+  if (layer.id === 'controllers') {
+    const list = pads.list();
+    const body = $('controllers-body');
+    const index = list.findIndex((p) => p.handle === Number(body.dataset.handle));
+    if (list.length) body.dataset.handle = list[(index + step + list.length) % list.length].handle;
+    return refreshControllers();
+  }
+  if (layer.id === 'screen-characters') {
+    picking = (picking + step + SLOTS) % SLOTS;
+    const mine = app.selection().players[picking].character;
+    if (mine >= 0 && document.activeElement?.classList.contains('tile')) tiles[mine].focus({ preventScroll: true });
+    return updateCharacters();
+  }
+  if (layer.id === 'screen-stages' && !shuffling) {
+    stageTiles[(stageCursor + step + stageTiles.length) % stageTiles.length].focus({ preventScroll: true });
+  }
+}
+function padKey(key) {
+  const layer = topLayer();
+  const screen = currentScreen();
+  if (key in DIRECTIONS) return moveFocus(layer, DIRECTIONS[key]);
+  switch (key) {
+    case 'confirm': return activateFocus(layer);
+    case 'back': return padBack(layer, screen);
+    case 'start': return padStart(layer, screen);
+    case 'x': case 'y':
+      if (layer.id === 'screen-characters' && app.selection().players[picking].character >= 0) {
+        attempt(() => app.cycle_costume(picking, key === 'x' ? 1 : -1));
+      }
+      return;
+    case 'l': case 'r': return padShoulder(layer, screen, key === 'r' ? 1 : -1);
+    case 'menu': return layer.id === 'app-menu' ? closeDialog('app-menu') : openAppMenu();
+  }
+}
+const PAD_KEYS = [['up', MENU.up], ['down', MENU.down], ['left', MENU.left], ['right', MENU.right],
+  ['confirm', MENU.confirm], ['back', MENU.back], ['start', MENU.start], ['x', MENU.x], ['y', MENU.y],
+  ['l', MENU.l], ['r', MENU.r], ['menu', MENU.z | MENU.menu]];
+function padEvents(events, handle) {
+  lastPad = handle;
+  if (events & MENU.joined) {
+    const pad = pads.info(handle);
+    if (pad) toast(`P${pad.port + 1}: ${pad.name} joined`);
+    return padsChanged();
+  }
+  if (events & MENU.bound) return padsChanged();
+  if (document.hidden || window.meleeCrashed) return;
+  const screen = currentScreen();
+  if (screen === 'match' && $('pause').hidden && !anyDialogOpen()) {
+    // In play the pad is a fighter's: only Start and Select/Home are the menus'.
+    if ((events & MENU.start) && !app.faulted()) { app.set_paused(!app.is_paused()); lastFrame = null; render(); }
+    if (events & MENU.menu) openAppMenu();
+    return;
+  }
+  document.body.classList.add('pad-nav');
+  for (const [key, bits] of PAD_KEYS) if (events & bits) padKey(key);
+  updatePadHints();
+}
+// The pointer takes over from a pad: focus rings return to the browser's rules.
+document.addEventListener('pointermove', () => document.body.classList.remove('pad-nav'));
+$('controllers').addEventListener('close', () => {
+  const handle = Number($('controllers-body').dataset.handle);
+  if ($('controllers-body').dataset.handle !== '' && !Number.isNaN(handle)) app.pad_listen(handle, -1);
+  updatePadHints();
+});
+for (const id of ['app-menu', 'rules', 'message']) $(id).addEventListener('close', () => updatePadHints());
+
+/** ?pads=a,right,...: a pad-only walk with scripted pads (pads.js FakePads), logged to the console. */
+function startPadWalk() {
+  const params = new URLSearchParams(location.search);
+  const spec = params.get('pads');
+  if (!spec) return;
+  const steps = spec.split(',');
+  const bad = steps.find((step) => !FakePads.valid(step));
+  if (bad) return console.log(`pads: unknown step ${bad}`);
+  pads.fake = new FakePads();
+  const interval = Number(params.get('padInterval')) || 400;
+  pads.fake.run(steps, interval, (step) => console.log(`pad ${step}: ${describeState()}`), () => {
+    console.log(`pads done: ${describeState()}`);
+    window.meleePadWalkDone = true;
+  });
+}
+function describeState() {
+  const focused = document.activeElement;
+  const label = !focused || focused === document.body ? '-'
+    : focused.id || focused.dataset.focusId || focused.dataset.action || focused.getAttribute('aria-label')
+      || focused.textContent.trim().slice(0, 24);
+  const selection = app.selection();
+  const slots = selection.players.map((p, i) => `P${i + 1} ${['off', 'human', 'cpu'][p.controller]}`
+    + `${p.controller === CONTROLLER.cpu ? p.cpuLevel : ''} ${characterName(p.character) || '-'}/${p.costume}`).join(', ');
+  const dialogs = DIALOGS.filter((id) => $(id).open).join(' ');
+  const hud = app.hud();
+  const editing = $('controllers').open ? pads.info(Number($('controllers-body').dataset.handle)) : null;
+  const settings = editing ? ` editing ${editing.name} listening ${padLabels.targets[editing.listening] ?? '-'} `
+    + `deadzone ${editing.deadzone.toFixed(2)} click ${editing.triggerClick.toFixed(2)} [${editing.bindings
+      .map((t, i) => `${(padLabels.inputs[editing.family] ?? [])[i]}=${padLabels.targets[t]}`).join(' ')}]` : '';
+  return `screen ${currentScreen()}${app.is_paused() ? ' paused' : ''} focus ${label} picking P${picking + 1} `
+    + `[${dialogs}${$('toast').hidden ? '' : ` toast(${$('toast').textContent})`}] rules [${rulesSummary(app.rules())}] `
+    + `slots [${slots}] pads [${pads.list().map((p) => `${p.name}=${p.port < 0 ? '-' : `P${p.port + 1}`}`).join(' ')}]`
+    + `${hud ? ` tick ${hud.tick}` : ''}${settings}`;
+}
 
 // ---- Keyboard.
 
@@ -1142,7 +1447,7 @@ function menuKey(e, screen) {
   }
 }
 document.addEventListener('keydown', (e) => {
-  if ($('message').open || $('rules').open || !app || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (anyDialogOpen() || !app || e.metaKey || e.ctrlKey || e.altKey) return;
   const screen = devView ?? SCREENS[app.screen()];
   if (screen === 'match') {
     if (e.code === 'Escape') {
@@ -1204,34 +1509,12 @@ const perf = new URLSearchParams(location.search).has('perf') ? {
     Object.assign(this, { frames: 0, busy: 0, since: performance.now(), tick });
   },
 } : null;
-// Gamepads (the Gamepad API, standard mapping) as GameCube controllers:
-// pad n drives the match's nth human player; Start pauses.
-const PAD = { a: 1, b: 2, x: 4, y: 8, z: 16, l: 32, r: 64, left: 128, right: 256, down: 512, up: 1024 };
-let padsReported = 0, padStart = [];
-function pollGamepads() {
-  const pads = [...(navigator.getGamepads?.() ?? [])].filter((p) => p && p.connected && p.mapping === 'standard');
-  pads.forEach((pad, device) => {
-    const pressed = (i) => pad.buttons[i]?.pressed;
-    const value = (i) => pad.buttons[i]?.value ?? 0;
-    let buttons = 0;
-    for (const [i, bit] of [[0, PAD.a], [1, PAD.b], [2, PAD.x], [3, PAD.y], [4, PAD.z], [5, PAD.z],
-      [12, PAD.up], [13, PAD.down], [14, PAD.left], [15, PAD.right]]) if (pressed(i)) buttons |= bit;
-    if (value(6) >= 0.95) buttons |= PAD.l;
-    if (value(7) >= 0.95) buttons |= PAD.r;
-    const axis = (i) => pad.axes[i] ?? 0;
-    app.gamepad(device, buttons, axis(0), -axis(1), axis(2), -axis(3), value(6), value(7));
-    if (pressed(9) && !padStart[device] && !app.faulted()) { app.set_paused(!app.is_paused()); lastFrame = null; render(); }
-    padStart[device] = pressed(9);
-  });
-  for (let device = pads.length; device < padsReported; device++) app.gamepad_lost(device);
-  padsReported = pads.length;
-}
-
 function frame(now) {
   if (window.meleeCrashed) return;
   requestAnimationFrame(frame);
+  pads.poll(now);
+  if ($('controllers').open) refreshControllersLive();
   const screen = app.screen();
-  if (screen === 4) pollGamepads();
   const size = fitCanvas();
   const resized = size !== sized;
   if (screen === 4 || (screen === 5 && resized)) {
@@ -1328,6 +1611,8 @@ async function main() {
   await init();
   cat = catalog();
   app = new WebApp();
+  padLabels = pad_labels();
+  pads = new Pads(app, { onEvents: padEvents, onChange: padsChanged });
   buildCharacters();
   buildStages();
   fitCanvas();
@@ -1339,5 +1624,6 @@ async function main() {
   render();
   requestAnimationFrame(frame);
   await developmentStart();
+  startPadWalk();
 }
 main();
