@@ -57,6 +57,20 @@ recorded to 1500 ticks (`w27s_*`).
   swing weapons (ftCo_800B52AC, Peach's parasol included), a held
   Bob-omb's fuse (it_8026B960 via `ItemLogic::fuse`).
 
+## Two engine fixes the widened layouts exposed
+
+- Item hitboxes with x42_b6 (it_802790C0's sixth word, the Goomba's)
+  reach only a fighter's grabbable hurt capsules (ftColl_8007925C,
+  ftcoll.c:2303-2306): a walking Goomba passes Fox's arms
+  (`w27g_FlatZone_items_all_e6cc80d32_p1`, found with a bones recording,
+  `w27b_goomba_fox_turn`).
+- The Barrel's push box (it_80271A58) turns with its spin joint
+  (ItemModelDesc depth 1, the staves; it_802746F8), not the root: the
+  staves straighten in it_80287690, which its collision runs even in
+  hitlag (`w27s_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e89a89d0e_p2`).
+  `ItemCore::spin_joint_rotation` carries that joint for the ECB angle
+  and the push box.
+
 ## Still guarded (counts per 5040 explorer cases, scan `g`)
 
 Octarock (12) and Ottosea (22) constructors and lifecycles; the CPU

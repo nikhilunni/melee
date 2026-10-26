@@ -8053,6 +8053,12 @@ const WIDENED_LAYOUT_MATCHES: &[(&str, usize)] = &[
     ("w27g_fd_items_all_fox_marth_falco_peach_eecfcf1ea_p1", 1371),
     ("w27g_fd_items_kusudama_ec0a10b25_p1", 1864),
     ("w27g_Fourside_items_all_ed97ea327_p1", 2424),
+    // A Goomba's hitbox (x42_b6) reaches only grabbable hurt capsules: it
+    // passes Fox's arms as his side taunt turns him (ftcoll.c:2303).
+    ("w27g_FlatZone_items_all_e6cc80d32_p1", 1901),
+    // A thrown Barrel's push box turns with its staves (spin depth 1),
+    // which straighten in its collision even through hitlag.
+    ("w27s_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e89a89d0e_p2", 1501),
     ("w27g_KongoJungle_items_all_e8f0de8c6_p1", 1482),
     ("w27g_YoshisIsland_items_all_e9f348009_p2", 2636),
     ("w27p_bf_items_all_e1b05b110_p0", 543),

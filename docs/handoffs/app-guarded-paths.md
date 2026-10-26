@@ -5,22 +5,6 @@ random items on every ported stage but Mushroom Kingdom now ship, with
 witnesses in `m5_gate` (`WIDENED_LAYOUT_BOUNDARIES`,
 `WIDENED_LAYOUT_MATCHES`). Details: `docs/PORT_NOTES/WAVE27_ITEMS_EVERYWHERE.md`.
 
-## Open divergences (found, not registered)
-
-- `w27g_FlatZone_items_all_e6cc80d32_p1`, tick 1200: a walking Goomba's
-  hitbox reaches Fox as his side taunt (AppealSR) ends into Turn; the port
-  lands the hit at 1200, retail only at 1209. The Goomba's position and
-  both hitbox capsules equal retail's raw Item bytes through 1200; retail's
-  frame-end hurt capsules overlap the hitbox at 1201 (capsule 7, bone 26)
-  without a hit. Suspect the fighter's hurt capsules at hit detection
-  after an animation-end motion change, not the Goomba. Record with bones
-  and compare with `bones-diff` next.
-- `w27s_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e89a89d0e_p2`,
-  tick 1422: a thrown Barrel in hitlag keeps pushing a resting Sword. The
-  Barrel's push box (xBEC) shrinks from 7.0273 to 6.7952 the tick after
-  its hit in retail (its model's rotation reaches it_80271A58 a proc
-  later); the port keeps the earlier box for the whole hitlag.
-
 ## Still guarded (explorer scan of 5040 cases over every widened layout)
 
 - Mushroom Kingdom with items: the `?` blocks (grinishie1.c:465; the
