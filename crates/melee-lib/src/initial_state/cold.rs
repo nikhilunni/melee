@@ -153,9 +153,10 @@ impl InitialState {
             scenario.roster().iter().map(|entry| entry.descriptor.kind),
         )? + spawner_draws;
         let mut rng = HsdRng::new(before_setup(boundary_seed, fixed_draws));
-        if assets.stage_desc.kind == GrKind::Pura {
-            // The sky's draws depend on what it draws: the one count whose
-            // creation, run from the seed it implies, draws that many.
+        if matches!(assets.stage_desc.kind, GrKind::Pura | GrKind::BigBlue) {
+            // Poké Floats' sky and Big Blue's cars draw as many times as their
+            // draws decide: the one count whose creation, run from the seed it
+            // implies, draws that many.
             let start = (1..=MAX_VARIABLE_DRAWS)
                 .map(|n| HsdRng::new(before_setup(boundary_seed, fixed_draws + n)))
                 .find(|&start| {
@@ -163,10 +164,10 @@ impl InitialState {
                     for _ in 0..spawner_draws {
                         at_stage.rand();
                     }
-                    let n = variable_stage_draws(GrKind::Pura, at_stage);
+                    let n = variable_stage_draws(assets.stage_desc.kind, at_stage);
                     HsdRng::new(before_setup(boundary_seed, fixed_draws + n)) == start
                 });
-            rng = start.ok_or(UnreachableSeed("Poké Floats: no sky draw count reaches the boundary seed"))?;
+            rng = start.ok_or(UnreachableSeed("no variable creation draw count reaches the boundary seed"))?;
         }
         if assets.stage_desc.kind == GrKind::Icemt {
             let draws = icemt_controller_draws(&assets, boundary_seed, fixed_draws, spawner_draws)?;
@@ -208,6 +209,10 @@ impl InitialState {
             field.strength = melee_gr::rcruise::procs::FIELD_STRENGTH;
             radial_forces.insert_directional(field);
         }
+        // grBigBlue_801E57C0's lb_80011A50, after its maps.
+        if matches!(stage, SceneStage::BigBlue(_)) {
+            radial_forces.insert_directional(melee_gr::bigblue::procs::wind());
+        }
         // Fountain of Dreams and the N64 stages bind their collision
         // joints during creation.
         let archive_bindings = !matches!(
@@ -232,6 +237,7 @@ impl InitialState {
                 | SceneStage::Castle(_)
                 | SceneStage::Greens(_)
                 | SceneStage::RCruise(_)
+                | SceneStage::BigBlue(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -289,13 +295,17 @@ impl InitialState {
         let pending_music = Some((
             melee_gr::desc::read_music(&assets.stage, assets.stage_descriptor.music_id)
                 .map_err(|e| anyhow::anyhow!("{e}"))?,
-            if scenario
-                .all_characters_unlocked
-                .expect("validated cold music rule")
-            {
-                melee_gr::music::ALL_UNLOCKABLE_CHARACTERS
-            } else {
-                0
+            melee_gr::music::Unlocks {
+                characters: if scenario
+                    .all_characters_unlocked
+                    .expect("validated cold music rule")
+                {
+                    melee_gr::music::ALL_UNLOCKABLE_CHARACTERS
+                } else {
+                    0
+                },
+                // TODO(cold): rule 5's trophy; the boundaries' cards lack it.
+                trophy: false,
             },
         ));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
@@ -572,6 +582,10 @@ fn setup_draws(
         GrKind::Greens => 21,
         // The maps' frame-zero keys.
         GrKind::RCruise => 0,
+        // grBigBlue_801EC6C0 and the cars' arrival timer draw until each
+        // car holds its own bone (variable_stage_draws); GrBb.dat's keys
+        // spawn nothing at creation.
+        GrKind::BigBlue => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -599,16 +613,21 @@ pub(crate) fn boundary_seed_after(
 }
 
 /// More draws than any variable stage creation takes.
-const MAX_VARIABLE_DRAWS: usize = 64;
+const MAX_VARIABLE_DRAWS: usize = 128;
 
 /// The draws a stage's creation takes from `rng` when their count depends
-/// on what it draws: Poké Floats' sky (stageGObj1_OnInit).
+/// on what it draws: Poké Floats' sky (stageGObj1_OnInit) and Big Blue's
+/// cars (grBigBlue_801EC6C0).
 fn variable_stage_draws(stage: GrKind, rng: HsdRng) -> usize {
-    if stage != GrKind::Pura {
-        return 0;
-    }
-    let mut probe = rng;
-    melee_gr::pura::Sky::new(&mut probe);
+    let probe = match stage {
+        GrKind::Pura => {
+            let mut probe = rng;
+            melee_gr::pura::Sky::new(&mut probe);
+            probe
+        }
+        GrKind::BigBlue => melee_gr::bigblue::after_creation_draws(rng),
+        _ => return 0,
+    };
     let mut walk = rng;
     let mut draws = 0;
     while walk != probe {
@@ -712,7 +731,8 @@ fn live_spawn_position(
         // grRCruise_801FF7A4's Ground_801C2D0C: map 6's bones, scrolled.
         return crate::scene_stage::rcruise::spawn_point(stage_animations, slot);
     }
-    if assets.stage_desc.kind != GrKind::Kongo {
+    // Big Blue's spawns moved with the Falcon Flyer (grBigBlue_801E8D64).
+    if !matches!(assets.stage_desc.kind, GrKind::Kongo | GrKind::BigBlue) {
         return None;
     }
     let binding = assets
@@ -965,6 +985,12 @@ fn initialize_stage(
         GrKind::Greens => {
             let (stage, animations) =
                 crate::scene_stage::greens::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::BigBlue => {
+            let (stage, animations) =
+                crate::scene_stage::bigblue::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

@@ -106,3 +106,46 @@ cold start inverts by searching the count whose creation draws it.
   not the root's at the flush.
 - Display only: the toon texture, the sky colour (Ground_801C205C,
   Camera_SetBackgroundColor).
+
+## Big Blue (grbigblue.c)
+
+`melee_gr::bigblue::{road, cars, flyers, procs}`, `scene_stage/bigblue.rs`.
+Creation order 0x1F, 0, 1, 2, 0x22 (road), 0x21 (cars; its on_init makes
+and releases map 4, the car models, which only draw), 0x20 (small flyers,
+hidden), 0x23 (Falcon Flyer), 0x24 (route platform, hidden); procs run in
+that order at s_link 4, each followed by Ground_801C2FE0.
+
+- grAnime_801C8138 resets the model to its rest pose (lb_8000B804) and
+  evaluates frame zero, so map 0x1F (no grAnime) and 0x21 keep no
+  animation. A GObj's JObj is the map-scale wrapper; Big Blue resets it to
+  unit scale on 0x20, 0x21 and 0x22.
+- Collision: Ground_801C2ED0 binds GrBb.dat's joints, then grBb_803E2938's
+  (joints 38 and 39 rebound to bone 7); Ground_801C2FE0 moves the extras
+  first. grBigBlue_801EC58C is mpCheckMultiple (floor only) on each road
+  joint, the highest hit and its normal.
+- Markers: Ground_801C34AC registers pairs at each map's creation, so map
+  0 (created after 0x1F) owns markers 4..7; the revival marker is map 0's.
+  grBigBlue_801E8D64 moves spawns 0..3 by the Falcon Flyer's translation
+  over the scale. Its height is a floor search under an uninitialised
+  stack vector; both boundaries hold the origin's floor (50.00005), and
+  the warm restore checks it.
+- The road's `b0` (set by 801E613C, cleared by fn_801E6124 through
+  Ground_801C10B8 when the countdown ends) limits the segment draw to 0, 1
+  and 4 before GO.
+- Draws at creation: 801EC6C0's ranks, distinct car bones (redrawn on a
+  repeat), each car's phase (HSD_Randf), wait and sound, then the arrival
+  timer: a variable count the cold start inverts (`after_creation_draws`
+  with GrBb.dat's parameters, checked by tests/real_bigblue.rs).
+- Uninitialised Ground words: the flyers' x24/x28/x30 come from the
+  boundary (warm); the cold start takes zero.
+- Callbacks are recorded and applied at the owner's next proc: fn_801E8560
+  (a rider's weight on a small flyer, with the collider's y) and
+  fn_801EF60C (a fighter landing on a car, `coll x50` as a float).
+- Music rule 5 (Toy_803048C0(0x11A)): the trophy is read from the save
+  data at a warm boundary; the cold start assumes it is not owned.
+- Unreachable: car states 2 and 3 (no caller enters them); the flyers'
+  items fail closed (items stay refused on Big Blue).
+- Fighters: x2219_b1 (`out_of_play`) holds only through the Entry motions;
+  a fighter that stood still since the entry was exempt from the blast
+  zone (the Falcon Flyer carried one past it).
+

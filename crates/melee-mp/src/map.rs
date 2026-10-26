@@ -69,6 +69,8 @@ pub struct JointEvent {
     /// `coll->env_flags` at the call (Great Bay's Tingle reads its ledge
     /// grab bits).
     pub env_flags: u32,
+    /// `coll->x50` itself (a fighter's weight).
+    pub weight: f32,
 }
 /// Joint callbacks recorded between two stage steps; a frame's fighters
 /// and items land a handful at most.
@@ -1054,6 +1056,7 @@ impl CollMap {
                 delta_y: 0.0,
                 x50: coll.x50 as i32,
                 env_flags: coll.env_flags as u32,
+                weight: coll.x50,
             });
         }
     }
@@ -1076,6 +1079,7 @@ impl CollMap {
                 delta_y,
                 x50: coll.x50 as i32,
                 env_flags: coll.env_flags as u32,
+                weight: coll.x50,
             });
         }
     }

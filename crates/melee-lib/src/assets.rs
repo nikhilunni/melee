@@ -621,7 +621,8 @@ pub struct DropMarkerJoints {
 
 /// Ground_801C34AC: the binding that registers `index` last (x280), each
 /// map's pairs in order as its GObj is created. Rainbow Cruise creates map
-/// 3 before map 0 (grRCruise_801FF168), so map 0's markers 4..7 win.
+/// 3 before map 0 (grRCruise_801FF168) and Big Blue map 0x1F before map 0
+/// (grBigBlue_801E57C0), so map 0's markers 4..7 win.
 fn last_binding(
     stage: &melee_gr::desc::StageDesc,
     index: i16,
@@ -631,6 +632,12 @@ fn last_binding(
             melee_gr::rcruise::procs::KEY_ORDER
                 .iter()
                 .rposition(|&key| usize::from(melee_gr::rcruise::procs::model(key)) == model)
+                .unwrap_or(0)
+        } else if stage.kind == melee_types::GrKind::BigBlue {
+            // grBigBlue_801E57C0 creates map 0x1F before map 0.
+            melee_gr::bigblue::procs::MAP_ORDER
+                .iter()
+                .position(|&map| usize::from(map) == model)
                 .unwrap_or(0)
         } else {
             0
