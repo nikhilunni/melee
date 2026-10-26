@@ -166,9 +166,11 @@ fn four_players_play_a_team_battle_driven_by_gamepads() {
     })
     .unwrap();
     app.confirm_characters().unwrap();
-    // Items are witnessed with two players only: the menu says so.
-    let reason = app.stage_unavailable(Stage::Battlefield).unwrap();
-    assert!(reason.contains("two players"), "{reason}");
+    // Items are witnessed with four players on Battlefield; Mushroom
+    // Kingdom's blocks are not ported, and the menu says so.
+    assert_eq!(app.stage_unavailable(Stage::Battlefield), None);
+    let reason = app.stage_unavailable(Stage::MushroomKingdom).unwrap();
+    assert!(reason.contains("no items"), "{reason}");
     app.back();
     app.set_rules(Rules {
         item_frequency: None,
@@ -214,7 +216,7 @@ fn random_items_fall_in_a_two_player_match() {
     })
     .unwrap();
     app.confirm_characters().unwrap();
-    assert!(app.stage_unavailable(Stage::DreamLand).is_some());
+    assert!(app.stage_unavailable(Stage::MushroomKingdom).is_some());
     app.choose_stage(Stage::FinalDestination, 31).unwrap();
     load(&mut app);
     assert_eq!(
