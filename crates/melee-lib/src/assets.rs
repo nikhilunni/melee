@@ -335,12 +335,7 @@ impl Assets {
             }
         };
         let binding_of = |index: i16| {
-            stage_desc
-                .position_bindings
-                .iter()
-                // Ground_801C34AC: a later pair takes the marker (x280[pair[1]]).
-                .rfind(|b| b.stage_position == index)
-                .map(|b| (b.model_id, b.joint_index as usize))
+            last_binding(&stage_desc, index).map(|b| (b.model_id, b.joint_index as usize))
         };
         let mut drop_marker_joints = DropMarkerJoints::default();
         for (i, slot) in drop_marker_joints.items.iter_mut().enumerate() {
@@ -621,17 +616,38 @@ pub struct DropMarkerJoints {
     pub spawns: [Option<(usize, usize)>; melee_gr::bomb_rain::SPAWN_MARKER_COUNT],
 }
 
+/// Ground_801C34AC: the binding that registers `index` last (x280), each
+/// map's pairs in order as its GObj is created. Rainbow Cruise creates map
+/// 3 before map 0 (grRCruise_801FF168), so map 0's markers 4..7 win.
+fn last_binding(
+    stage: &melee_gr::desc::StageDesc,
+    index: i16,
+) -> Option<&melee_gr::desc::PositionBinding> {
+    let rank = |model: usize| {
+        if stage.kind == melee_types::GrKind::RCruise {
+            melee_gr::rcruise::procs::KEY_ORDER
+                .iter()
+                .rposition(|&key| usize::from(melee_gr::rcruise::procs::model(key)) == model)
+                .unwrap_or(0)
+        } else {
+            0
+        }
+    };
+    stage
+        .position_bindings
+        .iter()
+        .enumerate()
+        .filter(|(_, b)| b.stage_position == index)
+        .max_by_key(|&(order, b)| (rank(b.model_id), order))
+        .map(|(_, b)| b)
+}
+
 pub(crate) fn stage_position(
     archive: &Archive,
     stage: &melee_gr::desc::StageDesc,
     index: i16,
 ) -> Result<hsd_types::Vec3> {
-    let binding = stage
-        .position_bindings
-        .iter()
-        // Ground_801C34AC: the marker's last pair registers last (x280).
-        .rfind(|b| b.stage_position == index)
-        .context("stage marker")?;
+    let binding = last_binding(stage, index).context("stage marker")?;
     let (mut tree, root) = load_joint_tree(archive, &stage.models[binding.model_id].joint)?;
     // grAnime_801C8138 evaluates frame zero before Ground_801C39C0 reads markers.
     if let Some(animation) = stage.models[binding.model_id].animations.first() {

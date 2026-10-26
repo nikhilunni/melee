@@ -405,6 +405,12 @@ impl Stage {
                     | Self::MushroomKingdom2
                     | Self::GreatBay
                     | Self::IcicleMountain
+                    // Wave 27's stages witnessed with items off: the
+                    // Castle's `?` block (grcastle.c:1608) and Whispy's
+                    // healing apple (itwhispyapple.c:110) fail closed.
+                    | Self::PrincessPeachsCastle
+                    | Self::GreenGreens
+                    | Self::RainbowCruise
             )
     }
     pub(crate) fn descriptor(self) -> Option<&'static crate::scene_stage::StageDescriptor> {
