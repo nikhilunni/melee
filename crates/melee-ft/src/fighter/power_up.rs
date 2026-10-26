@@ -60,15 +60,11 @@ impl FighterCore {
 
     /// ftCo_800C88D4 (800C88D4) from the Cloaking Device's pickup
     /// (`from_item`, PlCo +7CC frames): x2030 the frames; a fighter not yet
-    /// cloaked (x2226_b4) is cloaked (x2226_b5, the refraction and its
-    /// colour animations are presentation).
+    /// cloaked (x2226_b4), or showing the end's warning (x2226_b7), is
+    /// cloaked again (x2226_b5, the refraction and its colour animations
+    /// are presentation). A second cloak only renews the frames.
     pub(super) fn cloak(&mut self, frames: i32) {
         self.status.cloak_frames = frames;
-        if self.status.cloaked {
-            unimplemented!(
-                "ftCo_800C88D4 (ft_0C88.c:47): a Cloaking Device while cloaked (x2226_b7)"
-            );
-        }
         self.status.cloaked = true;
     }
 

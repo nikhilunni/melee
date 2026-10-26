@@ -7413,6 +7413,33 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_items_metalb", 600),
     ("start_fd_items_metalb_cold", 600),
     ("w27_metalb_metal", 1400),
+    // Super Scope explorer matches (start_fd_items_sscope).
+    ("corpus_v3_fd_items_sscope_ef89b3e70_p0", 3311),
+    ("corpus_v3_fd_items_sscope_e50814092_p0", 5210),
+    ("corpus_v3_fd_items_sscope_e4213e6a5_p0", 6001),
+    ("corpus_v3_fd_items_sscope_ef9b6d16d_p0", 6001),
+    ("corpus_v3_fd_items_sscope_e2af099ca_p0", 4302),
+    ("corpus_v3_fd_items_sscope_e0fcbde24_p0", 6001),
+    ("corpus_v3_fd_items_sscope_ece1e43b7_p0", 2626),
+    ("corpus_v3_fd_items_sscope_e46703f61_p0", 6001),
+    // Starman explorer matches: the bounce turned by the stage's walls
+    // (itstar.c:66-70).
+    ("corpus_v3_fd_items_starman_e89a89d0e_p1", 299),
+    ("corpus_v3_fd_items_starman_ea7e2e7e9_p2", 1927),
+    ("corpus_v3_fd_items_starman_edb2b114a_p0", 299),
+    // Cloaking Device explorer matches: a second cloak renews the frames
+    // (ftCo_800C88D4); unlaunched damage (a laser, a throw while cloaked)
+    // goes through Fighter_UnkTakeDamage_8006CC30 (fighter.c:2959).
+    ("corpus_v3_fd_items_spycloak_e195ec96e_p0", 2341),
+    ("corpus_v3_fd_items_spycloak_e46703f61_p0", 5019),
+    ("corpus_v3_fd_items_spycloak_e46703f61_p2", 1013),
+    ("corpus_v3_fd_items_spycloak_e70b3084c_p2", 6001),
+    ("corpus_v3_fd_items_spycloak_e9a8e5048_p0", 1027),
+    ("corpus_v3_fd_items_spycloak_ec3145eb3_p0", 5214),
+    ("corpus_v3_fd_items_spycloak_ecdf8887e_p0", 3903),
+    ("corpus_v3_fd_items_spycloak_ed97ea327_p2", 4041),
+    ("corpus_v3_fd_items_spycloak_ef89b3e70_p0", 4495),
+    ("corpus_v3_fd_items_spycloak_efd4a7dd2_p2", 4916),
 ];
 
 #[test]

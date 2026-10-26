@@ -1292,11 +1292,12 @@ impl Fighter {
             hit_damage = self.core.combat.phantom_max_damage;
         }
         // fighter.c:2956-2963: damage without knockback (zero-knockback hits,
-        // an expired phantom) still reaches percent.
+        // an expired phantom) still reaches percent (Fighter_UnkTakeDamage_8006CC30:
+        // none while cloaked, a metal worn).
         if !received_knockback && self.core.combat.frame_damage != 0.0 {
-            self.core.physics.percent += self.core.combat.frame_damage;
-            // Its ftCommon_8007EA90: a Coin match's spill, straight up.
             let damage = self.core.combat.frame_damage;
+            self.core.add_hit_percent(damage);
+            // Its ftCommon_8007EA90: a Coin match's spill, straight up.
             self.core.spill_coins_for_hit(damage, None, assets, rng);
             // fighter.c:2960: ftKb_SpecialN_800F5C34.
             if let Some(draw) = self.character.table().damage_draw {

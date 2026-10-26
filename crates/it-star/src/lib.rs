@@ -105,8 +105,8 @@ fn gravity_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 /// itStar_UnkMotion0_Coll (80284734): an airborne pass (it_8026DA08); a
 /// floor bounces it up again (x10 * direction, fmuls 80284784; x14) and
 /// restarts state 0 keeping its hitboxes (flags 0x11); a wall turns it
-/// (fneg of the direction and the speed, guarded); a ceiling stops its
-/// rise (guarded). Any contact plays the bounce sound.
+/// (fneg of the direction and the speed); a ceiling stops its rise. Any
+/// contact plays the bounce sound.
 fn bounce_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     let mut touched = false;
     if item.air_pass(ctx.map) {
@@ -117,10 +117,17 @@ fn bounce_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
         touched = true;
     }
     if item.wall_bits() != 0 {
-        unimplemented!("itStar_UnkMotion0_Coll (itstar.c:66-70): a Starman turned by a wall is not witnessed");
+        // itstar.c:66-70: the direction and the speed turn (fneg).
+        set_direction(item, -direction(item));
+        item.velocity.x = -item.velocity.x;
+        touched = true;
     }
     if item.ceiling_bits() != 0 {
-        unimplemented!("itStar_UnkMotion0_Coll (itstar.c:71-76): a Starman under a ceiling is not witnessed");
+        // itstar.c:71-76: a rise stops.
+        if item.velocity.y > 0.0 {
+            item.velocity.y = 0.0;
+        }
+        touched = true;
     }
     if touched {
         item.sound_requests.push(BOUNCE_SOUND);
