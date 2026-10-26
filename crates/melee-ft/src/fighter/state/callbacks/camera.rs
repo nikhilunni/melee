@@ -10,6 +10,12 @@ pub fn follow_fighter(fighter: &mut Fighter, phase: CameraPhase<'_>) {
     update(&mut fighter.core, phase, false);
 }
 
+/// ftCamera_800762F4 (800762F4) alone (the Warp Star ride's rows): the
+/// camera bone moves, the box stays.
+pub fn camera_bone_only(fighter: &mut Fighter, _phase: CameraPhase<'_>) {
+    fighter.core.camera.bone_position = camera_bone(&mut fighter.core);
+}
+
 /// ftCo_ThrowHi_Cam (800DDC70): a throw that leaves the screen
 /// (ftCamera_800762F4) moves the camera bone alone; the box stays where the
 /// throw began.

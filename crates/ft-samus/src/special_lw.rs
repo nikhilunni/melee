@@ -352,6 +352,7 @@ fn launch_angle(f: &Fighter, x: f32, range: f32) -> f32 {
 fn untouchable(f: &Fighter) -> bool {
     f.commands.hurt_status != melee_types::combat::HurtStatus::Normal
         || f.status.ledge_intangibility != 0
+        || f.status.item_intangible
         || f.status.revival_invincibility != 0
 }
 

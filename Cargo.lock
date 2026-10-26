@@ -1722,8 +1722,11 @@ name = "it-wstar"
 version = "0.0.1"
 dependencies = [
  "gekko-math",
+ "hsd-anim",
+ "hsd-archive",
  "hsd-types",
  "melee-it",
+ "melee-mp",
  "melee-types",
 ]
 

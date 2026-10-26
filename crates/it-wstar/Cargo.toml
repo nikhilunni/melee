@@ -5,6 +5,9 @@ edition.workspace = true
 
 [dependencies]
 melee-it = { path = "../melee-it" }
+melee-mp = { path = "../melee-mp" }
 melee-types = { path = "../melee-types" }
+hsd-archive = { path = "../hsd-archive" }
+hsd-anim = { path = "../hsd-anim" }
 hsd-types = { path = "../hsd-types" }
 gekko-math = { path = "../gekko-math" }

@@ -44,6 +44,11 @@ impl Fighter {
             if std::mem::take(&mut self.core.catch_after_step) {
                 self.core.run_catch_window(assets);
             }
+            // ftCo_800D71D8 caught a Warp Star: the ride began before the
+            // state's anim_cb, which is then WarpStarJump's.
+            if self.finish_warp_star_catch(assets)? {
+                warp_star::jump_anim_callback(self, state::AnimationPhase { assets, map, rng })?;
+            }
             // ftAction_80072894 ran inside ftAnim_8006EBA4; its item work
             // needs the character.
             self.apply_parasol_commands();
@@ -721,7 +726,7 @@ impl FighterCore {
         // These and the magnifier run during hitlag too.
         if self.status.ledge_intangibility != 0 {
             self.status.ledge_intangibility -= 1;
-            if self.status.ledge_intangibility == 0 {
+            if self.status.ledge_intangibility == 0 && !self.status.item_intangible {
                 self.combat.color_overlay.flash_expired = true;
             }
         }

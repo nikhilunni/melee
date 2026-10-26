@@ -306,6 +306,9 @@ impl Assets {
             arena.revival_positions = crate::scene_stage::icemt::respawn_points(&stage, &stage_desc)?;
         }
         let mut stage_camera = stage_camera(&stage_desc, &camera_range, [low, high])?;
+        for fighter in fighters.iter_mut() {
+            fighter.stage_blast_top = stage_camera.blast_top();
+        }
         if stage_desc.kind == melee_types::GrKind::Flatzone {
             // grFlatzone_80216E78: Ground_801C3990(Stage_GetBlastZoneBottomOffset()
             // - 50.0f) stores an absolute height in the relative field, so

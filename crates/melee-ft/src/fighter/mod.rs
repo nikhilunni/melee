@@ -92,6 +92,7 @@ pub mod stop_wall;
 pub mod teeter;
 pub mod throw_flight;
 pub mod transform;
+pub mod warp_star;
 pub mod tether;
 pub mod turn;
 pub mod turn_run;
@@ -1010,6 +1011,9 @@ pub struct Status {
     pub special_grab: Option<ledge::GrabExclusions>,
     /// x1990: timed intangibility, independent of subaction hurt status.
     pub ledge_intangibility: i32,
+    /// x2221_b0 (ftColl_8007B6A0 / ftColl_8007B6EC): intangible while it
+    /// is set, as x198C 2, whatever the timers do (the Warp Star ride).
+    pub item_intangible: bool,
     /// Fighter +1994: revival protection allows contact sparks but no damage.
     pub revival_invincibility: i32,
 
@@ -1075,6 +1079,7 @@ impl Status {
             grab_exclusions: ledge::GrabExclusions::NONE,
             special_grab: None,
             ledge_intangibility: 0,
+            item_intangible: false,
             revival_invincibility: 0,
             sword_trail: -1,
             camera_shift: Vec2::ZERO,
@@ -1399,6 +1404,10 @@ pub struct FighterCore {
     /// Set by the animation proc: ftCo_800D71D8 runs the catch window at
     /// the end of the state's next animation step (ftAnim_8006EBA4).
     pub catch_after_step: bool,
+    /// fn_800D6F58 caught a Warp Star inside a callback without the
+    /// character (the catch window): the ride (ftpickupitem_8009447C) and
+    /// the catch's sparkle wait for the animation proc.
+    pub caught_warp_star: bool,
     /// hitlag_mul (+196C): the jab combo window. Every motion change except
     /// into Wait or Walk closes it (fighter.c:1142-1144).
     pub jab_countdown: f32,
@@ -1525,6 +1534,8 @@ pub enum MotionData {
     CaptureReDead(capture_redead::CaptureReDeadState),
     /// BarrelWait: no scratch (the barrel holds the state).
     Barrel,
+    /// WarpStarJump and WarpStarFall (mv.co.warpstar).
+    WarpStar(warp_star::WarpStarState),
     /// mv.co.buryjump.x0: frames since the jump out of the ground; mv+4
     /// is still the buried collision box's top.
     BuryJump {

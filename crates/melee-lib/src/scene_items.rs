@@ -553,6 +553,8 @@ pub struct Resources {
     visual_archives: Vec<(ItemKind, std::sync::Arc<Archive>)>,
     /// Articles whose bones effects follow (crate::article_pose).
     pub(crate) article_skeletons: Vec<crate::article_pose::ArticleSkeleton>,
+    /// The Warp Star's flight paths, which its rider's root plays.
+    pub warp_star_paths: it_wstar::FlightPaths,
 }
 impl Resources {
     pub fn load(
@@ -726,13 +728,20 @@ impl Resources {
             ),
             (
                 ItemKind::WStar,
-                ItemAssets::from_common(
-                    &common_archive,
-                    public,
-                    ItemKind::WStar,
-                    &it_wstar::ARTICLE_STATES,
-                    it_wstar::SPECIAL_ATTRIBUTES,
-                )?,
+                // The burst's capsule rides joint 2 (it_802947CC).
+                ({
+                    let mut assets = ItemAssets::from_common(
+                        &common_archive,
+                        public,
+                        ItemKind::WStar,
+                        &it_wstar::ARTICLE_STATES,
+                        it_wstar::SPECIAL_ATTRIBUTES,
+                    )?;
+                    assets
+                        .read_pose(&common_archive)
+                        .map_err(|e| anyhow::anyhow!("Warp Star pose: {e}"))?;
+                    assets
+                }),
             ),
             (
                 ItemKind::Freeze,
@@ -1905,11 +1914,26 @@ impl Resources {
         for (_, assets) in &mut kinds {
             assets.slide_rule = common.slide_rule;
         }
+        let warp_star_paths = it_wstar::FlightPaths::read(&common_archive, public)?;
+        // The held Warp Star's sparkle rides bone 3 under the rider's root
+        // (it_3F14_Logic29_PickedUp): posed at rest and in the ridden fall.
+        let star = &kinds
+            .iter()
+            .find(|(kind, _)| *kind == ItemKind::WStar)
+            .expect("Warp Star assets")
+            .1;
+        article_skeletons.push(crate::article_pose::ArticleSkeleton::load_listed_states(
+            ItemKind::WStar,
+            &common_archive,
+            &star.visual,
+            &[crate::article_pose::UNANIMATED, it_wstar::RIDDEN_FALL_ARTICLE_STATE],
+        )?);
         Ok(Self {
             common,
             kinds,
             visual_archives,
             article_skeletons,
+            warp_star_paths,
         })
     }
     pub fn visual_models(&self) -> impl Iterator<Item = (ItemKind, &Archive, u32)> {
@@ -2297,6 +2321,31 @@ pub fn request(
             dropped.end_hold(center, attack, map, assets);
             dropped.hurt_by_owner = true;
             return None;
+        }
+        ItemRequest::WarpStarBlast {
+            item,
+            position,
+            hand,
+            part_position,
+            center,
+            attack,
+        } => {
+            let star = pool.get_mut(item).expect("the ridden Warp Star");
+            star.past_hitbox_refresh = owner_context.after_hitbox_refresh;
+            it_wstar::burst(
+                star,
+                position,
+                &hand,
+                part_position,
+                center,
+                attack,
+                map,
+                resources.get(ItemKind::WStar),
+            );
+            return None;
+        }
+        ItemRequest::WarpStarPath { .. } => {
+            unreachable!("the scene draws a Warp Star's path with its rider")
         }
         ItemRequest::Drop {
             item,
@@ -2804,6 +2853,12 @@ pub fn spawn_released_monster(
     Some(id)
 }
 
+/// Whether `item`'s motion plays an article state's joint animation
+/// (anim_id != -1; Item_80268E5C removes the animation otherwise).
+pub(crate) fn motion_animated(item: &melee_it::ItemCore) -> bool {
+    SceneItems::logic(item.kind).states[usize::from(item.motion)].animation_id >= 0
+}
+
 /// The world matrix of a free item's model bone: its sampled pose under the
 /// item's own root, in the rest pose while its motion plays no article
 /// state; a melting ice block's child takes its scale (it_80272F7C).
@@ -2818,7 +2873,10 @@ pub fn free_item_bone_matrix(
         .as_ref()
         .expect("an item bone without a sampled pose");
     let root = item.root_srt();
-    let animated = SceneItems::logic(item.kind).states[usize::from(item.motion)].animation_id >= 0;
+    // An article state with no joint animation (the Warp Star's burst)
+    // leaves the joints at rest (Item_80268D34's lb_8000B804).
+    let animated = SceneItems::logic(item.kind).states[usize::from(item.motion)].animation_id >= 0
+        && pose.states[item.article_state].is_some();
     if animated {
         return pose.bone_matrix(item.article_state, item.pose_steps, bone, root);
     }

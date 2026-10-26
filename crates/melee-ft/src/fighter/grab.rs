@@ -236,6 +236,7 @@ pub fn candidate(
         || victim.combat.grab.is_some()
         || victim.status.grab_exclusions.0 & category != 0
         || victim.status.ledge_intangibility != 0
+        || victim.status.item_intangible
         || victim.status.revival_invincibility != 0
         // ftcoll.c:1587: no grabbing a Starman's invincible fighter.
         || victim.status.star_invincible

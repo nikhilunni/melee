@@ -1634,6 +1634,19 @@ impl Runtime {
                 if item.destroyed {
                     return Ok(());
                 }
+                if item.held && item.hitboxes.iter().any(Option::is_some) {
+                    let (owner, secondary, part) =
+                        (item.owner, item.owner_secondary, item.holder_part);
+                    if let Some(index) =
+                        crate::scene_items::owner_index(&state.fighters, owner, secondary)
+                    {
+                        let hand = state.fighters[index].bone_matrix(Some(usize::from(part)));
+                        let item = state.items.get_mut(id).unwrap();
+                        item.holder_attach =
+                            Some(hsd_types::Vec3::new(hand.0[0][3], hand.0[1][3], hand.0[2][3]));
+                    }
+                }
+                let item = state.items.get_mut(id).unwrap();
                 item.update_hitboxes(state.assets.items.get(kind));
                 item.decay_reflection_history();
             }
@@ -3536,7 +3549,22 @@ impl Runtime {
                         | melee_it::ItemRequest::ReDeadRelease { .. }
                         | melee_it::ItemRequest::Stow { .. }
                         | melee_it::ItemRequest::DropArticle { .. }
-                        | melee_it::ItemRequest::Launch { .. } => {}
+                        | melee_it::ItemRequest::Launch { .. }
+                        | melee_it::ItemRequest::WarpStarPath { .. }
+                        | melee_it::ItemRequest::WarpStarBlast { .. } => {}
+                    }
+                    if let melee_it::ItemRequest::WarpStarPath { item } = request {
+                        // ftCo_800C4724's it_80294364 and the root's path.
+                        let resources = &state.assets.items;
+                        let assets = resources.get(melee_types::ItemKind::WStar);
+                        let mut last_path = state.items.warp_star_path;
+                        let star = state.items.get_mut(item).expect("the ridden Warp Star");
+                        let path = it_wstar::draw_path(star, &mut last_path, &mut state.rng, assets);
+                        let collision_box = it_wstar::ride_box(star, assets);
+                        state.items.warp_star_path = last_path;
+                        let (joint, prepared) = &resources.warp_star_paths.paths[path];
+                        f.begin_warp_star_flight(joint, prepared, collision_box);
+                        continue;
                     }
                     if crate::scene_items::redead_request(
                         &mut state.items,
@@ -4932,8 +4960,16 @@ fn article_bone_matrix(
     }
     // A posed common item out of the hand (hold kind 0): its tree with no
     // constraint on its attach bone.
-    if item.hold_kind == 0 && !item.held {
+    if item.hold_kind == 0
+        && !item.held
+        && crate::article_pose::ArticlePoses::posed_out_of_hand(templates, item.kind)
+    {
         return poses.bone_matrix(item, templates, bone, tick, None);
+    }
+    // Any other posed kind out of the hand (the burst Warp Star) is a free
+    // item.
+    if !item.held {
+        return crate::scene_items::free_item_bone_matrix(resources, item, bone);
     }
     let holder = crate::scene_items::owner_index(fighters, item.owner, item.owner_secondary)
         .expect("a posed article's holder fighter");
@@ -4977,6 +5013,7 @@ fn display_posed_articles(state: &mut InitialState, after_tick: u64) {
     let templates = &state.assets.items.article_skeletons;
     for item in state.items.iter() {
         if item.owner.is_none()
+            || !item.held
             || !crate::article_pose::ArticlePoses::poses_kind(templates, item.kind)
         {
             continue;

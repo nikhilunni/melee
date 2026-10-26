@@ -1442,6 +1442,11 @@ impl Fighter {
             self.drop_lifted_item(assets);
             return;
         }
+        if matches!(self.core.state_data, MotionData::WarpStar(_)) {
+            // ftCo_800C4858, the ride's take_dmg_cb.
+            self.drop_warp_star(assets);
+            return;
+        }
         if self.core.motion_state.id == S::LightGet {
             // ftpickupitem_80094694 installs ftpickupitem_80094DF8 for
             // LightGet: what the hand holds is eaten if it can be.
@@ -2327,7 +2332,8 @@ fn detect_eligible_hit(
     // first, so an intangible fighter's shield (a ledgedash into Guard)
     // still takes the hit.
     let intangible = victim.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
-        || victim.status.ledge_intangibility != 0;
+        || victim.status.ledge_intangibility != 0
+        || victim.status.item_intangible;
     let inert = desc.element == melee_types::HitElement::Inert;
     let mut shield_touch = false;
     if victim.shield.active {
@@ -3039,7 +3045,8 @@ impl Fighter {
         // ftcoll.c:2285-2287: intangibility (x1988 or x198C == 2) skips only
         // the hurtbox step; reflection, clank and shield come first.
         let intangible = self.commands.hurt_status == melee_types::combat::HurtStatus::Intangible
-            || self.status.ledge_intangibility != 0;
+            || self.status.ledge_intangibility != 0
+            || self.status.item_intangible;
         let (mut clank_mask, clank_candidates) = super::clank::item_candidates(&self.core, item);
         let mut cursor = melee_coll::detection::PairCursor::default();
         while let Some(id) = cursor.next(

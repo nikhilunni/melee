@@ -122,8 +122,9 @@ fn step_after_clone_and_clone_from_allocates_nothing() {
 }
 
 /// The Motion-Sensor Bomb (armed, touched, blasting), Heart Container,
-/// Maxim Tomato and Food (eaten, healing) and the Warp Star (falling and
-/// resting) step and capture without allocating.
+/// Maxim Tomato and Food (eaten, healing) and the Warp Star (falling,
+/// resting, and ridden from LightGet and from an air catch through its
+/// burst) step and capture without allocating.
 #[test]
 fn random_item_kinds_step_and_capture_allocate_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
@@ -137,6 +138,8 @@ fn random_item_kinds_step_and_capture_allocate_nothing() {
         "corpus_v3_fd_items_tomato_e50814092_p0",
         "corpus_v3_fd_items_foods_e7ff378da_p0",
         "start_fd_items_wstar",
+        "wstar_ride_ec3145eb3",
+        "wstar_ride_e1502cb40",
     ] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),

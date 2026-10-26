@@ -265,7 +265,10 @@ impl FighterCore {
         if self.status.star_invincible {
             self.install_color_overlay(super::power_up::STARMAN_COLOR, 0, table);
         }
-        if self.status.revival_invincibility != 0 || self.status.ledge_intangibility != 0 {
+        if self.status.revival_invincibility != 0
+            || self.status.ledge_intangibility != 0
+            || self.status.item_intangible
+        {
             self.install_color_overlay(INVINCIBILITY_FLASH, 0, table);
         }
     }

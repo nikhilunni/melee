@@ -141,6 +141,8 @@ impl FighterCore {
     /// leaves it by a special keeps `state_data`, so there the motion decides.
     pub fn hidden_by_life_state(&self) -> bool {
         match &self.state_data {
+            // ftCo_800C4724 / ftCo_800C4A38 set it for the Warp Star ride.
+            MotionData::WarpStar(_) => true,
             MotionData::Life(LifeState::Revival { .. } | LifeState::PlatformWait { .. }) => {
                 matches!(self.motion_state.id, S::Rebirth | S::RebirthWait)
             }
@@ -897,6 +899,11 @@ impl Fighter {
         self.core.fatal_action = self.core.motion_state.action;
         // fn_800C7568, CaptureLeadead's death2_cb, before the kind's.
         self.shake_off_redead();
+        // ftCo_800C48AC, the ride's death2_cb: the rider is blast-zone
+        // exempt (x2219_b2) and intangible, so no death is witnessed.
+        if matches!(self.core.state_data, MotionData::WarpStar(_)) {
+            unimplemented!("ftCo_800C48AC (ftCo_WarpStar.c:96): a Warp Star rider KO'd");
+        }
         if let Some(death) = self.character.table().death {
             death(self);
         }

@@ -614,7 +614,10 @@ fn release(
     if victim.commands.hurt_status != HurtStatus::Normal {
         victim.core.set_body_hurt_status(HurtStatus::Normal);
     }
-    if victim.status.ledge_intangibility != 0 || victim.status.revival_invincibility != 0 {
+    if victim.status.ledge_intangibility != 0
+        || victim.status.item_intangible
+        || victim.status.revival_invincibility != 0
+    {
         unimplemented!(
             "ftCo_800DDDE4 (ftCo_Throw.c:534-538): an invincible fighter leaving the mouth"
         );

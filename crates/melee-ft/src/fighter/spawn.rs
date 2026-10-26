@@ -1494,6 +1494,7 @@ impl FighterCore {
             item_catch_locked: false,
             catch_window: 0,
             catch_after_step: false,
+            caught_warp_star: false,
             jab_countdown: 0.0,
             rapid_jab_edges: 0,
             last_jab: None,

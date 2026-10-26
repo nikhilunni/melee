@@ -28,8 +28,15 @@ pub(crate) struct ArticleSkeleton {
     /// an article posed only in state 0 (Mario's cape), one per state for
     /// a held item whose states each animate it (the Fire Flower).
     trees: Vec<JObjTree>,
-    /// The article state `trees` is posing now.
+    /// The article state each tree carries ([`UNANIMATED`] for the model
+    /// without a joint animation).
+    states: Vec<usize>,
+    /// The index in `trees` posing now.
     current: usize,
+    /// A common item out of the hand keeps this tree, unconstrained (the
+    /// Fire Flower). Otherwise it leaves the hand as a free item (the Warp
+    /// Star, posed only while held or ridden).
+    pub posed_out_of_hand: bool,
     root: JObjId,
     /// ItemModelDesc x8: the depth-first index of the constrained bone.
     attach_bone: usize,
@@ -56,15 +63,36 @@ impl ArticleSkeleton {
         visual: &hsd_archive::desc::item_visual::ItemVisual,
         states: usize,
     ) -> anyhow::Result<Self> {
-        let mut trees = Vec::with_capacity(states);
+        let states: Vec<usize> = (0..states).collect();
+        let mut skeleton = Self::load_listed_states(kind, archive, visual, &states)?;
+        skeleton.posed_out_of_hand = true;
+        Ok(skeleton)
+    }
+
+    /// The model once per listed article state, each with that state's
+    /// joint animation; [`UNANIMATED`] is the model with none, its joints at
+    /// rest (a motion without an article state: the held Warp Star,
+    /// it_802742F4's lb_8000B804).
+    pub fn load_listed_states(
+        kind: ItemKind,
+        archive: &hsd_archive::Archive,
+        visual: &hsd_archive::desc::item_visual::ItemVisual,
+        states: &[usize],
+    ) -> anyhow::Result<Self> {
+        let mut trees = Vec::with_capacity(states.len());
         let mut root = None;
         let mut unconstrained = Vec::new();
-        for state in 0..states {
+        for &state in states {
             let (mut tree, tree_root, skipped) =
                 hsd_anim::load::load_joint_tree_without_constraints(archive, &visual.model)
                     .map_err(|e| anyhow::anyhow!("article model: {e}"))?;
             unconstrained = skipped;
-            if let Some(anim) = visual.states[state].joint.as_ref() {
+            let anim = if state == UNANIMATED {
+                None
+            } else {
+                visual.states[state].joint.as_ref()
+            };
+            if let Some(anim) = anim {
                 hsd_anim::load::attach_anim_joint_without_constraints(&mut tree, tree_root, anim, archive)
                     .map_err(|e| anyhow::anyhow!("article animation: {e}"))?;
             }
@@ -80,7 +108,9 @@ impl ArticleSkeleton {
         Ok(Self {
             kind,
             trees,
+            states: states.to_vec(),
             current: 0,
+            posed_out_of_hand: false,
             root: root.expect("an article with a state"),
             attach_bone: visual.attachment_bone,
             unconstrained,
@@ -89,6 +119,11 @@ impl ArticleSkeleton {
 
     fn tree_mut(&mut self) -> &mut JObjTree {
         &mut self.trees[self.current]
+    }
+
+    /// The index in `trees` of the tree carrying `article_state`.
+    fn tree_index(&self, article_state: usize) -> Option<usize> {
+        self.states.iter().position(|&s| s == article_state)
     }
 }
 
@@ -108,6 +143,9 @@ struct Slot {
 pub(crate) struct ArticlePoses {
     slots: Vec<Slot>,
 }
+
+/// The article state of a posed motion without one (anim_id -1).
+pub(crate) const UNANIMATED: usize = usize::MAX;
 
 /// Articles of one kind that may be posed at once (one per fighter).
 const SLOTS_PER_KIND: usize = 2;
@@ -213,7 +251,11 @@ impl ArticlePoses {
         tick: u64,
         hand: Hand<'_>,
     ) -> &mut ArticleSkeleton {
-        let state = item.article_state;
+        let state = if crate::scene_items::motion_animated(item) {
+            item.article_state
+        } else {
+            UNANIMATED
+        };
         let index = match self.slots.iter().position(|s| s.item == Some(item.id)) {
             Some(index) => index,
             None => {
@@ -233,17 +275,15 @@ impl ArticlePoses {
             .iter()
             .find(|t| t.kind == item.kind)
             .expect("posed article template");
-        assert!(
-            state < template.trees.len(),
-            "posed article {:?} in state {state} without its tree",
-            item.kind
-        );
+        let tree = template.tree_index(state).unwrap_or_else(|| {
+            panic!("posed article {:?} in state {state} without its tree", item.kind)
+        });
         let slot = &mut self.slots[index];
-        if slot.skeleton.current != state {
+        if slot.skeleton.current != tree {
             // Item_80268D34 for this article state: its tree from the rest
             // pose and fresh playback.
-            slot.skeleton.current = state;
-            reset(&mut slot.skeleton.trees[state], &template.trees[state]);
+            slot.skeleton.current = tree;
+            reset(&mut slot.skeleton.trees[tree], &template.trees[tree]);
             slot.steps = None;
             slot.placed = None;
         }
@@ -264,7 +304,7 @@ impl ArticlePoses {
                     // A per-state article's state entered again (its
                     // animation looping, Item_80268E5C -> Item_80268D34):
                     // lb_8000B804's rest pose before the fresh playback.
-                    reset(&mut skeleton.trees[state], &template.trees[state]);
+                    reset(&mut skeleton.trees[tree], &template.trees[tree]);
                 }
                 let tree = skeleton.tree_mut();
                 tree.req_anim_all(root, 0.0);
@@ -302,6 +342,14 @@ impl ArticlePoses {
             tree.set_rotation_z(joint, spin.z);
         }
         let attach = tree.bone(root, attach_bone).expect("article attach bone");
+        // it_80294430 / it_802946B0: the ridden Warp Star's attach joint at
+        // the rider's scale (it_80272F7C).
+        if let melee_it::ItemScratch::WarpStar(star) = &item.scratch {
+            if star.joint_scaled {
+                let s = star.scale;
+                tree.set_scale(attach, &hsd_types::Vec3::new(s, s, s));
+            }
+        }
         tree.set_position_constraint(
             attach,
             hand.map(|(hand, _)| hsd_types::Vec3::new(hand.0[0][3], hand.0[1][3], hand.0[2][3])),
@@ -343,6 +391,11 @@ impl ArticlePoses {
             hsd_anim::mtx::hsd_mtx_srt(&mut matrix, &node.scale, &euler, &node.translate, None);
         }
         Some(matrix)
+    }
+
+    /// Whether `kind` out of the hand keeps its posed tree.
+    pub fn posed_out_of_hand(templates: &[ArticleSkeleton], kind: ItemKind) -> bool {
+        templates.iter().any(|t| t.kind == kind && t.posed_out_of_hand)
     }
 
     /// Whether `kind` is posed (it has a prepared skeleton).

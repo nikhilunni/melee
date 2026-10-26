@@ -261,7 +261,10 @@ pub fn lay_egg(
     if victim.commands.hurt_status != HurtStatus::Normal {
         set_body_status(&mut victim.core, HurtStatus::Normal, NORMAL_BODY_FLASH);
     }
-    if victim.status.ledge_intangibility != 0 || victim.status.revival_invincibility != 0 {
+    if victim.status.ledge_intangibility != 0
+        || victim.status.item_intangible
+        || victim.status.revival_invincibility != 0
+    {
         unimplemented!("ftCo_800DDDE4: Egg Lay on an intangible or invincible fighter");
     }
     let hit = super::grab_throw::release_captured(

@@ -2204,6 +2204,28 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MS_WarpStarJump, WarpStarFall = 305, 306 (ftCo_WarpStar.c): the
+    // rider crouches on the star (ftCo_SM_Squat, SquatWait).
+    rows[S::WarpStarJump as usize] = MotionRow {
+        action: ActionId(305),
+        id: S::WarpStarJump,
+        animation: 30,
+        anim: crate::fighter::warp_star::jump_anim,
+        iasa: crate::fighter::warp_star::no_input,
+        physics: crate::fighter::warp_star::jump_physics,
+        collision: crate::fighter::warp_star::jump_collision,
+        camera: callbacks::camera::camera_bone_only,
+        implemented: true,
+    };
+    rows[S::WarpStarFall as usize] = MotionRow {
+        action: ActionId(306),
+        id: S::WarpStarFall,
+        animation: 31,
+        anim: crate::fighter::warp_star::fall_anim,
+        physics: crate::fighter::warp_star::fall_physics,
+        collision: crate::fighter::warp_star::fall_collision,
+        ..rows[S::WarpStarJump as usize]
+    };
     // ftCo_MS_Bury..BuryJump = 294..296 (ftCo_Bury.c). The buried rows
     // have no animation; the jump out plays the forward jump's.
     rows[S::Bury as usize] = MotionRow {

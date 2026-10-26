@@ -330,6 +330,7 @@ pub enum ItemScratch {
     Shell(ShellState),
     RedShell(RedShellState),
     Freeze(FreezeState),
+    WarpStar(WarpStarState),
     /// itMSBomb_ItemVars xDD4 b0: it has armed before.
     MotionSensor { armed_before: bool },
     /// A healing item's xDD4 scratch: what eating it heals (it_8026B47C)
@@ -552,6 +553,19 @@ pub struct RedShellState {
     pub broken: bool,
     /// xDF4 b0: it has rebounded before.
     pub bounced_before: bool,
+}
+/// itWstar_ItemVars (xDD4..xDDC): the ride's model and hitbox scales and
+/// the flight path it drew.
+#[derive(Clone, Copy, Debug)]
+pub struct WarpStarState {
+    /// xDD4: the model scale the rider set (it_80294430), 1 until then.
+    pub scale: f32,
+    /// xDD8: the hitbox scale (the rider's warp_star_hitbox_scale).
+    pub hitbox_scale: f32,
+    /// xDDC: the flight path it_80294364 drew.
+    pub path: i32,
+    /// it_80294430 scaled the attach joint to `scale` (it_80272F7C).
+    pub joint_scaled: bool,
 }
 /// itFreeze_ItemVars: a Freezie's slide.
 #[derive(Clone, Copy, Debug, Default)]
@@ -1387,6 +1401,11 @@ pub struct ItemCore {
     /// root's translation in every bone matrix. The scene refreshes it
     /// before the item's bones are read.
     pub constrained_root: Option<Vec3>,
+    /// The world translation of the holder part a held item's attach joint
+    /// (ItemModelDesc x8) is constrained to (it_80274F48), sampled by the
+    /// scene before the item's hitboxes are placed: a capsule on that joint
+    /// with no offset sits there (the ridden Warp Star's).
+    pub holder_attach: Option<Vec3>,
     /// xDC8 x13 (it_802742F4): held by its owner. A held item neither moves
     /// nor leaves the blast zones.
     pub held: bool,
@@ -1910,6 +1929,20 @@ impl ItemCore {
         let Some(hit) = &mut self.hitboxes[id] else {
             return;
         };
+        if self.held && hit.descriptor.bone == assets.visual.attachment_bone {
+            // it_80274F48's position constraint: the joint's world
+            // translation is the holder part's.
+            assert!(
+                hit.descriptor.offset == Vec3::ZERO,
+                "it_8027129C: an offset capsule on a held item's attach joint"
+            );
+            let position = self
+                .holder_attach
+                .expect("a held item's attach joint before the scene sampled its holder");
+            hit.update_position(position);
+            self.hitbox_trace[id] = (hit.previous_position, hit.position);
+            return;
+        }
         let matrix = if hit.descriptor.bone == 0 {
             let mut matrix = hsd_types::Mtx::default();
             hsd_anim::mtx::hsd_mtx_srt(
@@ -2203,6 +2236,9 @@ pub struct ItemPool {
     next_id: u32,
     /// it_804D6D14: Item_8026AE60's hit group counter.
     pub(crate) next_hit_group: u32,
+    /// it_804D6D00: the Warp Star flight path drawn last (it_80294364), -1
+    /// from Item_80266FA8 on.
+    pub warp_star_path: i8,
     /// Every fighter's model scale and PlCo's damage curve when the match
     /// scales fighters (Giant and Tiny Melee), for new items
     /// (`ItemCore::fighter_scale`).
@@ -2250,6 +2286,7 @@ impl ItemPool {
             common,
             next_id: 0,
             next_hit_group: 1,
+            warp_star_path: -1,
             owner_hit_groups: [0; crate::hit_group::OWNER_GROUPS],
             fighter_push: Default::default(),
             freed_rest_lines: Vec::with_capacity(ITEM_CAPACITY),
@@ -2560,6 +2597,7 @@ impl ItemPool {
             joint_scale: None,
             joint_translation_z: None,
             constrained_root: None,
+            holder_attach: None,
             root_translation: if spawn.initial_collision {
                 spawn.previous_position
             } else {
@@ -3183,6 +3221,7 @@ impl Clone for ItemPool {
             common: self.common.clone(),
             next_id: self.next_id,
             next_hit_group: self.next_hit_group,
+            warp_star_path: self.warp_star_path,
             owner_hit_groups: self.owner_hit_groups,
             fighter_push: self.fighter_push,
             freed_rest_lines: hsd_types::storage::clone_vec(&self.freed_rest_lines),

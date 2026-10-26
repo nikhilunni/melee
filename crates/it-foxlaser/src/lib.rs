@@ -315,7 +315,9 @@ macro_rules! blaster {
                     | ItemControl::SwingSwell
                     | ItemControl::SwingShrink
                     | ItemControl::Recoil
-                    | ItemControl::Spend(_) => {
+                    | ItemControl::Spend(_)
+                    | ItemControl::WarpStarRide { .. }
+                    | ItemControl::WarpStarFall => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }

@@ -7670,6 +7670,29 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_metalb_ece1e43b7_p0", 3380),
     ("corpus_v3_fd_items_metalb_ef89b3e70_p0", 3835),
     ("corpus_v3_fd_items_metalb_ef9b6d16d_p0", 2857),
+    // Warp Stars: two resting stars pushed apart under their spin joint
+    // (ItemModelDesc xC's depth 3), picked up at LightGet's end, caught in
+    // the air (IASA) and in the catch window, each up to the ride's start.
+    ("corpus_v3_fd_items_wstar_ef89b3e70_p0", 257),
+    ("corpus_v3_fd_items_wstar_e89a89d0e_p0", 491),
+    ("corpus_v3_fd_items_wstar_edb2b114a_p0", 1047),
+    ("corpus_v3_fd_items_wstar_e1502cb40_p2", 533),
+    ("corpus_v3_fd_items_wstar_ec13743d5_p0", 282),
+    ("corpus_v3_fd_items_wstar_e726cfdde_p1", 471),
+    ("corpus_v3_fd_items_wstar_ec3145eb3_p2", 495),
+    ("corpus_v3_fd_items_wstar_e3e74affa_p1", 515),
+    // The whole ride (ftCo_WarpStar.c) from each of those pickups: the
+    // flight path on the rider's root (it_80294364), the fall from the
+    // blast zone's top with the stick's drift, the landing's JumpB and the
+    // star's burst (it_802947CC) hitting the other fighter.
+    ("wstar_ride_ef89b3e70", 677),
+    ("wstar_ride_e89a89d0e", 951),
+    ("wstar_ride_edb2b114a", 1467),
+    ("wstar_ride_e1502cb40", 953),
+    ("wstar_ride_ec13743d5", 702),
+    ("wstar_ride_e726cfdde", 931),
+    ("wstar_ride_ec3145eb3", 955),
+    ("wstar_ride_e3e74affa", 975),
 ];
 
 #[test]

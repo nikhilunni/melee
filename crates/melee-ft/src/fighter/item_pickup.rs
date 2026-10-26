@@ -677,6 +677,9 @@ fn held_item_state_is_audited(
         None => {
             let shooter = super::item_shoot::is_shooter(kind);
             HELD_ITEM_STATES.contains(&state)
+                // ftCo_WarpStar.c: the ridden star stays in hand.
+                || (kind == melee_types::ItemKind::WStar
+                    && matches!(state, S::WarpStarJump | S::WarpStarFall))
                 || ((super::item_swing::is_swing_item(kind) || shooter)
                     && action == ActionId(state as u16)
                     && (SWING_ITEM_COMMON_STATES.contains(&state)
@@ -856,8 +859,12 @@ impl Fighter {
             // filled): use kind 5 is eaten; the Warp Star and the hammer
             // would take over.
             if let Some(held) = self.core.held_item {
-                if held.use_kind == 5 && matches!(held.kind, ItemKind::WStar | ItemKind::Hammer) {
-                    unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:181-186): {:?} taking over", held.kind);
+                if held.use_kind == 5 && held.kind == ItemKind::Hammer {
+                    unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:184): the hammer taking over");
+                }
+                // ftpickupitem.c:181: ftCo_800C4724, and LightGet's Anim returns.
+                if self.ride_held_warp_star(assets)? {
+                    return Ok(());
                 }
                 self.core.eat(held, assets);
             }
@@ -886,7 +893,21 @@ impl Fighter {
             return false;
         };
         self.core.catch_item(item, assets);
+        self.finish_warp_star_catch(assets)
+            .expect("ftCo_800C4724 from an air catch");
         true
+    }
+
+    /// fn_800D6F58's ftpickupitem_8009447C for a caught Warp Star
+    /// (ftCo_800C4724), then the catch's sparkle and lock, which follow it.
+    /// True when a ride began.
+    pub(super) fn finish_warp_star_catch(&mut self, assets: &FighterAssets) -> Result<bool> {
+        if !std::mem::take(&mut self.core.caught_warp_star) {
+            return Ok(false);
+        }
+        assert!(self.ride_held_warp_star(assets)?, "a caught Warp Star is held");
+        self.core.finish_catch();
+        Ok(true)
     }
 
 
@@ -1015,10 +1036,22 @@ impl FighterCore {
     fn catch_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
         self.take_item(item, assets);
         let held = self.held_item.expect("just caught");
-        if held.use_kind == 5 && matches!(held.kind, ItemKind::WStar | ItemKind::Hammer) {
-            unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:181-186): {:?} caught", held.kind);
+        if held.use_kind == 5 && held.kind == ItemKind::Hammer {
+            unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:184): the hammer caught");
+        }
+        if held.kind == ItemKind::WStar {
+            // ftCo_800C4724 needs the character: the caller rides it
+            // (`Fighter::finish_warp_star_catch`).
+            self.caught_warp_star = true;
+            return;
         }
         self.eat(held, assets);
+        self.finish_catch();
+    }
+
+    /// fn_800D6F58's tail: the pickup sparkle (efAsync_Spawn 0x422 at the
+    /// light item part) and x2224_b1.
+    fn finish_catch(&mut self) {
         let part = usize::from(self.bones.model.animation_translation);
         let joint = self.animation.parts[part].joint.0;
         self.effects

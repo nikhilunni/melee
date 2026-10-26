@@ -505,6 +505,10 @@ impl super::FighterCore {
     /// ftpickupitem_800948A8's part: ftData x8 +0x10 for a light item,
     /// +0x11 for a heavy one (the Warp Star's TopN is not in scope).
     pub fn held_item_part(&self, held: &super::item_pickup::HeldItem) -> u8 {
+        // ftpickupitem_800948A8: a Warp Star rides at FtPart_TopN.
+        if !held.heavy && held.kind == melee_types::ItemKind::WStar {
+            return 0;
+        }
         if held.heavy {
             self.bones.model.shield
         } else {

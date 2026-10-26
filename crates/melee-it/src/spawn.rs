@@ -144,6 +144,11 @@ pub enum ItemControl {
     Recoil,
     /// it_80291F14: the Super Scope spends a shot of this charge level.
     Spend(i32),
+    /// it_80294430: the rider's model scale (x8 * (half width / x4) * the
+    /// item's scale, xDD4) and its warp_star_hitbox_scale (xDD8).
+    WarpStarRide { half_width: f32, hitbox_scale: f32 },
+    /// it_802946B0: the star falls with its rider (state 3).
+    WarpStarFall,
 }
 
 /// Which of the Fan's swing animations the holder plays
@@ -218,6 +223,20 @@ pub enum ItemRequest {
         /// The world matrix of the hand joint holding it (ftLib_80086630).
         hand: hsd_types::Mtx,
         speed: f32,
+        center: Vec3,
+        attack: Option<melee_types::combat::AttackInstance>,
+    },
+    /// ftCo_800C4724's it_80294364: the held Warp Star `item` draws its
+    /// flight path, whose joint animation the rider's root then plays.
+    WarpStarPath { item: u32 },
+    /// ftCo_800C4C60's it_802947CC: the ridden Warp Star `item` lands and
+    /// bursts at `position` (the rider's cur_pos), leaving the joint whose
+    /// world matrix is `hand` (it_8027429C, no push).
+    WarpStarBlast {
+        item: u32,
+        position: Vec3,
+        hand: hsd_types::Mtx,
+        part_position: Vec3,
         center: Vec3,
         attack: Option<melee_types::combat::AttackInstance>,
     },

@@ -174,6 +174,11 @@ pub struct FighterAssets {
     /// PlCo +4DC..+4EC and +5E0: ftCo_BarrelWait.c.
     pub barrel: super::barrel::Parameters,
     pub hazard: super::hazard::Parameters,
+    /// PlCo +438 and +694..+6A8: ftCo_WarpStar.c.
+    pub warp_star: super::warp_star::Parameters,
+    /// Stage_GetBlastZoneTopOffset, which the scene fills once the stage is
+    /// loaded (the Warp Star ride's ceiling); 0 until then.
+    pub stage_blast_top: f32,
     /// PlCo +714 and +77C..+7A4: ftCo_DamageIce.c.
     pub frozen: super::frozen::Parameters,
     pub smash_sounds: Vec<u32>,
@@ -287,6 +292,11 @@ impl std::ops::Deref for FighterAssetSet {
     type Target = [FighterAssets];
     fn deref(&self) -> &[FighterAssets] {
         &self.0
+    }
+}
+impl std::ops::DerefMut for FighterAssetSet {
+    fn deref_mut(&mut self) -> &mut [FighterAssets] {
+        &mut self.0
     }
 }
 impl Drop for FighterAssetSet {
@@ -501,6 +511,8 @@ impl FighterAssets {
             capture_redead: super::capture_redead::Parameters::read(common, common_data)?,
             barrel: super::barrel::Parameters::read(common, common_data)?,
             hazard: super::hazard::Parameters::read(common, common_data)?,
+            warp_star: super::warp_star::Parameters::read(common, common_data)?,
+            stage_blast_top: 0.0,
             frozen: super::frozen::Parameters::read(common, common_data)?,
             magnifier: super::offscreen::MagnifierDamage::read(common, common_data)?,
             kind: descriptor.kind,

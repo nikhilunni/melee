@@ -33,6 +33,8 @@ fn bone_generator(id: u16) -> Result<(u8, u32, bool)> {
         // efalt.c:68-73: the sparkles along Mario's cape.
         0x47D => (1, 0x3F0, false),
         0x47E => (1, 0x3F1, false),
+        // efasync.c:747-749: the held Warp Star's sparkle.
+        0x43D => (0, 0x1AF, false),
         // efsync.c:414-422: the Ice Climbers' ice block, made (0x4E9),
         // launched (0x4EA) and sliding (0x4EB).
         0x4E9 => (14, 0x36B0, false),
