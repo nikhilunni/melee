@@ -11,8 +11,9 @@
 //! pickup, drop and throw unhide its model's child joint
 //! (HSD_JObjClearFlagsAll), which no game state reads either.
 //!
-//! The Fan ([`harisen`]) and the Star Rod with its star ([`starrod`]) have
-//! their own files.
+//! The Fan ([`harisen`]), the Star Rod with its star ([`starrod`]) and
+//! the Lip's Stick with its spores and flower ([`lipstick`]) have their own
+//! files.
 use hsd_types::Vec3;
 use melee_it::{
     desc::ItemAssets,
@@ -260,12 +261,15 @@ pub mod harisen;
 pub use harisen::Harisen;
 pub mod starrod;
 pub use starrod::{StarRod, StarRodStar};
+pub mod lipstick;
+pub use lipstick::{Flower, LipStick, LipStickSpore};
 
 /// it_80292394 / it_80295748: where a held kind's shot leaves it, in the
 /// hand joint's frame; zero for the kinds that never shoot from a swing.
 pub fn shot_offset(kind: ItemKind, assets: &melee_it::desc::ItemAssets) -> hsd_types::Vec3 {
     match kind {
         ItemKind::StarRod => starrod::star_offset(assets),
+        ItemKind::LipStick => lipstick::spore_offset(assets),
         _ => hsd_types::Vec3::ZERO,
     }
 }

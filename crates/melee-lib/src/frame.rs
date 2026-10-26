@@ -444,10 +444,15 @@ impl Runtime {
                 crate::scene_items::spawn_zako(&mut self.state, world, &mut self.item_objects, kind, position, facing);
                 continue;
             }
-            if matches!(release, melee_it::ItemEvent::PartyBallContents { .. }) {
-                self.release_party_ball(container, release, world)?;
-            } else {
-                self.release_contents(container, release, world)?;
+            match release {
+                melee_it::ItemEvent::StickSpore {
+                    previous_position,
+                    facing,
+                } => self.leave_stick_spore(container, previous_position, facing, world)?,
+                melee_it::ItemEvent::PartyBallContents { .. } => {
+                    self.release_party_ball(container, release, world)?
+                }
+                _ => self.release_contents(container, release, world)?,
             }
         }
         Ok(())
@@ -471,7 +476,8 @@ impl Runtime {
                     release @ (melee_it::ItemEvent::Release { .. }
                     | melee_it::ItemEvent::CrateContents { .. }
                     | melee_it::ItemEvent::PartyBallContents { .. }
-                    | melee_it::ItemEvent::SpawnZako { .. }) => {
+                    | melee_it::ItemEvent::SpawnZako { .. }
+                    | melee_it::ItemEvent::StickSpore { .. }) => {
                         return Ok(Some((item.id, release)));
                     }
                     melee_it::ItemEvent::ResetCollision => {
@@ -989,6 +995,72 @@ impl Runtime {
             }
         }
         Ok(None)
+    }
+
+    /// it_8029A218 (8029A218): a thrown Lip's Stick's spore for its owner,
+    /// created at the owner's ECB centre (it_8026BB68 -> ftLib_80086990)
+    /// on the way from the stick (`previous_position`, on the stage plane)
+    /// and set up by it_8029A498, then its burst (efSync 0x441) at the
+    /// stick.
+    fn leave_stick_spore(
+        &mut self,
+        stick: u32,
+        previous_position: Vec3,
+        facing: f32,
+        world: &mut World,
+    ) -> Result<()> {
+        let state = &mut self.state;
+        let (owner, secondary, attack) = {
+            let item = state.items.get_mut(stick).expect("the stick");
+            (item.owner.expect("a stick spore's owner"), item.owner_secondary, item.stale_source)
+        };
+        let index = crate::scene_items::owner_index(&state.fighters, Some(owner), secondary)
+            .expect("the stick's owner");
+        let fighter = &state.fighters[index].0.core;
+        let ecb = &fighter.collision.data.ecb;
+        let position = fighter.physics.position;
+        // ftLib_80086990: fadds, fmuls, fadds.
+        let midpoint = 0.5 * (ecb.top.y + ecb.bottom.y);
+        let mut spawn = melee_it::SpawnItem::ray(
+            melee_types::ItemKind::LipStickSpore,
+            owner,
+            Vec3::new(previous_position.x, previous_position.y, 0.0),
+            facing,
+        );
+        spawn.position = Vec3::new(position.x + 0.0, position.y + midpoint, position.z + 0.0);
+        spawn.spawn_variant = it_sword::lipstick::CONTACT_SPORE;
+        spawn.stale_source = attack;
+        let stale_multiplier = fighter.combat.stale.multiplier_for(
+            attack.map(|attack| attack.move_id),
+            &state.assets.fighters[index].stale_weights,
+        );
+        crate::scene_items::request(
+            &mut state.items,
+            &mut state.effects.gobjs,
+            &state.assets.items,
+            &mut state.map,
+            world,
+            &mut self.item_objects,
+            melee_it::ItemRequest::Spawn(spawn),
+            crate::scene_items::RequestOwner {
+                slot: Some(owner),
+                secondary,
+                held_item: None,
+                after_hitbox_refresh: false,
+                efasync_immediate: false,
+                stale_multiplier,
+                bounds: None,
+            },
+            &mut state.rng,
+        );
+        state.effects.spawn_positional::<RetailTrig>(
+            it_sword::lipstick::CONTACT_SPORE_EFFECT,
+            previous_position,
+            &state.assets.common_particle_bank,
+            &mut state.particles,
+            &mut state.rng,
+        )?;
+        Ok(())
     }
 
     /// it_8026F3D4 (8026F3D4): a container lets out `count` items, each a
@@ -3665,6 +3737,9 @@ impl Runtime {
                     if let Some(id) = spawned {
                         let kind = state.items.get_mut(id).expect("created article").kind;
                         f.article_created(kind, id);
+                        if kind == melee_types::ItemKind::FFlowerFlame {
+                            f.core.flower_made(id, &state.assets.fighters[slot]);
+                        }
                     }
                     if let Some(id) = spawned.filter(|_| hold) {
                         let spawned_item = state.items.iter().find(|i| i.id == id).unwrap();

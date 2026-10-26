@@ -176,6 +176,8 @@ pub struct FighterAssets {
     pub hazard: super::hazard::Parameters,
     /// PlCo +438 and +694..+6A8: ftCo_WarpStar.c.
     pub warp_star: super::warp_star::Parameters,
+    /// PlCo +6F4..+710: the Lip's Stick flower (ftcommon.c).
+    pub head_flower: super::flower::Parameters,
     /// Stage_GetBlastZoneTopOffset, which the scene fills once the stage is
     /// loaded (the Warp Star ride's ceiling); 0 until then.
     pub stage_blast_top: f32,
@@ -512,6 +514,7 @@ impl FighterAssets {
             barrel: super::barrel::Parameters::read(common, common_data)?,
             hazard: super::hazard::Parameters::read(common, common_data)?,
             warp_star: super::warp_star::Parameters::read(common, common_data)?,
+            head_flower: super::flower::Parameters::read(common, common_data)?,
             stage_blast_top: 0.0,
             frozen: super::frozen::Parameters::read(common, common_data)?,
             magnifier: super::offscreen::MagnifierDamage::read(common, common_data)?,

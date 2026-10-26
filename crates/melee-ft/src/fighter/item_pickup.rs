@@ -163,7 +163,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 216] = [
+const HELD_ITEM_STATES: [S; 220] = [
     S::LightGet,
     // ftCo_ItemScrew.c / ftCo_DamageScrew.c: the Screw Attack's jumps keep
     // it, and a victim thrown up keeps a light item (only ftCo_8009750C's
@@ -276,6 +276,10 @@ const HELD_ITEM_STATES: [S; 216] = [
     // ftCo_FlyReflect.c: a tumble off a wall or ceiling has no item branch.
     S::FlyReflectWall,
     S::FlyReflectCeil,
+    S::LipstickSwing1,
+    S::LipstickSwing3,
+    S::LipstickSwing4,
+    S::LipstickSwingDash,
     // ftCo_Rebound.c: a clanked swing rebounds with the item in hand (its
     // take_dmg_cb gave the hand back in ftCommon_8007DB58); no item branch.
     S::ReboundStop,

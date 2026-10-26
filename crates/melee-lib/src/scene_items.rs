@@ -27,6 +27,9 @@ melee_it::item_kinds! {
         Harisen: it_sword::Harisen,
         StarRod: it_sword::StarRod,
         StarRodStar: it_sword::StarRodStar,
+        LipStick: it_sword::LipStick,
+        LipStickSpore: it_sword::LipStickSpore,
+        FFlowerFlame: it_sword::Flower,
         GShell: it_shell::GreenShell,
         RShell: it_shell::RedShell,
         Freeze: it_freeze::Freezie,
@@ -901,6 +904,36 @@ impl Resources {
                     ItemKind::LGunRay,
                     &it_lgun::RAY_ARTICLE_STATES,
                     it_lgun::RAY_SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::LipStick,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::LipStick,
+                    &it_sword::lipstick::ARTICLE_STATES,
+                    it_sword::lipstick::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::LipStickSpore,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::LipStickSpore,
+                    &it_sword::lipstick::SPORE_ARTICLE_STATES,
+                    it_sword::lipstick::SPORE_SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::FFlowerFlame,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::FFlowerFlame,
+                    &it_sword::lipstick::FLOWER_ARTICLE_STATES,
+                    it_sword::lipstick::FLOWER_SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (
@@ -3126,9 +3159,13 @@ pub(crate) fn release_effects(state: &mut crate::initial_state::InitialState, de
         };
         let followed = state.effects.followed_item_bones().count();
         if id == item.id && item.joints_dirty {
-            let matrix = state
-                .article_poses
-                .detached_bone_matrix(id, bone)
+            // A posed kind out of the hand is a free item.
+            let posed = if item.held {
+                state.article_poses.detached_bone_matrix(id, bone)
+            } else {
+                None
+            };
+            let matrix = posed
                 .or_else(|| {
                     crate::scene_items::free_item_detached_bone_matrix(
                         &state.assets.items,

@@ -317,7 +317,8 @@ macro_rules! blaster {
                     | ItemControl::Recoil
                     | ItemControl::Spend(_)
                     | ItemControl::WarpStarRide { .. }
-                    | ItemControl::WarpStarFall => {
+                    | ItemControl::WarpStarFall
+                    | ItemControl::FlowerSize { .. } => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }

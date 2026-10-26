@@ -1,7 +1,7 @@
 //! Swinging a held battering item: ftswing.c (ftCo_Attack_800CCF58),
 //! ft_0CD1.c (the shared swing callbacks) and ft_0CD3.c (the per-item
-//! rows). The sword, bat, fan and star rod are supported; the parasol and
-//! lipstick fail closed at entry.
+//! rows). The sword, bat, fan, star rod and lipstick are supported; the
+//! parasol fails closed at entry.
 use super::{
     assets::{FighterAssets, Result},
     Fighter, MotionData,
@@ -85,9 +85,18 @@ fn swing_row(kind: ItemKind) -> Option<(usize, &'static [Option<S>; 5])> {
         ItemKind::Bat => Some((1, &BAT_SWINGS)),
         ItemKind::Harisen => Some((3, &HARISEN_SWINGS)),
         ItemKind::StarRod => Some((4, &STARROD_SWINGS)),
+        ItemKind::LipStick => Some((5, &LIPSTICK_SWINGS)),
         _ => None,
     }
 }
+/// lbl_803C6D70's lipstick row.
+const LIPSTICK_SWINGS: [Option<S>; 5] = [
+    Some(S::LipstickSwing1),
+    Some(S::LipstickSwing3),
+    Some(S::LipstickSwing4),
+    None,
+    Some(S::LipstickSwingDash),
+];
 /// lbl_803C6D70's star rod row.
 const STARROD_SWINGS: [Option<S>; 5] = [
     Some(S::StarRodSwing1),
@@ -101,9 +110,13 @@ const STARROD_SWINGS: [Option<S>; 5] = [
 const NO_SHOT_SOUND: u32 = 540000;
 /// ft_800CD914: the Star Rod's sound when it is out of shots.
 const EMPTY_STAR_ROD_SOUND: u32 = 234;
+/// ft_800CDB9C: the Lip's Stick's sound when it is out of spores.
+const EMPTY_LIPSTICK_SOUND: u32 = 288;
 /// ft_800CD914's efAsync_Spawn: the shot's flash, and the empty puff.
 const STAR_SHOT_EFFECT: u16 = 1070;
 const EMPTY_SHOT_EFFECT: u16 = 1032;
+/// it_8029A114's efSync_Spawn(0x440, ..., &pos, &facing_dir).
+const SPORE_PUFF: u16 = 0x440;
 
 /// Whether `kind` is a battering item whose swings are ported
 /// (it_8026B30C == 2 for the sword, bat, fan, star rod, parasol, lipstick).
@@ -159,7 +172,9 @@ impl Fighter {
         };
         let rate = assets.swing_rates[row][input as usize];
         let fan = held.kind == ItemKind::Harisen;
-        let shoots = held.kind == ItemKind::StarRod;
+        // ftCo_800CD82C (star rod) and ftCo_800CDAB4 (lipstick) set up the
+        // same cmd_vars and accessory4.
+        let shoots = matches!(held.kind, ItemKind::StarRod | ItemKind::LipStick);
         if fan {
             // ftCo_800CD5A8 (800CD5A8): cmd_vars[0] and mv x8 cleared first.
             self.core.commands.variables[0] = 0;
@@ -197,33 +212,39 @@ impl Fighter {
         Ok(())
     }
 
-    /// ft_800CD914 (800CD914), the Star Rod swing's accessory4: the sound
-    /// the script asked for (cmd_vars[0]; the empty rod's own when it has
-    /// no shots), then on throw flag b0 a star from the rod's tip
-    /// (it_80292394 offset through the hand joint, lb_8000B1CC) with its
-    /// flash, or the empty puff. Returns whether it owns accessory4 this
-    /// tick.
+    /// ft_800CD914 (800CD914), the Star Rod swing's accessory4, and
+    /// ft_800CDB9C (800CDB9C), the Lip's Stick's: the sound the script asked
+    /// for (cmd_vars[0]; the empty item's own when it has no shots), then
+    /// on throw flag b0 a star (or spore) from the item's tip (it_80292394 /
+    /// it_80295748 offset through the hand joint, lb_8000B1CC), or the
+    /// empty puff. Returns whether it owns accessory4 this tick.
     pub fn swing_accessory(&mut self) -> bool {
         use melee_it::{ItemControl, ItemRequest, SpawnItem};
         let action = self.core.motion_state.action;
-        if !(S::StarRodSwing1 as u16..=S::StarRodSwingDash as u16).contains(&action.0) {
+        let kind = if (S::StarRodSwing1 as u16..=S::StarRodSwingDash as u16).contains(&action.0) {
+            ItemKind::StarRod
+        } else if (S::LipstickSwing1 as u16..=S::LipstickSwingDash as u16).contains(&action.0) {
+            ItemKind::LipStick
+        } else {
             return false;
-        }
+        };
         if !self.core.accessory4_armed {
             return false;
         }
         let Some(mut held) = self.core.held_item else {
             return true;
         };
-        assert_eq!(held.kind, ItemKind::StarRod, "ftswing.c:100: It_Kind_StarRod");
-        // it_8026B594: the rod is empty once xD4C reaches zero.
+        assert_eq!(held.kind, kind, "ftswing.c:100 / ftlipstickswing.c:99: the swing's item");
+        // it_8026B594: the item is empty once xD4C reaches zero.
         let empty = held.ammo <= 0;
         let commands = &mut self.core.commands;
         if commands.variables[0] != NO_SHOT_SOUND {
-            let id = if empty {
+            let id = if !empty {
+                commands.variables[0]
+            } else if kind == ItemKind::StarRod {
                 EMPTY_STAR_ROD_SOUND
             } else {
-                commands.variables[0]
+                EMPTY_LIPSTICK_SOUND
             };
             commands.footstep_sounds.push(super::commands::FootstepSound {
                 channel: super::commands::SoundChannel::Ordinary,
@@ -247,8 +268,12 @@ impl Fighter {
         );
         if empty {
             unimplemented!(
-                "ft_800CD914 (ft_0CD3.c:257-259): the empty Star Rod's puff, efAsync {EMPTY_SHOT_EFFECT} at {tip:?}"
+                "ft_800CD914 (ft_0CD3.c:257-259) / ft_800CDB9C (ftlipstickswing.c:71): the empty {kind:?}'s puff, efAsync {EMPTY_SHOT_EFFECT} at {tip:?}"
             );
+        }
+        if kind == ItemKind::LipStick {
+            self.blow_spore(held, tip, strong as i32);
+            return true;
         }
         // efAsync_Spawn(gobj, &x60C, 5, 1070, NULL, &tip, &facing_dir).
         self.core
@@ -284,6 +309,51 @@ impl Fighter {
         spawn.spawn_argument = strong as i32;
         self.core.item_requests.push(ItemRequest::Spawn(spawn));
         true
+    }
+
+    /// it_80295770 (80295770): one spore fewer, then it_8029A114
+    /// (8029A114)'s spore of `strength` (cmd_vars[1]) from the stick's tip
+    /// at the holder's ECB centre (it_8026BB68), and its puff (efSync
+    /// 0x440 at the tip, turned to the holder's facing).
+    fn blow_spore(
+        &mut self,
+        mut held: super::item_pickup::HeldItem,
+        tip: hsd_types::Vec3,
+        strength: i32,
+    ) {
+        use melee_it::{ItemControl, ItemRequest, SpawnItem};
+        self.core.item_requests.push(ItemRequest::ControlInstance {
+            item: held.item,
+            control: ItemControl::Fire,
+        });
+        if held.ammo > 0 {
+            held.ammo -= 1;
+        }
+        self.core.held_item = Some(held);
+        let c = &self.core;
+        let mut spawn = SpawnItem::ray(
+            ItemKind::LipStickSpore,
+            c.player.id,
+            hsd_types::Vec3::new(tip.x, tip.y, 0.0),
+            c.physics.facing,
+        );
+        // it_8026BB68 -> ftLib_80086990: the ECB's midpoint (fadds, fmuls,
+        // fadds).
+        let midpoint = 0.5 * (c.collision.data.ecb.top.y + c.collision.data.ecb.bottom.y);
+        spawn.position = hsd_types::Vec3::new(
+            c.physics.position.x + 0.0,
+            c.physics.position.y + midpoint,
+            c.physics.position.z + 0.0,
+        );
+        spawn.spawn_argument = strength;
+        spawn.spawn_variant = 0;
+        self.core.item_requests.push(ItemRequest::Spawn(spawn));
+        self.core
+            .effects
+            .push(melee_ef::request::EffectRequest::PositionalGenerator {
+                id: SPORE_PUFF,
+                position: tip,
+            });
     }
 
     /// ftCo_HarisenSwing_Anim (800CD688): the swollen fan's countdown, then

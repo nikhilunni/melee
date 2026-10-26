@@ -246,13 +246,27 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 36] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 38] = [
     // efasync.c:653-659: efLib_CreateGenerator_Translate_FacingDir(0x140)
     // at the point (the Super Scope's muzzle flash, fn_800D84D4).
     DustSpawn {
         request: 0x430,
         particle: 0x140,
         directional: true,
+    },
+    // efasync.c:773-779: efLib_CreateGenerator_Translate_FacingDir(0x1D8)
+    // (the Lip's Stick swing's spore, it_8029A114).
+    DustSpawn {
+        request: 0x440,
+        particle: 0x1D8,
+        directional: true,
+    },
+    // efasync.c:780-782: efLib_CreateGenerator(0x1FB) at the point (a thrown
+    // Lip's Stick's spore, it_8029A218).
+    DustSpawn {
+        request: 0x441,
+        particle: 0x1FB,
+        directional: false,
     },
     // efasync.c:691-693: efLib_CreateGenerator(0x14D) at the point (the
     // Fan's swing script, iteffect.c:286's 0x434).

@@ -417,7 +417,7 @@ impl Fighter {
             && super::capture_kirby::captured(&self.core)
         {
             super::capture_kirby::refuse_parting_in_the_pull(&self.core);
-            self.begin_death_release();
+            self.begin_death_release(assets);
             let link = self.core.combat.grab.take().expect("pinned death link");
             assert!(
                 matches!(link, super::grab::GrabLink::Captured { captor } if captor == partner.spawn_number)
@@ -874,7 +874,7 @@ impl Fighter {
         assets: &FighterAssets,
         thrower: Option<(&Fighter, &mut melee_mp::CollMap)>,
     ) {
-        self.begin_death_release();
+        self.begin_death_release(assets);
         // ftCo_800DD100 -> ftCo_800DC920: separate a grab pair. The scene
         // releases the partner (ftCommon_8007D92C) right after this proc.
         if let Some(link) = self.core.combat.grab.take() {
@@ -894,15 +894,15 @@ impl Fighter {
         }
         self.finish_death_release(assets);
     }
-    fn begin_death_release(&mut self) {
+    fn begin_death_release(&mut self, assets: &FighterAssets) {
         // 0x800D34B4: mv x6C takes the motion the death interrupts.
         self.core.fatal_action = self.core.motion_state.action;
         // fn_800C7568, CaptureLeadead's death2_cb, before the kind's.
         self.shake_off_redead();
-        // ftCo_800C48AC, the ride's death2_cb: the rider is blast-zone
-        // exempt (x2219_b2) and intangible, so no death is witnessed.
+        // ftCo_800C48AC, the ride's death2_cb (WarpStarFall clears x2219_b2,
+        // so a falling rider can leave the blast zone): the star is let go.
         if matches!(self.core.state_data, MotionData::WarpStar(_)) {
-            unimplemented!("ftCo_800C48AC (ftCo_WarpStar.c:96): a Warp Star rider KO'd");
+            self.release_warp_star(assets);
         }
         if let Some(death) = self.character.table().death {
             death(self);
@@ -926,6 +926,8 @@ impl Fighter {
         }
         // ft_0D31.c:116-120: the Bunny Hood goes with the death.
         self.core.lose_bunny_hood(assets);
+        // ft_0D31.c:121-125: the head flower.
+        self.core.lose_flower();
         // ftCommon_8007DB24 (ft_0D31.c:132): x2219_b0 = 0, then
         // efLib_DestroyAll, after the Item_8026A8EC of every article and
         // held item above (ft_0D31.c:99-125): those items and their models

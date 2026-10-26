@@ -67,8 +67,19 @@ impl FighterCore {
 
     /// ftColl_8007AB48 then ftColl_8007AB80.
     pub fn resolve_hit_logs(&mut self, assets: &FighterAssets) {
+        // ftColl_8007BBCC reads dmg_log0 after ftColl_8007AB48 / 8007AB80
+        // (which leave it in place): the Lipstick hits' damage, a fighter's
+        // hitbox damage or an item's it_8026B1D4.
+        let mut lipstick = 0.0;
+        for entry in self.combat.hit_log.iter() {
+            if entry.hit.descriptor.element == HitElement::Lipstick {
+                lipstick += entry.effect_damage;
+            }
+        }
         self.resolve_hit_log(assets);
         self.resolve_phantom_log(assets);
+        // Fighter_8006CB94: ftCommon_8007FC7C when it is positive.
+        self.grow_flower(lipstick, assets);
     }
 
     /// ftColl_80079AB0 for a logged entry: the victim's damage count plus

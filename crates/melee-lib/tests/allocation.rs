@@ -124,13 +124,15 @@ fn step_after_clone_and_clone_from_allocates_nothing() {
 /// The Motion-Sensor Bomb (armed, touched, blasting), Heart Container,
 /// Maxim Tomato and Food (eaten, healing) and the Warp Star (falling,
 /// resting, and ridden from LightGet and from an air catch through its
-/// burst) step and capture without allocating.
+/// burst, its rider KO'd) and the Lip's Stick (swung, its spores, the
+/// flower they grow) step and capture without allocating.
 #[test]
 fn random_item_kinds_step_and_capture_allocate_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
     let root = data_root();
-    // MSBomb 19, Heart 8, Tomato 9, Foods 18, WStar 29.
-    const KINDS: [u32; 5] = [19, 8, 9, 18, 29];
+    // MSBomb 19, Heart 8, Tomato 9, Foods 18, WStar 29, LipStick 23, its
+    // spore 37 and flower 41.
+    const KINDS: [u32; 8] = [19, 8, 9, 18, 29, 23, 37, 41];
     let mut seen = [false; KINDS.len()];
     for name in [
         "corpus_v3_fd_items_msbomb_ef89b3e70_p0",
@@ -140,6 +142,8 @@ fn random_item_kinds_step_and_capture_allocate_nothing() {
         "start_fd_items_wstar",
         "wstar_ride_ec3145eb3",
         "wstar_ride_e1502cb40",
+        "wstar_ko_e68833afa",
+        "corpus_v3_fd_items_lipstick_ead30c00e_p0",
     ] {
         let scenario = melee_sim::scenario::Scenario::load(
             &root.join(format!("harness/scenarios/{name}.toml")),

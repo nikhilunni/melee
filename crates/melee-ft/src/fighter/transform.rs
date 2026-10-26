@@ -74,6 +74,9 @@ pub fn transfer(
     dst.core.reset_life(dst_assets, context.map);
     clear_velocities(dst);
     copy_state(src, dst);
+    if src.core.flower.is_some() {
+        unimplemented!("ftcommon.c:1350-1356: a transformation carrying the head flower");
+    }
     // ftcommon.c:1318-1324: src's x221D_b6 (its color overlay carried
     // over) is not modelled; otherwise ftCo_800C0200(dst, 9).
     dst.core

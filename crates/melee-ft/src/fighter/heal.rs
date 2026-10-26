@@ -93,6 +93,11 @@ impl Fighter {
     /// item, is never filled.
     pub(super) fn eat_on_damage(&mut self, assets: &FighterAssets) {
         if let Some(held) = self.core.held_item {
+            // ftpickupitem.c:367-370: a Warp Star is let go with no push.
+            if held.use_kind == CONSUMED && held.kind == ItemKind::WStar {
+                self.core.drop_held_item(held, 1.0, assets);
+                return;
+            }
             self.core.eat(held, assets);
         }
     }

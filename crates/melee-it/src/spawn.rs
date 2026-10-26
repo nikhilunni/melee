@@ -149,6 +149,9 @@ pub enum ItemControl {
     WarpStarRide { half_width: f32, hitbox_scale: f32 },
     /// it_802946B0: the star falls with its rider (state 3).
     WarpStarFall,
+    /// it_8029A89C / it_8029A8F4 (ftCommon_8007FDA0): the head flower's
+    /// joint 1 at `scale` and joint 2 moved by `offset` from its rest.
+    FlowerSize { scale: f32, offset: Vec3 },
 }
 
 /// Which of the Fan's swing animations the holder plays

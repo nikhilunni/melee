@@ -260,6 +260,14 @@ pub enum ItemEvent {
     /// it_80276100(gobj, &pos) from a callback without the map (Birdo's
     /// knockout): the item's map collision starts over at its position.
     ResetCollision,
+    /// it_8029A218 (8029A218): a thrown Lip's Stick's first contact
+    /// leaves a spore for its owner, created at the owner's ECB centre
+    /// (it_8026BB68) with `previous_position` the stick's, its burst
+    /// (efSync 0x441) at the stick.
+    StickSpore {
+        previous_position: Vec3,
+        facing: f32,
+    },
     /// The rest of the item's callback, which the scene runs through
     /// `ItemLogic::resumed` once the effects before it are made.
     Resume {
@@ -1757,6 +1765,8 @@ impl ItemCore {
     pub fn spin(&mut self) {
         let speed = self.spin_speed;
         *self.spin_axis_angle_mut() += speed;
+        // HSD_JObjSetRotation*: the turned joint's matrix is dirty.
+        self.joints_dirty = true;
     }
 
     /// Item_80268E5C (80268E5C) with its flags: the frame restarts; without
@@ -2504,15 +2514,15 @@ impl ItemPool {
             environmental_velocity: Vec3::ZERO,
             platform_velocity: Vec3::ZERO,
             facing: spawn.facing,
-            rotation: Vec3::new(
-                0.0,
+            // Item_80267978's model at its authored rotation, then
+            // HSD_JObjSetFacingDirItem (item.c:218) for xDC8 x19.
+            rotation: {
+                let mut rotation = rest_rotation(assets);
                 if assets.rotate_to_facing {
-                    (std::f64::consts::FRAC_PI_2 * f64::from(spawn.facing)) as f32
-                } else {
-                    0.0
-                },
-                0.0,
-            ),
+                    rotation.y = (std::f64::consts::FRAC_PI_2 * f64::from(spawn.facing)) as f32;
+                }
+                rotation
+            },
             spin_joint_depth: assets.visual.spin_joint_depth,
             model_scale: [assets.scale; 3].into(),
             motion: 0,

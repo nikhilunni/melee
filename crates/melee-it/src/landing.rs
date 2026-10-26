@@ -63,6 +63,21 @@ impl ItemCore {
             return AirLanding::Airborne;
         }
         on_contact(rng);
+        self.land_on_contact(bits, map, assets, entered_air, rng)
+    }
+
+    /// The rest of it_8026E15C once a surface was touched (`bits`, from
+    /// it_8026DAA8): the bounce (it_80276FC4), then on a floor
+    /// it_8026DBC8's landing count, settling and rest. A kind that reacts
+    /// to the contact first (the Lip's Stick's spore) calls it itself.
+    pub fn land_on_contact(
+        &mut self,
+        bits: u32,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+        entered_air: Option<EnteredAir>,
+        rng: &mut HsdRng,
+    ) -> AirLanding {
         // it_80276FC4's spark draws (it_80278800) precede the landing
         // count's (it_8026DDFC, retail 0x8026DE58).
         self.bounce_off_surfaces_drawing(bits, map, assets, rng);

@@ -66,6 +66,8 @@ impl Fighter {
     pub fn proc_input(&mut self, assets: &FighterAssets, sample: &PadSample) {
         self.keep_scratch_tail();
         if self.core.sample_input(assets, sample) {
+            // fighter.c:2128: ftCommon_8007FFD8 first.
+            self.mash_flower(assets);
             self.core.update_smash_charge_input(assets);
             (self.motion_row.iasa)(self, state::InputPhase { assets });
         }
@@ -741,6 +743,8 @@ impl FighterCore {
         // fighter.c:1514-1522: the Bunny Hood's; 1525-1531: the metal's.
         self.tick_bunny_hood(assets);
         self.tick_metal(assets);
+        // fighter.c:1543-1559, after the metal and bunny timers.
+        self.tick_flower(assets);
         // fighter.c:1562-1574: the cloak's; its end skips the rest.
         if !self.tick_cloak() {
             return false;

@@ -35,6 +35,7 @@ pub mod effects;
 pub mod entry;
 pub mod escape;
 pub mod fall;
+pub mod flower;
 pub mod fly_reflect;
 pub mod frozen;
 pub mod heal;
@@ -1408,6 +1409,8 @@ pub struct FighterCore {
     /// character (the catch window): the ride (ftpickupitem_8009447C) and
     /// the catch's sparkle wait for the animation proc.
     pub caught_warp_star: bool,
+    /// x1980 and x2018..x2024: the Lip's Stick flower on the head.
+    pub flower: Option<flower::FlowerHead>,
     /// hitlag_mul (+196C): the jab combo window. Every motion change except
     /// into Wait or Walk closes it (fighter.c:1142-1144).
     pub jab_countdown: f32,

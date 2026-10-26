@@ -613,7 +613,13 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
     // ftCo_BatSwing_*, both the shared ftCo_800CD1BC and its siblings).
     // [136..=139]: ftCo_StarRodSwing_* are the same callbacks; the star is
     // the entry's accessory4 (ft_800CD914).
-    const SWORD_SWINGS: [(S, i32); 12] = [
+    // [140..=143]: ftCo_LipstickSwing_* likewise, the spore the entry's
+    // accessory4 (ft_800CDB9C).
+    const SWORD_SWINGS: [(S, i32); 16] = [
+        (S::LipstickSwing1, 128),
+        (S::LipstickSwing3, 129),
+        (S::LipstickSwing4, 130),
+        (S::LipstickSwingDash, 131),
         (S::StarRodSwing1, 124),
         (S::StarRodSwing3, 125),
         (S::StarRodSwing4, 126),

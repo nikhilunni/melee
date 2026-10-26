@@ -7693,6 +7693,37 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("wstar_ride_e726cfdde", 931),
     ("wstar_ride_ec3145eb3", 955),
     ("wstar_ride_e3e74affa", 975),
+    // A rider KO'd from WarpStarFall (which clears x2219_b2): ftCo_800C48AC
+    // lets the star go (Item_8026ABD8); LightGet hit with a star in hand
+    // (ftpickupitem_80094B6C drops it); explorer samples.
+    ("corpus_v3_fd_items_wstar_e68833afa_p0", 1525),
+    ("corpus_v3_fd_items_wstar_e68833afa_p1", 924),
+    ("corpus_v3_fd_items_wstar_e06ad0b5e_p0", 1247),
+    ("corpus_v3_fd_items_wstar_e06ad0b5e_p1", 646),
+    ("wstar_ko_e68833afa", 1324),
+    ("corpus_v3_fd_items_wstar_ef453df94_p1", 4872),
+    ("corpus_v3_fd_items_wstar_e5f158f1d_p2", 5871),
+    ("corpus_v3_fd_items_wstar_ee3f259e8_p0", 3585),
+    // Lip's Sticks: the fall (its root's authored X rotation aims the ECB),
+    // held, thrown and dropped, the swing's spores (ft_800CDB9C,
+    // it_8029A114), a thrown stick's contact spore (it_8029A218), and the
+    // flower a spore grows on a head (ftCommon_8007FC7C): its damage ticks,
+    // mashing and wilting.
+    ("start_fd_items_lipstick", 600),
+    ("start_fd_items_lipstick_cold", 600),
+    ("corpus_v3_fd_items_lipstick_e68833afa_p2", 730),
+    ("corpus_v3_fd_items_lipstick_e5f158f1d_p0", 1484),
+    ("corpus_v3_fd_items_lipstick_e9d11209c_p0", 1051),
+    ("corpus_v3_fd_items_lipstick_e9d11209c_p1", 1070),
+    ("corpus_v3_fd_items_lipstick_ee3f259e8_p0", 947),
+    ("corpus_v3_fd_items_lipstick_ee3f259e8_p1", 1078),
+    ("corpus_v3_fd_items_lipstick_e68833afa_p0", 5144),
+    ("corpus_v3_fd_items_lipstick_e303d54a6_p0", 6001),
+    ("corpus_v3_fd_items_lipstick_ee3f259e8_p2", 4969),
+    ("corpus_v3_fd_items_lipstick_e3f68f6a2_p0", 5794),
+    ("corpus_v3_fd_items_lipstick_e6bff00c8_p0", 5030),
+    ("corpus_v3_fd_items_lipstick_e57cbceb7_p0", 6001),
+    ("corpus_v3_fd_items_lipstick_ead30c00e_p0", 4433),
 ];
 
 #[test]

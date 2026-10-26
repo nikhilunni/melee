@@ -164,9 +164,23 @@ impl Fighter {
     /// death2_cb): hurt again, the facing back, and the star let go with
     /// no push (Item_8026ABD8(item, &zero, 1)).
     pub(super) fn drop_warp_star(&mut self, _assets: &FighterAssets) {
-        // The rider is intangible (x2221_b0) and ungrabbable, so no hit
-        // reaches it in the witnessed matches.
+        // The rider is intangible (x2221_b0) through the whole ride, so no
+        // hit reaches it.
         unimplemented!("ftCo_800C4858 (ftCo_WarpStar.c:79-91): a Warp Star rider hit")
+    }
+
+    /// ftCo_800C48AC (800C48AC), the ride's death2_cb (inlineA0):
+    /// ftColl_8007B6EC, the facing back, and the star let go with no push
+    /// (Item_8026ABD8(item, &zero, 1)).
+    pub(super) fn release_warp_star(&mut self, assets: &FighterAssets) {
+        let MotionData::WarpStar(ride) = &self.core.state_data else {
+            return;
+        };
+        let facing = ride.facing;
+        self.end_item_intangible(assets);
+        self.core.physics.facing = facing;
+        let held = self.core.held_item.expect("the ridden Warp Star is held");
+        self.core.drop_held_item(held, 1.0, assets);
     }
 
     /// ftCo_800C4A38 (800C4A38): WarpStarFall from the blast zone's top

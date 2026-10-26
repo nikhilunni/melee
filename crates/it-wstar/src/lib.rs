@@ -3,13 +3,12 @@
 //! (ftCo_WarpStar.c, melee-ft's `warp_star`): the star flies its rider up
 //! along one of seven paths, falls back with it and bursts on landing.
 //!
-//! A sliding star (EnteredAir, state 4) and a dropped one (its rider hit,
-//! which intangibility rules out in the witnesses) fail closed.
+//! A sliding star (EnteredAir, state 4) fails closed.
 use hsd_archive::{desc::anim::AnimJoint as ArchiveAnimJoint, Archive};
 use hsd_types::{Mtx, Vec3};
 use melee_it::{
     desc::ItemAssets,
-    state_change::ANIM_UPDATE,
+    state_change::{ANIM_UPDATE, DROP_UPDATE},
     AirLanding, ItemAnimationContext, ItemCollisionContext, ItemControl, ItemCore, ItemEvent,
     ItemLogic, ItemPhysicsContext, ItemScratch, ItemStateRow, WarpStarState,
 };
@@ -120,10 +119,9 @@ impl ItemLogic for WarpStar {
     }
     /// itWStar_Logic29_Dropped (802947A0): its rider was hit or KO'd; it
     /// falls (state 1) and its sparkle goes.
-    fn dropped(_item: &mut ItemCore, _context: &mut ItemAnimationContext<'_>) {
-        // Item_80268E5C(gobj, 1, 6) and efLib_DestroyAll; only a rider's hit
-        // or KO drops it (ftCo_800C4858, guarded with the rider).
-        unimplemented!("itWStar_Logic29_Dropped (itwstar.c:167): a dropped Warp Star")
+    fn dropped(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
+        change(item, motion::FALL, ANIM_UPDATE | DROP_UPDATE, context.assets);
+        item.events.push(ItemEvent::DestroyEffects);
     }
     const ENTERED_AIR: Option<melee_it::EnteredAir> = Some(|_item, _assets| {
         unimplemented!("itWStar_Logic29_EnteredAir (itwstar.c:230): a Warp Star sliding down a slope is not witnessed")
@@ -381,7 +379,8 @@ fn fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
             item.grabbable = true;
             change(item, motion::REST, ANIM_UPDATE, ctx.assets);
         }
-        AirLanding::Broken => unreachable!("it_8026DDFC: a Warp Star is never thrown"),
+        // it_8026DDFC: a dropped star's first landing may break it.
+        AirLanding::Broken => return true,
     }
     false
 }

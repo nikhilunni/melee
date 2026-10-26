@@ -2605,3 +2605,16 @@ stage = "RainbowCruise"
 players = ["IceClimbers", "Fox"]
 stocks = 4
 seed = 586359003
+
+# Items on, Lip's Sticks alone (make_boundary.py --item-frequency very-high
+# --items LipStick --no-containers).
+[[boundary]]
+name = "start_fd_items_lipstick"
+cold = "start_fd_items_lipstick_cold"
+savestate = "harness/roms/start_fd_items_lipstick.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1871640856
+item_frequency = 4
+item_mask = "0xfffffff800800000"
