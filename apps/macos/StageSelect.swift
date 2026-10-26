@@ -40,7 +40,8 @@ struct StageSelectView: View {
                         Text("Fighters")
                     }
                 }
-                .buttonStyle(SlantButtonStyle(kind: .glass, size: m(15)))
+                .buttonStyle(SlantButtonStyle(kind: .glass, focused: model.focusID == "stages.back", size: m(15)))
+                .padFocus("stages.back", model: model, ring: false, action: model.back)
                 .accessibilityLabel("Back to character select")
                 Spacer()
                 Matchup(model: model, m: m)
@@ -64,6 +65,7 @@ struct StageSelectView: View {
                 Text("Back").font(.ui(m(12))).foregroundStyle(Palette.textDim)
             }
             Spacer()
+            PadHints(model: model, m: m, hints: [("A", "Fight"), ("B", "Back"), ("Z", "Menu")])
         }
     }
 }
@@ -244,7 +246,7 @@ struct StageTile: View {
 
     var body: some View {
         let stage = index < model.stages.count ? model.stages[index] : nil
-        let focused = model.stageCursor == index
+        let focused = model.focusID == "stage.\(index)"
         let shuffled = model.shuffling == index
         let unavailable = stage.flatMap { model.stageUnavailable($0) }
         let shape = Slanted(radius: m(10))
@@ -274,7 +276,8 @@ struct StageTile: View {
             .scaleEffect(focused && !reduceMotion ? 1.04 : 1)
         }
         .buttonStyle(.plain)
-        .onHover { if $0 && model.shuffling == nil { model.stageCursor = index } }
+        .padFocus("stage.\(index)", model: model, ring: false) { model.activateStageTile(index) }
+        .onHover { if $0 && model.shuffling == nil { model.hoverFocus("stage.\(index)") } }
         .animation(reduceMotion ? .easeInOut(duration: 0.15) : .spring(response: 0.3, dampingFraction: 0.7),
                    value: focused)
         .help(unavailable.map { "Not with these players and rules: \($0)" } ?? "")

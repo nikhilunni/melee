@@ -128,17 +128,6 @@ struct MatchResults: Equatable {
     var hud: Hud
 }
 
-/// A gamepad as a GameCube controller (melee_gamepad_s).
-struct GamepadState: Equatable {
-    var buttons: UInt32 = 0
-    var stick = (x: Float(0), y: Float(0))
-    var cstick = (x: Float(0), y: Float(0))
-    var triggers = (l: Float(0), r: Float(0))
-    static func == (a: Self, b: Self) -> Bool {
-        a.buttons == b.buttons && a.stick == b.stick && a.cstick == b.cstick && a.triggers == b.triggers
-    }
-}
-
 struct DiscInfo: Equatable {
     var gameID: String
     var title: String
@@ -178,7 +167,7 @@ private func makeHud(_ raw: melee_hud_s) -> Hud {
 }
 
 final class Core {
-    private let app: OpaquePointer
+    let app: OpaquePointer
 
     static let characters: [CharacterInfo] = (0..<melee_character_count()).compactMap { id in
         var info = melee_character_info_s()
@@ -380,15 +369,6 @@ final class Core {
     var needsFrame: Bool { melee_app_needs_frame(app) }
     func action(player: Int, _ action: GameAction, down: Bool) {
         melee_app_action(app, UInt32(player), melee_action_e(rawValue: action.rawValue), down)
-    }
-    /// Gamepad `device` (connection order) drives the match's nth human; nil
-    /// when it disconnects.
-    func gamepad(device: Int, _ state: GamepadState?) {
-        guard let state else { return melee_app_gamepad(app, UInt32(device), nil) }
-        var raw = melee_gamepad_s(buttons: state.buttons, stick_x: state.stick.x, stick_y: state.stick.y,
-                                  cstick_x: state.cstick.x, cstick_y: state.cstick.y,
-                                  trigger_l: state.triggers.l, trigger_r: state.triggers.r)
-        melee_app_gamepad(app, UInt32(device), &raw)
     }
     func setPaused(_ paused: Bool) { melee_app_set_paused(app, paused) }
     func setFocused(_ focused: Bool) { melee_app_set_focused(app, focused) }

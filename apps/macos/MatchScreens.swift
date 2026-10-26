@@ -103,7 +103,8 @@ struct LoadingView: View {
                 .monospacedDigit()
                 .foregroundStyle(Palette.textDim)
             Button("Cancel", action: model.back)
-                .buttonStyle(SlantButtonStyle(kind: .glass, size: m(13)))
+                .buttonStyle(SlantButtonStyle(kind: .glass, focused: model.focusID == "loading.cancel", size: m(13)))
+                .padFocus("loading.cancel", model: model, ring: false, action: model.back)
         }
         .accessibilityElement(children: .combine)
         .accessibilityLabel("Loading, \(Int(p.fraction * 100)) percent")
@@ -308,14 +309,17 @@ struct PauseCard: View {
             ForEach(Array(PauseAction.allCases.enumerated()), id: \.offset) { index, action in
                 Button(title(action)) { model.perform(action) }
                     .buttonStyle(SlantButtonStyle(kind: index == 0 ? .accent : .glass,
-                                                  focused: model.focus == index, size: 18, minWidth: 300))
-                    .onHover { if $0 { model.focus = index } }
+                                                  focused: model.focusID == "pause.\(index)", size: 18, minWidth: 300))
+                    .padFocus("pause.\(index)", model: model, ring: false) { model.perform(action) }
+                    .onHover { if $0 { model.hoverFocus("pause.\(index)") } }
             }
             HStack(spacing: 6) {
                 KeyCap(label: "Esc")
                 Text("Resume").font(.ui(12)).foregroundStyle(Palette.textDim)
             }
             .padding(.top, 6)
+            PadHints(model: model, m: MenuMetrics(size: CGSize(width: 1280, height: 800)),
+                     hints: [("A", "Choose"), ("B", "Resume"), ("Start", "Resume"), ("Z", "Menu")])
         }
         .padding(.horizontal, 44)
         .padding(.vertical, 30)
@@ -459,8 +463,10 @@ struct ResultsView: View {
             ForEach(Array(ResultsAction.allCases.enumerated()), id: \.offset) { index, action in
                 Button(title(action)) { model.perform(action) }
                     .buttonStyle(SlantButtonStyle(kind: index == 0 ? .accent : .glass,
-                                                  focused: model.focus == index, size: m(index == 0 ? 18 : 15)))
-                    .onHover { if $0 { model.focus = index } }
+                                                  focused: model.focusID == "results.\(index)",
+                                                  size: m(index == 0 ? 18 : 15)))
+                    .padFocus("results.\(index)", model: model, ring: false) { model.perform(action) }
+                    .onHover { if $0 { model.hoverFocus("results.\(index)") } }
             }
         }
     }

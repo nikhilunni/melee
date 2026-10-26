@@ -8,16 +8,10 @@ import UniformTypeIdentifiers
 
 /// The CAMetalLayer-backed view the core draws the match into.
 final class GameView: NSView {
-    weak var model: AppModel? {
-        didSet {
-            gamepads.onStart = { [weak self] in
-                guard let self, let model = self.model, model.screen == .match else { return }
-                model.togglePause()
-                self.synchronize()
-            }
-        }
-    }
-    private let gamepads = Gamepads()
+    weak var model: AppModel?
+    /// Polls the pads each display frame of a running match (tighter than
+    /// the menus' 60 Hz timer).
+    var pollPads: (() -> Void)?
     private var displayLink: CADisplayLink?
     private var attached = false
     override var acceptsFirstResponder: Bool { true }
@@ -92,7 +86,7 @@ final class GameView: NSView {
     }
 
     @objc private func step(_ link: CADisplayLink) {
-        if let model, model.screen == .match { gamepads.poll(model) }
+        if model?.screen == .match { pollPads?() }
         draw()
         synchronize()
     }
@@ -147,6 +141,10 @@ final class WindowController: NSWindowController, NSWindowDelegate {
     /// The menus' living backdrop, between the game and the SwiftUI overlay.
     let backdrop = BackdropView(frame: NSRect(x: 0, y: 0, width: 1280, height: 800))
     private var keyMonitor: Any?
+    /// Pads (Gamepads.swift); their menu events come through `padEvents`.
+    private(set) var gamepads: Gamepads!
+    /// The alert sheet up, so a pad can answer it.
+    private var sheetAlert: NSAlert?
 
     init(model: AppModel) {
         self.model = model
@@ -194,10 +192,15 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
         keyMonitor = NSEvent.addLocalMonitorForEvents(matching: .keyDown) { [weak self] event in
             guard let self, let key = self.menuKey(event) else { return event }
+            self.model.padInput = false
             guard self.model.handle(key) else { return event }
             self.game.synchronize()
             return nil
         }
+        gamepads = Gamepads(model: model)
+        gamepads.onEvents = { [weak self] events, handle in self?.padEvents(events, from: handle) }
+        game.pollPads = { [weak self] in self?.gamepads.poll() }
+        model.appMenuAction = { [weak self] action in self?.appMenu(action) }
         model.framesChanged = { [weak self] in self?.game.synchronize() }
         model.presentFault = { [weak self] message in self?.fault(message) }
         model.screenChanged = { [weak self] screen in self?.screenChanged(screen) }
@@ -232,6 +235,91 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
+    // MARK: Pads
+
+    /// A pad's menu events (docs/APP.md "Pad parity"). In an unpaused match
+    /// only Start (pause) and Select/Home (the app menu) are the menus'; the
+    /// rest drives the fighter in the core.
+    func padEvents(_ events: MenuEvents, from handle: UInt32) {
+        guard let window else { return }
+        model.lastPad = handle
+        if events.contains(.joined) {
+            model.padsChanged()
+            if let pad = model.pads.first(where: { $0.handle == handle }), let port = pad.port {
+                model.showToast("P\(port + 1): \(pad.name) joined")
+            }
+            return
+        }
+        if events.contains(.bound) { model.padsChanged(); return }
+        // Hidden or minimized (the app menu can do both): Start, A or Menu
+        // brings the window back. Behind another app the pad belongs to that
+        // app; only Start or Menu (Select/Home) comes back. Scripted pads
+        // (MELEE_APP_PADS) come from this app and skip the check.
+        let away = NSApp.isHidden || window.isMiniaturized
+        if (away || !NSApp.isActive) && !Gamepads.isVirtual(handle) {
+            let wakes: MenuEvents = away ? [.start, .confirm, .menu] : [.start, .menu]
+            guard !events.isDisjoint(with: wakes) else { return }
+            NSApp.unhide(nil)
+            if window.isMiniaturized { window.deminiaturize(nil) }
+            NSApp.activate(ignoringOtherApps: true)
+            window.makeKeyAndOrderFront(nil)
+            return
+        }
+        if let sheet = window.attachedSheet {
+            return padSheet(sheet, events)
+        }
+        let inPlay = model.screen == .match && !model.paused && !model.showsResults
+        if inPlay && model.notice == nil && !model.showingAppMenu {
+            if events.contains(.start) { model.togglePause() }
+            if events.contains(.menu) { model.setPaused(true); model.padInput = true; _ = model.handle(.appMenu) }
+            game.synchronize()
+            return
+        }
+        model.padInput = true
+        for key in MenuKey.keys(for: events) {
+            let handled = model.handle(key)
+            if Autostart.tracePads {
+                print("  pad key \(key): \(handled ? "handled" : "passed") focus \(model.focusID ?? "-")")
+                fflush(stdout)
+            }
+        }
+        game.synchronize()
+    }
+
+    /// A sheet over the window: A and B answer an alert with its first
+    /// (default) button, Y with its second; B cancels a panel.
+    private func padSheet(_ sheet: NSWindow, _ events: MenuEvents) {
+        guard let window else { return }
+        model.padInput = true
+        if let alert = sheetAlert, alert.window === sheet {
+            let response: NSApplication.ModalResponse? =
+                !events.isDisjoint(with: [.confirm, .back]) ? .alertFirstButtonReturn
+                : events.contains(.y) && alert.buttons.count > 1 ? .alertSecondButtonReturn
+                : nil
+            if let response { window.endSheet(sheet, returnCode: response) }
+        } else if events.contains(.back), let panel = sheet as? NSSavePanel {
+            panel.cancel(nil)
+        }
+    }
+
+    /// The app menu's commands (the menu bar for pads).
+    private func appMenu(_ action: AppMenuAction) {
+        guard let window else { return }
+        switch action {
+        case .controllers: model.openControllers()
+        case .fullScreen: window.toggleFullScreen(nil)
+        case .minimize: window.miniaturize(nil)
+        case .hide: NSApp.hide(nil)
+        case .hideOthers: NSApp.hideOtherApplications(nil)
+        case .help: model.present("Playing", AppDelegate.helpText)
+        case .about: NSApp.orderFrontStandardAboutPanel(nil)
+        case .quit: NSApp.terminate(nil)
+        }
+        game.synchronize()
+    }
+    func windowDidEnterFullScreen(_ notification: Notification) { model.fullScreen = true }
+    func windowDidExitFullScreen(_ notification: Notification) { model.fullScreen = false }
+
     private func screenChanged(_ screen: Screen) {
         let inGame = screen == .match || screen == .results
         game.isHidden = !inGame
@@ -250,6 +338,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         alert.informativeText = message
         alert.alertStyle = .warning
         if let sheet = window.attachedSheet { window.endSheet(sheet) }
+        sheetAlert = alert
         alert.beginSheetModal(for: window)
     }
 
@@ -261,6 +350,7 @@ final class WindowController: NSWindowController, NSWindowDelegate {
         alert.informativeText = message
         alert.addButton(withTitle: "Quit to Character Select")
         alert.addButton(withTitle: "Save Replay…")
+        sheetAlert = alert
         alert.beginSheetModal(for: window) { [weak self] response in
             if response == .alertSecondButtonReturn {
                 DispatchQueue.main.async { self?.saveReplay(); self?.model.quitToMenu() }
@@ -284,18 +374,36 @@ final class WindowController: NSWindowController, NSWindowDelegate {
 
     @objc func saveReplay() {
         guard let window, model.core.hud != nil else { return }
+        // A pad cannot drive a save panel: save to ~/Documents/Melee Replays.
+        if model.padInput { return saveReplayWithoutPanel() }
         let wasPaused = model.paused
         if model.screen == .match { model.setPaused(true); game.synchronize() }
         let panel = NSSavePanel()
         panel.allowedContentTypes = [.json]
-        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
-        panel.nameFieldStringValue = "melee-replay-\(stamp).json"
+        panel.nameFieldStringValue = Self.replayName
         panel.beginSheetModal(for: window) { [weak self] response in
             guard let self else { return }
             if response == .OK, let url = panel.url { self.model.saveReplay(to: url) }
             if self.model.screen == .match && !wasPaused { self.model.setPaused(wasPaused) }
             self.game.synchronize()
         }
+    }
+
+    private func saveReplayWithoutPanel() {
+        let folder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Melee Replays", isDirectory: true)
+        do {
+            try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
+        } catch {
+            return model.present("Could not save the replay", error.localizedDescription)
+        }
+        let url = folder.appendingPathComponent(Self.replayName)
+        model.saveReplay(to: url)
+        if model.notice == nil { model.showToast("Replay saved to Documents/Melee Replays") }
+    }
+    private static var replayName: String {
+        let stamp = ISO8601DateFormatter().string(from: Date()).replacingOccurrences(of: ":", with: "-")
+        return "melee-replay-\(stamp).json"
     }
 
     // Menu actions
@@ -441,18 +549,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
     }
 
     @objc func showHelp(_ sender: Any?) {
-        controller.alert("Playing", """
-            Open your Super Smash Bros. Melee NTSC-U 1.02 disc image (.iso), pick up to four \
-            fighters (human or CPU; Rules for teams, items and modes) and a stage.
-
-            Keyboards and gamepads drive the human players in port order: the first keyboard \
-            layout and the first gamepad the first human, and so on. CPU players need none.
-            1st: W A S D move · K attack · J special · Space jump · L shield · I grab
-            2nd: arrows move · N attack · M special · , jump · . shield · / grab
-            Gamepads: left stick, right stick (C), A B X Y, shoulders Z, triggers L/R.
-            Esc or a pad's Menu button pauses.
-            """)
+        controller.alert("Playing", Self.helpText)
     }
+    static let helpText = """
+        Open your Super Smash Bros. Melee NTSC-U 1.02 disc image (.iso), pick up to four \
+        fighters (human or CPU; Rules for teams, items and modes) and a stage.
+
+        Keyboards drive the human players in port order; CPU players need none.
+        1st: W A S D move · K attack · J special · Space jump · L shield · I grab
+        2nd: arrows move · N attack · M special · , jump · . shield · / grab
+        Esc pauses.
+
+        Gamepads (Switch, PlayStation, Xbox, 8BitDo, GameCube adapters) work as GameCube \
+        controllers, buttons by position: press a button on character select to join. \
+        D-pad or stick moves, A chooses, B backs out, X/Y change costume, L/R change player, \
+        Start pauses and readies, Z or Select/Home opens the app menu (Controllers for mappings).
+        """
 }
 
 /// Development smoke test: MELEE_APP_AUTOSTART=/path/to.iso[:Fox:Marth[:FinalDestination]]
@@ -465,6 +577,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSMenu
 /// MELEE_APP_SCREEN_DELAY seconds, default 1.5; results are a preview with
 /// P1 winning). MELEE_APP_PREVIEW_PERCENTS=57,142 shows those HUD percents.
 enum Autostart {
+    /// MELEE_APP_PADS_TRACE: print each pad key and the focus targets.
+    static let tracePads = ProcessInfo.processInfo.environment["MELEE_APP_PADS_TRACE"] != nil
     static func run(model: AppModel) {
         let env = ProcessInfo.processInfo.environment
         if let size = env["MELEE_APP_WINDOW_SIZE"], let window = NSApp.windows.first {
@@ -499,6 +613,8 @@ enum Autostart {
         }
         let screen = env["MELEE_APP_SCREEN"]
         if let keys = env["MELEE_APP_KEYS"] { return press(keys, model: model) }
+        // A pad walk runs alongside the rest (e.g. with MELEE_APP_SCREEN=results over a running match).
+        if let pads = env["MELEE_APP_PADS"] { padWalk(pads, model: model) }
         if screen == "disc" { return model.back() }
         guard parts.count >= 3 else { return }
         for (player, key) in parts[1...2].enumerated() {
@@ -568,10 +684,101 @@ enum Autostart {
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.25 * Double(index + 1)) {
                 let handled = model.handle(key)
                 print("key \(name): \(handled ? "handled" : "passed") screen \(model.screen) cursor \(model.cursor) " +
-                      "picking P\(model.picking + 1) stage \(model.stageCursor) focus \(model.focus)")
+                      "picking P\(model.picking + 1) stage \(model.stageCursor) focus \(model.focusID ?? "-")")
                 fflush(stdout)
             }
         }
+    }
+
+    /// MELEE_APP_PADS=a,right,...: a pad-only walk (docs/APP.md "Pad
+    /// parity"). Two scripted pads (a Switch Pro Controller and a DualSense)
+    /// are reported to the core every poll like hardware; each step presses
+    /// one control on pad 1 (`2:a` on pad 2) for one poll, one step per
+    /// MELEE_APP_PADS_INTERVAL seconds (default 0.4), and prints the state.
+    /// Controls: a b x y (by position: bottom, left, right, top), z, l, r,
+    /// start, select, home, up down left right (D-pad), stick-up... (the
+    /// left stick), wait, wait:N (seconds).
+    private static func padWalk(_ spec: String, model: AppModel) {
+        guard let gamepads = (NSApp.delegate as? AppDelegate)?.controller.gamepads else { return fail("no window") }
+        let virtual: [UInt32] = [Gamepads.virtualBase + 1, Gamepads.virtualBase + 2]
+        Gamepads.persists = false
+        gamepads.connectVirtual(handle: virtual[0], name: "Pro Controller", category: "Switch Pro Controller")
+        gamepads.connectVirtual(handle: virtual[1], name: "DualSense Wireless Controller", category: "DualSense")
+        for handle in virtual { model.core.padReset(handle: handle) }
+        model.padsChanged()
+        let inputs: [String: PadInput] = [
+            "a": .south, "b": .west, "x": .east, "y": .north, "z": .rightBumper, "l": .leftTrigger,
+            "r": .rightTrigger, "start": .start, "select": .select, "home": .home,
+            "up": .dpadUp, "down": .dpadDown, "left": .dpadLeft, "right": .dpadRight,
+        ]
+        let sticks: [String: (Float, Float)] = [
+            "stick-up": (0, 1), "stick-down": (0, -1), "stick-left": (-1, 0), "stick-right": (1, 0),
+        ]
+        let interval = ProcessInfo.processInfo.environment["MELEE_APP_PADS_INTERVAL"].flatMap(Double.init) ?? 0.4
+        var at = 1.0
+        let origin = DispatchTime.now()
+        for step in spec.split(separator: ",").map(String.init) {
+            var name = step
+            var pad = virtual[0]
+            if let colon = step.firstIndex(of: ":"), let index = Int(step[..<colon]), (1...2).contains(index) {
+                pad = virtual[index - 1]
+                name = String(step[step.index(after: colon)...])
+            }
+            if name == "wait" || name.hasPrefix("wait:") {
+                at += name == "wait" ? interval : Double(name.dropFirst(5)) ?? interval
+                continue
+            }
+            var raw = RawPad()
+            if let input = inputs[name] {
+                raw[input] = 1
+            } else if let (x, y) = sticks[name] {
+                raw.axes = [x, y, 0, 0]
+            } else {
+                return fail("unknown pad control \(name); controls: \((Array(inputs.keys) + Array(sticks.keys)).sorted()) wait wait:N")
+            }
+            // A tap: one poll pressed, the next released (a busy main thread
+            // cannot stretch it into a held, repeating press). Deadlines from
+            // one origin keep taps and reports in order.
+            DispatchQueue.main.asyncAfter(deadline: origin + at) {
+                gamepads.setVirtual(handle: pad, raw)
+                gamepads.setVirtual(handle: pad, RawPad())
+            }
+            DispatchQueue.main.asyncAfter(deadline: origin + at + interval * 0.9) {
+                printState("pad \(step)", model: model)
+            }
+            at += interval
+        }
+        DispatchQueue.main.asyncAfter(deadline: origin + at + 0.5) {
+            printState("pads done", model: model)
+            if ProcessInfo.processInfo.environment["MELEE_APP_PADS_EXIT"] != nil { exit(0) }
+        }
+    }
+    private static func printState(_ label: String, model: AppModel) {
+        let window = NSApp.windows.first { $0.contentView != nil }
+        let slots = model.selection.players.enumerated().map { index, slot in
+            "P\(index + 1) \(slot.controller)\(slot.controller == .cpu ? "\(slot.cpuLevel)" : "")" +
+                " \(model.character(slot.character)?.key ?? "-")/\(slot.costume) t\(slot.team) h\(slot.handicap)"
+        }.joined(separator: ", ")
+        let pads = model.core.pads.map { "\($0.name)=\($0.port.map { "P\($0 + 1)" } ?? "-")" }.joined(separator: " ")
+        let layers = [model.showingRules ? "rules" : nil, model.showingControllers ? "controllers" : nil,
+                      model.showingAppMenu ? "appMenu" : nil, model.notice.map { "notice(\($0.title))" },
+                      window?.attachedSheet != nil ? "sheet" : nil, model.toast.map { "toast(\($0))" }]
+            .compactMap { $0 }.joined(separator: " ")
+        var hud = model.core.hud.map { " tick \($0.tick)" } ?? ""
+        if model.showingControllers, let pad = model.core.pads.first(where: { $0.handle == model.settingsPad }) {
+            let bound = PadInput.allCases.map { "\(pad.label($0))=\(pad.bindings[$0.rawValue].name)" }
+            hud += " editing \(pad.name) listening \(pad.listening.map { $0.name } ?? "-") " +
+                "deadzone \(pad.deadzone) click \(pad.triggerClick) [\(bound.joined(separator: " "))]"
+        }
+        print("\(label)\(NSApp.isActive ? "" : " (inactive)")\(window?.occlusionState.contains(.visible) == false ? " (occluded)" : ""): screen \(model.screen)\(model.paused ? " paused" : "") focus \(model.focusID ?? "-") " +
+              "picking P\(model.picking + 1) [\(layers)] rules [\(RulesCard.summary(model.rules))] " +
+              "slots [\(slots)] pads [\(pads)]\(hud)")
+        if tracePads {
+            print("  targets: " + model.activeTargets.map {
+                "\($0.id)@\(Int($0.frame.minX)),\(Int($0.frame.minY)),\(Int($0.frame.width))x\(Int($0.frame.height))"
+            }.joined(separator: " "))
+        }
+        fflush(stdout)
     }
 
     /// MELEE_APP_CLICK=x,y: one left click at that point of the window's
@@ -612,7 +819,7 @@ enum Autostart {
                         .joined(separator: ", ")
                 } ?? ""
                 print("click \(values): screen \(model.screen) sheet \(window.attachedSheet != nil) " +
-                      "rules [\(RulesCard.summary(model.rules))] showingRules \(model.showingRules) " +
+                      "rules [\(RulesCard.summary(model.rules))] showingRules \(model.showingRules) controllers \(model.showingControllers) appMenu \(model.showingAppMenu) focus \(model.focusID ?? "-") " +
                       "slots [\(slots)]\(hud)")
                 fflush(stdout)
             }

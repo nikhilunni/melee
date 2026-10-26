@@ -25,6 +25,8 @@ struct DiscView: View {
                         .transition(reduceMotion ? .opacity : .move(edge: .bottom).combined(with: .opacity))
                 }
                 Spacer()
+                PadHints(model: model, m: m, hints: [("A", "Choose"), ("Z", "Menu")])
+                    .padding(.bottom, m(8))
                 Text("NTSC-U 1.02 (GALE01, revision 2)  ·  nothing leaves your machine")
                     .font(.ui(m(12)))
                     .tracking(0.4)
@@ -87,13 +89,20 @@ struct DiscView: View {
                     .font(.ui(m(13)))
                     .foregroundStyle(Palette.textDim)
             }
-            HStack(spacing: m(12)) {
-                ForEach(Array(actions.enumerated()), id: \.element) { index, action in
-                    Button { model.perform(action) } label: { label(action) }
-                        .buttonStyle(SlantButtonStyle(kind: index == 0 && model.disc == nil || isResume(action)
-                                                        ? .accent : .glass,
-                                                      focused: model.focus == index, size: m(17)))
-                        .onHover { if $0 { model.focus = index } }
+            // Three buttons a row: Open, Continue and the recent discs.
+            VStack(spacing: m(10)) {
+                ForEach(Array(stride(from: 0, to: actions.count, by: 3)), id: \.self) { start in
+                    HStack(spacing: m(12)) {
+                        ForEach(start..<min(start + 3, actions.count), id: \.self) { index in
+                            let action = actions[index]
+                            Button { model.perform(action) } label: { label(action) }
+                                .buttonStyle(SlantButtonStyle(kind: index == 0 && model.disc == nil || isResume(action)
+                                                                ? .accent : .glass,
+                                                              focused: model.focusID == "disc.\(index)", size: m(17)))
+                                .padFocus("disc.\(index)", model: model, ring: false) { model.perform(action) }
+                                .onHover { if $0 { model.hoverFocus("disc.\(index)") } }
+                        }
+                    }
                 }
             }
             .padding(.top, m(4))

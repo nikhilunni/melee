@@ -8,10 +8,17 @@ struct Notice: Identifiable, Equatable {
     var message: String
 }
 
-/// Keys the menus understand; the window maps key codes to these.
+/// Keys the menus understand; the window maps key codes and pad menu
+/// events to these (docs/APP.md lists every binding).
 enum MenuKey {
     case left, right, up, down, enter, escape, tab, backTab, costumePrevious, costumeNext, clear, fewerStocks,
          moreStocks
+    /// A pad's B: clear the pick, close a card, or go back.
+    case back
+    /// A pad's Start: ready to fight, resume, rematch.
+    case start
+    /// A pad's Z, Select or Home: the app menu.
+    case appMenu
 }
 
 /// Observable mirror of the core for the SwiftUI menus. It forwards intent
@@ -25,7 +32,7 @@ final class AppModel: ObservableObject {
     @Published private(set) var selection = Selection()
     @Published private(set) var rules = Rules()
     /// The rules card is open over character select.
-    @Published var showingRules = false
+    @Published var showingRules = false { didSet { closed(showingRules, FocusLayer.card) } }
     @Published private(set) var progress = LoadProgress()
     @Published private(set) var hud: Hud?
     @Published private(set) var results: MatchResults?
@@ -37,12 +44,33 @@ final class AppModel: ObservableObject {
     /// The card on top of the menus, if any.
     @Published var notice: Notice?
 
-    // Menu navigation: the character grid cursor (a character id), the
-    // stage row cursor (stages, then Random) and the focused button of
-    // button-only screens (disc, pause, results).
+    // Menu navigation: the focused control (Focus.swift), the character
+    // grid cursor (a character id) and the stage row cursor (stages, then
+    // Random), which follow focus on their tiles.
+    @Published var focusID: String?
+    var focusTargets: [FocusTarget] = []
+    /// A key pressed before the controls it acts on reported in (Focus.swift).
+    var pendingKey: (MenuKey, Date)?
     @Published var cursor: Int32 = 0
     @Published var stageCursor = 0
-    @Published var focus = 0
+
+    // Gamepads (Gamepads.swift reads them, the core maps them).
+    @Published private(set) var pads: [PadInfo] = []
+    /// The controllers card is open (over any menu or the pause card).
+    @Published var showingControllers = false { didSet { closed(showingControllers, FocusLayer.controllers) } }
+    /// The pad the controllers card edits.
+    @Published var settingsPad: UInt32?
+    /// The app menu (pads' stand-in for the menu bar).
+    @Published var showingAppMenu = false { didSet { closed(showingAppMenu, FocusLayer.appMenu) } }
+    /// A short message that fades (a pad joined).
+    @Published var toast: String?
+    /// The key being handled came from a pad (no panels: they need a mouse).
+    var padInput = false
+    /// The pad that last pressed something.
+    var lastPad: UInt32?
+    /// Where the pointer was when it last took focus (Focus.swift).
+    var lastPointer = NSEvent.mouseLocation
+    private var toastTimer: Timer?
     /// Bumped when runtime-rendered art (stage previews) becomes available.
     @Published private(set) var artGeneration = 0
     /// The stage the Random tile is shuffling through, while it shuffles.
@@ -61,6 +89,10 @@ final class AppModel: ObservableObject {
     var framesChanged: (() -> Void)?
     var openPanel: (() -> Void)?
     var saveReplayPanel: (() -> Void)?
+    /// The app menu's commands (the window controller runs them).
+    var appMenuAction: ((AppMenuAction) -> Void)?
+    /// The window is full screen (the app menu's title says which way).
+    @Published var fullScreen = false
 
     // Development only (screenshots): hold the loading screen, and show
     // results or HUD percents over a running match.
@@ -101,10 +133,20 @@ final class AppModel: ObservableObject {
 
     /// Reset navigation for a newly shown screen.
     private func enter(_ screen: Screen) {
-        focus = 0
+        focusID = nil
+        // The new screen registers its controls on its first layout; a match
+        // in play registers none, so nothing of the last screen may linger.
+        focusTargets = []
         shuffling = nil
         if screen != .characters { showingRules = false }
         if screen == .characters, let pick = selection.players[picking].character { cursor = pick }
+        switch screen {
+        case .characters: focusID = "tile.\(cursor)"
+        case .stages: focusID = "stage.\(stageCursor)"
+        case .disc: focusID = "disc.0"
+        case .results: focusID = "results.0"
+        default: break
+        }
         if screen == .stages { pollPreviews() } else { previewTimer?.invalidate(); previewTimer = nil }
     }
 
@@ -177,7 +219,11 @@ final class AppModel: ObservableObject {
     /// Make a player the one picking; the cursor jumps to their fighter.
     func activate(player: Int) {
         picking = player
-        if let pick = selection.players[player].character { cursor = pick }
+        if let pick = selection.players[player].character {
+            cursor = pick
+            // Focus on the grid follows the cursor to that fighter.
+            if focusID?.hasPrefix("tile.") ?? true { focusID = "tile.\(pick)" }
+        }
     }
     func setCostume(player: Int, costume: Int) { perform { try core.setCostume(player: player, costume: costume) } }
     func cycleCostume(player: Int, step: Int32) { perform { try core.cycleCostume(player: player, step: step) } }
@@ -307,10 +353,10 @@ final class AppModel: ObservableObject {
     }
     var needsFrame: Bool { core.needsFrame }
     func action(player: Int, _ action: GameAction, down: Bool) { core.action(player: player, action, down: down) }
-    func gamepad(device: Int, _ state: GamepadState?) { core.gamepad(device: device, state) }
     func setPaused(_ value: Bool) {
         guard screen == .match else { return }
         core.setPaused(value)
+        if value && !paused { focusID = "pause.0" }
         paused = value
         hud = core.hud
         framesChanged?()
@@ -321,6 +367,51 @@ final class AppModel: ObservableObject {
     func rematch() { previewResults = nil; perform { try core.rematch() } }
     func quitToMenu() { previewResults = nil; core.quitToMenu(); sync() }
     func saveReplay(to url: URL) { perform("Could not save the replay") { try core.saveReplay(to: url.path) } }
+
+    // MARK: Gamepads
+
+    /// Re-read the pads (connected, joined, rebound).
+    func padsChanged() {
+        let next = core.pads
+        if next != pads { pads = next }
+        if let settingsPad, !pads.contains(where: { $0.handle == settingsPad }) { self.settingsPad = pads.first?.handle }
+        Gamepads.savePrefs(core)
+    }
+    /// After each poll: the controllers card shows live sticks and buttons.
+    func padsPolled() {
+        // Focus is always on something (a card that just closed can leave none).
+        ensureFocus()
+        replayPendingKey()
+        guard showingControllers else { return }
+        let next = core.pads
+        if next != pads { pads = next }
+    }
+    func showToast(_ text: String) {
+        toast = text
+        toastTimer?.invalidate()
+        toastTimer = Timer.scheduledTimer(withTimeInterval: 2.2, repeats: false) { [weak self] _ in self?.toast = nil }
+    }
+    /// The pad driving a controller port.
+    func pad(port: Int) -> PadInfo? { pads.first { $0.port == port } }
+
+    func openControllers() {
+        showingAppMenu = false
+        settingsPad = lastPad.flatMap { handle in pads.first { $0.handle == handle }?.handle } ?? pads.first?.handle
+        showingControllers = true
+        focusID = nil
+    }
+    func closeControllers() {
+        if let settingsPad { core.padListen(handle: settingsPad, target: nil) }
+        showingControllers = false
+        focusID = nil
+        padsChanged()
+    }
+    /// Change the edited pad's settings through the core, then save.
+    func editPad(_ change: (Core, UInt32) -> Void) {
+        guard let settingsPad else { return }
+        change(core, settingsPad)
+        padsChanged()
+    }
 }
 
 /// Discs opened before, as bookmarks so they survive renames and moves.

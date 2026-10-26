@@ -37,7 +37,35 @@ struct RootView: View {
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
                     .zIndex(10)
             }
+            GeometryReader { geo in
+                let m = MenuMetrics(size: geo.size)
+                ZStack {
+                    if model.showingControllers {
+                        Color.black.opacity(0.45).ignoresSafeArea().onTapGesture(perform: model.closeControllers)
+                        ControllersCard(model: model, m: m)
+                    }
+                    if model.showingAppMenu {
+                        Color.black.opacity(0.45).ignoresSafeArea().onTapGesture { model.showingAppMenu = false }
+                        AppMenuCard(model: model, m: m)
+                    }
+                    if let toast = model.toast {
+                        ToastView(text: toast)
+                            .padding(.top, titleBarInset + 8)
+                            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+                            .allowsHitTesting(false)
+                            .transition(.opacity)
+                    }
+                }
+                .frame(width: geo.size.width, height: geo.size.height)
+            }
+            // Only an open card takes clicks; the toast never does.
+            .allowsHitTesting(model.showingControllers || model.showingAppMenu)
+            .zIndex(20)
         }
+        .modifier(FocusCollector(model: model))
+        .animation(motion.spring, value: model.showingControllers)
+        .animation(motion.spring, value: model.showingAppMenu)
+        .animation(.easeInOut(duration: 0.2), value: model.toast)
         .animation(motion.spring, value: model.screen)
         .animation(motion.spring, value: model.showsResults)
         .animation(motion.spring, value: model.notice)
