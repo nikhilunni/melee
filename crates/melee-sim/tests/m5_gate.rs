@@ -5315,46 +5315,52 @@ fn corpus_v2_matches_through_game() {
 /// (ft_800CD65C, PlCo +5A0) and vanishes when dropped onto the floor.
 #[test]
 fn battering_items_attack_rows_and_kinds_match_retail() {
-    gate_in_parallel(&[
-        ("w25_sword_lw_land_750_v01", 750),
-        ("w26_sword_nair_lw4_v01", 740),
-        ("corpus_v3_bf_items_sword_e1937d147_p2", 3112),
-        ("corpus_v3_bf_items_sword_e8b25fee4_p2", 2503),
-        ("corpus_v3_fd_items_sword_nocont_e3b44b994_p0", 6001),
-        ("corpus_v3_fd_items_sword_nocont_e34114802_p1", 6001),
-        ("corpus_v3_bf_items_sword_eeaabf247_p0", 4435),
-        ("corpus_v3_fd_items_sword_nocont_e1937d147_p1", 5291),
-        ("corpus_v3_fd_items_sword_nocont_e6d12a3db_p1", 6001),
-        ("corpus_v3_bf_items_sword_ea51bbfdd_p2", 2425),
-        ("corpus_v3_fd_items_sword_e3b44b994_p2", 4343),
-        ("corpus_v3_fd_items_sword_e127c8a4e_p1", 6001),
-        ("start_fd_items_bat_cold", 600),
-        ("corpus_v3_fd_items_bat_e7116ed4b_p1", 6001),
-        ("corpus_v3_fd_items_bat_e3b44b994_p0", 6001),
-        ("corpus_v3_fd_items_bat_e698574fd_p1", 5007),
-        ("corpus_v3_fd_items_bat_e9a386a3b_p1", 4899),
-        ("corpus_v3_fd_items_bat_e89e88e4d_p0", 5452),
-        ("corpus_v3_fd_items_bat_e27553d2c_p1", 3991),
-        ("start_fd_items_harisen_cold", 600),
-        // Each Fan case ends before its first dropped fan touches the
-        // floor: that landing reads the never-initialized xD4C.
-        ("corpus_v3_fd_items_harisen_efe323759_p0", 3910),
-        ("corpus_v3_fd_items_harisen_ee90a42cd_p0", 2171),
-        ("corpus_v3_fd_items_harisen_e2b3eb8a9_p0", 2051),
-        ("corpus_v3_fd_items_harisen_ecce13aca_p1", 2800),
-        ("corpus_v3_fd_items_harisen_e118ab6d2_p2", 1853),
-        ("corpus_v3_fd_items_harisen_e816cd7b7_p0", 1592),
-        ("corpus_v3_fd_items_harisen_e7116ed4b_p1", 1719),
-        // The Star Rod's stars (ft_800CD914); a star's destroy effect
-        // 0x3F0 turns to the star's facing (it_80278800's block_4FC).
-        ("start_fd_items_starrod_cold", 600),
-        ("corpus_v3_fd_items_starrod_e9eef57d4_p1", 4538),
-        ("corpus_v3_fd_items_starrod_e27553d2c_p2", 2091),
-        ("corpus_v3_fd_items_starrod_ea6fa152f_p0", 1221),
-        ("corpus_v3_fd_items_starrod_e1f6039e4_p1", 3777),
-        ("corpus_v3_fd_items_starrod_e9090ee04_p0", 526),
-    ]);
+    gate_in_parallel_using(BATTERING_ITEM_WITNESSES, |name, ticks| {
+        // Boundary captures record precisely 600 ticks in ledger600.
+        let suffix = if name.starts_with("start_") { "ledger600" } else { "ledger" };
+        combat_gate_ticks_with_ledger(name, ticks, suffix)
+    });
 }
+
+const BATTERING_ITEM_WITNESSES: &[(&str, usize)] = &[
+    ("w25_sword_lw_land_750_v01", 750),
+    ("w26_sword_nair_lw4_v01", 740),
+    ("corpus_v3_bf_items_sword_e1937d147_p2", 3112),
+    ("corpus_v3_bf_items_sword_e8b25fee4_p2", 2503),
+    ("corpus_v3_fd_items_sword_nocont_e3b44b994_p0", 6001),
+    ("corpus_v3_fd_items_sword_nocont_e34114802_p1", 6001),
+    ("corpus_v3_bf_items_sword_eeaabf247_p0", 4435),
+    ("corpus_v3_fd_items_sword_nocont_e1937d147_p1", 5291),
+    ("corpus_v3_fd_items_sword_nocont_e6d12a3db_p1", 6001),
+    ("corpus_v3_bf_items_sword_ea51bbfdd_p2", 2425),
+    ("corpus_v3_fd_items_sword_e3b44b994_p2", 4343),
+    ("corpus_v3_fd_items_sword_e127c8a4e_p1", 6001),
+    ("start_fd_items_bat_cold", 600),
+    ("corpus_v3_fd_items_bat_e7116ed4b_p1", 6001),
+    ("corpus_v3_fd_items_bat_e3b44b994_p0", 6001),
+    ("corpus_v3_fd_items_bat_e698574fd_p1", 5007),
+    ("corpus_v3_fd_items_bat_e9a386a3b_p1", 4899),
+    ("corpus_v3_fd_items_bat_e89e88e4d_p0", 5452),
+    ("corpus_v3_fd_items_bat_e27553d2c_p1", 3991),
+    ("start_fd_items_harisen_cold", 600),
+    // Each Fan case ends before its first dropped fan touches the
+    // floor: that landing reads the never-initialized xD4C.
+    ("corpus_v3_fd_items_harisen_efe323759_p0", 3910),
+    ("corpus_v3_fd_items_harisen_ee90a42cd_p0", 2171),
+    ("corpus_v3_fd_items_harisen_e2b3eb8a9_p0", 2051),
+    ("corpus_v3_fd_items_harisen_ecce13aca_p1", 2800),
+    ("corpus_v3_fd_items_harisen_e118ab6d2_p2", 1853),
+    ("corpus_v3_fd_items_harisen_e816cd7b7_p0", 1592),
+    ("corpus_v3_fd_items_harisen_e7116ed4b_p1", 1719),
+    // The Star Rod's stars (ft_800CD914); a star's destroy effect
+    // 0x3F0 turns to the star's facing (it_80278800's block_4FC).
+    ("start_fd_items_starrod_cold", 600),
+    ("corpus_v3_fd_items_starrod_e9eef57d4_p1", 4538),
+    ("corpus_v3_fd_items_starrod_e27553d2c_p2", 2091),
+    ("corpus_v3_fd_items_starrod_ea6fa152f_p0", 1221),
+    ("corpus_v3_fd_items_starrod_e1f6039e4_p1", 3777),
+    ("corpus_v3_fd_items_starrod_e9090ee04_p0", 526),
+];
 
 /// Held Beam Sword ground input: retail checkItemThrow (8008C22C),
 /// vertical smash throw checks (8008C830/8008CB44), and down-tilt entry
