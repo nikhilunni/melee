@@ -1517,6 +1517,10 @@ pub struct ItemCore {
     /// HSD_JObjAnimAll steps since the article state's animation began
     /// (Item_80268D34's HSD_JObjReqAnimAll), for [`crate::pose::ItemPose`].
     pub pose_steps: u32,
+    /// The model carries the AObjs Item_80268D34 last attached (a state
+    /// with anim_id -1 leaves them in place), so HSD_JObjAnimAll goes on
+    /// playing that article state's animation.
+    pub animation_attached: bool,
     /// The article state the motion plays (its ItemStateTable anim_id).
     pub article_state: usize,
     /// Each hitbox slot's last placed positions (HitCapsule x58 and x4C:
@@ -1725,10 +1729,18 @@ impl ItemCore {
     /// while the motion state and its script stay.
     pub fn play_article_animation(&mut self, article_state: usize, assets: &ItemAssets) {
         self.article_state = article_state;
+        self.animation_attached = true;
         self.animation_frame = 0.0;
         self.frame_without_aobj = !assets.has_joint_animation(article_state);
         self.pose_steps = 1;
         self.emit_particle_keys(assets, self.root_translation);
+    }
+    /// HSD_JObjAnimAll in a state with anim_id -1: the AObjs an earlier
+    /// state attached still run when their animation loops.
+    pub fn plays_lingering_loop(&self, assets: &ItemAssets) -> bool {
+        self.animation_attached
+            && assets.has_joint_animation(self.article_state)
+            && assets.animation_ends.get(self.article_state).is_some_and(Option::is_none)
     }
     /// it_80272C6C == 0: the joint animation the model plays has no frames
     /// left.
@@ -1816,6 +1828,7 @@ impl ItemCore {
         // Item_80268D34's HSD_JObjReqAnimAll(0) with ANIM_UPDATE, then the
         // HSD_JObjAnimAll every state change takes.
         if flags & state_change::ANIM_UPDATE != 0 {
+            self.animation_attached = true;
             // Item_80268D34 returns the joints to their rest pose.
             self.joint_translation_z = None;
         }
@@ -2653,6 +2666,7 @@ impl ItemPool {
             link_requests: Default::default(),
             owner_request: None,
             pose_steps: 0,
+            animation_attached: false,
             article_state: 0,
             hitbox_trace: Default::default(),
         };
@@ -2934,9 +2948,11 @@ impl ItemPool {
         if !(item.frozen || item.in_hitlag) {
             item.advance_animation(assets);
             let row = D::logic(item.kind).states[item.motion as usize];
-            // Item_802694CC's HSD_JObjAnimAll dirties the joints it poses
-            // (a state without an animation of its own poses none).
-            item.joints_dirty |= row.animation_id >= 0;
+            // Item_802694CC's HSD_JObjAnimAll dirties the joints it poses.
+            // A state without an animation of its own (anim_id -1) leaves
+            // the last one's AObjs on the model: a looping one goes on
+            // posing it (the Warp Star dropped from LightGet).
+            item.joints_dirty |= row.animation_id >= 0 || item.plays_lingering_loop(assets);
             let ended = (row.animation)(
                 item,
                 &mut ItemAnimationContext {

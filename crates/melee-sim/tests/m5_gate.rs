@@ -7701,6 +7701,10 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_wstar_e06ad0b5e_p0", 1247),
     ("corpus_v3_fd_items_wstar_e06ad0b5e_p1", 646),
     ("wstar_ko_e68833afa", 1324),
+    // The star dropped from LightGet breaks on landing: the held state's
+    // looping animation still dirties its bones (anim_id -1 keeps the AObjs),
+    // so the kept sparkle on bone 3 reads the bone's local SRT once it is gone.
+    ("wstar_hit_e06ad0b5e", 1046),
     ("corpus_v3_fd_items_wstar_ef453df94_p1", 4872),
     ("corpus_v3_fd_items_wstar_e5f158f1d_p2", 5871),
     ("corpus_v3_fd_items_wstar_ee3f259e8_p0", 3585),

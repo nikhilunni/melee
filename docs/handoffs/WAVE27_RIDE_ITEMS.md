@@ -20,14 +20,11 @@ order. The first three are ported and gated. The last three are not started.
   `PORTED_RANDOM_ITEMS` yet: only one explorer batch has run, so faults may
   remain.
 
-## Open divergence: `wstar_hit_e06ad0b5e` (not registered)
-
-Particle generator 8 (program 431) has the wrong position at tick 646. A
-LightGet hit drops the star and it breaks. Retail then reads bone 3's local
-SRT (-0, -1.4269, -1). The port keeps the bone's last world matrix because
-`joints_dirty` is false on that path. The fix is probably to dirty the joints
-(or recompute the free pose) on the drop and break path before the generator
-reads the bone. The scenario TOML and traces are in the main checkout.
+`wstar_hit_e06ad0b5e` (registered) covers a star dropped from LightGet that
+breaks on landing. A state with anim_id -1 leaves the previous AObjs on the
+model (Item_80268E5C). The held state's looping animation therefore keeps
+dirtying the bones (`ItemCore::plays_lingering_loop`), and the sparkle kept on
+bone 3 then reads the bone's local SRT.
 
 ## Still guarded (`unimplemented!` with the C line)
 
