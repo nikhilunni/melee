@@ -1,0 +1,33 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock, 4 stocks, items on, normal Versus Entry, human ports, neutral pads.
+name = "w26_start_bf_items_all_fox_marth_falco_cold"
+expected = "w26_start_bf_items_all_fox_marth_falco"
+frames = 600
+seed = 1698269034
+# Items Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen.
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+stage = "Battlefield"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+costume = 0
+stocks = 4
+controller = "idle"

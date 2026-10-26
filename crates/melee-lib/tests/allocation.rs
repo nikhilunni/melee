@@ -229,6 +229,52 @@ fn random_item_spawns_and_container_capture_allocate_nothing() {
     );
 }
 
+/// The layouts wave 27 opened: items with three and four players, items
+/// on the other stages, CPUs among three and four players and CPUs with
+/// items; the Party Ball's shower, the Fan's drops and the Goomba's walk,
+/// stomp and throw.
+#[test]
+fn widened_item_and_cpu_layouts_step_and_capture_allocate_nothing() {
+    TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
+    let root = data_root();
+    for name in [
+        "w27s_fd_items_all_fox_marth_falco_peach_e89a89d0e_p2",
+        "w27s_bf_items_all_fox_marth_falco_peach_e89a89d0e_p1",
+        "w27s_KongoJungle_items_all_fox_marth_falco_peach_ec0a10b25_p0",
+        "w27s_YoshisIsland_items_all_e89a89d0e_p1",
+        "w27s_Onett_items_all_e89a89d0e_p1",
+        "w27s_Fourside_items_all_e89a89d0e_p1",
+        "w27s_PokemonStadium_items_all_e89a89d0e_p1",
+        "w27s_fd_fox_cpu9marth_cpu9falco_cpu9peach4_e89a89d0e_p1",
+        "w27s_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e89a89d0e_p2",
+        "corpus_v3_fd_items_kusudama_e0fcbde24_p0",
+        "corpus_v3_fd_items_harisen_e34114802_p1",
+        "w27g_fd_items_all_fox_marth_falco_peach_eecfcf1ea_p1",
+        "w27d_throwing_holder",
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        if !melee_test_support::require_files(scenario.required_files()) {
+            return;
+        }
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut presentation = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        for frame in 0..scenario.frames {
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} tick {frame}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let result = presentation.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            result.unwrap_or_else(|error| panic!("{name} capture {frame}: {error}"));
+            assert_eq!(COUNT.with(Cell::get), 0, "{name} capture {frame}");
+        }
+    }
+}
+
 #[test]
 fn moving_kongo_barrel_catch_hold_launch_and_capture_allocate_nothing() {
     let root = data_root();

@@ -1,0 +1,29 @@
+# Fox vs Marth vs Falco on FinalDestination, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# every stage unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "w26_start_fd_items_all_fox_marth_falco"
+savestate = "harness/roms/w26_start_fd_items_all_fox_marth_falco.sav"
+frames = 600
+seed = 1
+# Items Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen.
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+stage = "FinalDestination"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+controller = "idle"

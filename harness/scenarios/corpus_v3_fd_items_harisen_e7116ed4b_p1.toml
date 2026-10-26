@@ -300,6 +300,9 @@ inputs = [
   { frame = 1718, port = 1, buttons = { X = true }, raw = { button = 1024 } },
 ]
 
+# The xD4C each new Fan read in the recording (stale heap; fan_heap_words.py).
+heap_ammo_words = [0xD4D4D4D4, 0x653F3F66, 0x00000000, 0x00000000, 0x61626262, 0x6369698E, 0x96605B4A]
+
 [[fighters]]
 slot = 0
 kind = "Fox"

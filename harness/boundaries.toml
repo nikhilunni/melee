@@ -2069,3 +2069,326 @@ stocks = 4
 seed = 2751777771
 time_limit = 60
 mode = "coin"
+
+# Three and four players with level-9 CPUs (make_boundary.py --cpu-levels):
+# the CPUs rank their opponents by the standings (ftCo_800A53DC).
+[[boundary]]
+name = "w26_start_fd_fox_marth_cpu9falco4"
+cold = "w26_start_fd_fox_marth_cpu9falco4_cold"
+savestate = "harness/roms/w26_start_fd_fox_marth_cpu9falco4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth", "Falco"]
+stocks = 4
+seed = 383832888
+cpu_levels = [0, 0, 9]
+
+[[boundary]]
+name = "w26_start_fd_fox_cpu9marth_cpu9falco_cpu9peach4"
+cold = "w26_start_fd_fox_cpu9marth_cpu9falco_cpu9peach4_cold"
+savestate = "harness/roms/w26_start_fd_fox_cpu9marth_cpu9falco_cpu9peach4.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth", "Falco", "Peach"]
+stocks = 4
+seed = 3855823299
+cpu_levels = [0, 9, 9, 9]
+
+[[boundary]]
+name = "w26_start_bf_fox_marth_cpu9falco_cpu9peach4"
+cold = "w26_start_bf_fox_marth_cpu9falco_cpu9peach4_cold"
+savestate = "harness/roms/w26_start_bf_fox_marth_cpu9falco_cpu9peach4.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth", "Falco", "Peach"]
+stocks = 4
+seed = 1978696329
+cpu_levels = [0, 0, 9, 9]
+
+[[boundary]]
+name = "w26_start_bf_fox_cpu9marth_cpu9falco4"
+cold = "w26_start_bf_fox_cpu9marth_cpu9falco4_cold"
+savestate = "harness/roms/w26_start_bf_fox_cpu9marth_cpu9falco4.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth", "Falco"]
+stocks = 4
+seed = 1897783974
+cpu_levels = [0, 9, 9]
+
+# Items on, no containers (make_boundary.py --item-frequency very-high
+# --items Kusudama Sword --no-containers): Party Balls and Beam Swords.
+[[boundary]]
+name = "start_fd_items_kusudama"
+cold = "start_fd_items_kusudama_cold"
+savestate = "harness/roms/start_fd_items_kusudama.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2269040402
+item_frequency = 4
+item_mask = "0xfffffff800001010"
+
+# Items on, every kind the port runs (melee_lib::PORTED_RANDOM_ITEMS, as the
+# app's Item Switch makes them): make_boundary.py --item-frequency very-high
+# --items Kusudama BombHei Dosei Bat Sword StarRod Harisen --containers
+# Capsule Box Taru.
+[[boundary]]
+name = "w26_start_fd_items_all"
+cold = "w26_start_fd_items_all_cold"
+savestate = "harness/roms/w26_start_fd_items_all.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2582369276
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_bf_items_all"
+cold = "w26_start_bf_items_all_cold"
+savestate = "harness/roms/w26_start_bf_items_all.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3697305710
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+# Items on, every kind the port runs, with three and four players and on
+# the other stages (make_boundary.py as w26_start_fd_items_all).
+[[boundary]]
+name = "w26_start_fd_items_all_fox_marth_falco"
+cold = "w26_start_fd_items_all_fox_marth_falco_cold"
+savestate = "harness/roms/w26_start_fd_items_all_fox_marth_falco.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth", "Falco"]
+stocks = 4
+seed = 3715740249
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_fd_items_all_fox_marth_falco_peach"
+cold = "w26_start_fd_items_all_fox_marth_falco_peach_cold"
+savestate = "harness/roms/w26_start_fd_items_all_fox_marth_falco_peach.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth", "Falco", "Peach"]
+stocks = 4
+seed = 2724020921
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_bf_items_all_fox_marth_falco"
+cold = "w26_start_bf_items_all_fox_marth_falco_cold"
+savestate = "harness/roms/w26_start_bf_items_all_fox_marth_falco.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth", "Falco"]
+stocks = 4
+seed = 1698269034
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_bf_items_all_fox_marth_falco_peach"
+cold = "w26_start_bf_items_all_fox_marth_falco_peach_cold"
+savestate = "harness/roms/w26_start_bf_items_all_fox_marth_falco_peach.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth", "Falco", "Peach"]
+stocks = 4
+seed = 3019954761
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_YoshisStory_items_all"
+cold = "w26_start_YoshisStory_items_all_cold"
+savestate = "harness/roms/w26_start_YoshisStory_items_all.sav"
+stage = "YoshisStory"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2096838283
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_DreamLand_items_all"
+cold = "w26_start_DreamLand_items_all_cold"
+savestate = "harness/roms/w26_start_DreamLand_items_all.sav"
+stage = "DreamLand"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 335474626
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_FountainOfDreams_items_all"
+cold = "w26_start_FountainOfDreams_items_all_cold"
+savestate = "harness/roms/w26_start_FountainOfDreams_items_all.sav"
+stage = "FountainOfDreams"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3693317954
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_PokemonStadium_items_all"
+cold = "w26_start_PokemonStadium_items_all_cold"
+savestate = "harness/roms/w26_start_PokemonStadium_items_all.sav"
+stage = "PokemonStadium"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1946287947
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_YoshisIsland64_items_all"
+cold = "w26_start_YoshisIsland64_items_all_cold"
+savestate = "harness/roms/w26_start_YoshisIsland64_items_all.sav"
+stage = "YoshisIsland64"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1924309503
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_KongoJungle64_items_all"
+cold = "w26_start_KongoJungle64_items_all_cold"
+savestate = "harness/roms/w26_start_KongoJungle64_items_all.sav"
+stage = "KongoJungle64"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4178282493
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_JungleJapes_items_all"
+cold = "w26_start_JungleJapes_items_all_cold"
+savestate = "harness/roms/w26_start_JungleJapes_items_all.sav"
+stage = "JungleJapes"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 116864966
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_KongoJungle_items_all"
+cold = "w26_start_KongoJungle_items_all_cold"
+savestate = "harness/roms/w26_start_KongoJungle_items_all.sav"
+stage = "KongoJungle"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4230850008
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_HyruleTemple_items_all"
+cold = "w26_start_HyruleTemple_items_all_cold"
+savestate = "harness/roms/w26_start_HyruleTemple_items_all.sav"
+stage = "HyruleTemple"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4048054746
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_Fourside_items_all"
+cold = "w26_start_Fourside_items_all_cold"
+savestate = "harness/roms/w26_start_Fourside_items_all.sav"
+stage = "Fourside"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1484393142
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_BrinstarDepths_items_all"
+cold = "w26_start_BrinstarDepths_items_all_cold"
+savestate = "harness/roms/w26_start_BrinstarDepths_items_all.sav"
+stage = "BrinstarDepths"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4106669161
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w26_start_FlatZone_items_all"
+cold = "w26_start_FlatZone_items_all_cold"
+savestate = "harness/roms/w26_start_FlatZone_items_all.sav"
+stage = "FlatZone"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3970098109
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+# Items on with the ported Item Switch kinds (make_boundary.py
+# --item-frequency very-high --items Kusudama BombHei Dosei Bat Sword StarRod
+# Harisen --containers Capsule Box Taru) on the stages wave 26 added, and
+# four players on a stage whose drop markers move.
+[[boundary]]
+name = "w27_start_YoshisIsland_items_all"
+cold = "w27_start_YoshisIsland_items_all_cold"
+savestate = "harness/roms/w27_start_YoshisIsland_items_all.sav"
+stage = "YoshisIsland"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2878565526
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w27_start_Onett_items_all"
+cold = "w27_start_Onett_items_all_cold"
+savestate = "harness/roms/w27_start_Onett_items_all.sav"
+stage = "Onett"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1018638669
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w27_start_KongoJungle_items_all_fox_marth_falco_peach"
+cold = "w27_start_KongoJungle_items_all_fox_marth_falco_peach_cold"
+savestate = "harness/roms/w27_start_KongoJungle_items_all_fox_marth_falco_peach.sav"
+stage = "KongoJungle"
+players = ["Fox", "Marth", "Falco", "Peach"]
+stocks = 4
+seed = 2169839378
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+# CPU players with the ported Item Switch kinds on (make_boundary.py
+# --cpu-levels ... --item-frequency very-high --items Kusudama BombHei Dosei
+# Bat Sword StarRod Harisen --containers Capsule Box Taru).
+[[boundary]]
+name = "w27_start_fd_items_all_fox_cpu9marth"
+cold = "w27_start_fd_items_all_fox_cpu9marth_cold"
+savestate = "harness/roms/w27_start_fd_items_all_fox_cpu9marth.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2721006469
+cpu_levels = [0, 9]
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w27_start_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach"
+cold = "w27_start_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_cold"
+savestate = "harness/roms/w27_start_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach.sav"
+stage = "Battlefield"
+players = ["Fox", "Marth", "Falco", "Peach"]
+stocks = 4
+seed = 2977880427
+cpu_levels = [0, 9, 9, 9]
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"

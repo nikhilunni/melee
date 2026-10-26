@@ -1,0 +1,26 @@
+# Parameters only; seed is after stage/fighter creation, before music.
+# Stock, 4 stocks, items on, normal Versus Entry, human ports, neutral pads.
+name = "w26_start_HyruleTemple_items_all_cold"
+expected = "w26_start_HyruleTemple_items_all"
+frames = 600
+seed = 4048054746
+# Items Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen.
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+stage = "HyruleTemple"
+all_characters_unlocked = true
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+costume = 0
+stocks = 4
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+costume = 0
+stocks = 4
+controller = "idle"

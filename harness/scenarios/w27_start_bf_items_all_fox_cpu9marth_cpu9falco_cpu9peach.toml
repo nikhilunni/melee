@@ -1,0 +1,37 @@
+# Fox vs Marth vs Falco vs Peach on Battlefield, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# every stage unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "w27_start_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach"
+savestate = "harness/roms/w27_start_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach.sav"
+frames = 600
+seed = 1
+# Items Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen.
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+stage = "Battlefield"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "cpu"
+cpu_level = 9
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+controller = "cpu"
+cpu_level = 9
+
+[[fighters]]
+slot = 3
+kind = "Peach"
+controller = "cpu"
+cpu_level = 9

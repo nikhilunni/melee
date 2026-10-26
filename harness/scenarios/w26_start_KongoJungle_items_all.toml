@@ -1,0 +1,24 @@
+# Fox vs Marth on KongoJungle, 4 stocks, start boundary. Savestate
+# made by make_boundary.py (headless, RAM-only save-data pokes: characters and
+# every stage unlocked, stock rules, items off; the memory card is a
+# discarded copy). Every fighter in Entry at the first initialised frame.
+name = "w26_start_KongoJungle_items_all"
+savestate = "harness/roms/w26_start_KongoJungle_items_all.sav"
+frames = 600
+seed = 1
+# Items Capsule, Box, Taru, Kusudama, BombHei, Dosei, Bat, Sword, StarRod, Harisen.
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+stage = "KongoJungle"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

@@ -5312,7 +5312,8 @@ fn corpus_v2_matches_through_game() {
 /// and Item Switch boundaries with only the Bat or the Fan on: the Bat
 /// (itbat.c) is the Sword's logic with its own table; the Fan (itharisen.c)
 /// plays its own swing animations at the holder's rate, swells on a hit
-/// (ft_800CD65C, PlCo +5A0) and vanishes when dropped onto the floor.
+/// (ft_800CD65C, PlCo +5A0) and, dropped onto the floor, lands or vanishes
+/// by the stale heap word in its xD4C.
 #[test]
 fn battering_items_attack_rows_and_kinds_match_retail() {
     gate_in_parallel_using(BATTERING_ITEM_WITNESSES, |name, ticks| {
@@ -5343,8 +5344,14 @@ const BATTERING_ITEM_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_bat_e89e88e4d_p0", 5452),
     ("corpus_v3_fd_items_bat_e27553d2c_p1", 3991),
     ("start_fd_items_harisen_cold", 600),
-    // Each Fan case ends before its first dropped fan touches the
-    // floor: that landing reads the never-initialized xD4C.
+    // A dropped Fan lands or vanishes by the stale heap word in its
+    // xD4C (heap_ammo_words): ten landings and six vanishings in the
+    // four full matches; the seven shorter ones end where the
+    // explorer's port stopped before the landing was ported.
+    ("corpus_v3_fd_items_harisen_e0602a9de_p0", 5309),
+    ("corpus_v3_fd_items_harisen_e2b3eb8a9_p1", 4166),
+    ("corpus_v3_fd_items_harisen_e34114802_p1", 6001),
+    ("corpus_v3_fd_items_harisen_ebf31d7ca_p1", 6001),
     ("corpus_v3_fd_items_harisen_efe323759_p0", 3910),
     ("corpus_v3_fd_items_harisen_ee90a42cd_p0", 2171),
     ("corpus_v3_fd_items_harisen_e2b3eb8a9_p0", 2051),
@@ -7953,4 +7960,197 @@ fn explicit_teardown_before_motion_flush_whole_700_and_genuine_rng() {
     assert_eq!(count, 700);
     assert_eq!(draws, 11_383);
     assert_eq!(rng.seed, 1_884_807_614);
+}
+
+/// Items with three and four players, items on every ported stage but
+/// Mushroom Kingdom, CPUs among three and four players and CPUs with items
+/// (docs/PORT_NOTES/WAVE27_ITEMS_EVERYWHERE.md): each layout's start
+/// boundary, warm and cold.
+const WIDENED_LAYOUT_BOUNDARIES: &[(&str, usize)] = &[
+    ("w26_start_bf_fox_cpu9marth_cpu9falco4_cold", 600),
+    ("w26_start_bf_fox_cpu9marth_cpu9falco4", 600),
+    ("w26_start_bf_fox_marth_cpu9falco_cpu9peach4_cold", 600),
+    ("w26_start_bf_fox_marth_cpu9falco_cpu9peach4", 600),
+    ("w26_start_bf_items_all_cold", 600),
+    ("w26_start_bf_items_all_fox_marth_falco_cold", 600),
+    ("w26_start_bf_items_all_fox_marth_falco_peach_cold", 600),
+    ("w26_start_bf_items_all_fox_marth_falco_peach", 600),
+    ("w26_start_bf_items_all_fox_marth_falco", 600),
+    ("w26_start_bf_items_all", 600),
+    ("w26_start_BrinstarDepths_items_all_cold", 600),
+    ("w26_start_BrinstarDepths_items_all", 600),
+    ("w26_start_DreamLand_items_all_cold", 600),
+    ("w26_start_DreamLand_items_all", 600),
+    ("w26_start_fd_fox_cpu9marth_cpu9falco_cpu9peach4_cold", 600),
+    ("w26_start_fd_fox_cpu9marth_cpu9falco_cpu9peach4", 600),
+    ("w26_start_fd_fox_marth_cpu9falco4_cold", 600),
+    ("w26_start_fd_fox_marth_cpu9falco4", 600),
+    ("w26_start_fd_items_all_cold", 600),
+    ("w26_start_fd_items_all_fox_marth_falco_cold", 600),
+    ("w26_start_fd_items_all_fox_marth_falco_peach_cold", 600),
+    ("w26_start_fd_items_all_fox_marth_falco_peach", 600),
+    ("w26_start_fd_items_all_fox_marth_falco", 600),
+    ("w26_start_fd_items_all", 600),
+    ("w26_start_FlatZone_items_all_cold", 600),
+    ("w26_start_FlatZone_items_all", 600),
+    ("w26_start_FountainOfDreams_items_all_cold", 600),
+    ("w26_start_FountainOfDreams_items_all", 600),
+    ("w26_start_Fourside_items_all_cold", 600),
+    ("w26_start_Fourside_items_all", 600),
+    ("w26_start_HyruleTemple_items_all_cold", 600),
+    ("w26_start_HyruleTemple_items_all", 600),
+    ("w26_start_JungleJapes_items_all_cold", 600),
+    ("w26_start_JungleJapes_items_all", 600),
+    ("w26_start_KongoJungle_items_all_cold", 600),
+    ("w26_start_KongoJungle_items_all", 600),
+    ("w26_start_KongoJungle64_items_all_cold", 600),
+    ("w26_start_KongoJungle64_items_all", 600),
+    ("w26_start_PokemonStadium_items_all_cold", 600),
+    ("w26_start_PokemonStadium_items_all", 600),
+    ("w26_start_YoshisIsland64_items_all_cold", 600),
+    ("w26_start_YoshisIsland64_items_all", 600),
+    ("w26_start_YoshisStory_items_all_cold", 600),
+    ("w26_start_YoshisStory_items_all", 600),
+    ("w27_start_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_cold", 600),
+    ("w27_start_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach", 600),
+    ("w27_start_fd_items_all_fox_cpu9marth_cold", 600),
+    ("w27_start_fd_items_all_fox_cpu9marth", 600),
+    ("w27_start_KongoJungle_items_all_fox_marth_falco_peach_cold", 600),
+    ("w27_start_KongoJungle_items_all_fox_marth_falco_peach", 600),
+    ("w27_start_Onett_items_all_cold", 600),
+    ("w27_start_Onett_items_all", 600),
+    ("w27_start_YoshisIsland_items_all_cold", 600),
+    ("w27_start_YoshisIsland_items_all", 600),
+];
+
+/// Explorer matches from those layouts: the Party Ball's lifecycle
+/// (`corpus_v3_fd_items_kusudama_*`); the branches wave 26 ported without
+/// a witness, found by probes (`w27p_*`: Bob-ombs leaving the floor from
+/// their stand, walk, turn and face states and sliding; Capsule, Box and
+/// Mr. Saturn slides and falls; the Party Ball dropped; Fourside's UFO
+/// subject after items; CPU item throws and swing weapons, Peach's parasol
+/// included); the faults this wave fixed (`w27q_*`: held items through
+/// FlyReflectWall/Ceil, DownReflect and BarrelWait; a Box into a wall,
+/// under a ceiling and dropped hard; the Party Ball at a wall or ceiling;
+/// items between two walls; items bumping Yoshi's Island's blocks; a
+/// right-facing ReDead; a CPU weighing a Bob-omb's fuse); the Goomba's
+/// lifecycle (`w27g_*`, `w27d_throwing_holder`); a reflected container
+/// that draws (`w27d_container_rng`); one clean case per layout to 1500
+/// ticks (`w27s_*`; Pokemon Stadium's marker 0x87 is its second binding).
+const WIDENED_LAYOUT_MATCHES: &[(&str, usize)] = &[
+    ("corpus_v3_fd_items_kusudama_ef89b3e70_p0", 994),
+    ("corpus_v3_fd_items_kusudama_ef89b3e70_p1", 1335),
+    ("corpus_v3_fd_items_kusudama_e0fcbde24_p0", 5628),
+    ("corpus_v3_fd_items_kusudama_e26ea92b1_p1", 2493),
+    ("corpus_v3_fd_items_kusudama_e70b3084c_p0", 6001),
+    ("corpus_v3_fd_items_kusudama_ee32d950f_p2", 6001),
+    ("corpus_v3_fd_items_kusudama_ef5e3e043_p1", 6001),
+    ("w27d_container_rng", 758),
+    ("w27d_throwing_holder", 885),
+    ("w27g_bf_items_all_fox_marth_falco_e09db17e3_p0", 1488),
+    ("w27g_bf_items_all_fox_marth_falco_peach_e9f348009_p2", 1838),
+    ("w27g_fd_items_all_fox_marth_falco_e8089e993_p2", 2218),
+    ("w27g_fd_items_all_fox_marth_falco_peach_eecfcf1ea_p1", 1371),
+    ("w27g_fd_items_kusudama_ec0a10b25_p1", 1864),
+    ("w27g_Fourside_items_all_ed97ea327_p1", 2424),
+    ("w27g_KongoJungle_items_all_e8f0de8c6_p1", 1482),
+    ("w27g_YoshisIsland_items_all_e9f348009_p2", 2636),
+    ("w27p_bf_items_all_e1b05b110_p0", 543),
+    ("w27p_bf_items_all_e726cfdde_p2", 2230),
+    ("w27p_bf_items_all_edb2b114a_p2", 756),
+    ("w27p_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e266e1150_p0", 520),
+    ("w27p_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e2af099ca_p2", 744),
+    ("w27p_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e8f0de8c6_p1", 485),
+    ("w27p_bf_items_all_fox_marth_falco_e19f8579b_p2", 730),
+    ("w27p_bf_items_all_fox_marth_falco_e2b9e1400_p0", 659),
+    ("w27p_bf_items_all_fox_marth_falco_peach_ec3145eb3_p2", 1082),
+    ("w27p_BrinstarDepths_items_all_e005a4f43_p2", 474),
+    ("w27p_fd_fox_cpu9marth_cpu9falco_cpu9peach4_e00f31913_p2", 406),
+    ("w27p_fd_items_all_fox_cpu9marth_e09db17e3_p2", 543),
+    ("w27p_fd_items_all_fox_cpu9marth_eb17a6598_p2", 499),
+    ("w27p_FlatZone_items_all_e00f160ee_p1", 803),
+    ("w27p_FlatZone_items_all_e1502cb40_p2", 517),
+    ("w27p_FlatZone_items_all_e26ea92b1_p2", 2892),
+    ("w27p_FountainOfDreams_items_all_e3e74affa_p0", 740),
+    ("w27p_Fourside_items_all_e3e74affa_p1", 541),
+    ("w27p_Fourside_items_all_e6007e4e9_p1", 541),
+    ("w27p_KongoJungle_items_all_e1502cb40_p0", 478),
+    ("w27p_KongoJungle_items_all_e266e1150_p1", 480),
+    ("w27p_KongoJungle_items_all_fox_marth_falco_peach_e00f160ee_p1", 472),
+    ("w27p_KongoJungle_items_all_fox_marth_falco_peach_e2b9e1400_p1", 470),
+    ("w27p_KongoJungle64_items_all_ec3145eb3_p2", 1493),
+    ("w27p_Onett_items_all_e00f31913_p1", 483),
+    ("w27p_Onett_items_all_e8089e993_p2", 473),
+    ("w27p_YoshisIsland64_items_all_e2b9e1400_p2", 848),
+    ("w27q_bf_items_all_fox_cpu9marth_cpu9falco_cpu9peach_e8f0de8c6_p0", 806),
+    ("w27q_BrinstarDepths_items_all_e00f31913_p1", 1103),
+    ("w27q_BrinstarDepths_items_all_e2b9e1400_p2", 2871),
+    ("w27q_BrinstarDepths_items_all_ec13743d5_p2", 1915),
+    ("w27q_BrinstarDepths_items_all_ee32d950f_p2", 3558),
+    ("w27q_BrinstarDepths_items_all_ef9b6d16d_p0", 1332),
+    ("w27q_BrinstarDepths_items_all_efc6a328f_p2", 3943),
+    ("w27q_fd_fox_cpu9marth_cpu9falco_cpu9peach4_e1b05b110_p1", 4821),
+    ("w27q_fd_fox_cpu9marth_cpu9falco_cpu9peach4_e50f774a0_p1", 4488),
+    ("w27q_fd_items_all_e4213e6a5_p0", 958),
+    ("w27q_fd_items_all_e720659b1_p1", 1005),
+    ("w27q_fd_items_all_fox_cpu9marth_e266e1150_p0", 593),
+    ("w27q_fd_items_all_fox_cpu9marth_e9943b4ab_p2", 621),
+    ("w27q_fd_items_all_fox_marth_falco_peach_ea4d5d9ec_p0", 893),
+    ("w27q_HyruleTemple_items_all_ed97ea327_p0", 3294),
+    ("w27q_JungleJapes_items_all_e9943b4ab_p2", 2139),
+    ("w27q_KongoJungle_items_all_efc6a328f_p1", 772),
+    ("w27q_KongoJungle_items_all_efd4a7dd2_p2", 1084),
+    ("w27q_KongoJungle_items_all_fox_marth_falco_peach_edb2b114a_p1", 889),
+    ("w27q_KongoJungle64_items_all_e70b3084c_p2", 2303),
+    ("w27q_Onett_items_all_e2af099ca_p0", 2671),
+    ("w27q_Onett_items_all_e573e2d95_p0", 697),
+    ("w27q_Onett_items_all_eb17a6598_p1", 1800),
+    ("w27q_YoshisIsland_items_all_e00f160ee_p0", 482),
+    ("w27q_YoshisIsland_items_all_e44cbc906_p1", 2092),
+    ("w27q_YoshisIsland_items_all_e573e2d95_p1", 462),
+    ("w27q_YoshisIsland_items_all_e6cc80d32_p1", 462),
+    ("w27q_YoshisIsland_items_all_eb8786a38_p2", 831),
+    ("w27q_YoshisIsland_items_all_ec0a10b25_p1", 1073),
+    ("w27q_YoshisIsland_items_all_ec13743d5_p2", 2866),
+    ("w27q_YoshisIsland_items_all_ed97ea327_p2", 751),
+    ("w27q_YoshisIsland_items_all_ee133b82f_p2", 975),
+    ("w27s_bf_fox_cpu9marth_cpu9falco4_e89a89d0e_p1", 1501),
+    ("w27s_bf_fox_marth_cpu9falco_cpu9peach4_e89a89d0e_p1", 1501),
+    ("w27s_bf_items_all_e89a89d0e_p1", 1501),
+    ("w27s_bf_items_all_fox_marth_falco_e89a89d0e_p1", 1501),
+    ("w27s_bf_items_all_fox_marth_falco_peach_e89a89d0e_p1", 1501),
+    ("w27s_BrinstarDepths_items_all_e89a89d0e_p1", 1501),
+    ("w27s_DreamLand_items_all_e89a89d0e_p1", 1501),
+    ("w27s_fd_fox_cpu9marth_cpu9falco_cpu9peach4_e89a89d0e_p1", 1501),
+    ("w27s_fd_fox_marth_cpu9falco4_e89a89d0e_p1", 1501),
+    ("w27s_fd_items_all_e89a89d0e_p1", 1501),
+    ("w27s_fd_items_all_fox_cpu9marth_e89a89d0e_p1", 1501),
+    ("w27s_fd_items_all_fox_marth_falco_e89a89d0e_p1", 1501),
+    ("w27s_fd_items_all_fox_marth_falco_peach_e89a89d0e_p2", 1501),
+    ("w27s_fd_items_kusudama_e89a89d0e_p1", 1501),
+    ("w27s_FlatZone_items_all_e89a89d0e_p1", 1501),
+    ("w27s_FountainOfDreams_items_all_e89a89d0e_p1", 1501),
+    ("w27s_Fourside_items_all_e89a89d0e_p1", 1501),
+    ("w27s_HyruleTemple_items_all_e89a89d0e_p1", 1501),
+    ("w27s_JungleJapes_items_all_e89a89d0e_p1", 1501),
+    ("w27s_KongoJungle_items_all_e1502cb40_p2", 1501),
+    ("w27s_KongoJungle_items_all_fox_marth_falco_peach_ec0a10b25_p0", 1501),
+    ("w27s_KongoJungle64_items_all_e89a89d0e_p1", 1501),
+    ("w27s_Onett_items_all_e89a89d0e_p1", 1501),
+    ("w27s_PokemonStadium_items_all_e89a89d0e_p1", 1501),
+    ("w27s_YoshisIsland_items_all_e89a89d0e_p1", 1501),
+    ("w27s_YoshisIsland64_items_all_e89a89d0e_p1", 1501),
+    ("w27s_YoshisStory_items_all_e89a89d0e_p2", 1501),
+];
+
+#[test]
+fn widened_item_and_cpu_layout_boundaries_match_retail() {
+    for &(name, ticks) in WIDENED_LAYOUT_BOUNDARIES {
+        combat_gate_ticks_with_ledger(name, ticks, "ledger600");
+    }
+}
+
+#[test]
+fn widened_item_and_cpu_layout_matches_match_retail() {
+    gate_in_parallel(WIDENED_LAYOUT_MATCHES);
 }
