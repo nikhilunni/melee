@@ -7748,6 +7748,11 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_parasol_e303d54a6_p1", 6001),
     ("corpus_v3_fd_items_parasol_e821aa014_p0", 6001),
     ("corpus_v3_fd_items_parasol_e5129107c_p0", 3785),
+    // A second explorer batch (24 seeds after 7000, 72 cases, no fault):
+    // its samples.
+    ("corpus_v3_fd_items_parasol_ed224b284_p0", 5887),
+    ("corpus_v3_fd_items_parasol_e7d7a0545_p0", 6001),
+    ("corpus_v3_fd_items_parasol_e6e82bf65_p0", 5309),
 ];
 
 #[test]

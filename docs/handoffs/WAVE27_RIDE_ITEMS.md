@@ -16,9 +16,8 @@ order. The first three are ported and gated. The last three are not started.
 - **Parasol** (`it-sword` `parasol.rs`, `melee-ft` `parasol.rs`): the item,
   its swings, and the fighter's ItemParasol states opened from Fall, Jump,
   the end of hitstun and special fall. Witnesses: `start_fd_items_parasol`
-  warm and cold, 13 explorer matches. Parasol is **not** in
-  `PORTED_RANDOM_ITEMS` yet: only one explorer batch has run, so faults may
-  remain.
+  warm and cold, 16 explorer matches. A second explorer batch (24 seeds after
+  7000, 72 cases) found no fault, so the Parasol joined `PORTED_RANDOM_ITEMS`.
 
 `wstar_hit_e06ad0b5e` (registered) covers a star dropped from LightGet that
 breaks on landing. A state with anim_id -1 leaves the previous AObjs on the
