@@ -5435,7 +5435,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 1059] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 1060] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -7090,6 +7090,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 1059] = [
     ("corpus_v3_rc_iceclimbers_fox4_ecdf8887e_p1", 3718),
     ("corpus_v3_rc_iceclimbers_fox4_e005a4f43_p1", 3924),
     ("corpus_v3_rc_iceclimbers_fox4_ec3145eb3_p2", 3466),
+    // Popo KO'd at the bottom standing tilted on the ship: DeadDown's
+    // motion change clears the body tilt before his effects read his bones.
+    ("corpus_v3_rc_iceclimbers_fox4_e1502cb40_p2", 4019),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

@@ -1699,6 +1699,10 @@ impl FighterCore {
             self.animation.clear_motion(&mut self.skeleton);
             self.commands.instruction = None;
             self.animation.frame = -1.0;
+            // The death states run the common tail too: a fighter KO'd
+            // standing on a slope loses its body tilt (x221C, fighter.c:1168)
+            // before its bones are read.
+            self.finish_motion_reset(change.keep_ground_pose);
             return false;
         }
         if !row.implemented {
@@ -1733,7 +1737,15 @@ impl FighterCore {
                 );
             }
         }
-        if !change.keep_ground_pose {
+        self.finish_motion_reset(change.keep_ground_pose);
+        true
+    }
+    /// Fighter_ChangeMotionState's common tail (fighter.c:1166-1186): the
+    /// ground pose flags (x221C, unless Ft_MF_Unk24), the sword trail, the
+    /// camera shift, the floor skip, and the root's translation and
+    /// rotation.
+    fn finish_motion_reset(&mut self, keep_ground_pose: bool) {
+        if !keep_ground_pose {
             self.ground_pose = GroundPoseFlags::default();
         }
         self.status.sword_trail = -1;
@@ -1748,7 +1760,6 @@ impl FighterCore {
             (std::f64::consts::FRAC_PI_2 * f64::from(self.physics.facing)) as f32,
         );
         self.skeleton.set_rotation_z(root, 0.0);
-        true
     }
     /// Ft_MF_SkipAnim, fighter.c:1349-1361.
     fn clear_animation(&mut self) {
