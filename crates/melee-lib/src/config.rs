@@ -357,15 +357,29 @@ impl Stage {
     pub fn is_ported(self) -> bool {
         self.descriptor().is_some()
     }
-    /// The most players a match with CPU players may have: a CPU choosing
-    /// among two or more opponents ranks them by the standings
-    /// (ftCo_800A53DC, gm_8016C6C0), which `melee-cpu` still guards.
-    pub const CPU_MAX_PLAYERS: usize = 2;
+    /// The most players a match with CPU players may have on the stage. A
+    /// CPU choosing among two or more opponents ranks them by the standings
+    /// (ftCo_800A53DC, gm_8016C6C0); its tumble's stale r30 is its
+    /// Fighter's address, which the recordings give with three and four
+    /// players on Final Destination and Battlefield only
+    /// (`initial_state::heap`). Witnesses: the `w26_start_{fd,bf}_*cpu9*`
+    /// and `w27_start_*_items_all_*cpu9*` boundaries and their explorer
+    /// matches.
+    pub fn cpu_max_players(self) -> usize {
+        match self {
+            Self::FinalDestination | Self::Battlefield => 4,
+            _ => 2,
+        }
+    }
     /// Whether the Item Switch is witnessed for `players` players on the
     /// stage (it_8026D018's weights scale with the player count); starting
     /// elsewhere with items on fails closed. The single list menus read.
+    /// Every ported stage but Mushroom Kingdom, whose `?` blocks hand out
+    /// items (grinishie1.c:465, not ported); two players on each
+    /// (`w26_start_<Stage>_items_all`, `w27_start_<Stage>_items_all`), three
+    /// and four on Final Destination, Battlefield and Kongo Jungle.
     pub fn items_supported(self, players: usize) -> bool {
-        players == 2 && matches!(self, Self::FinalDestination | Self::Battlefield)
+        (2..=4).contains(&players) && self.is_ported() && self != Self::MushroomKingdom
     }
     pub(crate) fn descriptor(self) -> Option<&'static crate::scene_stage::StageDescriptor> {
         crate::scene_stage::descriptor(self.name())
@@ -645,6 +659,7 @@ impl MatchConfig {
             friendly_fire: self.rules.friendly_fire,
             items: self.rules.items,
             slippi: Default::default(),
+            heap_ammo_words: Vec::new(),
         })
     }
 }

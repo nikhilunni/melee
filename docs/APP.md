@@ -61,9 +61,10 @@ Disc -> Characters -> Stages -> Loading -> Match -> Results
   `MatchConfig::validate` refuses a combination before loading.
 - **What the simulator witnesses.** CPU players, items and player counts
   are offered only inside melee-lib's single lists: `Stage::cpu_supported`
-  and `Stage::CPU_MAX_PLAYERS` (a CPU among three or more players hits the
-  guarded opponent ranking, ftCo_800A53DC), `Stage::items_supported`
-  (two players on FD or Battlefield). `App::stage_unavailable` names why
+  and `Stage::cpu_max_players` (four on FD and Battlefield, two elsewhere:
+  a CPU's tumble reads its Fighter's address, known for three and four
+  players there only), `Stage::items_supported` (two to four players on
+  every ported stage but Mushroom Kingdom, whose `?` blocks are unported). `App::stage_unavailable` names why
   a stage cannot host the picks; hosts grey it out with that reason.
 - **Input.** Keyboard layout n drives the match's nth human player; a
   gamepad drives the port it joined (below, "Gamepads"); CPU ports read

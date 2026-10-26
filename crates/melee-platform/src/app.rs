@@ -1254,8 +1254,10 @@ mod tests {
         assert_eq!(app.slots()[2].costume, 2);
         app.set_controller(2, Controller::Cpu).unwrap();
         assert!(app.characters_ready());
-        // A CPU among three players is not witnessed yet (ftCo_800A53DC).
-        let reason = app.stage_unavailable(Stage::Battlefield).unwrap();
+        // A CPU among three players is witnessed on Battlefield
+        // (ftCo_800A53DC), not yet on Dream Land.
+        assert_eq!(app.stage_unavailable(Stage::Battlefield), None);
+        let reason = app.stage_unavailable(Stage::DreamLand).unwrap();
         assert!(reason.contains("two only"), "{reason}");
         app.set_controller(2, Controller::Human).unwrap();
         let config = app.lineup.config(Stage::Battlefield, 1).unwrap();
