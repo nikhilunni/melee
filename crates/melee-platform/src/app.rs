@@ -1283,9 +1283,12 @@ mod tests {
         );
         assert!(app.set_team(3, 3).is_err());
         app.set_team(3, 2).unwrap();
-        // Items are witnessed with two players only.
-        let three = app.lineup.config(Stage::Battlefield, 1).unwrap_err();
-        assert!(three.contains("two players only"), "{three}");
+        // Items are witnessed with three players on Battlefield, not on
+        // Mushroom Kingdom (its `?` blocks).
+        let three = app.lineup.config(Stage::Battlefield, 1).unwrap();
+        assert_eq!(three.rules.items.frequency, 4);
+        let reason = app.stage_unavailable(Stage::MushroomKingdom).unwrap();
+        assert!(reason.contains("no items"), "{reason}");
         app.set_rules(Rules {
             item_frequency: None,
             ..app.rules()

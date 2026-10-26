@@ -263,6 +263,10 @@ fn widened_item_and_cpu_layouts_step_and_capture_allocate_nothing() {
         let mut presentation = presentation::Presentation::new(&game).unwrap();
         let pads = melee_sim::trace::pad_script(&scenario).unwrap();
         for frame in 0..scenario.frames {
+            // A recording may run past its match's end.
+            if matches!(game.status(), MatchStatus::Finished(_)) {
+                break;
+            }
             let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
             assert_eq!(measure(&mut game, &inputs), 0, "{name} tick {frame}");
             COUNT.with(|v| v.set(0));
@@ -1580,41 +1584,34 @@ fn monster_constructor_step_and_capture_allocate_nothing_after_live_clone() {
             &capture.instances()[range.start as usize..range.end as usize],
             &cloned_capture.instances()[range.start as usize..range.end as usize]
         );
-        if kind == REDEAD {
-            // The ReDead's lifecycle is ported (w25_redead_fall_700_v01
-            // gates it) and this birth faces left (it_802E8BCC): the live
-            // match and its clone run on without allocating.
-            let (cloned, cloned_capture) = branch.as_mut().unwrap();
-            for tick in 0..REDEAD_CONTINUATION_TICKS {
-                let inputs = Inputs::default();
-                assert_eq!(measure(&mut game, &inputs), 0, "{name} continue{tick}");
-                assert_eq!(measure(cloned, &inputs), 0, "{name} clone continue{tick}");
-                for (game, capture) in [(&game, &mut capture), (&*cloned, cloned_capture)] {
-                    COUNT.with(|v| v.set(0));
-                    ENABLED.with(|v| v.set(true));
-                    let result = capture.capture(game);
-                    ENABLED.with(|v| v.set(false));
-                    result.unwrap();
-                    assert_eq!(COUNT.with(Cell::get), 0, "{name} continue capture{tick}");
-                }
-                assert_eq!(
-                    diagnostics::inspect(&game).unwrap(),
-                    diagnostics::inspect(cloned).unwrap()
-                );
+        // The ReDead's lifecycle (w25_redead_fall_700_v01) and the Goomba's
+        // (the w27g_* matches) are ported: the live match and its clone run
+        // on without allocating.
+        let (cloned, cloned_capture) = branch.as_mut().unwrap();
+        for tick in 0..MONSTER_CONTINUATION_TICKS {
+            let inputs = Inputs::default();
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} continue{tick}");
+            assert_eq!(measure(cloned, &inputs), 0, "{name} clone continue{tick}");
+            for (game, capture) in [(&game, &mut capture), (&*cloned, &mut *cloned_capture)] {
+                COUNT.with(|v| v.set(0));
+                ENABLED.with(|v| v.set(true));
+                let result = capture.capture(game);
+                ENABLED.with(|v| v.set(false));
+                result.unwrap();
+                assert_eq!(COUNT.with(Cell::get), 0, "{name} continue capture{tick}");
             }
-            continue;
+            assert_eq!(
+                diagnostics::inspect(&game).unwrap(),
+                diagnostics::inspect(cloned).unwrap()
+            );
         }
-        // No later Goomba continuation is claimed: the actual public next
-        // step must report the deliberately unported animation callback.
-        let error = game.step(&Inputs::default()).unwrap_err();
-        assert!(error.to_string().contains("monster Animation"), "{error}");
     }
 }
 
 /// `It_Kind_Leadead` (0x2C).
 const REDEAD: ItemKind = ItemKind(44);
-/// Ticks a born ReDead runs on past its birth in the allocation test.
-const REDEAD_CONTINUATION_TICKS: usize = 60;
+/// Ticks a born monster runs on past its birth in the allocation test.
+const MONSTER_CONTINUATION_TICKS: usize = 60;
 
 #[test]
 fn held_forward_and_up_entry_step_and_capture_allocate_nothing_after_live_clone() {
