@@ -67,17 +67,24 @@ impl Fighter {
 
     /// ftCo_Walk_Enter (0x800C9528) -> ftWalkCommon_800DFCA4 (0x800DFCA4).
     pub(super) fn enter_walk(&mut self, assets: &FighterAssets, frame: f32) -> Result<()> {
-        // ftCo_Walk.c:57-70: 1, along the scale's walk curve for a scaled
-        // fighter (Metal and the Bunny Hood are not ported).
-        let multiplier = if self.core.player.scale != 1.0 {
-            super::model_scale::scaled(
-                1.0,
-                self.core.player.scale,
-                assets.scale_curves.walk_acceleration(),
-            )
+        // ftCo_Walk.c:57-70: 1 (the metal's +0 while metal), along the
+        // scale's walk curve for a scaled fighter, times the Bunny Hood's +0
+        // (one fmuls) while one is worn.
+        let mut multiplier = if self.core.status.metal.metal {
+            assets.metal.walk_acceleration
         } else {
             1.0
         };
+        if self.core.player.scale != 1.0 {
+            multiplier = super::model_scale::scaled(
+                multiplier,
+                self.core.player.scale,
+                assets.scale_curves.walk_acceleration(),
+            );
+        }
+        if self.core.status.bunny_hood.is_some() {
+            multiplier *= assets.bunny_hood.walk_acceleration;
+        }
         let state = walk_state(
             self.core.physics.ground_velocity,
             self.core.attributes.walking.walk_max_vel,

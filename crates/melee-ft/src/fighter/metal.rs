@@ -9,6 +9,8 @@ use super::FighterCore;
 /// attribute multipliers (ftCo_800D105C).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct MetalMultipliers {
+    /// +0: the walk's acceleration multiplier (ftCo_Walk_Enter).
+    pub walk_acceleration: f32,
     /// +4: jump_v_initial_velocity, and the multijumps' rises
     /// (ftCo_800D0CBC).
     pub jump: f32,
@@ -34,6 +36,7 @@ impl MetalMultipliers {
         let common_data = common.link(root)?.ok_or("missing common data")?;
         Ok(Self {
             armor: r.f32(common_data + 0x6F0)?,
+            walk_acceleration: r.f32(table)?,
             jump: r.f32(table + 0x4)?,
             hop: r.f32(table + 0x8)?,
             gravity: r.f32(table + 0xC)?,

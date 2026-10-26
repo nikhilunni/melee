@@ -11,6 +11,8 @@ use super::FighterCore;
 /// attribute multipliers (ftCo_800D105C).
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct HoodMultipliers {
+    /// +0: the walk's acceleration multiplier (ftCo_Walk_Enter).
+    pub walk_acceleration: f32,
     /// +4 / +8 / +C: dash_accel_mul, dash_accel_base, dash_max_velocity.
     pub dash_accel_mul: f32,
     pub dash_accel_base: f32,
@@ -38,6 +40,7 @@ impl HoodMultipliers {
         let r = common.reader();
         let f = |offset: u32| r.f32(table + offset);
         Ok(Self {
+            walk_acceleration: f(0x0)?,
             dash_accel_mul: f(0x4)?,
             dash_accel_base: f(0x8)?,
             dash_max_velocity: f(0xC)?,

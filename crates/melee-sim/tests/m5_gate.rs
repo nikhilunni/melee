@@ -7456,6 +7456,41 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_starman_ece1e43b7_p0", 4424),
     ("corpus_v3_fd_items_starman_ef89b3e70_p0", 6001),
     ("corpus_v3_fd_items_starman_ef9b6d16d_p0", 5878),
+    // Screw Attack explorer matches: screw hits on specials read the
+    // kinds' motion flags (ftCo_800D2FA4).
+    ("corpus_v3_fd_items_scball_e0d368f02_p1", 1229),
+    ("corpus_v3_fd_items_scball_e11788094_p2", 3149),
+    ("corpus_v3_fd_items_scball_e121faf54_p2", 6001),
+    ("corpus_v3_fd_items_scball_e12d92447_p2", 2035),
+    ("corpus_v3_fd_items_scball_e1611c835_p0", 3957),
+    ("corpus_v3_fd_items_scball_e2af099ca_p0", 2093),
+    ("corpus_v3_fd_items_scball_e2bf046d4_p2", 1197),
+    ("corpus_v3_fd_items_scball_e3ef41ca4_p0", 1797),
+    ("corpus_v3_fd_items_scball_e3ef41ca4_p1", 2203),
+    ("corpus_v3_fd_items_scball_e44cbc906_p1", 3644),
+    ("corpus_v3_fd_items_scball_e46703f61_p0", 6001),
+    ("corpus_v3_fd_items_scball_e573e2d95_p1", 2294),
+    ("corpus_v3_fd_items_scball_e6007e4e9_p1", 5585),
+    ("corpus_v3_fd_items_scball_e8089e993_p2", 2988),
+    ("corpus_v3_fd_items_scball_eb17a6598_p2", 2221),
+    ("corpus_v3_fd_items_scball_ec3145eb3_p2", 2958),
+    ("corpus_v3_fd_items_scball_ecdf8887e_p0", 6001),
+    ("corpus_v3_fd_items_scball_ece1e43b7_p1", 1392),
+    ("corpus_v3_fd_items_scball_ed97ea327_p0", 2382),
+    ("corpus_v3_fd_items_scball_ef5e3e043_p1", 2880),
+    ("corpus_v3_fd_items_scball_ef89b3e70_p0", 5273),
+    ("corpus_v3_fd_items_scball_ef89b3e70_p1", 5269),
+    ("corpus_v3_fd_items_scball_efd4a7dd2_p1", 3381),
+    // Metal Box explorer matches: a metal walk starts at Fighter_804D651C
+    // +0's acceleration (ftCo_Walk_Enter).
+    ("corpus_v3_fd_items_metalb_e0fcbde24_p0", 3394),
+    ("corpus_v3_fd_items_metalb_e2af099ca_p0", 3720),
+    ("corpus_v3_fd_items_metalb_e4213e6a5_p0", 3460),
+    ("corpus_v3_fd_items_metalb_e46703f61_p0", 3169),
+    ("corpus_v3_fd_items_metalb_e50814092_p0", 4178),
+    ("corpus_v3_fd_items_metalb_ece1e43b7_p0", 3380),
+    ("corpus_v3_fd_items_metalb_ef89b3e70_p0", 3835),
+    ("corpus_v3_fd_items_metalb_ef9b6d16d_p0", 2857),
 ];
 
 #[test]
