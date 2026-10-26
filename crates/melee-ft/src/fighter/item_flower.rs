@@ -303,6 +303,9 @@ impl Fighter {
                 c.physics.position.y + midpoint,
                 c.physics.position.z + 0.0,
             );
+            // The flame takes the attack instance it was fired in: the
+            // count below may start a new one at once (ft_800892A0).
+            spawn.stale_source = self.core.combat.stale.attack();
             self.core.item_requests.push(melee_it::ItemRequest::Shot {
                 source: held.item,
                 spawn,

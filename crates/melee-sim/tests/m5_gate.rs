@@ -7394,6 +7394,11 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_items_spycloak", 600),
     ("start_fd_items_spycloak_cold", 600),
     ("w27_spycloak_hits", 1600),
+    // Fire Flower flames fired at once with a new attack instance keep
+    // the instance they were fired in.
+    ("corpus_v3_fd_items_fflower_e2af099ca_p1", 4421),
+    ("corpus_v3_fd_items_fflower_e721bca4f_p0", 6001),
+    ("corpus_v3_fd_items_fflower_ece1e43b7_p1", 6001),
 ];
 
 #[test]
