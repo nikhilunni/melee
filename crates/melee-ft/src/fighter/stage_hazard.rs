@@ -66,6 +66,22 @@ impl FighterCore {
     /// the log entry (ftColl_80076764) at hurt capsule 0. ftColl_80078384's
     /// sound and pl_8003EC30's statistics are not game state.
     pub fn take_stage_hit(&mut self, hit: &StageHit, kind: u32, assets: &FighterAssets) {
+        self.log_stage_hit(hit, kind, assets, |core| {
+            // BuryType_Unk3: bury_timer_2 = PlCo +5E4.
+            core.status.barrel_cooldown = assets.barrel.hazard_cooldown;
+        });
+    }
+
+    /// ftCo_800C08A0 and ftCo_800C0B20's shared body: the damage
+    /// (ftColl_800765F0), the caller's cooldown, then ftColl_80076640 and
+    /// the log entry of `kind` (ftColl_80076764) at hurt capsule 0.
+    pub(super) fn log_stage_hit(
+        &mut self,
+        hit: &StageHit,
+        kind: u32,
+        assets: &FighterAssets,
+        start_cooldown: impl FnOnce(&mut Self),
+    ) {
         // ftColl_800765F0(fp, NULL, count): a captured fighter takes PlCo
         // +128 of it (fmuls), then its damage scale (fmuls).
         let mut damage = hit.count as f32;
@@ -76,8 +92,7 @@ impl FighterCore {
             damage *= assets.damage.captured_item_damage_scale;
         }
         let damage = damage * self.received_damage_scale();
-        // BuryType_Unk3: bury_timer_2 = PlCo +5E4.
-        self.status.barrel_cooldown = assets.barrel.hazard_cooldown;
+        start_cooldown(self);
         let count = super::hit_log::damage_count(damage);
         let Some(damage) = self.combat.through_shell(damage) else {
             return;

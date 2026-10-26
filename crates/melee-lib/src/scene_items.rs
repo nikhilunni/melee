@@ -2773,6 +2773,75 @@ pub(crate) fn anchor_yaku(
     it_yaku::set_anchor(yaku_mut(&mut state.items), anchor);
 }
 
+/// Item_8026A8EC (0x8026A8EC) for an item marked destroyed: its owner's
+/// references (the kind's Destroyed callback), the generators on its bones,
+/// its models and JObj, then its GObjs and scene object.
+pub(crate) fn tear_down(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    destroyed: u32,
+) {
+    let item = state
+        .items
+        .iter()
+        .find(|item| item.id == destroyed)
+        .expect("a destroyed item");
+    crate::scene_items::article_destroyed(&mut state.fighters, item);
+    // Generators kept on a torn-down article's bones. JObjReleaseChild
+    // leaves each bone without a parent: a dirty one is rebuilt from
+    // its local SRT alone at its next setup; a clean one (no proc
+    // touched the model since the particle pass set it up, as when
+    // its owner's KO tears it down at s_link 4) keeps its last world
+    // matrix.
+    let mut index = 0;
+    loop {
+        let Some((id, bone)) = state.effects.followed_item_bones().nth(index) else {
+            break;
+        };
+        let followed = state.effects.followed_item_bones().count();
+        if id == item.id && item.joints_dirty {
+            let matrix = state
+                .article_poses
+                .detached_bone_matrix(id, bone)
+                .or_else(|| {
+                    crate::scene_items::free_item_detached_bone_matrix(
+                        &state.assets.items,
+                        item,
+                        bone,
+                    )
+                });
+            if let Some(matrix) = matrix {
+                state
+                    .effects
+                    .update_item_bone(id, bone, matrix, &mut state.particles);
+            }
+        }
+        // A bone nothing follows any more left the list.
+        if state.effects.followed_item_bones().count() == followed {
+            index += 1;
+        }
+    }
+    // Item_8026A8EC frees the JObj its generators follow, unless its
+    // proc already did (ItemEvent::DestroyEffects).
+    if !item.effects_destroyed {
+        state
+            .effects
+            .destroy_item_models(item.id, &mut state.particles);
+        state
+            .effects
+            .expire_item_joint(item.id, &mut state.particles);
+    }
+    state.effects.forget_item(item.id);
+    crate::scene_items::cleanup(
+        &mut state.items,
+        &mut state.effects.gobjs,
+        world,
+        objects,
+        destroyed,
+    );
+}
+
 /// Item_8026A8EC's end for `item`, marked destroyed: its GObjs and its
 /// scene object go.
 pub fn cleanup(

@@ -44,6 +44,7 @@ pub(crate) fn import(
         stamina: None,
         single_button: false,
         invisible: false,
+        revival_marker: None,
     };
     player.position = vector(raw, 0xB0);
     // Fighter x34_scale.y: Player_GetModelScale (Giant and Tiny Melee).
@@ -122,6 +123,12 @@ pub(crate) fn import(
     f.status.ledge_cooldown = word(raw, 0x2064) as i32;
     // bury_timer_2: a barrel shot's catch cooldown.
     f.status.barrel_cooldown = word(raw, 0x232C);
+    // bury_timer_1: a stage line's hit cooldown.
+    f.status.hazard_cooldown = word(raw, 0x2328);
+    // smash_attrs.x2135; the player's own (Player_80032F30) matches it from
+    // the fighter's first revival on.
+    f.core.revival_marker = Some(raw[0x2135] as i8).filter(|&m| m != -1);
+    f.core.player.revival_marker = f.core.revival_marker;
     f.status.ledge_intangibility = word(raw, 0x1990) as i32;
     f.status.revival_invincibility = word(raw, 0x1994) as i32;
     f.status.on_ledge = raw[0x221D] & 1 != 0;

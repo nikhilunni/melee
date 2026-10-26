@@ -21,6 +21,12 @@ pub struct Arena {
     /// stage_info.unk8C.b4, set by the stage's initialization (grLast,
     /// grBattle): each player revives at its own marker.
     pub player_revival_markers: bool,
+    /// `!stage_info.unk8C.b5`: fn_8016719C records the revival marker on
+    /// the player (Player_80032FA4) and the fighter keeps it (x2135).
+    /// Ground_801BFFB0 clears b5 and most stages set it; Mute City
+    /// (grmutecity.c:368) and Hyrule Temple (grshrine.c, never set)
+    /// leave it clear.
+    pub tracked_revival_markers: bool,
 }
 
 /// lbl_8046B6A0.FighterMatchInfo has six entries.
@@ -281,14 +287,17 @@ impl Fighter {
     pub fn place_revival(&mut self, arena: &Arena, offsets: &mut RevivalOffsets) -> Vec3 {
         // fn_80167638: stage_info.unk8C.b4 gives each player its own marker
         // (4 + slot); otherwise players share marker 4, spaced by a timed slot.
-        let (marker, offset) = if arena.player_revival_markers {
-            (
-                arena.revival_positions[usize::from(self.core.player.id)],
-                0.0,
-            )
+        let (index, marker, offset) = if arena.player_revival_markers {
+            let index = self.core.player.id;
+            (index, arena.revival_positions[usize::from(index)], 0.0)
         } else {
-            (arena.revival_positions[0], offsets.allocate())
+            (0, arena.revival_positions[0], offsets.allocate())
         };
+        // fn_8016719C (gm_1601.c:3302): without unk8C.b5 the player keeps
+        // the marker (Player_80032FA4) and the offset (Player_SetSomePos).
+        if arena.tracked_revival_markers {
+            self.core.player.revival_marker = Some(index as i8);
+        }
         // retail 0x80167240: fadds. Player_SetSpawnPlatformPos keeps the marker's y.
         let platform = Vec3::new(marker.x + offset, marker.y, 0.0);
         self.core.player.position = Vec3::new(platform.x, arena.camera_top, 0.0);
@@ -307,10 +316,10 @@ impl Fighter {
         platform: Vec3,
         context: super::SpawnContext<'_>,
     ) -> Result<()> {
-        // Every ported stage sets stage_info.unk8C.b5, so fn_8016719C skips
-        // Player_80032FA4 and the fighter's marker index stays -1 (player.c:1954):
-        // ftCo_800D4FF4 aims at the spawn platform position once, at entry.
-        // retail 0x800D5050: fmadds with ftCommon_800804EC (x40 * scale, fmuls).
+        // ftCo_800D4FF4 aims at the spawn platform position: untracked, the
+        // platform itself; tracked, the marker plus the player's offset
+        // (fadds), which is the same sum. retail 0x800D5050: fmadds with
+        // ftCommon_800804EC (x40 * scale, fmuls).
         let target = Vec3::new(
             gekko_math::fma::fmadds(
                 self.core.player.facing,
@@ -324,6 +333,8 @@ impl Fighter {
         self.install_motion_row(super::state::COMMON[S::Wait as usize]);
         let scale = self.core.skeleton.scale(self.core.animation.root);
         self.reset_spawn_services(assets, context, scale);
+        // ftCo_800D4FF4 (ft_0D4D.c:109), after Fighter_UnkProcessDeath.
+        self.core.revival_marker = self.core.player.revival_marker;
         self.enter_revival(assets, target)
     }
     /// ftCo_800D3158 (800D3158), after Update: blast-zone exits in retail order
@@ -1078,6 +1089,14 @@ impl Fighter {
                     });
                     self.core.status.ignore_fighter_nudge = true;
                     self.core.commands.hurt_status = melee_types::combat::HurtStatus::Intangible;
+                    // ft_0D4D.c:270: a tracked marker resets the collision
+                    // positions once more (mpColl_80043680).
+                    if self.core.revival_marker.is_some() {
+                        melee_mp::set_position(
+                            &mut self.core.collision.data,
+                            &self.core.physics.position,
+                        );
+                    }
                 }
             }
             MotionData::Life(LifeState::PlatformWait { remaining, .. }) => {
@@ -1306,8 +1325,11 @@ impl FighterCore {
             self.physics.self_velocity.x = leader.self_velocity.x;
             self.physics.self_velocity.y = leader.self_velocity.y;
         } else {
-            // The marker index is -1 (see reset_for_revival), so retail skips the
-            // per-frame marker re-aim (800D53BC / 800D5954) and keeps x4 from entry.
+            // A tracked marker (x2135) re-aims x4 every tick (800D538C /
+            // 800D5924): Stage_80224E38 plus Player_GetSomePos, the same
+            // fadds and fmadds as the entry (800D53B8). Mute City's and
+            // Hyrule Temple marker 4 sits on map 0, which never moves,
+            // so the aim is the entry's.
             let inv = 1.0 / remaining as f32;
             self.physics.self_velocity.x = (target.x - self.physics.position.x) * inv;
             self.physics.self_velocity.y = (target.y - self.physics.position.y) * inv;

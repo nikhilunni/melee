@@ -474,6 +474,23 @@ impl ParticleSystem {
         self.release_external_transforms();
     }
 
+    /// grLib_801C98A0 (0x801C98A0): every generator following `joint` gets
+    /// type 0x80 (its particles go with it) and hsd_8039D4DC.
+    pub fn kill_joint(&mut self, joint: usize) {
+        let mut index = 0;
+        while index < self.generators.len() {
+            if self.generators[index].attachment_id == Some(joint) {
+                self.generators[index].flags |= 0x80;
+                if self.expire(index) {
+                    continue;
+                }
+            }
+            index += 1;
+        }
+        self.park_cursor_at_tail();
+        self.release_external_transforms();
+    }
+
     pub fn generator_mut(&mut self, id: usize) -> Option<&mut Generator> {
         self.generators
             .iter_mut()

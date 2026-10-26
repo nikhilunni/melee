@@ -143,6 +143,7 @@ impl Fixture {
             stamina: None,
             single_button: false,
             invisible: false,
+            revival_marker: None,
         }
     }
     pub fn prepared(&self, player: PlayerSlot) -> Fighter {

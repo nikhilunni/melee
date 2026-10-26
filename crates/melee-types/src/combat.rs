@@ -22,6 +22,27 @@ pub struct HitboxDescriptor {
     pub clank: bool,
     pub rebound: bool,
 }
+/// A stage line's hit: what StageData.on_touch_line (Ground_801C5700)
+/// returns for a line, read as `lbColl_80008D30_arg1` (lb/forward.h:94)
+/// and turned into a HitCapsule by lbColl_80008D30 (0x80008D30).
+/// ftCo_800C0B20 logs it when a fighter touches the line.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct LineHazard {
+    /// +0x4: the damage, also the knockback formula's count.
+    pub damage: u32,
+    /// +0x8.
+    pub angle: i32,
+    /// +0xC / +0x10 / +0x14: knockback growth, weight-dependent (fixed)
+    /// knockback, base knockback.
+    pub growth: u32,
+    pub weight_knockback: u32,
+    pub base_knockback: u32,
+    /// +0x18.
+    pub element: crate::HitElement,
+    /// +0x1C / +0x20.
+    pub sound_severity: i32,
+    pub sound_kind: i32,
+}
 /// ftAction_80071E04 (80071E04): throw/pummel damage records have no geometry.
 #[derive(Clone, Debug)]
 pub struct ThrowHitbox {

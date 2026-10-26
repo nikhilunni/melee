@@ -234,16 +234,18 @@ fn revive(state: &mut InitialState, index: usize, partner: Option<usize>) -> Res
         map,
         rng,
         spawn_counter,
+        stage_limits,
         ..
     } = state;
     let fighter = &mut fighters[index];
-    let platform = fighter.place_revival(&assets.arena, revival_offsets);
+    // fn_8016719C reads the live camera top (Stage_GetCamBoundsTopOffset).
+    let platform = fighter.place_revival(&stage_limits.arena, revival_offsets);
     with_fighter!(fighter, |f| f.revive_at(
         &assets.fighters[index],
         platform,
         SpawnContext {
             map,
-            stage_camera: &assets.stage_camera,
+            stage_camera: &stage_limits.camera,
             rng,
             counter: spawn_counter,
         },
@@ -259,7 +261,7 @@ fn revive(state: &mut InitialState, index: usize, partner: Option<usize>) -> Res
                 &leader,
                 SpawnContext {
                     map,
-                    stage_camera: &assets.stage_camera,
+                    stage_camera: &stage_limits.camera,
                     rng,
                     counter: spawn_counter,
                 },
@@ -288,6 +290,7 @@ fn complete_partner_death(state: &mut InitialState, index: usize, leader: usize)
         fighters,
         assets,
         revival_offsets,
+        stage_limits,
         ..
     } = state;
     let fighter = &mut fighters[index];
@@ -299,7 +302,7 @@ fn complete_partner_death(state: &mut InitialState, index: usize, leader: usize)
     if fighter.player.stocks == 0 {
         return Ok(());
     }
-    fighter.place_revival(&assets.arena, revival_offsets);
+    fighter.place_revival(&stage_limits.arena, revival_offsets);
     Ok(())
 }
 

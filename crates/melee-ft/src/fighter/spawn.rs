@@ -150,6 +150,11 @@ pub struct PlayerSlot {
     /// Player_GetFlagsBit6 (StaticPlayer +AC, 0x2; Invisible Melee):
     /// x2226_b3, a permanent Cloaking Device.
     pub invisible: bool,
+    /// StaticPlayer unk4E (Player_80032F30, Player_80032FA4): the marker
+    /// fn_8016719C last revived the player at where the stage tracks it
+    /// (`Arena::tracked_revival_markers`); `None` is retail's -1
+    /// (player.c:1954).
+    pub revival_marker: Option<i8>,
 }
 impl PlayerSlot {
     /// ftColl_80079AB0's ratios for a hit on this player by `attack`'s
@@ -382,6 +387,8 @@ impl Fighter {
             .core
             .initialize_spawn_geometry(map, counter, initial_scale);
         self.core.reset_camera_subject(assets, stage_camera);
+        // ftCo_800C09B4: no stage line's cooldown.
+        self.core.status.hazard_cooldown = 0;
         self.character.on_reset();
         // The kind's OnDeath draws (ftKb_Init_OnDeath, 800EE5A0).
         if let Some(draw) = self.character.table().reset_draw {
@@ -1253,6 +1260,15 @@ impl FighterCore {
         // Reset probes support before Fighter_UpdateModelScale (fighter.c:543).
         self.skeleton.set_scale(root, &initial_scale);
         self.spawn_number = counter.allocate();
+        // fighter.c:530: a fighter holding a tracked revival marker from
+        // its last revival skips ft_80082A68 and is airborne
+        // (ftCommon_8007D5D4).
+        if self.revival_marker.is_some() {
+            self.leave_ground();
+            self.skeleton.set_translate(root, &self.physics.position);
+            self.update_model_scale();
+            return false;
+        }
         let data = &mut self.collision.data;
         data.last_pos = self.physics.position;
         data.cur_pos = self.physics.position;
@@ -1404,6 +1420,7 @@ impl FighterCore {
             dynamics_use_floor_plane: false,
             kind: assets.kind,
             revival_platform: assets.revival_platform.clone(),
+            revival_marker: None,
             revival_platform_active: false,
             partner: None,
             spawn_number: 0,

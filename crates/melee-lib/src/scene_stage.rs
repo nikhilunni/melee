@@ -8,6 +8,7 @@ pub(crate) mod izumi;
 pub(crate) mod kraid;
 pub(crate) mod kongo;
 pub(crate) mod last;
+pub(crate) mod mutecity;
 pub(crate) mod oldkongo;
 pub(crate) mod oldyoshi;
 pub(crate) mod onett;
@@ -75,7 +76,7 @@ pub(crate) fn live_drop_markers(
 
 /// Live Ground GObjs by scheduler key: map ids, plus Fountain of Dreams'
 /// star and second platform (melee_gr::izumi::procs).
-pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 16];
+pub(crate) type StageObjects = [Option<hsd_gobj::GObjId>; 40];
 
 /// The addresses of the map GObjs a stage created during the match
 /// (Ground_GetStageGObj, 0x801C14D0: GObj_Create(HSD_GOBJ_CLASS_STAGE, 5,
@@ -277,6 +278,14 @@ pub const VENOM: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Venom,
     read: melee_gr::desc::read_venom,
 };
+/// grMc_StageData: GrMc.dat; StageParam row 0x0A (StKind).
+pub const MUTE_CITY: StageDescriptor = StageDescriptor {
+    name: "MuteCity",
+    file: "GrMc.dat",
+    music_id: 0x0A,
+    kind: melee_types::GrKind::MuteCity,
+    read: melee_gr::desc::read_mute_city,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -298,6 +307,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &ONETT,
         &BRINSTAR,
         &VENOM,
+        &MUTE_CITY,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -323,6 +333,7 @@ pub enum SceneStage {
     Onett(Box<melee_gr::onett::procs::OnettStage>),
     Zebes(Box<melee_gr::zebes::procs::ZebesStage>),
     Venom(Box<melee_gr::venom::procs::VenomStage>),
+    MuteCity(Box<melee_gr::mutecity::procs::MuteCityStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -333,7 +344,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -357,6 +368,7 @@ impl SceneStage {
             Self::Onett(s) => s.proc_table(),
             Self::Zebes(s) => s.proc_table(),
             Self::Venom(s) => s.proc_table(),
+            Self::MuteCity(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -398,6 +410,7 @@ impl SceneStage {
             Self::Onett(_) => unreachable!("Onett callbacks run in scene_stage::onett"),
             Self::Zebes(_) => unreachable!("Brinstar callbacks run in scene_stage::zebes"),
             Self::Venom(_) => unreachable!("Venom callbacks run in scene_stage::venom"),
+            Self::MuteCity(_) => unreachable!("Mute City callbacks run in scene_stage::mutecity"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -417,8 +430,8 @@ impl SceneStage {
 /// floor (stage_info.x724, Ground_801C4368) follows the acid, and so does
 /// Camera_8002AF68's lowest eye height (grZebes_801DCCC8: 5.0 + the
 /// surface, fadds).
-pub(crate) fn live_camera(stage: &SceneStage, assets: &crate::assets::Assets) -> melee_cm::StageCamera {
-    let mut camera = assets.stage_camera;
+pub(crate) fn live_camera(stage: &SceneStage, limits: &melee_cm::StageCamera) -> melee_cm::StageCamera {
+    let mut camera = *limits;
     if let SceneStage::Zebes(stage) = stage {
         camera.floor = stage.floor;
         camera.min_eye_height = 5.0 + stage.floor;
@@ -458,7 +471,18 @@ pub(crate) fn material_hit(
             Ok(())
         }
         SceneStage::Inishie1(_) => inishie1::material_hit(state, item),
+        SceneStage::MuteCity(_) => mutecity::material_hit(state, item, damage),
         _ => Ok(()),
+    }
+}
+
+/// Ground_801C5700 (0x801C5700): StageData.on_touch_line, the hit a
+/// line gives a fighter touching it. Only Mute City marks lines
+/// (grMuteCity_801F2BBC) among the stages the port runs.
+pub(crate) fn line_hazard(stage: &SceneStage, line: i32) -> Option<melee_types::combat::LineHazard> {
+    match stage {
+        SceneStage::MuteCity(stage) => stage.line_hazard(line),
+        _ => None,
     }
 }
 

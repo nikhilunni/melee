@@ -3,6 +3,7 @@
 //! with direct stage RNG draws. See docs/FD_STAGE.md.
 pub mod animation;
 pub mod background;
+mod clocks;
 pub mod init;
 mod joint_tracks;
 pub mod lights;

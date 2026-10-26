@@ -175,6 +175,7 @@ fn disc_attributes_parts_and_nine_dynamic_chains() {
             stamina: None,
             single_button: false,
             invisible: false,
+            revival_marker: None,
         },
     );
     assert_eq!(

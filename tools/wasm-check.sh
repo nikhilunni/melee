@@ -80,6 +80,8 @@ PY
 for curve in bezier cardinal; do
     case $curve in bezier) kind=Bezier ;; cardinal) kind=Cardinal ;; esac
     for operation in point arc_length; do
+        # Mute City witnesses the cardinal point (GrMc.dat's car splines).
+        [[ $curve == cardinal && $operation == point ]] && continue
         test_name="${curve}_${operation}_requires_a_retail_witness"
         log_file="$out/$test_name.log"
         if $wasmtime run "$spline_test_binary" --ignored --exact \
@@ -106,7 +108,7 @@ if ! grep -Fq 'unwitnessed tangent endpoint' "$log_file"; then
     echo "missing spline guard diagnostic from $test_name" >&2
     exit 1
 fi
-echo 'verified: five WASI spline guards trap with their expected diagnostics'
+echo 'verified: four WASI spline guards trap with their expected diagnostics'
 [[ $tests_only == 1 ]] && exit 0
 
 files=$data_root/harness/roms/files

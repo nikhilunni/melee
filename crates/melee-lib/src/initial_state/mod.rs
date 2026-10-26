@@ -33,6 +33,7 @@ mod stage_zebes;
 mod stage_yorster;
 mod stage_inishie1;
 mod stage_onett;
+mod stage_mutecity;
 mod stock;
 use hsd_types::Vec3;
 /// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
@@ -187,6 +188,8 @@ pub struct InitialState {
     /// The dynamics field pool (lb_804D63B0) as the stage's creation or the
     /// saved boundary left it; the runtime owns it from the first tick.
     pub(crate) radial_forces: melee_lb::radial_force::RadialForces,
+    /// stage_info's camera limits and blast zone (Mute City moves them).
+    pub(crate) stage_limits: crate::stage_limits::StageLimits,
 }
 /// Giant and Tiny Melee scale every fighter alike: their scale and PlCo's
 /// damage curve for fighter-owned items (it_80272460).
@@ -435,6 +438,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::Venom {
             stage_venom::restore_collision(&saved, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::MuteCity {
+            stage_mutecity::restore_collision(&saved, &assets, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;
@@ -819,7 +825,9 @@ impl InitialState {
                 + 1,
         );
         // The boundary's CObj is taken as its camera's latest render.
-        let rendered_camera = camera.render_camera(&crate::scene_stage::live_camera(&stage, &assets));
+        let stage_limits = crate::stage_limits::StageLimits::new(&assets);
+        let rendered_camera =
+            camera.render_camera(&crate::scene_stage::live_camera(&stage, &stage_limits.camera));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
         effects.score_popups = score_popups(
@@ -962,6 +970,7 @@ impl InitialState {
             }),
             offscreen_damage_by_camera_limits: setup.slippi.offscreen_damage_by_camera_limits,
             radial_forces,
+            stage_limits,
         };
         crate::coins::start(&mut state, false);
         Ok(state)

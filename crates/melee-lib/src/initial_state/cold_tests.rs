@@ -176,6 +176,9 @@ fn setup_snapshot(state: &InitialState) -> Record {
             sink.field("stage.venom.wait", &stage.spawner.wait);
             sink.field("stage.venom.frame", &stage.sequence.frame);
         }
+        SceneStage::MuteCity(stage) => {
+            sink.field("stage.mutecity.script", &i32::from(stage.script.entry));
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -419,6 +422,11 @@ fn start_brin_falco_peach4_cold_600() {
 #[test]
 fn start_venom_fox_marth4_cold_600() {
     verify("start_venom_fox_marth4");
+}
+
+#[test]
+fn start_mc_fox_marth4_cold_600() {
+    verify("start_mc_fox_marth4");
 }
 
 #[test]

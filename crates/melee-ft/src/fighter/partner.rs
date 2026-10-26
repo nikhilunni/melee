@@ -107,6 +107,9 @@ impl Fighter {
         self.core.player.position = leader.position;
         self.core.player.facing = leader.facing;
         self.core.player.damage = leader.damage;
+        // Player_80032F30 reads the player's marker, which the leader's
+        // fn_8016719C set.
+        self.core.player.revival_marker = leader.revival_marker;
         self.revive_at(assets, platform, context)
     }
 }

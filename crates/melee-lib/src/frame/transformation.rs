@@ -34,7 +34,7 @@ pub(super) fn perform(state: &mut InitialState, index: usize) -> Result<bool> {
             TransferContext {
                 map: &state.map,
                 counter: &mut state.spawn_counter,
-                stage_camera: &state.assets.stage_camera,
+                stage_camera: &state.stage_limits.camera,
             },
         )
     }))

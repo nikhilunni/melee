@@ -40,7 +40,7 @@ impl<'a> Observation<'a> {
         })
     }
     pub fn blast_zones(&self) -> BlastZones {
-        let arena = &self.state.assets.arena;
+        let arena = &self.state.stage_limits.arena;
         BlastZones {
             left: arena.left,
             right: arena.right,

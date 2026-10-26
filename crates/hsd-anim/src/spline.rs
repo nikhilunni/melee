@@ -28,8 +28,8 @@ fn blend(cp: &[hsd_archive::desc::Vec3], w: [f32; 4]) -> Vec3 {
     Vec3::new(axis(|p| p.x), axis(|p| p.y), axis(|p| p.z))
 }
 
-/// Only the linear paths and Jungle Japes' B-spline PATH joint have
-/// retail witnesses. Other retail curve branches stay fail-closed.
+/// The arc length has retail witnesses for the linear paths and Jungle
+/// Japes' B-spline PATH joint. Other retail curve branches stay fail-closed.
 fn require_witnessed_curve(spline: &Spline) {
     if matches!(spline.kind, SplineKind::Bezier | SplineKind::Cardinal) {
         unimplemented!(
@@ -39,10 +39,21 @@ fn require_witnessed_curve(spline: &Spline) {
     }
 }
 
+/// Points have witnesses on every kind but Bezier: Mute City's car
+/// splines are cardinal (GrMc.dat map 0x1E, bones 5 and 9).
+fn require_witnessed_point(spline: &Spline) {
+    if spline.kind == SplineKind::Bezier {
+        unimplemented!(
+            "splGetSplinePoint (spline.c:82-135): {:?} needs a retail witness",
+            spline.kind
+        );
+    }
+}
+
 /// splGetSplinePoint (0x80378A94): the point at parameter `u` in [0, 1];
 /// `None` outside it (the C leaves its output unwritten).
 pub fn spline_point(spline: &Spline, u: f32) -> Option<Vec3> {
-    require_witnessed_curve(spline);
+    require_witnessed_point(spline);
     if !(0.0..=1.0).contains(&u) {
         return None;
     }
@@ -298,18 +309,6 @@ mod tests {
         target_family = "wasm",
         ignore = "wasm-check.sh runs this as an expected-trap subprocess"
     )]
-    fn cardinal_point_requires_a_retail_witness() {
-        spline_point(&unwitnessed_curve(SplineKind::Cardinal), 0.5);
-    }
-    #[test]
-    #[cfg_attr(
-        not(target_family = "wasm"),
-        should_panic(expected = "Cardinal needs a retail witness")
-    )]
-    #[cfg_attr(
-        target_family = "wasm",
-        ignore = "wasm-check.sh runs this as an expected-trap subprocess"
-    )]
     fn cardinal_arc_length_requires_a_retail_witness() {
         arc_length_parameter(&unwitnessed_curve(SplineKind::Cardinal), 0.5);
     }
@@ -339,6 +338,48 @@ pub fn bspline_tangent(spline: &Spline, u: f32) -> Vec3 {
     let b2 = 0.5 * (1.0 + fmadds(-3.0, square, 2.0 * t));
     let b3 = 0.5 * square;
     blend(&spline.points[index as usize..], [b0, b1, b2, b3])
+}
+
+/// lbShadow_8000E9F0 (0x8000E9F0): the curve's derivative at `u`; `None`
+/// outside [0, 1] (the C leaves its output unwritten). Witnessed for the
+/// B-spline ([`bspline_tangent`]) and cardinal branches.
+pub fn tangent(spline: &Spline, u: f32) -> Option<Vec3> {
+    if !(0.0..=1.0).contains(&u) {
+        return None;
+    }
+    Some(match spline.kind {
+        SplineKind::BSpline => bspline_tangent(spline, u),
+        SplineKind::Cardinal => cardinal_tangent(spline, u),
+        kind => unimplemented!("lbShadow_8000E9F0 (lbshadow.c:92-101): {kind:?} tangent"),
+    })
+}
+
+/// lbShadow_8000E9F0's cardinal branch (splGetCardinalTangent inlined,
+/// 0x8000EC68..0x8000ED48): the derivatives of splGetCardinalPoint's four
+/// weights, blended second point first.
+fn cardinal_tangent(spline: &Spline, u: f32) -> Vec3 {
+    // A parameter of 1 would read a control point past the end.
+    assert!(u < 1.0, "lbShadow_8000E9F0: unwitnessed cardinal tangent endpoint");
+    let scaled = u * (spline.knots as i32 - 1) as f32;
+    let index = gekko_math::msl::fctiwz(scaled) as i16;
+    let t = scaled - f32::from(index);
+    let tension = spline.tension;
+    let square = t * t;
+    // 8000EC88 fnmsubs: 3 - 2 * tension.
+    let three_less = fnmsubs(2.0, tension, 3.0);
+    // 8000ECA8 fmadds: -3 * t^2 + 4 * t; 8000ECBC: minus one.
+    let d0 = fmadds(-3.0, square, 4.0 * t) - 1.0;
+    // 8000ECC4 fmadds: 3 (2 - tension) t^2 + 2 (tension - 3) t.
+    let d1 = fmadds(3.0 * (2.0 - tension), square, (2.0 * (tension - 3.0)) * t);
+    // 8000ECE0 fmadds: 3 (tension - 2) t^2 + 2 (3 - 2 tension) t, then
+    // 8000ECEC: plus the tension.
+    let d2 = tension + fmadds(3.0 * (tension - 2.0), square, (2.0 * three_less) * t);
+    // 8000ECD4 fmsubs: 3 t^2 - 2 t.
+    let d3 = tension * fmsubs(3.0, square, 2.0 * t);
+    blend(
+        &spline.points[index as usize..],
+        [tension * d0, d1, d2, d3],
+    )
 }
 
 #[cfg(test)]

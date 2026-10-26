@@ -2419,3 +2419,12 @@ stage = "Venom"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 2427796063
+# Mute City (make_boundary.py --stage MuteCity --players Fox Marth).
+[[boundary]]
+name = "start_mc_fox_marth4"
+cold = "start_mc_fox_marth4_cold"
+savestate = "harness/roms/start_mc_fox_marth4.sav"
+stage = "MuteCity"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1137482494

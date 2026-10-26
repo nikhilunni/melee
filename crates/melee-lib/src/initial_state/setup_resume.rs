@@ -102,6 +102,7 @@ pub(super) fn fighter(
         single_button: super::SavedRules::read(saved).single_button,
         // Player_GetFlagsBit6: StaticPlayer +AC, extrwi 1, 30.
         invisible: raw[0xAC] & 2 != 0,
+        revival_marker: None,
     };
     let mut counter = SpawnCounter(word(saved.bytes(0x804D_64F8, 4), 0));
     SceneFighter::from_parameters(

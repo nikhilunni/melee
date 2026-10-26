@@ -197,6 +197,7 @@ impl InitialState {
                 | SceneStage::Onett(_)
                 | SceneStage::Zebes(_)
                 | SceneStage::Venom(_)
+                | SceneStage::MuteCity(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -222,7 +223,7 @@ impl InitialState {
             // cm_804D6468 runs newest first: the reverse of creation.
             let subjects = fighters.iter_mut().rev().map(|f| &mut f.0.camera);
             crate::frame::with_subjects(subjects, |subjects| {
-                camera.snap_standard(subjects, &crate::scene_stage::live_camera(&stage, &assets))
+                camera.snap_standard(subjects, &crate::scene_stage::live_camera(&stage, &assets.stage_camera))
             });
         }
         let quakes =
@@ -306,7 +307,9 @@ impl InitialState {
                 anchor,
             );
         }
-        let rendered_camera = camera.render_camera(&crate::scene_stage::live_camera(&stage, &assets));
+        let stage_limits = crate::stage_limits::StageLimits::new(&assets);
+        let rendered_camera =
+            camera.render_camera(&crate::scene_stage::live_camera(&stage, &stage_limits.camera));
         // fn_801B9850, the Stamina scene's on_match_start.
         let stamina = (scenario.special == Some(crate::SpecialMelee::Stamina)).then(|| {
             crate::stamina::StaminaRules::starting(std::array::from_fn(|slot| {
@@ -387,6 +390,7 @@ impl InitialState {
                 .slippi
                 .offscreen_damage_by_camera_limits,
             radial_forces,
+            stage_limits,
         };
         crate::coins::start(&mut state, true);
         Ok(state)
@@ -463,6 +467,8 @@ fn setup_draws(
         GrKind::Zebes => 3,
         // grVenom_80203B18 draws nothing: its first wait is 600 to 600.
         GrKind::Venom => 0,
+        // grMuteCity_801EFC6C draws nothing.
+        GrKind::MuteCity => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -487,6 +493,7 @@ pub(crate) fn boundary_seed_after(
     }
     Ok(rng.seed)
 }
+
 
 fn before_setup(mut seed: u32, draws: usize) -> u32 {
     const INVERSE_MULTIPLIER: u32 = 0xB9B3_3155;
@@ -738,6 +745,12 @@ fn initialize_stage(
             stage_animations = animations;
             stage
         }
+        GrKind::MuteCity => {
+            let (stage, animations) =
+                crate::scene_stage::mutecity::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
         GrKind::Inishie1 => {
             let (stage, animations) =
                 crate::scene_stage::inishie1::initialize(assets, map, items_on)?;
@@ -930,6 +943,7 @@ fn create_players(
             // (PlayerInitData vs_invisible -> Player_SetFlagsBit6).
             single_button: scenario.special == Some(crate::SpecialMelee::SingleButton),
             invisible: scenario.special == Some(crate::SpecialMelee::Invisible),
+            revival_marker: None,
             revival_damage: if scenario.sudden_death {
                 SUDDEN_DEATH_DAMAGE
             } else {

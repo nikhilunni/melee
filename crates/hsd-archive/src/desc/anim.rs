@@ -232,6 +232,12 @@ pub struct AnimJoint {
     /// Raw data offset of the `HSD_RObjAnimJoint` chain, if any.
     pub robj_anim: Option<u32>,
     pub flags: u32,
+    /// `child` holds an unrelocated 0xFFFFFFFF (GrMc.dat map 0x1E's
+    /// animation 0). HSD_JObjAddAnimAll (jobj.c:335-339) reads the pointer
+    /// but dereferences it only for a joint with children, so the tree
+    /// reads it as no child and an attachment to a joint with children
+    /// fails.
+    pub unrelocated_child: bool,
 }
 
 impl AnimJoint {
@@ -261,7 +267,14 @@ impl ChainNode for AnimJoint {
 
     fn read_node(ctx: &mut Ctx<'_>, off: u32) -> Result<Self> {
         let r = ctx.reader();
-        let child = match ctx.link("HSD_AnimJoint.child", off, aj_off::CHILD)? {
+        let child_at = add_offset(off, aj_off::CHILD)?;
+        let unrelocated_child =
+            ctx.archive.link(child_at)?.is_none() && r.u32(child_at)? == u32::MAX;
+        let child = match if unrelocated_child {
+            None
+        } else {
+            ctx.link("HSD_AnimJoint.child", off, aj_off::CHILD)?
+        } {
             Some(c) => {
                 ctx.descend("HSD_AnimJoint", c)?;
                 let out = read_chain::<Self>(ctx, Some(c));
@@ -286,6 +299,7 @@ impl ChainNode for AnimJoint {
             aobjdesc,
             robj_anim: ctx.link("HSD_AnimJoint.robj_anim", off, aj_off::ROBJ_ANIM)?,
             flags: r.u32(add_offset(off, aj_off::FLAGS)?)?,
+            unrelocated_child,
         })
     }
 
@@ -355,7 +369,17 @@ macro_rules! tree3 {
             const NEXT: u32 = tree3_off::NEXT;
 
             fn read_node(ctx: &mut Ctx<'_>, off: u32) -> Result<Self> {
-                let child = match ctx.link(concat!($what, ".child"), off, tree3_off::CHILD)? {
+                // An unrelocated 0xFFFFFFFF child (GrMc.dat map 0x1E):
+                // grAnime_801C6C0C reads the children's payloads through
+                // it, which Dolphin returns as zero, so they take none.
+                let child_at = add_offset(off, tree3_off::CHILD)?;
+                let unrelocated = ctx.archive.link(child_at)?.is_none()
+                    && ctx.reader().u32(child_at)? == u32::MAX;
+                let child = match if unrelocated {
+                    None
+                } else {
+                    ctx.link(concat!($what, ".child"), off, tree3_off::CHILD)?
+                } {
                     Some(c) => {
                         ctx.descend($what, c)?;
                         let out = read_chain::<Self>(ctx, Some(c));

@@ -43,6 +43,7 @@ pub mod grab_damage;
 pub mod grab_escape;
 pub mod grab_throw;
 mod hit_log;
+pub mod hazard;
 pub mod hitbox;
 pub mod hitlag_link;
 pub mod item_hits;
@@ -1015,6 +1016,10 @@ pub struct Status {
     /// may catch the fighter again (ftCo_800C0A98 counts it down on the
     /// Kongo stages; ftCo_800C09B4 clears it at creation and each death).
     pub barrel_cooldown: u32,
+    /// bury_timer_1 (+2328): frames after a stage line's hit before the
+    /// next (ftCo_800C0B20 sets it, ftCo_800C0A98 counts it down,
+    /// ftCo_800C09B4 clears it at creation and each death).
+    pub hazard_cooldown: u32,
     /// capture_timer (+2108): frames after a ReDead lets go before one may
     /// catch the fighter again (ftCo_800C7800 sets it, Fighter_procUpdate
     /// counts it down, fighter.c:486 clears it).
@@ -1054,6 +1059,7 @@ impl Status {
             camera_shift: Vec2::ZERO,
             name_tag_timer: 0,
             barrel_cooldown: 0,
+            hazard_cooldown: 0,
             capture_timer: 0,
             heal_remaining: 0,
         }
@@ -1215,6 +1221,12 @@ pub struct FighterCore {
     pub skeleton: JObjTree,
     pub revival_platform: life::RevivalPlatform,
     pub revival_platform_active: bool,
+    /// smash_attrs.x2135: the revival marker ftCo_800D4FF4 took from the
+    /// player (Player_80032F30), `None` for -1 (Fighter_UnkInitLoad,
+    /// fighter.c:804). A tracked marker skips Rebirth's collision, re-aims
+    /// the platform every tick and, from the next revival on, the spawn's
+    /// floor probe (fighter.c:530).
+    pub revival_marker: Option<i8>,
     /// The player's other fighter (Popo's Nana, Nana's Popo) as the scene
     /// last showed it, before this proc; None for a player's only fighter.
     pub partner: Option<partner::PartnerView>,

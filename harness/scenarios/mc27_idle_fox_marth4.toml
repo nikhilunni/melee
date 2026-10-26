@@ -1,0 +1,20 @@
+# Fox vs Marth on Mute City from start_mc_fox_marth4, nobody moving: the
+# platform's whole route (grMuteCity_801F04B8's 3600-frame script) once, the
+# track's lines while it is up and the thirty cars' laps.
+name = "mc27_idle_fox_marth4"
+savestate = "harness/roms/start_mc_fox_marth4.sav"
+frames = 3800
+seed = 1
+stage = "MuteCity"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

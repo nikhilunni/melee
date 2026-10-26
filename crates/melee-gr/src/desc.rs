@@ -348,6 +348,74 @@ pub fn read_onett_parameters(archive: &Archive) -> ReadResult<crate::onett::Para
         horn_lead: f(0x64)?,
     })
 }
+/// grMc_StageData / grDatFiles_801C6038: GrMc.dat. grMc_StageCallbacks[0x1E]
+/// carries flags 0xC0000000, so map 0x1E selects the lights and fog.
+pub fn read_mute_city(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::MuteCity, 0x1E)
+}
+/// grBb_StageData / grDatFiles_801C6038: GrBb.dat. grBb_StageCallbacks[1]
+/// carries flags 0x40000000 (the fog); row 0x23's 0x80000000 is the lights.
+pub fn read_big_blue(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::BigBlue, 1)
+}
+/// `grMc_YakumonoParam` (grmutecity.c:303-317): the cars' floats.
+pub fn read_mute_city_parameters(archive: &Archive) -> ReadResult<crate::mutecity::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    Ok(crate::mutecity::Parameters {
+        smoke_damage: f(0x2C)?,
+        explode_damage: f(0x30)?,
+        top_speed: f(0x34)?,
+        leader_top_speed: f(0x38)?,
+        trailer_top_speed: f(0x3C)?,
+        acceleration: f(0x40)?,
+        lane_step: f(0x44)?,
+        lane_centering: f(0x48)?,
+        braking: f(0x4C)?,
+    })
+}
+/// A stage line hit (lbColl_80008D30_arg1, lb/forward.h:94) at a
+/// relocated pointer slot.
+pub fn read_line_hazard(archive: &Archive, slot: u32) -> ReadResult<melee_types::combat::LineHazard> {
+    let p = required_link(archive, slot)?;
+    let r = archive.reader();
+    let element = r.u32(p + 0x18)? as i32;
+    Ok(melee_types::combat::LineHazard {
+        damage: r.u32(p + 0x4)?,
+        angle: r.s32(p + 0x8)?,
+        growth: r.u32(p + 0xC)?,
+        weight_knockback: r.u32(p + 0x10)?,
+        base_knockback: r.u32(p + 0x14)?,
+        element: melee_types::HitElement::try_from(element)
+            .map_err(|_| error(format!("line hazard element {element}")))?,
+        sound_severity: r.s32(p + 0x1C)?,
+        sound_kind: r.s32(p + 0x20)?,
+    })
+}
+/// grMuteCity_801F2BBC's two hits: yakumono_param x8 (the track's end
+/// lines 0x31 and 0x35) and xC (lines 0x32..0x34).
+pub fn read_mute_city_hazards(
+    archive: &Archive,
+) -> ReadResult<[melee_types::combat::LineHazard; 2]> {
+    let p = public(archive, "yakumono_param")?;
+    Ok([read_line_hazard(archive, p + 0x8)?, read_line_hazard(archive, p + 0xC)?])
+}
+/// The HSD_Spline a model bone carries (`jobj->u.spline`, JOBJ_SPLINE).
+pub fn bone_spline(
+    archive: &Archive,
+    model: &ModelDesc,
+    bone: usize,
+) -> ReadResult<hsd_archive::desc::spline::Spline> {
+    let joints = model.joint.descendants();
+    let joint = joints.get(bone).ok_or_else(|| error("spline bone outside model"))?;
+    match joint.u {
+        hsd_archive::desc::jobj::JObjUnion::Spline(Some(offset)) => {
+            Ok(hsd_archive::desc::spline::Spline::read(archive, offset)?)
+        }
+        _ => Err(error("bone without a spline")),
+    }
+}
 /// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
 /// carries flags 0xC0000000, so map 1 selects the lights and fog.
 pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {

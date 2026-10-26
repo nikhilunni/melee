@@ -22,7 +22,7 @@ pub struct ViewCamera {
 impl ViewCamera {
     pub(super) fn capture(game: &Match) -> Self {
         let state = game.engine.state();
-        let camera = state.camera.render_camera(&state.assets.stage_camera);
+        let camera = state.camera.render_camera(&state.stage_limits.camera);
         let view = camera.view_matrix().0;
         let row = |r: usize| [view[r][0], view[r][1], view[r][2]];
         Self {

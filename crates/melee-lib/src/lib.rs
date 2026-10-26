@@ -19,6 +19,7 @@ mod scene_fighter;
 mod scene_items;
 mod scene_stage;
 mod setup;
+mod stage_limits;
 pub mod slippi;
 #[cfg(test)]
 use melee_sim::{scenario, trace};

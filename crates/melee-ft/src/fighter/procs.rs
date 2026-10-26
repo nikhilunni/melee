@@ -810,6 +810,7 @@ impl FighterCore {
         if self.status.capture_timer != 0 {
             self.status.capture_timer -= 1;
         }
+        self.tick_hazard_cooldown();
         if self.status.barrel_cooldown != 0 {
             self.status.barrel_cooldown -= 1;
         }

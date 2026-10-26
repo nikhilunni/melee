@@ -284,6 +284,13 @@ impl Assets {
                 stage_desc.kind,
                 melee_types::GrKind::Last | melee_types::GrKind::Battle
             ),
+            // stage_info.unk8C.b5 stays clear (Ground_801BFFB0,
+            // ground.c:225) on Mute City (grmutecity.c:368) and Fountain of
+            // Dreams (grshrine.c never sets it).
+            tracked_revival_markers: matches!(
+                stage_desc.kind,
+                melee_types::GrKind::MuteCity | melee_types::GrKind::Shrine
+            ),
         };
         let mut stage_camera = stage_camera(&stage_desc, &camera_range, [low, high])?;
         if stage_desc.kind == melee_types::GrKind::Flatzone {

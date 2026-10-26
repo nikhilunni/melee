@@ -118,6 +118,21 @@ fn fall_collision(
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).
 pub fn revival(fighter: &mut Fighter, phase: CollisionPhase<'_>) -> Result<()> {
     let assets = phase.assets.expect("airborne map needs proc_map_with_assets");
+    // ftCo_Rebirth_Coll (ft_0D4D.c:212): only an untracked marker maps.
+    // Fighter_procMap's own part (the ECB lock's countdown, the root's
+    // translation) runs either way.
+    if fighter.core.motion_state.id == melee_types::CommonMotionState::Rebirth
+        && fighter.core.revival_marker.is_some()
+    {
+        let core = &mut fighter.core;
+        crate::collision::air::begin_map(
+            &core.physics,
+            &mut core.collision,
+            &mut core.skeleton,
+            core.animation.root,
+        );
+        return Ok(());
+    }
     if fighter.core.collision_revival(phase) {
         // fn_800D5A30: protection/color at 800D5A4C precedes neutral entry
         // at 800D5A54. The resolved map position was copied before either.

@@ -5408,7 +5408,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 915] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 932] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6757,6 +6757,27 @@ static CORPUS_V3_MATCHES: [(&str, usize); 915] = [
     ("corpus_v3_ht_fox_marth4_e50814092_p0", 6001),
     ("corpus_v3_ht_fox_marth4_eeda0d0fc_p0", 6001),
     ("corpus_v3_ht_fox_marth4_ee133b82f_p0", 6001),
+    // Mute City (grmutecity.c): the route's script (camera and blast limits,
+    // the platform's tilt, the track's floor), the cars racing, sparking,
+    // smoking and exploding under hits, the track's line hazards, and the
+    // tracked revival marker (unk8C.b5 clear: Rebirth maps nothing).
+    ("mc27_idle_fox_marth4", 3800),
+    ("corpus_v3_mc_fox_marth4_ef89b3e70_p0", 2947),
+    ("corpus_v3_mc_fox_marth4_edb2b114a_p0", 3390),
+    ("corpus_v3_mc_fox_marth4_ec13743d5_p0", 4994),
+    ("corpus_v3_mc_fox_marth4_e726cfdde_p0", 4132),
+    ("corpus_v3_mc_fox_marth4_e50814092_p0", 3286),
+    ("corpus_v3_mc_fox_marth4_edafcfddf_p0", 4419),
+    ("corpus_v3_mc_fox_marth4_e7ff378da_p0", 4670),
+    ("corpus_v3_mc_fox_marth4_e50f475b4_p0", 3593),
+    ("corpus_v3_mc_fox_marth4_e4213e6a5_p0", 3627),
+    ("corpus_v3_mc_fox_marth4_ecad2716f_p0", 3957),
+    ("corpus_v3_mc_fox_marth4_e0fcf0c70_p0", 6001),
+    ("corpus_v3_mc_fox_marth4_ef9b6d16d_p2", 5281),
+    ("corpus_v3_mc_fox_marth4_eb8786a38_p1", 5982),
+    ("corpus_v3_mc_fox_marth4_eb17a6598_p0", 5530),
+    ("corpus_v3_mc_fox_marth4_e70b3084c_p2", 6001),
+    ("corpus_v3_mc_fox_marth4_e05625e18_p1", 5162),
     // Fourside (grfourside.c): the crane's swings and its beam raised,
     // lowered and settling; the helicopter arriving, hovering and leaving;
     // the UFO landing on each building (framed by the camera while it

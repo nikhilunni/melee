@@ -225,7 +225,7 @@ impl Presentation {
             visible: Vec::new(),
             camera_targets: vec![None; game.config.players.len()],
             view: ViewCamera::capture(game),
-            stage_frame: StageFrame::of(&game.engine.state().assets.stage_camera),
+            stage_frame: StageFrame::of(&game.engine.state().stage_limits.camera),
             fog_desc: stage::fog_desc(&game.assets.inner)?,
             fog: None,
             fighter_parts: Vec::new(),

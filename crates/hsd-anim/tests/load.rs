@@ -291,6 +291,7 @@ fn attachment_ignores_root_siblings_like_add_anim_all() {
         child: None,
         next: None,
         aobjdesc: None,
+        unrelocated_child: false,
     }));
     attach_anim_joint(&mut tree, root, &scene.anim, &scene.archive).unwrap();
     assert!(tree.get(sibling).aobj.is_none());

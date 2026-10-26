@@ -309,10 +309,24 @@ fn prepare_animation(
     root: JObjId,
     anim: &desc::AnimJoint,
 ) -> Result<Vec<(JObjId, AnimJoint)>, LoadError> {
-    let mut pending = vec![(Some(root), Some(anim), false)];
+    // The fourth field marks joints below an unrelocated child (see
+    // [`desc::AnimJoint::unrelocated_child`]): they take no animation.
+    let mut pending = vec![(Some(root), Some(anim), false, false)];
     let mut visited = HashSet::new();
     let mut attachments = Vec::new();
-    while let Some((id, animation, follow_next)) = pending.pop() {
+    while let Some((id, animation, follow_next, bare)) = pending.pop() {
+        if bare {
+            // grAnime_801C6C0C through 0xFFFFFFFF: retail's reads there
+            // leave these joints (Mute City's spline joints) unanimated.
+            if let Some(id) = id {
+                let joint = tree.get(id);
+                if follow_next {
+                    pending.push((joint.next, None, true, true));
+                }
+                pending.push((joint.child, None, true, true));
+            }
+            continue;
+        }
         let (id, animation) = match (id, animation) {
             (None, None) => continue,
             (Some(id), Some(animation)) => (id, animation),
@@ -341,9 +355,13 @@ fn prepare_animation(
         )?;
         attachments.push((id, animation_node(animation)?));
         if follow_next {
-            pending.push((joint.next, animation.next.as_deref(), true));
+            pending.push((joint.next, animation.next.as_deref(), true, false));
         }
-        pending.push((joint.child, animation.child.as_deref(), true));
+        if animation.unrelocated_child {
+            pending.push((joint.child, None, true, true));
+        } else {
+            pending.push((joint.child, animation.child.as_deref(), true, false));
+        }
     }
     Ok(attachments)
 }

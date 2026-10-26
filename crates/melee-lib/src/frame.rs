@@ -1209,7 +1209,7 @@ impl Runtime {
                 &mut state.rng,
                 &mut coins,
             );
-            let bounds = item_bounds(&state.assets);
+            let bounds = item_bounds(&state.stage_limits);
             crate::coins::create_spill(
                 &mut state.items,
                 &mut state.effects.gobjs,
@@ -1415,7 +1415,7 @@ impl Runtime {
                     id,
                     owner.as_ref(),
                     &targets,
-                    &item_bounds(&state.assets),
+                    &item_bounds(&state.stage_limits),
                     state.assets.items.get(kind),
                     &state.map,
                     &rng,
@@ -1446,7 +1446,7 @@ impl Runtime {
                     owner.as_ref(),
                     contact,
                     &mut state.map,
-                    &item_bounds(&state.assets),
+                    &item_bounds(&state.stage_limits),
                     state.assets.items.get(kind),
                     Some(&rng),
                     parent,
@@ -1910,7 +1910,7 @@ impl Runtime {
                 // the stage's start; then the fighters' subjects in reverse
                 // creation order.
                 // The stage subject sits among the items by when it was made.
-                let stage_camera = crate::scene_stage::live_camera(&state.stage, &state.assets);
+                let stage_camera = crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera);
                 let (stage_subject, made_after) = match &mut state.stage {
                     SceneStage::Stadium(stage) => (stage.screen.subject.as_mut(), 0),
                     // grFourside_801F3894: the arriving UFO.
@@ -1977,7 +1977,7 @@ impl Runtime {
                         // BrawlOffscreenDamage.asm answers Fighter_8006A360's
                         // question (0x8006A880) from the fighter as its
                         // animation proc finds it.
-                        let limits = &state.assets.stage_camera;
+                        let limits = &state.stage_limits.camera;
                         let f = &mut state.fighters[player].0;
                         f.offscreen.magnified = f.outside_camera_limits(limits);
                     }
@@ -2206,6 +2206,17 @@ impl Runtime {
                     }
                     // ftColl_8007BAC0: a stage's collision device.
                     crate::scene_stage::zebes::acid_device(state, player, &mut self.particle_draws)?;
+                    // ftColl_8007BAC0's tail: ftCo_800C0B20, the lines the
+                    // stage marks.
+                    {
+                        let stage = &state.stage;
+                        with_fighter!(&mut state.fighters[player], |f| {
+                            f.core.touch_line_hazards(
+                                |line| crate::scene_stage::line_hazard(stage, line),
+                                &assets.fighters[player],
+                            )
+                        });
+                    }
                     // ftColl_8007AB48 / ftColl_8007AB80: resolve both logs.
                     with_fighter!(&mut state.fighters[player], |f| {
                         f.core.resolve_hit_logs(&assets.fighters[player])
@@ -2283,6 +2294,7 @@ impl Runtime {
                                 self.frame,
                                 state_pads,
                                 assets,
+                                &state.stage_limits,
                                 &mut state.map,
                                 &mut state.effects,
                                 &mut state.particles,
@@ -2763,7 +2775,7 @@ impl Runtime {
                                 state.clock.frame_count,
                                 state.assets.stage_desc.kind,
                                 &players,
-                                state.assets.stage_camera.blast_top(),
+                                state.stage_limits.camera.blast_top(),
                                 &state.assets.drop_markers,
                                 &mut state.rng,
                             )
@@ -2866,6 +2878,7 @@ impl Runtime {
                         || address == melee_gr::zebes::procs::DYNAMICS_PROC
                         || (address == melee_gr::venom::procs::DYNAMICS_PROC
                             && matches!(state.stage, SceneStage::Venom(_)))
+                        || address == melee_gr::mutecity::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -2942,12 +2955,20 @@ impl Runtime {
                             world,
                             &mut self.stage_objects,
                         )?;
-                        let bounds = item_bounds(&state.assets);
+                        let bounds = item_bounds(&state.stage_limits);
                         crate::scene_stage::venom::spawn_lasers(
                             state,
                             world,
                             &mut self.item_objects,
                             &bounds,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::MuteCity(_)) {
+                        crate::scene_stage::mutecity::run_proc(
+                            state,
+                            map_id,
+                            &mut self.particle_draws,
+                            world,
+                            &mut self.item_objects,
                         )?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
@@ -3188,7 +3209,7 @@ impl Runtime {
                 // (made inside ProcessHit, ahead of the reaction's own
                 // articles), then Player_SetUnk98.
                 for spill in f.core.coin_spills.take_all() {
-                    let bounds = item_bounds(&state.assets);
+                    let bounds = item_bounds(&state.stage_limits);
                     crate::coins::create_spill(
                         &mut state.items,
                         &mut state.effects.gobjs,
@@ -3315,7 +3336,7 @@ impl Runtime {
                                 .combat
                                 .stale
                                 .multiplier(&state.assets.fighters[slot].stale_weights),
-                            bounds: Some(&item_bounds(&state.assets)),
+                            bounds: Some(&item_bounds(&state.stage_limits)),
                         },
                         &mut state.rng,
                     );
@@ -3465,64 +3486,7 @@ impl Runtime {
         // release their owner's references. Each item goes in the order
         // Item_8026A8EC was called: its models, then its own GObjs.
         while let Some(destroyed) = state.items.next_destroyed() {
-            let item = state
-                .items
-                .iter()
-                .find(|item| item.id == destroyed)
-                .expect("a destroyed item");
-            crate::scene_items::article_destroyed(&mut state.fighters, item);
-            // Generators kept on a torn-down article's bones. JObjReleaseChild
-            // leaves each bone without a parent: a dirty one is rebuilt from
-            // its local SRT alone at its next setup; a clean one (no proc
-            // touched the model since the particle pass set it up, as when
-            // its owner's KO tears it down at s_link 4) keeps its last world
-            // matrix.
-            let mut index = 0;
-            loop {
-                let Some((id, bone)) = state.effects.followed_item_bones().nth(index) else {
-                    break;
-                };
-                let followed = state.effects.followed_item_bones().count();
-                if id == item.id && item.joints_dirty {
-                    let matrix = state
-                        .article_poses
-                        .detached_bone_matrix(id, bone)
-                        .or_else(|| {
-                            crate::scene_items::free_item_detached_bone_matrix(
-                                &state.assets.items,
-                                item,
-                                bone,
-                            )
-                        });
-                    if let Some(matrix) = matrix {
-                        state
-                            .effects
-                            .update_item_bone(id, bone, matrix, &mut state.particles);
-                    }
-                }
-                // A bone nothing follows any more left the list.
-                if state.effects.followed_item_bones().count() == followed {
-                    index += 1;
-                }
-            }
-            // Item_8026A8EC frees the JObj its generators follow, unless its
-            // proc already did (ItemEvent::DestroyEffects).
-            if !item.effects_destroyed {
-                state
-                    .effects
-                    .destroy_item_models(item.id, &mut state.particles);
-                state
-                    .effects
-                    .expire_item_joint(item.id, &mut state.particles);
-            }
-            state.effects.forget_item(item.id);
-            crate::scene_items::cleanup(
-                &mut state.items,
-                &mut state.effects.gobjs,
-                world,
-                &mut self.item_objects,
-                destroyed,
-            );
+            crate::scene_items::tear_down(state, world, &mut self.item_objects, destroyed);
         }
         if spliced {
             let renamed = state.effects.gobjs.replay();
@@ -3786,7 +3750,7 @@ impl Simulation {
     }
     /// The stage's camera description (stage_info.cam_info).
     pub fn stage_camera(&self) -> melee_cm::StageCamera {
-        self.runtime.state.assets.stage_camera
+        self.runtime.state.stage_limits.camera
     }
     /// Pokemon Stadium's jumbotron between two ticks: its mode, when that
     /// began and when its timer ends it. `None` on every other stage. For
@@ -3944,7 +3908,7 @@ impl Simulation {
             callback_trace: None,
             radial_forces: state.radial_forces.clone(),
             item_objects: Default::default(),
-            stage_objects: Default::default(),
+            stage_objects: [None; 40],
             stage_start_rows: start_rows.clone(),
             state,
             interface,
@@ -4509,7 +4473,7 @@ fn offer_nearest_fighter(state: &mut InitialState, player: usize) {
         .filter(|&(other, _)| other != player)
         .filter_map(|(_, view)| view);
     let nearest =
-        melee_cpu::nearest_fighter(position, half_size, &state.assets.arena, others);
+        melee_cpu::nearest_fighter(position, half_size, &state.stage_limits.arena, others);
     with_fighter!(&mut state.fighters[player], |f| f.core.nearest_fighter =
         nearest);
 }
@@ -4742,15 +4706,15 @@ fn lock_on_targets(state: &mut InitialState, targets: &mut melee_it::LockOnTarge
 
 /// The stage limits item callbacks read: the blast zones (Stage_GetBlastZone*
 /// Offset) and the camera centre (Stage_UnkSetVec3TCam_Offset).
-fn item_bounds(assets: &crate::assets::Assets) -> melee_it::ItemBounds {
+fn item_bounds(limits: &crate::stage_limits::StageLimits) -> melee_it::ItemBounds {
     melee_it::ItemBounds {
-        left: assets.arena.left,
-        right: assets.arena.right,
-        bottom: assets.arena.bottom,
-        top: assets.arena.top,
+        left: limits.arena.left,
+        right: limits.arena.right,
+        bottom: limits.arena.bottom,
+        top: limits.arena.top,
         camera_offset: hsd_types::Vec2::new(
-            assets.stage_camera.offset_x,
-            assets.stage_camera.offset_y,
+            limits.camera.offset_x,
+            limits.camera.offset_y,
         ),
     }
 }
@@ -4847,13 +4811,13 @@ fn render_cameras(state: &mut InitialState) {
     // (ftDrawCommon_80080E18 -> ftLib_80086A8C -> Camera_80030CD8).
     let camera = state
         .camera
-        .render_camera(&crate::scene_stage::live_camera(&state.stage, &state.assets));
+        .render_camera(&crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera));
     let screen = state.camera.screen;
     state.rendered_camera = camera;
     // Camera_800310B8: cm_804D6464's viewing matrix, inverted for the screen KO.
     let copy_view = state
         .camera
-        .render_copy_camera(&crate::scene_stage::live_camera(&state.stage, &state.assets))
+        .render_copy_camera(&crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera))
         .view_matrix();
     let mut inverse_copy_view = copy_view;
     hsd_anim::mtx::mtx_inverse(&copy_view, &mut inverse_copy_view);
@@ -4898,7 +4862,7 @@ fn render_cameras(state: &mut InitialState) {
 fn rollback_loop_cameras(state: &mut InitialState) {
     let camera = state
         .camera
-        .render_camera(&crate::scene_stage::live_camera(&state.stage, &state.assets));
+        .render_camera(&crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera));
     let screen = state.camera.screen;
     state.rendered_camera = camera;
     for fighter in &mut state.fighters {
@@ -5008,6 +4972,7 @@ fn dispatch_fighter(
     _frame: u64,
     state_pads: &[PadSample; 4],
     scene_assets: &crate::assets::Assets,
+    limits: &crate::stage_limits::StageLimits,
     map: &mut melee_mp::CollMap,
     effects: &mut melee_ef::Effects,
     particles: &mut hsd_particle::system::ParticleSystem,
@@ -5055,14 +5020,14 @@ fn dispatch_fighter(
             if let Some((partner, partner_assets)) = death_partner {
                 f.check_blast_zone_with_partner(
                     assets,
-                    &scene_assets.arena,
+                    &limits.arena,
                     rng,
                     partner,
                     partner_assets,
                     map,
                 )
             } else {
-                f.check_blast_zone(assets, &scene_assets.arena, rng)
+                f.check_blast_zone(assets, &limits.arena, rng)
             }
             .map_err(|e| anyhow::anyhow!(e.to_string()))?;
         }
@@ -5094,7 +5059,7 @@ fn dispatch_fighter(
             }
             if !f.status.disabled
                 && !f.in_hitlag()
-                && !f.screen_ko_accessory(scene_assets.stage_camera.bottom())
+                && !f.screen_ko_accessory(limits.camera.bottom())
                 && !f.item_throw_accessory(assets)
                 && !f.swing_accessory()
                 && !f.core.egg_accessory()
@@ -5108,7 +5073,7 @@ fn dispatch_fighter(
         FighterProc::HitDetection => f.proc_hit_detection(),
         FighterProc::ProcessHit => f.proc_process_hit_on_map(assets, rng, map),
         FighterProc::Dynamics => f.proc_dynamics_with_forces(assets, map, radial_forces.fields()),
-        FighterProc::Camera => f.proc_camera_with_map(assets, &scene_assets.stage_camera, map),
+        FighterProc::Camera => f.proc_camera_with_map(assets, &limits.camera, map),
         FighterProc::PlayerMirror => f.proc_player_mirror(),
     }
     // Fighter_8006D044/8006D10C invoke the installed callbacks on transitions,

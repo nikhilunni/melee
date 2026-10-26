@@ -57,6 +57,7 @@ fn check<C: CharacterCallbacks>(assets: &Assets, slot: usize) {
         stamina: None,
         single_button: false,
         invisible: false,
+        revival_marker: None,
     };
     let mut character = C::from_archive(&archive.data).unwrap();
     let costume_bytes = std::fs::read(
