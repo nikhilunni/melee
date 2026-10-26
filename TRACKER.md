@@ -4,66 +4,64 @@ Legend: `[ ]` todo, `[~]` in progress, `[x]` done, `[!]` blocked.
 Keep current facts and next work here; earlier checkpoints live in git history
 and `docs/PORT_NOTES/`.
 
-## Current state (2026-10-25, wave 26 closed at `e7e3a37d`)
+## Current state (2026-10-26, wave 27 closed at `56abf9e7`)
 
-- **Wave 26 (six, then five, concurrent agents; `target/wave26/`) landed on
-  main:** Ness's current yo-yo binding; Kirby's copied Needle Storm (**all 25
-  copied specials**); heavy items carried and thrown (HeavyGet, Lift*, all
-  eight heavy throws); ReDead's lifecycle and CaptureLeadead; the Beam Sword's
-  remaining rows, Home-Run Bat, Fan and Star Rod; Green and Red Shells,
-  Freezie, random Bob-omb and Mr. Saturn, the Motion-Sensor Bomb, Heart
-  Container, Maxim Tomato, Food and the Warp Star's fall and rest, with
-  fighters stomping items; **seven more stages** (Flat Zone, Hyrule Temple,
-  Fourside, Brinstar Depths, Yoshi's Island, Mushroom Kingdom, Onett: 17
-  supported); **CPU players on all 17 stages** with every recovery special;
-  Time mode, team stock steal, handicap and Damage Ratio, timed teams,
-  Stamina (with its KO), Lightning, Slo-Mo, Super Sudden Death, Single
-  Button, Invisible, Giant and Tiny; and in both apps CPU players, four slots
-  with teams, random items and these modes. Shared fixes: DownReflect out of
-  DownDamage, no leg IK in hitlag, the repeated-hit push before the moving
-  floor, mid-match allocations on four stages, the item attribute file read
-  from ItCo.usd. Details: `docs/PORT_NOTES/` (WAVE26_STAGES, WAVE26_REDEAD,
-  VERSUS_RULES, CPU_PLAYERS, FLAT_ZONE, RANDOM_ITEMS, KIRBY).
-- **Gates at `e7e3a37d`:** sweep 4,062 scenarios, **3,751 exact**, 118 not
-  comparable, **0 regressions** against `09deaa39` (77 fixed); the 193
-  failing are local scenarios not on main (guarded stops, unmerged branches'
-  recordings, unrecorded explorer TOMLs). `public-v3.7` replays **108/108**
-  (checked at `9377e5cd`). `melee-lib` suite passes, including 28
-  allocation tests; `melee-platform` tests and the wasm check pass. Not rerun
-  this wave: the debug gate, full `m5_gate`, `public-v3.7-b`, perf gate.
-- **Parity inventory** (`docs/PARITY.md`, rerun at `e7e3a37d`): all retail
-  **32.0% ported/partial, 41.0% with body/row** (29.4 / 38.1 at wave 25);
-  in-game **49.2% / 61.7%** (45.2 / 57.2). 4,635 ported, 275 partial, 11,696
-  not started of 19,827. **366 fail-closed sites** (297): new code arrives with
-  its unwitnessed branches guarded.
-- **Performance:** last measured at `7c06907b` (19.084 ms per 600 ticks;
-  user-approved size baselines 7,605,760 / 6,848,512). Not rerun after this
-  wave's new crates.
-- **New captures are authorized (user, 2026-10-25):** use fresh names,
-  keep existing data and failed attempts, never commit game data. Record with
-  `record_many.py --jobs 2` or less when agents share the machine: under
-  heavy load recordings have differed between runs.
+- **Wave 27 (seven concurrent agents; `target/wave27/`) landed on main:**
+  **eleven more stages** (Brinstar, Venom, Mute City, Poké Floats, Mushroom
+  Kingdom II, Great Bay, Icicle Mountain, Princess Peach's Castle, Green
+  Greens, Rainbow Cruise, Big Blue: **28 supported**; Corneria is on a WIP
+  branch); random items Ray Gun, Fire Flower, Super Scope, Starman, Cloaking
+  Device, Screw Attack, Metal Box, Bunny Hood (not yet in the pool), the
+  Warp Star ride, Lip's Stick, Parasol, the Party Ball and the Goomba (pool:
+  18 kinds); items with 2-4 players on the wave-26 stages; CPUs with up to
+  four players on FD/Battlefield and on five new stages (MK2, Great Bay,
+  Brinstar, Mute City, Poké Floats); Coin mode and Sudden Death among only
+  the tied players; full gamepad parity in both apps (API 6). Shared fixes:
+  item hits honour x42_b6 (grabbable hurtboxes only), the item spin joint
+  from ItemModelDesc xC, a death's motion change runs ChangeMotionState's
+  tail, star/screen KOs ride moving floors, savestate imports keep retail's
+  island order, unreachable app seeds retry (`StartError::UnreachableSeed`).
+  Details: `docs/PORT_NOTES/` (WAVE27_*, VERSUS_RULES, CPU_PLAYERS,
+  RANDOM_ITEM_KINDS).
+- **Gates:** at `329c16e2` the full sweep had **0 regressions** against
+  `e7e3a37d` (61 fixed); `m4_gate` 364 and `m5_gate` 321 pass at
+  `208d7a84`, with `melee-lib` and `melee-platform`; every merged branch
+  reported `public-v3.7` 108/108 (964,782 frames). The closing checkpoint at
+  `56abf9e7` (sweep `target/sweeps/56abf9e7.tsv`, replays, m4/m5) was
+  started when the session ended: **check it first next session**; Big Blue
+  and the CPU island-order change rely on it. Not rerun: debug gate,
+  `public-v3.7-b`, perf gate, parity inventory.
+- **Disk:** traces are ~205 GB; the wave filled the disk once. Engrams
+  worktrees were removed (user, 2026-10-26; 21 dirty ones stashed as
+  `cleanup-2026-10-26:*` in engrams). Keep `record_many --jobs 1-2`.
+- **Performance:** last measured at `7c06907b`; not rerun.
+- **New captures are authorized (user, 2026-10-25):** fresh names, keep
+  existing data and failed attempts, never commit game data.
 
 ## Next (breadth before individual replay fixes)
 
-1. [ ] **Merge the handed-off branches** (each has a note in
-   `docs/handoffs/`): `app-guarded-paths.md` (Party Ball lifecycle, CPUs in
-   3-4 player matches, items on every stage; one WIP commit to split, guard
-   and register), `VERSUS_RULES.md` (Coin mode WIP, partial Sudden Death,
-   Camera mode), `gamepads.md` (core done; macOS and web hosts unfinished;
-   the user requires full pad-only parity), `random-item-wstar.md` (the Warp
-   Star ride and spin joint), `WAVE26_MK2.md` (Mushroom Kingdom II plan).
-2. [ ] **More stages:** Mushroom Kingdom II, Great Bay, Princess Peach's
-   Castle, Rainbow Cruise, Brinstar, Corneria, Venom, Icicle Mountain, Green
-   Greens, Poké Floats, Mute City, Big Blue (12 remain).
-3. [ ] **More items:** Super/Poison Mushroom, Lip's Stick, Parasol item,
-   Poké Ball and its Pokémon, Ray Gun, Fire Flower, Super Scope, Hammer,
-   Screw Attack, Bunny Hood, Cloaking Device, Metal Box, Starman, Flipper,
-   Barrel Cannon; the dropped Fan's landing (reads uninitialised xD4C).
-4. [ ] **Open divergences** (`docs/handoffs/WAVE26_FOLLOWUPS.md`): Mushroom Kingdom
-   0.0015 at tick 238, Onett one ulp at 3745, Kongo's second log.
-5. [ ] Replay depth after breadth: five existing stops in `public-v3.7-b`
-   (`docs/SLIPPI.md`).
+1. [ ] **Verify the closing checkpoint** (above), then the WIP branches,
+   each with a note in `docs/handoffs/`:
+   - `worktree-agent-a1c35ef88761f969e` WIP `b61da852`: Corneria, items on
+     Brinstar/Venom/Corneria (`wave27-corneria.md`); gated before its last
+     rebase only.
+   - `worktree-agent-a04cc103feaee3dd4` WIP `a61acfff`: Hammer, Super/Poison
+     Mushrooms, Bunny Hood explorer clean (`hammer-mushrooms-wave27.md`);
+     not rebased; one Hammer head ulp divergence.
+   - `worktree-agent-aa20640d8986a1449` WIP `ffe1f6dc`: Mushroom Kingdom `?`
+     blocks, Kongo guards; stopped mid-debug, unverified.
+   - `worktree-agent-a2e9b841e1b181e99` WIP `6227e7a6`: two Big Blue
+     scenarios to gate (`wave27-big-blue.md`).
+   - CPU on Icicle Mountain and Venom: two divergences
+     (`w27-stage-cpus.md`).
+2. [ ] **Items:** Poké Ball and its Pokémon, Flipper, Barrel Cannon
+   (`WAVE27_RIDE_ITEMS.md`); items on the wave-27 stages; Bunny Hood into the
+   pool.
+3. [ ] **Modes:** Camera mode (`VERSUS_RULES.md`); Coin with items on.
+4. [ ] **Open divergences** (`WAVE26_FOLLOWUPS.md`): Mushroom Kingdom 0.0015
+   at tick 238, Onett one ulp at 3745, Kongo's second log; the
+   ftCo_800DC920 captured-fighter death guard (hit on several stages).
+5. [ ] Replay depth after breadth: five stops in `public-v3.7-b`.
 
 ## Status by area
 
@@ -72,12 +70,12 @@ movement, combat and specials. Kirby has **all 25 copied neutral specials**
 (`docs/PORT_NOTES/KIRBY.md`); other Inhale/item and hand-pose gaps remain.
 Character differences use static tables and family crates.
 
-**Stages:** 17 supported Versus stages: the six tournament stages, Yoshi's
-Island 64, Kongo Jungle 64, Kongo Jungle, Jungle Japes, Hyrule Temple,
-Fourside, Brinstar Depths, Flat Zone, Yoshi's Island, Mushroom Kingdom and
-Onett (`docs/PORT_NOTES/WAVE26_STAGES.md`, `FLAT_ZONE.md`, `N64_STAGES.md`).
-Supported does not mean every branch is: Kongo's second log, the Klaptrap's
-later motions and a savestate taken mid-hazard stay guarded. Twelve remain.
+**Stages:** 28 supported Versus stages: wave 26's 17 plus Brinstar, Venom,
+Mute City, Poké Floats, Mushroom Kingdom II, Great Bay, Icicle Mountain,
+Princess Peach's Castle, Green Greens, Rainbow Cruise and Big Blue
+(`docs/PORT_NOTES/WAVE26_STAGES.md`, `WAVE27_*`). Corneria is on a WIP
+branch. Supported does not mean every branch is: rare hazards and
+mid-hazard savestates stay guarded.
 Stadium form-archive read completion is a recorded external input.
 
 **Items:** shared engine, character articles and Peach's rare pulls; random
@@ -86,17 +84,20 @@ spawning with Capsule, Box, Barrel and Party Ball (fall/rest); swing items
 Red Shells, Freezie, Bob-omb, Mr. Saturn, Motion-Sensor Bomb, Heart
 Container, Maxim Tomato, Food, Warp Star (fall/rest); ReDead with
 CaptureLeadead; fighters stomp items (`docs/PORT_NOTES/RANDOM_ITEMS.md`).
-Items are witnessed for two-player FD/Battlefield; more players and stages
-are on a handoff branch.
+Wave 27 added the shooters, Starman, Cloaking Device, Screw Attack, Metal
+Box, Bunny Hood, the Warp Star ride, Lip's Stick, Parasol and the Goomba.
+Items run with 2-4 players on the wave-26 stages except Mushroom Kingdom;
+the wave-27 stages refuse items until witnessed.
 
-**CPU:** Versus CPU players on all 17 stages, every recovery special, in
-two-player matches (`Stage::cpu_supported()`, `CPU_MAX_PLAYERS = 2`); 3-4
-player CPUs are on a handoff branch. CPU replay admission is still refused
+**CPU:** Versus CPU players on wave 26's 17 stages plus MK2, Great Bay,
+Brinstar, Mute City and Poké Floats (`Stage::cpu_supported()`); up to four
+players on FD/Battlefield, two elsewhere (`Stage::cpu_max_players`). CPU replay admission is still refused
 because Slippi lacks CPU levels.
 
 **Match flow:** FFA, teams/doubles, the team stock steal, Time (two-player
 Sudden Death), Stamina, handicap, Damage Ratio and the Special Melee modes
-except Camera; Coin mode is on a handoff branch (`docs/PORT_NOTES/VERSUS_RULES.md`).
+except Camera; Coin mode (items off) and Sudden Death among the tied
+players (`docs/PORT_NOTES/VERSUS_RULES.md`).
 
 **App:** native macOS and web hosts share `melee-platform`; the disc is the
 only game-data input. The app's own menus do not count as retail menu
