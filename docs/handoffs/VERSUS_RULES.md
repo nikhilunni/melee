@@ -1,53 +1,54 @@
-> **Branch** `worktree-agent-a2cd0a235fdb06398` (tip `fcee686a`), not merged into main. Stamina, Single Button, Invisible, Giant and Tiny are merged into main (5528fef4 and before). WIP commit 12f8338a holds the partial Coin mode; the rest of this note is what remains.
-
-# Versus rules: what is left (wave 26)
+# Versus rules: what is left (wave 27)
 
 Ported and witnessed: Time (2-4 players, 2v2), the team stock steal,
 handicap and Damage Ratio, timed stock team battles, Lightning, Slo-Mo,
 Super Sudden Death, Stamina including the HP-out KO, Single Button,
-Invisible, Giant and Tiny. Details and witnesses:
-`docs/PORT_NOTES/VERSUS_RULES.md`. Every boundary below exists in the main
-checkout (`harness/roms`, `harness/scenarios`, traces recorded).
+Invisible, Giant, Tiny, Coin, and a Sudden Death among only the tied
+players. Details and witnesses: `docs/PORT_NOTES/VERSUS_RULES.md`.
 
 Still guarded, in the order I would take them:
 
-1. **Coin** (boundary `start_fd_coin1_fox_marth`, seed 2751777771, time
-   limit 60; it and its `_cold` twin gate exact over their 600 idle
-   ticks). A `WIP:` commit holds the parts written so far; the match runs
-   until the first damage or fall, where `guard_coin_spills`
-   (`crates/melee-lib/src/frame.rs`) stops it.
-   - Done, compiled, not yet exercised by a witness:
-     `crates/melee-it/src/coin.rs` (coin attributes, `plan_spill` =
-     it_802E61C4/it_802E6380/it_802E628C with its HSD_Randf draws,
-     `coin_floor_pass` = it_802E5AC4, `tick_coin_timers` = it_802E657C,
-     `follow_coin_sphere`), `ItemScratch::Coin`, ItemCore
-     `bounce_spark_off` (xDCF b0), `crates/it-coin` (states of
-     it_803F8BD8, `enter_flight` = it_802E66A0), `crates/melee-lib/src/coins.rs`
-     (purses, StaticPlayer +90..+9C), coin score in `standings`
-     (fn_8016588C x5 == 2).
-   - Written, not wired: `crates/melee-ft/src/fighter/coins.rs` (no `mod`
-     line yet). It needs FighterCore fields `coin_rules`, `coins_held`,
-     `coin_spills: FixedVec<CoinSpill, N>`, `coin_spheres: [CoinSphere; 2]`;
-     FighterAssets `coin_spheres` (ftData x38) and `coin_spill` (PlCo
-     +5C0/+5C8/+5CC); a striker id for `SpillCause::Hit` (the file calls
-     `ko_source.player()`, which does not exist).
-   - Still to do: call `spill_coins_for_hit` from process_damage at the
-     knockback branch's start and in the no-knockback block (angle from
-     ftCo_Damage_CalcAngle, dmg.facing_dir_1, x1854 collision position);
-     the death payout from the death entries (ft_0D31.c: left
-     x = blast left angle 0, right x = blast right angle pi, down
-     y = blast bottom angle pi/2, up y = blast top 3pi/2; star and screen
-     KOs at cur_pos, not collectable, pi/2); the scene registers Unk4's
-     assets from ItCo x8 bank 0x73 (`from_article_slot_states`), dispatches
-     `Unk4: it_coin::Coin`, drains `coin_spills` after the fighter procs
-     (purses, it_802E609C creation, it_802750F8, the it_802E6658 cap);
-     pickup ft_8007C77C in hit detection between the fighter and item
-     loops (on alternate frames by the parity of gm_80479D58.unk_8 at
-     0x80479D60; lbColl_80007B78 / lbColl_800067F8; efSync 0x432 at
-     contact); spheres ft_8007C630 at spawn and ft_8007C6DC in
-     Fighter_procUpdate; container coins (it_8026F8B4). Then witnesses from
-     the explorer on the registered boundary.
-2. A **Sudden Death among only some players** (3-4 player Time ties):
-   `Match::sudden_death` refuses it. Needs a 3-4 player Time boundary whose
-   match ends in a partial tie.
-3. **Camera** mode: the boundary driver could not reach its CSS.
+1. **Camera mode** (`SpecialMelee::Camera`, GM_CAMERA_MODE 0x0A). The
+   boundary exists: `w27_start_fd_sp_camera_fox_marth4` (Fox vs Marth on
+   FD, seed 3929830345, 600 idle ticks recorded; `_cold` written). Its CSS
+   starts only with a controller in port 4, so it was made with
+   `MELEE_SI_PORTS=0,1,3`, and every recording from it (record_many,
+   explore_batch) needs the same environment; scenarios have no field for
+   it yet (the Rust scenario and boundary parsers deny unknown fields).
+   What the port needs (gm_PrepCameraModeVSScene, gmcameramode.c:190-231):
+   - an untimed Time match: timer_enabled off, x5_0 (gm_GetMatchOutcome
+     returns NONE, gm_16AE.c:878), so the cold path must accept Time
+     without a time limit for this mode;
+   - x1_2 and x1_3: the countdown (gm_Scene_Vs_OnEnter) and GO
+     (gm_16AE.c:495, 2140) are banner element 8, not 3 and 4
+     (`melee-lib::banner` and the importer's `scene_flow.rs` know 1, 3, 4).
+     ifStatus_802F6EA4(8, ..) creates nothing and calls both callbacks at
+     once (if_2F6E.c:36): at scene enter, before the boundary, fn_8016B7F8
+     releases every input freeze and starts the stage
+     (Ground_801C0FB8: FD's deferred GObjs), and fn_8016B784 enables the
+     HUD. A camera boundary therefore has no banner, the HUD on, input
+     released and the stage started, which the match-start import
+     (`match_start_countdown`, the FD GObj registration) assumes are still
+     to come;
+   - x2_5 off: no score popups; x2_6, x3_1, x4_0 off (pause-related and
+     ifStatus_802F6508);
+   - every player xD_b3 -> Player_SetMoreFlagsBit4 (gm_16AE.c:1647), which
+     ftLib_80086ED0 reads: no magnifier for anyone (ifmagnify.c:323), so
+     no off-screen damage;
+   - gmCamera_801A31FC at match start: cmSnap_800316B4, two UI GObjs
+     (GObj_Create(0xE, 0x10, 0) and IfCamera_Top's) and the SIS texts,
+     which a cold start's GObj addresses must include;
+   - each frame gmCamera_801A3098 / 30E4 read port 4's pad (Z: snapshot,
+     pausing through gm_801A4634(3); B: UI toggle) and only change what is
+     drawn otherwise: guard any port-4 input. Start from any port pauses
+     (gm_CameraModeVSGetPauser).
+2. **Coin**, the guarded corners: it_802E6658 removing the last coin when
+   58 are out (random two-player play never gets there; a directed witness
+   needs much more damage in 280 frames, or four players);
+   a container's coins (it_8026F8B4, items on: Coin is refused with items
+   in `MatchConfig` and at construction); the spill of every other
+   Fighter_UnkTakeDamage_8006CC30 caller (`refuse_unwitnessed_coin_spill`:
+   CaptureCut, Thrown's ftCo_800DE854, a launched captor's ftCo_800DE2F0,
+   the barrel, DK's cargo), each needing its dmg.x1854 position; a Coin
+   team battle (ranks by team, untested).
+3. **Bonus** matches (`gm_8016B0B4` is false; their own scoring).

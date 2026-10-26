@@ -24,12 +24,66 @@ Retail facts (decomp, confirmed by the witnesses below):
 - Standings (`gm_80166378`): score = KOs - (falls - SDs) + SDs * xC (xC = -1
   by default), self/teammate KOs counting as both; `Player_80033BB8` ranks
   by it (team sums in a team battle). Timeout: one top player (team) wins,
-  several go to Sudden Death; a Sudden Death without every player stays
-  guarded (`Match::sudden_death`).
+  several go to Sudden Death. gm_SetupSuddenDeath keeps the tied leaders
+  alone (the others' slots go to Gm_PKind_NA, ports kept), so the new
+  scene's setup draws are for their fighters only (`Match::sudden_death`).
+  Witness: `make_boundary.py --sudden-death-hold 3:-0.8742
+  --sudden-death-fighters 3` plays a four-player one-minute match from the
+  boundary it saves with P4 holding left, through TIME! and the tie screen
+  (A), and saves the Sudden Death's first frame too:
+  `w27_fd_time1_tie3of4_walkoff` (Captain Falcon self-destructs, Fox, Marth
+  and Falco tie at 0; 3839 ticks), `w27_fd_time1_tie3of4_sd` (+ `_cold`,
+  the three-player scene through the Bob-omb rain to GAME, 1635 ticks), and
+  `melee-lib/tests/match_endings.rs` chaining both through the public API.
 
 Witnesses: `start_fd_time1_fox_marth`, `start_fd_time1_fox_marth_falco_captainfalcon`,
 `start_fd_time1_teams_fox_marth_falco_captainfalcon` (and `_cold`), explorer
 samples `corpus_v3_fd_time1_*` played to TIME!.
+
+## Coin (`--mode coin`)
+
+`gm_8016B0B4` is true in a Coin match. The fighter side
+(`melee_ft::fighter::coins`):
+
+- Every Fighter_UnkTakeDamage_8006CC30 ends in ftCommon_8007EA90: the
+  damage (fctiwz) in coins' worth spills from it_802E5F8C. With knockback
+  the launch is ftCo_Damage_CalcAngle of kb_applied as the victim stands,
+  mirrored when dmg.facing_dir_1 > 0 (double: 3pi or pi minus it, frsp), at
+  that speed from dmg.x1854_collpos (the strongest log entry's position);
+  without, straight up at PlCo +5C0 from the camera bone. The worth is
+  credited to the source player (Player_SetUnk98). The spill draws where
+  retail draws it (inside ProcessHit, before the reaction); the scene makes
+  the coins after the proc, before the proc's item requests. The other
+  8006CC30 callers (CaptureCut, Thrown, a captor launched, the barrel, DK's
+  cargo) stay guarded (`refuse_unwitnessed_coin_spill`).
+- A fall (ftCo_800D4E50, last in every death entry, not for x221F_b4):
+  half the purse leaves it (Player_SetCoins, Player_SetUnk9C), the spill's
+  rank is read after that, at most PlCo +5C8 coins spill at PlCo +5CC from
+  the blast zone (left: angle 0, right: pi, bottom: pi/2), or, for a star
+  or screen KO, from cur_pos as coins no fighter can take (state 1, no map
+  collision). The scene pays out after the entry's quake and blast.
+- it_802E609C: it_802E61C4 draws the worth once (count times the rank's
+  x2C multiplier, plus up to x24 percent), then each coin takes the largest
+  tier the rest covers, its launch speed times x1C and it_802E628C's draw.
+  Each coin: Item_80268B18, it_802E6380 (tier, timers, scale, box, pickup
+  sphere), it_802E66A0, it_802750F8 (`it-coin`'s `launched`). it_802E6658
+  (58 coins out: the last one removed) has no witness and is guarded.
+- The coin (`it-coin`, it_803F8BD8): flight, bounces (it_802E5AC4: a bounce
+  is no landing; Add_xy onto zero vectors makes -0 positive), rest, the
+  lifetime and the two pickup delays (x10 others, x14 the owner).
+- Pickup (ft_8007C77C, Fighter_8006CB94 between the fighters' hits and the
+  items'): on frames whose parity (gm_80479D58.unk_8, `scene_frame`) is the
+  player's, a fighter not intangible takes each open coin one of its two
+  spheres (x1614, ft_8007C6DC at link 9) swept past (lbColl_800067F8,
+  `melee_coll::sweep`): its worth to the purse, effect 0x432 (generator
+  0x145 at the contact) and Item_8026A8EC at once, whose efLib_DestroyAll
+  leaves the generator insertion cursor at the tail before the next coin.
+- Score: fn_8016588C x5 == 2, the coins held; the standings rank by it.
+  A container's coins (it_8026F8B4) need items on and stay guarded.
+
+Witnesses (boundary `start_fd_coin1_fox_marth`, 60 s): explorer samples
+`corpus_v3_fd_coin1_fox_marth_*` played to TIME!, three of them with star or
+screen KO payouts.
 
 ## The team stock steal
 
@@ -139,8 +193,20 @@ is its own major scene (GameModeKind), which the importer maps to
   the C-stick neither throws a battering item (ftCo_800DF50C) nor drops
   from a ledge (ftCo_800DF72C). Witnesses:
   `corpus_v3_fd_sp_single_button_fox_marth4_*`.
-- Camera mode: the boundary driver could not reach its CSS (likely locked
-  in the boundary's save data).
+- Camera mode is GM_CAMERA_MODE (0x0A, not GM_CAMERA_VS 0x2A): its camera
+  screen (state 0, GS_CAMERA_VS) takes A, then CSS 1, SSS 2, match 3, and
+  its CSS starts only with a controller in port 4, the camera's
+  (`make_boundary.py --special camera` with `MELEE_SI_PORTS=0,1,3`; every
+  recording from the boundary needs the same). Boundary
+  `w27_start_fd_sp_camera_fox_marth4` (seed 3929830345, its 600 idle
+  ticks recorded). The match (gm_PrepCameraModeVSScene) is an untimed Time
+  match: x5_0 makes gm_GetMatchOutcome always NONE, x1_2 / x1_3 replace
+  the countdown and GO banners with element 8, x2_5 off (no score
+  popups), x4_0 and x3_1 off, every player xD_b3; gmCamera_801A31FC
+  creates two UI GObjs and the SIS texts at match start, and port 4's
+  pad drives the snapshot UI each frame (gmCamera_801A3098: Z pauses for a
+  snapshot through gm_801A4634(3), cmSnap). Still guarded: no part of it
+  is ported.
 
 Boundaries: `start_fd_sp_<mode>_fox_marth4` (+ `_cold`) for lightning,
 slomo, super_sudden_death, giant, tiny, invisible, single_button, and
@@ -148,9 +214,10 @@ slomo, super_sudden_death, giant, tiny, invisible, single_button, and
 
 ## Still guarded
 
-Coin and Bonus matches (`gm_8016B0B4`: coins from hits, the coin item, the
-coin HUD; boundary `start_fd_coin1_fox_marth`), Camera mode, and a Sudden
-Death among some players.
+Bonus matches; Camera mode (above); in a Coin match, it_802E6658's
+removal of the last coin with 58 out, a container's coins (it_8026F8B4,
+items on) and the spills of the other Fighter_UnkTakeDamage_8006CC30
+callers (CaptureCut, Thrown, a launched captor, the barrel, DK's cargo).
 
 ## Standings and timed team battles
 
