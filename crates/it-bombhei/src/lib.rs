@@ -533,7 +533,10 @@ fn thrown_animation(item: &mut ItemCore, ctx: &mut ItemAnimationContext<'_>) -> 
 /// detonates; a soft one starts walking (fn_80280974).
 fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     bomb_mut(item).landing_velocity = item.velocity;
-    if item.airborne_collision(ctx.map, ctx.assets).floor {
+    let dbg_pos = item.position;
+    let dbg_hit = item.airborne_collision(ctx.map, ctx.assets);
+    if std::env::var_os("MELEE_BOMBDBG").is_some() { eprintln!("BOMBDBG pre {:?} post {:?} vel {:?} floor {} coll {:?}", dbg_pos, item.position, item.velocity, dbg_hit.floor, item.collision.as_ref().map(|c| (c.env_flags, c.floor.index, c.ceiling.index, c.left_facing_wall.index, c.right_facing_wall.index))); }
+    if dbg_hit.floor {
         // fn_80280974 (80280974).
         let (x, y) = Attributes(&ctx.assets.special_attributes).explode_speed();
         let v = bomb(item).landing_velocity;
@@ -794,7 +797,10 @@ fn fall_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
 /// it_8026E414 with fn_8028007C on landing.
 fn lit_fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bool {
     bomb_mut(item).landing_velocity = item.velocity;
-    if item.airborne_collision(ctx.map, ctx.assets).floor {
+    let dbg_pos = item.position;
+    let dbg_hit = item.airborne_collision(ctx.map, ctx.assets);
+    if std::env::var_os("MELEE_BOMBDBG").is_some() { eprintln!("BOMBDBG pre {:?} post {:?} vel {:?} floor {} coll {:?}", dbg_pos, item.position, item.velocity, dbg_hit.floor, item.collision.as_ref().map(|c| (c.env_flags, c.floor.index, c.ceiling.index, c.left_facing_wall.index, c.right_facing_wall.index))); }
+    if dbg_hit.floor {
         // fn_8028007C (8028007C): a fast landing detonates; a soft one sits lit.
         let (x, y) = Attributes(&ctx.assets.special_attributes).explode_speed();
         let v = bomb(item).landing_velocity;

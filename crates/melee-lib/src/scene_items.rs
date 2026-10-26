@@ -69,6 +69,7 @@ melee_it::item_kinds! {
         WhispyApple: it_whispyapple::WhispyApple,
         Tools: it_tools::Tools,
         ArwingLaser: it_arwinglaser::ArwingLaser,
+        GreatFoxLaser: it_greatfoxlaser::GreatFoxLaser,
         Yaku: it_yaku::Yaku,
         PikachuTJoltGround: it_pikachu::ThunderJoltBall,
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
@@ -1949,6 +1950,11 @@ impl Resources {
             kinds.push((ItemKind::ArwingLaser, laser));
             visual_archives.push((ItemKind::ArwingLaser, std::sync::Arc::new(stage.clone())));
         }
+        // Corneria's Great Fox shot (it_802EAF34), from GrCn.dat's itemdata.
+        if let Some(laser) = it_greatfoxlaser::load(stage).map_err(|e| anyhow::anyhow!("{e}"))? {
+            kinds.push((ItemKind::GreatFoxLaser, laser));
+            visual_archives.push((ItemKind::GreatFoxLaser, std::sync::Arc::new(stage.clone())));
+        }
         // Ground_801C0800 (ground.c:493-498): a stage with ALDYakuAll
         // scripts its material item (it_802E6AEC, Jungle Japes' Klaptrap).
         if let Some(yaku) = ItemAssets::from_yaku(&common_archive, public, stage)? {
@@ -3610,6 +3616,136 @@ pub(crate) fn spawn_arwing_laser(
         .items
         .collide::<SceneItems>(id, None, contact, &mut state.map, bounds, assets, Some(&cell));
     state.rng = cell.get();
+    Ok(())
+}
+
+/// it_802E72E0 (0x802E72E0): a near ship's level cannon on Corneria.
+///
+/// An Arwing's (type 0) makes its two side beams inside its own creation,
+/// once its state is set: beam 4, then beam 5, each the same way.
+pub(crate) fn spawn_cannon_laser(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    launch: it_arwinglaser::CannonLaunch,
+) -> Result<()> {
+    let cannon = spawn_cannon_part(state, world, objects, &launch, launch.kind)?;
+    if launch.kind == it_arwinglaser::ARWING_CANNON {
+        let mut beams = [0; 2];
+        for (beam, kind) in beams.iter_mut().zip(it_arwinglaser::BEAMS) {
+            *beam = spawn_cannon_part(state, world, objects, &launch, kind)?;
+        }
+        it_arwinglaser::attach_beams(state.items.get_mut(cannon).expect("the cannon"), beams);
+        for beam in beams {
+            it_arwinglaser::attach_parent(state.items.get_mut(beam).expect("a beam"), cannon);
+        }
+    }
+    Ok(())
+}
+
+/// itArwinglaser_UnkMotion5_Coll's view of a side beam's cannon (xDF4),
+/// sampled before the beam's collision proc: its root while it lives and
+/// holds the beam (xE40 / xE44); Item_8026A8EC's it_802E79C8 lets go of
+/// both when the cannon goes.
+pub(crate) fn sample_beam_parent(pool: &mut ItemPool, id: u32) {
+    let Some(item) = pool.iter().find(|item| item.id == id) else {
+        return;
+    };
+    let laser = it_arwinglaser::laser_state(item);
+    if !it_arwinglaser::BEAMS.contains(&laser.kind) {
+        return;
+    }
+    let pose = laser.parent.and_then(|parent| {
+        let cannon = pool.iter().find(|item| item.id == parent && !item.destroyed)?;
+        it_arwinglaser::laser_state(cannon)
+            .beams
+            .contains(&Some(id))
+            .then_some((cannon.root_translation, cannon.model_scale, cannon.rotation))
+    });
+    it_arwinglaser::sample_parent(pool.get_mut(id).expect("the beam"), pose);
+}
+
+/// One item of it_802E72E0: Item_80268B18, then [`it_arwinglaser::launch_cannon`].
+fn spawn_cannon_part(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    launch: &it_arwinglaser::CannonLaunch,
+    kind: i32,
+) -> Result<u32> {
+    let before = state.items.len();
+    request(
+        &mut state.items,
+        &mut state.effects.gobjs,
+        &state.assets.items,
+        &mut state.map,
+        world,
+        objects,
+        ItemRequest::Spawn(it_arwinglaser::spawn_cannon(launch.gun, kind)),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        &mut state.rng,
+    );
+    anyhow::ensure!(state.items.len() > before, "it_802E72E0: no item slot for a laser");
+    let assets = state.assets.items.get(ItemKind::ArwingLaser);
+    let id = state.items.iter().last().expect("the new laser").id;
+    let half_life_scale = state.items.common().half_life_scale;
+    let item = state.items.get_mut(id).expect("the new laser");
+    it_arwinglaser::launch_cannon(
+        item,
+        kind,
+        launch.gun,
+        launch.scale,
+        launch.map_scale,
+        assets,
+        half_life_scale,
+    );
+    Ok(id)
+}
+
+/// it_802EAF34 (0x802EAF34): the Great Fox's shot at `muzzle` (`offset` in
+/// its GObj's frame), then the shot's own set-up (it_802EB268 again).
+pub(crate) fn spawn_great_fox_laser(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    muzzle: hsd_types::Vec3,
+    offset: hsd_types::Vec3,
+    kind: i32,
+) -> Result<()> {
+    let before = state.items.len();
+    request(
+        &mut state.items,
+        &mut state.effects.gobjs,
+        &state.assets.items,
+        &mut state.map,
+        world,
+        objects,
+        ItemRequest::Spawn(it_greatfoxlaser::spawn(muzzle)),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        &mut state.rng,
+    );
+    anyhow::ensure!(state.items.len() > before, "it_802EAF34: no item slot for the shot");
+    let assets = state.assets.items.get(ItemKind::GreatFoxLaser);
+    let id = state.items.iter().last().expect("the new shot").id;
+    let map_scale = state.assets.stage_desc.parameters.map_scale;
+    let item = state.items.get_mut(id).expect("the new shot");
+    it_greatfoxlaser::launch(item, offset, kind, map_scale, assets);
     Ok(())
 }
 

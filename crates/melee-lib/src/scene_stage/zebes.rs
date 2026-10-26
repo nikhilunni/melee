@@ -118,6 +118,7 @@ pub(crate) fn initialize(
     assets: &Assets,
     rng: &mut HsdRng,
     collision: &mut melee_mp::CollMap,
+    items_on: bool,
 ) -> Result<(SceneStage, Animations)> {
     let parameters = read_parameters(assets)?;
     let mut animations = Animations::new();
@@ -175,7 +176,7 @@ pub(crate) fn initialize(
         right_plate,
         left_plate_seen: 0,
         right_plate_seen: 0,
-        island: Island::new(),
+        island: Island::new(items_on),
         bubbles,
         ornament,
         reaction: AcidReaction::default(),
@@ -477,7 +478,7 @@ impl BubbleEngine for Live<'_> {
 /// `grLib_801C96F8(kind, bank, position)` (0x801C96F8): a generator whose
 /// AppSRT carries the position, scaled by the map scale (as
 /// stadium::spawn_ground_effect, in either bank).
-pub(super) fn ground_effect(
+pub(crate) fn ground_effect(
     assets: &Assets,
     particles: &mut ParticleSystem,
     events: &mut melee_ef::fixture_spawns::EventSink,

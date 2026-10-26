@@ -220,7 +220,7 @@ pub(crate) fn start(state: &mut InitialState) {
 }
 
 /// grLib_801C9808(kind, bank, bone): a generator on a model bone.
-fn spawn_on_bone(
+pub(crate) fn spawn_on_bone(
     state: &mut InitialState,
     map: u8,
     bone: usize,

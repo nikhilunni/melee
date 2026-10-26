@@ -1,6 +1,7 @@
 //! Composition root for stage-specific resources and callbacks.
 pub(crate) mod battle;
 pub(crate) mod castle;
+pub(crate) mod corneria;
 pub(crate) mod fourside;
 pub(crate) mod flatzone;
 pub(crate) mod garden;
@@ -54,9 +55,11 @@ pub(crate) fn publish_joint_matrices(
 
 /// Ground_801C2D24 (0x801C2D24) at the drop markers now: each marker is
 /// its joint's world translation (lb_8000B1CC). Kongo Jungle binds some to
-/// the platforms its animation moves, which the live models give; every
-/// other stage's marker joints stand still, so their positions at setup
-/// hold (each stage's `w26_start_*_items_all` boundary witnesses its drops).
+/// the platforms its animation moves, and Corneria all of them to map 0,
+/// which rides the Great Fox (grCorneria_801E1878): the live models give
+/// them. Every other stage's marker joints stand still, so their positions
+/// at setup hold (each stage's `w26_start_*_items_all` boundary witnesses
+/// its drops).
 /// Pokemon Stadium's forms bind no markers (GrPs1..4.dat's map_head section
 /// 0 is empty for maps 3, 4 and 6..9), so its stay too.
 pub(crate) fn live_drop_markers(
@@ -64,7 +67,10 @@ pub(crate) fn live_drop_markers(
     animations: &mut std::collections::BTreeMap<u8, melee_gr::last::animation::BackgroundAnimation>,
 ) -> melee_gr::bomb_rain::DropMarkers {
     let mut markers = assets.drop_markers.clone();
-    if assets.stage_desc.kind != melee_types::GrKind::Kongo {
+    if !matches!(
+        assets.stage_desc.kind,
+        melee_types::GrKind::Kongo | melee_types::GrKind::Corneria
+    ) {
         return markers;
     }
     let joints = &assets.drop_marker_joints;
@@ -349,6 +355,14 @@ pub const RAINBOW_CRUISE: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::RCruise,
     read: melee_gr::desc::read_rcruise,
 };
+/// grCn_StageData: GrCn.dat; StageParam row 0x07 (StKind).
+pub const CORNERIA: StageDescriptor = StageDescriptor {
+    name: "Corneria",
+    file: "GrCn.dat",
+    music_id: 0x07,
+    kind: melee_types::GrKind::Corneria,
+    read: melee_gr::desc::read_corneria,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -378,6 +392,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &PRINCESS_PEACHS_CASTLE,
         &GREEN_GREENS,
         &RAINBOW_CRUISE,
+        &CORNERIA,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -411,6 +426,7 @@ pub enum SceneStage {
     Castle(Box<melee_gr::castle::procs::CastleStage>),
     Greens(Box<greens::Greens>),
     RCruise(Box<melee_gr::rcruise::procs::RCruiseStage>),
+    Corneria(Box<corneria::Corneria>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -421,7 +437,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) | Self::Castle(_) | Self::Greens(_) | Self::RCruise(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) | Self::Castle(_) | Self::Greens(_) | Self::RCruise(_) | Self::Corneria(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -453,6 +469,7 @@ impl SceneStage {
             Self::Castle(s) => s.proc_table(),
             Self::Greens(s) => s.stage.proc_table(),
             Self::RCruise(s) => s.proc_table(),
+            Self::Corneria(s) => s.stage.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -504,6 +521,7 @@ impl SceneStage {
             Self::Castle(_) => unreachable!("Peach's Castle callbacks run in scene_stage::castle"),
             Self::Greens(_) => unreachable!("Green Greens callbacks run in scene_stage::greens"),
             Self::RCruise(_) => unreachable!("Rainbow Cruise callbacks run in scene_stage::rcruise"),
+            Self::Corneria(_) => unreachable!("Corneria callbacks run in scene_stage::corneria"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -584,6 +602,10 @@ pub(crate) fn material_hit(
         }
         SceneStage::Greens(_) => {
             greens::material_hit(state, item);
+            Ok(())
+        }
+        SceneStage::Corneria(_) => {
+            corneria::material_hit(state, item, damage);
             Ok(())
         }
         _ => Ok(()),

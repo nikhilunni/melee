@@ -417,16 +417,17 @@ fn leave_blast(f: &mut Fighter) {
 /// doAirEnd0 (8011C430), the jump's hurtbox_detect_cb: the inert hip
 /// hitbox reached a fighter. After a shield touch (x221C_b5) it only counts
 /// when the touched fighter is Marth or Roy in 369 / 371 or Peach in 365 /
-/// 367 (retail 8011C440..94).
+/// 367 (retail 8011C440..94). When the last touch (unk_gobj) was an item,
+/// retail reads its Item as a Fighter: the "kind" at +4 is the item's own
+/// GObj pointer (Item.entity), never 9, 0x12 or 0x1A, so the switch's
+/// default returns (retail 8011C45C..74).
 pub fn inert_contact(f: &mut Fighter, assets: &FighterAssets, touch: InertTouch) {
     if f.motion_state.action != JUMP {
         return;
     }
     if touch.shield {
         let InertTarget::Fighter { kind, action, .. } = touch.target else {
-            unimplemented!(
-                "doAirEnd0 (8011C440): x221C_b5 with unk_gobj an item, read as a fighter"
-            );
+            return;
         };
         let counters: &[u16] = match kind {
             FighterKind::Mars | FighterKind::Emblem => &[369, 371],

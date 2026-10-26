@@ -29,6 +29,7 @@ mod stage_shrine;
 mod stage_kongo;
 mod stage_kraid;
 mod stage_venom;
+mod stage_corneria;
 mod stage_zebes;
 mod stage_yorster;
 mod stage_inishie1;
@@ -472,6 +473,9 @@ impl InitialState {
         if assets.stage_desc.kind == melee_types::GrKind::RCruise {
             stage_rcruise::restore_collision(&saved, &assets, &mut map)?;
         }
+        if assets.stage_desc.kind == melee_types::GrKind::Corneria {
+            stage_corneria::restore_collision(&saved, &mut map)?;
+        }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;
         }
@@ -872,7 +876,7 @@ impl InitialState {
                 + 1,
         );
         // The boundary's CObj is taken as its camera's latest render.
-        let stage_limits = crate::stage_limits::StageLimits::new(&assets);
+        let stage_limits = crate::stage_limits::StageLimits::of(&stage, &assets);
         let rendered_camera =
             camera.render_camera(&crate::scene_stage::live_camera(&stage, &stage_limits.camera));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
@@ -935,6 +939,15 @@ impl InitialState {
         );
         // Mushroom Kingdom's bricks' material items, rebuilt on their bones.
         crate::scene_stage::inishie1::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
+        // Corneria's cannons' material items, rebuilt on their bones.
+        crate::scene_stage::corneria::spawn_items(
             &mut stage,
             &mut stage_animations,
             &mut items,

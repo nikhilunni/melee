@@ -252,50 +252,7 @@ impl Assets {
             &effects.data()[textures..],
         )?;
         let marker = |index| stage_position(&stage, &stage_desc, index);
-        let low = marker(0x97)?;
-        let high = marker(0x98)?;
-        let camera_range = camera_range(&stage_desc, |index| {
-            let bound = stage_desc
-                .position_bindings
-                .iter()
-                .any(|b| b.stage_position == index);
-            bound.then(|| marker(index)).transpose()
-        })?;
-        // Ground_801C3BB4 (ground.c:2259-2272): one ordered comparison per
-        // axis picks both bounds; equal markers take the second (0x98) as low.
-        let (left, right) = if low.x < high.x { (low.x, high.x) } else { (high.x, low.x) };
-        let (bottom, top) = if low.y < high.y { (low.y, high.y) } else { (high.y, low.y) };
-        let mut arena = melee_ft::fighter::life::Arena {
-            left,
-            right,
-            top,
-            bottom,
-            // Ground_801C39C0 subtracts the camera centre before Stage adds it back.
-            camera_top: camera_range.bounds.top + camera_range.offset.y,
-            revival_positions: [
-                marker(4)?,
-                marker(5).or_else(|_| marker(4))?,
-                marker(6).or_else(|_| marker(4))?,
-                marker(7).or_else(|_| marker(4))?,
-            ],
-            // stage_info.unk8C.b4: set by grlast.c:233 and grbattle.c:147,
-            // cleared by grstory.c:77 and groldpupupu.c:145.
-            // grrcruise.c:153 sets it too.
-            player_revival_markers: matches!(
-                stage_desc.kind,
-                melee_types::GrKind::Last | melee_types::GrKind::Battle | melee_types::GrKind::RCruise
-            ),
-            // stage_info.unk8C.b5 stays clear (Ground_801BFFB0,
-            // ground.c:225) on Mute City (grmutecity.c:368) and Fountain of
-            // Dreams (grshrine.c never sets it).
-            tracked_revival_markers: matches!(
-                stage_desc.kind,
-                melee_types::GrKind::MuteCity
-                    | melee_types::GrKind::Shrine
-                    // grrcruise.c:154 clears it too.
-                    | melee_types::GrKind::RCruise
-            ),
-        };
+        let (mut arena, mut stage_camera) = stage_limits(&stage_desc, marker)?;
         if stage_desc.kind == melee_types::GrKind::Icemt {
             // grIceMt_801F686C sets stage_info.unk8C.b4; grIceMt_801FA854
             // keeps Ground_801C2D24(4..7) on map 0's bones, whose
@@ -305,17 +262,8 @@ impl Assets {
             arena.tracked_revival_markers = true;
             arena.revival_positions = crate::scene_stage::icemt::respawn_points(&stage, &stage_desc)?;
         }
-        let mut stage_camera = stage_camera(&stage_desc, &camera_range, [low, high])?;
         for fighter in fighters.iter_mut() {
             fighter.stage_blast_top = stage_camera.blast_top();
-        }
-        if stage_desc.kind == melee_types::GrKind::Flatzone {
-            // grFlatzone_80216E78: Ground_801C3990(Stage_GetBlastZoneBottomOffset()
-            // - 50.0f) stores an absolute height in the relative field, so
-            // the getters add the camera centre twice.
-            stage_camera.blast_zone.bottom =
-                stage_camera.blast_bottom() - melee_gr::flatzone::BLAST_BOTTOM_DROP;
-            arena.bottom = stage_camera.blast_bottom();
         }
         if stage_desc.kind == melee_types::GrKind::Pura {
             let mut limits = crate::stage_limits::StageLimits {
@@ -552,6 +500,70 @@ fn camera_range(
     })
 }
 
+/// `Ground_801C39C0` and `Ground_801C3BB4` (0x801C39C0, 0x801C3BB4): the
+/// camera range, the blast zones and the revival markers from the markers
+/// as `marker` (Ground_801C2D24) finds them. Corneria calls both every tick
+/// while its markers ride the Great Fox.
+pub(crate) fn stage_limits(
+    stage_desc: &melee_gr::desc::StageDesc,
+    marker: impl Fn(i16) -> Result<hsd_types::Vec3>,
+) -> Result<(melee_ft::fighter::life::Arena, melee_cm::StageCamera)> {
+    let low = marker(0x97)?;
+    let high = marker(0x98)?;
+    let camera_range = camera_range(stage_desc, |index| {
+        let bound = stage_desc
+            .position_bindings
+            .iter()
+            .any(|b| b.stage_position == index);
+        bound.then(|| marker(index)).transpose()
+    })?;
+    // Ground_801C3BB4 (ground.c:2259-2272): one ordered comparison per
+    // axis picks both bounds; equal markers take the second (0x98) as low.
+    let (left, right) = if low.x < high.x { (low.x, high.x) } else { (high.x, low.x) };
+    let (bottom, top) = if low.y < high.y { (low.y, high.y) } else { (high.y, low.y) };
+    let mut arena = melee_ft::fighter::life::Arena {
+        left,
+        right,
+        top,
+        bottom,
+        // Ground_801C39C0 subtracts the camera centre before Stage adds it back.
+        camera_top: camera_range.bounds.top + camera_range.offset.y,
+        revival_positions: [
+            marker(4)?,
+            marker(5).or_else(|_| marker(4))?,
+            marker(6).or_else(|_| marker(4))?,
+            marker(7).or_else(|_| marker(4))?,
+        ],
+        // stage_info.unk8C.b4: set by grlast.c:233 and grbattle.c:147,
+        // cleared by grstory.c:77 and groldpupupu.c:145.
+        // grrcruise.c:153 sets it too.
+        player_revival_markers: matches!(
+            stage_desc.kind,
+            melee_types::GrKind::Last | melee_types::GrKind::Battle | melee_types::GrKind::RCruise
+        ),
+        // stage_info.unk8C.b5 stays clear (Ground_801BFFB0,
+        // ground.c:225) on Mute City (grmutecity.c:368) and Fountain of
+        // Dreams (grshrine.c never sets it).
+        tracked_revival_markers: matches!(
+            stage_desc.kind,
+            melee_types::GrKind::MuteCity
+                | melee_types::GrKind::Shrine
+                // grrcruise.c:154 clears it too.
+                | melee_types::GrKind::RCruise
+        ),
+    };
+    let mut stage_camera = stage_camera(stage_desc, &camera_range, [low, high])?;
+    if stage_desc.kind == melee_types::GrKind::Flatzone {
+        // grFlatzone_80216E78: Ground_801C3990(Stage_GetBlastZoneBottomOffset()
+        // - 50.0f) stores an absolute height in the relative field, so
+        // the getters add the camera centre twice.
+        stage_camera.blast_zone.bottom =
+            stage_camera.blast_bottom() - melee_gr::flatzone::BLAST_BOTTOM_DROP;
+        arena.bottom = stage_camera.blast_bottom();
+    }
+    Ok((arena, stage_camera))
+}
+
 fn stage_camera(
     stage: &melee_gr::desc::StageDesc,
     range: &CameraRange,
@@ -561,10 +573,9 @@ fn stage_camera(
     anyhow::ensure!(
         !matches!(
             stage.kind,
-            // Brinstar's follows the acid (scene_stage::live_camera).
-            GrKind::Corneria
-                | GrKind::KinokoRoute
-                | GrKind::Homerun
+            // Brinstar's follows the acid and Corneria's the sea
+            // (scene_stage::live_camera, scene_stage::corneria).
+            GrKind::KinokoRoute | GrKind::Homerun
         ),
         "Camera_8002AF68: the stage's lowest eye height is not ported"
     );

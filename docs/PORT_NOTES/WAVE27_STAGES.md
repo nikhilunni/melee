@@ -1,4 +1,4 @@
-# Wave 27 stages: Brinstar, Venom, Peach's Castle, Green Greens, Rainbow Cruise
+# Wave 27 stages: Brinstar, Venom, Peach's Castle, Green Greens, Rainbow Cruise, Corneria
 
 Wave 27's stage work. Each stage has start boundaries (warm and cold gated in
 `m4_gate`) and explorer matches in `CORPUS_V3_MATCHES`.
@@ -102,8 +102,8 @@ dynamics winds (lb_80011A50, one per half of the stage).
 Display only, not ported: lights and fog, map 7's culling and light
 restarts, the ships' colour overlay, the sounds, the shadow test. Guarded:
 the Star Fox taunt (Fox and Falco on Corneria or Venom, ftfoxappeals.c:55),
-the 1P stage's three slots (grVe_804D6A40), Corneria's cannon laser types
-0, 2, 4 and 5, a warm boundary with a pass out or inside the tunnel.
+the 1P stage's three slots (grVe_804D6A40), a warm boundary with a pass
+out or inside the tunnel.
 
 ## Princess Peach's Castle (grcastle.c)
 
@@ -205,3 +205,107 @@ path's eye through its interest onto z = 0 and translates maps 2, 1, 5, 6,
 - A CPU on Rainbow Cruise fails closed (ftCo_800A6FC4, grRCruise_80201988's
   floors); a recovering Nana uses the up special (ftCo_800A9CB4_inline1).
   Item xDD1 b1 (the item drift, item.c:1420) has no setter in the decomp.
+
+## Corneria (grcorneria.c, GrCn.dat, StKind 0x07)
+
+Boundary `start_cor_fox_marth4`. Creation order 7, 3 (whose init makes map
+0 and the cannons' material items), 8, 9, 4, 11; on_load
+(grCorneria_801DD478) removes 11, 8, 9 and 4 and makes a scrolling map 8,
+so a match begins with maps 7, 3, 0 and 8. No setup draw (the first
+Arwing's wait is `yakumono_param` x3C..x40 = 600..600). One constant
+dynamics field over the whole stage (lb_80011A50, direction +x). Collision
+joints 3 and 4 ride the Great Fox's root; 0..2 and 5..7 (the wing
+platforms) start off.
+
+- The Great Fox (map 3, grCorneria_801DD9A8) waits for the countdown
+  (grCorneria_801DD65C), then each tick: the drift (801E1970: three draws
+  per 30-180 tick wait, accelerations of +-0.002, speeds clamped to 0.1,
+  turned back past +-20), the descent (801E2228: the first time the
+  camera's interest is over the sea after the coast, one draw in three
+  lowers the scenery by up to `250 - 50 * scale` over 900 ticks, braking
+  in time, then raises it back), the sea's splashes (two zako generators on
+  bone 0's segments: a segment crossing the sea level splashes three times
+  in ten, generators 0x7534 / 0x7530 of bank 30), the cannon, the spawner.
+  Map 0 copies its translation (801E1878) and Ground_801C39C0 / 801C3BB4
+  read the markers again: the camera range, the blast zones (as
+  Stage_GetBlastZone*Offset gives them, relative plus the camera centre),
+  the revival marker and the item drop markers all ride the ship (the
+  proc writes `InitialState::stage_limits`; `live_drop_markers`); the
+  lowest eye height is 5 above the sea (801E2FCC). A generator on a bone
+  reads its JObj when the particles update, after the proc moved it.
+- The cannon (801E1348): rest 1200 + Randi(1200) ticks; one draw in two
+  picks one big shot (50 damage) or a volley of 8 + Randi(4) (10 each);
+  charge 160 ticks (effects 0xBC on bones 2 and 3, the material items to
+  state 2 and their hurt capsules off), aim up to 180 ticks or until a
+  fighter stands within 10 of the left cannon's height (generators off,
+  items to state 0), then fire every ten ticks from alternating cannons
+  (muzzle flash 0xC0, it_802EAF34). The material items (bones 2 and 3,
+  capsule x 4..16 radius 4, the right one created in state 2) count beam
+  damage (fn_801E12D4, xCA0 as a float); at 200 both stop taking hits and
+  the next step breaks the cannon: effects 0xE3, a large quake, the broken
+  model, joint 4 off.
+- The Great Fox laser (it-greatfoxlaser, itgreatfoxlaser.c): sits at its
+  muzzle (a point in the GObj's frame, which the stage keeps current) while
+  its animation plays, then flies left at 20 a tick; sixty ticks of life,
+  no collision callback; a hit it deals does not end it.
+- The scenery (maps 8, 9, 4: 801DFC98 / 801DFF20 / 801E01A8): each moves
+  right 2 a tick at the sea's height, makes the next one behind it 1400
+  short of its far end and goes 1400 past it (fmadds thresholds).
+- The spawner (801DCE1C): the wait is drawn again (960..1800) while a pass
+  lives; a new type 1..9, or 1..13 when the Great Fox and 300 left of it
+  are both over the coast or the sea; a Wolfen one time in 0.15.
+- A pass: the path (map 1, grCn_803E2030's animation, at the Great Fox's
+  height, bone 1 lowered 349 a tick; a far path turned a quarter, its root
+  raised with the descent), the ship (map 2 Arwing / 10 Wolfen, scale
+  x70 * scale) and for types 1..9 the platform (map 13, joint 0 / map 16,
+  joint 5) on the ship's bone 1, within 10 of the plane. A near ship stands
+  at the path's bone 4 seen from the side (lbl_803E2068 offsets, the
+  drift, y at least 100), maneuvers (Randi(5) + 1; maneuver 5 has no
+  animation and never ends) and every 16th tick, one time in 8, fires its
+  level cannon when inside the blast zones and level (it_802E72E0: type 0
+  hidden with side beams 4 and 5, a Wolfen's type 2). A far ship (10..13)
+  is held to the path's bone 4 and fires aimed lasers (types 1 and 3,
+  collision joint 3) at a fighter while between x 500 and 2000; they drift
+  with the Great Fox (grCorneria_801DDCF0).
+- The level cannon (it-arwinglaser types 0, 2, 4, 5): follows its gun until
+  its animation ends, then flies along the ship's facing; the segment from
+  last tick's tip to this one meeting any line ends it (pop 0x40E). The
+  beams copy their cannon's root at their own depth and go with it.
+
+Display only, not ported: the lights per background (801E2110), the fog,
+the communicator (maps 12 and 5), the sounds, the shadow test
+(801E2EEC). Guarded: the Star Fox taunt, the 1P stage's three slots
+(grCn_804D69B0), a reflected level cannon (itarwinglaser.c:576), an
+absorbed ship laser, a reflected Great Fox shot (itgreatfoxlaser.c:148),
+a level cannon charging when its ship leaves, warm boundaries with a pass
+out, a frozen or later background, or a charging or broken cannon.
+
+Witnesses (`CORPUS_V3_MATCHES`, every key and particle exact): explorer
+matches with near and far passes of both groups, the descent and its
+splashes, the cannon's volleys and big shots, level cannons shielded and
+glancing off shields, aimed lasers reflected and glancing; and the
+directed `w27_cor_cannon_break` (Fox on the cannon, down-smashes to 210
+beam damage: the break, joint 4 off, his fall and revival on the moving
+Great Fox).
+
+## Items on Brinstar, Venom and Corneria
+
+`Stage::items_supported` now admits all three. Boundaries
+`w27_start_{Brinstar,Venom,Corneria}_items_all` (frequency 4, every kind
+the item switch allows; warm and cold in `WIDENED_LAYOUT_BOUNDARIES`) and
+explorer matches in `WIDENED_LAYOUT_MATCHES`. Brinstar's bubbles island
+starts its pulse at 0 on a match with items (the items commit at -849).
+Fixed on the way: an opened or blasted Barrel's staves stand as authored
+when its state changes with ANIM_UPDATE (Item_80268D34 runs lb_8000B804 on
+the root's children, item.c:1127), so its push box (it_80271A58, the
+staves' rotation X) is level again; a Fan's stale xD4C comes from the
+recording (`fan_heap_words.py`).
+
+## Fighter guards
+
+- Peach's turnip doAirEnd0 against an item target (ftpeach_SpecialS
+  8011C45C..74): the target's entity is never a fighter kind, so it
+  returns; witnessed by `corpus_v3_brin_falco_peach4_e3d24a6e3_p0`.
+- ftCo_800DC920's captured-fighter release guard (seen once on Venom in
+  wave 26): about 430 Venom explorer cases did not reach it again; it
+  stays guarded.

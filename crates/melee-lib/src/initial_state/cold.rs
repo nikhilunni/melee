@@ -208,6 +208,10 @@ impl InitialState {
             field.strength = melee_gr::rcruise::procs::FIELD_STRENGTH;
             radial_forces.insert_directional(field);
         }
+        // grCorneria_801DD350's lb_80011A50, after the maps.
+        if matches!(stage, SceneStage::Corneria(_)) {
+            radial_forces.insert_directional(crate::scene_stage::corneria::wind());
+        }
         // Fountain of Dreams and the N64 stages bind their collision
         // joints during creation.
         let archive_bindings = !matches!(
@@ -232,6 +236,7 @@ impl InitialState {
                 | SceneStage::Castle(_)
                 | SceneStage::Greens(_)
                 | SceneStage::RCruise(_)
+                | SceneStage::Corneria(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -243,8 +248,19 @@ impl InitialState {
                 map.joint_snapshot_prev_pos(i32::from(binding.joint_index));
             }
         }
+        // stage_info's limits as creation leaves them (Corneria's from the
+        // markers riding the Great Fox).
+        let creation_limits = crate::stage_limits::StageLimits::of(&stage, &assets);
         let (mut fighters, spawn_counter) =
-            create_players(scenario, &assets, &stage, &mut map, &mut stage_animations, &mut rng)?;
+            create_players(
+                scenario,
+                &assets,
+                &stage,
+                &crate::scene_stage::live_camera(&stage, &creation_limits.camera),
+                &mut map,
+                &mut stage_animations,
+                &mut rng,
+            )?;
         // Stage_80225298 -> the stage's on_load, after the fighters exist.
         crate::scene_stage::icemt::on_load(
             &stage,
@@ -267,7 +283,7 @@ impl InitialState {
         camera.enable_match_camera(assets.stage_desc.parameters.fixed_camera);
         {
             // cm_804D6468 runs newest first: the reverse of creation.
-            let live_camera = crate::scene_stage::live_camera(&stage, &assets.stage_camera);
+            let live_camera = crate::scene_stage::live_camera(&stage, &creation_limits.camera);
             let stage_subjects: &mut [melee_cm::Subject] = match &mut stage {
                 SceneStage::Pura(stage) => &mut stage.subjects[..],
                 _ => &mut [],
@@ -378,6 +394,15 @@ impl InitialState {
             &assets.items,
             &mut map,
         );
+        // grCorneria_801DD674: the cannons' material items.
+        crate::scene_stage::corneria::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
         if matches!(stage, SceneStage::Garden(_)) {
             // grGarden_802031A4: the Klaptrap's material item on its jaw.
             let anchor = crate::scene_stage::garden::klaptrap_jaw(&mut stage_animations);
@@ -389,7 +414,7 @@ impl InitialState {
                 anchor,
             );
         }
-        let stage_limits = crate::stage_limits::StageLimits::new(&assets);
+        let stage_limits = creation_limits;
         let rendered_camera =
             camera.render_camera(&crate::scene_stage::live_camera(&stage, &stage_limits.camera));
         // fn_801B9850, the Stamina scene's on_match_start.
@@ -572,6 +597,8 @@ fn setup_draws(
         GrKind::Greens => 21,
         // The maps' frame-zero keys.
         GrKind::RCruise => 0,
+        // grCorneria_801DCCFC draws nothing: its first wait is 600 to 600.
+        GrKind::Corneria => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -697,7 +724,8 @@ fn spawn_position(assets: &Assets, slot: i16) -> Result<Vec3> {
 
 /// Ground_801C2D24 reads the marker's live JObj (stage_info.x280). Kongo
 /// Jungle's markers sit on the bridge and platform ends its creation
-/// already moved; the other stages' markers rest at their bind pose.
+/// already moved, and Corneria's ride the Great Fox (map 0 at y 250); the
+/// other stages' markers rest at their bind pose.
 fn live_spawn_position(
     assets: &Assets,
     stage: &SceneStage,
@@ -712,7 +740,7 @@ fn live_spawn_position(
         // grRCruise_801FF7A4's Ground_801C2D0C: map 6's bones, scrolled.
         return crate::scene_stage::rcruise::spawn_point(stage_animations, slot);
     }
-    if assets.stage_desc.kind != GrKind::Kongo {
+    if !matches!(assets.stage_desc.kind, GrKind::Kongo | GrKind::Corneria) {
         return None;
     }
     let binding = assets
@@ -913,7 +941,8 @@ fn initialize_stage(
             stage
         }
         GrKind::Zebes => {
-            let (stage, animations) = crate::scene_stage::zebes::initialize(assets, rng, map)?;
+            let (stage, animations) =
+                crate::scene_stage::zebes::initialize(assets, rng, map, items_on)?;
             stage_animations = animations;
             stage
         }
@@ -965,6 +994,11 @@ fn initialize_stage(
         GrKind::Greens => {
             let (stage, animations) =
                 crate::scene_stage::greens::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Corneria => {
+            let (stage, animations) = crate::scene_stage::corneria::initialize(assets, rng, map)?;
             stage_animations = animations;
             stage
         }
@@ -1047,6 +1081,7 @@ fn create_players(
     scenario: &Setup,
     assets: &Assets,
     stage: &SceneStage,
+    stage_camera: &melee_cm::StageCamera,
     map: &mut melee_mp::CollMap,
     stage_animations: &mut BTreeMap<u8, BackgroundAnimation>,
     rng: &mut HsdRng,
@@ -1170,7 +1205,7 @@ fn create_players(
         };
         let context = SpawnContext {
             map: &mut *map,
-            stage_camera: &assets.stage_camera,
+            stage_camera,
             rng: &mut *rng,
             counter: &mut counter,
         };

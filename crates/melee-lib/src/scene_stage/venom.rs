@@ -1,7 +1,7 @@
 //! Venom composition (grvenom.c): the Great Fox (map 5) and its spawner,
 //! the flight's sequence (map 7) and the tunnel floor (map 9), and the
 //! passes of Arwings and Wolfens ([`passes`]), in grVenom_80203B18's order.
-mod models;
+pub(crate) mod models;
 mod passes;
 
 pub(crate) use models::load;

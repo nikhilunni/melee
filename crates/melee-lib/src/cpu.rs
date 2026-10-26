@@ -53,6 +53,8 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
     // gm_8016C6C0 (ftCo_800A53DC's ranking): the standings as they stand.
     let standings = crate::standings::current_ranks(state);
     let count = state.fighters.len();
+    let arena = state.stage_limits.arena;
+    let camera = crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera);
     let deadzone = state.assets.fighters[index]
         .input
         .thresholds
@@ -70,8 +72,8 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
         fighters: &others[..count],
         own: index,
         map: &mut state.map,
-        arena: &state.stage_limits.arena,
-        camera: &state.stage_limits.camera,
+        arena: &arena,
+        camera: &camera,
         items: &items[..item_count],
         data: &state.assets.cpu,
         player_kills,

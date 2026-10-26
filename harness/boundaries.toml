@@ -2631,3 +2631,48 @@ stocks = 4
 seed = 338514705
 item_frequency = 4
 item_mask = "0xfffffff800002000"
+
+[[boundary]]
+name = "start_cor_fox_marth4"
+cold = "start_cor_fox_marth4_cold"
+savestate = "harness/roms/start_cor_fox_marth4.sav"
+stage = "Corneria"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3309739787
+
+# Items on with the ported Item Switch kinds (make_boundary.py
+# --item-frequency very-high --items Kusudama BombHei Dosei Bat Sword StarRod
+# Harisen --containers Capsule Box Taru) on the stages wave 27 added.
+[[boundary]]
+name = "w27_start_Brinstar_items_all"
+cold = "w27_start_Brinstar_items_all_cold"
+savestate = "harness/roms/w27_start_Brinstar_items_all.sav"
+stage = "Brinstar"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3072780261
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w27_start_Venom_items_all"
+cold = "w27_start_Venom_items_all_cold"
+savestate = "harness/roms/w27_start_Venom_items_all.sav"
+stage = "Venom"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4250002290
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w27_start_Corneria_items_all"
+cold = "w27_start_Corneria_items_all_cold"
+savestate = "harness/roms/w27_start_Corneria_items_all.sav"
+stage = "Corneria"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3359933202
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"

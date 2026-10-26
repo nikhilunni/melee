@@ -1583,6 +1583,9 @@ impl Runtime {
                 state.rng = rng.get();
             }
             5 => {
+                if kind == melee_types::ItemKind::ArwingLaser {
+                    crate::scene_items::sample_beam_parent(&mut state.items, id);
+                }
                 let contact = state.items.stage_contact(id, &mut state.map);
                 let rng = std::cell::Cell::new(state.rng);
                 let parent = (<SceneItems as melee_it::ItemDispatch>::logic(kind).stage_parent)(
@@ -2145,6 +2148,10 @@ impl Runtime {
                                     },
                                 )?;
                             }
+                            if matches!(state.stage, SceneStage::Corneria(_)) {
+                                // grCorneria_801DD65C: the Great Fox starts.
+                                crate::scene_stage::corneria::start(state);
+                            }
                             if matches!(state.stage, SceneStage::Yorster(_)) {
                                 // grYorster_80202160: the blocks.
                                 crate::scene_stage::yorster::start(
@@ -2276,9 +2283,9 @@ impl Runtime {
                         // BrawlOffscreenDamage.asm answers Fighter_8006A360's
                         // question (0x8006A880) from the fighter as its
                         // animation proc finds it.
-                        let limits = &state.stage_limits.camera;
+                        let limits = crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera);
                         let f = &mut state.fighters[player].0;
-                        f.offscreen.magnified = f.outside_camera_limits(limits);
+                        f.offscreen.magnified = f.outside_camera_limits(&limits);
                     }
                 }
                 if proc == FighterProc::Grab {
@@ -2545,6 +2552,12 @@ impl Runtime {
                                 .position(|f| f.spawn_number == spawn)
                                 .expect("pinned captor")
                         });
+                    // The blast zones and camera limits as the stage left
+                    // them, Brinstar's floor following the acid.
+                    let limits = crate::stage_limits::StageLimits {
+                        camera: crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera),
+                        arena: state.stage_limits.arena,
+                    };
                     let (fighter, peer) = if let Some(other) = death_partner {
                         let (fighter, peer) = grab_pairs::pair(&mut state.fighters, player, other);
                         (fighter, Some((&mut **peer.0, &assets.fighters[other])))
@@ -2608,7 +2621,7 @@ impl Runtime {
                                 self.frame,
                                 state_pads,
                                 assets,
-                                &state.stage_limits,
+                                &limits,
                                 &mut state.map,
                                 &mut state.effects,
                                 &mut state.particles,
@@ -3207,6 +3220,8 @@ impl Runtime {
                         || address == melee_gr::castle::procs::DYNAMICS_PROC
                         || address == melee_gr::greens::procs::DYNAMICS_PROC
                         || address == melee_gr::rcruise::procs::DYNAMICS_PROC
+                        || (address == melee_gr::corneria::procs::DYNAMICS_PROC
+                            && matches!(state.stage, SceneStage::Corneria(_)))
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -3349,6 +3364,22 @@ impl Runtime {
                                 draws: &mut self.particle_draws,
                             },
                             &mut self.radial_forces,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Corneria(_)) {
+                        crate::scene_stage::corneria::run_proc(
+                            state,
+                            map_id,
+                            world,
+                            &mut self.stage_objects,
+                            &mut self.item_objects,
+                            &mut self.particle_draws,
+                        )?;
+                        let bounds = item_bounds(&state.stage_limits);
+                        crate::scene_stage::corneria::spawn_lasers(
+                            state,
+                            world,
+                            &mut self.item_objects,
+                            &bounds,
                         )?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
@@ -4148,7 +4179,7 @@ impl Simulation {
     }
     /// The stage's camera description (stage_info.cam_info).
     pub fn stage_camera(&self) -> melee_cm::StageCamera {
-        self.runtime.state.stage_limits.camera
+        crate::scene_stage::live_camera(&self.runtime.state.stage, &self.runtime.state.stage_limits.camera)
     }
     /// Pokemon Stadium's jumbotron between two ticks: its mode, when that
     /// began and when its timer ends it. `None` on every other stage. For
@@ -4417,6 +4448,7 @@ impl Simulation {
                     render_cameras(&mut runtime.state);
                     display_posed_articles(&mut runtime.state, runtime.frame - 1);
                     crate::scene_stage::venom::display(&mut runtime.state);
+                    crate::scene_stage::corneria::display(&mut runtime.state);
                     display_held_items(&mut runtime.state);
                 }
                 DisplayPass::RollbackLoop if runtime.frame != 0 => {
@@ -4538,6 +4570,9 @@ impl Simulation {
                                     melee_gr::castle::procs::map_callback(map)
                                         .expect("a castle map's gobj proc")
                                         .1
+                                }
+                                SceneStage::Corneria(_) => {
+                                    melee_gr::corneria::procs::map_callback(map).1
                                 }
                                 _ => melee_gr::last::procs::map_callback(map),
                             },

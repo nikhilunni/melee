@@ -233,6 +233,8 @@ fn revive(state: &mut InitialState, index: usize, partner: Option<usize>) -> Res
         .filter(|f| !f.0.player.secondary)
         .count();
     state.hud_order.revived(player);
+    // Brinstar's floor follows the acid.
+    let camera = crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera);
     let InitialState {
         fighters,
         assets,
@@ -251,7 +253,7 @@ fn revive(state: &mut InitialState, index: usize, partner: Option<usize>) -> Res
         platform,
         SpawnContext {
             map,
-            stage_camera: &stage_limits.camera,
+            stage_camera: &camera,
             rng,
             counter: spawn_counter,
         },
@@ -267,7 +269,7 @@ fn revive(state: &mut InitialState, index: usize, partner: Option<usize>) -> Res
                 &leader,
                 SpawnContext {
                     map,
-                    stage_camera: &stage_limits.camera,
+                    stage_camera: &camera,
                     rng,
                     counter: spawn_counter,
                 },

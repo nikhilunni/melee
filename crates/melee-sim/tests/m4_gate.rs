@@ -1262,6 +1262,15 @@ fn start_venom_fox_marth4_600() {
     movement_gate_ticks("start_venom_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_venom_fox_marth4", 600, "ledger600");
 }
+/// Corneria's start boundary: no draw at creation (the first Arwing's wait
+/// is 600 to 600), the markers on the Great Fox at y 250, the cannons'
+/// material items, then the drift and the cannon's first charge.
+#[test]
+fn start_cor_fox_marth4_600() {
+    movement_gate_ticks("start_cor_fox_marth4", 600);
+    movement_gate_ticks("start_cor_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_cor_fox_marth4", 600, "ledger600");
+}
 /// Onett's start boundary: the smoke's first pause and the cars' discarded
 /// draw at creation, the cars released when the countdown ends.
 #[test]

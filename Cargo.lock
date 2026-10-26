@@ -1390,6 +1390,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-greatfoxlaser"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-archive",
+ "hsd-types",
+ "melee-it",
+ "melee-lb",
+ "melee-mp",
+ "melee-test-support",
+ "melee-types",
+]
+
+[[package]]
 name = "it-heal"
 version = "0.0.1"
 dependencies = [
@@ -2094,6 +2108,7 @@ dependencies = [
  "it-foxlaser",
  "it-freeze",
  "it-gamewatch",
+ "it-greatfoxlaser",
  "it-heal",
  "it-heiho",
  "it-kirby",

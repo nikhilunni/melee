@@ -224,7 +224,7 @@ const fn names(name: &'static str, display: &'static str, st_kind: u8) -> StageN
 }
 impl Stage {
     /// The stages a match can start on, in the order menus offer them.
-    pub const PORTED: [Self; 27] = [
+    pub const PORTED: [Self; 28] = [
         Self::Battlefield,
         Self::FinalDestination,
         Self::DreamLand,
@@ -252,6 +252,7 @@ impl Stage {
         Self::PrincessPeachsCastle,
         Self::GreenGreens,
         Self::RainbowCruise,
+        Self::Corneria,
     ];
     /// The ported stages where CPU players are witnessed against retail
     /// (docs/PORT_NOTES/CPU_PLAYERS.md); hosts offer a CPU only here.
@@ -388,18 +389,15 @@ impl Stage {
     /// items (grinishie1.c:465, not ported); two players on each
     /// (`w26_start_<Stage>_items_all`, `w27_start_<Stage>_items_all`), three
     /// and four on Final Destination, Battlefield and Kongo Jungle.
-    /// Brinstar, Venom, Mute City, Poké Floats (wave 27), Mushroom Kingdom
-    /// II, Great Bay (whose turtle brings items up, grgreatbay.c:1349, not
-    /// ported) and Icicle Mountain have no item
-    /// witness yet.
+    /// Mute City, Poké Floats (wave 27), Mushroom Kingdom II, Great Bay
+    /// (whose turtle brings items up, grgreatbay.c:1349, not ported) and
+    /// Icicle Mountain have no item witness yet.
     pub fn items_supported(self, players: usize) -> bool {
         (2..=4).contains(&players)
             && self.is_ported()
             && !matches!(
                 self,
                 Self::MushroomKingdom
-                    | Self::Brinstar
-                    | Self::Venom
                     | Self::MuteCity
                     | Self::PokeFloats
                     | Self::MushroomKingdom2

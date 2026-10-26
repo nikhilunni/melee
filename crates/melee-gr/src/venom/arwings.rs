@@ -320,13 +320,19 @@ pub struct Platform {
 }
 
 impl Platform {
-    /// Ground_UpdateStarFoxArwingVisibility (inlines.h, depth 50): near the
-    /// stage's plane the platform is drawn on it while banked less than 60
-    /// degrees; its translation is the (flattened) position either way.
-    /// Returns the translation and whether it is hidden.
+    /// Ground_UpdateStarFoxArwingVisibility (inlines.h) with Venom's depth,
+    /// 50.
     pub fn place(&mut self) -> (Vec3, bool) {
+        self.place_within(50.0)
+    }
+
+    /// Ground_UpdateStarFoxArwingVisibility (inlines.h): within `limit` of
+    /// the stage's plane the platform is drawn on it while banked less than
+    /// 60 degrees; its translation is the (flattened) position either way.
+    /// Returns the translation and whether it is hidden.
+    pub fn place_within(&mut self, limit: f32) -> (Vec3, bool) {
         let depth = gekko_math::msl::fabsf(self.position.z);
-        let hidden = if depth < 50.0 {
+        let hidden = if depth < limit {
             self.position.z = 0.0;
             // M_PI and M_TAU are double constants: the comparisons and
             // steps promote the float.

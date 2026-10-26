@@ -41,9 +41,12 @@ pub const RISE_ANIMATION: usize = 4;
 
 /// Map 6's xF8 as a match started from the menus finds it: the stale heap
 /// word the Ground's block carries. Two retail boundaries with different
-/// rosters (start_brin_fox_marth4, start_brin_falco_peach4) both hold -849,
-/// so the first tick pulses.
+/// rosters and items off (start_brin_fox_marth4, start_brin_falco_peach4)
+/// both hold -849, so the first tick pulses; with items on the random item
+/// spawner's GObj comes first and the block is a fresh, zeroed one
+/// (w27_start_Brinstar_items_all holds 0).
 pub const STALE_PULSE_TIMER: i16 = -849;
+pub const FRESH_PULSE_TIMER: i16 = 0;
 
 /// Map 6's controller.
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -73,13 +76,18 @@ impl Island {
     /// grZebes_801D8644: xC4 = 0, xF4 = 0. xC6, xF6 and xF8 are not written:
     /// alloc_user_data_ground returns the block uncleared (ground.c:840).
     /// xC6 and xF6 are written before they are read; xF8 is read on the
-    /// first tick, as [`STALE_PULSE_TIMER`].
-    pub fn new() -> Self {
+    /// first tick, as [`STALE_PULSE_TIMER`] (items off) or
+    /// [`FRESH_PULSE_TIMER`] (items on).
+    pub fn new(items_on: bool) -> Self {
         Self {
             phase: IslandPhase::Standing,
             timer: 0,
             risen: 0,
-            pulse_timer: STALE_PULSE_TIMER,
+            pulse_timer: if items_on {
+                FRESH_PULSE_TIMER
+            } else {
+                STALE_PULSE_TIMER
+            },
             loose_timer: 0,
         }
     }
@@ -172,7 +180,7 @@ impl Island {
 
 impl Default for Island {
     fn default() -> Self {
-        Self::new()
+        Self::new(false)
     }
 }
 

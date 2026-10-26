@@ -203,6 +203,14 @@ fn setup_snapshot(state: &InitialState) -> Record {
         SceneStage::Greens(greens) => {
             sink.field("stage.greens.block_timer", &greens.stage.blocks.timer);
         }
+        SceneStage::Corneria(corneria) => {
+            let stage = &corneria.stage;
+            sink.field("stage.corneria.wait", &stage.spawner.wait);
+            sink.field("stage.corneria.waiting", &stage.waiting);
+            sink.field("stage.corneria.offset_x", &stage.great_fox.offset[0]);
+            sink.field("stage.corneria.offset_y", &stage.great_fox.offset[1]);
+            sink.field("stage.corneria.cannon_wait", &stage.cannon.wait);
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -491,6 +499,11 @@ fn start_rc_fox_marth4_cold_600() {
 #[test]
 fn start_rc_iceclimbers_fox4_cold_600() {
     verify("start_rc_iceclimbers_fox4");
+}
+
+#[test]
+fn start_cor_fox_marth4_cold_600() {
+    verify("start_cor_fox_marth4");
 }
 
 #[test]

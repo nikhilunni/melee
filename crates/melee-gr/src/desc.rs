@@ -1233,6 +1233,41 @@ pub fn read_venom_parameters(archive: &Archive) -> ReadResult<crate::venom::Para
         ship_scale: f(0x34)?,
     })
 }
+/// grCn_StageData / grDatFiles_801C6038: GrCn.dat. grCn_StageCallbacks[7]
+/// carries flags 0x40000000 (the fog row); row 3, 0x80000000, the lights.
+pub fn read_corneria(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Corneria, 7)
+}
+/// `grCorneria_YakumonoParam` (grcorneria.c:41-72).
+pub fn read_corneria_parameters(archive: &Archive) -> ReadResult<crate::corneria::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    let i = |at: u32| r.u32(p + at).map(|w| w as i32);
+    Ok(crate::corneria::Parameters {
+        drift_wait: [f(0x0)?, f(0x4)?],
+        drift_accel: f(0x8)?,
+        drift_speed: f(0xC)?,
+        drift_limit: [f(0x10)?, f(0x14)?],
+        cannon_rest_range: f(0x18)?,
+        cannon_rest: f(0x1C)?,
+        cannon_aim: f(0x20)?,
+        cannon_burst_chance: f(0x24)?,
+        cannon_burst_charge: f(0x28)?,
+        cannon_volley_charge: f(0x2C)?,
+        cannon_volley_shots: [f(0x30)?, f(0x34)?],
+        cannon_health: f(0x38)?,
+        first_wait: [f(0x3C)?, f(0x40)?],
+        wait: [f(0x44)?, f(0x48)?],
+        wolfen_chance: f(0x4C)?,
+        maneuver_wait: f(0x68)?,
+        ship_scale: f(0x70)?,
+        fire_period: i(0x74)?,
+        fire_odds: i(0x78)?,
+        flash: i(0x84)?,
+        scroll_speed: f(0x88)?,
+    })
+}
 /// grZe_StageData / grDatFiles_801C6038: GrZe.dat. grZe_callbacks[6]
 /// carries flags 0xC0000000, so map 6 selects the lights and fog.
 pub fn read_zebes(archive: &Archive) -> ReadResult<StageDesc> {

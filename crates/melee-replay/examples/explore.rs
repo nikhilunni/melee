@@ -112,6 +112,9 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::GreenGreens => (75.0, 55.0),
         // The ship's deck (an approximation for the policies).
         Stage::RainbowCruise => (70.0, 50.0),
+        // The Great Fox's hull spans about x -152 to 133 (an
+        // approximation for the policies).
+        Stage::Corneria => (120.0, 80.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

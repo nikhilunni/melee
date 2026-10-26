@@ -996,7 +996,7 @@ fn sudden_death_ledgeroll_fd_marth_1410_ticks_and_ordered_particle_draws() {
 /// searched recipes (2026-09-27): Fox holding a Bob-omb through throws,
 /// movement, specials, hits and grabs; Marth's air throws; catches; wall
 /// jumps, Fire Fox walls, DI/SDI and a wall tech on Marth.
-const MATRIX_WITNESSES: [(&str, usize); 598] = [
+const MATRIX_WITNESSES: [(&str, usize); 599] = [
     // A timed stock team battle to TIME!: teams ranked by fn_80165E7C's
     // team scores (standings::ranks), no singles ranking.
     ("doubles_timeout_fd_fox_marth", 3839),
@@ -2019,6 +2019,10 @@ const MATRIX_WITNESSES: [(&str, usize); 598] = [
     // and throws it; Marth's dash attack makes Fox drop it (it_80275390).
     ("w26_redead_grab_v01", 640),
     ("w26_redead_grab_drop_v01", 700),
+    // Corneria's cannons (grCorneria fn_801E12D4): Fox's down smashes break
+    // both cannon material items, joint 4 goes off and Fox falls to his
+    // death, then revives on the drifting Great Fox.
+    ("w27_cor_cannon_break", 2400),
 ];
 
 #[test]
@@ -5435,7 +5439,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 1060] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 1073] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -7093,6 +7097,28 @@ static CORPUS_V3_MATCHES: [(&str, usize); 1060] = [
     // Popo KO'd at the bottom standing tilted on the ship: DeadDown's
     // motion change clears the body tilt before his effects read his bones.
     ("corpus_v3_rc_iceclimbers_fox4_e1502cb40_p2", 4019),
+    // A thrown Peach turnip's doAirEnd0 against an item target
+    // (ftpeach_SpecialS 8011C45C..74): the item never matches a kind.
+    ("corpus_v3_brin_falco_peach4_e3d24a6e3_p0", 647),
+    ("corpus_v3_brin_falco_peach4_ea4d5d9ec_p0", 2736),
+    // Corneria (grcorneria.c): the Great Fox's drift and descent, its
+    // cannon, Arwing and Wolfen passes with level and aimed lasers, beams
+    // on their ships, the backgrounds.
+    ("corpus_v3_cor_fox_marth4_ef89b3e70_p0", 6001),
+    ("corpus_v3_cor_fox_marth4_eaca6940d_p0", 6001),
+    ("corpus_v3_cor_fox_marth4_ee98155f3_p0", 6001),
+    ("corpus_v3_cor_fox_marth4_eb17a6598_p0", 6001),
+    ("corpus_v3_cor_fox_marth4_e573e2d95_p0", 4024),
+    // An aimed laser on a shield (itarwinglaser hit_shield).
+    ("corpus_v3_cor_fox_marth4_ed97ea327_p0", 1131),
+    // An aimed laser glancing off the stage.
+    ("corpus_v3_cor_fox_marth4_e12d92447_p0", 1205),
+    // A cannon laser glancing off a shield.
+    ("corpus_v3_cor_fox_marth4_ee62c6106_p2", 1557),
+    ("corpus_v3_cor_fox_marth4_ef9b6d16d_p2", 2727),
+    // Aimed lasers reflected: a Wolfen's and an Arwing's.
+    ("corpus_v3_cor_fox_marth4_e8089e993_p0", 4826),
+    ("corpus_v3_cor_fox_marth4_e00f31913_p2", 5453),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.
@@ -8531,6 +8557,12 @@ const WIDENED_LAYOUT_BOUNDARIES: &[(&str, usize)] = &[
     ("w27_start_Onett_items_all", 600),
     ("w27_start_YoshisIsland_items_all_cold", 600),
     ("w27_start_YoshisIsland_items_all", 600),
+    ("w27_start_Brinstar_items_all_cold", 600),
+    ("w27_start_Brinstar_items_all", 600),
+    ("w27_start_Venom_items_all_cold", 600),
+    ("w27_start_Venom_items_all", 600),
+    ("w27_start_Corneria_items_all_cold", 600),
+    ("w27_start_Corneria_items_all", 600),
 ];
 
 /// Explorer matches from those layouts: the Party Ball's lifecycle
@@ -8657,6 +8689,15 @@ const WIDENED_LAYOUT_MATCHES: &[(&str, usize)] = &[
     ("w27s_YoshisIsland_items_all_e89a89d0e_p1", 1501),
     ("w27s_YoshisIsland64_items_all_e89a89d0e_p1", 1501),
     ("w27s_YoshisStory_items_all_e89a89d0e_p2", 1501),
+    // Items on Brinstar, Venom and Corneria (wave 27). An opened Barrel's
+    // staves stand as authored (Item_80268D34's lb_8000B804), so its push
+    // box is level again (ef89b3e70_p2).
+    ("w27i_Brinstar_items_all_ef9b6d16d_p0", 6001),
+    ("w27i_Brinstar_items_all_ee133b82f_p2", 6001),
+    ("w27i_Brinstar_items_all_ef89b3e70_p2", 5834),
+    ("w27i_Venom_items_all_ef9b6d16d_p2", 6001),
+    ("w27i_Venom_items_all_e573e2d95_p1", 6001),
+    ("w27i_Corneria_items_all_edafcfddf_p0", 6001),
 ];
 
 #[test]

@@ -424,6 +424,7 @@ pub(crate) fn spawn_lasers(
         joint: 0,
         scale: stage.parameters.ship_scale,
         map_scale: state.assets.stage_desc.parameters.map_scale,
+        stage_drift: hsd_types::Vec3::ZERO,
     };
     crate::scene_items::spawn_arwing_laser(state, world, item_objects, launch, bounds)
 }

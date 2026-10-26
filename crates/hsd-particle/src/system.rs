@@ -452,6 +452,23 @@ impl ParticleSystem {
         self.park_cursor_at_tail();
         self.release_external_transforms();
     }
+    /// hsd_8039D580 (0x8039D580): every generator following `joint` stops
+    /// through hsd_8039D4DC, one at a time in list order (the cursor parks
+    /// at the tail after each; no generator, no walk).
+    pub fn expire_joint_generators(&mut self, joint: usize) {
+        let mut index = 0;
+        while index < self.generators.len() {
+            if self.generators[index].attachment_id == Some(joint) {
+                let removed = self.expire(index);
+                self.park_cursor_at_tail();
+                self.release_external_transforms();
+                if removed {
+                    continue;
+                }
+            }
+            index += 1;
+        }
+    }
     /// hsd_8039D688 (0x8039D688) over a joint no generator follows: it walks
     /// the whole list anyway, so only the insertion cursor moves (to the
     /// tail, or null when the list is empty).

@@ -33,6 +33,16 @@ impl StageLimits {
             arena: assets.arena,
         }
     }
+    /// The limits a stage's creation leaves: Corneria's markers already
+    /// ride the Great Fox.
+    pub(crate) fn of(stage: &crate::scene_stage::SceneStage, assets: &crate::assets::Assets) -> Self {
+        match stage {
+            crate::scene_stage::SceneStage::Corneria(corneria) => {
+                corneria.limits(assets.stage_desc.parameters.map_scale)
+            }
+            _ => Self::new(assets),
+        }
+    }
     /// grPura_80211D00's tail (0x80211D88..): each camera limit, made
     /// relative to Stage_UnkSetVec3TCam_Offset's centre, times 0.8 (fsubs,
     /// then fmuls), in top, bottom, left, right order. The creation's, so

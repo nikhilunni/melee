@@ -73,6 +73,39 @@ pub struct ArwingLaserState {
     pub joint: i32,
     /// xE4C: the ticks the laser has spent near the stage's plane.
     pub near_ticks: i32,
+    /// lb_8000B1CC(xDF8): the gun bone a level cannon (types 0 and 2)
+    /// follows until its animation ends, as the ship stands (the stage
+    /// keeps it current).
+    pub gun: Vec3,
+    /// xDF4: a side beam's cannon (types 4 and 5).
+    pub parent: Option<u32>,
+    /// xE40 / xE44: a type-0 cannon's side beams.
+    pub beams: [Option<u32>; 2],
+    /// xE08: a side beam's depth.
+    pub beam_depth: f32,
+    /// A side beam's cannon's root (translation, scale, rotation) while it
+    /// holds the beam, as the scene samples it before the beam's
+    /// collision proc (itArwinglaser_UnkMotion5_Coll).
+    pub parent_pose: Option<(Vec3, Vec3, Vec3)>,
+    /// grCorneria_801DDCF0: the Great Fox's drift this tick, which an aimed
+    /// laser follows on Corneria (zero on Venom).
+    pub stage_drift: Vec3,
+}
+/// `xDD4_itemVar.greatfoxlaser` (itgreatfoxlaser.c): the Great Fox's
+/// cannon shot.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct GreatFoxLaserState {
+    /// x28: the muzzle in the Great Fox GObj's frame.
+    pub offset: Vec3,
+    /// lb_8000B1CC(x20->hsd_obj, &x28): the muzzle in the world, as the
+    /// Great Fox stands (the stage keeps it current).
+    pub muzzle: Vec3,
+    /// x34: a reflection turned it this tick.
+    pub turned: bool,
+    /// x36 (s16): the ticks left.
+    pub ticks: i32,
+    /// x38: 0 the big shot, 1 a volley's.
+    pub kind: i32,
 }
 #[derive(Clone, Debug, Default)]
 pub struct RayState {
@@ -302,6 +335,7 @@ pub enum ItemScratch {
     Afterimage(AfterimageState),
     Ray(RayState),
     ArwingLaser(ArwingLaserState),
+    GreatFoxLaser(GreatFoxLaserState),
     Held(HeldState),
     Bomb(BombState),
     Dosei(DoseiState),
@@ -1560,6 +1594,19 @@ pub(crate) fn rest_rotation(assets: &ItemAssets) -> Vec3 {
     let r = assets.visual.model.rotation;
     Vec3::new(r.x, r.y, r.z)
 }
+/// The authored rotation of the joint it_802746F8 names: ItemModelDesc xC
+/// bits 6-7 first-child steps below the model's root.
+pub fn authored_spin_joint_rotation(assets: &ItemAssets) -> Vec3 {
+    let mut joint = &assets.visual.model;
+    for _ in 0..assets.visual.spin_joint_depth {
+        match joint.child.as_deref() {
+            Some(child) => joint = child,
+            None => break,
+        }
+    }
+    let r = joint.rotation;
+    Vec3::new(r.x, r.y, r.z)
+}
 /// The most ItemLink GObjs one article has: the Grapple Beam's doubled
 /// rope (it_802B75FC) has sixty links.
 pub const MAX_LINK_GOBJS: usize = 64;
@@ -1831,6 +1878,12 @@ impl ItemCore {
             self.animation_attached = true;
             // Item_80268D34 returns the joints to their rest pose.
             self.joint_translation_z = None;
+            // item.c:1127 lb_8000B804(jobj->child, xC8_joint->child): the
+            // root's children as authored, so a spin joint below the root
+            // (the Barrel's staves) stands as the model has it.
+            if self.spin_joint_rotation.is_some() {
+                self.spin_joint_rotation = Some(authored_spin_joint_rotation(assets));
+            }
         }
         self.pose_steps = if flags & state_change::ANIM_UPDATE != 0 {
             1

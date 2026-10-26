@@ -1,0 +1,49 @@
+# Fox runs off the Great Fox's left edge, Fox Illusions under the deck onto
+# the cannon (collision joint 4) and down-smashes it from 300 every 55
+# ticks: each smash strikes both cannons' material items for 15; the
+# fourteenth strike takes them past x38 (200) and breaks them
+# (fn_801E12D4): the break effects,
+# a large quake, the broken model and joint 4 off, so Fox falls and dies;
+# then his revival on the moving Great Fox, a Wolfen near pass and the
+# descent over the sea.
+name = "w27_cor_cannon_break"
+input_clock = "tick"
+savestate = "harness/roms/start_cor_fox_marth4.sav"
+frames = 2400
+render_every_tick = true
+seed = 1
+stage = "Corneria"
+inputs = [
+  { frame = 100, port = 0, buttons = { StickX = -0.64388671875 }, raw = { stickX = -80 } },
+  { frame = 204, port = 0, buttons = {  }, raw = {  } },
+  { frame = 210, port = 0, buttons = { B = true, StickX = 0.64224609375 }, raw = { button = 512, stickX = 80 } },
+  { frame = 212, port = 0, buttons = {  }, raw = {  } },
+  { frame = 300, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 302, port = 0, buttons = {  }, raw = {  } },
+  { frame = 355, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 357, port = 0, buttons = {  }, raw = {  } },
+  { frame = 410, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 412, port = 0, buttons = {  }, raw = {  } },
+  { frame = 465, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 467, port = 0, buttons = {  }, raw = {  } },
+  { frame = 520, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 522, port = 0, buttons = {  }, raw = {  } },
+  { frame = 575, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 577, port = 0, buttons = {  }, raw = {  } },
+  { frame = 630, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 632, port = 0, buttons = {  }, raw = {  } },
+  { frame = 685, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 687, port = 0, buttons = {  }, raw = {  } },
+  { frame = 740, port = 0, buttons = { CStickY = -0.64388671875 }, raw = { substickY = -80 } },
+  { frame = 742, port = 0, buttons = {  }, raw = {  } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"
