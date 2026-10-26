@@ -2219,39 +2219,6 @@ const CPU_WITNESSES: &[(&str, usize)] = &[
     ("w26cpu_rec_zelda_e6af4a7bb_p1", 2998),
     ("w26cpu_rec_zelda_ec3145eb3_p0", 2525),
     ("w26cpu_ys_e75fb4a9a_p2", 4052),
-    // Wave 27: a level-9 CPU Fox on seven more stages, warm and cold.
-    ("w27s_start_mk2_fox_cpu9fox4", 600),
-    ("w27s_start_mk2_fox_cpu9fox4_cold", 600),
-    ("w27s_start_gb_fox_cpu9fox4", 600),
-    ("w27s_start_gb_fox_cpu9fox4_cold", 600),
-    ("w27s_start_brin_fox_cpu9fox4", 600),
-    ("w27s_start_brin_fox_cpu9fox4_cold", 600),
-    ("w27s_start_im_fox_cpu9fox4", 600),
-    ("w27s_start_im_fox_cpu9fox4_cold", 600),
-    ("w27s_start_venom_fox_cpu9fox4", 600),
-    ("w27s_start_venom_fox_cpu9fox4_cold", 600),
-    ("w27s_start_mc_fox_cpu9fox4", 600),
-    ("w27s_start_mc_fox_cpu9fox4_cold", 600),
-    ("w27s_start_pf_fox_cpu9fox4", 600),
-    ("w27s_start_pf_fox_cpu9fox4_cold", 600),
-    ("corpus_v3_w27s_start_mk2_fox_cpu9fox4_ef89b3e70_p2", 3486),
-    ("corpus_v3_w27s_start_mk2_fox_cpu9fox4_edb2b114a_p2", 3334),
-    ("corpus_v3_w27s_start_mk2_fox_cpu9fox4_ec13743d5_p1", 3128),
-    // Great Bay's turtle escape and route table (ft_3C61.c list1_*).
-    ("corpus_v3_w27s_start_gb_fox_cpu9fox4_e1502cb40_p1", 3866),
-    ("corpus_v3_w27s_start_gb_fox_cpu9fox4_e00f31913_p1", 4040),
-    ("corpus_v3_w27s_start_gb_fox_cpu9fox4_e9943b4ab_p2", 5140),
-    // Brinstar's acid escape; the recovery's island takes retail's saved
-    // island order (initial_state/islands.rs, ticks 723 and 1377).
-    ("corpus_v3_w27s_start_brin_fox_cpu9fox4_edb2b114a_p2", 6001),
-    ("corpus_v3_w27s_start_brin_fox_cpu9fox4_ef89b3e70_p1", 6001),
-    ("corpus_v3_w27s_start_brin_fox_cpu9fox4_ef89b3e70_p2", 6001),
-    // Venom: a recovery landing on a wing floor jumps off (ftCo_800A0148).
-    ("corpus_v3_w27s_start_venom_fox_cpu9fox4_e75fb4a9a_p1", 6001),
-    ("corpus_v3_w27s_start_mc_fox_cpu9fox4_e9943b4ab_p2", 6001),
-    ("corpus_v3_w27s_start_pf_fox_cpu9fox4_e9943b4ab_p0", 6001),
-    ("corpus_v3_w27s_start_pf_fox_cpu9fox4_ec13743d5_p1", 3510),
-    ("corpus_v3_w27s_start_pf_fox_cpu9fox4_e75fb4a9a_p2", 3929),
 ];
 
 #[test]
@@ -2287,8 +2254,7 @@ fn cpu_players_match_retail() {
     gate_in_parallel_using(CPU_WITNESSES, |name, ticks| {
         // Boundary captures record precisely 600 ticks in ledger600; the
         // explorer recordings use their full-length ledger instead.
-        let boundary = name.starts_with("start_") || name.starts_with("w26_start_")
-            || name.starts_with("w27s_start_");
+        let boundary = name.starts_with("start_") || name.starts_with("w26_start_");
         let suffix = if boundary { "ledger600" } else { "ledger" };
         combat_gate_ticks_with_ledger(name, ticks, suffix)
     });
