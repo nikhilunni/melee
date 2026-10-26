@@ -109,7 +109,7 @@ fn ride_destination_floor(fp: &mut Fighter, scene: &mut Scene) {
             .map
             .line_speed(hit.line_id, &hit.pos)
             .unwrap_or_default(),
-        None => stage_drift(scene.stage()),
+        None => scene.stage_drift.unwrap_or_else(|| stage_drift(scene.stage())),
     };
     let cpu = &mut fp.core.cpu;
     // 800B379C/800B37AC: fadds.
@@ -122,6 +122,7 @@ fn ride_destination_floor(fp: &mut Fighter, scene: &mut Scene) {
 fn stage_drift(stage: GrKind) -> hsd_types::Vec3 {
     match stage {
         GrKind::RCruise | GrKind::BigBlue | GrKind::Icemt => {
+            // Icicle Mountain's scene passes its drift (Scene::stage_drift).
             unimplemented!("grLib_801C9E60: stage drift of {stage:?}")
         }
         _ => hsd_types::Vec3::ZERO,

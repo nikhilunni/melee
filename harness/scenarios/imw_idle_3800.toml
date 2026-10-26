@@ -1,0 +1,21 @@
+# Fox vs Marth on Icicle Mountain, both idle for 3800 ticks from the start
+# boundary: the field scrolling at its drawn speeds, segments made and
+# removed, the fighters carried off and respawning (both are out of stocks
+# shortly after 4000 ticks, when the match ends).
+name = "imw_idle_3800"
+savestate = "harness/roms/start_im_fox_marth4.sav"
+frames = 3800
+seed = 1
+stage = "IcicleMountain"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

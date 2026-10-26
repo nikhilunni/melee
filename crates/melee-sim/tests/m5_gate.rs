@@ -4168,6 +4168,16 @@ fn great_bay_turtle_and_tingle_match_retail() {
     combat_gate_ticks("gbw_idle_6000", 6000);
 }
 
+/// Icicle Mountain from the Fox/Marth start boundary, both idle until the
+/// match nearly ends: the field scrolling at its drawn speeds, segments
+/// made and removed with their blocks, both fighters carried off and
+/// reviving at map 0's markers re-aimed each frame (unk8C.b5 clear), the
+/// stock HUDs' procs reordered by their revivals.
+#[test]
+fn icicle_mountain_scroll_and_revivals_match_retail() {
+    combat_gate_ticks("imw_idle_3800", 3800);
+}
+
 /// Fountain of Dreams from the Fox/Marth start boundary: both fighters ride
 /// the side platforms (grIzumi_801CC358) through waits, random steps up and
 /// down, a submerge below the stage and the resurfacing to the rest height.
@@ -5425,7 +5435,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 1006] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 1023] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -7004,6 +7014,32 @@ static CORPUS_V3_MATCHES: [(&str, usize); 1006] = [
     // Great Bay: Tingle falls into the water and is made again at once
     // (grGreatBay_801F5600, it_802ECA70).
     ("corpus_v3_gb_fox_marth4_e58dc731e_p0", 2376),
+    ("corpus_v3_im_fox_marth4_e254e0913_p0", 1814),
+    ("corpus_v3_im_fox_marth4_e2ca22762_p0", 2386),
+    ("corpus_v3_im_fox_marth4_e44ea74fc_p1", 1096),
+    ("corpus_v3_im_fox_marth4_e4bb013dc_p1", 2217),
+    // Icicle Mountain: a fighter revived at a marker before skips the floor
+    // probe (Fighter_UnkProcessDeath, x2135 != -1).
+    ("corpus_v3_im_fox_marth4_e51725c1f_p1", 2259),
+    ("corpus_v3_im_fox_marth4_e6aa92c64_p1", 1583),
+    ("corpus_v3_im_fox_marth4_e89a89d0e_p1", 1769),
+    // Icicle Mountain: ice blocks broken (fn_801F8C64, efSync 0x445).
+    ("corpus_v3_im_fox_marth4_e8a0c79e0_p2", 1285),
+    // Icicle Mountain: a platform gives way under a fighter (fn_801F9338)
+    // and returns.
+    ("corpus_v3_im_fox_marth4_e98e8f6a6_p0", 2208),
+    ("corpus_v3_im_fox_marth4_ea5bcaeb6_p0", 1767),
+    // Icicle Mountain: a star KO from standing rides the field, and its
+    // vanish copies the point it was requested at (efAsync 0x42D).
+    ("corpus_v3_im_fox_marth4_ea7c88fe6_p1", 2604),
+    ("corpus_v3_im_fox_marth4_eb56584ed_p0", 1304),
+    // Icicle Mountain: snow under foot makes stage-bank landings and footsteps
+    // (mpLib_803BE2F8's material 14).
+    ("corpus_v3_im_fox_marth4_ebc358636_p0", 1688),
+    ("corpus_v3_im_fox_marth4_ecad2716f_p0", 1690),
+    ("corpus_v3_im_fox_marth4_efc6a328f_p1", 1742),
+    ("corpus_v3_im_fox_marth4_efc83a559_p0", 2304),
+    ("corpus_v3_im_fox_marth4_efc83a559_p2", 1856),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

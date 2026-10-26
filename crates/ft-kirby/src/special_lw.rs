@@ -537,9 +537,8 @@ fn rock_physics(f: &mut Fighter, p: PhysicsPhase<'_>) {
 /// the clamp to +F8) the rock brakes by the fighter's ground friction
 /// along the mean normal; past it the slope accelerates it by +FC, more on
 /// a slippery floor. The damping scales both. Speed and acceleration are
-/// laid along the mean normal's tangent. (The clamps to +F8 and to +100's
-/// top speed are not ported: Yoshi's Story's slopes are 12 degrees and 17
-/// units long.)
+/// laid along the mean normal's tangent, the angle held to +F8 and the
+/// speed to +100.
 fn slide(f: &mut Fighter) {
     let stone = *scratch(f);
     let (minimum_slant, maximum_slant, acceleration, maximum_speed) = {
@@ -557,10 +556,13 @@ fn slide(f: &mut Fighter) {
     if magnitude(angle) < minimum_slant {
         angle = 0.0;
     }
-    if angle > maximum_slant || angle < -maximum_slant {
-        unimplemented!(
-            "ftKb_SpecialHi_800F3B28 (ftkirbyspeciallw.c:308-313): a floor past +F8's angle"
-        );
+    // ftkirbyspeciallw.c:308-313: held to +F8's angle (only the one-degree
+    // test below reads it).
+    if angle > maximum_slant {
+        angle = maximum_slant;
+    }
+    if angle < -maximum_slant {
+        angle = -maximum_slant;
     }
     let c = &mut f.core;
     let traction = grounded::ground_friction_multiplier(&c.physics, &c.collision.data);
@@ -585,12 +587,19 @@ fn slide(f: &mut Fighter) {
     let physics = &mut c.physics;
     physics.ground_acceleration = stone.damping * (push + brake);
     physics.ground_velocity *= stone.damping;
+    // ftkirbyspeciallw.c:338-352: the speed, then the speed after this
+    // frame's acceleration, held to +100 (retail 0x800F3C88 fneg, 0x800F3CB8
+    // fadds, 0x800F3CC4 fsubs).
+    if physics.ground_velocity < -maximum_speed {
+        physics.ground_velocity = -maximum_speed;
+    } else if physics.ground_velocity > maximum_speed {
+        physics.ground_velocity = maximum_speed;
+    }
     let next = physics.ground_velocity + physics.ground_acceleration;
-    let within = |speed: f32| (-maximum_speed..=maximum_speed).contains(&speed);
-    if !within(physics.ground_velocity) || !within(next) {
-        unimplemented!(
-            "ftKb_SpecialHi_800F3B28 (ftkirbyspeciallw.c:338-352): the slide at +100's top speed"
-        );
+    if next < -maximum_speed {
+        physics.ground_acceleration = -maximum_speed - physics.ground_velocity;
+    } else if next > maximum_speed {
+        physics.ground_acceleration = maximum_speed - physics.ground_velocity;
     }
     // 800F3CE0..800F3D30: fmuls, the Y terms through an fneg first.
     let n = stone.mean_normal;

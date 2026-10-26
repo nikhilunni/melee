@@ -246,7 +246,7 @@ pub(super) struct DustSpawn {
     pub directional: bool,
 }
 // efasync.c:186-188,255-282,305-307,521-523.
-pub(super) static DUST_SPAWNS: [DustSpawn; 35] = [
+pub(super) static DUST_SPAWNS: [DustSpawn; 36] = [
     // efasync.c:653-659: efLib_CreateGenerator_Translate_FacingDir(0x140)
     // at the point (the Super Scope's muzzle flash, fn_800D84D4).
     DustSpawn {
@@ -320,6 +320,13 @@ pub(super) static DUST_SPAWNS: [DustSpawn; 35] = [
     DustSpawn {
         request: 0x444,
         particle: 0x1FF,
+        directional: false,
+    },
+    // efasync.c:803-805: efLib_CreateGenerator(0x209) at the point (an
+    // Icicle Mountain ice block breaking, fn_801F8C64).
+    DustSpawn {
+        request: 0x445,
+        particle: 0x209,
         directional: false,
     },
     // efasync.c:295-297: an item's wall or ceiling bounce (it_80277C40).

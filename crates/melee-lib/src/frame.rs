@@ -1800,6 +1800,65 @@ impl Runtime {
         }
     }
 
+    /// ifStatus_802F5B48 then ifStatus_802F4EDC: `player`'s damage HUD.
+    fn damage_hud(&mut self, player: usize) {
+        use crate::scene_fighter::with_fighter;
+        let state = &mut self.state;
+        // The HUD follows the player's own fighter (Player_GetEntity).
+        let own = state.player_fighter_index(player);
+        let percent = with_fighter!(&state.fighters[own], |f| f.physics.percent);
+        let dead = with_fighter!(&state.fighters[own], |f| matches!(
+            &f.state_data,
+            melee_ft::fighter::MotionData::Life(life) if life.stock_lost()
+        ));
+        self.interface[player].set_dead(dead, &mut state.rng);
+        match with_fighter!(&state.fighters[own], |f| f.player.stamina) {
+            // Player_GetRemainingHP: the hit points less the HP
+            // index (Player_SetHPByIndex's truncated percent).
+            Some(hp) => {
+                let spent = i32::from(melee_gekko_trunc(percent));
+                self.interface[player].tick_stamina(i32::from(hp) - spent, &mut state.rng)
+            }
+            None => self.interface[player].tick(percent, &mut state.rng),
+        }
+    }
+
+    /// fn_802F9410 -> ifStock_802F8298: `player`'s stock HUD.
+    fn stock_hud(&mut self, player: usize) -> Result<()> {
+        use crate::scene_fighter::with_fighter;
+        let state = &mut self.state;
+        let own = state.player_fighter_index(player);
+        if let Some(display) = &mut state.stock_displays[player] {
+            let stocks = with_fighter!(&state.fighters[own], |f| f.player.stocks);
+            let tick = display.tick(stocks);
+            // A stolen stock that landed sets its thief's flag at once.
+            for thief in tick.landed.into_iter().flatten() {
+                let thief = (0..state.stock_displays.len())
+                    .find(|&p| {
+                        with_fighter!(&state.fighters[state.player_fighter_index(p)], |f| {
+                            f.player.id
+                        }) == thief
+                    })
+                    .expect("a stolen stock's thief");
+                if let Some(display) = &mut state.stock_displays[thief] {
+                    display.animate_losses = true;
+                }
+            }
+            for (generator, position) in tick.particles.into_iter().flatten() {
+                let mut request = hsd_particle::system::SpawnRequest::new(0, generator, 1);
+                request.position = [position.x, position.y, position.z];
+                state.effects.events.spawn(&request, false, true);
+                state.particles.spawn::<RetailTrig>(
+                    &state.assets.common_particle_bank,
+                    request,
+                    &mut state.rng,
+                    &mut self.particle_draws,
+                )?;
+            }
+        }
+        Ok(())
+    }
+
     fn dispatch(&mut self, row: Registration, world: &mut World) -> Result<()> {
         // fn_8016CFE0 -> gm_801A4634(4); gm_803DA888[4] freezes gameplay procs.
         const ELIMINATION_PAUSE_MASK: u64 = 0x800FFA;
@@ -1947,6 +2006,8 @@ impl Runtime {
                             state.effects.gobjs.create(on_start);
                             // fn_801F4520: the water's fighter device.
                             crate::scene_stage::greatbay::start(state);
+                            // fn_801F75EC: Icicle Mountain starts scrolling.
+                            crate::scene_stage::icemt::start(state);
                             if matches!(state.stage, SceneStage::Onett(_)) {
                                 // grOnett_801E41B0, then grOnett_801E3930.
                                 crate::scene_stage::onett::start(state);
@@ -3084,6 +3145,14 @@ impl Runtime {
                             world,
                             &mut self.item_objects,
                         )?;
+                    } else if matches!(state.stage, SceneStage::IceMt(_)) {
+                        crate::scene_stage::icemt::run_proc(
+                            state,
+                            map_id,
+                            world,
+                            &mut self.stage_objects,
+                            &mut self.item_objects,
+                        )?;
                     } else if matches!(state.stage, SceneStage::Inishie2(_)) {
                         crate::scene_stage::inishie2::run_proc(
                             state,
@@ -3155,50 +3224,17 @@ impl Runtime {
                 }
             },
             Callback::Interface { player } => {
-                use crate::scene_fighter::with_fighter;
-                // The HUD follows the player's own fighter (Player_GetEntity).
-                let own = state.player_fighter_index(player);
-                let percent = with_fighter!(&state.fighters[own], |f| f.physics.percent);
-                let dead = crate::scene_fighter::with_fighter!(&state.fighters[own], |f| matches!(
-                    &f.state_data,
-                    melee_ft::fighter::MotionData::Life(life) if life.stock_lost()
-                ));
-                self.interface[player].set_dead(dead, &mut state.rng);
-                match with_fighter!(&state.fighters[own], |f| f.player.stamina) {
-                    // Player_GetRemainingHP: the hit points less the HP
-                    // index (Player_SetHPByIndex's truncated percent).
-                    Some(hp) => {
-                        let spent = i32::from(melee_gekko_trunc(percent));
-                        self.interface[player].tick_stamina(i32::from(hp) - spent, &mut state.rng)
-                    }
-                    None => self.interface[player].tick(percent, &mut state.rng),
-                }
-                if let Some(display) = &mut state.stock_displays[player] {
-                    let stocks = with_fighter!(&state.fighters[own], |f| f.player.stocks);
-                    let tick = display.tick(stocks);
-                    // A stolen stock that landed sets its thief's flag at once.
-                    for thief in tick.landed.into_iter().flatten() {
-                        let thief = (0..state.stock_displays.len())
-                            .find(|&p| {
-                                with_fighter!(&state.fighters[state.player_fighter_index(p)], |f| {
-                                    f.player.id
-                                }) == thief
-                            })
-                            .expect("a stolen stock's thief");
-                        if let Some(display) = &mut state.stock_displays[thief] {
-                            display.animate_losses = true;
-                        }
-                    }
-                    for (generator, position) in tick.particles.into_iter().flatten() {
-                        let mut request = hsd_particle::system::SpawnRequest::new(0, generator, 1);
-                        request.position = [position.x, position.y, position.z];
-                        state.effects.events.spawn(&request, false, true);
-                        state.particles.spawn::<RetailTrig>(
-                            &state.assets.common_particle_bank,
-                            request,
-                            &mut state.rng,
-                            &mut self.particle_draws,
-                        )?;
+                // The HUD's s_link 17 procs run in their GObjs' order: each
+                // player's damage HUD and stock HUD as setup made them, a
+                // stock HUD made again at the end of the list when its
+                // player revives (ifStatus_802F6508 -> ifStock_802F98E8).
+                // Interface proc `player` runs the order's share at its place.
+                let order = state.hud_order;
+                for &(stock, owner) in order.share(player) {
+                    if stock {
+                        self.stock_hud(usize::from(owner))?;
+                    } else {
+                        self.damage_hud(usize::from(owner));
                     }
                 }
             }
@@ -4287,6 +4323,9 @@ impl Simulation {
                                 SceneStage::Venom(_) => melee_gr::venom::procs::map_callback(map).1,
                                 SceneStage::Inishie2(_) => {
                                     melee_gr::inishie2::procs::map_callback(map).1
+                                }
+                                SceneStage::IceMt(_) => {
+                                    melee_gr::icemt::procs::map_callback(map).1
                                 }
                                 _ => melee_gr::last::procs::map_callback(map),
                             },

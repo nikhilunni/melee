@@ -9,6 +9,7 @@ pub mod fzero;
 pub mod garden;
 pub mod greatbay;
 pub mod ground;
+pub mod icemt;
 pub mod inishie1;
 pub mod inishie2;
 pub mod izumi;

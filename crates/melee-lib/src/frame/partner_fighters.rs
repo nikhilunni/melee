@@ -225,8 +225,14 @@ pub(super) fn revive_stolen_stock(state: &mut InitialState, index: usize) -> Res
     revive(state, index, partner.filter(|_| leads))
 }
 
-/// fn_8016719C (8016719C): the revival platform, then Player_80032070.
+/// fn_8016719C (8016719C): the revival platform, the player's HUD made
+/// again (ifStatus_802F6508), then Player_80032070.
 fn revive(state: &mut InitialState, index: usize, partner: Option<usize>) -> Result<()> {
+    let player = state.fighters[..index]
+        .iter()
+        .filter(|f| !f.0.player.secondary)
+        .count();
+    state.hud_order.revived(player);
     let InitialState {
         fighters,
         assets,

@@ -132,6 +132,8 @@ jab window, now gated) and taught the decoder to encode stale NaN words.
 | `it-kyasarin/egg.rs` it_2725_Logic28_Reflected | A reflected Birdo egg: `unimplemented!` (itkyasarinegg.c:184) | Needs Fox's reflector against an egg in flight; not reached by the 900 tagged explorer cases |
 | `melee-lib/scene_stage/greatbay.rs` grGreatBay_801F5AF8 | The moon's fall ending (AOBJ_REWINDED): `unimplemented!` (grgreatbay.c:834) | Unreachable by the disc's data: GrGb.dat map 9's loop flag is 0, so grAnime_801C8138 never sets AOBJ_LOOP; the 4690-frame fall stops on AOBJ_NO_ANIM. A 30000-tick idle port run starts the fall and never reaches the branch |
 | `melee-lib/scene_stage/greatbay.rs` grGreatBay_801F63F4 | The turtle's item spawned with items on fails closed (grgreatbay.c:1349); the draw itself is ported | Needs an items-on Great Bay boundary; every registered Great Bay boundary has items off |
+| `melee-lib/scene_stage/icemt.rs` (gricemt.c, Stage_80225194() == 76) | Adventure's Icicle Mountain: map 10's controller, the zako generator, the burst speed (x3A), the P1 height trigger. Not ported | Unreachable in Versus: grIceMt_801F686C takes the map 9 branch for every Versus StKind (only the Adventure stage id 76 makes map 10) |
+| `melee-lib/config.rs` items_supported | Mushroom Kingdom II, Great Bay and Icicle Mountain refuse items (fail closed at setup) | No items-on witness yet; Great Bay's turtle item (grgreatbay.c:1349) is unported |
 
 Kongo's Box event weight is currently excluded by items-off setup. Items-on
 Kongo must remain rejected until the actual `it_8026D324(It_Kind_Box)`

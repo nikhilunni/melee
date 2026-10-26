@@ -212,6 +212,16 @@ const STADIUM_WATER_EFFECTS: TerrainEffects = TerrainEffects {
     bound: None,
 };
 
+/// Icicle Mountain's material 14 (snow): its list (mpLib_803BE2F8) swaps
+/// mpLib_803BD9B0 for mpLib_803BDA08, whose rows add stage-bank effects
+/// 30001 (footsteps), 30002 (landings) and 30003 (down-bounds).
+const ICEMT_SNOW: usize = 14;
+const ICEMT_SNOW_EFFECTS: TerrainEffects = TerrainEffects {
+    footstep: Some(0x7531),
+    landing: Some(0x7532),
+    bound: Some(0x7533),
+};
+
 /// `mpLib_80056A54` / `mpLib_80056AC4` / `mpLib_80056B34` (mplib.c:5168-5208):
 /// the effects of a line's material on `stage`. No other row of the stages
 /// the port loads has one.
@@ -219,6 +229,7 @@ pub fn terrain_effects(stage: GrKind, flags: u32) -> TerrainEffects {
     match (stage, terrain_material(flags)) {
         (GrKind::Izumi, IZUMI_WATER) => IZUMI_WATER_EFFECTS,
         (GrKind::PStadium, STADIUM_WATER) => STADIUM_WATER_EFFECTS,
+        (GrKind::Icemt, ICEMT_SNOW) => ICEMT_SNOW_EFFECTS,
         _ => TerrainEffects::default(),
     }
 }

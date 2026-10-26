@@ -8,7 +8,7 @@ pub type ReadResult<T> = Result<T, Box<dyn std::error::Error>>;
 const MODEL_SIZE: u32 = 0x34;
 const JOINT_MAPPING_SIZE: u32 = 6;
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct JointMapping {
     pub joint_index: i16,
     pub target_index: i16,
@@ -458,6 +458,29 @@ pub fn read_greatbay_parameters(archive: &Archive) -> ReadResult<crate::greatbay
         turtle_dir_prob: [h(0x70)?, h(0x72)?, h(0x74)?, h(0x76)?],
         turtle_item_prob: f(0x78)?,
         turtle_items: items,
+    })
+}
+/// grIm_StageData / grDatFiles_801C6038: GrIm.dat. stage_callbacks[8]
+/// carries flags 0xC0000000, so map 8 selects the lights and fog.
+pub fn read_icemt(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Icemt, 8)
+}
+/// `grIceMt_YakumonoParam` (gricemt.c:63-125) as the Versus code reads
+/// it: the speeds as `((f32*)(param + 4))[idx]` (grIceMt_801FA364).
+pub fn read_icemt_parameters(archive: &Archive) -> ReadResult<crate::icemt::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let mut speeds = [0.0; 12];
+    for (i, speed) in speeds.iter_mut().enumerate() {
+        *speed = r.f32(p + 4 + 4 * i as u32)?;
+    }
+    Ok(crate::icemt::Parameters {
+        segment_cooldown: r.s16(p)?,
+        speed_cooldown: r.s16(p + 0x2)?,
+        speeds,
+        ease_frames: r.s16(p + 0x34)?,
+        hold: [r.s16(p + 0x36)?, r.s16(p + 0x38)?],
+        segment_gap: r.f32(p + 0x40)?,
     })
 }
 /// grI2_StageData / grDatFiles_801C6038: GrI2.dat. grI2_StageCallbacks[2]

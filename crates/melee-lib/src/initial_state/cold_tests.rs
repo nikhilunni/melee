@@ -190,6 +190,10 @@ fn setup_snapshot(state: &InitialState) -> Record {
         SceneStage::Inishie2(stage) => {
             sink.field("stage.inishie2.birdo_wait", &stage.controller.birdo.ticks);
         }
+        SceneStage::IceMt(stage) => {
+            sink.field("stage.icemt.under", &stage.controller.under);
+            sink.field("stage.icemt.upper", &stage.controller.upper);
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -443,6 +447,11 @@ fn start_mc_fox_marth4_cold_600() {
 #[test]
 fn start_pf_fox_marth4_cold_600() {
     verify("start_pf_fox_marth4");
+}
+
+#[test]
+fn start_im_fox_marth4_cold_600() {
+    verify("start_im_fox_marth4");
 }
 
 #[test]

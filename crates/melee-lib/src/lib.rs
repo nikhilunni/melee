@@ -11,6 +11,7 @@ mod standings;
 pub use special_melee::SpecialMelee;
 pub mod diagnostics;
 mod frame;
+mod hud;
 mod initial_state;
 mod ko_counts;
 mod match_clock;

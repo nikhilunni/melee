@@ -1296,6 +1296,15 @@ fn start_mk2_fox_marth4_600() {
 }
 /// Great Bay's start boundary: Tingle's creation draws, the turtle's and
 /// the floating platform's timers, the giants and the moon's countdown.
+/// Icicle Mountain's start boundary: the controller's two segment draws
+/// (a count found from the seed, stageGObj9_OnInit), the fixed camera, and
+/// the scroll's first speed once the countdown releases it.
+#[test]
+fn start_im_fox_marth4_600() {
+    movement_gate_ticks("start_im_fox_marth4", 600);
+    movement_gate_ticks("start_im_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_im_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_gb_fox_marth4_600() {
     movement_gate_ticks("start_gb_fox_marth4", 600);

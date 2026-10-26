@@ -99,7 +99,7 @@ fn height_after(fp: &Fighter, t: i32, frames: i32) -> f32 {
 /// than x5C does.
 fn head_for_end(fp: &mut Fighter, scene: &mut Scene, side: Side, reachable: bool) -> bool {
     let frames = frames_to_terminal(fp);
-    let islands: melee_types::fixed::FixedVec<usize, 64> = {
+    let islands: melee_types::fixed::FixedVec<usize, 256> = {
         let mut list = melee_types::fixed::FixedVec::default();
         for island in scene.map.floor_islands() {
             list.push(island);

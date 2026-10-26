@@ -453,7 +453,7 @@ impl TurtleEngine for TurtleModel<'_> {
 
 /// grLib_801C96F8 (0x801C96F8) with the stage's pieces apart (see
 /// `stadium::spawn_ground_effect`).
-fn ground_effect(
+pub(crate) fn ground_effect(
     assets: &Assets,
     particles: &mut ParticleSystem,
     events: &mut melee_ef::fixture_spawns::EventSink,

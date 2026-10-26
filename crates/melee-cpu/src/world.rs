@@ -93,6 +93,10 @@ pub struct Scene<'a> {
     /// stage_info.x73C (Ground_801C4DA0): the barrel cannon's aim on the
     /// Kongo Jungles, 0 elsewhere.
     pub barrel_aim: f32,
+    /// grLib_801C9E60's drift where the scene knows it (Icicle Mountain's
+    /// grIceMt_801FA728: the scroll, downward); None leaves the stage kind
+    /// to decide.
+    pub stage_drift: Option<hsd_types::Vec3>,
     /// Stack words this think's callees leave behind, which retail later
     /// reads uninitialized.
     pub stale: StaleStack,

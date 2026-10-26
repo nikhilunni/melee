@@ -2560,3 +2560,12 @@ stage = "GreatBay"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 1712236993
+
+[[boundary]]
+name = "start_im_fox_marth4"
+cold = "start_im_fox_marth4_cold"
+savestate = "harness/roms/start_im_fox_marth4.sav"
+stage = "IcicleMountain"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3885784224

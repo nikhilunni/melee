@@ -92,7 +92,7 @@ pub fn steer(fp: &mut Fighter, scene: &mut Scene, rng: &mut HsdRng) {
 /// the one farthest from `from`. Each probe coordinate is a double sum,
 /// rounded; the squared distance fuses its x term (800A68AC: fmadds).
 fn farthest_island_end(fp: &Fighter, scene: &mut Scene, from: Vec3) -> Option<Vec3> {
-    let islands: melee_types::fixed::FixedVec<usize, 64> = {
+    let islands: melee_types::fixed::FixedVec<usize, 256> = {
         let mut list = melee_types::fixed::FixedVec::default();
         for island in scene.map.floor_islands() {
             list.push(island);

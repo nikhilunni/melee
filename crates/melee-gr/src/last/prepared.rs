@@ -86,6 +86,62 @@ impl BackgroundAnimation {
             a.clear_flags(hsd_anim::aobj::AOBJ_LOOP);
         }
     }
+    /// grAnime_801C752C over `bone`'s subtree with every animation type
+    /// (mask 7): each joint, material and texture AObj. The subtree's
+    /// descendant indices follow `bone` in walk order.
+    fn for_each_subtree_aobj(&mut self, bone: usize, mut visit: impl FnMut(&mut hsd_anim::aobj::AObj)) {
+        let mut count = 0;
+        self.tree.walk_tree(self.joints[bone], &mut |_, _| count += 1);
+        for part in bone..bone + count {
+            let joint = self.joints[part];
+            if let Some(aobj) = &mut self.tree.get_mut(joint).aobj {
+                visit(aobj);
+            }
+            if let Some(objects) = self.tree.dobj_mut(joint) {
+                for object in objects {
+                    if let Some(material) = &mut object.mobj {
+                        if let Some(aobj) = &mut material.aobj {
+                            visit(aobj);
+                        }
+                        for texture in &mut material.textures {
+                            if let Some(aobj) = &mut texture.animation {
+                                visit(aobj);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    /// `grAnime_801C77FC(gobj, bone, 7)` (0x801C77FC): every AObj of
+    /// `bone`'s subtree loops (fn_801C6F2C: HSD_AObjSetFlags(AOBJ_LOOP)).
+    pub fn set_subtree_loops(&mut self, bone: usize) {
+        self.for_each_subtree_aobj(bone, |a| a.set_flags(hsd_anim::aobj::AOBJ_LOOP));
+    }
+    /// `grAnime_801C78FC(gobj, bone, 7)` (0x801C78FC): every AObj of
+    /// `bone`'s subtree stops looping (HSD_AObjClearFlags(AOBJ_LOOP)).
+    pub fn clear_subtree_loops_all(&mut self, bone: usize) {
+        self.for_each_subtree_aobj(bone, |a| a.clear_flags(hsd_anim::aobj::AOBJ_LOOP));
+    }
+    /// `grAnime_801C7A04(gobj, bone, 7, rate)` (0x801C7A04): every AObj of
+    /// `bone`'s subtree plays at `rate` (HSD_AObjSetRate).
+    pub fn set_subtree_animation_rate(&mut self, bone: usize, rate: f32) {
+        self.for_each_subtree_aobj(bone, |a| a.set_rate(rate));
+    }
+    /// `grAnime_801C7B24(gobj, bone, 7, frame)` (0x801C7B24): `bone`'s
+    /// subtree requested at `frame` (HSD_JObjReqAnimAllByFlags, every type).
+    pub fn request_subtree_frame_all(&mut self, bone: usize, frame: f32) {
+        self.for_each_subtree_aobj(bone, |a| a.req_anim(frame));
+    }
+    /// `HSD_JObjGetTranslationY` of the Ground GObj's JObj.
+    pub fn gobj_translation_y(&self) -> f32 {
+        self.gobj_translation().y
+    }
+    /// `HSD_JObjSetTranslateY` of the Ground GObj's JObj.
+    pub fn set_gobj_translate_y(&mut self, y: f32) {
+        let joint = self.tree.parent(self.root).unwrap_or(self.root);
+        self.tree.set_translate_y(joint, y);
+    }
     /// grAnime_801C7A94 affects one joint's rate, without rewinding its clock.
     pub fn set_joint_rate(&mut self, bone: usize, rate: f32) {
         if let Some(a) = &mut self.tree.get_mut(self.joints[bone]).aobj {

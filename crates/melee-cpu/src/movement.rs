@@ -127,8 +127,22 @@ pub fn toward_destination_in_air(
                 crate::up_special::up_special(fp, rng);
                 return;
             }
-            if matches!(scene.stage(), GrKind::Icemt | GrKind::RCruise) {
-                unimplemented!("ftCo_800A9CB4: Icicle Mountain and Rainbow Cruise recovery");
+            match scene.stage() {
+                // grLib_801C9E60: the field scrolling down (a drift below 0,
+                // compared as a double).
+                GrKind::Icemt => {
+                    let drift = scene
+                        .stage_drift
+                        .expect("Icicle Mountain's scene passes its drift");
+                    if f64::from(drift.y) < 0.0 {
+                        crate::up_special::up_special(fp, rng);
+                        return;
+                    }
+                }
+                GrKind::RCruise => {
+                    unimplemented!("ftCo_800A9CB4: Rainbow Cruise recovery");
+                }
+                _ => {}
             }
         }
     }

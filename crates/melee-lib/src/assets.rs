@@ -292,6 +292,15 @@ impl Assets {
                 melee_types::GrKind::MuteCity | melee_types::GrKind::Shrine
             ),
         };
+        if stage_desc.kind == melee_types::GrKind::Icemt {
+            // grIceMt_801F686C sets stage_info.unk8C.b4; grIceMt_801FA854
+            // keeps Ground_801C2D24(4..7) on map 0's bones, whose
+            // translations stageGObj0_OnInit sets.
+            arena.player_revival_markers = true;
+            // ... and clears unk8C.b5.
+            arena.tracked_revival_markers = true;
+            arena.revival_positions = crate::scene_stage::icemt::respawn_points(&stage, &stage_desc)?;
+        }
         let mut stage_camera = stage_camera(&stage_desc, &camera_range, [low, high])?;
         if stage_desc.kind == melee_types::GrKind::Flatzone {
             // grFlatzone_80216E78: Ground_801C3990(Stage_GetBlastZoneBottomOffset()

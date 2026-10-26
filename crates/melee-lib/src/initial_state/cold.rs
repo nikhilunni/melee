@@ -168,6 +168,10 @@ impl InitialState {
                 });
             rng = start.context("Poké Floats: no sky draw count reaches the boundary seed")?;
         }
+        if assets.stage_desc.kind == GrKind::Icemt {
+            let draws = icemt_controller_draws(&assets, boundary_seed, fixed_draws, spawner_draws)?;
+            rng = HsdRng::new(before_setup(boundary_seed, fixed_draws + draws));
+        }
         // fn_8016E730: Item_80266FCC, then it_8026D018 (the random item
         // spawner), after the stage's files load (Stage_802251E8) and before
         // its maps are created (Stage_8022524C), where every stage draws.
@@ -214,6 +218,7 @@ impl InitialState {
                 | SceneStage::Pura(_)
                 | SceneStage::Inishie2(_)
                 | SceneStage::GreatBay(_)
+                | SceneStage::IceMt(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -226,7 +231,17 @@ impl InitialState {
             }
         }
         let (mut fighters, spawn_counter) =
-            create_players(scenario, &assets, &mut map, &mut stage_animations, &mut rng)?;
+            create_players(scenario, &assets, &stage, &mut map, &mut stage_animations, &mut rng)?;
+        // Stage_80225298 -> the stage's on_load, after the fighters exist.
+        crate::scene_stage::icemt::on_load(
+            &stage,
+            &assets,
+            &mut stage_animations,
+            &mut map,
+            &mut particles,
+            &mut melee_ef::fixture_spawns::EventSink::default(),
+            &mut rng,
+        )?;
         for (index, fighter) in fighters.iter_mut().enumerate() {
             fighter.0.cpu.fighter_address =
                 super::heap::fighter_address_after_boot(scenario, index);
@@ -322,6 +337,15 @@ impl InitialState {
             &mut map,
             assets.stage_desc.parameters.map_scale,
         );
+        // stageGObj1..6_OnInit: the setup segments' blocks.
+        crate::scene_stage::icemt::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
         // grInishie1_801FAD84: the bricks' material items.
         crate::scene_stage::inishie1::spawn_items(
             &mut stage,
@@ -364,6 +388,9 @@ impl InitialState {
                 &scenario.fighters.iter().map(|f| f.stocks).collect::<Vec<_>>(),
                 &scenario.fighters.iter().map(|f| f.slot).collect::<Vec<_>>(),
             )?,
+            hud_order: crate::hud::HudOrder::new(
+                fighters.iter().filter(|f| !f.0.player.secondary).count(),
+            ),
             spawn_counter,
             banner: Some(crate::banner::Banner::from_archive(
                 &assets.interface,
@@ -512,6 +539,9 @@ fn setup_draws(
         // grGreatBay_801F4694 (the turtle's wait), 801F5A00 (the moon's),
         // it_802ECA70 (the facing coin, it_802EB6DC twice).
         GrKind::GreatBay => 7,
+        // stageGObj9_OnInit draws until it has two segments: counted apart
+        // ([`icemt_controller_draws`]).
+        GrKind::Icemt => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -558,6 +588,44 @@ fn variable_stage_draws(stage: GrKind, rng: HsdRng) -> usize {
     draws
 }
 
+/// stageGObj9_OnInit's HSD_Randi(6) draws, drawn again while the second
+/// segment repeats the first: one draw, then one or more. The count is the
+/// one whose own draws, replayed from the seed it implies, take exactly
+/// that many; a second such count would leave the boundary ambiguous.
+fn icemt_controller_draws(
+    assets: &Assets,
+    boundary_seed: u32,
+    other_draws: usize,
+    spawner_draws: usize,
+) -> Result<usize> {
+    const MOST: usize = 64;
+    let parameters = crate::scene_stage::icemt::read_parameters(assets)?;
+    let mut found = None;
+    for draws in 2..=MOST {
+        let mut rng = HsdRng::new(before_setup(boundary_seed, other_draws + draws));
+        for _ in 0..spawner_draws {
+            rng.randi(1);
+        }
+        let start = rng.seed;
+        melee_gr::icemt::Controller::new(&parameters, &mut rng);
+        let mut probe = HsdRng::new(start);
+        let mut taken = 0;
+        while probe.seed != rng.seed && taken <= MOST {
+            probe.randi(1);
+            taken += 1;
+        }
+        if taken == draws {
+            ensure!(
+                found.is_none(),
+                "stageGObj9_OnInit: {} and {draws} draws both fit the boundary seed",
+                found.unwrap_or(0)
+            );
+            found = Some(draws);
+        }
+    }
+    found.ok_or_else(|| anyhow::anyhow!("stageGObj9_OnInit: no draw count fits the boundary seed"))
+}
+
 fn before_setup(mut seed: u32, draws: usize) -> u32 {
     const INVERSE_MULTIPLIER: u32 = 0xB9B3_3155;
     for _ in 0..draws {
@@ -595,9 +663,14 @@ fn spawn_position(assets: &Assets, slot: i16) -> Result<Vec3> {
 /// already moved; the other stages' markers rest at their bind pose.
 fn live_spawn_position(
     assets: &Assets,
+    stage: &SceneStage,
     stage_animations: &mut BTreeMap<u8, BackgroundAnimation>,
     slot: i16,
 ) -> Option<Vec3> {
+    if matches!(stage, SceneStage::IceMt(_)) && (0..4).contains(&slot) {
+        // grIceMt_801F98A8: Ground_801C2D0C(0..3) on the view's segment.
+        return crate::scene_stage::icemt::spawn_point(stage, stage_animations, slot as usize);
+    }
     if assets.stage_desc.kind != GrKind::Kongo {
         return None;
     }
@@ -826,6 +899,11 @@ fn initialize_stage(
             stage_animations = animations;
             stage
         }
+        GrKind::Icemt => {
+            let (stage, animations) = crate::scene_stage::icemt::initialize(assets, rng, map)?;
+            stage_animations = animations;
+            stage
+        }
         GrKind::Inishie2 => {
             let (stage, animations) = crate::scene_stage::inishie2::initialize(assets, rng, map)?;
             stage_animations = animations;
@@ -909,6 +987,7 @@ fn initial_facings(spawn_x: &[f32], teams: &[Option<u8>]) -> Vec<f32> {
 fn create_players(
     scenario: &Setup,
     assets: &Assets,
+    stage: &SceneStage,
     map: &mut melee_mp::CollMap,
     stage_animations: &mut BTreeMap<u8, BackgroundAnimation>,
     rng: &mut HsdRng,
@@ -922,7 +1001,7 @@ fn create_players(
             } else {
                 i16::from(fighter.spawn_point)
             };
-            live_spawn_position(assets, stage_animations, marker)
+            live_spawn_position(assets, stage, stage_animations, marker)
                 .map_or_else(|| spawn_position(assets, marker), Ok)
         })
         .collect::<Result<_>>()?;

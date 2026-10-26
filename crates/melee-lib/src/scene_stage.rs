@@ -4,6 +4,7 @@ pub(crate) mod fourside;
 pub(crate) mod flatzone;
 pub(crate) mod garden;
 pub(crate) mod greatbay;
+pub(crate) mod icemt;
 pub(crate) mod inishie1;
 pub(crate) mod inishie2;
 pub(crate) mod izumi;
@@ -313,6 +314,14 @@ pub const GREAT_BAY: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::GreatBay,
     read: melee_gr::desc::read_greatbay,
 };
+/// grIm_StageData: GrIm.dat; StageParam row 0x19 (StKind).
+pub const ICICLE_MOUNTAIN: StageDescriptor = StageDescriptor {
+    name: "IcicleMountain",
+    file: "GrIm.dat",
+    music_id: 0x19,
+    kind: melee_types::GrKind::Icemt,
+    read: melee_gr::desc::read_icemt,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -338,6 +347,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &POKE_FLOATS,
         &MUSHROOM_KINGDOM_2,
         &GREAT_BAY,
+        &ICICLE_MOUNTAIN,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -367,6 +377,7 @@ pub enum SceneStage {
     Pura(Box<melee_gr::pura::Pura>),
     Inishie2(Box<melee_gr::inishie2::procs::Inishie2Stage>),
     GreatBay(Box<melee_gr::greatbay::procs::GreatBayStage>),
+    IceMt(Box<melee_gr::icemt::procs::IceMtStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -377,7 +388,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -405,6 +416,7 @@ impl SceneStage {
             Self::Pura(s) => s.proc_table(),
             Self::Inishie2(s) => s.proc_table(),
             Self::GreatBay(s) => s.proc_table(),
+            Self::IceMt(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -452,6 +464,7 @@ impl SceneStage {
                 unreachable!("Mushroom Kingdom II callbacks run in scene_stage::inishie2")
             }
             Self::GreatBay(_) => unreachable!("Great Bay callbacks run in scene_stage::greatbay"),
+            Self::IceMt(_) => unreachable!("Icicle Mountain callbacks run in scene_stage::icemt"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -490,6 +503,10 @@ pub(crate) fn apply_ceiling_events(
     match state.stage {
         SceneStage::Yorster(_) => yorster::apply_bumps(state, collider),
         SceneStage::Inishie1(_) => inishie1::apply_bumps(state),
+        SceneStage::IceMt(_) => {
+            icemt::apply_joint_events(state);
+            Ok(())
+        }
         _ => Ok(()),
     }
 }
@@ -513,6 +530,7 @@ pub(crate) fn material_hit(
         }
         SceneStage::Inishie1(_) => inishie1::material_hit(state, item),
         SceneStage::MuteCity(_) => mutecity::material_hit(state, item, damage),
+        SceneStage::IceMt(_) => icemt::material_hit(state, item),
         _ => Ok(()),
     }
 }

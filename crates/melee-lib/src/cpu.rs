@@ -82,6 +82,14 @@ pub(crate) fn think(state: &mut InitialState, index: usize) {
             crate::scene_stage::SceneStage::OldKongo(stage) => stage.cannon_aim,
             _ => 0.0,
         },
+        // grIceMt_801FA728 (Versus): (0, -map 9's x10, 0), the scroll's
+        // speed as the controller last left it.
+        stage_drift: match &state.stage {
+            crate::scene_stage::SceneStage::IceMt(stage) => {
+                Some(hsd_types::Vec3::new(0.0, -stage.controller.scroll.speed, 0.0))
+            }
+            _ => None,
+        },
         stale: Default::default(),
     };
     melee_cpu::think(&mut own.0, &mut scene, &mut state.rng);
