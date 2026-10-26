@@ -203,6 +203,14 @@ fn setup_snapshot(state: &InitialState) -> Record {
         SceneStage::Greens(greens) => {
             sink.field("stage.greens.block_timer", &greens.stage.blocks.timer);
         }
+        SceneStage::BigBlue(stage) => {
+            sink.field("stage.bigblue.arrival_timer", &i32::from(stage.cars.arrival_timer));
+            for (i, lane) in stage.cars.lanes.iter().enumerate() {
+                sink.field(&format!("stage.bigblue.lane[{i}].slot"), &(lane.slot as u32));
+                sink.field(&format!("stage.bigblue.lane[{i}].phase"), &lane.phase);
+                sink.field(&format!("stage.bigblue.lane[{i}].wait"), &lane.wait);
+            }
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
