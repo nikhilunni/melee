@@ -362,10 +362,40 @@ class BoundaryDriver:
                     raise BoundaryError("the match was created without passing fn_8016E730's "
                                         f"gm_801A4B08 call: {missed} not written")
                 self.save(self.config["savestate"])
+                if "sudden_death" in self.config:
+                    self.enter("play")
+                    return self.held_inputs()
+                self.done = True
+                self.enter("saved")
+            return {}
+        if self.phase == "play":
+            # The match plays out with the held inputs from its first frame;
+            # its scene exit leaves no fighters (the tie screen).
+            if not self.read_fighters():
+                self.enter("tie")
+                return {}
+            return self.held_inputs()
+        if self.phase == "tie":
+            # The tie screen takes A (twice) into the Sudden Death scene;
+            # no button is held once its fighters exist.
+            if self.read_fighters():
+                self.enter("sudden-death")
+                return {}
+            return self.pulse("A")
+        if self.phase == "sudden-death":
+            fighters = self.read_fighters()
+            expected = self.config["sudden_death"]["fighters"]
+            if len(fighters) == expected and all(f["motion_id"] == MS_ENTRY for f in fighters):
+                self.save(self.config["sudden_death"]["savestate"])
                 self.done = True
                 self.enter("saved")
             return {}
         return {}
+
+    def held_inputs(self) -> dict:
+        """`sudden_death.hold`: each player's pad, held for the whole match."""
+        hold = self.config["sudden_death"].get("hold", {})
+        return {self.ports[int(player)]: dict(pad) for player, pad in hold.items()}
 
     def on_memory(self, is_write: bool, addr: int, value: int) -> None:
         """The creation hook (a memory breakpoint; the CPU is stopped inside

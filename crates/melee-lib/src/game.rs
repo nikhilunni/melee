@@ -139,15 +139,24 @@ impl Match {
     }
 
     /// The Sudden Death match retail plays after this one timed out on a
-    /// stock tie. The finished scene first runs frozen to its exit (TIME!
-    /// held for StartMeleeRules xD frames, fn_8016D634), then the tie screen
+    /// tie. The finished scene first runs frozen to its exit (TIME! held
+    /// for StartMeleeRules xD frames, fn_8016D634), then the tie screen
     /// leaves the RNG untouched and the new scene's setup draws carry it on.
+    /// gm_SetupSuddenDeath: only the tied leaders (players, or a team
+    /// battle's tied teams' members) play on; the others' slots go to
+    /// Gm_PKind_NA, so the new scene creates (and draws for) their fighters
+    /// alone.
     pub fn sudden_death(&self) -> Result<Self, StartError> {
         if self.status() != MatchStatus::Finished(MatchOutcome::SuddenDeath) {
             return Err(StartError::InvalidConfig(
-                "Sudden Death follows a timed-out stock tie",
+                "Sudden Death follows a timed-out tie",
             ));
         }
+        let leaders = {
+            let state = self.engine.state();
+            let ranks = crate::standings::current_ranks(state);
+            ranks.map(|rank| rank == 0)
+        };
         let mut engine = self.engine.clone();
         let exited = catch_unwind(AssertUnwindSafe(|| {
             for _ in 0..SCENE_EXIT_TICKS {
@@ -160,25 +169,22 @@ impl Match {
                     .state()
                     .fighters
                     .iter()
+                    .filter(|fighter| leaders[usize::from(fighter.0.core.player.id)])
                     .map(|fighter| fighter.0.core.kind),
             )
         }))
         .map_err(|p| StartError::Initialization(panic_message(p)))?
         .map_err(|e| StartError::Initialization(format!("{e:#}")))?;
-        // gm_SetupSuddenDeath: only the winners play on (the others' slots
-        // go to Gm_PKind_NA).
+        let mut config = self.config.clone();
         {
             let state = self.engine.state();
-            let ranks = crate::standings::current_ranks(state);
-            if (0..self.config.players.len())
-                .any(|p| ranks[usize::from(state.player_fighter(p).0.player.id)] != 0)
-            {
-                return Err(StartError::InvalidConfig(
-                    "a Sudden Death without every player needs a retail witness",
-                ));
-            }
+            let mut player = 0;
+            config.players.retain(|_| {
+                let slot = state.player_fighter(player).0.player.id;
+                player += 1;
+                leaders[usize::from(slot)]
+            });
         }
-        let mut config = self.config.clone();
         config.rules.mode = crate::MatchKind::Stock;
         config.rules.stocks = 1;
         config.rules.time_limit_seconds = None;

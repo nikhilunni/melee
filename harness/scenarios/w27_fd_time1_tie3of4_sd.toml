@@ -1,0 +1,30 @@
+# Sudden Death among three of four players, from its first frame: after
+# w27_fd_time1_tie3of4_walkoff's TIME! (Fox, Marth and Falco tied at 0,
+# Captain Falcon below), A pressed on the tie screen; only the three tied
+# players start their Entry, at 300% with one stock (gm_SetupSuddenDeath:
+# Captain Falcon's slot is Gm_PKind_NA). Idle through the countdown, GO and
+# the Bob-omb rain. Boundary: w27_fd_time1_tie3of4_sd.sav
+# (make_boundary.py --sudden-death-hold, save-when-fighters); tick clock.
+name = "w27_fd_time1_tie3of4_sd"
+input_clock = "tick"
+savestate = "harness/roms/w27_fd_time1_tie3of4_sd.sav"
+frames = 1635
+render_every_tick = true
+seed = 1
+stage = "FinalDestination"
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+controller = "idle"

@@ -492,6 +492,12 @@ def main(argv: list[str] | None = None) -> None:
     ap.add_argument("--special", choices=["camera", "stamina", "super-sudden-death", "giant", "tiny",
                                           "invisible", "single-button", "lightning", "slomo"],
                     help="a Special Melee mode (VS. Mode > Special Melee) instead of Melee")
+    ap.add_argument("--sudden-death-hold", nargs="+", default=[], metavar="PLAYER:STICKX",
+                    help="play the timed match on, each named player (0-based) holding the stick "
+                         "at STICKX from its first frame, through TIME! and the tie screen, and "
+                         "save <name>_sd.sav at the Sudden Death scene's first frame")
+    ap.add_argument("--sudden-death-fighters", type=int, metavar="N",
+                    help="the fighters the Sudden Death scene creates (its tied players')")
     ap.add_argument("--timeout", type=float, default=TIMEOUT)
     a = ap.parse_args(argv)
     if a.containers is not None and a.no_containers:
@@ -568,6 +574,19 @@ def main(argv: list[str] | None = None) -> None:
     if any(b["name"] == name for b in tomllib.loads(BOUNDARIES.read_text())["boundary"]):
         sys.exit(f"{name} is already in {BOUNDARIES.name}")
 
+    extra = None
+    if a.sudden_death_hold:
+        if a.mode == "stock" or a.sudden_death_fighters is None:
+            sys.exit("--sudden-death-hold needs a timed mode and --sudden-death-fighters")
+        sd_sav = data_root.ROMS / f"{name}_sd.sav"
+        if sd_sav.exists():
+            sys.exit(f"refusing to overwrite: {sd_sav}")
+        hold = {}
+        for entry in a.sudden_death_hold:
+            player, stick = entry.split(":")
+            hold[player] = {"StickX": float(stick)}
+        extra = {"sudden_death": {"savestate": str(sd_sav), "hold": hold,
+                                  "fighters": a.sudden_death_fighters}}
     print(f"== {name}: driving the menus", flush=True)
     t0 = time.monotonic()
     summary = make_savestate(sav, STAGES[a.stage][0], [CHARACTERS[p] for p in a.players],
@@ -577,8 +596,16 @@ def main(argv: list[str] | None = None) -> None:
                              item_frequency=item_frequency,
                              item_switch=item_switch, rules_item_mask=rules_item_mask,
                              mode=MODES[a.mode], handicaps=a.handicaps,
-                             damage_ratio_tenths=damage_ratio_tenths, special=a.special)
+                             damage_ratio_tenths=damage_ratio_tenths, special=a.special,
+                             extra=extra)
     sidecar = json.loads(Path(str(sav) + ".json").read_text())
+    if extra:
+        # The run went on into Sudden Death: the match's own rules, seed and
+        # fighters are the first savestate's sidecar.
+        summary = {**summary, **{k: v for k, v in sidecar.items() if k not in ("savestate", "saved_at")}}
+        sd_sidecar = json.loads(Path(str(sd_sav) + ".json").read_text())
+        print(f"   saved {sd_sav.name} at frame {sd_sidecar['frame']}: seed {sd_sidecar['seed']}, "
+              f"fighters {[(f['kind_name'], f['player_id']) for f in sd_sidecar['fighters']]}", flush=True)
     seed = sidecar["seed"]
     costumes = [p["color"] for p in summary["css_players"]]
     print(f"   saved {sav.name} at frame {summary['frame']} in {time.monotonic() - t0:.0f}s: seed {seed}, "

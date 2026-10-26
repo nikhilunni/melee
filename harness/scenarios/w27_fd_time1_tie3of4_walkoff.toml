@@ -1,0 +1,40 @@
+# A one-minute Time match on Final Destination that ends in a tie among
+# three of its four players: Captain Falcon (P4) holds left from the first
+# frame and walks off the stage again after every revival (self-destructs,
+# a negative score); Fox, Marth and Falco idle at 0. TIME! and the frozen
+# hold to the scene exit follow; the Sudden Death that comes next has the
+# three tied players only (gm_SetupSuddenDeath), recorded from its first
+# frame as w27_fd_time1_tie3of4_sd. Boundary: w27_fd_time1_tie3of4.sav, made
+# by make_boundary.py --sudden-death-hold 3:-0.8742 in the same run as the
+# Sudden Death savestate; tick clock.
+name = "w27_fd_time1_tie3of4_walkoff"
+input_clock = "tick"
+savestate = "harness/roms/w27_fd_time1_tie3of4.sav"
+frames = 3839
+render_every_tick = true
+seed = 1
+mode = "time"
+stage = "FinalDestination"
+inputs = [
+  { frame = 0, port = 3, buttons = { StickX = -0.8742 }, raw = { stickX = -110 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"
+
+[[fighters]]
+slot = 2
+kind = "Falco"
+controller = "idle"
+
+[[fighters]]
+slot = 3
+kind = "CaptainFalcon"
+controller = "scripted"

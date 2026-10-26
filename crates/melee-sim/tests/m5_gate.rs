@@ -5172,6 +5172,12 @@ fn timeout_and_sudden_death_match_retail() {
         // Fox loses a stock, then the timer runs out with Marth ahead.
         ("timeout_decisive_fd_marth", 3839),
         ("sudden_death_start_fd_marth", 1697),
+        // Four players: Captain Falcon walks off until TIME!, and the
+        // Sudden Death that follows has the three tied players alone
+        // (gm_SetupSuddenDeath), built cold as well.
+        ("w27_fd_time1_tie3of4_walkoff", 3839),
+        ("w27_fd_time1_tie3of4_sd", 1635),
+        ("w27_fd_time1_tie3of4_sd_cold", 1635),
         ("sudden_death_bombs_fd_marth", 1300),
         ("sudden_death_idle_fd_marth", 1576),
         ("sudden_death_jab_bomb_fd_marth", 1369),
