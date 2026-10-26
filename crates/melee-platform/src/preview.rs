@@ -17,7 +17,7 @@
 use crate::{art::Image, catalog, renderer};
 use melee_lib::{
     presentation::{Presentation, ViewCamera},
-    Character, Costume, FileSource, GameAssets, Inputs, Match, MatchConfig, PlayerConfig, Port,
+    Character, Costume, FileSource, GameAssets, Inputs, MatchConfig, PlayerConfig, Port,
     Seed, Stage,
 };
 use std::{
@@ -84,10 +84,10 @@ pub async fn build<P: Future<Output = ()>>(
     stage: Stage,
     pause: &mut impl FnMut() -> P,
 ) -> Result<Presentation, String> {
-    let config = config(stage);
+    let mut config = config(stage);
     let assets = catch_panic(|| GameAssets::load_from(source, &config).map_err(|e| e.to_string()))?;
     pause().await;
-    let mut game = catch_panic(|| Match::new(&assets, config).map_err(|e| e.to_string()))?;
+    let mut game = catch_panic(|| crate::session::start(&assets, &mut config))?;
     drop(assets);
     let neutral = Inputs::default();
     for _ in 0..SETTLE_TICKS / TICKS_PER_STEP {
@@ -105,10 +105,11 @@ pub async fn build<P: Future<Output = ()>>(
 
 /// How a preview frames its stage, chosen by eye for each stage: the
 /// visible width at the interest point and the interest's height, in world
-/// units, and how far the view looks down.
+/// units, and how far the view looks down. A stage not yet framed by eye
+/// (`height: None`) shows the match's opening view.
 struct Framing {
     width: f32,
-    height: f32,
+    height: Option<f32>,
     pitch_degrees: f32,
 }
 fn framing(stage: Stage) -> Framing {
@@ -128,11 +129,11 @@ fn framing(stage: Stage) -> Framing {
         Stage::Fourside => (280.0, 40.0, 6.0),
         Stage::BrinstarDepths => (230.0, 20.0, 8.0),
         // TODO(framing): chosen by eye once each stage is ported.
-        _ => (240.0, 15.0, 10.0),
+        _ => (240.0, f32::NAN, 10.0),
     };
     Framing {
         width,
-        height,
+        height: (!height.is_nan()).then_some(height),
         pitch_degrees,
     }
 }
@@ -144,12 +145,19 @@ pub fn camera(stage: Stage, scene: &Presentation) -> ViewCamera {
     let frame = scene.stage_frame();
     let retail = scene.view_camera();
     let framing = framing(stage);
+    if framing.height.is_none() {
+        // Not framed by eye yet: the match's own opening view.
+        return ViewCamera {
+            aspect: SIZE[0] as f32 / SIZE[1] as f32,
+            ..*retail
+        };
+    }
     let [left, right, ..] = frame.camera;
     let aspect = SIZE[0] as f32 / SIZE[1] as f32;
     let fov = frame.fov;
     let distance = framing.width * 0.5 / (tanf(fov.to_radians() * 0.5) * aspect);
     let pitch = framing.pitch_degrees.to_radians();
-    let interest = [(left + right) * 0.5, framing.height, 0.0];
+    let interest = [(left + right) * 0.5, framing.height.unwrap_or(0.0), 0.0];
     let toward_eye = [0.0, sinf(pitch), cosf(pitch)];
     ViewCamera {
         eye: std::array::from_fn(|i| interest[i] + toward_eye[i] * distance),
