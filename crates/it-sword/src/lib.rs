@@ -263,6 +263,8 @@ pub mod starrod;
 pub use starrod::{StarRod, StarRodStar};
 pub mod lipstick;
 pub use lipstick::{Flower, LipStick, LipStickSpore};
+pub mod parasol;
+pub use parasol::Parasol;
 
 /// it_80292394 / it_80295748: where a held kind's shot leaves it, in the
 /// hand joint's frame; zero for the kinds that never shoot from a swing.

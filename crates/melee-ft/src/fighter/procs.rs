@@ -70,6 +70,9 @@ impl Fighter {
             self.mash_flower(assets);
             self.core.update_smash_charge_input(assets);
             (self.motion_row.iasa)(self, state::InputPhase { assets });
+            // ftAction_80072894 runs at once inside an entry's
+            // ftAnim_8006EBA4 (a ParasolSwing's opening step).
+            self.apply_parasol_commands();
         }
     }
 

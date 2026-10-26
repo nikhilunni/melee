@@ -86,9 +86,18 @@ fn swing_row(kind: ItemKind) -> Option<(usize, &'static [Option<S>; 5])> {
         ItemKind::Harisen => Some((3, &HARISEN_SWINGS)),
         ItemKind::StarRod => Some((4, &STARROD_SWINGS)),
         ItemKind::LipStick => Some((5, &LIPSTICK_SWINGS)),
+        ItemKind::Parasol => Some((2, &PARASOL_SWINGS)),
         _ => None,
     }
 }
+/// lbl_803C6D70's parasol row.
+const PARASOL_SWINGS: [Option<S>; 5] = [
+    Some(S::ParasolSwing1),
+    Some(S::ParasolSwing3),
+    Some(S::ParasolSwing4),
+    None,
+    Some(S::ParasolSwingDash),
+];
 /// lbl_803C6D70's lipstick row.
 const LIPSTICK_SWINGS: [Option<S>; 5] = [
     Some(S::LipstickSwing1),
@@ -187,7 +196,18 @@ impl Fighter {
         // ftCo_800CD350 / 800CD418 / 800CD5A8 -> ftCo_800CD140 (800CD140):
         // the sword's, bat's and fan's rows pass no motion flags.
         self.core.commands.clear_throw_flags();
-        self.change_motion_state_with_rate(action, assets, 0.0, rate)?;
+        if held.kind == ItemKind::Parasol {
+            // ftCo_800CD4E0: ftCo_800CD140 with 0x400 (Ft_MF_SkipParasol).
+            self.change_motion_state_with_flags(
+                action,
+                assets,
+                super::MotionEntryFlags::SKIP_PARASOL,
+                0.0,
+                rate,
+            )?;
+        } else {
+            self.change_motion_state_with_rate(action, assets, 0.0, rate)?;
+        }
         self.step_animation(assets);
         self.core.status.interaction = super::Interaction::Attack;
         self.core.state_data = MotionData::Swing(SwingState {

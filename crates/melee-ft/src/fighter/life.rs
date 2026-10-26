@@ -1152,6 +1152,8 @@ impl FighterCore {
         self.physics.fixed_traction = self.capabilities.fixed_traction;
         self.physics.percent = player.damage;
         self.input = crate::input::FighterInput::default();
+        // fighter.c:273-276: x2221_b4..b7, the parasol's flags.
+        self.parasol = super::parasol::ParasolTimer::default();
         let mut collision = std::mem::take(&mut self.collision.data);
         crate::collision::ecb::reinitialize(
             map,

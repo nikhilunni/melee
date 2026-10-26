@@ -390,6 +390,14 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         camera: callbacks::camera::follow_fighter,
         implemented: true,
     };
+    // ftCo_MS_ItemParasolDamageFall = 147 (ftCo_ItemParasolDamageFall.c),
+    // ftCo_SM 137: DamageFall's callbacks.
+    rows[S::ItemParasolDamageFall as usize] = MotionRow {
+        action: ActionId(147),
+        id: S::ItemParasolDamageFall,
+        animation: 137,
+        ..rows[S::DamageFall as usize]
+    };
     // ftCo_MS_Squat = 39; ftData_MotionStateList[39].
     rows[S::Squat as usize] = MotionRow {
         action: ActionId(39),
@@ -615,7 +623,13 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
     // the entry's accessory4 (ft_800CD914).
     // [140..=143]: ftCo_LipstickSwing_* likewise, the spore the entry's
     // accessory4 (ft_800CDB9C).
-    const SWORD_SWINGS: [(S, i32); 16] = [
+    // [128..=131]: ftCo_ParasolSwing_* likewise (ftCo_800CD4E0 enters
+    // them with Ft_MF_SkipParasol).
+    const SWORD_SWINGS: [(S, i32); 20] = [
+        (S::ParasolSwing1, 116),
+        (S::ParasolSwing3, 117),
+        (S::ParasolSwing4, 118),
+        (S::ParasolSwingDash, 119),
         (S::LipstickSwing1, 128),
         (S::LipstickSwing3, 129),
         (S::LipstickSwing4, 130),
@@ -2209,6 +2223,37 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         collision: crate::fighter::barrel::wait_collision,
         camera: callbacks::camera::follow_fighter,
         implemented: true,
+    };
+    // ftCo_MS_ItemParasolOpen, ItemParasolFall, ItemParasolFallSpecial =
+    // 144..146 (ftCo_ItemParasol*.c), ftCo_SM 134..136: the Parasol item's
+    // float.
+    rows[S::ItemParasolOpen as usize] = MotionRow {
+        action: ActionId(144),
+        id: S::ItemParasolOpen,
+        animation: 134,
+        anim: crate::fighter::parasol::open_anim,
+        iasa: crate::fighter::parasol::open_input,
+        physics: crate::fighter::parasol::physics,
+        collision: crate::fighter::parasol::open_collision,
+        camera: callbacks::camera::follow_fighter,
+        implemented: true,
+    };
+    rows[S::ItemParasolFall as usize] = MotionRow {
+        action: ActionId(145),
+        id: S::ItemParasolFall,
+        animation: 135,
+        anim: crate::fighter::parasol::fall_special_anim,
+        iasa: crate::fighter::parasol::item_fall_input,
+        ..rows[S::ItemParasolOpen as usize]
+    };
+    rows[S::ItemParasolFallSpecial as usize] = MotionRow {
+        action: ActionId(146),
+        id: S::ItemParasolFallSpecial,
+        animation: 136,
+        anim: crate::fighter::parasol::fall_special_anim,
+        iasa: crate::fighter::parasol::fall_special_input,
+        collision: crate::fighter::parasol::fall_special_collision,
+        ..rows[S::ItemParasolOpen as usize]
     };
     // ftCo_MS_WarpStarJump, WarpStarFall = 305, 306 (ftCo_WarpStar.c): the
     // rider crouches on the star (ftCo_SM_Squat, SquatWait).

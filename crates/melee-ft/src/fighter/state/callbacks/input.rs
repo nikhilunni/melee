@@ -299,6 +299,36 @@ pub fn aerial(fighter: &mut Fighter, phase: InputPhase<'_>) {
                 )
         },
     );
+    // ftCo_800CEE70, the parasol opening: Fall (ftCo_Fall.c:137) and Jump
+    // once its physics began (ftCo_Jump.c:185) try it before the float and
+    // the aerial jump; JumpAerial (ftCo_JumpAerial.c:302) last, once its
+    // cmd_vars[0] is raised.
+    use melee_types::CommonMotionState as S;
+    let state = fighter.core.motion_state.id;
+    let falling = matches!(
+        state,
+        S::Fall | S::FallF | S::FallB | S::FallAerial | S::FallAerialF | S::FallAerialB
+    );
+    let jumping = matches!(state, S::JumpF | S::JumpB)
+        && matches!(&fighter.core.state_data, MotionData::Jump(jump) if jump.physics_started != 0);
+    let early = matches!(
+        transition,
+        WaitTransition::None | WaitTransition::Jump | WaitTransition::Float
+    );
+    if early
+        && (falling || jumping)
+        && fighter.try_reopen_parasol(assets).expect("parasol opening")
+    {
+        return;
+    }
+    let aerial_jump = matches!(state, S::JumpAerialF | S::JumpAerialB);
+    if transition == WaitTransition::None
+        && aerial_jump
+        && fighter.core.commands.variables[0] != 0
+        && fighter.try_reopen_parasol(assets).expect("parasol opening")
+    {
+        return;
+    }
     match transition {
         WaitTransition::None => {}
         WaitTransition::AirSpecial => fighter.enter_buffered_special(assets, true),

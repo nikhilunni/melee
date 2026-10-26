@@ -3,16 +3,16 @@
 //! parasol step of Fighter_ChangeMotionState (fighter.c:986-993) and of
 //! Fighter_8006A360 (fighter.c:1577-1591), and ftGetParasolStatus.
 //!
-//! Only a character's own special parasol (Peach's, which she hangs on
-//! fp->item_gobj) is ported; the Parasol item's branches are explicit
-//! `unimplemented!` boundaries.
+//! Both parasols are ported: a character's own (Peach's, which she hangs on
+//! fp->item_gobj) through the character table, and the Parasol item
+//! (It_Kind_Parasol) through its held state, which its holder alone sets.
 use super::{
     assets::{FighterAssets, Result},
     state::{AnimationPhase, CollisionPhase, InputPhase, PhysicsPhase},
     ActionId, Fighter, MotionData,
 };
 use crate::anim::WaitChoice;
-use melee_types::CommonMotionState;
+use melee_types::{CommonMotionState, ItemKind};
 
 /// PlCo's parasol parameters (ftCommonData +58C..+59C).
 #[derive(Clone, Copy, Debug, PartialEq)]
@@ -41,12 +41,41 @@ impl ParasolParameters {
     }
 }
 
-/// ftGetParasolStatus (8007E994) for a held special parasol: its motion 1
-/// is 4 (opening), motions 0 and 2 are 6 (open).
+/// ftGetParasolStatus (8007E994): 4 (opening) and 6 (open) for both
+/// parasols (Peach's motion 1, motions 0 and 2); the Parasol item's other
+/// held states give 0..=3 (motions 7..=10) and 5 (motion 6).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum ParasolStatus {
     Opening,
     Open,
+    Other(u8),
+}
+impl ParasolStatus {
+    /// ft_80087988 (80087988): status 4 or 5.
+    pub fn folding(self) -> bool {
+        matches!(self, Self::Opening | Self::Other(5))
+    }
+}
+
+/// it_8028B618: the Parasol item's first held state.
+pub const ITEM_HELD: u16 = 4;
+/// ftcommon.c parasol_table_2: the item state ftCommon_8007E83C's index
+/// plays (parasol_table_1's it_8028B718 .. it_8028B618).
+const ITEM_PARASOL_STATES: [u16; 7] = [7, 8, 9, 10, 5, 6, 4];
+/// it_803F5AB0's anim_id of the held states 4..=10, and it_803F5B60's
+/// frames per anim_id (it_8028B08C).
+const ITEM_PARASOL_ANIMS: [usize; 7] = [1, 2, 3, 4, 5, 6, 7];
+const ITEM_PARASOL_FRAMES: [i32; 8] = [20, 16, 45, 2, 20, 30, 40, 16];
+
+/// ftGetParasolStatus's It_Kind_Parasol switch.
+fn item_parasol_status(motion: u16) -> ParasolStatus {
+    match motion {
+        7..=10 => ParasolStatus::Other((motion - 7) as u8),
+        5 => ParasolStatus::Opening,
+        6 => ParasolStatus::Other(5),
+        4 => ParasolStatus::Open,
+        _ => unreachable!("ftGetParasolStatus: Parasol item motion {motion}"),
+    }
 }
 
 /// ftCo_ItemParasolGetFallMotionId's Peach arm: the character's own rows
@@ -107,8 +136,62 @@ impl Fighter {
     /// ftGetParasolStatus reads fp->item_gobj: a parasol knocked out of
     /// the hand no longer counts, although the character still owns it.
     fn special_parasol(&self) -> Option<SpecialParasol> {
+        if self.holds_parasol_item() {
+            return Some(SpecialParasol {
+                status: item_parasol_status(self.core.parasol_item_motion),
+                open: CommonMotionState::ItemParasolOpen.into(),
+                fall: CommonMotionState::ItemParasolFallSpecial.into(),
+            });
+        }
         self.core.article_in_hand?;
         (self.character.table().special_parasol)(&self.character)
+    }
+
+    /// ftCo_80095744's head: with a parasol in hand (ftGetParasolStatus !=
+    /// -1), ItemParasolFallSpecial folds into special fall
+    /// (ftCo_800968C8), anything else into Fall.
+    pub(super) fn leave_parasol_states(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.special_parasol().is_none() {
+            return Ok(());
+        }
+        if self.core.motion_state.id == CommonMotionState::ItemParasolFallSpecial {
+            self.enter_ordinary_special_fall(assets)
+        } else {
+            self.change_motion_state(CommonMotionState::Fall.into(), assets)
+        }
+    }
+
+    /// fp->item_gobj is the Parasol item.
+    fn holds_parasol_item(&self) -> bool {
+        self.core
+            .held_item
+            .is_some_and(|held| held.kind == ItemKind::Parasol)
+    }
+
+    /// ftCommon_8007E83C (8007E83C): the parasol's animation `index` at a
+    /// rate that spans `frames` (zero: the fighter's own rate). The Parasol
+    /// item's goes through parasol_table_1/2 (retail 8007E8B4..: the int
+    /// frame count as f32, fdivs, fmuls); a character's own through its
+    /// table.
+    fn set_parasol_animation(&mut self, index: usize, frames: f32) {
+        if !self.holds_parasol_item() {
+            (self.character.table().set_parasol_animation)(self, index, frames);
+            return;
+        }
+        let state = ITEM_PARASOL_STATES[index];
+        let speed = self.core.animation.speed;
+        let rate = if frames == 0.0 {
+            speed
+        } else {
+            let length = ITEM_PARASOL_FRAMES[ITEM_PARASOL_ANIMS[usize::from(state - ITEM_HELD)]] as f32;
+            speed * (length / frames)
+        };
+        self.core.parasol_item_motion = state;
+        let held = self.core.held_item.expect("the Parasol item in hand");
+        self.core.item_requests.push(melee_it::ItemRequest::ControlInstance {
+            item: held.item,
+            control: melee_it::ItemControl::ParasolState { state, rate },
+        });
     }
 
     /// Fighter_ChangeMotionState, fighter.c:986-993, unless the entry passes
@@ -118,7 +201,7 @@ impl Fighter {
         if let Some(parasol) = self.special_parasol() {
             if parasol.status != ParasolStatus::Open {
                 // ftCommon_8007E83C(gobj, 6, 0.0f).
-                (self.character.table().set_parasol_animation)(self, 6, 0.0);
+                self.set_parasol_animation(6, 0.0);
             }
         }
     }
@@ -130,7 +213,7 @@ impl Fighter {
                 // ftcommon.c:1069: HSD_ASSERT(ftGetParasolStatus != -1).
                 unimplemented!("ftCommon_8007E83C: parasol command without a special parasol");
             }
-            (self.character.table().set_parasol_animation)(self, index, frames);
+            self.set_parasol_animation(index, frames);
         }
     }
 
@@ -144,7 +227,7 @@ impl Fighter {
         blend_frames: f32,
     ) -> Result<()> {
         let Some(parasol) = self.special_parasol() else {
-            unimplemented!("ftCo_800CEFE0: ftCo_MS_ItemParasolOpen for the Parasol item");
+            unreachable!("ftCo_800CEFE0: a parasol opening with none in hand");
         };
         let retained_word = self.inherited_scratch_word();
         self.change_motion_state_blended(parasol.open, assets, blend_frames)?;
@@ -174,7 +257,7 @@ impl Fighter {
     /// ftCo_800CF3C8 (800CF3C8): Ft_MF_SkipHit | Ft_MF_SkipParasol.
     fn enter_parasol_fall_special(&mut self, assets: &FighterAssets) -> Result<()> {
         let Some(parasol) = self.special_parasol() else {
-            unimplemented!("ftCo_800CF3C8: ftCo_MS_ItemParasolFallSpecial for the Parasol item");
+            unreachable!("ftCo_800CF3C8: a parasol fall with none in hand");
         };
         let state = self.core.state_data.clone();
         self.change_parasol_fall_motion(parasol.fall, assets)?;
@@ -217,8 +300,16 @@ impl Fighter {
             return Ok(());
         }
         self.core.parasol.running = false;
+        if self.holds_parasol_item() {
+            // fighter.c:1588 -> ftCo_80095744 (80095744): out of the
+            // parasol states, then the item let go with no push.
+            self.leave_parasol_states(assets)?;
+            let held = self.core.held_item.expect("the Parasol item in hand");
+            self.core.drop_held_item(held, 1.0, assets);
+            return Ok(());
+        }
         if self.special_parasol().is_none() {
-            unimplemented!("fighter.c:1588: ftCo_80095744 drops the Parasol item");
+            unimplemented!("fighter.c:1588: the timer of a parasol no longer in hand");
         }
         self.core.parasol.spent = true;
         self.enter_ordinary_special_fall(assets)
@@ -232,7 +323,10 @@ pub fn open_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitCh
         if f.parasol_previous() == CommonMotionState::FallSpecial.into() {
             f.enter_parasol_fall_special(p.assets)?;
         } else {
-            unimplemented!("ftCo_800CF280: ftCo_MS_ItemParasolFall after an item opening");
+            // ftCo_800CF280 (800CF280): Ft_MF_SkipHit | Ft_MF_SkipParasol.
+            let state = f.core.state_data.clone();
+            f.change_parasol_fall_motion(CommonMotionState::ItemParasolFall.into(), p.assets)?;
+            f.core.state_data = state;
         }
     }
     Ok(None)
@@ -241,10 +335,54 @@ pub fn open_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Option<WaitCh
 /// ftCo_ItemParasolOpen_IASA (800CF10C): the item opening's specials,
 /// throws and air dodge do not apply after special fall.
 pub fn open_input(f: &mut Fighter, p: InputPhase<'_>) {
-    if f.parasol_previous() != CommonMotionState::FallSpecial.into() {
-        unimplemented!("ftCo_ItemParasolOpen_IASA: item-parasol special, throw and dodge inputs");
+    if f.parasol_previous() != CommonMotionState::FallSpecial.into()
+        && parasol_air_actions(f, p.assets, false)
+    {
+        return;
     }
     f.try_aerial_jump(p.assets).expect("parasol aerial jump");
+}
+
+/// The parasol rows' IASA head: ftCo_SpecialAir_CheckInput, ftCo_80095328's
+/// air throws, ftCo_800C3B10's tether, with `air_dodge` ftCo_80099A58, then
+/// ftCo_AttackAir_CheckItemThrowInput. True when one of them acted.
+fn parasol_air_actions(f: &mut Fighter, assets: &FighterAssets, air_dodge: bool) -> bool {
+    if f.air_special_pressed(assets) {
+        f.enter_buffered_special(assets, true);
+        return true;
+    }
+    if f.try_air_item_throw(assets).expect("parasol air item throw") {
+        return true;
+    }
+    if f.try_air_tether(assets) {
+        return true;
+    }
+    use crate::input::WaitTransition as T;
+    match super::fall::iasa_with_jump(&f.core.input, &assets.input, false, false, air_dodge, |_| false) {
+        T::Escape => f.enter_air_dodge(assets).expect("parasol air dodge"),
+        T::Attack => (f.character.table().enter_aerial)(f, assets).expect("parasol aerial"),
+        T::None => return false,
+        other => unreachable!("parasol IASA: {other:?}"),
+    }
+    true
+}
+
+/// ftCo_ItemParasolFall_IASA (800CF2B8): the air actions, then with the
+/// stick down while the parasol folds (ft_80087988) back to Fall; else an
+/// aerial jump.
+pub fn item_fall_input(f: &mut Fighter, p: InputPhase<'_>) {
+    if parasol_air_actions(f, p.assets, true) {
+        return;
+    }
+    // retail: fcmpo with cror, inclusive.
+    if f.core.input.current.stick.y <= p.assets.parasol.close_threshold
+        && f.special_parasol().is_some_and(|parasol| parasol.status.folding())
+    {
+        f.change_motion_state(CommonMotionState::Fall.into(), p.assets)
+            .expect("parasol close");
+    } else {
+        f.try_aerial_jump(p.assets).expect("parasol aerial jump");
+    }
 }
 
 /// ftCo_ItemParasolOpen_Phys (800CF1A0), also ftCo_ItemParasol_Phys.
@@ -298,7 +436,7 @@ pub fn fall_special_anim(f: &mut Fighter, p: AnimationPhase<'_>) -> Result<Optio
 pub fn fall_special_input(f: &mut Fighter, p: InputPhase<'_>) {
     // retail 800CF43C: fcmpo with cror, inclusive.
     if f.core.input.current.stick.y <= p.assets.parasol.close_threshold
-        && f.special_parasol().map(|parasol| parasol.status) == Some(ParasolStatus::Opening)
+        && f.special_parasol().is_some_and(|parasol| parasol.status.folding())
     {
         f.enter_ordinary_special_fall(p.assets)
             .expect("parasol close");

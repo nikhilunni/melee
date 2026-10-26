@@ -28,6 +28,7 @@ melee_it::item_kinds! {
         StarRod: it_sword::StarRod,
         StarRodStar: it_sword::StarRodStar,
         LipStick: it_sword::LipStick,
+        Parasol: it_sword::Parasol,
         LipStickSpore: it_sword::LipStickSpore,
         FFlowerFlame: it_sword::Flower,
         GShell: it_shell::GreenShell,
@@ -914,6 +915,16 @@ impl Resources {
                     ItemKind::LipStick,
                     &it_sword::lipstick::ARTICLE_STATES,
                     it_sword::lipstick::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Parasol,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Parasol,
+                    &it_sword::parasol::ARTICLE_STATES,
+                    it_sword::parasol::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (

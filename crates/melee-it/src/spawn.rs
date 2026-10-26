@@ -152,6 +152,9 @@ pub enum ItemControl {
     /// it_8029A89C / it_8029A8F4 (ftCommon_8007FDA0): the head flower's
     /// joint 1 at `scale` and joint 2 moved by `offset` from its rest.
     FlowerSize { scale: f32, offset: Vec3 },
+    /// it_8028B618 .. it_8028B850 (ftCommon_8007E83C): the Parasol item's
+    /// held state `state` (4..=10) at animation rate `rate` (x5D0).
+    ParasolState { state: u16, rate: f32 },
 }
 
 /// Which of the Fan's swing animations the holder plays

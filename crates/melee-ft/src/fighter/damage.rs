@@ -1705,6 +1705,14 @@ impl Fighter {
                     )
             },
         );
+        // ftCo_Fall_IASA_Inner's ftCo_800CEE70 (the parasol), before its
+        // float and aerial jump.
+        if !tumbling
+            && matches!(transition, T::None | T::Jump | T::Float)
+            && self.try_reopen_parasol(assets)?
+        {
+            return Ok(());
+        }
         match transition {
             T::None => {
                 // ftCo_DamageFall_IASA (0x800908C4); UCF hooks the age

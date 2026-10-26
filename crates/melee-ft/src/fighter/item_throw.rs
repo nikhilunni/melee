@@ -164,8 +164,10 @@ impl Fighter {
             && fabsf(stick.y) < common.aerial_vertical_threshold
         {
             if !throwable || lr {
-                // The state is unchanged; the aerial catch stays shut until
-                // the next grounded motion entry (x2224_b1).
+                // ftCo_80095744: with a parasol in hand the fighter falls
+                // first; otherwise the state is unchanged. The aerial catch
+                // stays shut until the next grounded motion entry (x2224_b1).
+                self.leave_parasol_states(assets)?;
                 self.core.drop_held_item(held, 1.0, assets);
                 self.core.item_catch_locked = true;
                 return Ok(true);

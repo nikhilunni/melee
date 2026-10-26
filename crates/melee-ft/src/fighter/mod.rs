@@ -1409,6 +1409,9 @@ pub struct FighterCore {
     /// character (the catch window): the ride (ftpickupitem_8009447C) and
     /// the catch's sparkle wait for the animation proc.
     pub caught_warp_star: bool,
+    /// The held Parasol item's motion (4..=10), which ftGetParasolStatus
+    /// reads (itGetMotionId); its holder alone changes it.
+    pub parasol_item_motion: u16,
     /// x1980 and x2018..x2024: the Lip's Stick flower on the head.
     pub flower: Option<flower::FlowerHead>,
     /// hitlag_mul (+196C): the jab combo window. Every motion change except

@@ -875,6 +875,32 @@ impl Fighter {
         if self.physics.ground_or_air == GroundOrAir::Ground {
             self.leave_ground();
         }
+        // ftGetParasolStatus != -1: the Parasol item, or Peach's parasol on
+        // fp->item_gobj, in hand: ftCo_800CF4DC (800CF4DC),
+        // ItemParasolDamageFall with KeepFastFall, then the drift clamp.
+        let parasol = self
+            .held_item
+            .is_some_and(|held| held.kind == melee_types::ItemKind::Parasol)
+            || self
+                .article_in_hand
+                .is_some_and(|article| article.kind == melee_types::ItemKind::PeachParasol);
+        if parasol {
+            self.change_motion_state_with_options(
+                CommonMotionState::ItemParasolDamageFall.into(),
+                assets,
+                MotionChange {
+                    rate: 1.0,
+                    preserve: MotionPreservation {
+                        fast_fall: true,
+                        ..Default::default()
+                    },
+                    ..Default::default()
+                },
+            )?;
+            let maximum = self.attributes.air.air_drift_max;
+            self.physics.self_velocity.x = self.physics.self_velocity.x.clamp(-maximum, maximum);
+            return Ok(());
+        }
         self.change_motion_state_with_options(
             CommonMotionState::DamageFall.into(),
             assets,
@@ -1495,6 +1521,7 @@ impl FighterCore {
             catch_window: 0,
             catch_after_step: false,
             caught_warp_star: false,
+            parasol_item_motion: 0,
             flower: None,
             jab_countdown: 0.0,
             rapid_jab_edges: 0,

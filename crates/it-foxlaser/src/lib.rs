@@ -318,7 +318,8 @@ macro_rules! blaster {
                     | ItemControl::Spend(_)
                     | ItemControl::WarpStarRide { .. }
                     | ItemControl::WarpStarFall
-                    | ItemControl::FlowerSize { .. } => {
+                    | ItemControl::FlowerSize { .. }
+                    | ItemControl::ParasolState { .. } => {
                         unreachable!("another kind's article control sent to a blaster")
                     }
                 }

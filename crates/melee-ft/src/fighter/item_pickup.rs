@@ -163,7 +163,7 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 220] = [
+const HELD_ITEM_STATES: [S; 228] = [
     S::LightGet,
     // ftCo_ItemScrew.c / ftCo_DamageScrew.c: the Screw Attack's jumps keep
     // it, and a victim thrown up keeps a light item (only ftCo_8009750C's
@@ -280,6 +280,15 @@ const HELD_ITEM_STATES: [S; 220] = [
     S::LipstickSwing3,
     S::LipstickSwing4,
     S::LipstickSwingDash,
+    S::ParasolSwing1,
+    S::ParasolSwing3,
+    S::ParasolSwing4,
+    S::ParasolSwingDash,
+    // ftCo_ItemParasol*.c: the Parasol item stays in hand open.
+    S::ItemParasolOpen,
+    S::ItemParasolFall,
+    S::ItemParasolFallSpecial,
+    S::ItemParasolDamageFall,
     // ftCo_Rebound.c: a clanked swing rebounds with the item in hand (its
     // take_dmg_cb gave the hand back in ftCommon_8007DB58); no item branch.
     S::ReboundStop,
@@ -1069,6 +1078,9 @@ impl FighterCore {
     /// ftpickupitem_800948A8 (800948A8): the hand closes on `item`.
     fn take_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
         assert!(self.held_item.is_none(), "x1978: a second held item");
+        // itParasol_Logic13_PickedUp (it_8028B618): the Parasol item
+        // starts in its held state 4.
+        self.parasol_item_motion = super::parasol::ITEM_HELD;
         self.held_item = Some(HeldItem {
             item: item.item,
             kind: item.kind,

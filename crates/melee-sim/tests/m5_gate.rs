@@ -7724,6 +7724,26 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_lipstick_e6bff00c8_p0", 5030),
     ("corpus_v3_fd_items_lipstick_e57cbceb7_p0", 6001),
     ("corpus_v3_fd_items_lipstick_ead30c00e_p0", 4433),
+    // Parasols: the fall with its braking, held (states 4..10 by
+    // ftCommon_8007E83C, the swings' scripts included), thrown and dropped,
+    // the swings (ParasolSwing, Ft_MF_SkipParasol), the float opened from
+    // Fall, Jump, a hitstun's end and special fall (ftCo_800CEE70), its
+    // ItemParasolFall and the drop that ends it (ftCo_80095744).
+    ("start_fd_items_parasol", 600),
+    ("start_fd_items_parasol_cold", 600),
+    ("corpus_v3_fd_items_parasol_e7b8210c4_p0", 3941),
+    ("corpus_v3_fd_items_parasol_e7b8210c4_p1", 2622),
+    ("corpus_v3_fd_items_parasol_e06ad0b5e_p1", 440),
+    ("corpus_v3_fd_items_parasol_e5f158f1d_p0", 1419),
+    ("corpus_v3_fd_items_parasol_ee3f259e8_p1", 1270),
+    ("corpus_v3_fd_items_parasol_eb2ce88fe_p2", 326),
+    ("corpus_v3_fd_items_parasol_e821aa014_p1", 641),
+    ("corpus_v3_fd_items_parasol_e32543231_p2", 3039),
+    ("corpus_v3_fd_items_parasol_ecb3a9076_p0", 1172),
+    ("corpus_v3_fd_items_parasol_e68833afa_p2", 3453),
+    ("corpus_v3_fd_items_parasol_e303d54a6_p1", 6001),
+    ("corpus_v3_fd_items_parasol_e821aa014_p0", 6001),
+    ("corpus_v3_fd_items_parasol_e5129107c_p0", 3785),
 ];
 
 #[test]
