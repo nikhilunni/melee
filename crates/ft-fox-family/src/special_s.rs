@@ -205,7 +205,7 @@ fn travel<C: FoxFamily, const AIR: bool>(
     if f.commands.variables[2] == 1 {
         f.commands.variables[2] = 0;
         let mut spawn =
-            melee_it::SpawnItem::held(C::GHOST, f.player.id, f.physics.position, f.physics.facing);
+            melee_it::SpawnItem::attached(C::GHOST, f.player.id, f.physics.position, f.physics.facing);
         // it_8029CEB4 spawns it airborne (Item_80268B18); it_8029CFF0 picks
         // its motion by the owner's air state (ftLib_800865CC).
         spawn.spawn_variant = i32::from(f.physics.ground_or_air == GroundOrAir::Air);

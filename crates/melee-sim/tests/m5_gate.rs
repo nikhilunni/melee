@@ -6828,6 +6828,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 888] = [
     // (ifMagnify_IsHUDVisible, hud_enabled).
     ("corpus_v3_mk_fox_marth4_e00f31913_p0", 452),
     ("corpus_v3_mk_fox_marth4_e9943b4ab_p1", 205),
+    // Illusion's ghost takes Item_InitSpawn's initial air pass (it_8029CEB4,
+    // x44_flag.b0): spawned on a lift, it lands and weighs it (fn_801FC9AC).
+    ("corpus_v3_mk_fox_marth4_e19f8579b_p0", 337),
     // Onett (gronett.c): the awnings' springs and puffs, the chimney smoke,
     // the roof cracking, breaking, blinking and rebuilt, lane A's cars
     // (the leader's and the last player's delays, the horn, struck cars
