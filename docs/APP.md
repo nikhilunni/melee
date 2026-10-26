@@ -65,12 +65,11 @@ Disc -> Characters -> Stages -> Loading -> Match -> Results
   guarded opponent ranking, ftCo_800A53DC), `Stage::items_supported`
   (two players on FD or Battlefield). `App::stage_unavailable` names why
   a stage cannot host the picks; hosts grey it out with that reason.
-- **Input.** Input device n (keyboard layout n, gamepad n in connection
-  order) drives the match's nth human player; CPU ports read nothing and
-  record neutral. A gamepad is reported as a GameCube controller
-  (`input::Gamepad`: sticks -1..1 scaled to retail's 80 units, analog
-  triggers to 140, L/R clicked at a full press); the keyboard leads while
-  in use.
+- **Input.** Keyboard layout n drives the match's nth human player; a
+  gamepad drives the port it joined (below, "Gamepads"); CPU ports read
+  nothing and record neutral. A pad reaches the session as GameCube bytes
+  (`input::Gamepad`: stick and C-stick in retail's units, analog triggers up
+  to 140, buttons); the keyboard leads while in use.
 - **Stages.** Choosing one builds the `MatchConfig` with a host-random seed
   (recorded in the replay) and lists the files to read
   (`GameAssets::files`, minus those already fetched).
@@ -149,7 +148,7 @@ and determinism, compared in memory).
 ## The C API
 
 `crates/melee-platform/include/melee_platform.h`, version
-`MELEE_API_VERSION` (4; bump on any incompatible change, hosts check it at
+`MELEE_API_VERSION` (5; bump on any incompatible change, hosts check it at
 start). One opaque `melee_app_t` on one thread; plain structs out; static
 strings in catalog structs; calls that can fail return `bool` and leave
 the message in `melee_app_last_error`; user-facing notices come from
@@ -179,7 +178,11 @@ Notices and load errors are glass cards; a match fault is a sheet that
 offers Save Replay. One file per screen: `DiscScreen.swift`,
 `CharacterSelect.swift`, `StageSelect.swift`, `MatchScreens.swift`
 (loading, HUD, pause, results); `Theme.swift` holds the tokens and
-components, `Navigation.swift` the keyboard paths.
+components, `Navigation.swift` the keyboard and pad paths (`MenuKey`),
+`Focus.swift` menu focus (`.padFocus`), `Gamepads.swift` the pad hardware
+(GameController and Wii U GameCube adapters over IOHID), `PadCore.swift`
+the Swift face of `melee_app_pad_*`, `PadViews.swift` the controllers card,
+the app menu, pad hints and the join toast.
 
 Development smoke test (walks the menus, prints the HUD, exits 0 when the
 match is running):
@@ -208,8 +211,27 @@ several as `x,y;x,y;...`, one per `MELEE_APP_CLICK_INTERVAL` seconds,
 default 1) delivers real left clicks to the window and prints after each
 the screen, whether a sheet opened, the rules, the slots and the live HUD: it exercises hit-testing, which `MELEE_APP_KEYS`
 bypasses (e.g. `0.438,0.758` is Open Disc… at 1280x800 with a recent disc).
+Focus frames (and so `MELEE_APP_PADS_TRACE`'s target list) are measured
+below the title bar's safe area: at 1280x800 the top bar's buttons sit near
+y = 0.1075 (Rules at `0.825,0.1075`, Controllers at `0.923,0.1075`).
 Never test with global synthetic events (`osascript` key codes, `CGEvent`):
 they reach whatever app is frontmost.
+
+`MELEE_APP_PADS=a,2:a,right,a,...` is the pad-only walk: two scripted pads
+(a Switch Pro Controller and a DualSense, handles from
+`Gamepads.virtualBase`) are reported to the core every poll like hardware,
+so the walk goes through the core's mapping, joining and repeat and the
+window's real dispatch (`WindowController.padEvents`). Each step taps one
+control for one poll on pad 1 (`2:x` on pad 2): `a b x y` by position
+(bottom, left, right, top), `z l r start select home`, `up down left right`
+(D-pad), `stick-up` and the like, `wait` or `wait:N` seconds; one step per
+`MELEE_APP_PADS_INTERVAL` seconds (default 0.4). After each step it prints
+the screen, focus, picking player, open cards, rules, slots, pad ports and
+(on the controllers card) the edited pad's bindings; `MELEE_APP_PADS_TRACE=1`
+adds each key handled and the focus targets; `MELEE_APP_PADS_EXIT=1` quits
+after the walk. It runs alongside `MELEE_APP_SCREEN` (e.g. `results` over a
+running match). A window another app covers gets no display frames, so a
+walk through a running match needs the window visible.
 
 ## Web (`crates/melee-web`)
 
@@ -234,6 +256,132 @@ Development: `tools/run-web.sh --disc harness/roms/GALE01.iso` also serves
 the image read-only at `/disc.iso` (with HTTP Range), and
 `http://localhost:8080/?disc=disc.iso&autostart=Fox:Marth:FinalDestination`
 walks the menus (`autostart=Fox:Marth` stops at character select).
+`&pads=a,2:a,right,...` is the pad-only walk (`pads.js` `FakePads`: the same
+two scripted pads and steps as macOS's `MELEE_APP_PADS`, one per
+`padInterval` ms, default 400), logging the state after each step to the
+console (`pad <step>: screen ... focus ...`) and setting
+`window.meleePadWalkDone`. Headless Chrome runs it with WebGPU:
+`"Google Chrome" --headless=new --enable-unsafe-webgpu --enable-logging=stderr
+--window-size=1280,800 "http://127.0.0.1:8080/?disc=disc.iso&pads=..."`,
+the console lines on stderr.
+
+## Gamepads
+
+The core maps every pad (`melee-platform/src/pads`, C `melee_app_pad_*`,
+wasm `WebApp.pad_*`); the hosts only read hardware and draw.
+
+- **Reading.** Each host reports every connected pad in the W3C standard
+  layout (`melee_raw_pad_s`: 17 controls by position, four axes, up
+  positive) every display frame on every screen: macOS from
+  GameController (`buttonA` is the bottom face button on every pad) and Wii
+  U GameCube adapters (WUP-028, opened over IOHID, started with 0x13; the
+  core parses the 37-byte report, four ports as pads `base..base+3`), the
+  web from the Gamepad API (`Gamepad.index` is the handle; a pad without
+  the standard mapping is read in its own order and can be rebound). A menu
+  timer polls at 60 Hz on macOS; a running match also polls from its display
+  link; the web polls every animation frame.
+- **Families and defaults** (`pads/family.rs`). The family comes from USB
+  ids (the web `Gamepad.id` in Chromium's and Firefox's formats) or names
+  (GameController's `vendorName`/`productCategory`): GameCube, Switch Pro,
+  Joy-Con, DualSense, DualShock 4, Xbox, 8BitDo, generic. Buttons map by
+  position, not label (`pads/mapping.rs`): the bottom face button is A, the
+  left B, the right X, the top Y (a Nintendo pad's A is on the right, so its
+  B becomes A; the controllers card says so); bumpers Z, triggers L/R,
+  Start, d-pad. GameCube controllers map one to one.
+- **Calibration** (`pads/calibration.rs`). A radial deadzone, then the
+  GameCube's octagonal gate (Dolphin's 87 main / 74 C radii) so full tilt
+  reaches Melee's rim and a diagonal notch reads (0.7, 0.7) through
+  `normalize_stick`. Analog triggers give the analog shield value; the L/R
+  click comes at the pad's trigger click point, and a trigger that only
+  reports pressed is a full press. GameCube sticks are taken one to one
+  around their resting origin.
+- **Joining.** On character select a pad without a port joins on its first
+  button press (`MELEE_MENU_JOINED`, which consumes the press): the first
+  human slot without a pad, else the first slot sitting out (which becomes
+  human). In a match a pad that never joined takes the first human port
+  without a pad. The controllers card assigns ports by hand (a pad already
+  on the port trades places).
+- **Settings, saved per controller** (identity = family, USB ids, name):
+  rebind any control (the control that had the target takes the old job;
+  listening waits 5 s for a new press), swap A and B, stick deadzone,
+  trigger click, reset to the family's defaults. The core encodes them
+  (`melee_app_pad_prefs`); macOS keeps the text in UserDefaults
+  (`padPrefs`), the web in `localStorage` (`melee.padPrefs`, every access in
+  try/catch).
+- **Menu events** (`pads/nav.rs`): directions from the d-pad or the stick
+  (with hysteresis), repeating after 400 ms every 90 ms as Melee's menus
+  do; button presses as edges; Select or Home (unbound) is `MENU`.
+- **Focus** (`focus.rs`, `melee_focus_next`/`focus_next`): each host hands
+  over the frames of the focusable controls of the top layer (an open card
+  or dialog, else the pause card, else the screen) and the core picks the
+  neighbour: the nearest ahead, sideways distance weighted three times;
+  left and right stay in the row and wrap, up and down stop at the edge.
+  Focus is always drawn (macOS rings; the web marks `body.pad-nav` so the
+  focused control shows its ring after a script focus). A key pressed
+  before a card's controls report in waits for them (macOS
+  `AppModel.pendingKey`, at most a second).
+
+## Pad parity
+
+Everything the keyboard does in either app, a pad does; no keyboard or mouse
+is needed from launch to quit (user requirement, 2026-10-25). Pad buttons
+below are GameCube names (by position on other pads: A bottom, B left, X
+right, Y top; Z the right bumper; L/R the triggers).
+
+Menu keys, both hosts (macOS `WindowController.menuKey` and
+`AppModel.handle`; web `app.js` `menuKey` and the keydown handler):
+
+| Keyboard | Does | Pad |
+|---|---|---|
+| ← → ↑ ↓ (macOS also W A S D) | move focus, the grid and stage cursors | D-pad or left stick |
+| Return, Enter, Space (macOS) / Enter (web) | press the focused control; on the grid pick (when ready, go to stage select) | A |
+| Esc | back: character select to the disc screen, stage select and loading back, results to character select; close a card; resume a paused match | B (on character select B first takes the pick back, as in Melee); Start also closes cards and resumes |
+| Tab / Shift-Tab | next / previous player picking (stage select: next / previous stage; macOS controllers card: next / previous pad) | R / L (also the next / previous pad on the controllers card) |
+| Q or [ / E or ] | previous / next costume of the player picking | Y / X |
+| Backspace, Delete | clear the pick of the player picking | B (with a pick) |
+| - / = | fewer / more stocks (minutes in a Time match) | the top bar's ◀ ▶ (focus, A) |
+| (none) | ready to fight from anywhere on character select; rematch on results | Start |
+| (none) | the app menu | Z, Select or Home |
+
+In a match: the keyboard layouts are controllers (WASD, K, J, Space, L, I
+and arrows, N, M, comma, period, slash); a pad is its port's GameCube
+controller. Esc pauses and resumes; any pad's Start does too, and
+Select/Home pauses and opens the app menu. While paused the pad moves
+among Resume, Restart, Save Replay and Quit to Character Select (A presses,
+B or Start resumes, Z the app menu); results offer Rematch, Character
+Select, Stage Select and Save Replay the same way.
+
+macOS menu bar (pads reach the same commands through the app menu or the
+screens):
+
+| Menu bar | Pad |
+|---|---|
+| ⌘O Open Disc… | disc screen Open Disc… (A) opens the panel; the panel itself needs a mouse or keyboard (host limit), B cancels it. Continue and the recent discs are buttons. |
+| Open Recent | the disc screen's recent-disc buttons |
+| ⌘S Save Replay… | pause card or results Save Replay (A): from a pad it saves to `~/Documents/Melee Replays` without a panel and says so |
+| ⌘P Pause / Resume | Start |
+| ⌘R Restart | pause card Restart |
+| ⌘. Quit to Character Select | pause card Quit; results Character Select |
+| ⌘W Close Window, ⌘Q Quit Melee | app menu Quit Melee |
+| ⌘M Minimize, ⌘H Hide Melee, ⌥⌘H Hide Others | app menu Minimize, Hide Melee, Hide Others; Start, A or Select/Home on any pad brings the window back |
+| Show All, Zoom (no keys) | a pad press undoes Hide; Full Screen stands in for Zoom |
+| ⌃⌘F Enter Full Screen | app menu Enter / Exit Full Screen |
+| ⌘? Melee Help | app menu Help (a card; A or B closes it) |
+| About Melee | app menu About |
+| Controllers (character select top bar) | app menu Controllers…, or the top bar button |
+
+Sheets on macOS: a fault sheet answers A or B with its default button
+(Quit to Character Select) and Y with Save Replay… (saved without a
+panel). Behind another app the pads belong to that app: only Start or
+Select/Home brings Melee forward.
+
+Web: the app menu (Z, Select or Home) has Controllers…, Full Screen, Help
+and Close. Host limits: browsers open a file picker, grant a remembered
+disc's permission or enter full screen only right after a click or key
+press, and a gamepad press does not count; Open Disc… from a pad says so.
+Continue (the disc already open) works; dropping a file needs a pointer.
+The page's dialogs (rules, controllers, app menu, messages) take focus, A,
+B and Start like the macOS cards.
 
 ### Same bits as native
 
@@ -285,9 +433,9 @@ FNV-1a of `diagnostics::inspect` and `observe`.
   (`melee-sim`/`Recording::replay`). The page must be reloaded.
 - **Loading blocks briefly.** Building the match (parsing, scene upload)
   runs on the main thread after the files are read; a few hundred ms.
-- **Input.** Two keyboard layouts; more humans need gamepads. Menus are
-  driven by keyboard and pointer, not pads; a pad's Start pauses a running
-  match but cannot resume a paused one (the display loop stops).
+- **Input.** Two keyboard layouts; more humans need gamepads. Gamepad
+  hardware not on the development machine is tested through recorded ids
+  and names (`pads/family.rs`) and the scripted walks above.
 - **Rendering.** Every catalog character and stage loads and draws
   (`tests/render_smoke.rs`, a frame per pick under wgpu validation). A
   renderer failure still returns to stage select with the error.
