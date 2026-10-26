@@ -24,7 +24,8 @@ use std::{
 /// 5: gamepads in the core (`melee_app_pad_*`: families, mapping,
 /// calibration, ports joined by a button press, saved settings, the Wii U
 /// GameCube adapter); menu focus movement (`melee_focus_next`).
-pub const API_VERSION: u32 = 5;
+/// 6: Coin matches (`MELEE_MODE_COIN`).
+pub const API_VERSION: u32 = 6;
 
 pub struct Handle {
     app: App,

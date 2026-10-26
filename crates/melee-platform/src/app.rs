@@ -64,7 +64,7 @@ pub struct Hud {
     pub players: Vec<PlayerHud>,
     /// Whole seconds left on the match timer, when there is one.
     pub seconds_left: Option<u32>,
-    /// A Time match: show scores rather than stocks.
+    /// A Time or Coin match: show scores (KOs, coins) rather than stocks.
     pub timed_scores: bool,
     /// The match is a Sudden Death continuing a timed-out tie.
     pub sudden_death: bool,
@@ -836,7 +836,10 @@ impl App {
             paused: session.is_paused(),
             players,
             seconds_left: session.game().seconds_left(),
-            timed_scores: config.rules.mode == melee_lib::MatchKind::Time,
+            timed_scores: matches!(
+                config.rules.mode,
+                melee_lib::MatchKind::Time | melee_lib::MatchKind::Coin
+            ),
             sudden_death: session.in_sudden_death(),
         })
     }

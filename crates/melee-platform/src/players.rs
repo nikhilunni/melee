@@ -68,20 +68,23 @@ impl Slot {
     }
 }
 
-/// How a match is won: the last player with stocks, or the most KOs when
-/// the timer runs out. (Coin and Bonus matches are not ported.)
+/// How a match is won: the last player with stocks, the most KOs when
+/// the timer runs out, or the most coins then (items off). (Bonus
+/// matches are not ported.)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Mode {
     #[default]
     Stock = 0,
     Time = 1,
+    Coin = 2,
 }
 impl Mode {
     pub fn from_u32(value: u32) -> Option<Self> {
         Some(match value {
             0 => Self::Stock,
             1 => Self::Time,
+            2 => Self::Coin,
             _ => return None,
         })
     }
@@ -146,6 +149,12 @@ impl Rules {
         }
         if self.mode == Mode::Time && self.time_minutes.is_none() {
             return Err("a Time match needs a time limit".into());
+        }
+        if self.mode == Mode::Coin && self.time_minutes.is_none() {
+            return Err("a Coin match needs a time limit".into());
+        }
+        if self.mode == Mode::Coin && self.item_frequency.is_some() {
+            return Err("a Coin match with items is not playable yet".into());
         }
         if self.item_frequency.is_some_and(|f| f > MAX_ITEM_FREQUENCY) {
             return Err("item frequency must be 0 (very low) to 4 (very high)".into());
@@ -284,6 +293,7 @@ impl Lineup {
         rules.mode = match self.rules.mode {
             Mode::Stock => MatchKind::Stock,
             Mode::Time => MatchKind::Time,
+            Mode::Coin => MatchKind::Coin,
         };
         rules.time_limit_seconds = self.rules.time_minutes.map(|m| u32::from(m) * 60);
         rules.friendly_fire = self.rules.teams && self.rules.friendly_fire;

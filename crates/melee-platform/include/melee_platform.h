@@ -20,7 +20,7 @@ extern "C" {
 #endif
 
 /* Bumped on any incompatible change; hosts check it at startup. */
-#define MELEE_API_VERSION 5
+#define MELEE_API_VERSION 6
 uint32_t melee_api_version(void);
 
 typedef struct melee_app_s melee_app_t;
@@ -200,12 +200,12 @@ bool melee_app_set_handicap(melee_app_t *app, uint32_t player, uint8_t handicap)
 bool melee_app_confirm_characters(melee_app_t *app);
 
 /* Versus rules; settable on the disc, character and stage screens. Modes
- * the simulator does not play yet (Coin, Stamina, Giant, Tiny, Invisible,
- * Single Button, Camera) join this struct as they are ported (with a
- * version bump). */
+ * the simulator does not play yet (Camera) join this struct as they are
+ * ported (with a version bump). */
 typedef enum {
     MELEE_MODE_STOCK = 0,   /* the last player with stocks wins */
     MELEE_MODE_TIME = 1,    /* most KOs when the timer runs out */
+    MELEE_MODE_COIN = 2,    /* most coins when the timer runs out (items off) */
 } melee_mode_e;
 typedef enum {
     MELEE_SPECIAL_NONE = 0,
