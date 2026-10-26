@@ -6846,6 +6846,9 @@ static CORPUS_V3_MATCHES: [(&str, usize); 888] = [
     ("corpus_v3_onett_fox_marth4_ee133b82f_p0", 6001),
     ("corpus_v3_onett_fox_marth4_e89a89d0e_p0", 6001),
     ("corpus_v3_onett_fox_marth4_e9943b4ab_p0", 6001),
+    // Illusion's ghost's initial air pass lands on the cracking roof
+    // (it_8029CEB4, x44_flag.b0); Fox slides on it a ulp further.
+    ("corpus_v3_onett_fox_marth4_ef89b3e70_p0", 6001),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.
