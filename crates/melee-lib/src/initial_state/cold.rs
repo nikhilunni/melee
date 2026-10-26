@@ -189,6 +189,7 @@ impl InitialState {
                 | SceneStage::Yorster(_)
                 | SceneStage::Inishie1(_)
                 | SceneStage::Onett(_)
+                | SceneStage::Zebes(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -214,7 +215,7 @@ impl InitialState {
             // cm_804D6468 runs newest first: the reverse of creation.
             let subjects = fighters.iter_mut().rev().map(|f| &mut f.0.camera);
             crate::frame::with_subjects(subjects, |subjects| {
-                camera.snap_standard(subjects, &assets.stage_camera)
+                camera.snap_standard(subjects, &crate::scene_stage::live_camera(&stage, &assets))
             });
         }
         let quakes =
@@ -269,6 +270,15 @@ impl InitialState {
             &assets.items,
             &mut map,
         );
+        // grZebes_801D9100 / 801D8644: the plates' and bubbles' items.
+        crate::scene_stage::zebes::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
         // grInishie1_801FAD84: the bricks' material items.
         crate::scene_stage::inishie1::spawn_items(
             &mut stage,
@@ -289,7 +299,7 @@ impl InitialState {
                 anchor,
             );
         }
-        let rendered_camera = camera.render_camera(&assets.stage_camera);
+        let rendered_camera = camera.render_camera(&crate::scene_stage::live_camera(&stage, &assets));
         // fn_801B9850, the Stamina scene's on_match_start.
         let stamina = (scenario.special == Some(crate::SpecialMelee::Stamina)).then(|| {
             crate::stamina::StaminaRules::starting(std::array::from_fn(|slot| {
@@ -441,6 +451,9 @@ fn setup_draws(
         GrKind::Inishie1 => 0,
         // grOnett_801E3A34's smoke pause, grOnett_801E41C8's HSD_Randi(4).
         GrKind::Onett => 2,
+        // grZebes_801D9508's HSD_Randi(600); grZebes_801D9798's first delay
+        // (rand_range(800, 0)) and height (HSD_Randf).
+        GrKind::Zebes => 3,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -703,6 +716,11 @@ fn initialize_stage(
         GrKind::Onett => {
             let (stage, animations) =
                 crate::scene_stage::onett::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Zebes => {
+            let (stage, animations) = crate::scene_stage::zebes::initialize(assets, rng, map)?;
             stage_animations = animations;
             stage
         }

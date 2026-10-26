@@ -90,6 +90,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::MushroomKingdom => (80.0, 55.0),
         // The street's ends (an approximation for the policies).
         Stage::Onett => (85.0, 55.0),
+        // The lower floor's ends (an approximation for the policies).
+        Stage::Brinstar => (70.0, 45.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

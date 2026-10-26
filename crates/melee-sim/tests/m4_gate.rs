@@ -1242,6 +1242,18 @@ fn start_mk_fox_marth4_600() {
     movement_gate_ticks("start_mk_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_mk_fox_marth4", 600, "ledger600");
 }
+/// Brinstar's start boundaries: map 4's wait and the acid's first delay and
+/// height at creation, the bubbles' hundred settling ticks, the stale pulse
+/// clock (grZebes_801D8644 leaves map 6's xF8 to the heap) on the first tick.
+#[test]
+fn start_brin_fox_marth4_600() {
+    movement_gate_ticks("start_brin_fox_marth4", 600);
+    movement_gate_ticks("start_brin_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_brin_fox_marth4", 600, "ledger600");
+    movement_gate_ticks("start_brin_falco_peach4", 600);
+    movement_gate_ticks("start_brin_falco_peach4_cold", 600);
+    particle_rng_sites_with_ledger("start_brin_falco_peach4", 600, "ledger600");
+}
 /// Onett's start boundary: the smoke's first pause and the cars' discarded
 /// draw at creation, the cars released when the countdown ends.
 #[test]

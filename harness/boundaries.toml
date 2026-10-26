@@ -2392,3 +2392,21 @@ seed = 2977880427
 cpu_levels = [0, 9, 9, 9]
 item_frequency = 4
 item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "start_brin_fox_marth4"
+cold = "start_brin_fox_marth4_cold"
+savestate = "harness/roms/start_brin_fox_marth4.sav"
+stage = "Brinstar"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1741476249
+
+[[boundary]]
+name = "start_brin_falco_peach4"
+cold = "start_brin_falco_peach4_cold"
+savestate = "harness/roms/start_brin_falco_peach4.sav"
+stage = "Brinstar"
+players = ["Falco", "Peach"]
+stocks = 4
+seed = 4061300109

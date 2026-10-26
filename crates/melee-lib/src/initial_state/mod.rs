@@ -28,6 +28,7 @@ mod stage_oldyoshi;
 mod stage_shrine;
 mod stage_kongo;
 mod stage_kraid;
+mod stage_zebes;
 mod stage_yorster;
 mod stage_inishie1;
 mod stage_onett;
@@ -428,6 +429,9 @@ impl InitialState {
         if assets.stage_desc.kind == melee_types::GrKind::Onett {
             stage_onett::restore_collision(&saved, &assets, &mut map)?;
         }
+        if assets.stage_desc.kind == melee_types::GrKind::Zebes {
+            stage_zebes::restore_collision(&saved, &mut map)?;
+        }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;
         }
@@ -811,7 +815,7 @@ impl InitialState {
                 + 1,
         );
         // The boundary's CObj is taken as its camera's latest render.
-        let rendered_camera = camera.render_camera(&assets.stage_camera);
+        let rendered_camera = camera.render_camera(&crate::scene_stage::live_camera(&stage, &assets));
         let mut effects = Box::new(melee_ef::Effects::from_resources(&assets.effect_resources));
         effects.quake_models = quakes.has_models();
         effects.score_popups = score_popups(
@@ -824,6 +828,15 @@ impl InitialState {
         items.set_heap_ammo_words(&setup.heap_ammo_words);
         // Onett's cars' material items, rebuilt on their bones.
         crate::scene_stage::onett::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+        );
+        // Brinstar's plates' and bubbles' material items, rebuilt.
+        crate::scene_stage::zebes::spawn_items(
             &mut stage,
             &mut stage_animations,
             &mut items,

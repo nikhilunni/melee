@@ -135,6 +135,7 @@ pub(super) fn restore_scene(
         melee_types::GrKind::Yorster => super::stage_yorster::restore(saved, assets, particles),
         melee_types::GrKind::Inishie1 => super::stage_inishie1::restore(saved, assets, particles),
         melee_types::GrKind::Onett => super::stage_onett::restore(saved, assets, particles),
+        melee_types::GrKind::Zebes => super::stage_zebes::restore(saved, assets, particles),
         melee_types::GrKind::Fourside => super::stage_fourside::restore(saved, assets, particles),
         melee_types::GrKind::Shrine => super::stage_shrine::restore(saved, assets, particles),
         melee_types::GrKind::Kongo => {

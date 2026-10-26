@@ -535,9 +535,9 @@ fn stage_camera(
     anyhow::ensure!(
         !matches!(
             stage.kind,
+            // Brinstar's follows the acid (scene_stage::live_camera).
             GrKind::Castle
                 | GrKind::Corneria
-                | GrKind::Zebes
                 | GrKind::KinokoRoute
                 | GrKind::Homerun
         ),

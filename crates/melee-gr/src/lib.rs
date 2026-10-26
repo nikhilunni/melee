@@ -20,6 +20,7 @@ pub mod stadium;
 
 pub mod story;
 pub mod yorster;
+pub mod zebes;
 pub mod wind;
 
 pub mod pupupu;

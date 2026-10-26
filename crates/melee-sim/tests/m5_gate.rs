@@ -5408,7 +5408,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 888] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 905] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6843,6 +6843,27 @@ static CORPUS_V3_MATCHES: [(&str, usize); 888] = [
     ("corpus_v3_onett_fox_marth4_ee133b82f_p0", 6001),
     ("corpus_v3_onett_fox_marth4_e89a89d0e_p0", 6001),
     ("corpus_v3_onett_fox_marth4_e9943b4ab_p0", 6001),
+    // Brinstar (grzebes.c): the acid rising through its rows (its quakes,
+    // fighters' acid hits and splashes), the bubbles' bursts, pulses and
+    // loose growth over the chain's collision line, both plates breaking and
+    // growing back, the top platform sinking and rising with a new chain.
+    ("corpus_v3_brin_falco_peach4_e00f6c251_p1", 2172),
+    ("corpus_v3_brin_falco_peach4_e32b8fdc4_p0", 1756),
+    ("corpus_v3_brin_falco_peach4_e3803f87b_p1", 2934),
+    ("corpus_v3_brin_falco_peach4_e5935012b_p2", 1650),
+    ("corpus_v3_brin_falco_peach4_ea701c573_p2", 1735),
+    ("corpus_v3_brin_falco_peach4_ed199e6d4_p0", 634),
+    ("corpus_v3_brin_falco_peach4_ed5eb74a7_p1", 6001),
+    ("corpus_v3_brin_falco_peach4_edb4b01fd_p0", 6001),
+    ("corpus_v3_brin_fox_marth4_e1502cb40_p1", 3523),
+    ("corpus_v3_brin_fox_marth4_e7d19908f_p0", 1708),
+    ("corpus_v3_brin_fox_marth4_e880bbe09_p1", 1698),
+    ("corpus_v3_brin_fox_marth4_e89a89d0e_p2", 6001),
+    ("corpus_v3_brin_fox_marth4_ebcc30c67_p1", 632),
+    ("corpus_v3_brin_fox_marth4_ec513cd66_p1", 1700),
+    ("corpus_v3_brin_fox_marth4_ed486ea18_p0", 6001),
+    ("corpus_v3_brin_fox_marth4_edb4b01fd_p2", 6001),
+    ("corpus_v3_brin_fox_marth4_ef89b3e70_p0", 4621),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

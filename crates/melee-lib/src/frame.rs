@@ -1600,6 +1600,7 @@ impl Runtime {
                 crate::scene_items::release_redead_on_hit(state, id);
                 // A stage material item's DmgReceived calls its stage's
                 // hit-taken callback (yaku.x18) with xCEC and xCA0.
+                let launch = state.assets.items.common.launch;
                 let material_hit = state
                     .items
                     .get_mut(id)
@@ -1610,7 +1611,11 @@ impl Runtime {
                     .map(|item| {
                         let fighter = (!item.struck_by_item)
                             .then_some((item.hit_by, item.hit_by_secondary));
-                        (item.pending_damage_taken, fighter)
+                        // it_8027B798's velocity, the callback's third
+                        // argument (it also turns the item, as DmgReceived
+                        // does).
+                        let (velocity, _) = item.knockback_launch(&launch);
+                        (item.pending_damage_taken, fighter, velocity.x)
                     });
                 // Its DmgDealt calls yaku.x14 when no hit taken, shield or
                 // clank came first (Item_8026A294's order).
@@ -1632,11 +1637,11 @@ impl Runtime {
                     Some(state.camera.transform.position),
                 );
                 state.rng = rng.get();
-                if let Some((damage, fighter)) = material_hit {
+                if let Some((damage, fighter, launch_x)) = material_hit {
                     let fighter = fighter.and_then(|(slot, secondary)| {
                         crate::scene_items::owner_index(&state.fighters, slot, secondary)
                     });
-                    crate::scene_stage::material_hit(state, id, fighter, damage)?;
+                    crate::scene_stage::material_hit(state, id, fighter, damage, launch_x)?;
                 }
                 if material_dealt {
                     crate::scene_stage::material_dealt(state, id);
@@ -1856,6 +1861,10 @@ impl Runtime {
                                 // grOnett_801E41B0, then grOnett_801E3930.
                                 crate::scene_stage::onett::start(state);
                             }
+                            if matches!(state.stage, SceneStage::Zebes(_)) {
+                                // grZebes_801D9758, then fn_801D94F0.
+                                crate::scene_stage::zebes::start(state);
+                            }
                             if matches!(state.stage, SceneStage::Yorster(_)) {
                                 // grYorster_80202160: the blocks.
                                 crate::scene_stage::yorster::start(
@@ -1901,6 +1910,7 @@ impl Runtime {
                 // the stage's start; then the fighters' subjects in reverse
                 // creation order.
                 // The stage subject sits among the items by when it was made.
+                let stage_camera = crate::scene_stage::live_camera(&state.stage, &state.assets);
                 let (stage_subject, made_after) = match &mut state.stage {
                     SceneStage::Stadium(stage) => (stage.screen.subject.as_mut(), 0),
                     // grFourside_801F3894: the arriving UFO.
@@ -1917,10 +1927,9 @@ impl Runtime {
                 let older = older.iter_mut().rev().filter_map(|i| i.camera.as_mut());
                 let fighters = state.fighters.iter_mut().rev().map(|f| &mut f.0.camera);
                 let camera = &mut state.camera;
-                let stage_camera = &state.assets.stage_camera;
                 let subjects = newer.chain(stage_subject).chain(older).chain(fighters);
                 with_subjects(subjects, |subjects| {
-                    camera.update_standard(subjects, stage_camera)
+                    camera.update_standard(subjects, &stage_camera)
                 });
                 state
                     .quakes
@@ -2068,7 +2077,8 @@ impl Runtime {
                 }
                 // The partner as this proc's callbacks will read it.
                 partner_fighters::observe(state, player, proc);
-                let assets = &state.assets;
+                let shared_assets = std::sync::Arc::clone(&state.assets);
+                let assets = &*shared_assets;
                 // Fighter_8006CB94: nothing while x221F_b3 or x2219_b1 is set.
                 if proc == FighterProc::HitDetection
                     && !state.fighters[player].0.status.disabled
@@ -2194,6 +2204,8 @@ impl Runtime {
                             item.record_damage_dealt(contact.damage);
                         }
                     }
+                    // ftColl_8007BAC0: a stage's collision device.
+                    crate::scene_stage::zebes::acid_device(state, player, &mut self.particle_draws)?;
                     // ftColl_8007AB48 / ftColl_8007AB80: resolve both logs.
                     with_fighter!(&mut state.fighters[player], |f| {
                         f.core.resolve_hit_logs(&assets.fighters[player])
@@ -2725,6 +2737,15 @@ impl Runtime {
                         }
                     }
                     state.map.finish_ground_animation();
+                    if map == melee_gr::zebes::procs::ACID_MAP
+                        && matches!(state.stage, SceneStage::Zebes(_))
+                    {
+                        // The splashes' models come after the maps.
+                        crate::scene_stage::zebes::splash_models_tick(
+                            state,
+                            &mut self.particle_draws,
+                        )?;
+                    }
                 }
                 0x801C0C2C => {
                     // Player_LoadPlayerCoords: the slot's mirror, written at
@@ -2842,6 +2863,7 @@ impl Runtime {
                         || address == melee_gr::yorster::procs::DYNAMICS_PROC
                         || address == melee_gr::inishie1::procs::DYNAMICS_PROC
                         || address == melee_gr::onett::procs::DYNAMICS_PROC
+                        || address == melee_gr::zebes::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -2909,6 +2931,8 @@ impl Runtime {
                         crate::scene_stage::inishie1::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Onett(_)) {
                         crate::scene_stage::onett::run_proc(state, map_id, &mut self.particle_draws)?;
+                    } else if matches!(state.stage, SceneStage::Zebes(_)) {
+                        crate::scene_stage::zebes::run_proc(state, map_id, &mut self.particle_draws)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and
@@ -4751,6 +4775,9 @@ fn credit_phantom_source(state: &mut crate::initial_state::InitialState, player:
         // credited, and the move does not stale. An item created at that
         // address since is read in its place: its owner (ip->owner) and
         // attack (xD88 / xD8C), never the victim itself.
+        // A stage device's hit is never a phantom (dmg_log1 holds only
+        // fighters' and items').
+        HitSource::Stage(_) => unreachable!("ftColl_8007BE3C: a stage device's phantom"),
         HitSource::Item(source) => {
             let Some((item_owner, secondary, attack)) = state
                 .items
@@ -4800,13 +4827,15 @@ fn render_cameras(state: &mut InitialState) {
     }
     // fn_800301D0 -> Camera_8002A4AC, then each fighter's render callback
     // (ftDrawCommon_80080E18 -> ftLib_80086A8C -> Camera_80030CD8).
-    let camera = state.camera.render_camera(&state.assets.stage_camera);
+    let camera = state
+        .camera
+        .render_camera(&crate::scene_stage::live_camera(&state.stage, &state.assets));
     let screen = state.camera.screen;
     state.rendered_camera = camera;
     // Camera_800310B8: cm_804D6464's viewing matrix, inverted for the screen KO.
     let copy_view = state
         .camera
-        .render_copy_camera(&state.assets.stage_camera)
+        .render_copy_camera(&crate::scene_stage::live_camera(&state.stage, &state.assets))
         .view_matrix();
     let mut inverse_copy_view = copy_view;
     hsd_anim::mtx::mtx_inverse(&copy_view, &mut inverse_copy_view);
@@ -4849,7 +4878,9 @@ fn render_cameras(state: &mut InitialState) {
 /// magnifier (ifMagnify_802FBBDC) does not run; the netplay build does not
 /// read it (`SlippiCodes::offscreen_damage_by_camera_limits`).
 fn rollback_loop_cameras(state: &mut InitialState) {
-    let camera = state.camera.render_camera(&state.assets.stage_camera);
+    let camera = state
+        .camera
+        .render_camera(&crate::scene_stage::live_camera(&state.stage, &state.assets));
     let screen = state.camera.screen;
     state.rendered_camera = camera;
     for fighter in &mut state.fighters {

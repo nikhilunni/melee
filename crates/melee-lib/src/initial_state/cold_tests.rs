@@ -159,6 +159,19 @@ fn setup_snapshot(state: &InitialState) -> Record {
         SceneStage::Onett(stage) => {
             sink.field("stage.onett.smoke_timer", &stage.smoke.timer);
         }
+        SceneStage::Zebes(stage) => {
+            sink.field("stage.zebes.ornament_timer", &stage.ornament.timer);
+            sink.field("stage.zebes.acid_timer", &stage.acid.timer);
+            sink.field("stage.zebes.acid_level", &stage.acid.level);
+            sink.field("stage.zebes.floor", &stage.floor);
+            sink.field("stage.zebes.pulse_timer", &stage.island.pulse_timer);
+            for (i, bubble) in stage.bubbles.entries.iter().enumerate() {
+                sink.field(&format!("stage.zebes.bubble[{i}].state"), &(bubble.state as u8));
+                sink.field(&format!("stage.zebes.bubble[{i}].x"), &bubble.x);
+                sink.field(&format!("stage.zebes.bubble[{i}].y"), &bubble.y);
+                sink.field(&format!("stage.zebes.bubble[{i}].size"), &bubble.size);
+            }
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -387,6 +400,16 @@ fn start_fs_fox_marth4_cold_600() {
 #[test]
 fn start_onett_fox_marth4_cold_600() {
     verify("start_onett_fox_marth4");
+}
+
+#[test]
+fn start_brin_fox_marth4_cold_600() {
+    verify("start_brin_fox_marth4");
+}
+
+#[test]
+fn start_brin_falco_peach4_cold_600() {
+    verify("start_brin_falco_peach4");
 }
 
 #[test]

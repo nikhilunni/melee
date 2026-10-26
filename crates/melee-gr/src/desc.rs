@@ -933,6 +933,58 @@ pub fn animation_subtree(
     )?)
 }
 
+/// grZe_StageData / grDatFiles_801C6038: GrZe.dat. grZe_callbacks[6]
+/// carries flags 0xC0000000, so map 6 selects the lights and fog.
+pub fn read_zebes(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Zebes, 6)
+}
+/// `grZe_YakumonoParam` (grzebes.c:83-119) as the asm reads it.
+pub fn read_zebes_parameters(archive: &Archive) -> ReadResult<crate::zebes::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    let mut acid_levels = [crate::zebes::AcidLevel::default(); crate::zebes::ACID_LEVELS];
+    for (index, level) in acid_levels.iter_mut().enumerate() {
+        let at = p + 0xA0 + 8 * index as u32;
+        *level = crate::zebes::AcidLevel {
+            base: r.s16(at)?,
+            delay_min: r.s16(at + 2)?,
+            delay_max: r.s16(at + 4)?,
+            level: r.s16(at + 6)?,
+        };
+    }
+    Ok(crate::zebes::Parameters {
+        island_wait: [f(0x0)?, f(0x4)?],
+        pulse_wait: [f(0x8)?, f(0xC)?],
+        regrowth_step: r.s32(p + 0x10)?,
+        acid_hit: required_link(archive, p + 0x2C)?,
+        plate_max_offset: f(0x30)?,
+        plate_max_speed: f(0x34)?,
+        plate_spring: f(0x38)?,
+        plate_damping: f(0x3C)?,
+        plate_rest_speed: f(0x40)?,
+        plate_rest_offset: f(0x44)?,
+        plate_heal_interval: f(0x48)?,
+        plate_break_damage: f(0x4C)?,
+        plate_wait: [f(0x50)?, f(0x54)?],
+        regrowth_size: [f(0x58)?, f(0x5C)?],
+        bubble_wait: [f(0x60)?, f(0x64)?],
+        growth: f(0x68)?,
+        attract_far: f(0x6C)?,
+        attract_near: f(0x70)?,
+        link: f(0x74)?,
+        attraction: f(0x78)?,
+        max_pull: f(0x80)?,
+        sink: f(0x84)?,
+        max_speed: f(0x88)?,
+        acid_top: f(0x8C)?,
+        acid_bottom: f(0x90)?,
+        acid_spread: f(0x94)?,
+        acid_max_speed: f(0x98)?,
+        acid_acceleration: f(0x9C)?,
+        acid_levels,
+    })
+}
 /// grKr_StageData / grDatFiles_801C6038: GrKr.dat. grKr_StageCallbacks[3]
 /// carries flags 0xC0000000, so map 3 selects the lights and fog.
 pub fn read_kraid(archive: &Archive) -> ReadResult<StageDesc> {

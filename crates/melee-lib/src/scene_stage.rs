@@ -15,6 +15,7 @@ pub(crate) mod pupupu;
 pub(crate) mod shrine;
 pub(crate) mod stadium;
 pub(crate) mod yorster;
+pub(crate) mod zebes;
 use anyhow::Result;
 use gekko_math::HsdRng;
 use hsd_archive::Archive;
@@ -259,6 +260,14 @@ pub const ONETT: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Onett,
     read: melee_gr::desc::read_onett,
 };
+/// grZe_StageData: GrZe.dat; StageParam row 0x06 (StKind).
+pub const BRINSTAR: StageDescriptor = StageDescriptor {
+    name: "Brinstar",
+    file: "GrZe.dat",
+    music_id: 0x06,
+    kind: melee_types::GrKind::Zebes,
+    read: melee_gr::desc::read_zebes,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -278,6 +287,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &YOSHIS_ISLAND,
         &MUSHROOM_KINGDOM,
         &ONETT,
+        &BRINSTAR,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -301,6 +311,7 @@ pub enum SceneStage {
     Yorster(Box<melee_gr::yorster::procs::YorsterStage>),
     Inishie1(Box<melee_gr::inishie1::procs::Inishie1Stage>),
     Onett(Box<melee_gr::onett::procs::OnettStage>),
+    Zebes(Box<melee_gr::zebes::procs::ZebesStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -311,7 +322,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -333,6 +344,7 @@ impl SceneStage {
             Self::Yorster(s) => s.proc_table(),
             Self::Inishie1(s) => s.proc_table(),
             Self::Onett(s) => s.proc_table(),
+            Self::Zebes(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -372,6 +384,7 @@ impl SceneStage {
             Self::Yorster(_) => unreachable!("Yoshi's Island callbacks run in scene_stage::yorster"),
             Self::Inishie1(_) => unreachable!("Mushroom Kingdom callbacks run in scene_stage::inishie1"),
             Self::Onett(_) => unreachable!("Onett callbacks run in scene_stage::onett"),
+            Self::Zebes(_) => unreachable!("Brinstar callbacks run in scene_stage::zebes"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -385,6 +398,19 @@ impl SceneStage {
         }
         Ok(false)
     }
+}
+
+/// The stage's camera limits as the camera reads them this tick: Brinstar's
+/// floor (stage_info.x724, Ground_801C4368) follows the acid, and so does
+/// Camera_8002AF68's lowest eye height (grZebes_801DCCC8: 5.0 + the
+/// surface, fadds).
+pub(crate) fn live_camera(stage: &SceneStage, assets: &crate::assets::Assets) -> melee_cm::StageCamera {
+    let mut camera = assets.stage_camera;
+    if let SceneStage::Zebes(stage) = stage {
+        camera.floor = stage.floor;
+        camera.min_eye_height = 5.0 + stage.floor;
+    }
+    camera
 }
 
 /// The stage callbacks a collider's proc made on joint ceilings
@@ -407,8 +433,13 @@ pub(crate) fn material_hit(
     item: u32,
     fighter: Option<usize>,
     damage: i32,
+    launch_x: f32,
 ) -> Result<()> {
     match state.stage {
+        SceneStage::Zebes(_) => {
+            zebes::material_hit(state, item, damage, launch_x);
+            Ok(())
+        }
         SceneStage::Yorster(_) => {
             yorster::material_hit(state, item, fighter, damage);
             Ok(())
