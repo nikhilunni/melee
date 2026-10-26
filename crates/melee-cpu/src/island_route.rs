@@ -219,7 +219,7 @@ fn ease_forward(fp: &mut Fighter) {
 /// the destination when it is more than 30 away across, neutral otherwise;
 /// nothing when the jump would pass the top blast zone (800A0170: fadds).
 /// ftCo_800A1CA8's arm is the hammer (x2168), which only its item sets.
-pub(crate) fn jump(fp: &mut Fighter, scene: &Scene) {
+fn jump(fp: &mut Fighter, scene: &Scene) {
     let position = fp.core.physics.position;
     let cpu = &mut fp.core.cpu;
     if position.y + cpu.jump_height > scene.arena.top {

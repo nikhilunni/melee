@@ -257,7 +257,7 @@ impl Stage {
     /// The ported stages where CPU players are witnessed against retail
     /// (docs/PORT_NOTES/CPU_PLAYERS.md); hosts offer a CPU only here.
     /// Listed by hand: porting a stage does not witness a CPU on it.
-    pub const CPU_SUPPORTED: [Self; 19] = [
+    pub const CPU_SUPPORTED: [Self; 14] = [
         Self::Battlefield,
         Self::FinalDestination,
         Self::DreamLand,
@@ -272,13 +272,6 @@ impl Stage {
         Self::Fourside,
         Self::BrinstarDepths,
         Self::FlatZone,
-        // Wave 27: the `w27s_start_*_fox_cpu9fox4` boundaries and their
-        // explorer matches.
-        Self::MushroomKingdom2,
-        Self::GreatBay,
-        Self::Brinstar,
-        Self::MuteCity,
-        Self::PokeFloats,
     ];
     /// Whether a CPU player is witnessed on this stage ([`Self::CPU_SUPPORTED`]).
     pub fn cpu_supported(self) -> bool {

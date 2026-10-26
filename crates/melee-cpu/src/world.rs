@@ -67,24 +67,6 @@ impl ItemView {
     };
 }
 
-/// Brinstar's acid as Ground_801C4368 gives it.
-#[derive(Clone, Copy, Debug, PartialEq)]
-pub struct Acid {
-    /// stage_info.x724: the surface's height.
-    pub surface: f32,
-    /// x724 - x728: how far the surface moved at its last move.
-    pub motion: f32,
-}
-
-impl Acid {
-    /// ftCo_800A1F98 (0x800A1F98): `y` is under the surface, or will be
-    /// in `frames` frames at its current motion (fmadds motion, frames,
-    /// surface; `frames` converted exactly).
-    pub fn will_cover(&self, frames: i32, y: f32) -> bool {
-        y < self.surface || y < fmadds(self.motion, frames as f32, self.surface)
-    }
-}
-
 /// The scene around a thinking CPU.
 pub struct Scene<'a> {
     /// Every fighter in fighter-list order; the thinking fighter's own entry
@@ -116,11 +98,6 @@ pub struct Scene<'a> {
     /// grRCruise_80201918: the scroll controller's x1C); None leaves the
     /// stage kind to decide.
     pub stage_drift: Option<hsd_types::Vec3>,
-    /// grGreatBay_801F66A4: Great Bay's turtle (map 1) is not floating at
-    /// rest (its state xC4 is not 0).
-    pub turtle_away: bool,
-    /// Ground_801C4368 on Brinstar: the acid; None elsewhere.
-    pub acid: Option<Acid>,
     /// Stack words this think's callees leave behind, which retail later
     /// reads uninitialized.
     pub stale: StaleStack,
@@ -211,14 +188,12 @@ impl Scene<'_> {
         self.map.grkind()
     }
     /// ftCo_800A1B38 (0x800A1B38): floors the CPU ignores (Big Blue's,
-    /// Mushroom Kingdom's, Corneria's and Venom's moving floors). Each
-    /// test checks its own stage kind, so the stage's own test decides.
-    pub fn ignored_floor(&self, line: i32) -> bool {
+    /// Mushroom Kingdom's, Corneria's and Venom's moving floors).
+    pub fn ignored_floor(&self, _line: i32) -> bool {
         match self.stage() {
-            GrKind::BigBlue | GrKind::Inishie1 | GrKind::Corneria => {
+            GrKind::BigBlue | GrKind::Inishie1 | GrKind::Corneria | GrKind::Venom => {
                 unimplemented!("ftCo_800A1B38: grBigBlue_801EF844 and its siblings")
             }
-            GrKind::Venom => venom_wing_line(self.map, line),
             _ => false,
         }
     }
@@ -257,13 +232,4 @@ pub fn distance(a: Vec3, b: Vec3) -> f32 {
     let dx = a.x - b.x;
     let dy = a.y - b.y;
     sqrtf(fmadds(dx, dx, dy * dy))
-}
-
-/// The joints of Venom's floors the Arwings carry (map joints 3 and 4).
-const VENOM_WING_JOINTS: core::ops::RangeInclusive<i32> = 3..=4;
-
-/// grVenom_80206D10 (0x80206D10): the line belongs to joint 3 or 4
-/// (mpJointFromLine, then `joint - 3 <= 1` unsigned).
-fn venom_wing_line(map: &CollMap, line: i32) -> bool {
-    line != -1 && VENOM_WING_JOINTS.contains(&map.joint_from_line(line))
 }
