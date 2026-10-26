@@ -311,21 +311,13 @@ impl Cars {
 
     /// grBigBlue_801ECB50 (0x801ECB50).
     fn manage_arrivals<S: Scene>(&mut self, parameters: &Parameters, scene: &mut S) {
-        let mut free = self.count_ranks(RANK_RIGHT);
-        let mut reserved = self.count_ranks(RANK_LEFT);
+        let free = self.count_ranks(RANK_RIGHT);
+        let reserved = self.count_ranks(RANK_LEFT);
         // Keep both ranks stocked.
         if free == 0 {
-            let pick = zrandi(scene.rng(), reserved);
-            if let Some(slot) = self.nth_rank(RANK_LEFT, pick) {
-                self.ranks[slot] = RANK_RIGHT;
-                free += 1;
-            }
+            unimplemented!("grbigblue.c:3173: every right-rank car bone in use");
         } else if reserved == 0 {
-            let pick = zrandi(scene.rng(), free);
-            if let Some(slot) = self.nth_rank(RANK_RIGHT, pick) {
-                self.ranks[slot] = RANK_LEFT;
-                reserved += 1;
-            }
+            unimplemented!("grbigblue.c:3192: every left-rank car bone in use");
         }
         let active = self
             .lanes
@@ -588,7 +580,7 @@ impl Cars {
                     }
                 }
                 if self.lanes[index].position.y < LOST_DEPTH {
-                    result = Some(Manoeuvre::Off);
+                    unimplemented!("grbigblue.c:3924: a car fallen below -2000");
                 }
                 result
             }
@@ -626,9 +618,8 @@ impl Cars {
         if right != 0 {
             if left != 0 {
                 if right_pace != 0 {
-                    if left_pace != 0 {
-                        return None;
-                    }
+                    // 801ECB50 makes a car pace only while none does.
+                    assert!(left_pace == 0, "grbigblue.c:3874: two pace cars");
                     Some(Manoeuvre::LeaveLeft)
                 } else if left_pace != 0 || scene.rng().randi(2) != 0 {
                     // The coin is tossed only with no pace car either side.
@@ -686,10 +677,10 @@ impl Cars {
                 if floor == NO_FLOOR {
                     return false;
                 }
+                // At most four of the thirty bones are on the road, and
+                // 801ECB50 restocks the right rank before any arrival.
                 let count = self.count_ranks(RANK_RIGHT);
-                if count == 0 {
-                    return false;
-                }
+                assert!(count != 0, "grbigblue.c:4042: no right-rank car bone");
                 let pick = zrandi(scene.rng(), count);
                 let slot = self.nth_rank(RANK_RIGHT, pick).unwrap_or(SLOTS);
                 let lane = &mut self.lanes[index];

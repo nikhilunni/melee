@@ -457,14 +457,14 @@ impl Flyers {
                         scene.set_rotation_z(body, std::f32::consts::FRAC_PI_6);
                     }
                     if degrees < -30.0 {
-                        scene.set_rotation_z(body, -std::f32::consts::FRAC_PI_6);
+                        unimplemented!("grbigblue.c:1072: a low flyer tilted past -30 degrees");
                     }
                 }
                 if degrees > 65.0 {
-                    scene.set_rotation_z(body, 1.134_464);
+                    unimplemented!("grbigblue.c:1076: a flyer tilted past 65 degrees");
                 }
                 if degrees < -65.0 {
-                    scene.set_rotation_z(body, -1.134_464);
+                    unimplemented!("grbigblue.c:1079: a flyer tilted past -65 degrees");
                 }
                 self.flyers[index].wait -= 1;
             }
@@ -566,36 +566,7 @@ impl Flyers {
                 if self.falcon_called {
                     let out = self.flyers.iter().filter(|f| f.state != 0).count();
                     if out <= 1 {
-                        pos = Vec3::new(limits.blast_left - 50.0, 0.0, 0.0);
-                        let (floor, _) = scene.floor(pos, SEARCH);
-                        if floor != NO_FLOOR {
-                            pos.y = floor + parameters.falcon_height;
-                            let height = FALCON_HEIGHT * scale;
-                            let reach = 2.0 * (FALCON_HALF * scale);
-                            let mut blocked = self.flyer_near(scene, None, pos, true, reach, height);
-                            if !blocked {
-                                blocked = self.route_near(scene, pos, true, reach, 25.0);
-                            }
-                            if !blocked {
-                                let bound = cars.highest(
-                                    limits.camera_top,
-                                    limits.camera_bottom,
-                                    limits.camera_left,
-                                    limits.camera_right,
-                                );
-                                if pos.y <= bound {
-                                    blocked = true;
-                                }
-                            }
-                            if blocked {
-                                pos.y = 30.0 + limits.camera_top;
-                            }
-                            scene.set_translation(body, pos);
-                            self.falcon.target = pos.y;
-                            self.falcon.speed = parameters.falcon_speed;
-                            scene.set_hidden(body, false);
-                            self.falcon.state = 1;
-                        }
+                        unimplemented!("grbigblue.c:1607: the Falcon Flyer coming back");
                     }
                 }
                 return;
@@ -684,7 +655,8 @@ impl Flyers {
             1 => {
                 let wait = self.route.wait;
                 if wait > 0 {
-                    self.route.wait = wait - 1;
+                    // Case 0 sets the wait to 0 and nothing raises it.
+                    unreachable!("grbigblue.c:2007: a route platform wait");
                 } else {
                     let mut pos = Vec3::new(limits.blast_right, 0.0, 0.0);
                     let mut other = Vec3::new(-limits.blast_right, 0.0, 0.0);
@@ -834,7 +806,7 @@ impl Flyers {
                 let dy = at.y - pos.y;
                 let dy = if dy < 0.0 { -(at.y - pos.y) } else { dy };
                 if dy < height {
-                    result = true;
+                    unimplemented!("grbigblue.c:2190: a flyer's place on the route platform");
                 }
             }
             if leftward && self.route.direction == -1 {

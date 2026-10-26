@@ -177,6 +177,8 @@ impl Road {
         let target;
         let turn;
         if floor != NO_FLOOR && (!self.falling || floor > center.y) {
+            // x70 is 99999 and the search spans 120 (scaled) about the
+            // stage's centre: neither clamp can act.
             let ceiling = parameters.road_ceiling;
             if floor > ceiling {
                 floor = ceiling;
@@ -208,7 +210,7 @@ impl Road {
         }
         let mut angular = turn;
         if turn > 0.0 {
-            angular = 0.0;
+            unimplemented!("grbigblue.c:2822: the road turning back up (a positive turn)");
         } else if gekko_math::msl::fabsf(turn) > SMALL_TURN {
             angular *= parameters.road_turn;
         }
@@ -234,7 +236,9 @@ impl Road {
             self.rotation = 0.0;
         }
         if f64::from(self.rotation) > std::f64::consts::PI {
-            self.rotation = (f64::from(self.rotation) - std::f64::consts::TAU) as f32;
+            // The turn is never positive (a positive one is zeroed above), so
+            // the rotation only falls; the +TAU wrap below leaves it under pi.
+            unreachable!("grbigblue.c:2865: the road's rotation past pi");
         } else if f64::from(self.rotation) < -std::f64::consts::PI {
             self.rotation = (f64::from(self.rotation) + std::f64::consts::TAU) as f32;
         }
@@ -331,7 +335,7 @@ impl Road {
                 if self.position.y < -(parameters.road_low * scale) {
                     self.direction = -1;
                 } else if self.position.y > parameters.road_high * scale {
-                    self.direction = 1;
+                    unimplemented!("grbigblue.c:2488: the road above yakumono_param x8 (climbing only)");
                 }
             }
         }
@@ -350,10 +354,10 @@ impl Road {
                 continue;
             }
             if self.starting {
-                if pick > 1 && pick != 4 {
-                    continue;
-                }
-                break pick;
+                // The road's first switch comes 22 ticks after GO in every
+                // match: its motion reads only its own joints, no draw or
+                // player, so fn_801E6124 has always run by then.
+                unreachable!("grbigblue.c:2520: a road segment drawn before the countdown ends");
             }
             if self.direction == 1 && candidate.delta.y < 0.0 {
                 continue;
