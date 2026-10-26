@@ -336,7 +336,7 @@ impl Platform {
             while f64::from(self.bank) > core::f64::consts::PI {
                 self.bank = (f64::from(self.bank) - core::f64::consts::TAU) as f32;
             }
-            gekko_math::msl::fabsf(self.bank) >= 1.047_197_6
+            gekko_math::msl::fabsf(self.bank) >= core::f32::consts::FRAC_PI_3
         } else {
             true
         };

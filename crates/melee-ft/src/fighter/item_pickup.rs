@@ -429,7 +429,6 @@ impl FighterCore {
             tether_active: self.tether_article,
             floor: self.collision.data.floor,
             fox_taunt_available: self.capabilities.star_fox_taunt,
-            ..Default::default()
         }
     }
     /// ftpickupitem_800942A0 (800942A0): the nearest offered item whose

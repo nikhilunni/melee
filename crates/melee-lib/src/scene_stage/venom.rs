@@ -50,7 +50,7 @@ pub(crate) fn winds() -> [melee_lb::radial_force::DirectionalGust; 2] {
         frames: -1,
         strength: 1.0,
         decay: 0.0,
-        phase_step: 1.047_197_6,
+        phase_step: core::f32::consts::FRAC_PI_3,
         rectangle,
     };
     [
