@@ -112,6 +112,9 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::GreenGreens => (75.0, 55.0),
         // The ship's deck (an approximation for the policies).
         Stage::RainbowCruise => (70.0, 50.0),
+        // The Falcon Flyer the fighters start on spans about x -50..50,
+        // and the road scrolls under it (an approximation for the policies).
+        Stage::BigBlue => (50.0, 30.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

@@ -366,6 +366,77 @@ pub fn read_pura(archive: &Archive) -> ReadResult<StageDesc> {
 pub fn read_big_blue(archive: &Archive) -> ReadResult<StageDesc> {
     read_stage(archive, GrKind::BigBlue, 1)
 }
+/// `grBb_YakumonoParam` (grbigblue.static.h): every word Big Blue reads.
+pub fn read_big_blue_parameters(archive: &Archive) -> ReadResult<crate::bigblue::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    let i = |at: u32| r.s32(p + at);
+    let pair_f = |at: u32| -> ReadResult<[f32; 2]> { Ok([f(at)?, f(at + 4)?]) };
+    let pair_i = |at: u32| -> ReadResult<[i32; 2]> { Ok([i(at)?, i(at + 4)?]) };
+    Ok(crate::bigblue::Parameters {
+        road_height: f(0x00)?,
+        road_low: f(0x04)?,
+        road_high: f(0x08)?,
+        car_scale: f(0x0C)?,
+        arrival_wait: pair_i(0x10)?,
+        starting_cars: i(0x18)?,
+        formation_width: i(0x1C)?,
+        car_gap: i(0x20)?,
+        car_top_speed: f(0x24)?,
+        car_acceleration: f(0x28)?,
+        car_ride_height: f(0x2C)?,
+        bob_backing: f(0x30)?,
+        bob_cruising: f(0x34)?,
+        bob_accelerating: f(0x38)?,
+        bob_follow: f(0x3C)?,
+        bob_rate: f(0x40)?,
+        landing_push: f(0x44)?,
+        sink_spring: f(0x48)?,
+        sink_depth: f(0x4C)?,
+        tilt_follow: f(0x50)?,
+        level_follow: f(0x54)?,
+        level_angle: f(0x58)?,
+        manoeuvre_wait: pair_f(0x5C)?,
+        car_margin: f(0x68)?,
+        road_scroll: f(0x6C)?,
+        road_ceiling: f(0x70)?,
+        road_turn: f(0x74)?,
+        road_fall: f(0x78)?,
+        road_drop: f(0x7C)?,
+        car_gravity: f(0x80)?,
+        car_launch: f(0x84)?,
+        flyer_wait: pair_i(0x88)?,
+        flyer_height: pair_f(0x90)?,
+        flyer_speed: f(0x98)?,
+        flyer_tilt_follow: f(0x9C)?,
+        flyer_sway: f(0xA0)?,
+        flyer_sway_limit: f(0xA4)?,
+        flyer_sink: f(0xA8)?,
+        flyer_rise: f(0xAC)?,
+        flyer_rise_wait: i(0xB0)?,
+        flyer_rise_ticks: i(0xB4)?,
+        flyer_item_chance: i(0xB8)?,
+        flyer_climb: pair_f(0xBC)?,
+        flyer_descent: pair_f(0xC4)?,
+        falcon_height: f(0xCC)?,
+        falcon_speed: f(0xD0)?,
+        falcon_tilt_follow: f(0xD4)?,
+        falcon_wait: f(0xD8)?,
+        falcon_return: pair_i(0xDC)?,
+        falcon_climb: pair_f(0xE4)?,
+        falcon_descent: pair_f(0xEC)?,
+        route_height: pair_f(0xF4)?,
+        route_speed_x: pair_f(0xFC)?,
+        route_speed_y: pair_f(0x104)?,
+        route_wait: pair_i(0x10C)?,
+        route_count: pair_i(0x11C)?,
+        route_climb: pair_f(0x124)?,
+        route_descent: pair_f(0x12C)?,
+        markers_translate: hsd_types::Vec3::new(f(0x134)?, f(0x138)?, f(0x13C)?),
+        markers_scale: f(0x140)?,
+    })
+}
 /// `grMc_YakumonoParam` (grmutecity.c:303-317): the cars' floats.
 pub fn read_mute_city_parameters(archive: &Archive) -> ReadResult<crate::mutecity::Parameters> {
     let p = public(archive, "yakumono_param")?;
@@ -1054,6 +1125,7 @@ pub fn read_music(archive: &Archive, stage_id: i32) -> ReadResult<crate::music::
         0 => crate::music::MusicRule::Primary,
         3 => crate::music::MusicRule::CharacterUnlocked(crate::music::MARTH_UNLOCK_BIT),
         4 => crate::music::MusicRule::CharacterUnlocked(crate::music::YOUNG_LINK_UNLOCK_BIT),
+        5 => crate::music::MusicRule::TrophyOwned,
         6 => crate::music::MusicRule::AllCharactersUnlocked,
         rule => return Err(error(format!("unsupported stage music unlock rule {rule}"))),
     };

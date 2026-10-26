@@ -2145,6 +2145,10 @@ impl Runtime {
                                     },
                                 )?;
                             }
+                            // fn_801E6124, Ground_801C10B8's deferred row.
+                            if let SceneStage::BigBlue(stage) = &mut state.stage {
+                                stage.road.start();
+                            }
                             if matches!(state.stage, SceneStage::Yorster(_)) {
                                 // grYorster_80202160: the blocks.
                                 crate::scene_stage::yorster::start(
@@ -3201,6 +3205,7 @@ impl Runtime {
                         || (address == melee_gr::venom::procs::DYNAMICS_PROC
                             && matches!(state.stage, SceneStage::Venom(_)))
                         || address == melee_gr::mutecity::procs::DYNAMICS_PROC
+                        || address == melee_gr::bigblue::procs::ROAD_PROC
                         || address == melee_gr::pura::procs::SEQUENCE_PROC
                         || address == melee_gr::inishie2::procs::DYNAMICS_PROC
                         || address == melee_gr::greatbay::procs::DYNAMICS_PROC
@@ -3350,6 +3355,8 @@ impl Runtime {
                             },
                             &mut self.radial_forces,
                         )?;
+                    } else if matches!(state.stage, SceneStage::BigBlue(_)) {
+                        crate::scene_stage::bigblue::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and

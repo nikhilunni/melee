@@ -1347,6 +1347,15 @@ fn start_rc_iceclimbers_fox4_600() {
     movement_gate_ticks("start_rc_iceclimbers_fox4_cold", 600);
     particle_rng_sites_with_ledger("start_rc_iceclimbers_fox4", 600, "ledger600");
 }
+/// Big Blue's start boundary: the road scrolling and drawing its first
+/// segments (only 0, 1 and 4 before GO), the cars' creation draws (a
+/// variable count the cold start inverts) and the Falcon Flyer waiting.
+#[test]
+fn start_bb_fox_marth4_600() {
+    movement_gate_ticks("start_bb_fox_marth4", 600);
+    movement_gate_ticks("start_bb_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_bb_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

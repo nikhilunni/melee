@@ -1,6 +1,7 @@
 //! Composition root for stage-specific resources and callbacks.
 pub(crate) mod battle;
 pub(crate) mod castle;
+pub(crate) mod bigblue;
 pub(crate) mod fourside;
 pub(crate) mod flatzone;
 pub(crate) mod garden;
@@ -64,7 +65,10 @@ pub(crate) fn live_drop_markers(
     animations: &mut std::collections::BTreeMap<u8, melee_gr::last::animation::BackgroundAnimation>,
 ) -> melee_gr::bomb_rain::DropMarkers {
     let mut markers = assets.drop_markers.clone();
-    if assets.stage_desc.kind != melee_types::GrKind::Kongo {
+    if !matches!(
+        assets.stage_desc.kind,
+        melee_types::GrKind::Kongo | melee_types::GrKind::BigBlue
+    ) {
         return markers;
     }
     let joints = &assets.drop_marker_joints;
@@ -349,6 +353,14 @@ pub const RAINBOW_CRUISE: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::RCruise,
     read: melee_gr::desc::read_rcruise,
 };
+/// grBb_StageData: GrBb.dat; StageParam row 0x18 (StKind).
+pub const BIG_BLUE: StageDescriptor = StageDescriptor {
+    name: "BigBlue",
+    file: "GrBb.dat",
+    music_id: 0x18,
+    kind: melee_types::GrKind::BigBlue,
+    read: melee_gr::desc::read_big_blue,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -378,6 +390,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &PRINCESS_PEACHS_CASTLE,
         &GREEN_GREENS,
         &RAINBOW_CRUISE,
+        &BIG_BLUE,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -404,6 +417,7 @@ pub enum SceneStage {
     Zebes(Box<melee_gr::zebes::procs::ZebesStage>),
     Venom(Box<melee_gr::venom::procs::VenomStage>),
     MuteCity(Box<melee_gr::mutecity::procs::MuteCityStage>),
+    BigBlue(Box<melee_gr::bigblue::procs::BigBlueStage>),
     Pura(Box<melee_gr::pura::Pura>),
     Inishie2(Box<melee_gr::inishie2::procs::Inishie2Stage>),
     GreatBay(Box<melee_gr::greatbay::procs::GreatBayStage>),
@@ -421,7 +435,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) | Self::Castle(_) | Self::Greens(_) | Self::RCruise(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) | Self::Castle(_) | Self::Greens(_) | Self::RCruise(_) | Self::BigBlue(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -446,6 +460,7 @@ impl SceneStage {
             Self::Zebes(s) => s.proc_table(),
             Self::Venom(s) => s.proc_table(),
             Self::MuteCity(s) => s.proc_table(),
+            Self::BigBlue(s) => s.proc_table(),
             Self::Pura(s) => s.proc_table(),
             Self::Inishie2(s) => s.proc_table(),
             Self::GreatBay(s) => s.proc_table(),
@@ -495,6 +510,7 @@ impl SceneStage {
             Self::Zebes(_) => unreachable!("Brinstar callbacks run in scene_stage::zebes"),
             Self::Venom(_) => unreachable!("Venom callbacks run in scene_stage::venom"),
             Self::MuteCity(_) => unreachable!("Mute City callbacks run in scene_stage::mutecity"),
+            Self::BigBlue(_) => unreachable!("Big Blue callbacks run in scene_stage::bigblue"),
             Self::Pura(_) => unreachable!("Poké Floats callbacks run in scene_stage::pura"),
             Self::Inishie2(_) => {
                 unreachable!("Mushroom Kingdom II callbacks run in scene_stage::inishie2")

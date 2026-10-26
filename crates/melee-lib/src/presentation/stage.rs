@@ -142,6 +142,8 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::Greens => 6,
         // grRc_StageCallbacks[1] carries 0xC0000000.
         GrKind::RCruise => 1,
+        // grBb_StageCallbacks[0x23] (the Falcon Flyer) carries 0x80000000.
+        GrKind::BigBlue => 0x23,
         _ => return Err(error("stage light set unknown")),
     })
 }

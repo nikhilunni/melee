@@ -2631,3 +2631,13 @@ stocks = 4
 seed = 338514705
 item_frequency = 4
 item_mask = "0xfffffff800002000"
+
+# Big Blue (make_boundary.py --stage BigBlue --players Fox Marth).
+[[boundary]]
+name = "start_bb_fox_marth4"
+cold = "start_bb_fox_marth4_cold"
+savestate = "harness/roms/start_bb_fox_marth4.sav"
+stage = "BigBlue"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3657601642

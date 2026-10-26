@@ -34,6 +34,7 @@ mod stage_yorster;
 mod stage_inishie1;
 mod stage_onett;
 mod stage_mutecity;
+mod stage_bigblue;
 mod stage_pura;
 mod stage_inishie2;
 mod stage_greatbay;
@@ -142,7 +143,7 @@ pub struct InitialState {
     pub(crate) effects: Box<melee_ef::Effects>,
     pub(crate) rng: HsdRng,
     /// Match setup still owes Stage_80225074 before the first observation.
-    pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, u16)>,
+    pub(crate) pending_music: Option<(melee_gr::music::MusicParameters, melee_gr::music::Unlocks)>,
     pub(crate) selected_music: Option<i32>,
     /// The HUD banner running now (countdown or GO).
     pub(crate) banner: Option<crate::banner::Banner>,
@@ -471,6 +472,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::RCruise {
             stage_rcruise::restore_collision(&saved, &assets, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::BigBlue {
+            stage_bigblue::restore_collision(&saved, &assets, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;
@@ -801,11 +805,15 @@ impl InitialState {
             // gmMainLib_GetUnlockedCharactersBitmaskPtr (8015ED8C): lwz the
             // global, add 0x1868. gm/types.h's +1898 comment is stale.
             let main = word(saved.bytes(0x804D_3EE0, 4), 0);
-            let unlocks = u16::from_be_bytes(saved.bytes(main + 0x1868, 2).try_into().unwrap());
+            let characters = u16::from_be_bytes(saved.bytes(main + 0x1868, 2).try_into().unwrap());
+            // gmMainLib_GetTrophyFlags (8015CC78): the same global + 0x1CD4,
+            // a u16 per trophy (Toy_803048C0 reads its low byte).
+            let trophy_at = main + 0x1CD4 + 2 * melee_gr::music::RULE_5_TROPHY as u32;
+            let trophy = saved.bytes(trophy_at, 2)[1] != 0;
             Some((
                 melee_gr::desc::read_music(&assets.stage, assets.stage_descriptor.music_id)
                     .map_err(|e| anyhow::anyhow!("{e}"))?,
-                unlocks,
+                melee_gr::music::Unlocks { characters, trophy },
             ))
         } else {
             None

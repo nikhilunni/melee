@@ -6820,6 +6820,12 @@ static CORPUS_V3_MATCHES: [(&str, usize); 1060] = [
     ("corpus_v3_pf_fox_marth4_e1b05b110_p0", 4090),
     ("corpus_v3_pf_fox_marth4_e6cc80d32_p0", 3533),
     ("corpus_v3_pf_fox_marth4_ef9b6d16d_p0", 5782),
+    // Big Blue (grbigblue.c): the road's segments, climbs, dips and falls,
+    // the cars arriving, holding, pacing, leaving, fading, flying off the
+    // road and landing (and sinking under a fighter), the Falcon Flyer
+    // leaving, the small flyers carrying and sinking under the fighters, the
+    // route platform, and fighters carried past the blast zone.
+    ("bb27_idle_fox_marth4", 3800),
     // Fourside (grfourside.c): the crane's swings and its beam raised,
     // lowered and settling; the helicopter arriving, hovering and leaving;
     // the UFO landing on each building (framed by the camera while it

@@ -10,8 +10,20 @@ pub enum MusicRule {
     /// Rules 3 and 4: draw only when this character's unlock bit
     /// (gm_IsCKindUnlocked: lbl_803B78C8's index) is set.
     CharacterUnlocked(u8),
+    /// Rule 5: draw only when trophy 0x11A is owned (Toy_803048C0).
+    TrophyOwned,
     /// Rule 6: draw only when every character is unlocked.
     AllCharactersUnlocked,
+}
+/// Rule 5's trophy (Big Blue's).
+pub const RULE_5_TROPHY: usize = 0x11A;
+/// The save data's unlocks the rules read: the unlockable characters
+/// (gmMainLib_GetUnlockedCharactersBitmaskPtr) and whether rule 5's
+/// trophy is owned (gmMainLib_GetTrophyFlags()[0x11A] & 0xFF).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Unlocks {
+    pub characters: u16,
+    pub trophy: bool,
 }
 /// The unlockable characters' bits in the save data's mask
 /// (gmMainLib_GetUnlockedCharactersBitmaskPtr).
@@ -47,12 +59,14 @@ impl MusicParameters {
     /// ground.c:1398-1406; gm_80164ABC checks the eleven unlock bits,
     /// gm_IsCKindUnlocked one of them. `unlocks` is the save data's mask.
     /// Retail 801C26AC calls HSD_Randi(100) before comparing the threshold.
-    pub fn select(self, unlocks: u16, rng: &mut HsdRng) -> i32 {
+    pub fn select(self, unlocks: Unlocks, rng: &mut HsdRng) -> i32 {
+        let characters = unlocks.characters;
         let unlocked = match self.rule {
             MusicRule::Primary => false,
-            MusicRule::CharacterUnlocked(bit) => unlocks & (1 << bit) != 0,
+            MusicRule::CharacterUnlocked(bit) => characters & (1 << bit) != 0,
+            MusicRule::TrophyOwned => unlocks.trophy,
             MusicRule::AllCharactersUnlocked => {
-                unlocks & ALL_UNLOCKABLE_CHARACTERS == ALL_UNLOCKABLE_CHARACTERS
+                characters & ALL_UNLOCKABLE_CHARACTERS == ALL_UNLOCKABLE_CHARACTERS
             }
         };
         if unlocked
@@ -78,11 +92,11 @@ mod tests {
             sudden_death: 3,
         };
         let mut rng = HsdRng::new(17);
-        assert_eq!(music.select(0, &mut rng), 1);
+        assert_eq!(music.select(Unlocks { characters: 0, trophy: false }, &mut rng), 1);
         assert_eq!(rng.seed, 17);
         let mut expected = rng;
         expected.randi(100);
-        assert_eq!(music.select(ALL_UNLOCKABLE_CHARACTERS, &mut rng), 1);
+        assert_eq!(music.select(Unlocks { characters: ALL_UNLOCKABLE_CHARACTERS, trophy: false }, &mut rng), 1);
         assert_eq!(rng.seed, expected.seed);
     }
 }
@@ -101,7 +115,7 @@ mod primary_tests {
                 sudden_death: 8,
             };
             let mut rng = HsdRng::new(17);
-            assert_eq!(music.select(unlocked, &mut rng), 7);
+            assert_eq!(music.select(Unlocks { characters: unlocked, trophy: false }, &mut rng), 7);
             assert_eq!(rng.seed, 17);
         }
     }
@@ -120,9 +134,9 @@ mod character_tests {
             sudden_death: 3,
         };
         let mut rng = HsdRng::new(17);
-        assert_eq!(music.select(!(1 << MARTH_UNLOCK_BIT), &mut rng), 1);
+        assert_eq!(music.select(Unlocks { characters: !(1 << MARTH_UNLOCK_BIT), trophy: false }, &mut rng), 1);
         assert_eq!(rng.seed, 17);
-        assert_eq!(music.select(1 << MARTH_UNLOCK_BIT, &mut rng), 2);
+        assert_eq!(music.select(Unlocks { characters: 1 << MARTH_UNLOCK_BIT, trophy: false }, &mut rng), 2);
         assert_ne!(rng.seed, 17);
     }
 }
