@@ -130,6 +130,8 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::MuteCity => 0x1E,
         // stage_callbacks[27] carries 0x80000000 (map 27 is never created).
         GrKind::Pura => 27,
+        // grCs_StageCallbacks[3] carries 0xC0000000.
+        GrKind::Castle => 3,
         _ => return Err(error("stage light set unknown")),
     })
 }

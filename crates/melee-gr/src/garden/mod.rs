@@ -183,11 +183,14 @@ pub struct Water {
     pub level: f32,
     pub current: f32,
 }
-/// A fighter entering the water: grGarden_80203560's generator.
+/// A fighter entering the water: grGarden_80203560's generator, or
+/// the castle moat's (grCastle_801D0A9C).
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Splash {
     pub position: Vec3,
     pub scale: f32,
+    /// The castle moat's (its generator is scaled after creation).
+    pub castle: bool,
 }
 impl Water {
     /// grGarden_8020349C (0x8020349C): below the line the current pushes
@@ -200,6 +203,7 @@ impl Water {
         let splash = (previous.y > self.level).then(|| Splash {
             position: Vec3::new(current.x, SPLASH_HEIGHT, current.z),
             scale: size / SPLASH_SCALE_DIVISOR,
+            castle: false,
         });
         (Vec3::new(self.current, 0.0, 0.0), splash)
     }

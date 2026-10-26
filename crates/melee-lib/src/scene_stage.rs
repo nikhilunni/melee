@@ -1,5 +1,6 @@
 //! Composition root for stage-specific resources and callbacks.
 pub(crate) mod battle;
+pub(crate) mod castle;
 pub(crate) mod fourside;
 pub(crate) mod flatzone;
 pub(crate) mod garden;
@@ -322,6 +323,14 @@ pub const ICICLE_MOUNTAIN: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::Icemt,
     read: melee_gr::desc::read_icemt,
 };
+/// grCs_StageData: GrCs.dat; StageParam row 0x04 (StKind).
+pub const PRINCESS_PEACHS_CASTLE: StageDescriptor = StageDescriptor {
+    name: "PrincessPeachsCastle",
+    file: "GrCs.dat",
+    music_id: 0x04,
+    kind: melee_types::GrKind::Castle,
+    read: melee_gr::desc::read_castle,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -348,6 +357,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &MUSHROOM_KINGDOM_2,
         &GREAT_BAY,
         &ICICLE_MOUNTAIN,
+        &PRINCESS_PEACHS_CASTLE,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -378,6 +388,7 @@ pub enum SceneStage {
     Inishie2(Box<melee_gr::inishie2::procs::Inishie2Stage>),
     GreatBay(Box<melee_gr::greatbay::procs::GreatBayStage>),
     IceMt(Box<melee_gr::icemt::procs::IceMtStage>),
+    Castle(Box<melee_gr::castle::procs::CastleStage>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -388,7 +399,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) | Self::Inishie2(_) | Self::GreatBay(_) | Self::IceMt(_) | Self::Castle(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -417,6 +428,7 @@ impl SceneStage {
             Self::Inishie2(s) => s.proc_table(),
             Self::GreatBay(s) => s.proc_table(),
             Self::IceMt(s) => s.proc_table(),
+            Self::Castle(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -465,6 +477,7 @@ impl SceneStage {
             }
             Self::GreatBay(_) => unreachable!("Great Bay callbacks run in scene_stage::greatbay"),
             Self::IceMt(_) => unreachable!("Icicle Mountain callbacks run in scene_stage::icemt"),
+            Self::Castle(_) => unreachable!("Peach's Castle callbacks run in scene_stage::castle"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}
@@ -531,6 +544,10 @@ pub(crate) fn material_hit(
         SceneStage::Inishie1(_) => inishie1::material_hit(state, item),
         SceneStage::MuteCity(_) => mutecity::material_hit(state, item, damage),
         SceneStage::IceMt(_) => icemt::material_hit(state, item),
+        SceneStage::Castle(_) => {
+            castle::switch_pressed(state, item, fighter);
+            Ok(())
+        }
         _ => Ok(()),
     }
 }
@@ -558,6 +575,17 @@ pub(crate) fn item_notice(
             map.joint_list_remove(melee_gr::inishie2::procs::BIRDO_JOINT);
         }
         _ => unreachable!("{kind:?} notice {code} on this stage"),
+    }
+}
+/// A stage material item's touched callback (yaku.x1C, it_802E7054 with
+/// Item.toucher): `fighter` when a fighter touched it.
+pub(crate) fn material_touched(
+    state: &mut crate::initial_state::InitialState,
+    item: u32,
+    fighter: Option<usize>,
+) {
+    if let SceneStage::Castle(_) = state.stage {
+        castle::switch_pressed(state, item, fighter);
     }
 }
 

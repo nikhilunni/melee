@@ -506,6 +506,58 @@ pub fn read_inishie2_parameters(archive: &Archive) -> ReadResult<crate::inishie2
         carpet_turn_odds: [r.s16(p + 0x48)?, r.s16(p + 0x4A)?],
     })
 }
+/// grCs_StageData / grDatFiles_801C6038: GrCs.dat. grCs_StageCallbacks[3]
+/// carries flags 0xC0000000, so map 3 selects the lights and fog.
+pub fn read_castle(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Castle, 3)
+}
+/// `grCastle_YakumonoParam` (grcastle.c) as the asm reads it.
+pub fn read_castle_parameters(archive: &Archive) -> ReadResult<crate::castle::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    let h = |at: u32| -> ReadResult<i32> { Ok(i32::from(r.s16(p + at)?)) };
+    let four = |at: u32| -> ReadResult<[f32; 4]> { Ok([f(at)?, f(at + 4)?, f(at + 8)?, f(at + 12)?]) };
+    let mut flights = [crate::castle::Flight {
+        cannon_delay: 0,
+        sound: 0.0,
+        cannon_rotation: hsd_types::Vec3::ZERO,
+    }; 9];
+    for (i, flight) in flights.iter_mut().enumerate() {
+        let at = 0x5C + i as u32 * 0x14;
+        *flight = crate::castle::Flight {
+            cannon_delay: h(at)?,
+            sound: f(at + 4)?,
+            cannon_rotation: hsd_types::Vec3::new(f(at + 8)?, f(at + 0xC)?, f(at + 0x10)?),
+        };
+    }
+    Ok(crate::castle::Parameters {
+        switch_wait: [h(0x0)?, h(0x2)?],
+        switch_freeze: h(0x4)?,
+        switch_repeat_divisor: h(0x6)?,
+        first_bill_wait: [h(0x8)?, h(0xA)?],
+        next_bill_wait: [h(0xC)?, h(0xE)?],
+        platform_top: f(0x10)?,
+        platform_bottom: f(0x14)?,
+        platform_starts_low: f(0x18)?,
+        rise: [f(0x20)?, f(0x24)?, f(0x28)?],
+        sink: [f(0x2C)?, f(0x30)?, f(0x34)?],
+        rise_delay: f(0x38)?,
+        sink_delay: f(0x3C)?,
+        blocks_time: [h(0x40)?, h(0x42)?],
+        blocks_blink: h(0x44)?,
+        block_grow: f(0x48)?,
+        block_shrink: f(0x4C)?,
+        item_launch: f(0x50)?,
+        switch_linger: h(0x54)?,
+        bill_fuse: h(0x58)?,
+        flights,
+        cannon_lift: f(0x110)?,
+        bill_extents: four(0x118)?,
+        cannon_waits: [h(0x12C)?, h(0x12E)?, h(0x130)?, h(0x132)?],
+        explosion_extents: four(0x134)?,
+    })
+}
 /// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
 /// carries flags 0xC0000000, so map 1 selects the lights and fog.
 pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {

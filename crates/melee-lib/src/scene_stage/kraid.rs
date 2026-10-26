@@ -74,7 +74,7 @@ fn play_subtree(animation: &mut BackgroundAnimation, bone: usize, index: usize) 
 }
 
 /// The particles a model's frame-zero evaluation asks for, at once.
-fn spawn_keys(
+pub(crate) fn spawn_keys(
     animation: &mut BackgroundAnimation,
     map: u8,
     assets: &Assets,

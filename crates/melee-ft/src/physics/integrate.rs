@@ -79,7 +79,7 @@ pub fn integrate_environment_with(
     floor_speed: impl FnOnce(&Vec3) -> Option<Vec3>,
     wind: Wind,
 ) {
-    let (wind, splash) = wind.sample(state.position, state.previous_position);
+    let (wind, splash) = wind.sample(state.position, state.previous_position, state.position_delta);
     if splash.is_some() {
         state.water_splash = splash;
     }

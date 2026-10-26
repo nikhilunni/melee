@@ -5435,7 +5435,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 1023] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 1031] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -7040,6 +7040,19 @@ static CORPUS_V3_MATCHES: [(&str, usize); 1023] = [
     ("corpus_v3_im_fox_marth4_efc6a328f_p1", 1742),
     ("corpus_v3_im_fox_marth4_efc83a559_p0", 2304),
     ("corpus_v3_im_fox_marth4_efc83a559_p2", 1856),
+    // Princess Peach's Castle (grcastle.c): switches placed on the roof and
+    // the platforms, pressed by hit and by touch (the freeze), their block
+    // sets grown, blinking and shrunk (one past a flying Bill); the Bullet
+    // Bill's flight, cannon and explosion (efLib_SpawnParticleEffect's
+    // root-scaled key), the platforms, the moat's lift and the wind.
+    ("corpus_v3_pc_fox_marth4_e00f31913_p1", 6001),
+    ("corpus_v3_pc_fox_marth4_e1611c835_p0", 6001),
+    ("corpus_v3_pc_fox_marth4_e3e74affa_p2", 4851),
+    ("corpus_v3_pc_fox_marth4_e7ff378da_p1", 6001),
+    ("corpus_v3_pc_fox_marth4_ec3145eb3_p0", 5055),
+    ("corpus_v3_pc_fox_marth4_edb2b114a_p2", 3303),
+    ("corpus_v3_pc_fox_marth4_ee62c6106_p2", 6001),
+    ("corpus_v3_pc_fox_marth4_ef89b3e70_p0", 4248),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

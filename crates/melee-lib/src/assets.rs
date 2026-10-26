@@ -560,8 +560,7 @@ fn stage_camera(
         !matches!(
             stage.kind,
             // Brinstar's follows the acid (scene_stage::live_camera).
-            GrKind::Castle
-                | GrKind::Corneria
+            GrKind::Corneria
                 | GrKind::KinokoRoute
                 | GrKind::Homerun
         ),
@@ -604,6 +603,8 @@ fn stage_camera(
         // Camera_8002AF68's per-stage floor for the eye.
         min_eye_height: match stage.kind {
             GrKind::Garden => melee_gr::garden::MIN_EYE_HEIGHT,
+            // grCastle_801D0FF0: 50.0f * Ground_801C0498().
+            GrKind::Castle => melee_gr::castle::MIN_EYE_HEIGHT * stage.parameters.map_scale,
             _ => -f32::MAX,
         },
         fixed: stage.parameters.fixed_view,

@@ -2148,3 +2148,58 @@ fn sealed_effect_teardown_step_and_capture_allocate_nothing_after_live_clone() {
     }
     assert!(branch.is_some());
 }
+
+/// Wave 27's stages run their whole hazard cycles without allocating:
+/// Princess Peach's Castle's switches, block sets, platforms, Bullet Bill,
+/// cannon and explosion (the first Bill flies within 5400 ticks of the
+/// start, and each map it makes is reserved at load).
+#[test]
+fn wave27_stage_hazards_step_without_allocating() {
+    TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
+    let files = data_root().join("harness/roms/files");
+    if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+        return;
+    }
+    const TICKS: usize = 14_000;
+    for (index, stage) in [Stage::PrincessPeachsCastle].into_iter().enumerate() {
+        let config = MatchConfig::versus(
+            stage,
+            [
+                PlayerConfig::new(Port::P1, Character::Fox),
+                PlayerConfig::new(Port::P2, Character::Marth),
+            ],
+        )
+        .with_stocks(5)
+        .with_seed(Seed(0x27 + index as u32));
+        let assets = GameAssets::load(&files, &config).unwrap();
+        let mut game = Match::new(&assets, config).unwrap();
+        let mut choices = Choices(0x2727 ^ (index as u32 + 1));
+        let mut held = [(ControllerState::default(), 0); 2];
+        let (mut ran, mut items) = (0, 0);
+        for tick in 0..TICKS {
+            if !game.status().is_running() {
+                break;
+            }
+            let mut inputs = Inputs::default();
+            for (port, (pad, remaining)) in held.iter_mut().enumerate() {
+                if *remaining == 0 {
+                    (*pad, *remaining) = choices.pad();
+                }
+                *remaining -= 1;
+                if tick < 2400 {
+                    inputs.0[port] = *pad;
+                }
+            }
+            assert_eq!(
+                measure(&mut game, &inputs),
+                0,
+                "{} tick {tick}",
+                stage.display_name()
+            );
+            ran = tick + 1;
+            items = items.max(game.observe().unwrap().items().count());
+        }
+        // The stage's material items (a switch, a Bill) came and went.
+        assert!(ran == TICKS && items > 0, "{}: {ran} ticks, {items} items", stage.display_name());
+    }
+}

@@ -1715,6 +1715,21 @@ impl Runtime {
                         && item.pending_clank_damage == 0
                         && (item.pending_damage_dealt != 0 || item.pending_damage_without_hitlag != 0)
                 });
+                // Its touched callback (yaku.x1C) runs when nothing else did
+                // (Item_8026A294's order).
+                let material_touched = state.items.get_mut(id).and_then(|item| {
+                    (kind == melee_types::ItemKind::PokemonRandom
+                        && item.pending_knockback == 0.0
+                        && item.pending_damage_taken == 0
+                        && item.pending_shield_damage == 0
+                        && item.pending_clank_damage == 0
+                        && item.pending_damage_dealt == 0
+                        && item.pending_damage_without_hitlag == 0
+                        && item.pending_reflection.is_none()
+                        && item.pending_absorb.is_none())
+                    .then_some(item.touched_by)
+                    .flatten()
+                });
                 let rng = std::cell::Cell::new(state.rng);
                 state.items.process_events_with_stale::<SceneItems>(
                     id,
@@ -1733,6 +1748,15 @@ impl Runtime {
                 }
                 if material_dealt {
                     crate::scene_stage::material_dealt(state, id);
+                }
+                if let Some(toucher) = material_touched {
+                    let fighter = match toucher {
+                        melee_it::Toucher::Fighter(player) => {
+                            crate::scene_items::owner_index(&state.fighters, Some(player), false)
+                        }
+                        melee_it::Toucher::Item(_) => None,
+                    };
+                    crate::scene_stage::material_touched(state, id, fighter);
                 }
             }
             13 => self.detect_item_hurts(id),
@@ -2016,6 +2040,18 @@ impl Runtime {
                                 // grZebes_801D9758, then fn_801D94F0.
                                 crate::scene_stage::zebes::start(state);
                             }
+                            if matches!(state.stage, SceneStage::Castle(_)) {
+                                // grCastle_801CD9B4, then grCastle_801CD610.
+                                crate::scene_stage::castle::start(
+                                    state,
+                                    &mut crate::scene_stage::castle::Scene {
+                                        world,
+                                        objects: &mut self.stage_objects,
+                                        item_objects: &mut self.item_objects,
+                                        draws: &mut self.particle_draws,
+                                    },
+                                )?;
+                            }
                             if matches!(state.stage, SceneStage::Yorster(_)) {
                                 // grYorster_80202160: the blocks.
                                 crate::scene_stage::yorster::start(
@@ -2062,6 +2098,7 @@ impl Runtime {
                 // creation order.
                 // The stage subject sits among the items by when it was made.
                 let stage_camera = crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera);
+                let mut castle_subjects = [None, None];
                 let (stage_subject, stage_subjects, made_after): (_, &mut [melee_cm::Subject], _) =
                     match &mut state.stage {
                         SceneStage::Stadium(stage) => (stage.screen.subject.as_mut(), &mut [], 0),
@@ -2075,9 +2112,22 @@ impl Runtime {
                         // grPura_80212CD4: the sequence's 25, made at the
                         // stage's start, newest first.
                         SceneStage::Pura(stage) => (None, &mut stage.subjects[..], 0),
+                        // The explosion's subject, then the Bullet Bill's.
+                        SceneStage::Castle(stage) => {
+                            for (slot, subject) in castle_subjects
+                                .iter_mut()
+                                .zip(crate::scene_stage::castle::subjects(stage))
+                            {
+                                *slot = Some(subject);
+                            }
+                            (None, &mut [], 0)
+                        }
                         _ => (None, &mut [], 0),
                     };
-                let stage_subject = stage_subject.into_iter().chain(stage_subjects.iter_mut().rev());
+                let stage_subject = stage_subject
+                    .into_iter()
+                    .chain(stage_subjects.iter_mut().rev())
+                    .chain(castle_subjects.into_iter().flatten());
                 let (older, newer) = state.items.split_at_id_mut(made_after);
                 let newer = newer.iter_mut().rev().filter_map(|i| i.camera.as_mut());
                 let older = older.iter_mut().rev().filter_map(|i| i.camera.as_mut());
@@ -2447,6 +2497,14 @@ impl Runtime {
                                         )
                                     },
                                 ),
+                                SceneStage::Castle(stage) if stage.moat_active => {
+                                    melee_gr::wind::Wind::moat(
+                                        melee_gr::castle::Moat::new(
+                                            assets.stage_desc.parameters.map_scale,
+                                        ),
+                                        f.camera.target_extents.radius,
+                                    )
+                                }
                                 _ => melee_gr::wind::Wind::CALM,
                             };
                             dispatch_fighter(
@@ -3044,6 +3102,7 @@ impl Runtime {
                         || address == melee_gr::pura::procs::SEQUENCE_PROC
                         || address == melee_gr::inishie2::procs::DYNAMICS_PROC
                         || address == melee_gr::greatbay::procs::DYNAMICS_PROC
+                        || address == melee_gr::castle::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -3160,6 +3219,18 @@ impl Runtime {
                             world,
                             &mut self.stage_objects,
                             &mut self.item_objects,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Castle(_)) {
+                        crate::scene_stage::castle::run_proc(
+                            state,
+                            map_id,
+                            &mut crate::scene_stage::castle::Scene {
+                                world,
+                                objects: &mut self.stage_objects,
+                                item_objects: &mut self.item_objects,
+                                draws: &mut self.particle_draws,
+                            },
+                            &mut self.radial_forces,
                         )?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
@@ -4327,6 +4398,11 @@ impl Simulation {
                                 SceneStage::IceMt(_) => {
                                     melee_gr::icemt::procs::map_callback(map).1
                                 }
+                                SceneStage::Castle(_) => {
+                                    melee_gr::castle::procs::map_callback(map)
+                                        .expect("a castle map's gobj proc")
+                                        .1
+                                }
                                 _ => melee_gr::last::procs::map_callback(map),
                             },
                         },
@@ -5241,7 +5317,11 @@ fn dispatch_fighter(
         FighterProc::Update => {
             f.proc_update(assets, map, wind);
             if let Some(splash) = f.core.physics.water_splash.take() {
-                crate::scene_stage::garden::splash(scene_assets, particles, splash, rng)?;
+                if splash.castle {
+                    crate::scene_stage::castle::splash(scene_assets, particles, splash, rng)?;
+                } else {
+                    crate::scene_stage::garden::splash(scene_assets, particles, splash, rng)?;
+                }
             }
             if let Some((partner, partner_assets)) = death_partner {
                 f.check_blast_zone_with_partner(

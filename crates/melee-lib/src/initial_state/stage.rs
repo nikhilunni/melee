@@ -142,6 +142,7 @@ pub(super) fn restore_scene(
         melee_types::GrKind::Inishie2 => super::stage_inishie2::restore(saved, assets, particles),
         melee_types::GrKind::GreatBay => super::stage_greatbay::restore(saved, assets, particles),
         melee_types::GrKind::Icemt => super::stage_icemt::restore(saved, assets, particles),
+        melee_types::GrKind::Castle => super::stage_castle::restore(saved, assets, particles),
         melee_types::GrKind::Fourside => super::stage_fourside::restore(saved, assets, particles),
         melee_types::GrKind::Shrine => super::stage_shrine::restore(saved, assets, particles),
         melee_types::GrKind::Kongo => {
@@ -289,7 +290,7 @@ pub(super) fn saved_joints(saved: &SavedPose, pointer: u32, joints: &mut Vec<u32
     if pointer == 0 {
         return;
     }
-    assert!(joints.len() < 100, "stage joint tree bound");
+    assert!(joints.len() < 256, "stage joint tree bound");
     joints.push(pointer);
     let raw = saved.bytes(pointer, 0x18);
     saved_joints(saved, word(raw, 0x10), joints);

@@ -164,6 +164,14 @@ impl RadialForces {
         &self.fields[..self.len]
     }
 
+    /// The first directional field (a stage's own lb_80011A50 entry, which
+    /// the stage keeps a pointer to and steers).
+    pub fn directional_mut(&mut self) -> Option<&mut ForceField> {
+        self.fields[..self.len]
+            .iter_mut()
+            .find(|field| field.rectangle.is_some())
+    }
+
     /// lb_80011ABC (0x80011ABC).
     pub fn wind_state(&self) -> WindState {
         self.wind

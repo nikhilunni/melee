@@ -1311,6 +1311,15 @@ fn start_gb_fox_marth4_600() {
     movement_gate_ticks("start_gb_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_gb_fox_marth4", 600, "ledger600");
 }
+/// Princess Peach's Castle's start boundary: no setup draws; the switch
+/// and Bullet Bill countdowns drawn when the countdown ends, the wind's
+/// draws every tick.
+#[test]
+fn start_pc_fox_marth4_600() {
+    movement_gate_ticks("start_pc_fox_marth4", 600);
+    movement_gate_ticks("start_pc_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_pc_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

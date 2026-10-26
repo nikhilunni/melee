@@ -247,6 +247,48 @@ impl BackgroundAnimation {
     pub fn set_joint_translate_y(&mut self, bone: usize, y: f32) {
         self.tree.set_translate_y(self.joints[bone], y);
     }
+    /// `HSD_JObjSetFlags` / `HSD_JObjClearFlags(bone, JOBJ_HIDDEN)`: that
+    /// joint alone.
+    pub fn set_joint_hidden_only(&mut self, bone: usize, hidden: bool) {
+        let joint = self.joints[bone];
+        if hidden {
+            self.tree.set_flags(joint, hsd_anim::jobj::JOBJ_HIDDEN);
+        } else {
+            self.tree.clear_flags(joint, hsd_anim::jobj::JOBJ_HIDDEN);
+        }
+    }
+    /// `HSD_JObjGetScaleY` of a model bone.
+    pub fn joint_scale_y(&self, bone: usize) -> f32 {
+        self.tree.scale_y(self.joints[bone])
+    }
+    /// `HSD_JObjSetScaleY` of a model bone.
+    pub fn set_joint_scale_y(&mut self, bone: usize, y: f32) {
+        self.tree.set_scale_y(self.joints[bone], y);
+    }
+    /// A recreated map's GObj JObj as Ground_GetStageGObj makes it: at the
+    /// origin, unturned, at the map scale, shown (its own flag only).
+    pub fn reset_gobj_joint(&mut self, map_scale: f32) {
+        let joint = self.tree.parent(self.root).unwrap_or(self.root);
+        self.tree.set_translate(joint, &hsd_types::Vec3::ZERO);
+        self.tree.set_rotation_x(joint, 0.0);
+        self.tree.set_rotation_y(joint, 0.0);
+        self.tree.set_rotation_z(joint, 0.0);
+        self.tree
+            .set_scale(joint, &hsd_types::Vec3::new(map_scale, map_scale, map_scale));
+        self.tree.clear_flags(joint, hsd_anim::jobj::JOBJ_HIDDEN);
+    }
+    /// `HSD_JObjResetRST(bone, archive joint)` (grAnime_801C86D4): the
+    /// bone's rotation, scale and translation back to the archive's.
+    pub fn reset_joint_pose(&mut self, bone: usize) {
+        let id = self.joints[bone];
+        let source = self.rest.get(id);
+        let (rotate, scale, translate) = (source.rotate, source.scale, source.translate);
+        let joint = self.tree.get_mut(id);
+        joint.rotate = rotate;
+        joint.scale = scale;
+        joint.translate = translate;
+        self.tree.set_flags(id, hsd_anim::jobj::JOBJ_MTX_DIRTY);
+    }
     /// `HSD_JObjSetTranslateX` of a model bone.
     pub fn set_joint_translate_x(&mut self, bone: usize, x: f32) {
         self.tree.set_translate_x(self.joints[bone], x);

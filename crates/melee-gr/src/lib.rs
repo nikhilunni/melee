@@ -2,6 +2,7 @@
 #![forbid(unsafe_code)]
 pub mod battle;
 pub mod bomb_rain;
+pub mod castle;
 pub mod desc;
 pub mod fourside;
 pub mod flatzone;

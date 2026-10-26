@@ -104,3 +104,38 @@ restarts, the ships' colour overlay, the sounds, the shadow test. Guarded:
 the Star Fox taunt (Fox and Falco on Corneria or Venom, ftfoxappeals.c:55),
 the 1P stage's three slots (grVe_804D6A40), Corneria's cannon laser types
 0, 2, 4 and 5, a warm boundary with a pass out or inside the tunnel.
+
+## Princess Peach's Castle (grcastle.c)
+
+Creation order 0, 4, 3, 6, no setup draws; the block sets' joints (0..2,
+6..14) start disabled. grCastle_801CD37C's lb_80011A50 field (direction
+(1, 0, 0), strength 0.5) is steered every tick by grCastle_801D0BBC (one
+degree a tick, clamped to 60, the turn flipped on a coin every 30 ticks,
+strong gusts toggled every 300) and re-gusted once per flag
+(grCastle_801D0D24, four flags): those draws are the stage's every tick. The
+two statics (grCs_804D45E0/E4) outlive matches; a warm boundary reads them.
+The flags' own dynamics are drawing only.
+
+- The deferred grCastle_801CD9B4 hooks the platforms' floor callbacks; then
+  grCastle_801CD610 registers the moat (ftCo_800C06E8 type 6: below 14 *
+  scale a falling fighter is lifted 0.1; crossing it splashes), makes the
+  switches (maps 20, 19, 18, each its block set 17, 7, 5) and draws the
+  switch and Bill countdowns.
+- Switches (grCastle_801CF308): a weighted choice (the last one's weight /
+  x6) and HSD_Randi(11) of the places on the roof or a platform; a blink
+  table read a byte at a time; then a material item (state 1) whose hit
+  (yaku.x18) or touch (x1C, it_802E7054) presses it and freezes the fighter
+  (ftLib_80086A4C). The press fills the block set: its blocks grow by x48
+  (staying hidden while a Bill flies within 40, grCastle_801CDF54), their
+  joints enabled, stay `rand_range(x42, x40)`, blink, shrink. A `?` block's
+  material item and item launch need items on and fail closed
+  (grcastle.c:1608).
+- The Bullet Bill (maps 8..16, grCastle_801CE578): any flight but the last
+  three; its material item (state 3) and an Auto camera subject; the
+  cannon (map 2, four animations, a Loop quake every tick) partway; at the
+  flight's end a fuse, then the explosion (map 1, material state 4,
+  lb_800119DC). The explosion's frame-zero key (common bank 0xF2) goes
+  through efLib_Cb_DPtcl -> efLib_SpawnParticleEffect, which attaches it
+  with an AppSRT carrying the root's scale.
+- The colour script grMaterial_801C9604 starts on a landed Bill (drawing
+  only). The eye never goes below 50 * scale (grCastle_801D0FF0).

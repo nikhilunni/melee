@@ -3094,6 +3094,21 @@ pub fn cleanup(
     pool.remove_destroyed::<SceneItems>(item, gobjs);
 }
 
+/// grMaterial_801C8CDC (Item_8026A8EC) from a stage's proc: the material
+/// item's effects, its scene object and its GObjs go at once.
+pub(crate) fn destroy_yaku(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    item: u32,
+) {
+    state.effects.destroy_item_models(item, &mut state.particles);
+    state.effects.expire_item_joint(item, &mut state.particles);
+    state.effects.forget_item(item);
+    destroy_object(world, objects, item);
+    state.items.destroy::<SceneItems>(item, &mut state.effects.gobjs);
+}
+
 /// HSD_GObjPLink_80390228 for an item: its scene object goes too.
 fn destroy_object(world: &mut World, objects: &mut Objects, item: u32) {
     let index = objects

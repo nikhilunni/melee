@@ -106,6 +106,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::GreatBay => (75.0, 50.0),
         // The view's segment's ends (the field scrolls; an approximation).
         Stage::IcicleMountain => (75.0, 50.0),
+        // The roof's ends (an approximation for the policies).
+        Stage::PrincessPeachsCastle => (110.0, 60.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

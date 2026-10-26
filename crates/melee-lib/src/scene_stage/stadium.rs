@@ -181,11 +181,34 @@ pub(crate) fn spawn_ground_effect(
     position: hsd_types::Vec3,
     draws: &mut DrawLog,
 ) -> Result<Option<usize>> {
-    let Some(descriptor) = state.assets.particle_bank.descriptor(kind) else {
+    let assets = std::sync::Arc::clone(&state.assets);
+    ground_effect(
+        &assets,
+        &mut state.particles,
+        Some(&mut state.effects.events),
+        &mut state.rng,
+        draws,
+        kind,
+        position,
+    )
+}
+
+/// [`spawn_ground_effect`] from its parts (a stage's creation runs it
+/// before the scene's effects exist).
+pub(crate) fn ground_effect(
+    assets: &crate::assets::Assets,
+    particles: &mut hsd_particle::system::ParticleSystem,
+    events: Option<&mut melee_ef::fixture_spawns::EventSink>,
+    rng: &mut gekko_math::HsdRng,
+    draws: &mut DrawLog,
+    kind: u32,
+    position: hsd_types::Vec3,
+) -> Result<Option<usize>> {
+    let Some(descriptor) = assets.particle_bank.descriptor(kind) else {
         return Ok(None);
     };
     let owns_transform = descriptor.kind & 0x20000 != 0;
-    let scale = state.assets.stage_desc.parameters.map_scale;
+    let scale = assets.stage_desc.parameters.map_scale;
     let mut request = SpawnRequest::new(STAGE_PARTICLE_BANK, kind, 0);
     request.application_transform = Some(hsd_particle::generator::ApplicationTransform {
         translation: position,
@@ -193,23 +216,15 @@ pub(crate) fn spawn_ground_effect(
         status: if owns_transform { 0 } else { 1 },
         ..Default::default()
     });
-    state.effects.events.spawn(&request, true, false);
-    let id = state.particles.spawn::<RetailTrig>(
-        &state.assets.particle_bank,
-        request,
-        &mut state.rng,
-        draws,
-    )?;
+    if let Some(events) = events {
+        events.spawn(&request, true, false);
+    }
+    let id = particles.spawn::<RetailTrig>(&assets.particle_bank, request, rng, draws)?;
     if let Some(id) = id {
-        let generator = state
-            .particles
-            .generators
-            .iter()
-            .find(|g| g.id == id)
-            .unwrap();
+        let generator = particles.generators.iter().find(|g| g.id == id).unwrap();
         let mut transform = (**generator.application_transform.as_ref().unwrap()).clone();
         transform.camera_facing = 0;
-        state.particles.set_application_transform(id, transform);
+        particles.set_application_transform(id, transform);
     }
     Ok(id)
 }

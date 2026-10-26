@@ -198,6 +198,10 @@ impl InitialState {
                 radial_forces.insert_directional(gust);
             }
         }
+        // grCastle_801CD37C's lb_80011A50: the flags' wind.
+        if matches!(stage, SceneStage::Castle(_)) {
+            radial_forces.insert_directional(melee_gr::castle::wind::field());
+        }
         // Fountain of Dreams and the N64 stages bind their collision
         // joints during creation.
         let archive_bindings = !matches!(
@@ -219,6 +223,7 @@ impl InitialState {
                 | SceneStage::Inishie2(_)
                 | SceneStage::GreatBay(_)
                 | SceneStage::IceMt(_)
+                | SceneStage::Castle(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -542,6 +547,8 @@ fn setup_draws(
         // stageGObj9_OnInit draws until it has two segments: counted apart
         // ([`icemt_controller_draws`]).
         GrKind::Icemt => 0,
+        // grCastle_801CD658's fountain generator and the frame-zero keys.
+        GrKind::Castle => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -913,6 +920,12 @@ fn initialize_stage(
         }
         GrKind::Inishie2 => {
             let (stage, animations) = crate::scene_stage::inishie2::initialize(assets, rng, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Castle => {
+            let (stage, animations) =
+                crate::scene_stage::castle::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

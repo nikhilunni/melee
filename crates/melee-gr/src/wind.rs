@@ -12,6 +12,7 @@ use hsd_types::Vec3;
 pub struct Wind {
     gust: Option<Gust>,
     water: Option<crate::garden::Water>,
+    moat: Option<crate::castle::Moat>,
     /// The fighter's camera size (ftLib_80086B80), for the river's splash.
     size: f32,
 }
@@ -32,35 +33,54 @@ impl Wind {
     pub const CALM: Wind = Wind {
         gust: None,
         water: None,
+        moat: None,
         size: 0.0,
     };
 
     pub const fn gust(gust: Gust) -> Self {
         Self {
             gust: Some(gust),
-            water: None,
-            size: 0.0,
+            ..Self::CALM
         }
     }
 
     /// Jungle Japes' river device for a fighter of camera size `size`.
     pub const fn water(water: crate::garden::Water, size: f32) -> Self {
         Self {
-            gust: None,
             water: Some(water),
             size,
+            ..Self::CALM
+        }
+    }
+
+    /// Princess Peach's Castle's moat for a fighter of camera size `size`.
+    pub const fn moat(moat: crate::castle::Moat, size: f32) -> Self {
+        Self {
+            moat: Some(moat),
+            size,
+            ..Self::CALM
         }
     }
 
     /// ftColl_GetWindOffsetVec (0x8007B924) over the registered device:
-    /// the offset at `position` (cur_pos), and a river's splash when the
-    /// fighter entered the water from `previous` (prev_pos).
-    pub fn sample(&self, position: Vec3, previous: Vec3) -> (Vec3, Option<crate::garden::Splash>) {
+    /// the offset at `position` (cur_pos), and a splash when the fighter
+    /// entered the water from `previous` (prev_pos). `delta` is the
+    /// fighter's pos_delta (last tick's motion).
+    pub fn sample(
+        &self,
+        position: Vec3,
+        previous: Vec3,
+        delta: Vec3,
+    ) -> (Vec3, Option<crate::garden::Splash>) {
         if let Some(water) = &self.water {
             return water.sample(position, previous, self.size);
         }
+        if let Some(moat) = &self.moat {
+            return moat.sample(position, previous, delta, self.size);
+        }
         (self.at(position), None)
     }
+
 
     /// fn_802112F4 (0x802112F4): the offset at `position` (the fighter's
     /// cur_pos, ftLib_80086644).
