@@ -370,6 +370,7 @@ impl Assets {
             ground_maximum: common_damage.sakurai_maximum_threshold,
         };
         let items = crate::scene_items::Resources::load(&read, &characters, &stage, launch)?;
+        fighters.set_mushroom_sizes(std::sync::Arc::clone(&items.mushroom_sizes));
         Ok(Self {
             fingerprint: fingerprint.into_inner().finish(),
             visual_effect_archives: std::iter::once(effects)

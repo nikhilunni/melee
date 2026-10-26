@@ -187,6 +187,8 @@ pub enum StaleMove {
     /// rapid shots and charged shot.
     ScopeRapid,
     ScopeFire,
+    /// FtMoveId_Hammer (0x5E): the Hammer's swing.
+    Hammer,
     /// FtMoveId_KbSpecialNMr..KbSpecialNGk (0x16..0x2F): Kirby's copied
     /// neutral specials, one id per copied kind in retail's order (the two
     /// Bowsers, the two Links and the rest each stale on their own).

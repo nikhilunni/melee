@@ -59,6 +59,12 @@ impl Fighter {
         assets: &FighterAssets,
         lockout: Option<i32>,
     ) -> bool {
+        // ftCo_800CB870 / ftCo_800CB8E0 (ftCo_JumpAerial.c:64, 77): no
+        // aerial jump with the Hammer in hand. Every caller with an item
+        // in hand comes through them.
+        if self.core.holding_hammer() {
+            return false;
+        }
         if i32::from(self.core.physics.jumps_used) >= self.core.attributes.jumping.max_jumps {
             return false;
         }

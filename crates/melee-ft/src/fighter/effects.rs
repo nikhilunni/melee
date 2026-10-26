@@ -100,6 +100,9 @@ impl super::FighterCore {
         self.commands.graphics_before_seal = 0;
         let draws = self.resolve_graphics_while(assets, rng, false);
         self.commands.graphics_resolved = 0;
+        if std::mem::take(&mut self.catch_sparkle_pending) {
+            self.push_catch_sparkle();
+        }
         draws
     }
     /// The graphics commands issued before this proc's last motion change

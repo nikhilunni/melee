@@ -85,6 +85,9 @@ pub enum OwnerRequest {
         frames: i32,
         health: i32,
     },
+    /// A held Hammer's hitlag (it_80293D94 -> it_8026BC14): its holder
+    /// freezes for `frames` (ftLib_80086A4C, dmg.x1958).
+    Freeze { secondary: bool, frames: i32 },
 }
 
 /// The partner as a reader sees it during its own proc.

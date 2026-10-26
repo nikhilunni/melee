@@ -8,8 +8,9 @@ impl FighterCore {
             // ftCommon_8007F8B4 (8007F8B4): deferred displacement is zero
             // throughout the supported ordinary, uncaptured states.
             position: self.physics.position,
-            center: assets.overlap.center * self.player.scale,
-            half_width: assets.overlap.half_width * self.player.scale,
+            // x2C4, scaled by ftCo_800D105C (ftchangeparam.c:193-195).
+            center: assets.overlap.center * self.attribute_scale,
+            half_width: assets.overlap.half_width * self.attribute_scale,
             facing: self.physics.facing,
             floor: self.collision.data.floor.index,
             eligible: !self.status.disabled && self.physics.ground_or_air == GroundOrAir::Ground,

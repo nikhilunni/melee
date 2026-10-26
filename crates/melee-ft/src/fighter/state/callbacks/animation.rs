@@ -174,9 +174,9 @@ pub fn appeal(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option
 
 /// ftData_MotionStateList: ftCo_MS_LightGet (92): ftpickupitem_Anim.
 pub fn item_get(fighter: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
-    let AnimationPhase { assets, .. } = phase;
+    let AnimationPhase { assets, rng, .. } = phase;
     fighter.step_animation(assets);
-    fighter.item_get_animation(assets)?;
+    fighter.item_get_animation(assets, rng)?;
     Ok(None)
 }
 

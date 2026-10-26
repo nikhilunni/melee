@@ -1062,3 +1062,57 @@ pub(super) fn mouth_hold(
     .map_err(|e| anyhow::anyhow!(e.to_string()))?;
     Ok(Some((other, changes)))
 }
+
+/// fn_800D290C (ft_0D27.c:76-85) for a fighter whose status proc is about
+/// to start a Mushroom's size change while in a grab pair (fighter.c:1429,
+/// `Fighter::mushroom_parts_grab`): a captor lets its victim go
+/// (ftCo_CaptureCut_Enter on the victim), a captured fighter leaves
+/// (ftCo_CaptureCut_Enter) and its captor lets go (ftCo_800DA698); the other
+/// fighter's actions stop (ftCommon_8007DB58). Done ahead of the status
+/// proc, whose earlier steps (hitlag, the cape turn) do not touch the pair.
+pub(super) fn mushroom_part(state: &mut InitialState, player: usize) -> Result<()> {
+    let parts = with_fighter!(&state.fighters[player], |f| f.mushroom_parts_grab(
+        &state.assets.fighters[player]
+    ));
+    if !parts {
+        return Ok(());
+    }
+    let link = with_fighter!(&state.fighters[player], |f| f.combat.grab);
+    match link {
+        Some(GrabLink::Captured { .. }) => {
+            let captor = captor_of(state, player).expect("live captor");
+            let (victim, captor_fighter) = pair(&mut state.fighters, player, captor);
+            with_fighter!(captor_fighter, |c| with_fighter!(victim, |v| {
+                melee_ft::fighter::grab_escape::release(
+                    v,
+                    c,
+                    &state.assets.fighters[player],
+                    &state.assets.fighters[captor],
+                    &mut state.map,
+                    melee_ft::fighter::grab_escape::ReleaseCause::CaptorSeparation,
+                )
+            }))
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            with_fighter!(&mut state.fighters[captor], |f| f
+                .interrupt_actions(&state.assets.fighters[captor]));
+        }
+        Some(GrabLink::Holding { .. }) => {
+            let victim = held_victim(state, player).expect("live victim");
+            let (captor_fighter, victim_fighter) = pair(&mut state.fighters, player, victim);
+            with_fighter!(captor_fighter, |c| with_fighter!(victim_fighter, |v| {
+                melee_ft::fighter::grab_escape::let_go(
+                    v,
+                    c,
+                    &state.assets.fighters[victim],
+                    &state.assets.fighters[player],
+                    &mut state.map,
+                )
+            }))
+            .map_err(|e| anyhow::anyhow!(e.to_string()))?;
+            with_fighter!(&mut state.fighters[victim], |f| f
+                .interrupt_actions(&state.assets.fighters[victim]));
+        }
+        None => unreachable!("mushroom_parts_grab without a grab"),
+    }
+    Ok(())
+}

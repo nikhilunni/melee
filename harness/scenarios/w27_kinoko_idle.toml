@@ -1,0 +1,30 @@
+# Directed witness (wave 27): the fighters stand still while Super
+# Mushrooms walk into them: Fox and then Marth grow (KinokoGiantStart,
+# ftCo_800D15D0), stay giant for x2008 frames and shrink back
+# (Fighter_SuperMushroomEnd, KinokoGiantEnd); more Mushrooms keep coming.
+# Boundary start_fd_items_kinoko. Step frames count tick records
+# (input_clock = "tick", dolphin/tick_trace.py).
+name = "w27_kinoko_idle"
+input_clock = "tick"
+render_every_tick = true
+savestate = "harness/roms/start_fd_items_kinoko.sav"
+frames = 1800
+seed = 1
+# Items Kinoko.
+item_frequency = 4
+item_mask = "0xfffffff804000000"
+stage = "FinalDestination"
+
+inputs = [
+
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

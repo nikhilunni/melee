@@ -31,7 +31,7 @@ impl Fighter {
                 every_frame(self);
             }
         }
-        let choice = if self.core.begin_animation_phase(assets) {
+        let choice = if self.begin_animation_phase(assets)? {
             // Fighter_8006A360 (fighter.c:1684-1685): ftCo_800D71D8 follows
             // ftAnim_8006EBA4, which the state's callback runs, so the window
             // runs at the end of its first step (a caught item's hand pose
@@ -43,6 +43,13 @@ impl Fighter {
             // A callback that never stepped runs it now.
             if std::mem::take(&mut self.core.catch_after_step) {
                 self.core.run_catch_window(assets);
+            }
+            // A Hammer the window caught takes over now (ftCo_800C52F4).
+            // In retail the window precedes anim_cb, which is then the
+            // Hammer row's: its inlineB0 runs on the take-over's frame 0.
+            if std::mem::take(&mut self.core.hammer_catch_pending) {
+                self.finish_hammer_catch(assets, Some(rng))?;
+                self.hammer_swing();
             }
             // ftAction_80072894 ran inside ftAnim_8006EBA4; its item work
             // needs the character.
@@ -286,6 +293,7 @@ impl Fighter {
             return;
         }
         self.core.status.camera_shift = Vec2::ZERO;
+        self.core.reset_pending_camera(assets, stage);
         (self.motion_row.camera)(self, state::CameraPhase { assets, stage, map });
     }
 }
@@ -325,6 +333,12 @@ impl FighterCore {
     /// Returns whether a cape turn ended with a character's x21F8 to run
     /// (`Fighter::proc_status` runs it).
     pub fn proc_status(&mut self) -> bool {
+        let turn_end = self.proc_status_head();
+        self.record_collision_bounds();
+        turn_end
+    }
+    /// Fighter_8006A1BC up to the Mushrooms (fighter.c:1393-1427).
+    pub fn proc_status_head(&mut self) -> bool {
         if self.status.disabled {
             return false;
         }
@@ -344,15 +358,20 @@ impl FighterCore {
         }
         self.release_separated_hold();
         self.tick_hitlag();
-        let character_turn_end = self.step_cape_turn();
-        // ft_800819A8 (0x800819A8), ft_0819.c:32-46: three fadds.
+        self.step_cape_turn()
+    }
+    /// ft_800819A8 (0x800819A8), ft_0819.c:32-46: three fadds, at
+    /// Fighter_8006A1BC's end.
+    pub fn record_collision_bounds(&mut self) {
+        if self.status.disabled {
+            return;
+        }
         let cd = &self.collision.data;
         self.previous_collision_bounds = Vec3::new(
             cd.ecb.left.x + cd.cur_pos.x,
             cd.ecb.right.x + cd.cur_pos.x,
             self.physics.position.y + self.attributes.camera.damage_camera_y_offset,
         );
-        character_turn_end
     }
     /// Command 25 (ftAction set ground/air), applied as the script runs:
     /// in the ordinary animation step and in Fighter_ChangeMotionState's
@@ -707,9 +726,28 @@ impl FighterCore {
     }
 }
 
+impl Fighter {
+    /// Fighter_8006A360 (8006A360) up to its hitlag gate: the timers, some
+    /// of whose ends change the motion state. False when the animation
+    /// callback does not run.
+    fn begin_animation_phase(&mut self, assets: &FighterAssets) -> Result<bool> {
+        if !self.core.begin_animation_timers() {
+            return Ok(false);
+        }
+        // fighter.c:1500-1512: the Mushroom's size runs out.
+        self.tick_mushroom(assets)?;
+        if !self.core.continue_animation_timers(assets) {
+            return Ok(false);
+        }
+        // fighter.c:1636-1641: the Hammer's countdowns.
+        self.tick_hammer(assets)?;
+        Ok(self.core.finish_animation_gate())
+    }
+}
+
 impl FighterCore {
     // Scheduler bookkeeping keeps the original order around typed row dispatch.
-    fn begin_animation_phase(&mut self, assets: &FighterAssets) -> bool {
+    fn begin_animation_timers(&mut self) -> bool {
         if self.status.disabled {
             return false;
         }
@@ -733,6 +771,9 @@ impl FighterCore {
         }
         // fighter.c:1486-1498: the Starman's countdown.
         self.tick_starman();
+        true
+    }
+    fn continue_animation_timers(&mut self, assets: &FighterAssets) -> bool {
         // fighter.c:1514-1522: the Bunny Hood's; 1525-1531: the metal's.
         self.tick_bunny_hood(assets);
         self.tick_metal(assets);
@@ -742,6 +783,9 @@ impl FighterCore {
         }
         self.apply_magnifier_damage(assets);
         self.tick_heal(assets);
+        true
+    }
+    fn finish_animation_gate(&mut self) -> bool {
         // fighter.c:1658: x2219_b5, the hitlag flag, gates the rest.
         if self.in_hitlag() {
             return false;

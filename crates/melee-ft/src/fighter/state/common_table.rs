@@ -755,6 +755,103 @@ pub const fn common_table() -> [MotionRow; COMMON_COUNT] {
         animation: 147,
         ..rows[S::DamageScrew as usize]
     };
+    // ftData_MotionStateList[307..=313]: ftCo_SM_HammerWait (132) and
+    // ftCo_SM_HammerMove (133); ftCo_HammerWait.c .. ftCo_HammerLanding.c.
+    {
+        use crate::fighter::hammer as h;
+        rows[S::HammerWait as usize] = MotionRow {
+            action: ActionId(S::HammerWait as u16),
+            id: S::HammerWait,
+            animation: 132,
+            anim: h::swing_anim,
+            iasa: h::wait_input,
+            physics: h::ground_physics,
+            collision: h::ground_collision,
+            camera: callbacks::camera::follow_fighter,
+            implemented: true,
+        };
+        rows[S::HammerWalk as usize] = MotionRow {
+            action: ActionId(S::HammerWalk as u16),
+            id: S::HammerWalk,
+            animation: 133,
+            iasa: h::walk_input,
+            physics: callbacks::physics::walk,
+            ..rows[S::HammerWait as usize]
+        };
+        rows[S::HammerTurn as usize] = MotionRow {
+            action: ActionId(S::HammerTurn as u16),
+            id: S::HammerTurn,
+            animation: 133,
+            anim: h::turn_anim,
+            iasa: h::turn_input,
+            ..rows[S::HammerWait as usize]
+        };
+        rows[S::HammerKneeBend as usize] = MotionRow {
+            action: ActionId(S::HammerKneeBend as u16),
+            id: S::HammerKneeBend,
+            animation: 133,
+            anim: h::knee_bend_anim,
+            iasa: h::knee_bend_input,
+            ..rows[S::HammerWait as usize]
+        };
+        rows[S::HammerFall as usize] = MotionRow {
+            action: ActionId(S::HammerFall as u16),
+            id: S::HammerFall,
+            animation: 133,
+            iasa: h::fall_input,
+            physics: h::fall_physics,
+            collision: h::air_collision,
+            ..rows[S::HammerWait as usize]
+        };
+        rows[S::HammerJump as usize] = MotionRow {
+            action: ActionId(S::HammerJump as u16),
+            id: S::HammerJump,
+            animation: 133,
+            iasa: h::no_input,
+            physics: callbacks::physics::fall,
+            collision: h::air_collision,
+            ..rows[S::HammerWait as usize]
+        };
+        rows[S::HammerLanding as usize] = MotionRow {
+            action: ActionId(S::HammerLanding as u16),
+            id: S::HammerLanding,
+            animation: 133,
+            anim: h::landing_anim,
+            iasa: h::no_input,
+            ..rows[S::HammerWait as usize]
+        };
+    }
+    // ftData_MotionStateList[314..=321]: the Kinoko states, ftCo_SM_None
+    // and no IASA or Phys (ftCo_KinokoGiantStart.c .. KinokoSmallEnd.c).
+    {
+        use crate::fighter::mushroom as m;
+        const KINOKO: [(S, bool); 8] = [
+            (S::KinokoGiantStart, false),
+            (S::KinokoGiantStartAir, true),
+            (S::KinokoGiantEnd, false),
+            (S::KinokoGiantEndAir, true),
+            (S::KinokoSmallStart, false),
+            (S::KinokoSmallStartAir, true),
+            (S::KinokoSmallEnd, false),
+            (S::KinokoSmallEndAir, true),
+        ];
+        let mut i = 0;
+        while i < KINOKO.len() {
+            let (id, air) = KINOKO[i];
+            rows[id as usize] = MotionRow {
+                action: ActionId(id as u16),
+                id,
+                animation: -1,
+                anim: m::size_anim,
+                iasa: callbacks::input::catch,
+                physics: m::physics,
+                collision: if air { m::air_collision } else { m::ground_collision },
+                camera: callbacks::camera::follow_fighter,
+                implemented: true,
+            };
+            i += 1;
+        }
+    }
     // ftData_MotionStateList[158..=173]: ftCo_SM_ItemScopeStart (149) on,
     // the Super Scope's start, rapid, fire and end rows, on the ground and
     // in the air, then their empty twins.

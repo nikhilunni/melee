@@ -1448,6 +1448,13 @@ impl Fighter {
             self.eat_on_damage(assets);
             return;
         }
+        if self.core.in_mushroom_state() {
+            // The Kinoko states' take_dmg_cb is their own end (ftCo_800D15D0
+            // and its siblings): the size change finishes at once.
+            self.finish_mushroom_now(assets)
+                .expect("a size change's end");
+            return;
+        }
         if self.core.swing_hand_armed {
             // take_dmg_cb = ft_800CD31C (retail 0x8007DB98 blrl ->
             // 0x800CD33C bl ftCommon_8007E7E4): the hand takes the held item
@@ -1609,6 +1616,10 @@ impl Fighter {
             self.core.status.in_hitstun = false;
             self.core.combat.combo.grace = assets.combo.grace_frames;
             (self.character.table().knockback_exit)(self, assets);
+            // ftCo_Damage.c:979-981: the Hammer's drop window opens.
+            if self.core.holding_hammer() {
+                self.core.open_hammer_drop_window(assets);
+            }
         }
         // ftCo_DamageFlyRoll_Anim (800901D0), 800902F4..80090304:
         // enter DamageFall immediately after hitstun, independent of animation.
@@ -1732,6 +1743,18 @@ impl Fighter {
     /// ftCo_DamageFall_IASA: Cliff timeout retains Cliff scratch; ordinary
     /// tumble entry retains Damage scratch. Neither is read by this callback.
     pub(super) fn damage_fall_input(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.core.holding_hammer() {
+            // ftCo_DamageFall_IASA (ftCo_DamageFall.c:116-133): with the
+            // Hammer only the drop (ftCo_800C5DDC), then A or B into
+            // HammerFall (ftCo_800C5CD4).
+            if self.try_hammer_drop(assets)? {
+                return Ok(());
+            }
+            if self.core.input.pressed.intersects(crate::input::Buttons::A | crate::input::Buttons::B) {
+                return self.enter_hammer_fall(assets);
+            }
+            return Ok(());
+        }
         self.post_hitstun_air_input(assets, true)
     }
     /// ftCo_DamageFall_Coll (80090960) -> ft_8008370C: ordinary ledge
@@ -1779,9 +1802,25 @@ impl Fighter {
         assets: &FighterAssets,
         context: &crate::input::WaitContext,
     ) -> Result<()> {
+        let hammer = self.core.holding_hammer();
         let MotionData::Damage(damage) = &mut self.core.state_data else {
             panic!("damage scratch missing")
         };
+        if damage.hitstun <= 0.0 && hammer {
+            // ftCo_DamageFly_IASA / DamageFlyRoll_IASA (ftCo_Damage.c:1177,
+            // 1260): DamageFall's, the Hammer's drop then A or B.
+            if is_tumble(self.core.motion_state.id) {
+                return self.damage_fall_input(assets);
+            }
+            // ftCo_Damage_IASA (ftCo_Damage.c:1053-1058): the Hammer's
+            // IASA, by ground or air.
+            if self.core.physics.ground_or_air == GroundOrAir::Air {
+                self.try_hammer_drop(assets)?;
+            } else {
+                super::hammer::hammer_wait_transitions(self, assets)?;
+            }
+            return Ok(());
+        }
         if damage.hitstun <= 0.0 {
             let tumbling =
                 self.core.motion_state.id == S::DamageFall || is_tumble(self.core.motion_state.id);
@@ -1829,6 +1868,9 @@ impl Fighter {
             || self.core.physics.knockback_velocity.y >= 0.0
         {
             return Ok(false);
+        }
+        if self.core.holding_hammer() {
+            unimplemented!("doIasa (ftCo_Damage.c:1004): a meteor cancel holding the Hammer");
         }
         let input = &self.core.input;
         let lockout = assets.damage.tech_lockout;
@@ -1881,6 +1923,8 @@ impl FighterCore {
     /// 0x8008E124), while the port creates them after the proc: the draws
     /// their launch makes leave the stream here, ahead of the reaction's.
     fn reserve_item_launch_draws(&mut self, rng: &mut gekko_math::HsdRng) {
+        // LightGet's take_dmg_cb took the Hammer up (ftCo_800C5284).
+        self.resolve_hammer_draw(rng);
         for request in self.item_requests.iter_mut() {
             if let melee_it::ItemRequest::Spawn(spawn) = request {
                 spawn.reserve_launch_draws(rng);

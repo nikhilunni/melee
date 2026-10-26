@@ -186,3 +186,75 @@ switches between their ground and air rows (flags 0x0C4C5080) are in
   after the hand's draw (fighter.c:2700) and drops it from the head
   (xC44 1). Sounds, rumble and Pikachu's ear hook (ftCommon_8007F8E8)
   are not simulated.
+
+## Hammer (wave 27)
+
+- Item (ithammer.c, it-hammer): falls and rests; held in state 2 (its
+  swing) or 3 (headless, once xD4C is 0); dropped it falls back to rest,
+  a headless one is gone at its first floor (it_8026DF34). Its slope slide
+  (EnteredAir, state 5) is guarded; nothing enters state 4. The held
+  Hammer is posed in the hand (`article_pose`): its hitboxes ride its
+  bones there, and the head's launch reads joints 3 and 1. A read from
+  the holder's animation proc (ahead of Item_80269528) takes the last
+  display pass's matrices; a later read places the tree anew and leaves
+  it dirty (`ArticlePoses::unplace`). Its entered_hitlag (it_80293D94)
+  freezes the holder (`OwnerRequest::Freeze`, dmg.x1958) unless it took
+  damage.
+- Head (ithammerhead.c): launched along joint 1 -> 3 (velocity y by
+  fmadds), falls spinning, rests, lasts x4 frames; picked up and thrown
+  like any light item.
+- Fighter (`fighter/hammer.rs`, ftCo_Hammer*.c): the pickup (LightGet's
+  end, an air catch, or a hit in LightGet) sets the timer and draws the
+  head's countdown (it_80293DCC; from a proc without the stream the draws
+  wait for `resolve_hammer_draw`, the next point it is at hand). The seven
+  rows keep the swing's frame (ftCo_800C548C, ftCo_800C54C4's flags);
+  each entry turns the Hammer's hitboxes on and installs colour 106, whose
+  program a motion change at frame 0 steps at once (ftCo_800C0134 runs
+  with the new motion id). Every loop start renews the attack instance
+  the Hammer takes (it_8027B070). Wait, Fall and the landings redirect
+  into the Hammer rows (ft_8008A348, ftCo_Fall_Enter,
+  ftCo_Landing_Enter_Basic); no aerial jump or tech with it
+  (ftCo_800CB870, ftCo_800986B0); Damage past hitstun runs the Hammer's
+  IASA and opens the drop window (ftCo_800C554C); DamageFall's A or B
+  enters HammerFall. ft_8007C114 turns its hitboxes off on a motion change
+  without Ft_MF_SkipHit.
+- Guarded: a platform drop (ftCo_800C6110, FD has no platform), a meteor
+  cancel holding it, the thaw (ftCo_DamageIce.c:471), the bury jump, a
+  Warp Star catch; the states audited with it are `HAMMER_STATES`.
+
+## Super and Poison Mushrooms (wave 27)
+
+- Items (itkinoko.c, itdkinoko.c, it-kinoko): one implementation for both
+  kinds. They fall in, walk at x0 along the floor normal (it_80276408),
+  turn at walls, fall off edges slowing by x4 (it_8026E7E0's quiet
+  landing: no bounce, the hitbox kept). Not grabbable (no PickedUp). Gone
+  once their power-up hitbox touches a fighter (DmgDealt).
+- The touch counts in x200C / x2010 (ftColl_80077C60); the status proc
+  applies each after the cape turn (fighter.c:1429-1437,
+  `proc_status_with_assets`). A change under way finishes first; a
+  giant's (small's) own Mushroom renews x2008; the other kind's ends the
+  size; else the size changes: fn_800D290C (actions stop, a grab pair
+  parts ahead of the proc: `grab_pairs::mushroom_part`), a Kinoko state
+  (motions 314..321, no Phys: Fighter_procUpdate's tail), the movement
+  saved and cleared (fn_800D2B30), the scale stepping along the Super
+  Mushroom's joint animation (it_80293660, sampled once at load into
+  `MushroomSizes`) between the two sizes (fn_800D2A3C, fmadds). Off the
+  floor or landing it switches to its twin keeping the frame (fn_800D2CD4,
+  fn_800D2CA0). At the end: the movement back, x2008 (a giant's grows
+  with its percent past PlCo +68C, capped at +690, fctiwz),
+  ftCo_800D2770 (`take_size`: ftLib_SetScale, the attributes, the camera
+  box at the next camera proc, ft_80081C88's ECB and ledge snaps), Wait or
+  the fall the change began in (fn_800D2890). A hit in a Kinoko state
+  finishes it at once (its take_dmg_cb).
+- The size: `player.scale` is x34_scale.y and changes; `base_scale` is
+  x34_scale.x. ftLib_SetScale moves the model root's scale, the root
+  motion's and the hitbox damage's (`commands.model_scale`). x294_itPickup
+  and x2C4 take the scale at the last ftCo_800D105C (`attribute_scale`).
+  A death returns x34_scale.y to x34_scale.x (fighter.c:255).
+- x2008 counts down in Fighter_8006A360 (fighter.c:1500-1512); at 0 the
+  size ends when fn_800D2818 allows (class 0 or 5 or x2071_b4, not
+  frozen or changing), else it tries again each frame.
+- Guarded: ftKindCalcIndiviParamTable for a scaled fighter
+  (`scales_special_attributes` kinds), a heavy item dropped by the change,
+  a thrown victim let go by it, a Kinoko state inside a grab pair, the
+  change's FallSpecial exit with the Hammer.

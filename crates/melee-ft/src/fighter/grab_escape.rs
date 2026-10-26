@@ -456,6 +456,34 @@ pub fn release(
     Ok(())
 }
 
+/// ftCo_CaptureCut_Enter (800DC750) on `victim` alone: both links go
+/// (ftCo_800DC920), the victim slides back (PlCo +370) into CaptureCut;
+/// the captor's own state is its caller's (fn_800D290C). A victim held
+/// in a throw (x2226_b2) is set down from XRotN as at an escape, the
+/// constraint reading the captor's pose of the moment: fn_800D290C enters
+/// the captor's Kinoko state only after.
+pub fn let_go(
+    victim: &mut Fighter,
+    captor: &mut Fighter,
+    va: &FighterAssets,
+    ca: &FighterAssets,
+    map: &mut melee_mp::CollMap,
+) -> Result<()> {
+    captor.combat.grab = None;
+    if victim.combat.thrown_pose.is_some() {
+        super::grab_throw::update_constraint(&mut victim.core, &mut captor.core, va, ca);
+        super::grab_damage::release_thrown(captor, victim, va, map);
+    }
+    victim.combat.grab = None;
+    let velocity = -victim.physics.facing * va.grab_escape.escape_speed;
+    if victim.physics.ground_or_air == GroundOrAir::Ground {
+        victim.physics.ground_velocity = velocity;
+    } else {
+        victim.physics.self_velocity.x = velocity;
+    }
+    victim.change_motion_state(S::CaptureCut.into(), va)
+}
+
 /// ftCo_CatchCut_Anim / ftCo_CaptureCut_Anim: ground -> Wait, air -> Fall.
 pub fn cut_animation(f: &mut Fighter, phase: AnimationPhase<'_>) -> Result<Option<WaitChoice>> {
     f.step_animation(phase.assets);

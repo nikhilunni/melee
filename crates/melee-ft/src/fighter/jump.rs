@@ -420,7 +420,11 @@ impl FighterCore {
         // scratch and never skip.
         let jumping = matches!(
             self.motion_state.id,
-            CommonMotionState::JumpF | CommonMotionState::JumpB | CommonMotionState::ItemScrew
+            CommonMotionState::JumpF
+                | CommonMotionState::JumpB
+                | CommonMotionState::ItemScrew
+                // ftCo_HammerJump_Phys -> ftCo_Jump_Phys_Inner.
+                | CommonMotionState::HammerJump
         );
         if let MotionData::Jump(jump) = &mut self.state_data {
             if jumping && jump.physics_started == 0 {

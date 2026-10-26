@@ -93,6 +93,12 @@ const fn attack_moves() -> [Option<GroundMove>; super::super::COMMON_COUNT] {
     rows[S::ItemScopeAirFire as usize] = Some(GroundMove::ScopeFire);
     rows[S::ItemScopeFireEmpty as usize] = Some(GroundMove::ScopeFire);
     rows[S::ItemScopeAirFireEmpty as usize] = Some(GroundMove::ScopeFire);
+    // [307..=313]: 0x5E, the Hammer's rows.
+    i = S::HammerWait as usize;
+    while i <= S::HammerLanding as usize {
+        rows[i] = Some(GroundMove::Hammer);
+        i += 1;
+    }
     rows
 }
 pub static GROUND_MOVES: [Option<GroundMove>; super::super::COMMON_COUNT] = attack_moves();

@@ -42,6 +42,8 @@ pub mod grab;
 pub mod grab_damage;
 pub mod grab_escape;
 pub mod grab_throw;
+pub mod hammer;
+pub mod mushroom;
 mod hit_log;
 pub mod hazard;
 pub mod hitbox;
@@ -882,6 +884,9 @@ pub enum AerialJumpStyle {
 
 #[derive(Clone, Debug, Default)]
 pub struct Capabilities {
+    /// The kind's ftKindCalcIndiviParamTable entry scales its special
+    /// attributes with x34_scale.y (not ported).
+    pub scales_special_attributes: bool,
     /// Fox or Falco on Corneria or Venom (grCorneria_801E2CE8): the Wait
     /// IASA offers the Star Fox taunt (ftFx_AppealS_CheckInput).
     pub star_fox_taunt: bool,
@@ -1049,6 +1054,10 @@ pub struct Status {
     pub metal: metal::MetalState,
     /// x197C / x2014: the Bunny Hood worn and its frames.
     pub bunny_hood: Option<bunny_hood::BunnyHood>,
+    /// x2330 / x2338: the Hammer's countdowns.
+    pub hammer: hammer::HammerHold,
+    /// x2008 / x200C / x2010 / x2220_b5-b6: the Mushrooms.
+    pub mushroom: mushroom::MushroomStatus,
 }
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
@@ -1089,6 +1098,8 @@ impl Status {
             cloak_frames: 0,
             metal: metal::MetalState::default(),
             bunny_hood: None,
+            hammer: hammer::HammerHold::default(),
+            mushroom: mushroom::MushroomStatus::default(),
         }
     }
 }
@@ -1399,6 +1410,24 @@ pub struct FighterCore {
     /// Set by the animation proc: ftCo_800D71D8 runs the catch window at
     /// the end of the state's next animation step (ftAnim_8006EBA4).
     pub catch_after_step: bool,
+    /// A catch (fn_800D6F58) took the Hammer in a proc without the fighter:
+    /// its take-over (ftCo_800C52F4) follows once the proc returns.
+    pub hammer_catch_pending: bool,
+    /// ftCo_800C5284's head draws (it_80293DCC) from a proc without the
+    /// random stream, made when the stream is next at hand.
+    pub hammer_draw_pending: bool,
+    /// fn_800D6F58's sparkle after a Hammer's take-over, queued behind the
+    /// graphics its motion change's colour step issued.
+    pub catch_sparkle_pending: bool,
+    /// x34_scale.x: the size the fighter returns to (Player_GetModelScale);
+    /// `player.scale` is x34_scale.y, which a Mushroom changes.
+    pub base_scale: f32,
+    /// x34_scale.y at the last ftCo_800D105C, which x294_itPickup and
+    /// x2C4 took.
+    pub attribute_scale: f32,
+    /// ftCamera_80076064 from a proc without the stage camera: the next
+    /// camera proc resets the camera box.
+    pub camera_reset_pending: bool,
     /// hitlag_mul (+196C): the jab combo window. Every motion change except
     /// into Wait or Walk closes it (fighter.c:1142-1144).
     pub jab_countdown: f32,
@@ -1541,6 +1570,11 @@ pub enum MotionData {
     },
     /// The cargo carrier's rows with scratch of their own.
     Cargo(cargo::CargoState),
+    /// The Hammer states' scratch (HammerWalk uses `Walk`, HammerTurn
+    /// `Turn`, HammerJump `Jump`).
+    Hammer(hammer::HammerState),
+    /// The Kinoko states (a Mushroom's size change).
+    Mushroom(mushroom::MushroomState),
     /// ShoulderedWait..ShoulderedTurn: the carried fighter's grab timer.
     Shouldered(cargo::ShoulderedState),
     YoshiEgg(capture_yoshi::YoshiEggState),

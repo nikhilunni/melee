@@ -277,6 +277,9 @@ pub enum ItemScratch {
     Ray(RayState),
     ArwingLaser(ArwingLaserState),
     Held(HeldState),
+    /// xDD4.kinoko: a walking Mushroom's speed (x0) and the floor normal
+    /// it walks on (x4).
+    Kinoko { speed: f32, normal: Vec3 },
     Bomb(BombState),
     Dosei(DoseiState),
     Heiho(HeihoState),
@@ -1444,21 +1447,24 @@ const ITEM_VICTIM: u32 = 1 << 31;
 impl ItemCore {
     /// checkHitLag / EnterHitlagThink (Item_8026A294): hitlag frames from
     /// it_8026B424 (retail 8026B450: fmadds, then fctiwz), never lowered.
-    fn enter_hitlag(&mut self, common: &desc::ItemCommonData, damage: i32) {
+    fn enter_hitlag(&mut self, common: &desc::ItemCommonData, damage: i32) -> bool {
         let frames = gekko_math::msl::fctiwz(gekko_math::fma::fmadds(
             damage as f32,
             common.hitlag_scale,
             common.hitlag_base,
         )) as f32;
-        self.enter_hitlag_frames(frames);
+        self.enter_hitlag_frames(frames)
     }
-    /// checkHitLag (Item_8026A294): raise the hitlag to `frames`.
-    fn enter_hitlag_frames(&mut self, frames: f32) {
+    /// checkHitLag then EnterHitlagThink (Item_8026A294): raise the hitlag
+    /// to `frames`; true when the item was not in hitlag (xDC8 x9), when
+    /// the kind's entered_hitlag runs.
+    fn enter_hitlag_frames(&mut self, frames: f32) -> bool {
         if self.hitlag_frames < frames {
             self.hitlag_frames = frames;
         }
-        // No supported kind has an entered_hitlag callback.
+        let entering = !self.in_hitlag;
         self.in_hitlag = true;
+        entering
     }
     /// efAsync_Spawn on the item's queue (xBC0): below s_link 9 the request
     /// waits for the item's link 9 flush (Item_80269A9C); the event
@@ -1768,6 +1774,38 @@ impl ItemCore {
         self.hitboxes[id] = Some(hit);
         self.reflection_history[id] = core::mem::take(&mut self.disabled_history[id]);
         self.update_hitbox(id, assets);
+    }
+    /// it_80272784 (80272784): every hitbox slot enabled again
+    /// (lbColl_80008434, victims kept), to be placed by the caller
+    /// (it_8027129C: `place_hitbox`). A slot no script ever filled fails
+    /// closed.
+    pub fn enable_all_hitboxes(&mut self) {
+        for id in 0..self.hitboxes.len() {
+            if self.hitboxes[id].is_some() {
+                continue;
+            }
+            let mut hit = self.disabled_hitboxes[id]
+                .take()
+                .unwrap_or_else(|| unimplemented!("it_80272784: a slot no hitbox ever used"));
+            hit.phase = melee_coll::hitbox::CapsulePhase::Enabled;
+            self.hitboxes[id] = Some(hit);
+            self.reflection_history[id] = core::mem::take(&mut self.disabled_history[id]);
+        }
+    }
+    /// it_8027129C (8027129C) with the world matrix of the hitbox's bone
+    /// given (a held item posed in its holder's hand).
+    pub fn place_hitbox(&mut self, id: usize, matrix: &hsd_types::Mtx) {
+        let Some(hit) = &mut self.hitboxes[id] else {
+            return;
+        };
+        let mut position = Vec3::ZERO;
+        hsd_anim::mtx::mtx_mult_vec(matrix, &hit.descriptor.offset, &mut position);
+        hit.update_position(position);
+        self.hitbox_trace[id] = (hit.previous_position, hit.position);
+    }
+    /// The bone each live hitbox rides.
+    pub fn hitbox_bones(&self) -> [Option<usize>; 4] {
+        core::array::from_fn(|id| self.hitboxes[id].as_ref().map(|h| h.descriptor.bone))
     }
     /// it_8027570C / it_8027572C: hitbox `id`'s clank flag (HitCapsule x40
     /// b0). A cleared slot keeps nothing: the next script hitbox there
@@ -2620,12 +2658,21 @@ impl ItemPool {
         // sets Fighter.shield_unk1 while an item can reach it.)
         if !item.destroyed {
             // xDC8 xD is set for every item, so a counter's own hitlag wins.
-            if item.pending_shield_hitlag > 0.0 {
+            let entered = if item.pending_shield_hitlag > 0.0 {
                 let frames = item.pending_shield_hitlag;
-                item.enter_hitlag_frames(frames);
+                item.enter_hitlag_frames(frames)
             } else if item.hitlag_damage != 0 {
                 let damage = item.hitlag_damage;
-                item.enter_hitlag(&common, damage);
+                item.enter_hitlag(&common, damage)
+            } else {
+                false
+            };
+            if entered {
+                // OnTakeDamageThink set xDC8 xB for a hit taken this frame.
+                let took_damage = item.pending_knockback != 0.0 || item.pending_damage_taken != 0;
+                if let Some(entered_hitlag) = D::logic(item.kind).entered_hitlag {
+                    entered_hitlag(item, took_damage);
+                }
             }
         }
         item.past_hitbox_refresh = false;

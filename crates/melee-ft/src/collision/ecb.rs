@@ -48,6 +48,31 @@ pub fn reinitialize(
     collision.ecb_source.x12c = minimum_size;
 }
 
+/// ft_80081C88 (80081C88): a new scale's ECB centre and ledge snaps (for
+/// a JObj-sourced ECB), the weight, and the minimum ECB size.
+pub fn rescale(collision: &mut CollData, bones: &EcbBones, player_scale: f32, weight: f32) {
+    let jobj = matches!(
+        collision.ecb_source.params,
+        EcbSourceParams::JObj { .. }
+    );
+    // retail 80081CA0..: fmuls only.
+    if jobj {
+        collision.ecb_source.x124 = bones.center_y * player_scale;
+        set_ledge_snap(
+            collision,
+            bones.ledge_snap_x * player_scale,
+            bones.ledge_snap_y * player_scale,
+            bones.ledge_snap_height * player_scale,
+        );
+    }
+    collision.x50 = weight;
+    let minimum_size = 10.0 * player_scale;
+    if jobj {
+        collision.ecb_source.x128 = minimum_size;
+        collision.ecb_source.x12c = minimum_size;
+    }
+}
+
 /// `lb_8000B1CC` (0x8000B1CC, lb_00B0.c:105-130), NULL local offset.
 /// Roots use their translation directly; child bones force matrix setup.
 pub fn world_position(tree: &mut JObjTree, joint: JObjId) -> Vec3 {

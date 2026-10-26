@@ -46,6 +46,10 @@ melee_it::item_kinds! {
         ScBall: it_scball::ScrewAttack,
         MetalB: it_metalb::MetalBox,
         RabbitC: it_rabbitc::BunnyHood,
+        Hammer: it_hammer::Hammer,
+        HammerHead: it_hammer::head::HammerHead,
+        Kinoko: it_kinoko::SuperMushroom,
+        DKinoko: it_kinoko::PoisonMushroom,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -515,6 +519,10 @@ fn candidate(
             .then(|| melee_it::scope::ScopeCharges::from_attributes(&assets.special_attributes)),
         metal: (item.kind == ItemKind::MetalB).then(|| it_metalb::metal(assets)),
         bunny_hood: (item.kind == ItemKind::RabbitC).then(|| it_rabbitc::frames(assets)),
+        hammer_head: (item.kind == ItemKind::Hammer).then(|| {
+            let (low, high, percent) = it_hammer::head_odds(assets);
+            melee_ft::fighter::hammer::HammerHeadOdds { low, high, percent }
+        }),
     }
 }
 
@@ -549,6 +557,49 @@ pub struct Resources {
     visual_archives: Vec<(ItemKind, std::sync::Arc<Archive>)>,
     /// Articles whose bones effects follow (crate::article_pose).
     pub(crate) article_skeletons: Vec<crate::article_pose::ArticleSkeleton>,
+    /// The Super Mushroom's size animations, sampled (fn_800D2A3C).
+    pub(crate) mushroom_sizes: std::sync::Arc<melee_ft::fighter::mushroom::MushroomSizes>,
+}
+
+/// it_80293660's joint animations (the Super Mushroom's KinokoAnim x8 and
+/// xC) as fn_800D299C and fn_800D2A3C play them on a lone joint
+/// (lbl_803C6FF0: flags 8, unit scale): requested at frame 0 and stepped
+/// once at the change's start, then a step each frame; the x scale after
+/// each of those, until the step that ends the AObj.
+fn mushroom_sizes(archive: &Archive, public: u32) -> Result<melee_ft::fighter::mushroom::MushroomSizes> {
+    use hsd_anim::jobj::{JObjTree, JointSpec};
+    let r = archive.reader();
+    let articles = r.u32(public + 4)?;
+    let article = r.u32(articles + ItemKind::Kinoko as u32 * 4)?;
+    let attributes = r.u32(article + 4)?;
+    let mut curves: [Vec<f32>; 2] = [Vec::new(), Vec::new()];
+    for (curve, offset) in curves.iter_mut().zip(it_kinoko::SIZE_ANIMATIONS) {
+        let joint = archive
+            .link(attributes + offset)?
+            .context("a Super Mushroom size animation")?;
+        let anim = hsd_archive::desc::AnimJoint::read(archive, joint)?;
+        let mut tree = JObjTree::new();
+        let root = tree.load_joint(&JointSpec::new().flags(8));
+        hsd_anim::load::attach_anim_joint(&mut tree, root, &anim, archive)
+            .map_err(|e| anyhow::anyhow!("a Super Mushroom size animation: {e}"))?;
+        tree.req_anim_by_flags(root, 1, 0.0);
+        let mut cb = hsd_anim::aobj::AObjEndCallback::default();
+        tree.anim::<melee_ft::fighter::RetailTrig>(root, &mut cb);
+        loop {
+            tree.anim::<melee_ft::fighter::RetailTrig>(root, &mut cb);
+            curve.push(tree.get(root).scale.x);
+            let ended = tree
+                .get(root)
+                .aobj
+                .as_ref()
+                .is_none_or(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0);
+            if ended {
+                break;
+            }
+            anyhow::ensure!(curve.len() < 10_000, "a Super Mushroom size animation that never ends");
+        }
+    }
+    Ok(melee_ft::fighter::mushroom::MushroomSizes { curves })
 }
 impl Resources {
     pub fn load(
@@ -811,6 +862,46 @@ impl Resources {
                 )?,
             ),
             (
+                ItemKind::Hammer,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Hammer,
+                    &it_hammer::ARTICLE_STATES,
+                    it_hammer::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::Kinoko,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::Kinoko,
+                    &it_kinoko::ARTICLE_STATES,
+                    it_kinoko::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::DKinoko,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::DKinoko,
+                    &it_kinoko::ARTICLE_STATES,
+                    it_kinoko::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::HammerHead,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::HammerHead,
+                    &it_hammer::head::ARTICLE_STATES,
+                    it_hammer::head::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
                 ItemKind::MetalB,
                 ItemAssets::from_common(
                     &common_archive,
@@ -928,6 +1019,16 @@ impl Resources {
                 &common_archive,
                 &flower.visual,
                 it_fflower::ANIMATED_STATES,
+            )?);
+        }
+        // The held Hammer's swing hitboxes and its head's launch (joints 1
+        // and 3) ride its model posed in the hand.
+        if let Some((_, hammer)) = kinds.iter().find(|(kind, _)| *kind == ItemKind::Hammer) {
+            article_skeletons.push(crate::article_pose::ArticleSkeleton::load_states(
+                ItemKind::Hammer,
+                &common_archive,
+                &hammer.visual,
+                it_hammer::ANIMATED_STATES,
             )?);
         }
         for (file, symbol, laser, blaster, ghost, ghost_index) in [
@@ -1835,11 +1936,13 @@ impl Resources {
         for (_, assets) in &mut kinds {
             assets.slide_rule = common.slide_rule;
         }
+        let mushroom_sizes = std::sync::Arc::new(mushroom_sizes(&common_archive, public)?);
         Ok(Self {
             common,
             kinds,
             visual_archives,
             article_skeletons,
+            mushroom_sizes,
         })
     }
     pub fn visual_models(&self) -> impl Iterator<Item = (ItemKind, &Archive, u32)> {
@@ -2171,6 +2274,12 @@ pub fn request(
         }
         ItemRequest::SpawnInHand { spawn, .. } => (spawn, None, None),
         ItemRequest::SpawnChain { .. } => unreachable!("handled above"),
+        // The holder's loop runs these with the Hammer posed in its hand.
+        ItemRequest::HammerHitboxes { .. }
+        | ItemRequest::TakeAttack { .. }
+        | ItemRequest::HammerHeadLoss { .. } => {
+            unreachable!("Hammer requests run with their holder")
+        }
         // The fighter's own loop runs these with its state (redead_request).
         ItemRequest::ReDeadCling { .. } | ItemRequest::ReDeadRelease { .. } => {
             unreachable!("ReDead requests run with their fighter")

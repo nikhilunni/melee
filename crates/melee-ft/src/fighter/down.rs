@@ -10,12 +10,13 @@ use melee_gr::wind::Wind;
 use melee_types::{CommonMotionState as S, FtPart};
 
 impl super::FighterCore {
-    /// ftCo_800986B0 (800986B0): the shield was pressed within the tech
-    /// window, and not too soon after the previous press (the hammer never
-    /// applies here).
+    /// ftCo_800986B0 (800986B0): without the Hammer in hand
+    /// (ftCo_800C5240), the shield was pressed within the tech window, and
+    /// not too soon after the previous press.
     pub(super) fn tech_window_open(&self, assets: &FighterAssets) -> bool {
         let timers = &self.input.buttons;
-        f32::from(timers.digital_shield) < assets.damage.tech_window
+        !self.holding_hammer()
+            && f32::from(timers.digital_shield) < assets.damage.tech_window
             && i32::from(timers.previous_digital_shield) >= assets.damage.tech_lockout
     }
 }

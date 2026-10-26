@@ -141,6 +141,15 @@ impl ArticlePoses {
         Self { slots }
     }
 
+    /// A read in the middle of a tick, ahead of the item procs that move
+    /// the article's root (Item_80269978) and its holder: the tree is
+    /// dirtied again, so the next read places it anew.
+    pub fn unplace(&mut self, item: u32) {
+        if let Some(slot) = self.slots.iter_mut().find(|s| s.item == Some(item)) {
+            slot.placed = None;
+        }
+    }
+
     /// Forget articles that no longer exist.
     pub fn retain(&mut self, live: impl Fn(u32) -> bool) {
         for slot in &mut self.slots {

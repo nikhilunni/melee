@@ -124,6 +124,18 @@ impl FighterCore {
         self.install_color_overlay(id, 0, &assets.color_overlays)
     }
 
+    /// ftCo_800C0694 (800C0694): the id shown, the primary slot's when it
+    /// has a program (ftCo_800C0658), else the secondary's. Queued requests
+    /// were installed earlier in retail, so they go first.
+    pub(super) fn shown_color(&mut self, assets: &super::assets::FighterAssets) -> u8 {
+        self.install_requested_color_overlays(assets);
+        if self.combat.color_overlay.id != 0 {
+            self.combat.color_overlay.id
+        } else {
+            self.combat.secondary_color_overlay.id
+        }
+    }
+
     /// ftCo_800BFFD0: install `id` in its slot (x408, or x488 for the
     /// table's secondary entries) unless the slot holds a higher priority.
     /// Returns whether the slot took it.
@@ -152,7 +164,18 @@ impl FighterCore {
     /// secondary requests went too. The Hammer states (ftCo_800C53E4) are
     /// out of scope.
     pub fn clear_secondary_color_overlay(&mut self, table: &ColorOverlayTable) {
-        self.empty_secondary_color_overlay(table);
+        let hammer = self.in_hammer_state();
+        self.clear_secondary_color_overlay_entering(table, hammer);
+    }
+
+    /// ftCo_800C0134 within Fighter_ChangeMotionState, which has set the
+    /// new motion id already: `hammer` is whether that is a Hammer state.
+    pub(super) fn clear_secondary_color_overlay_entering(
+        &mut self,
+        table: &ColorOverlayTable,
+        hammer: bool,
+    ) {
+        self.empty_secondary_color_overlay_with(table, hammer);
         let queued = &mut self.commands.color_animations;
         let mut i = 0;
         while i < queued.len() {
@@ -243,9 +266,19 @@ impl FighterCore {
     /// lb_80014498 on the secondary slot (x488), then the kind's
     /// ftData_UnkMotionStates4 (`secondary_color_fallback`).
     fn empty_secondary_color_overlay(&mut self, table: &ColorOverlayTable) {
+        let hammer = self.in_hammer_state();
+        self.empty_secondary_color_overlay_with(table, hammer);
+    }
+
+    fn empty_secondary_color_overlay_with(&mut self, table: &ColorOverlayTable, hammer: bool) {
         self.combat.secondary_color_overlay = ColorOverlaySlot::default();
         if let Some(id) = self.combat.secondary_color_fallback {
             self.install_color_overlay(id, 0, table);
+        }
+        // ftCo_800C0134 / ftCo_800C0200 / ftCo_800C0408: in a Hammer state
+        // its colour returns (ftCo_800C53E4).
+        if hammer {
+            self.install_color_overlay(super::hammer::HAMMER_COLOR, 0, table);
         }
     }
 

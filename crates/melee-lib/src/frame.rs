@@ -1602,7 +1602,29 @@ impl Runtime {
                 if item.destroyed {
                     return Ok(());
                 }
-                item.update_hitboxes(state.assets.items.get(kind));
+                let templates = &state.assets.items.article_skeletons;
+                if !(item.held && crate::article_pose::ArticlePoses::poses_kind(templates, kind)) {
+                    item.update_hitboxes(state.assets.items.get(kind));
+                } else {
+                    // A held, posed item's hitboxes ride its bones in the hand.
+                    let holder = crate::scene_items::owner_index(
+                        &state.fighters,
+                        item.owner,
+                        item.owner_secondary,
+                    )
+                    .expect("a held item's holder");
+                    let part = usize::from(item.holder_part);
+                    let fighter = &mut state.fighters[holder];
+                    let hand = fighter.bone_matrix(Some(part));
+                    let orientation = fighter.orientation_target(part);
+                    place_held_hitboxes(
+                        item,
+                        &mut state.article_poses,
+                        templates,
+                        (&hand, orientation),
+                        self.frame,
+                    );
+                }
                 item.decay_reflection_history();
             }
             14 => {
@@ -2285,6 +2307,11 @@ impl Runtime {
                     with_fighter!(&mut state.fighters[player], |f| {
                         f.core.resolve_hit_logs(&assets.fighters[player])
                     });
+                }
+                // fn_800D290C: a Mushroom's size change this status proc
+                // parts its grab pair first (see grab_pairs::mushroom_part).
+                if proc == FighterProc::Status && continuation == Continuation::Invoke {
+                    grab_pairs::mushroom_part(state, player)?;
                 }
                 // Fighter_8006ABA0: the CPU proc runs ftCo_800B3900 for a
                 // fighter whose input the CPU supplies (Nana).
@@ -3313,6 +3340,34 @@ impl Runtime {
                             ),
                         }
                     }
+                    // Item_80269528 (item s_link 1) steps the item's joints
+                    // after the fighters' animation proc: until then they
+                    // hold the last display pass's matrices.
+                    let read_tick = if row.s_link <= melee_ft::fighter::state::FighterProc::Animation.s_link() {
+                        self.frame.saturating_sub(1)
+                    } else {
+                        self.frame
+                    };
+                    let hammer = match &request {
+                        melee_it::ItemRequest::HammerHitboxes { item, .. }
+                        | melee_it::ItemRequest::HammerHeadLoss { item, .. } => Some(*item),
+                        _ => None,
+                    };
+                    let next = held_hammer_request(
+                        &mut state.items,
+                        &mut state.article_poses,
+                        &state.assets.items,
+                        f,
+                        request,
+                        read_tick,
+                    );
+                    if let Some(item) = hammer.filter(|_| read_tick == self.frame) {
+                        state.article_poses.unplace(item);
+                    }
+                    match next {
+                        Some(next) => request = next,
+                        None => continue,
+                    }
                     match &mut request {
                         melee_it::ItemRequest::Spawn(spawn)
                         | melee_it::ItemRequest::SpawnInGroup(spawn)
@@ -3342,6 +3397,11 @@ impl Runtime {
                         | melee_it::ItemRequest::Stow { .. }
                         | melee_it::ItemRequest::DropArticle { .. }
                         | melee_it::ItemRequest::Launch { .. } => {}
+                        melee_it::ItemRequest::HammerHitboxes { .. }
+                        | melee_it::ItemRequest::TakeAttack { .. }
+                        | melee_it::ItemRequest::HammerHeadLoss { .. } => {
+                            unreachable!("handled by held_hammer_request")
+                        }
                     }
                     if crate::scene_items::redead_request(
                         &mut state.items,
@@ -3460,6 +3520,7 @@ impl Runtime {
                                 scope: None,
                                 metal: None,
                                 bunny_hood: None,
+                                hammer_head: None,
                                 heal: 0,
                             },
                             catch_item,
@@ -4586,6 +4647,16 @@ fn deliver_owner_request(
             .become_metal(frames, health, &state.assets.fighters[index]));
         return;
     }
+    if let melee_it::OwnerRequest::Freeze { secondary, frames } = request {
+        // it_8026BC14 -> ftLib_80086A4C: dmg.x1958 on the holder.
+        let index = crate::scene_items::owner_index(&state.fighters, Some(slot), secondary)
+            .expect("the Hammer's holder");
+        crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+            .core
+            .combat
+            .freeze_request = frames as f32);
+        return;
+    }
     let Some(index) = state
         .fighters
         .iter()
@@ -4599,7 +4670,9 @@ fn deliver_owner_request(
         (melee_it::OwnerRequest::Catch, None)
         | (melee_it::OwnerRequest::Released | melee_it::OwnerRequest::ArticleStep(_), _) => {}
         (
-            melee_it::OwnerRequest::ReDeadLetGo { .. } | melee_it::OwnerRequest::Metal { .. },
+            melee_it::OwnerRequest::ReDeadLetGo { .. }
+            | melee_it::OwnerRequest::Metal { .. }
+            | melee_it::OwnerRequest::Freeze { .. },
             _,
         ) => unreachable!("handled above"),
         (melee_it::OwnerRequest::Catch, Some(part)) => {
@@ -4685,6 +4758,99 @@ pub(crate) fn with_subjects<'a, R>(
     let count = slots.iter().take_while(|slot| slot.is_some()).count();
     f(&mut slots[..count])
 }
+/// The world matrix of `holder`'s part `part` and its orientation target,
+/// as a held article's attach bone is constrained to it.
+fn holder_hand(
+    holder: &mut melee_ft::fighter::Fighter,
+    part: usize,
+) -> (hsd_types::Mtx, hsd_anim::orientation::OrientationTarget) {
+    let joint = holder.animation.parts[part].joint;
+    holder.skeleton.setup_matrix(joint);
+    let matrix = holder.skeleton.get(joint).mtx;
+    (matrix, holder.skeleton.orientation_target(joint))
+}
+
+/// Place a held, posed item's live hitboxes (it_8027129C) at its bones in
+/// the hand.
+fn place_held_hitboxes(
+    item: &mut melee_it::ItemCore,
+    poses: &mut crate::article_pose::ArticlePoses,
+    templates: &[crate::article_pose::ArticleSkeleton],
+    hand: (&hsd_types::Mtx, hsd_anim::orientation::OrientationTarget),
+    tick: u64,
+) {
+    let bones = item.hitbox_bones();
+    for (id, bone) in bones.into_iter().enumerate() {
+        let Some(bone) = bone else { continue };
+        let matrix = poses.bone_matrix(item, templates, bone, tick, Some(hand));
+        item.place_hitbox(id, &matrix);
+    }
+}
+
+/// The Hammer's requests of its holder's proc (`melee-ft`
+/// `fighter/hammer.rs`), which read the Hammer posed in the hand: its
+/// hitboxes on or off (it_8026C16C), the attack it takes (it_8027B070) and
+/// the head's launch (it_80293E34, which becomes the head's spawn). Other
+/// requests pass through; `None` when the request was handled.
+fn held_hammer_request(
+    items: &mut melee_it::ItemPool,
+    poses: &mut crate::article_pose::ArticlePoses,
+    resources: &crate::scene_items::Resources,
+    holder: &mut melee_ft::fighter::Fighter,
+    request: melee_it::ItemRequest,
+    tick: u64,
+) -> Option<melee_it::ItemRequest> {
+    use melee_it::ItemRequest as R;
+    let templates = &resources.article_skeletons;
+    match request {
+        R::HammerHitboxes { item, on } => {
+            let item = items.get_mut(item).expect("the held Hammer");
+            if item.ammo <= 0 || !on {
+                item.clear_hitboxes();
+            } else {
+                item.enable_all_hitboxes();
+                let (matrix, orientation) = holder_hand(holder, usize::from(item.holder_part));
+                place_held_hitboxes(item, poses, templates, (&matrix, orientation), tick);
+            }
+            None
+        }
+        R::TakeAttack { item, attack } => {
+            items.get_mut(item).expect("the held Hammer").stale_source = attack;
+            None
+        }
+        R::HammerHeadLoss {
+            item,
+            owner,
+            center,
+        } => {
+            let hammer = items.get_mut(item).expect("the held Hammer");
+            if hammer.ammo <= 0 {
+                return None;
+            }
+            hammer.ammo -= 1;
+            let (matrix, orientation) = holder_hand(holder, usize::from(hammer.holder_part));
+            let hand = Some((&matrix, orientation));
+            let bone_position = |m: hsd_types::Mtx| hsd_types::Vec3::new(m.0[0][3], m.0[1][3], m.0[2][3]);
+            let head = bone_position(poses.bone_matrix(hammer, templates, it_hammer::HEAD_JOINT, tick, hand));
+            let handle =
+                bone_position(poses.bone_matrix(hammer, templates, it_hammer::HANDLE_JOINT, tick, hand));
+            let direction = melee_lb::vector::normalize(hsd_types::Vec3::new(
+                head.x - handle.x,
+                head.y - handle.y,
+                0.0,
+            ));
+            let facing = if direction.x < 0.0 { -1.0 } else { 1.0 };
+            let direction = hsd_types::Vec3::new(
+                if direction.x < 0.0 { -direction.x } else { direction.x },
+                direction.y,
+                direction.z,
+            );
+            Some(R::Spawn(it_hammer::head::spawn(owner, head, center, direction, facing)))
+        }
+        other => Some(other),
+    }
+}
+
 fn article_bone_matrix(
     fighters: &mut [crate::scene_fighter::SceneFighter],
     poses: &mut crate::article_pose::ArticlePoses,
@@ -5099,7 +5265,8 @@ fn dispatch_fighter(
             // the hitlag countdown.
             f.tick_parasol_timer(assets)
                 .map_err(|e| anyhow::anyhow!("{e}"))?;
-            f.proc_status()
+            f.proc_status_with_assets(assets)
+                .map_err(|e| anyhow::anyhow!("{e}"))?;
         }
         FighterProc::Animation => {
             f.proc_anim(assets, map, rng)

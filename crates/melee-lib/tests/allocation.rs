@@ -217,6 +217,50 @@ fn shooters_and_power_ups_step_and_capture_allocate_nothing() {
     assert!(seen.into_iter().all(|present| present), "exercise every kind");
 }
 
+/// The Hammer in hand (its posed swing, the head it loses) and the
+/// Mushrooms' size changes step and capture without allocating.
+#[test]
+fn hammer_and_mushrooms_step_and_capture_allocate_nothing() {
+    TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
+    let root = data_root();
+    // Hammer 28, HammerHead 40, Kinoko 26, DKinoko 27.
+    const KINDS: [u32; 4] = [28, 40, 26, 27];
+    let mut seen = [false; KINDS.len()];
+    for name in [
+        "w27_hammer_swings",
+        "corpus_v3_fd_items_hammer_e75fb4a9a_p1",
+        "w27_kinoko_idle",
+        "w27_dkinoko_idle",
+    ] {
+        let scenario = melee_sim::scenario::Scenario::load(
+            &root.join(format!("harness/scenarios/{name}.toml")),
+        )
+        .unwrap();
+        if !melee_test_support::require_files(scenario.required_files()) {
+            return;
+        }
+        let mut game = diagnostics::import_match(&scenario).unwrap();
+        let mut presentation = presentation::Presentation::new(&game).unwrap();
+        let pads = melee_sim::trace::pad_script(&scenario).unwrap();
+        for frame in 0..scenario.frames {
+            let inputs = Inputs(std::array::from_fn(|p| pads.sample(frame, p)));
+            assert_eq!(measure(&mut game, &inputs), 0, "{name} tick {frame}");
+            COUNT.with(|v| v.set(0));
+            ENABLED.with(|v| v.set(true));
+            let result = presentation.capture(&game);
+            ENABLED.with(|v| v.set(false));
+            result.unwrap_or_else(|error| panic!("{name} capture {frame}: {error}"));
+            assert_eq!(COUNT.with(Cell::get), 0, "{name} capture {frame}");
+            for item in game.observe().unwrap().items() {
+                if let Some(index) = KINDS.iter().position(|&k| k == item.kind().0 as u32) {
+                    seen[index] = true;
+                }
+            }
+        }
+    }
+    assert!(seen.into_iter().all(|present| present), "exercise every kind");
+}
+
 #[test]
 fn random_item_spawns_and_container_capture_allocate_nothing() {
     TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));

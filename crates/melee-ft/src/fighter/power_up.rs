@@ -1,7 +1,6 @@
 //! Power-up items a touch gives (it_8026B30C == 4, ftColl_80077C60's first
-//! branch): the Starman's invincibility (ftColl_8007B7FC). The Super and
-//! Poison Mushrooms' growth (x200C / x2010, Fighter_SuperMushroomApply)
-//! fails closed.
+//! branch): the Starman's invincibility (ftColl_8007B7FC), the Super and
+//! Poison Mushrooms' size changes (x200C / x2010, `mushroom.rs`).
 use super::assets::FighterAssets;
 use super::FighterCore;
 use melee_types::ItemKind;
@@ -38,12 +37,9 @@ impl FighterCore {
                         pan: 64,
                     });
             }
-            ItemKind::Kinoko => unimplemented!(
-                "ftColl_80077C60 (ftcoll.c:1127-1131): a Super Mushroom's growth (x200C)"
-            ),
-            ItemKind::DKinoko => unimplemented!(
-                "ftColl_80077C60 (ftcoll.c:1132-1136): a Poison Mushroom's shrinking (x2010)"
-            ),
+            // ftcoll.c:1127-1136: counted; the status proc applies it.
+            ItemKind::Kinoko => self.touch_mushroom(false),
+            ItemKind::DKinoko => self.touch_mushroom(true),
             _ => unreachable!("{kind:?} is no power-up"),
         }
         true

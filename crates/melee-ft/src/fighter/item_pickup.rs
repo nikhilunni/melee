@@ -79,6 +79,8 @@ pub struct PickupCandidate {
     pub metal: Option<(i32, i32)>,
     /// A Bunny Hood's frames (it_8026B54C, fctiwz).
     pub bunny_hood: Option<i32>,
+    /// A Hammer's head odds (itHammerData, it_80293DCC).
+    pub hammer_head: Option<super::hammer::HammerHeadOdds>,
 }
 
 /// The items offered to the current proc, in the item list's order.
@@ -147,6 +149,8 @@ pub struct HeldItem {
     pub metal: Option<(i32, i32)>,
     /// The candidate's `bunny_hood`.
     pub bunny_hood: Option<i32>,
+    /// The candidate's `hammer_head`.
+    pub hammer_head: Option<super::hammer::HammerHeadOdds>,
 }
 
 /// fp->item_gobj holding one of the fighter's own articles (Peach's
@@ -163,8 +167,17 @@ pub struct ArticleInHand {
 
 /// Motion states audited for a held item. Retail branches on `item_gobj` in
 /// about forty files; a held item entering any other state is unported.
-const HELD_ITEM_STATES: [S; 216] = [
+const HELD_ITEM_STATES: [S; 224] = [
     S::LightGet,
+    // The Kinoko states: a size change keeps a light item in hand.
+    S::KinokoGiantStart,
+    S::KinokoGiantStartAir,
+    S::KinokoGiantEnd,
+    S::KinokoGiantEndAir,
+    S::KinokoSmallStart,
+    S::KinokoSmallStartAir,
+    S::KinokoSmallEnd,
+    S::KinokoSmallEndAir,
     // ftCo_ItemScrew.c / ftCo_DamageScrew.c: the Screw Attack's jumps keep
     // it, and a victim thrown up keeps a light item (only ftCo_8009750C's
     // heavy drop).
@@ -489,18 +502,26 @@ impl FighterCore {
             self.pickup_candidates.offered,
             "ftpickupitem_800942A0: the scene offered no items to this proc"
         );
-        if self.player.scale != 1.0 && !self.pickup_candidates.items.is_empty() {
-            unimplemented!(
-                "ftCo_800D105C (ftchangeparam.c:200-215): a scaled fighter's itPickup boxes"
-            );
-        }
+        // ftCo_800D105C (ftchangeparam.c:177-192): x294 takes the scale
+        // x34_scale.y had at the last recompute, each field by one fmuls.
+        let scale = self.attribute_scale;
+        let scaled = |b: PickupBox| {
+            if scale == 1.0 {
+                return b;
+            }
+            PickupBox {
+                offset: Vec2::new(b.offset.x * scale, b.offset.y * scale),
+                half_extent: Vec2::new(b.half_extent.x * scale, b.half_extent.y * scale),
+            }
+        };
         // ftCo_800A2040 && cpu.xC == 28 only concerns CPU fighters. x2222_b4
         // (a heal restriction) is never set for the supported kinds.
-        let light = if self.physics.ground_or_air == GroundOrAir::Ground {
+        let light = scaled(if self.physics.ground_or_air == GroundOrAir::Ground {
             boxes.ground_light
         } else {
             boxes.air_light
-        };
+        });
+        let heavy = scaled(boxes.ground_heavy);
         let position = self.physics.position;
         let facing = self.physics.facing;
         let mut nearest = PICKUP_SEARCH_LIMIT;
@@ -521,11 +542,7 @@ impl FighterCore {
             if !wanted {
                 continue;
             }
-            let reach = if candidate.heavy {
-                boxes.ground_heavy
-            } else {
-                light
-            };
+            let reach = if candidate.heavy { heavy } else { light };
             let (x_range, y_range) = (candidate.range.x, candidate.range.y);
             let item = candidate.position;
             // retail 800943D4: fmadds.
@@ -585,6 +602,10 @@ impl FighterCore {
 
     /// fp->item_gobj is released: Item_8026A848 -> ftCommon_8007E6DC.
     pub fn release_held_item(&mut self, item: u32, assets: &FighterAssets) {
+        // ftCommon_8007E6DC: the Hammer's own release first (ftCo_800C5500).
+        if self.holding_hammer() {
+            self.hammer_released(assets);
+        }
         let held = self.held_item.take().expect("released item was held");
         assert_eq!(held.item, item, "ftLib_800867A0: released another item");
         self.release_hand_pose(assets);
@@ -595,6 +616,9 @@ impl FighterCore {
     /// the hand's drop pose follows before the proc's item requests
     /// ([`Fighter::apply_pending_pickup_pose`]).
     pub fn release_held_item_now(&mut self, item: u32) {
+        if self.holding_hammer() {
+            unimplemented!("ftCommon_8007E6DC (ftcommon.c:1005): the Hammer destroyed by its own callback");
+        }
         let held = self.held_item.take().expect("released item was held");
         assert_eq!(held.item, item, "ftLib_800867A0: released another item");
         self.pickup_pose_pending = false;
@@ -672,6 +696,11 @@ fn held_item_state_is_audited(
     special: Option<bool>,
     common_down_air_animation: bool,
 ) -> bool {
+    if kind == melee_types::ItemKind::Hammer {
+        // ftCo_800C5240 steers every state a Hammer holder reaches into the
+        // Hammer rows; the others admitted are those whose hooks are ported.
+        return special.is_none() && HAMMER_STATES.contains(&state);
+    }
     match special {
         Some(keeps_item) => keeps_item,
         None => {
@@ -687,6 +716,93 @@ fn held_item_state_is_audited(
         }
     }
 }
+
+/// The states audited with the Hammer in hand: its own rows; LightGet,
+/// which takes it; the damage, prone and capture rows a hit takes its
+/// holder into, whose Hammer branches are ported (ftCo_Damage_IASA,
+/// ftCo_DamageFall_IASA, ftCo_800986B0's tech refusal, ftCo_800C554C's
+/// drop window) and whose exits return to the Hammer rows (ft_8008A348,
+/// ftCo_Fall_Enter, ftCo_Landing_Enter_Basic).
+const HAMMER_STATES: [S; 75] = [
+    S::LightGet,
+    S::HammerWait,
+    S::HammerWalk,
+    S::HammerTurn,
+    S::HammerKneeBend,
+    S::HammerFall,
+    S::HammerJump,
+    S::HammerLanding,
+    S::DamageHi1,
+    S::DamageHi2,
+    S::DamageHi3,
+    S::DamageN1,
+    S::DamageN2,
+    S::DamageN3,
+    S::DamageLw1,
+    S::DamageLw2,
+    S::DamageLw3,
+    S::DamageAir1,
+    S::DamageAir2,
+    S::DamageAir3,
+    S::DamageFlyHi,
+    S::DamageFlyN,
+    S::DamageFlyLw,
+    S::DamageFlyTop,
+    S::DamageFlyRoll,
+    S::DamageFall,
+    // ftCo_FlyReflect_Anim / _IASA are DamageFly's, Hammer branches and all.
+    S::FlyReflectWall,
+    S::FlyReflectCeil,
+    S::DownBoundU,
+    S::DownWaitU,
+    S::DownDamageU,
+    S::DownStandU,
+    S::DownFowardU,
+    S::DownBackU,
+    S::DownSpotU,
+    S::DownBoundD,
+    S::DownWaitD,
+    S::DownDamageD,
+    S::DownStandD,
+    S::DownFowardD,
+    S::DownBackD,
+    S::DownSpotD,
+    S::CapturePulledHi,
+    S::CaptureWaitHi,
+    S::CaptureDamageHi,
+    S::CapturePulledLw,
+    S::CaptureWaitLw,
+    S::CaptureDamageLw,
+    S::CaptureCut,
+    S::ThrownF,
+    S::ThrownB,
+    S::ThrownHi,
+    S::ThrownLw,
+    // No Hammer check guards the getup attacks or the ledge.
+    S::DownAttackU,
+    S::DownAttackD,
+    S::CliffCatch,
+    S::CliffWait,
+    S::CliffClimbSlow,
+    S::CliffClimbQuick,
+    S::CliffAttackSlow,
+    S::CliffAttackQuick,
+    S::CliffEscapeSlow,
+    S::CliffEscapeQuick,
+    S::CliffJumpSlow1,
+    S::CliffJumpSlow2,
+    S::CliffJumpQuick1,
+    S::CliffJumpQuick2,
+    // A size change ends in Wait or Fall: the Hammer's rows.
+    S::KinokoGiantStart,
+    S::KinokoGiantStartAir,
+    S::KinokoGiantEnd,
+    S::KinokoGiantEndAir,
+    S::KinokoSmallStart,
+    S::KinokoSmallStartAir,
+    S::KinokoSmallEnd,
+    S::KinokoSmallEndAir,
+];
 
 /// The common rows a fighter enters with a battering item in hand (beside
 /// the swings, which HELD_ITEM_STATES lists).
@@ -830,7 +946,11 @@ impl Fighter {
 
     /// ftpickupitem_Anim (80094A14): the script's throw flag closes the
     /// hand on the nearest item; the animation ends in Wait.
-    pub(super) fn item_get_animation(&mut self, assets: &FighterAssets) -> Result<()> {
+    pub(super) fn item_get_animation(
+        &mut self,
+        assets: &FighterAssets,
+        rng: &mut gekko_math::HsdRng,
+    ) -> Result<()> {
         let MotionData::ItemGet { heavy, .. } = self.core.state_data else {
             panic!("item get scratch")
         };
@@ -856,7 +976,11 @@ impl Fighter {
             // filled): use kind 5 is eaten; the Warp Star and the hammer
             // would take over.
             if let Some(held) = self.core.held_item {
-                if held.use_kind == 5 && matches!(held.kind, ItemKind::WStar | ItemKind::Hammer) {
+                if held.use_kind == 5 && held.kind == ItemKind::Hammer {
+                    // ftpickupitem.c:182: ftCo_800C52F4 takes over.
+                    return self.take_hammer(assets, Some(rng));
+                }
+                if held.use_kind == 5 && held.kind == ItemKind::WStar {
                     unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:181-186): {:?} taking over", held.kind);
                 }
                 self.core.eat(held, assets);
@@ -886,6 +1010,10 @@ impl Fighter {
             return false;
         };
         self.core.catch_item(item, assets);
+        if std::mem::take(&mut self.core.hammer_catch_pending) {
+            self.finish_hammer_catch(assets, None)
+                .expect("the Hammer's take-over");
+        }
         true
     }
 
@@ -1015,10 +1143,28 @@ impl FighterCore {
     fn catch_item(&mut self, item: PickupCandidate, assets: &FighterAssets) {
         self.take_item(item, assets);
         let held = self.held_item.expect("just caught");
-        if held.use_kind == 5 && matches!(held.kind, ItemKind::WStar | ItemKind::Hammer) {
+        if held.use_kind == 5 && held.kind == ItemKind::Hammer {
+            // ftpickupitem.c:182: the Hammer takes over (ftCo_800C52F4),
+            // which needs the fighter; the sparkle and lock follow it
+            // (`Fighter::finish_hammer_catch`).
+            self.hammer_catch_pending = true;
+            return;
+        }
+        if held.use_kind == 5 && held.kind == ItemKind::WStar {
             unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:181-186): {:?} caught", held.kind);
         }
         self.eat(held, assets);
+        self.finish_catch();
+    }
+
+    /// fn_800D6F58's tail: the pickup sparkle and x2224_b1.
+    pub(super) fn finish_catch(&mut self) {
+        self.push_catch_sparkle();
+        self.item_catch_locked = true;
+    }
+
+    /// efAsync_Spawn(0x422) at the light item part.
+    pub(super) fn push_catch_sparkle(&mut self) {
         let part = usize::from(self.bones.model.animation_translation);
         let joint = self.animation.parts[part].joint.0;
         self.effects
@@ -1026,7 +1172,6 @@ impl FighterCore {
                 id: ITEM_PICKUP_SPARKLE,
                 bone: joint,
             });
-        self.item_catch_locked = true;
     }
 
     /// ftpickupitem_800948A8 (800948A8): the hand closes on `item`.
@@ -1045,6 +1190,7 @@ impl FighterCore {
             scope: item.scope,
             metal: item.metal,
             bunny_hood: item.bunny_hood,
+            hammer_head: item.hammer_head,
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
         // Fighter_OnItemPickup (ft/inlines.h:143) and the Kirby and Purin

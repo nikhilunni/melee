@@ -207,6 +207,10 @@ pub struct CommandState {
     /// ftColl_8007AFF8. Fighter_ChangeMotionState disables the capsules only
     /// while it is set (fighter.c:954).
     pub hitboxes_registered: bool,
+    /// x2219_b4: the held item's hitboxes are on for this fighter (the
+    /// Hammer's, ftCo_800C5588); a motion change without Ft_MF_SkipHit
+    /// turns them off (ft_8007C114).
+    pub item_hitboxes_active: bool,
     /// Capsules lbColl_80008434 enabled again while x2219_b3 was clear:
     /// a motion change leaves them on (Ness's yo-yo's stored hitbox).
     pub revived_hitboxes: [bool; 4],

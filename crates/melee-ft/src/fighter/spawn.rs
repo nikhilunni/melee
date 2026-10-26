@@ -466,7 +466,10 @@ impl Fighter {
                 assets.kind
             );
         }
-        let mut capabilities = Capabilities::default();
+        let mut capabilities = Capabilities {
+            scales_special_attributes: character.table().scales_special_attributes,
+            ..Capabilities::default()
+        };
         // Fighter_80068E64 (0x80068E64), before the kind's OnLoad: every
         // fighter is drawn flat on Flat Zone.
         if map.grkind() == melee_types::GrKind::Flatzone {
@@ -504,6 +507,16 @@ impl Fighter {
     /// Fighter_ChangeMotionState (0x800693AC) at frame zero. Entering Wait
     /// is ft_8008A348's: with an item in hand the kind's item idle follows.
     pub fn change_motion_state(&mut self, state: ActionId, assets: &FighterAssets) -> Result<()> {
+        if self.core.holding_hammer() {
+            // ft_8008A348 (ft_08A1.c:78-81) and ftCo_Fall_Enter's
+            // ftCo_Fall_inline (ftCo_Fall.c:39-42): the Hammer's rows.
+            if state == CommonMotionState::Wait.into() {
+                return self.enter_hammer_wait(assets);
+            }
+            if state == CommonMotionState::Fall.into() {
+                return self.enter_hammer_fall(assets);
+            }
+        }
         if state == CommonMotionState::Wait.into() {
             // ft_8008A348, ft_08A1.c:85-91: the kind's article leaves the
             // hand before the motion change (Peach's parasol, it_802BDB94).
@@ -1494,6 +1507,12 @@ impl FighterCore {
             item_catch_locked: false,
             catch_window: 0,
             catch_after_step: false,
+            hammer_catch_pending: false,
+            hammer_draw_pending: false,
+            catch_sparkle_pending: false,
+            base_scale: player.scale,
+            attribute_scale: player.scale,
+            camera_reset_pending: false,
             jab_countdown: 0.0,
             rapid_jab_edges: 0,
             last_jab: None,
@@ -1606,6 +1625,8 @@ impl FighterCore {
         self.commands.allow_interrupt = false;
         if !change.preserve.hitboxes {
             self.commands.disable_hitboxes_for_motion_change();
+            // fighter.c:957-959: x2219_b4 -> ft_8007C114.
+            self.drop_item_hitboxes();
         }
         self.commands.first_hit_stale_penalty = None;
         self.combat.stale.enter(move_id);
@@ -1643,7 +1664,11 @@ impl FighterCore {
         }
         // fighter.c:1105-1107: ftCo_800C0134 unless Ft_MF_SkipColAnim.
         if !change.keep_secondary_color {
-            self.clear_secondary_color_overlay(&assets.color_overlays);
+            // fp->motion_id is already the new state (fighter.c:946).
+            let hammer = (CommonMotionState::HammerWait as u16
+                ..=CommonMotionState::HammerLanding as u16)
+                .contains(&(state as u16));
+            self.clear_secondary_color_overlay_entering(&assets.color_overlays, hammer);
         }
         // ftCo_800D638C preserves the nametag while Squat becomes SquatWait;
         // ordinary motion entry clears it (fighter.c:1155-1157).

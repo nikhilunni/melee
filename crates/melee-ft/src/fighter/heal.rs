@@ -93,6 +93,12 @@ impl Fighter {
     /// item, is never filled.
     pub(super) fn eat_on_damage(&mut self, assets: &FighterAssets) {
         if let Some(held) = self.core.held_item {
+            if held.kind == ItemKind::Hammer {
+                // ftpickupitem_80094B6C (ftpickupitem.c:378): ftCo_800C5284
+                // alone; its draws follow with the damage's.
+                self.core.take_up_hammer(assets, None);
+                return;
+            }
             self.core.eat(held, assets);
         }
     }

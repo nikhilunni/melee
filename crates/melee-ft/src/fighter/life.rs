@@ -323,7 +323,7 @@ impl Fighter {
         let target = Vec3::new(
             gekko_math::fma::fmadds(
                 self.core.player.facing,
-                self.core.capabilities.spawn_offset * self.core.player.scale,
+                self.core.capabilities.spawn_offset * self.core.base_scale,
                 platform.x,
             ),
             platform.y,
@@ -1125,9 +1125,18 @@ impl Fighter {
 impl FighterCore {
     /// Fighter_UnkInitReset (80067C98): retain loaded resources and reset live state.
     pub(super) fn reset_life(&mut self, assets: &FighterAssets, map: &melee_mp::CollMap) {
+        // fighter.c:255: x34_scale.y takes x34_scale.x again; a Mushroom's
+        // size is gone (Fighter_UnkProcessDeath then runs ftCo_800D105C
+        // and Fighter_UpdateModelScale).
+        if self.player.scale != self.base_scale {
+            let base = self.base_scale;
+            self.set_scale(base);
+            self.recompute_attributes(assets);
+        }
         let player = &self.player;
-        // Same audited coordinate calculation as initial preparation (80067CE8).
-        let offset = self.capabilities.spawn_offset * player.scale;
+        // Same audited coordinate calculation as initial preparation (80067CE8):
+        // ftCommon_800804EC, x40 * x34_scale.x.
+        let offset = self.capabilities.spawn_offset * self.base_scale;
         let position = Vec3::new(
             gekko_math::fma::fmadds(player.facing, offset, player.position.x),
             player.position.y,

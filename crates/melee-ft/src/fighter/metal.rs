@@ -116,6 +116,10 @@ impl FighterCore {
             attributes.wall.wall_jump_vertical_velocity *= m.wall_jump;
         }
         self.attributes = attributes;
+        self.attribute_scale = self.player.scale;
+        if self.player.scale != 1.0 && self.capabilities.scales_special_attributes {
+            unimplemented!("ftCo_800D105C (ftchangeparam.c:232-234): ftKindCalcIndiviParamTable for a scaled fighter");
+        }
         // ft_80081C88: the ECB's sizes follow the unchanged scale; x50 is
         // the weight.
         self.collision.data.x50 = self.attributes.size.weight;

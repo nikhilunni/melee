@@ -114,6 +114,8 @@ impl Fighter {
         assets: &FighterAssets,
         rng: &mut gekko_math::HsdRng,
     ) -> Result<()> {
+        // A Hammer caught in the IASA (fn_800D6F58) draws its head's odds.
+        self.core.resolve_hammer_draw(rng);
         if std::mem::take(&mut self.core.pending_forward_smash) {
             let enter = self
                 .character

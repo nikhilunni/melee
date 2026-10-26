@@ -68,6 +68,38 @@ impl ItemCore {
         }
     }
 
+    /// it_8026E7E0 (8026E7E0): an airborne pass (it_8026DAA8's bits) that
+    /// neither bounces nor clears hitboxes: a wall touched on the last pass
+    /// as well nudges the item (it_80276D9C); a floor counts the landing
+    /// (it_8026DDFC) and, once the item settles (it_8026DC24), it comes to
+    /// rest (it_8026DD5C).
+    pub fn air_collision_landing_quietly(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+        entered_air: Option<EnteredAir>,
+        rng: &mut HsdRng,
+    ) -> AirLanding {
+        let bits = self.air_contact_bits(map);
+        if bits & 0xC != 0 {
+            self.leave_repeated_contact(bits);
+        }
+        if bits & 1 == 0 {
+            return AirLanding::Airborne;
+        }
+        if !self.count_landing(assets, rng) {
+            return AirLanding::Broken;
+        }
+        if !self.settle(assets) {
+            return AirLanding::Airborne;
+        }
+        if self.come_to_rest(assets, entered_air) {
+            AirLanding::Landed
+        } else {
+            AirLanding::Sliding
+        }
+    }
+
     /// it_8026E8C4 (8026E8C4): a sliding state's grounded pass
     /// (mpColl_8004B108). Off the floor the item is airborne (it_802762BC).
     /// On it the slope test runs (it_80277040) and a wall ends the slide for

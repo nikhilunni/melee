@@ -240,6 +240,13 @@ pub struct FighterAssets {
     pub flower: FlowerTiming,
     /// PlCo +7CC: the Cloaking Device's frames (ftCo_800C88D4).
     pub cloak_frames: i32,
+    /// PlCo +6AC..+6B8: the Hammer's frames and its states' timings.
+    pub hammer: super::hammer::HammerParameters,
+    /// PlCo +678..+690: the Mushrooms' sizes and frames.
+    pub mushroom: super::mushroom::MushroomParameters,
+    /// The Super Mushroom's size animations (ItCo), set by the scene once
+    /// the item data is loaded.
+    pub mushroom_sizes: Option<std::sync::Arc<super::mushroom::MushroomSizes>>,
     /// Fighter_804D6520: the Bunny Hood's attribute multipliers.
     pub bunny_hood: super::bunny_hood::HoodMultipliers,
     /// Fighter_804D651C: the Metal Box's attribute multipliers.
@@ -281,6 +288,12 @@ pub struct FighterAssetSet(std::mem::ManuallyDrop<Vec<FighterAssets>>);
 impl FighterAssetSet {
     pub fn push(&mut self, assets: FighterAssets) {
         self.0.push(assets);
+    }
+    /// The Super Mushroom's size animations, from the item data.
+    pub fn set_mushroom_sizes(&mut self, sizes: std::sync::Arc<super::mushroom::MushroomSizes>) {
+        for assets in self.0.iter_mut() {
+            assets.mushroom_sizes = Some(std::sync::Arc::clone(&sizes));
+        }
     }
 }
 impl std::ops::Deref for FighterAssetSet {
@@ -804,6 +817,9 @@ impl FighterAssets {
                 rapid_shots: common.reader().s32(common_data + 0x5BC)?,
             },
             cloak_frames: common.reader().s32(common_data + 0x7CC)?,
+            hammer: super::hammer::HammerParameters::read(&common.reader(), common_data)?,
+            mushroom: super::mushroom::MushroomParameters::read(&common.reader(), common_data)?,
+            mushroom_sizes: None,
             screw_jump_multiplier: common.reader().f32(common_data + 0x800)?,
             metal: super::metal::MetalMultipliers::read(common, common_root)?,
             bunny_hood: super::bunny_hood::HoodMultipliers::read(common, common_root)?,

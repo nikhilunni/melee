@@ -221,6 +221,24 @@ pub enum ItemRequest {
         center: Vec3,
         attack: Option<melee_types::combat::AttackInstance>,
     },
+    /// it_8026C16C (8026C16C) on the held Hammer `item`: its hitboxes on
+    /// (it_80272784, placed in the hand) or off (it_802725D4); off whatever
+    /// `on` says once its head is gone (xD4C <= 0).
+    HammerHitboxes { item: u32, on: bool },
+    /// it_8027B070 (8027B070): the holder's current attack becomes `item`'s.
+    TakeAttack {
+        item: u32,
+        attack: Option<melee_types::combat::AttackInstance>,
+    },
+    /// it_80293E34 (80293E34) on the held Hammer `item`: xD4C counts down
+    /// and the head flies off (it_80299C48) from the model's joint 3 along
+    /// joint 1's direction toward it, spawned at `center` (the holder's
+    /// ftLib_80086990) for `owner`.
+    HammerHeadLoss {
+        item: u32,
+        owner: u8,
+        center: Vec3,
+    },
     /// Item_8026A8EC: `item` is destroyed at once (a holder's death).
     Destroy {
         item: u32,

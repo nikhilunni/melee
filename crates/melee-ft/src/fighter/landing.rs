@@ -64,6 +64,10 @@ impl Fighter {
         allow_interrupt: bool,
         lag: f32,
     ) -> Result<()> {
+        if self.core.holding_hammer() {
+            // ftCo_Landing.c:107: HammerLanding instead.
+            return self.enter_hammer_landing(assets);
+        }
         let retained_drop_timer = self.retained_drop_timer();
         self.land();
         // Fighter.x2EC is the normal Landing animation length (fighter.c:836).
@@ -86,6 +90,10 @@ impl Fighter {
     /// ftCo_LandingFallSpecial_Enter_Basic (800D5C54): LandingFallSpecial
     /// at its own rate, without the landing interrupt.
     pub(super) fn enter_basic_special_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.core.holding_hammer() {
+            // ftCo_Landing.c:95: HammerLanding instead.
+            return self.enter_hammer_landing(assets);
+        }
         let retained_drop_timer = self.retained_drop_timer();
         self.land();
         self.change_motion_state(CommonMotionState::LandingFallSpecial.into(), assets)?;
@@ -99,6 +107,10 @@ impl Fighter {
     }
     /// ftCo_Landing_Enter_Basic -> ftCo_Landing_Enter (0x800D5AEC).
     pub fn enter_landing(&mut self, assets: &FighterAssets) -> Result<()> {
+        if self.core.holding_hammer() {
+            // ftCo_Landing.c:85: HammerLanding instead.
+            return self.enter_hammer_landing(assets);
+        }
         self.enter_landing_with(assets, true)
     }
     /// ftCo_Landing_Enter (0x800D5AEC) on Landing at frame 0, rate 1, with
@@ -259,6 +271,28 @@ impl FighterCore {
                 super::cargo::CargoState::Carry { retained_word }
                 | super::cargo::CargoState::Throw { retained_word, .. },
             ) => (*retained_word)?,
+            // HammerWait / HammerFall write nothing; mv.co.hammerkneebend.x4
+            // is the ftCo_JumpInput; mv.co.hammerlanding.x4 the frames left.
+            MotionData::Hammer(super::hammer::HammerState::Carry { retained_word }) => {
+                (*retained_word)?
+            }
+            MotionData::Hammer(super::hammer::HammerState::KneeBend { input, .. }) => {
+                f32::from_bits(match input {
+                    super::jump::JumpInput::Stick => 1,
+                    super::jump::JumpInput::CStick => 2,
+                    super::jump::JumpInput::Buttons => 3,
+                })
+            }
+            MotionData::Hammer(super::hammer::HammerState::Landing { frames }) => *frames,
+            // mv.co.mushroom.x4: the change's end callback, a function
+            // address (ftCo_800D15D0, ftCo_800D1B04, ftCo_800D1F6C,
+            // ftCo_800D23F4).
+            MotionData::Mushroom(state) => f32::from_bits(match state.finish {
+                super::mushroom::MushroomFinish::Grown => 0x800D_15D0,
+                super::mushroom::MushroomFinish::GiantEnded => 0x800D_1B04,
+                super::mushroom::MushroomFinish::Shrunk => 0x800D_1F6C,
+                super::mushroom::MushroomFinish::SmallEnded => 0x800D_23F4,
+            }),
             // ftCo_Throw.c:139,279: integer mv.co.throw.x4.
             MotionData::Throw => f32::from_bits(u32::from(self.combat.throw_flight.frozen)),
             // mv.co.itemthrow4.anim_spd (ftCo_800957F4 writes it first).

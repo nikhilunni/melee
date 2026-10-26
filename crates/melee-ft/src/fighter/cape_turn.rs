@@ -194,9 +194,24 @@ impl Fighter {
     /// Fighter_8006A360's status step (`FighterCore::proc_status`), with a
     /// character's x21F8 when ftCo_800C37A0 ends a turn in its state.
     pub fn proc_status(&mut self) {
-        if self.core.proc_status() {
+        if self.core.proc_status_head() {
             (self.character.table().cape_turn_end)(self);
         }
+        self.core.record_collision_bounds();
+    }
+
+    /// Fighter_8006A1BC with the Mushrooms (fighter.c:1427-1440): the
+    /// touches this frame apply after the cape turn, before ft_800819A8.
+    pub fn proc_status_with_assets(&mut self, assets: &super::assets::FighterAssets) -> super::assets::Result<()> {
+        if self.core.status.disabled {
+            return Ok(());
+        }
+        if self.core.proc_status_head() {
+            (self.character.table().cape_turn_end)(self);
+        }
+        self.apply_mushrooms(assets)?;
+        self.core.record_collision_bounds();
+        Ok(())
     }
 
     /// Installs fp->x21F8 after the motion change that cleared it.

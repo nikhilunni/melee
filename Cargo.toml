@@ -34,6 +34,8 @@ members = [
     "crates/it-scball",
     "crates/it-metalb",
     "crates/it-rabbitc",
+    "crates/it-hammer",
+    "crates/it-kinoko",
     "crates/it-spycloak",
     "crates/it-container",
     "crates/it-monsters",

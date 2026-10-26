@@ -209,6 +209,9 @@ pub trait ItemLogic {
     /// The logic row's EnteredAir, which Item_8026ADC0 runs when a floor's
     /// slope starts the item sliding; None for a NULL entry.
     const ENTERED_AIR: Option<EnteredAir> = None;
+    /// Item.entered_hitlag (EnterHitlagThink): run as the item enters
+    /// hitlag, told whether it took damage this frame (xDC8 xB).
+    const ENTERED_HITLAG: Option<fn(&mut ItemCore, bool)> = None;
     fn damage_dealt(_item: &mut ItemCore, _context: &ItemEventContext<'_>) -> bool {
         false
     }
@@ -327,6 +330,7 @@ pub trait ItemLogic {
         dropped: Self::dropped,
         thrown: Self::thrown,
         entered_air: Self::ENTERED_AIR,
+        entered_hitlag: Self::ENTERED_HITLAG,
         damage_dealt: Self::damage_dealt,
         damage_received: Self::damage_received,
         reflected: Self::reflected,
@@ -396,6 +400,7 @@ pub struct ItemLogicRow {
     pub dropped: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub thrown: fn(&mut ItemCore, &mut ItemAnimationContext<'_>),
     pub entered_air: Option<EnteredAir>,
+    pub entered_hitlag: Option<fn(&mut ItemCore, bool)>,
     pub damage_dealt: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub damage_received: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,
     pub reflected: fn(&mut ItemCore, &ItemEventContext<'_>) -> bool,

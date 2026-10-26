@@ -2542,3 +2542,42 @@ stocks = 4
 seed = 1989356271
 item_frequency = 4
 item_mask = "0xfffffff880000000"
+
+# Items on, the Hammer alone (make_boundary.py --item-frequency very-high
+# --items Hammer --no-containers).
+[[boundary]]
+name = "start_fd_items_hammer"
+cold = "start_fd_items_hammer_cold"
+savestate = "harness/roms/start_fd_items_hammer.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4280688657
+item_frequency = 4
+item_mask = "0xfffffff810000000"
+
+# Items on, the Super Mushroom alone (make_boundary.py --item-frequency
+# very-high --items Kinoko --no-containers).
+[[boundary]]
+name = "start_fd_items_kinoko"
+cold = "start_fd_items_kinoko_cold"
+savestate = "harness/roms/start_fd_items_kinoko.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2093931175
+item_frequency = 4
+item_mask = "0xfffffff804000000"
+
+# Items on, the Poison Mushroom alone (make_boundary.py --item-frequency
+# very-high --items DKinoko --no-containers).
+[[boundary]]
+name = "start_fd_items_dkinoko"
+cold = "start_fd_items_dkinoko_cold"
+savestate = "harness/roms/start_fd_items_dkinoko.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 3284521034
+item_frequency = 4
+item_mask = "0xfffffff808000000"
