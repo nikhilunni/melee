@@ -125,12 +125,14 @@ impl ItemCore {
         collision
     }
 
-    /// it_80274990: the rotation about xDC8 x17's axis (Z, X, then Y).
+    /// it_80274990: the rotation about xDC8 x17's axis (Z, X, then Y) of
+    /// the model's spin joint (it_802746F8).
     pub(crate) fn ecb_angle(&self) -> f32 {
+        let rotation = self.spin_joint_rotation.unwrap_or(self.rotation);
         match self.rotation_axis {
-            0 => self.rotation.z,
-            1 => self.rotation.x,
-            _ => self.rotation.y,
+            0 => rotation.z,
+            1 => rotation.x,
+            _ => rotation.y,
         }
     }
 

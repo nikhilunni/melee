@@ -4,8 +4,9 @@
 //! into a wall, landing hard, at its damage threshold or hitting anything
 //! (efAsync 0x427's boards, then one item or a blast).
 //!
-//! The staves' tilt (it_80287690's child joint) is drawing only; the root's
-//! roll angle is kept as the model's rotation. A struck barrel set rolling
+//! The root's roll angle is kept as the model's rotation; the staves' child
+//! joint (ItemModelDesc spin depth 1) is kept apart, since its rotation X
+//! turns the push box (it_80271A58 via it_802746F8). A struck barrel set rolling
 //! takes its striker's fighter owner (it_8027236C, it_8027B1F4).
 use crate::{no_animation, no_collision, no_physics};
 use hsd_types::Vec3;
@@ -88,6 +89,10 @@ impl Attributes<'_> {
         self.0[5]
     }
     /// x20: the fastest roll.
+    /// x18: the staves' straightening, in calls (it_80287690's divisor).
+    fn straightening_frames(&self) -> f32 {
+        self.0[6]
+    }
     fn top_speed(&self) -> f32 {
         self.0[8]
     }
@@ -176,6 +181,7 @@ impl ItemLogic for Barrel {
         item.facing = -1.0;
         item.slide_mode = 0;
         item.ecb_follows_rotation = false;
+        item.spin_joint_rotation = Some(authored_staves(assets));
         item.command_variables[0] = 0;
         item.command_variables[1] = 0;
         item.scratch = ItemScratch::Barrel(BarrelState {
@@ -206,7 +212,7 @@ impl ItemLogic for Barrel {
     /// itTaru_Logic2_Thrown: the model's authored rotation (lb_8000B804),
     /// not grabbable, state 3.
     fn thrown(item: &mut ItemCore, context: &mut ItemAnimationContext<'_>) {
-        item.reset_model_rotation(context.assets);
+        reset_model_rotation(item, context.assets);
         item.grabbable = false;
         change(item, motion::THROWN, ANIM_UPDATE | DROP_UPDATE, context.assets);
     }
@@ -513,7 +519,7 @@ fn fall_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> bo
 fn thrown_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
     item.fall(ctx.assets.fall_acceleration, ctx.assets.fall_speed_limit);
     roll(item, ctx.assets);
-    turn(item);
+    turn(item, ctx.assets);
 }
 
 /// itTaru_UnkMotion3_Coll (80287FB0): on a floor it lands with its sound;
@@ -532,7 +538,7 @@ fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
         if speed < ctx.assets.rest_speed {
             barrel_mut(item).roll_speed = item.facing * gekko_math::msl::fabsf(item.velocity.x);
             // it_802881B4: lb_8000B804, then it_802881FC.
-            item.reset_model_rotation(ctx.assets);
+            reset_model_rotation(item, ctx.assets);
             start_rolling(item, ctx.assets);
         } else {
             item.enter_air();
@@ -546,14 +552,14 @@ fn thrown_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) -> 
         break_unless_opened(item);
         return false;
     }
-    turn(item);
+    turn(item, ctx.assets);
     false
 }
 
 /// itTaru_UnkMotion5_Phys: the roll and its angle.
 fn rolling_physics(item: &mut ItemCore, ctx: &ItemPhysicsContext<'_>) {
     roll(item, ctx.assets);
-    turn(item);
+    turn(item, ctx.assets);
 }
 
 /// itTaru_UnkMotion5_Coll (80288324): it_8026D62C (off the ground the
@@ -584,7 +590,7 @@ fn rolling_collision(item: &mut ItemCore, ctx: &mut ItemCollisionContext<'_>) ->
             item.strikes_kindred_items = true;
         }
     }
-    turn(item);
+    turn(item, ctx.assets);
     false
 }
 
@@ -631,8 +637,57 @@ fn roll(item: &mut ItemCore, assets: &ItemAssets) {
     item.velocity.x = velocity_x;
 }
 
-/// it_80287690 (80287690): the root's roll angle (rotation Z). The staves'
-/// child joint is drawing only.
-fn turn(item: &mut ItemCore) {
+/// The staves' standing rotation Z (it_80287690: 1.5707964) and the band
+/// around it the straightening stops in.
+const STAVES_UPRIGHT: f32 = 1.570_796_4;
+const STAVES_UPRIGHT_ABOVE: f32 = 1.588_249_6;
+const STAVES_UPRIGHT_BELOW: f32 = 1.553_343;
+/// it_80287690: the tilt's band, one degree.
+const ONE_DEGREE: f32 = 0.017_453_292;
+
+/// it_80287690 (80287690): after a pickup (xDB0) the staves straighten
+/// by 1.5707964 / x18 a call, rotation Z toward upright and X toward the
+/// tilt (xDDC), ending xDB0 once Z is within its band; otherwise they
+/// stand upright at the tilt. The root's rotation Z is the roll angle.
+fn turn(item: &mut ItemCore, assets: &ItemAssets) {
+    let step = STAVES_UPRIGHT / Attributes(&assets.special_attributes).straightening_frames();
+    let tilt = barrel(item).tilt;
+    let mut staves = item.spin_joint_rotation.unwrap_or_default();
+    if item.command_variables[1] != 0 {
+        let z = staves.z;
+        staves.z = if z > STAVES_UPRIGHT_ABOVE + step {
+            z - step
+        } else if z < STAVES_UPRIGHT_BELOW - step {
+            z + step
+        } else {
+            item.command_variables[1] = 0;
+            STAVES_UPRIGHT
+        };
+        let x = staves.x;
+        // Separate fadds: (tilt + one degree) + step.
+        staves.x = if x > tilt + ONE_DEGREE + step {
+            x - step
+        } else if x < tilt - ONE_DEGREE - step {
+            x + step
+        } else {
+            tilt
+        };
+    } else {
+        staves.z = STAVES_UPRIGHT;
+        staves.x = tilt;
+    }
+    item.spin_joint_rotation = Some(staves);
     item.rotation.z = barrel(item).roll_angle;
+}
+
+/// The staves' authored rotation (the model's first child).
+fn authored_staves(assets: &ItemAssets) -> Vec3 {
+    let child = assets.visual.model.child.as_ref().map(|c| c.rotation);
+    child.map_or(Vec3::ZERO, |r| Vec3::new(r.x, r.y, r.z))
+}
+
+/// lb_8000B804 on the whole model: the root and the staves as authored.
+fn reset_model_rotation(item: &mut ItemCore, assets: &ItemAssets) {
+    item.reset_model_rotation(assets);
+    item.spin_joint_rotation = Some(authored_staves(assets));
 }

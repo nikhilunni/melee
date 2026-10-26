@@ -1214,6 +1214,11 @@ pub struct ItemCore {
     /// fixed ECB at the model's rotation (it_80276214 -> it_80276278). A
     /// kind that clears it keeps the ECB upright while its model spins.
     pub ecb_follows_rotation: bool,
+    /// The rotation of the joint ItemModelDesc xC bits 6-7 name when it is
+    /// not the root (it_802746F8), for a kind that turns that joint apart
+    /// from the root: the push box (it_80271A58) and the ECB angle
+    /// (it_80274990) read it. `None`: the root's (`rotation`).
+    pub spin_joint_rotation: Option<Vec3>,
     /// xDC8 x15 (it_8026B390 / it_8026B3A8): Item_IsGrabbable requires it,
     /// and it gates the common lifetime countdown (Item_80269528).
     pub grabbable: bool,
@@ -2382,6 +2387,7 @@ impl ItemPool {
             spin_speed: 0.0,
             spin_ignores_facing: assets.rotate_to_facing,
             ecb_follows_rotation: true,
+            spin_joint_rotation: None,
             // Item_80267130 (item.c:233): it_8026B390.
             grabbable: true,
             grab_offset: assets.grab_offset,
