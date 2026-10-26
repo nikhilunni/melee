@@ -49,6 +49,7 @@ melee_it::item_kinds! {
         PeachToadSpore: it_peach::PeachToadSpore,
         Heiho: it_heiho::Heiho,
         Tools: it_tools::Tools,
+        ArwingLaser: it_arwinglaser::ArwingLaser,
         Yaku: it_yaku::Yaku,
         PikachuTJoltGround: it_pikachu::ThunderJoltBall,
         PikachuTJoltAir: it_pikachu::ThunderJoltCrawler,
@@ -1672,6 +1673,12 @@ impl Resources {
             kinds.push((ItemKind::Tools, tools));
             visual_archives.push((ItemKind::Tools, std::sync::Arc::new(stage.clone())));
         }
+        // The Star Fox stages' ship lasers (it_802E7654), from GrVe.dat's
+        // itemdata.
+        if let Some(laser) = it_arwinglaser::load(stage).map_err(|e| anyhow::anyhow!("{e}"))? {
+            kinds.push((ItemKind::ArwingLaser, laser));
+            visual_archives.push((ItemKind::ArwingLaser, std::sync::Arc::new(stage.clone())));
+        }
         // Ground_801C0800 (ground.c:493-498): a stage with ALDYakuAll
         // scripts its material item (it_802E6AEC, Jungle Japes' Klaptrap).
         if let Some(yaku) = ItemAssets::from_yaku(&common_archive, public, stage)? {
@@ -2897,6 +2904,57 @@ pub(crate) fn spawn_tool(
         .as_mut()
         .expect("tool collision")
         .joint_id_only = crate::scene_stage::flatzone::GROUND_JOINT;
+}
+
+/// it_802E7654 (0x802E7654): a ship's laser at its gun, launched toward
+/// the target, then it_802750F8 (its physics and collision at once, with
+/// no blast-zone test) and xDCC b3 cleared for good: the laser never
+/// leaves through a blast zone.
+pub(crate) fn spawn_arwing_laser(
+    state: &mut crate::initial_state::InitialState,
+    world: &mut World,
+    objects: &mut Objects,
+    launch: it_arwinglaser::Launch,
+    bounds: &melee_it::ItemBounds,
+) -> Result<()> {
+    let before = state.items.len();
+    request(
+        &mut state.items,
+        &mut state.effects.gobjs,
+        &state.assets.items,
+        &mut state.map,
+        world,
+        objects,
+        ItemRequest::Spawn(it_arwinglaser::spawn(launch.gun)),
+        RequestOwner {
+            slot: None,
+            secondary: false,
+            held_item: None,
+            after_hitbox_refresh: false,
+            efasync_immediate: false,
+            stale_multiplier: 1.0,
+            bounds: None,
+        },
+        &mut state.rng,
+    );
+    anyhow::ensure!(state.items.len() > before, "it_802E7654: no item slot for a laser");
+    let assets = state.assets.items.get(ItemKind::ArwingLaser);
+    let id = state.items.iter().last().expect("the new laser").id;
+    let half_life_scale = state.items.common().half_life_scale;
+    let item = state.items.get_mut(id).expect("the new laser");
+    it_arwinglaser::launch(item, &launch, assets, half_life_scale);
+    item.blast_zone_checked = false;
+    let cell = std::cell::Cell::new(state.rng);
+    state
+        .items
+        .physics::<SceneItems>(id, None, &Default::default(), bounds, assets, &state.map, &cell);
+    state.rng = cell.get();
+    let contact = state.items.stage_contact(id, &mut state.map);
+    state
+        .items
+        .collide::<SceneItems>(id, None, contact, &mut state.map, bounds, assets, Some(&cell));
+    state.rng = cell.get();
+    Ok(())
 }
 
 /// ftCo_800C74F4's view of the ReDead behind a fighter's pending hit

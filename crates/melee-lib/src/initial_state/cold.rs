@@ -175,6 +175,12 @@ impl InitialState {
         if matches!(stage, SceneStage::Shrine(_)) {
             radial_forces.insert_directional(melee_gr::shrine::wind());
         }
+        // grVenom_80203B18's two lb_80011A50 fields, after maps 4..7.
+        if matches!(stage, SceneStage::Venom(_)) {
+            for gust in crate::scene_stage::venom::winds() {
+                radial_forces.insert_directional(gust);
+            }
+        }
         // Fountain of Dreams and the N64 stages bind their collision
         // joints during creation.
         let archive_bindings = !matches!(
@@ -190,6 +196,7 @@ impl InitialState {
                 | SceneStage::Inishie1(_)
                 | SceneStage::Onett(_)
                 | SceneStage::Zebes(_)
+                | SceneStage::Venom(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -454,6 +461,8 @@ fn setup_draws(
         // grZebes_801D9508's HSD_Randi(600); grZebes_801D9798's first delay
         // (rand_range(800, 0)) and height (HSD_Randf).
         GrKind::Zebes => 3,
+        // grVenom_80203B18 draws nothing: its first wait is 600 to 600.
+        GrKind::Venom => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -721,6 +730,11 @@ fn initialize_stage(
         }
         GrKind::Zebes => {
             let (stage, animations) = crate::scene_stage::zebes::initialize(assets, rng, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Venom => {
+            let (stage, animations) = crate::scene_stage::venom::initialize(assets, rng, map)?;
             stage_animations = animations;
             stage
         }

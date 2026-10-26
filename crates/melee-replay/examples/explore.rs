@@ -92,6 +92,8 @@ fn stage_edges(stage: Stage) -> StageEdges {
         Stage::Onett => (85.0, 55.0),
         // The lower floor's ends (an approximation for the policies).
         Stage::Brinstar => (70.0, 45.0),
+        // The Great Fox's wings end at about x -93.6 and 93.6.
+        Stage::Venom => (88.0, 60.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

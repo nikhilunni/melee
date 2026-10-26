@@ -230,6 +230,48 @@ impl BackgroundAnimation {
         let joint = self.tree.parent(self.root).unwrap_or(self.root);
         self.tree.set_translate(joint, &translate);
     }
+    /// `HSD_JObjSetScale` on the Ground GObj's JObj (the map-scale wrapper).
+    pub fn set_gobj_scale(&mut self, scale: hsd_types::Vec3) {
+        let joint = self.tree.parent(self.root).unwrap_or(self.root);
+        self.tree.set_scale(joint, &scale);
+    }
+    /// The world matrix of a model bone and its orientation target, as an
+    /// RObj constraint on another model's joint reads them (robj.c).
+    pub fn joint_target(&mut self, bone: usize) -> (hsd_types::Mtx, hsd_anim::orientation::OrientationTarget) {
+        let joint = self.joints[bone];
+        let target = self.tree.orientation_target(joint);
+        (*self.tree.get_mtx(joint), target)
+    }
+    /// Reserve bone `bone`'s RObj constraint slots before the tick loop.
+    pub fn reserve_constraint(&mut self, bone: usize) {
+        let joint = self.joints[bone];
+        self.tree.reserve_position_constraint(joint);
+        self.tree.reserve_orientation_constraint(joint);
+    }
+    /// `lb_8000C2F8(bone, target)` (0x8000C2F8) as the constraint resolves
+    /// now: bone `bone` takes the target's world position and orientation
+    /// (`None` removes both).
+    pub fn constrain_joint<T: hsd_anim::mtx::InverseTrig>(
+        &mut self,
+        bone: usize,
+        target: Option<(hsd_types::Mtx, hsd_anim::orientation::OrientationTarget)>,
+    ) {
+        let joint = self.joints[bone];
+        match target {
+            Some((matrix, orientation)) => {
+                let position = hsd_types::Vec3::new(matrix.0[0][3], matrix.0[1][3], matrix.0[2][3]);
+                self.tree.set_position_constraint(joint, Some(position));
+                self.tree.set_orientation_constraint(
+                    joint,
+                    Some((orientation, hsd_anim::mtx::hsd_mtx_get_rotation::<T>)),
+                );
+            }
+            None => {
+                self.tree.set_position_constraint(joint, None);
+                self.tree.set_orientation_constraint(joint, None);
+            }
+        }
+    }
     /// HSD_JObjSetRotation on the actual Ground GObj root (the wrapper).
     pub fn set_gobj_rotation(&mut self, rotation: hsd_types::Vec3) {
         let joint = self.tree.parent(self.root).unwrap_or(self.root);

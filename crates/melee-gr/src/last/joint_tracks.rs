@@ -47,6 +47,22 @@ impl BackgroundAnimation {
         self.restart_track(joint, frame, rate);
     }
 
+    /// `grAnime_801C7FF8(gobj, bone, 7, index, frame, rate)` from the switch
+    /// [`Self::prepare_subtree`] decoded: [`Self::play_subtree_tracks`],
+    /// then the subtree's material animations of `index`.
+    pub fn play_subtree_switch(&mut self, bone: usize, index: usize, frame: f32, rate: f32) {
+        self.play_subtree_tracks(bone, index, frame, rate);
+        self.play_material_subtree(bone, index);
+    }
+
+    /// `grAnime_801C8098(gobj, bone, 7, index, frame, rate)` from the switch
+    /// [`Self::prepare_joint_switch`] decoded: [`Self::play_joint_track`],
+    /// then the bone's own material animations of `index`.
+    pub fn play_joint_switch(&mut self, bone: usize, index: usize, frame: f32, rate: f32) {
+        self.play_joint_track(bone, index, frame, rate);
+        self.play_materials(index, bone, bone + 1);
+    }
+
     /// `grAnime_801C78FC(gobj, bone, 1)` (0x801C78FC): the subtree's joint
     /// clocks stop looping.
     pub fn clear_subtree_loops(&mut self, bone: usize) {

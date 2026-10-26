@@ -466,6 +466,13 @@ impl Fighter {
             capabilities.model_width = Some(assets.common.flat_zone_scale_z);
             capabilities.flat_zone = true;
         }
+        capabilities.star_fox_taunt = matches!(
+            map.grkind(),
+            melee_types::GrKind::Corneria | melee_types::GrKind::Venom
+        ) && matches!(
+            assets.kind,
+            melee_types::FighterKind::Fox | melee_types::FighterKind::Falco
+        );
         character.on_load(&mut capabilities);
         character.on_resources_loaded(assets, &player);
         let motion_row = state::COMMON[CommonMotionState::Wait as usize];

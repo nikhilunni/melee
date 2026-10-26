@@ -2864,6 +2864,8 @@ impl Runtime {
                         || address == melee_gr::inishie1::procs::DYNAMICS_PROC
                         || address == melee_gr::onett::procs::DYNAMICS_PROC
                         || address == melee_gr::zebes::procs::DYNAMICS_PROC
+                        || (address == melee_gr::venom::procs::DYNAMICS_PROC
+                            && matches!(state.stage, SceneStage::Venom(_)))
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -2933,6 +2935,20 @@ impl Runtime {
                         crate::scene_stage::onett::run_proc(state, map_id, &mut self.particle_draws)?;
                     } else if matches!(state.stage, SceneStage::Zebes(_)) {
                         crate::scene_stage::zebes::run_proc(state, map_id, &mut self.particle_draws)?;
+                    } else if matches!(state.stage, SceneStage::Venom(_)) {
+                        crate::scene_stage::venom::run_proc(
+                            state,
+                            map_id,
+                            world,
+                            &mut self.stage_objects,
+                        )?;
+                        let bounds = item_bounds(&state.assets);
+                        crate::scene_stage::venom::spawn_lasers(
+                            state,
+                            world,
+                            &mut self.item_objects,
+                            &bounds,
+                        )?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and
@@ -4038,6 +4054,7 @@ impl Simulation {
                     runtime.state.particles.sort_for_display(7);
                     render_cameras(&mut runtime.state);
                     display_posed_articles(&mut runtime.state, runtime.frame - 1);
+                    crate::scene_stage::venom::display(&mut runtime.state);
                     display_held_items(&mut runtime.state);
                 }
                 DisplayPass::RollbackLoop if runtime.frame != 0 => {
@@ -4148,6 +4165,7 @@ impl Simulation {
                                         .expect("an event map's gobj proc")
                                         .1
                                 }
+                                SceneStage::Venom(_) => melee_gr::venom::procs::map_callback(map).1,
                                 _ => melee_gr::last::procs::map_callback(map),
                             },
                         },

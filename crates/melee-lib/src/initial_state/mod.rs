@@ -28,6 +28,7 @@ mod stage_oldyoshi;
 mod stage_shrine;
 mod stage_kongo;
 mod stage_kraid;
+mod stage_venom;
 mod stage_zebes;
 mod stage_yorster;
 mod stage_inishie1;
@@ -431,6 +432,9 @@ impl InitialState {
         }
         if assets.stage_desc.kind == melee_types::GrKind::Zebes {
             stage_zebes::restore_collision(&saved, &mut map)?;
+        }
+        if assets.stage_desc.kind == melee_types::GrKind::Venom {
+            stage_venom::restore_collision(&saved, &mut map)?;
         }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;

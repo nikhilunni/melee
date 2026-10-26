@@ -172,6 +172,10 @@ fn setup_snapshot(state: &InitialState) -> Record {
                 sink.field(&format!("stage.zebes.bubble[{i}].size"), &bubble.size);
             }
         }
+        SceneStage::Venom(stage) => {
+            sink.field("stage.venom.wait", &stage.spawner.wait);
+            sink.field("stage.venom.frame", &stage.sequence.frame);
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -410,6 +414,11 @@ fn start_brin_fox_marth4_cold_600() {
 #[test]
 fn start_brin_falco_peach4_cold_600() {
     verify("start_brin_falco_peach4");
+}
+
+#[test]
+fn start_venom_fox_marth4_cold_600() {
+    verify("start_venom_fox_marth4");
 }
 
 #[test]

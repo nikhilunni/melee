@@ -51,6 +51,29 @@ pub struct ItemBounds {
     /// cam_y_offset).
     pub camera_offset: hsd_types::Vec2,
 }
+/// `xDD4_itemVar.arwinglaser` (itarwinglaser.c): a stage ship's laser.
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct ArwingLaserState {
+    /// xDFC: the map scale (Ground_801C0498); xE34: the shooter's scale.
+    pub map_scale: f32,
+    pub scale: f32,
+    /// xE0C: the unit direction toward the target (it_802E7654).
+    pub direction: Vec3,
+    /// xE18: the tip (dynamic bone 4) as the collision proc last found it;
+    /// xE24: the tip a tick before.
+    pub tip: Vec3,
+    pub previous_tip: Vec3,
+    /// xE30: the shot has left the gun.
+    pub launched: bool,
+    /// xE38: the laser's type (1 an Arwing's, 3 a Wolfen's).
+    pub kind: i32,
+    /// xE3C: reflected or bounced off a shield.
+    pub turned: bool,
+    /// xE48: the collision joint the line tests keep to (it_8026EA9C).
+    pub joint: i32,
+    /// xE4C: the ticks the laser has spent near the stage's plane.
+    pub near_ticks: i32,
+}
 #[derive(Clone, Debug, Default)]
 pub struct RayState {
     pub angle: f32,
@@ -247,6 +270,7 @@ pub enum ItemScratch {
     Needle(NeedleState),
     Afterimage(AfterimageState),
     Ray(RayState),
+    ArwingLaser(ArwingLaserState),
     Held(HeldState),
     Bomb(BombState),
     Dosei(DoseiState),

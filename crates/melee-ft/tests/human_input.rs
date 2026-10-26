@@ -444,6 +444,14 @@ fn wait_iasa_order_table_uses_real_input_predicates() {
         },
     );
     assert_eq!(wait_iasa(&i, &common(), &WaitContext::default()), T::None);
+}
+
+/// The Star Fox taunt fires on the release of a one-frame down press; its
+/// motion and the stage's Arwings are not ported, so it stops there.
+#[test]
+#[should_panic(expected = "ftFx_AppealS_CheckInput")]
+fn the_star_fox_taunt_is_refused() {
+    let mut i = FighterInput::default();
     tick(&mut i, pad(Buttons::DOWN, 0.0, 0.0));
     tick(&mut i, pad(Buttons::UP, 0.0, 0.0));
     let mut visited = Vec::new();
@@ -451,11 +459,7 @@ fn wait_iasa_order_table_uses_real_input_predicates() {
         fox_taunt_available: true,
         ..WaitContext::default()
     };
-    assert_eq!(
-        wait_iasa_observe(&i, &common(), &ctx, |p| visited.push(p)),
-        T::Taunt
-    );
-    assert_eq!(visited.last(), Some(&P::FoxTaunt));
+    wait_iasa_observe(&i, &common(), &ctx, |p| visited.push(p));
 }
 
 #[test]

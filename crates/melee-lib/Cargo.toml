@@ -17,6 +17,7 @@ it-wstar = { path = "../it-wstar" }
 it-container = { path = "../it-container" }
 it-monsters = { path = "../it-monsters" }
 it-klap = { path = "../it-klap" }
+it-arwinglaser = { path = "../it-arwinglaser" }
 it-dosei = { path = "../it-dosei" }
 it-coin = { path = "../it-coin" }
 it-yoshieggthrow = { path = "../it-yoshieggthrow" }

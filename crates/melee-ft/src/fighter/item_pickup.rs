@@ -428,6 +428,7 @@ impl FighterCore {
             held_item: self.held_item.map(|held| held.use_kind == 0),
             tether_active: self.tether_article,
             floor: self.collision.data.floor,
+            fox_taunt_available: self.capabilities.star_fox_taunt,
             ..Default::default()
         }
     }

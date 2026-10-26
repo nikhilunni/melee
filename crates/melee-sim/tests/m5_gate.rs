@@ -5408,7 +5408,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 905] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 915] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6864,6 +6864,20 @@ static CORPUS_V3_MATCHES: [(&str, usize); 905] = [
     ("corpus_v3_brin_fox_marth4_ed486ea18_p0", 6001),
     ("corpus_v3_brin_fox_marth4_edb4b01fd_p2", 6001),
     ("corpus_v3_brin_fox_marth4_ef89b3e70_p0", 4621),
+    // Venom (grvenom.c): near Arwing and Wolfen passes with their maneuvers
+    // and fighters riding the wing platforms (one star-KO'd on a rising
+    // wing), far passes firing lasers that hit fighters, the tunnel floor
+    // coming and going, the near-only window and the flight's loop.
+    ("corpus_v3_venom_fox_marth4_e89a89d0e_p0", 6001),
+    ("corpus_v3_venom_fox_marth4_e75fb4a9a_p1", 6001),
+    ("corpus_v3_venom_fox_marth4_edb2b114a_p2", 6001),
+    ("corpus_v3_venom_fox_marth4_e9943b4ab_p0", 6001),
+    ("corpus_v3_venom_fox_marth4_e70b3084c_p0", 12001),
+    ("corpus_v3_venom_fox_marth4_edb4b01fd_p0", 12001),
+    ("corpus_v3_venom_fox_marth4_e317831ba_p0", 12001),
+    ("corpus_v3_venom_fox_marth4_ebfeefc0e_p1", 12001),
+    ("corpus_v3_venom_fox_marth4_e2af099ca_p2", 6740),
+    ("corpus_v3_venom_fox_marth4_ea4d5d9ec_p2", 8679),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

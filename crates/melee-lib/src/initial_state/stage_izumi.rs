@@ -30,7 +30,7 @@ const COLL_VTX_SIZE: u32 = 0x18;
 /// HSD_JObj fields (jobj.h).
 const JOBJ_CHILD: u32 = 0x10;
 pub(super) const JOBJ_FLAGS: u32 = 0x14;
-const JOBJ_SCALE: u32 = 0x2C;
+pub(super) const JOBJ_SCALE: u32 = 0x2C;
 pub(super) const JOBJ_TRANSLATE: u32 = 0x38;
 const JOBJ_MTX: u32 = 0x44;
 pub(super) const JOBJ_AOBJ: u32 = 0x7C;
@@ -79,7 +79,7 @@ pub(super) fn model_joints(saved: &SavedPose, wrapper: u32) -> Vec<u32> {
     joints
 }
 
-fn saved_vec3(saved: &SavedPose, address: u32) -> Vec3 {
+pub(super) fn saved_vec3(saved: &SavedPose, address: u32) -> Vec3 {
     let raw = saved.bytes(address, 12);
     Vec3::new(float(raw, 0), float(raw, 4), float(raw, 8))
 }

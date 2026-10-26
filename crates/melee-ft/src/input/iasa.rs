@@ -287,12 +287,18 @@ pub fn evaluate(
             T::Shield,
         ),
         // ftFx_AppealS_CheckInput 800E59BC: on release, x682 == 1.
-        P::FoxTaunt => (
-            context.fox_taunt_available
+        P::FoxTaunt => {
+            let taunt = context.fox_taunt_available
                 && !input.current.held.intersects(Buttons::DOWN)
-                && input.buttons.down == 1,
-            T::Taunt,
-        ),
+                && input.buttons.down == 1;
+            if taunt {
+                // ftFox_CheckAppealSCount, ftFx_AppealS_Enter and the
+                // stage's Arwing sequence (grCorneria_801E2B80) are not
+                // ported.
+                unimplemented!("ftfoxappeals.c:55: ftFx_AppealS_CheckInput, the Star Fox taunt");
+            }
+            (false, T::Taunt)
+        }
         P::Taunt => (input.pressed.intersects(Buttons::UP), T::Taunt), // 800DE9D8
         P::Jump => (jump_input(input, common), T::Jump),               // 800CAED0, hammer absent
         // ftCo_Dash_CheckInput 800CA094: back-smash enters Turn, not Dash.

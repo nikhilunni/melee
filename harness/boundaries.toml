@@ -2410,3 +2410,12 @@ stage = "Brinstar"
 players = ["Falco", "Peach"]
 stocks = 4
 seed = 4061300109
+
+[[boundary]]
+name = "start_venom_fox_marth4"
+cold = "start_venom_fox_marth4_cold"
+savestate = "harness/roms/start_venom_fox_marth4.sav"
+stage = "Venom"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 2427796063

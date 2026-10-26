@@ -1,4 +1,4 @@
-# Brinstar (wave 27)
+# Wave 27 stages: Brinstar, Venom
 
 Wave 27's stage work. Each stage has start boundaries (warm and cold gated in
 `m4_gate`) and explorer matches in `CORPUS_V3_MATCHES`.
@@ -64,3 +64,43 @@ ends with HSD_JObjAnimAll: frame zero is evaluated at the switch, so its end
 
 Witnesses: 17 explorer matches in `CORPUS_V3_MATCHES` (632-6001 ticks, every
 key and particle exact), found by hunting the port for each event.
+
+## Venom (grvenom.c, GrVe.dat, StKind 0x16)
+
+Boundary `start_venom_fox_marth4`. Creation order 4, 0, 5, 9, 7; no setup
+draw (the first Arwing's wait is `yakumono_param` x0..x4 = 600..600). Map 5
+(the Great Fox) carries collision joints 0 and 1 on its root and bobs with
+its looping subtree animations; its proc runs the spawner. Two constant
+dynamics winds (lb_80011A50, one per half of the stage).
+
+- The flight (map 7, grVenom_8020454C): one 9999-frame loop whose first
+  AObj's frame raises flags at set frames. Frames 3800..6100 forbid passes;
+  6810..9200 allow only the near passes 1..4; at 4400 the tunnel floor
+  (collision joint 2 on map 9's identity root) comes and at 6100 it goes.
+  Map 9's init binds the joint under the map-scale wrapper (0.54) and then
+  sets the wrapper's x and y scale to 1: the tunnel's lines stand at the
+  file's own coordinates, 1/0.54 of the bind pose (a warm boundary restores
+  the wrapper's saved scale).
+- The spawner (grVenom_8020362C): while a pass lives the wait is drawn
+  again every tick (rand_range(960, 1800)); afterwards it counts down and a
+  pass of a new type (1..11, or 1..4 near-only) comes, an Arwing unless
+  `HSD_Randf() <= 0.15` and the last pass was not a Wolfen.
+- A pass (grVenom_80204F20 and the Star Fox inlines): the path (map 2,
+  animation `type - 1`, started on its first proc, the pass ends with it),
+  the ship (map 3 Arwing / 6 Wolfen) and for types 1..7 the platform
+  (map 10, joint 4 / map 13, joint 3) on the ship's bone 1. A near ship
+  banks every 120 ticks (one of four maneuvers on bone 1, grVe_803E5644);
+  a far ship (types 8..11) is held to the path's bone 5 (lb_8000C2F8's
+  RObjs) and, inside its type's window, fires at a fighter on its side
+  every eighth tick with a one-in-eight draw.
+- The laser (it-arwinglaser, itarwinglaser.c types 1 and 3): flies
+  straight at the target's position in depth too at x4_throw_speed_mul *
+  x4 (20 units a tick), tested against joint 0's lines only near the
+  stage's plane (|z| < 30), 400 ticks of life, no blast-zone test.
+  ArwingLaserAttr x0 points at an ItemAttr of its own (not the article's).
+
+Display only, not ported: lights and fog, map 7's culling and light
+restarts, the ships' colour overlay, the sounds, the shadow test. Guarded:
+the Star Fox taunt (Fox and Falco on Corneria or Venom, ftfoxappeals.c:55),
+the 1P stage's three slots (grVe_804D6A40), Corneria's cannon laser types
+0, 2, 4 and 5, a warm boundary with a pass out or inside the tunnel.

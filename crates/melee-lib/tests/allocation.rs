@@ -1042,6 +1042,65 @@ fn brinstar_long_matches_step_without_allocating() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// Venom over long random matches: the Arwing and Wolfen passes (their
+/// paths, ships, platforms and lasers) and the tunnel floor, all on storage
+/// reserved at load.
+#[test]
+fn venom_long_matches_step_without_allocating() {
+    TRACE.with(|v| v.set(std::env::var_os("MELEE_ALLOC_TRACE").is_some()));
+    let root = data_root();
+    let files = root.join("harness/roms/files");
+    if !melee_test_support::require_files([files.join("GrVe.dat")]) {
+        return;
+    }
+    const TICKS: usize = 12_000;
+    let mut failures = Vec::new();
+    for (index, pair) in [
+        [Character::Marth, Character::Peach],
+        [Character::Peach, Character::Falco],
+        [Character::Fox, Character::Marth],
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        let config = MatchConfig::versus(
+            Stage::Venom,
+            [
+                PlayerConfig::new(Port::P1, pair[0]),
+                PlayerConfig::new(Port::P2, pair[1]),
+            ],
+        )
+        .with_stocks(5)
+        .with_seed(Seed(0x7e40 + index as u32));
+        let assets = GameAssets::load(&files, &config).unwrap();
+        let mut game = Match::new(&assets, config).unwrap();
+        let mut choices = Choices(0x3a7f_19c5 ^ (index as u32 + 1));
+        let mut held = [(ControllerState::default(), 0); 2];
+        let mut first = None;
+        for tick in 0..TICKS {
+            if !game.status().is_running() {
+                break;
+            }
+            let mut inputs = Inputs::default();
+            for (port, (pad, remaining)) in held.iter_mut().enumerate() {
+                if *remaining == 0 {
+                    (*pad, *remaining) = choices.pad();
+                }
+                *remaining -= 1;
+                inputs.0[port] = *pad;
+            }
+            let count = measure(&mut game, &inputs);
+            if count != 0 {
+                first.get_or_insert((tick, count));
+            }
+        }
+        if let Some((tick, count)) = first {
+            failures.push(format!("{pair:?}: first allocating tick {tick} ({count})"));
+        }
+    }
+    assert!(failures.is_empty(), "{}", failures.join("\n"));
+}
+
 /// Every ported Special Melee mode (Stamina's HP-out KO and slowdown, the
 /// model scales, the cloak, Single Button, Lightning, Slo-Mo, Super Sudden
 /// Death) steps random play without allocating.

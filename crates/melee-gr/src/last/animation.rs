@@ -224,6 +224,11 @@ impl BackgroundAnimation {
         self.first_aobj(self.joints[bone])
             .is_some_and(|a| a.flags & hsd_anim::aobj::AOBJ_NO_ANIM != 0)
     }
+    /// `HSD_AObjGetCurrFrame(grAnime_801C8318(gobj, 0, 7))` (0x801C8318):
+    /// the current frame of the AObj `first_animation_ended` tests.
+    pub fn first_animation_frame(&self) -> Option<f32> {
+        self.first_aobj(self.root).map(|a| a.curr_frame)
+    }
     /// The end frame of the AObj `first_animation_ended` tests.
     pub fn first_animation_end_frame(&self) -> Option<f32> {
         self.first_aobj(self.root).map(|a| a.end_frame)

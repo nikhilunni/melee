@@ -874,6 +874,9 @@ pub enum AerialJumpStyle {
 
 #[derive(Clone, Debug, Default)]
 pub struct Capabilities {
+    /// Fox or Falco on Corneria or Venom (grCorneria_801E2CE8): the Wait
+    /// IASA offers the Star Fox taunt (ftFx_AppealS_CheckInput).
+    pub star_fox_taunt: bool,
     /// Fighter +2226 bit 1: ftCo_DownBound selects the grounded-damage variant.
     pub grounded_down_bound: bool,
     /// can_walljump, Fighter +2224 bit 0; Fox OnLoad sets this.

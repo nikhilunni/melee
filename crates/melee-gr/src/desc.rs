@@ -933,6 +933,24 @@ pub fn animation_subtree(
     )?)
 }
 
+/// grVe_StageData / grDatFiles_801C6038: GrVe.dat. grVe_StageCallbacks[5]
+/// carries flags 0xC0000000, so map 5 selects the lights and fog.
+pub fn read_venom(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Venom, 5)
+}
+/// `grVenom_YakumonoParam` (grvenom.c:38-50).
+pub fn read_venom_parameters(archive: &Archive) -> ReadResult<crate::venom::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    Ok(crate::venom::Parameters {
+        first_wait: [f(0x0)?, f(0x4)?],
+        wait: [f(0x8)?, f(0xC)?],
+        wolfen_chance: f(0x10)?,
+        maneuver_wait: f(0x2C)?,
+        ship_scale: f(0x34)?,
+    })
+}
 /// grZe_StageData / grDatFiles_801C6038: GrZe.dat. grZe_callbacks[6]
 /// carries flags 0xC0000000, so map 6 selects the lights and fog.
 pub fn read_zebes(archive: &Archive) -> ReadResult<StageDesc> {

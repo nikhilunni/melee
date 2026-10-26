@@ -57,6 +57,8 @@ fn collision_category(kind: ItemKind, hold_kind: u8) -> u8 {
         3 if kind == ItemKind::PokemonRandom => 5,
         // itmaplib.c:205-206: a Coin match's coin (hold kind 12).
         12 if kind == ItemKind::Unk4 => 5,
+        // The Star Fox stages' lasers (Item_802674AC's hold kind 5): 4.
+        5 if (ItemKind::ArwingLaser as u32..238).contains(&(kind as u32)) => 4,
         _ => unimplemented!("it_80275E98: collision category for {kind:?}"),
     }
 }

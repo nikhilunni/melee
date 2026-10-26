@@ -31,6 +31,7 @@ members = [
     "crates/it-monsters",
     "crates/it-klap",
     "crates/it-coin",
+    "crates/it-arwinglaser",
     "crates/it-dosei",
     "crates/it-yoshieggthrow",
     "crates/it-yoshistar",
