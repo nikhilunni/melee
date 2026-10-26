@@ -161,10 +161,11 @@ that order at s_link 4, each followed by Ground_801C2FE0.
   360 cases, launched at most 7); the road rising above x8 (dir 1,
   2488) and turning back up (2822); a car bone rank running dry
   (3173/3192); a car fallen below -2000 (3924); a flyer tilted past -30
-  low (1072) or past 65 degrees (1076/1079); a flyer's spawn on the route
-  platform (2190). The explorer reaches the -30 tilt and the route
-  overlap (explore 3e74affa_p1, 1b05b110_p0); recording them was blocked
-  by a full disk. The flyers' items fail closed (items stay refused).
+  past 65 degrees (1076/1079); a flyer's spawn on the route
+  platform (2190). The -30 low tilt is witnessed by
+  corpus_v3_bb_fox_marth4_e3e74affa_p1. The route overlap
+  (corpus_v3_bb_fox_marth4_e1b05b110_p0, ee133b82f_p1) is recorded but
+  not yet gated (docs/handoffs/wave27-big-blue.md). The flyers' items fail closed (items stay refused).
 - Fighters: x2219_b1 (`out_of_play`) holds only through the Entry motions;
   a fighter that stood still since the entry was exempt from the blast
   zone (the Falcon Flyer carried one past it).
