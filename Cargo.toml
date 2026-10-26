@@ -52,6 +52,7 @@ members = [
     "crates/it-heiho",
     "crates/it-kyasarin",
     "crates/it-tincle",
+    "crates/it-whispyapple",
     "crates/it-tools",
     "crates/it-yaku",
     "crates/it-seak",

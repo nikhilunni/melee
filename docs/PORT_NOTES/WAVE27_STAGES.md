@@ -139,3 +139,33 @@ The flags' own dynamics are drawing only.
   with an AppSRT carrying the root's scale.
 - The colour script grMaterial_801C9604 starts on a landed Bill (drawing
   only). The eye never goes below 50 * scale (grCastle_801D0FF0).
+
+## Green Greens (grgreens.c)
+
+Creation order 0, 2, 6, 5, 4. Setup draws 21: grGreens_80214B58 places
+eighteen of the thirty block slots (grGr_8049F9E0, a draw each), the first
+block wait, then Whispy's side and wait. The blocks and Whispy start when
+the countdown ends.
+
+- Blocks (map 6, grGreens_8021479C): two grids of three columns by five
+  rows. A falling block (a map-1 or map-3 GObj with a stage material item
+  carrying its hurt capsule) picks its column by the weights of the
+  columns' heights, stacks, lands on its spot and stitches its lines to
+  its landed neighbours (mpLib_800581DC). A hit (yaku.x18, from the item's
+  hit proc, item link 14) or a head bump while it falls breaks it: a block
+  quakes Small and breaks (efSync 1032, 0x408 -> generator 0x3E AppSRT); a
+  bomb's item enters state 1, its blast hitbox placed at once when the
+  strike came from link 14 (it_802790C0's s_link > 11), the blast efSync
+  1039.
+- Whispy (maps 5 and 4): idle animations drawn by HSD_Randi(8), the blow
+  (a fighter wind device and a directional field per blowing loop, toward
+  the fighters' side) and the apples (it_802EE200: kind and fate drawn,
+  HSD_Randi(2) facing). grAnime_801C8138 resets the rest pose
+  (lb_8000B804) and evaluates frame zero, and the particles on Whispy's
+  JObjs read that pose in the particle proc, so both maps republish after
+  his proc.
+- Apples (it-whispyapple): the enter state waits for the stage plane
+  (pos.z >= 0), then bounces with a drawn sound (it_803F9250[HSD_Randi(3)])
+  and rests; ECB rotation follows the spin, whose landing rate is ItCo +74
+  (it_8026DC24). A healing apple needs items on and fails closed
+  (itwhispyapple.c:110).

@@ -2161,7 +2161,7 @@ fn wave27_stage_hazards_step_without_allocating() {
         return;
     }
     const TICKS: usize = 14_000;
-    for (index, stage) in [Stage::PrincessPeachsCastle].into_iter().enumerate() {
+    for (index, stage) in [Stage::PrincessPeachsCastle, Stage::GreenGreens].into_iter().enumerate() {
         let config = MatchConfig::versus(
             stage,
             [
@@ -2199,7 +2199,8 @@ fn wave27_stage_hazards_step_without_allocating() {
             ran = tick + 1;
             items = items.max(game.observe().unwrap().items().count());
         }
-        // The stage's material items (a switch, a Bill) came and went.
+        // The stage's material items (a switch, a Bill, a block, an apple)
+        // came and went.
         assert!(ran == TICKS && items > 0, "{}: {ran} ticks, {items} items", stage.display_name());
     }
 }

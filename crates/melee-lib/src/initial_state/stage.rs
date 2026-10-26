@@ -143,6 +143,7 @@ pub(super) fn restore_scene(
         melee_types::GrKind::GreatBay => super::stage_greatbay::restore(saved, assets, particles),
         melee_types::GrKind::Icemt => super::stage_icemt::restore(saved, assets, particles),
         melee_types::GrKind::Castle => super::stage_castle::restore(saved, assets, particles),
+        melee_types::GrKind::Greens => super::stage_greens::restore(saved, assets, particles),
         melee_types::GrKind::Fourside => super::stage_fourside::restore(saved, assets, particles),
         melee_types::GrKind::Shrine => super::stage_shrine::restore(saved, assets, particles),
         melee_types::GrKind::Kongo => {

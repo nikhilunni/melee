@@ -1320,6 +1320,15 @@ fn start_pc_fox_marth4_600() {
     movement_gate_ticks("start_pc_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_pc_fox_marth4", 600, "ledger600");
 }
+/// Green Greens' start boundary: the block layout's eighteen draws, the
+/// first block wait, Whispy's wait and side at creation; the blocks and
+/// Whispy start when the countdown ends.
+#[test]
+fn start_gg_fox_marth4_600() {
+    movement_gate_ticks("start_gg_fox_marth4", 600);
+    movement_gate_ticks("start_gg_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_gg_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

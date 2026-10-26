@@ -62,6 +62,7 @@ melee_it::item_kinds! {
         Kyasarin: it_kyasarin::Kyasarin,
         KyasarinEgg: it_kyasarin::egg::KyasarinEgg,
         Tincle: it_tincle::Tincle,
+        WhispyApple: it_whispyapple::WhispyApple,
         Tools: it_tools::Tools,
         ArwingLaser: it_arwinglaser::ArwingLaser,
         Yaku: it_yaku::Yaku,
@@ -1863,6 +1864,21 @@ impl Resources {
             kinds.push((ItemKind::Tincle, tingle));
             visual_archives.push((ItemKind::Tincle, std::sync::Arc::new(stage.clone())));
         }
+        // Green Greens' apples (it_802EE200), from GrGr.dat's itemdata.
+        if let Some(apple) = ItemAssets::from_stage_item(
+            stage,
+            ItemKind::WhispyApple,
+            &it_whispyapple::ARTICLE_STATES,
+            it_whispyapple::SPECIAL_ATTRIBUTES,
+            &[],
+        )? {
+            // it_8026DC24's landing spin (ItCo +74) and the other ItCo
+            // words a released article reads.
+            let mut apple = apple;
+            apple.read_common_release(&common_archive, public)?;
+            kinds.push((ItemKind::WhispyApple, apple));
+            visual_archives.push((ItemKind::WhispyApple, std::sync::Arc::new(stage.clone())));
+        }
         // Flat Zone's tools (it_802EEFA8), from GrFz.dat's itemdata.
         if let Some(tools) = ItemAssets::from_stage_item(
             stage,
@@ -2312,6 +2328,11 @@ pub fn request(
                     rng: None,
                 },
             );
+            if dropped.kind == ItemKind::WhispyApple && it_whispyapple::RELEASES_ITSELF_ON_DROP {
+                // it_802EEA70's it_8027429C(&zero): it_80273B50, it_80273F34.
+                dropped.leave_hand(hsd_types::Vec3::ZERO, position, assets);
+                dropped.end_hold(center, attack, map, assets);
+            }
             dropped.end_hold(center, attack, map, assets);
             dropped.hurt_by_owner = true;
             release_stage_enemy(dropped);

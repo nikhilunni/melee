@@ -197,6 +197,9 @@ fn setup_snapshot(state: &InitialState) -> Record {
         SceneStage::Castle(stage) => {
             sink.field("stage.castle.platform_y", &stage.platforms[0].position);
         }
+        SceneStage::Greens(greens) => {
+            sink.field("stage.greens.block_timer", &greens.stage.blocks.timer);
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -470,6 +473,11 @@ fn start_mk2_fox_marth4_cold_600() {
 #[test]
 fn start_pc_fox_marth4_cold_600() {
     verify("start_pc_fox_marth4");
+}
+
+#[test]
+fn start_gg_fox_marth4_cold_600() {
+    verify("start_gg_fox_marth4");
 }
 
 #[test]

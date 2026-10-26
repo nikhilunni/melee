@@ -224,6 +224,7 @@ impl InitialState {
                 | SceneStage::GreatBay(_)
                 | SceneStage::IceMt(_)
                 | SceneStage::Castle(_)
+                | SceneStage::Greens(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -350,6 +351,16 @@ impl InitialState {
             &mut effects.gobjs,
             &assets.items,
             &mut map,
+        );
+        // grGreens_80214FA8: the blocks' material items.
+        crate::scene_stage::greens::spawn_items(
+            &mut stage,
+            &mut stage_animations,
+            &mut items,
+            &mut effects.gobjs,
+            &assets.items,
+            &mut map,
+            assets.stage_desc.parameters.map_scale,
         );
         // grInishie1_801FAD84: the bricks' material items.
         crate::scene_stage::inishie1::spawn_items(
@@ -549,6 +560,9 @@ fn setup_draws(
         GrKind::Icemt => 0,
         // grCastle_801CD658's fountain generator and the frame-zero keys.
         GrKind::Castle => 0,
+        // grGreens_80214B58's eighteen layout draws, the first block wait,
+        // Whispy's wait and side (grGreens_802139C4).
+        GrKind::Greens => 21,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -926,6 +940,12 @@ fn initialize_stage(
         GrKind::Castle => {
             let (stage, animations) =
                 crate::scene_stage::castle::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Greens => {
+            let (stage, animations) =
+                crate::scene_stage::greens::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

@@ -2578,3 +2578,12 @@ stage = "PrincessPeachsCastle"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 3892582015
+
+[[boundary]]
+name = "start_gg_fox_marth4"
+cold = "start_gg_fox_marth4_cold"
+savestate = "harness/roms/start_gg_fox_marth4.sav"
+stage = "GreenGreens"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 4084183430

@@ -44,10 +44,25 @@ impl ItemCore {
         entered_air: Option<EnteredAir>,
         rng: &mut HsdRng,
     ) -> AirLanding {
+        self.air_collision_with_landing_after(map, assets, entered_air, rng, |_| {})
+    }
+
+    /// [`Self::air_collision_with_landing`] for a kind whose own pass
+    /// inlines it and does `on_contact` first on any contact (Whispy's
+    /// apple's HSD_Randi(3) of its landing sound).
+    pub fn air_collision_with_landing_after(
+        &mut self,
+        map: &mut melee_mp::CollMap,
+        assets: &ItemAssets,
+        entered_air: Option<EnteredAir>,
+        rng: &mut HsdRng,
+        on_contact: impl FnOnce(&mut HsdRng),
+    ) -> AirLanding {
         let bits = self.air_contact_bits(map);
         if bits & 0xF == 0 {
             return AirLanding::Airborne;
         }
+        on_contact(rng);
         // it_80276FC4's spark draws (it_80278800) precede the landing
         // count's (it_8026DDFC, retail 0x8026DE58).
         self.bounce_off_surfaces_drawing(bits, map, assets, rng);

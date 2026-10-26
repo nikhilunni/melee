@@ -26,6 +26,33 @@ impl Effects {
         self.spawn_dust_generator::<T>(id, position, 1.0, bank, particles, rng)
     }
 
+    /// efSync_Spawn 0x408 (efasync.c:308-320): efLib_CreateGenerator_AddAppSRT
+    /// (0x3E) whose AppSRT carries the point and a Z rotation (Green Greens'
+    /// breaking block, grGreens_802159B8).
+    pub fn spawn_block_break<T: InverseTrig>(
+        &mut self,
+        id: u16,
+        position: Vec3,
+        rotation_z: f32,
+        bank: &ParticleBank,
+        particles: &mut ParticleSystem,
+        rng: &mut HsdRng,
+    ) -> Result<()> {
+        ensure!(id == 0x408, "efasync.c:308: block break {id:#x}");
+        const GENERATOR: u32 = 0x3E;
+        let mut request = SpawnRequest::new(0, GENERATOR, 0);
+        request.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+            translation: position,
+            rotation: Vec3::new(0.0, 0.0, rotation_z),
+            scale: Vec3::new(1.0, 1.0, 1.0),
+            status: 1,
+            ..Default::default()
+        });
+        self.events.spawn(&request, false, false);
+        spawn_particle::<T>(particles, bank, request, rng, &mut self.draws)?;
+        Ok(())
+    }
+
     /// it_80278800's block_4FC (iteffect.c:343-351): efSync_Spawn(id, item,
     /// &pos, &item->facing_dir) for a row that turns its generator to a
     /// facing (efLib_CreateGenerator_Translate_FacingDir, e.g. 0x3EF/0x3F0).

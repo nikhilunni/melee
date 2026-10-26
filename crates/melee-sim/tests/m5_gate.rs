@@ -5435,7 +5435,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 1031] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 1043] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -7053,6 +7053,23 @@ static CORPUS_V3_MATCHES: [(&str, usize); 1031] = [
     ("corpus_v3_pc_fox_marth4_edb2b114a_p2", 3303),
     ("corpus_v3_pc_fox_marth4_ee62c6106_p2", 6001),
     ("corpus_v3_pc_fox_marth4_ef89b3e70_p0", 4248),
+    // Green Greens (grgreens.c): blocks falling, stacking, landing and
+    // stitched, broken by hits and head bumps, bombs exploding (the blast
+    // hitbox placed at once from the item hit proc); Whispy's idles (the
+    // rest pose and frame zero his particles read), blows (the wind device
+    // and field) and apples bouncing on the platforms with the landing spin.
+    ("corpus_v3_gg_fox_marth4_e00f31913_p1", 3113),
+    ("corpus_v3_gg_fox_marth4_e1611c835_p0", 4815),
+    ("corpus_v3_gg_fox_marth4_e3e74affa_p2", 5655),
+    ("corpus_v3_gg_fox_marth4_e7ff378da_p1", 3281),
+    ("corpus_v3_gg_fox_marth4_ec3145eb3_p0", 5505),
+    ("corpus_v3_gg_fox_marth4_ecad2716f_p1", 5120),
+    ("corpus_v3_gg_fox_marth4_edb2b114a_p2", 4878),
+    ("corpus_v3_gg_fox_marth4_ee62c6106_p2", 6001),
+    ("corpus_v3_gg_fox_marth4_ef89b3e70_p0", 2802),
+    ("corpus_v3_gg_fox_marth4_e0fcf0c70_p0", 4864),
+    ("corpus_v3_gg_fox_marth4_eb8786a38_p1", 4389),
+    ("corpus_v3_gg_fox_marth4_e70b3084c_p2", 6001),
 ];
 
 /// Complete moving catches, held Ground x730 positions and launch damage.

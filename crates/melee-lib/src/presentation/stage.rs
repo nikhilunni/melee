@@ -31,6 +31,9 @@ pub(super) fn is_background(kind: GrKind, map: u8) -> bool {
         GrKind::OldPupupu => matches!(map, 2 | 3),
         // grIzumi_801CCB18: the star field.
         GrKind::Izumi => map == IZUMI_STAR,
+        // grCastle_801CD5BC, grGreens_802138BC.
+        GrKind::Castle => map == 4,
+        GrKind::Greens => map == 2,
         _ => false,
     }
 }
@@ -132,6 +135,8 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::Pura => 27,
         // grCs_StageCallbacks[3] carries 0xC0000000.
         GrKind::Castle => 3,
+        // grGr_callbacks[6] carries 0xC0000000.
+        GrKind::Greens => 6,
         _ => return Err(error("stage light set unknown")),
     })
 }

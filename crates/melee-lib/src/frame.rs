@@ -2040,6 +2040,10 @@ impl Runtime {
                                 // grZebes_801D9758, then fn_801D94F0.
                                 crate::scene_stage::zebes::start(state);
                             }
+                            if matches!(state.stage, SceneStage::Greens(_)) {
+                                // fn_80214658.
+                                crate::scene_stage::greens::start(state);
+                            }
                             if matches!(state.stage, SceneStage::Castle(_)) {
                                 // grCastle_801CD9B4, then grCastle_801CD610.
                                 crate::scene_stage::castle::start(
@@ -2497,6 +2501,7 @@ impl Runtime {
                                         )
                                     },
                                 ),
+                                SceneStage::Greens(greens) => greens.stage.wind(),
                                 SceneStage::Castle(stage) if stage.moat_active => {
                                     melee_gr::wind::Wind::moat(
                                         melee_gr::castle::Moat::new(
@@ -3103,6 +3108,7 @@ impl Runtime {
                         || address == melee_gr::inishie2::procs::DYNAMICS_PROC
                         || address == melee_gr::greatbay::procs::DYNAMICS_PROC
                         || address == melee_gr::castle::procs::DYNAMICS_PROC
+                        || address == melee_gr::greens::procs::DYNAMICS_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -3219,6 +3225,18 @@ impl Runtime {
                             world,
                             &mut self.stage_objects,
                             &mut self.item_objects,
+                        )?;
+                    } else if matches!(state.stage, SceneStage::Greens(_)) {
+                        crate::scene_stage::greens::run_proc(
+                            state,
+                            map_id,
+                            &mut crate::scene_stage::castle::Scene {
+                                world,
+                                objects: &mut self.stage_objects,
+                                item_objects: &mut self.item_objects,
+                                draws: &mut self.particle_draws,
+                            },
+                            &mut self.radial_forces,
                         )?;
                     } else if matches!(state.stage, SceneStage::Castle(_)) {
                         crate::scene_stage::castle::run_proc(
@@ -5008,7 +5026,7 @@ fn lock_on_targets(state: &mut InitialState, targets: &mut melee_it::LockOnTarge
 
 /// The stage limits item callbacks read: the blast zones (Stage_GetBlastZone*
 /// Offset) and the camera centre (Stage_UnkSetVec3TCam_Offset).
-fn item_bounds(limits: &crate::stage_limits::StageLimits) -> melee_it::ItemBounds {
+pub(crate) fn item_bounds(limits: &crate::stage_limits::StageLimits) -> melee_it::ItemBounds {
     melee_it::ItemBounds {
         left: limits.arena.left,
         right: limits.arena.right,

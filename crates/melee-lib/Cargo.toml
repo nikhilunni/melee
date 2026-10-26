@@ -34,6 +34,7 @@ it-pikachu = { path = "../it-pikachu" }
 it-heiho = { path = "../it-heiho" }
 it-kyasarin = { path = "../it-kyasarin" }
 it-tincle = { path = "../it-tincle" }
+it-whispyapple = { path = "../it-whispyapple" }
 it-tools = { path = "../it-tools" }
 it-yaku = { path = "../it-yaku" }
 it-seak = { path = "../it-seak" }

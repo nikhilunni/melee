@@ -343,6 +343,9 @@ pub enum ItemScratch {
     Starman { direction: f32, frames: i32 },
     /// A Fire Flower flame's xDD4 (itlgunbeam.c).
     Flame(FlameState),
+    /// Whispy's apple (itWhispyApple_ItemVars): xDD4 its heal, xDD8 set
+    /// when it vanishes where it lands.
+    WhispyApple { heal: i32, vanishes: bool },
     Monster(MonsterState),
     /// Item.xDD4_itemVar.it_2E5A: a Coin match's coin.
     Coin(crate::coin::CoinState),

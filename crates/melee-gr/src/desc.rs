@@ -558,6 +558,42 @@ pub fn read_castle_parameters(archive: &Archive) -> ReadResult<crate::castle::Pa
         explosion_extents: four(0x134)?,
     })
 }
+/// `grGreens_YakumonoParam` (grgreens.c) as the asm reads it.
+pub fn read_greens_parameters(archive: &Archive) -> ReadResult<crate::greens::Parameters> {
+    let p = public(archive, "yakumono_param")?;
+    let r = archive.reader();
+    let f = |at: u32| r.f32(p + at);
+    let i = |at: u32| r.s32(p + at);
+    Ok(crate::greens::Parameters {
+        block_wait: [i(0x0)?, i(0x4)?],
+        column_weights: [i(0x18)?, i(0x14)?, i(0x10)?, i(0xC)?, i(0x8)?],
+        empty_column_weight: i(0x1C)?,
+        bomb_odds: i(0x20)?,
+        block_radius: i(0x24)?,
+        bomb_radius: i(0x28)?,
+        fall_speed_max: f(0x2C)?,
+        fall_acceleration: f(0x30)?,
+        idle_wait: [i(0x34)?, i(0x38)?],
+        wind_speed: f(0x3C)?,
+        wind_left: f(0x40)?,
+        wind_right: f(0x44)?,
+        wind_top: f(0x48)?,
+        wind_bottom: f(0x4C)?,
+        inhale_loops: f(0x50)?,
+        blow_loops: f(0x54)?,
+        blow_turn_loops: f(0x58)?,
+        apple_count: [i(0x5C)?, i(0x60)?],
+        apple_start: i(0x64)?,
+        apple_interval: i(0x68)?,
+        apple_height: [f(0x6C)?, f(0x70)?],
+        apple_kept: f(0x74)?,
+        apple_heal: f(0x78)?,
+    })
+}
+/// grGr_StageData: GrGr.dat. grGr_callbacks[6] carries 0xC0000000.
+pub fn read_greens(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Greens, 6)
+}
 /// grYt_StageData / grDatFiles_801C6038: GrYt.dat. grYt_StageCallbacks[1]
 /// carries flags 0xC0000000, so map 1 selects the lights and fog.
 pub fn read_yorster(archive: &Archive) -> ReadResult<StageDesc> {
