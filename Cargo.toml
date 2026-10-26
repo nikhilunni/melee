@@ -32,6 +32,7 @@ members = [
     "crates/it-sscope",
     "crates/it-star",
     "crates/it-scball",
+    "crates/it-metalb",
     "crates/it-spycloak",
     "crates/it-container",
     "crates/it-monsters",

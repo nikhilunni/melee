@@ -238,6 +238,7 @@ fn hitbox(words: &[u32]) -> Result<melee_types::combat::HitboxDescriptor> {
     const SCALE: f32 = 0.003906;
     Ok(melee_types::combat::HitboxDescriptor {
         requires_throw_owner: flags & 8 != 0,
+        item_hit_interaction: flags & 16 != 0,
         common_bone: first & (1 << 10) != 0,
         group: ((first >> 20) & 7) as u8,
         bone: ((first >> 11) & 255) as usize,

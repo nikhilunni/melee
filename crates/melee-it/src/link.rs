@@ -77,6 +77,14 @@ pub enum OwnerRequest {
     /// A hit made the ReDead let go of the fighter it held (it_802E8CD8 ->
     /// ftCo_800C7800): that fighter, not the item's owner, steps back.
     ReDeadLetGo { secondary: bool },
+    /// A Metal Box broke under this fighter's hit (itMetalB_Logic32_DmgReceived
+    /// -> ftLib_800871A8): the fighter, not the item's owner, turns metal for
+    /// `frames` or until it takes `health` damage.
+    Metal {
+        secondary: bool,
+        frames: i32,
+        health: i32,
+    },
 }
 
 /// The partner as a reader sees it during its own proc.

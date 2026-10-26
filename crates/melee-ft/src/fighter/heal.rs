@@ -68,6 +68,11 @@ impl FighterCore {
             ItemKind::Heart | ItemKind::Tomato | ItemKind::Foods => self.heal(held.heal, assets),
             // ftCo_800C88D4(gobj, PlCo +7CC, 1).
             ItemKind::Spycloak => self.cloak(assets.cloak_frames),
+            // ftLib_800871A8 with it_8026B560 / it_8026B574.
+            ItemKind::MetalB => {
+                let (frames, health) = held.metal.expect("a Metal Box's attributes");
+                self.become_metal(frames, health, assets)
+            }
             kind => unimplemented!("ftpickupitem_8009447C (ftpickupitem.c:156-196): consuming {kind:?}"),
         }
         self.item_requests

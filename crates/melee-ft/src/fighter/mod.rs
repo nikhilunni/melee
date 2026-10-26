@@ -52,6 +52,7 @@ pub mod item_flower;
 pub mod power_up;
 pub mod item_scope;
 pub mod item_screw;
+pub mod metal;
 pub mod item_shoot;
 pub mod item_swing;
 pub mod item_throw;
@@ -1043,6 +1044,8 @@ pub struct Status {
     pub cloaked: bool,
     /// x2030: the cloak's frames left.
     pub cloak_frames: i32,
+    /// is_metal, metal_timer, metal_health (a Metal Box).
+    pub metal: metal::MetalState,
 }
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
@@ -1081,6 +1084,7 @@ impl Status {
             star_frames: 0,
             cloaked: false,
             cloak_frames: 0,
+            metal: metal::MetalState::default(),
         }
     }
 }

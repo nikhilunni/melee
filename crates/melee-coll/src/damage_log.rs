@@ -137,6 +137,7 @@ mod tests {
                     bone: 0,
                     common_bone: false,
                     requires_throw_owner: false,
+                    item_hit_interaction: false,
                     damage,
                     shield_damage: 0,
                     sound_severity: 0,

@@ -1369,6 +1369,8 @@ pub struct ItemCore {
     pub hit_by: Option<u8>,
     /// xCC4: the strongest hit's element (it_80270E30), which it_8027CBFC reads.
     pub hit_element: melee_types::HitElement,
+    /// xDCF b6: the strongest hit's x43_b0 (it_80270E30, itcoll.c:862).
+    pub hit_interacts: bool,
     /// xDD0 b4 (it_80275270 / it_80275258): a fighter's grab may catch it
     /// (ftColl_8007BC90).
     pub catchable: bool,
@@ -2473,6 +2475,7 @@ impl ItemPool {
             speed_damage: false,
             hurt_by_owner: false,
             hit_element: melee_types::HitElement::Normal,
+            hit_interacts: false,
             catchable: false,
             catch_ignored: false,
             strikes_kindred_items: false,
@@ -2631,6 +2634,7 @@ impl ItemPool {
         item.largest_damage_taken = 0;
         item.pending_knockback = 0.0;
         item.hit_element = melee_types::HitElement::Normal;
+        item.hit_interacts = false;
         item.hit_direction = 0.0;
         item.pending_reflection = None;
         item.pending_absorb = None;

@@ -3458,6 +3458,7 @@ impl Runtime {
                                 ammo,
                                 shot_offset: crate::scene_items::shot_offset(kind, item),
                                 scope: None,
+                                metal: None,
                                 heal: 0,
                             },
                             catch_item,
@@ -4570,6 +4571,20 @@ fn deliver_owner_request(
         .expect("ftCo_800C7800");
         return;
     }
+    if let melee_it::OwnerRequest::Metal {
+        secondary,
+        frames,
+        health,
+    } = request
+    {
+        // itMetalB_Logic32_DmgReceived -> ftLib_800871A8 on the breaker.
+        let index = crate::scene_items::owner_index(&state.fighters, Some(slot), secondary)
+            .expect("the fighter a Metal Box turns metal");
+        crate::scene_fighter::with_fighter!(&mut state.fighters[index], |f| f
+            .core
+            .become_metal(frames, health, &state.assets.fighters[index]));
+        return;
+    }
     let Some(index) = state
         .fighters
         .iter()
@@ -4582,7 +4597,10 @@ fn deliver_owner_request(
     match (request, part) {
         (melee_it::OwnerRequest::Catch, None)
         | (melee_it::OwnerRequest::Released | melee_it::OwnerRequest::ArticleStep(_), _) => {}
-        (melee_it::OwnerRequest::ReDeadLetGo { .. }, _) => unreachable!("handled above"),
+        (
+            melee_it::OwnerRequest::ReDeadLetGo { .. } | melee_it::OwnerRequest::Metal { .. },
+            _,
+        ) => unreachable!("handled above"),
         (melee_it::OwnerRequest::Catch, Some(part)) => {
             let lifetime = state.items.common().lifetime;
             let half_life_scale = state.items.common().half_life_scale;
@@ -6102,6 +6120,7 @@ fn item_hits_by_items(
             weight_knockback: desc.weight_knockback,
             base_knockback: desc.base_knockback,
             element: desc.element,
+            item_hit_interaction: desc.item_hit_interaction,
             contact: landing.contact,
         });
     }

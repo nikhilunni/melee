@@ -3421,14 +3421,17 @@ impl FighterCore {
             );
         }
         // 8008D9E0..8008DA18: max(armor0, armor1) by fcmpo, plus PlCo +6F0
-        // when metal (no supported mode makes a fighter metal), then fsubs.
+        // when metal (a Metal Box), then fsubs.
         // armor0 is the kind's OnDeath value (Nana, Bowser, Giga Bowser).
         let armor0 = self.capabilities.armor;
-        let armor = if armor0 > self.combat.armor {
+        let mut armor = if armor0 > self.combat.armor {
             armor0
         } else {
             self.combat.armor
         };
+        if self.status.metal.metal {
+            armor += assets.metal.armor;
+        }
         knockback -= armor;
         if knockback < parameters.minimum_knockback {
             knockback = parameters.minimum_knockback;

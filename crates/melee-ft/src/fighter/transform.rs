@@ -46,6 +46,17 @@ pub fn transfer(
     if src.core.held_item.is_some() {
         unimplemented!("ftCommon_8007EFC8: transforming with a held item (ftcommon.c:1360-1365)");
     }
+    // ftcommon.c:1317-1340: a Starman's invincibility, the metal and the
+    // cloak pass to the new form; none is witnessed.
+    if src.core.status.star_invincible {
+        unimplemented!("ftCommon_8007EFC8 (ftcommon.c:1317): transforming under a Starman");
+    }
+    if src.core.status.metal.metal {
+        unimplemented!("ftCommon_8007EFC8 (ftcommon.c:1331): transforming while metal");
+    }
+    if src.core.status.cloaked && !src.core.player.invisible {
+        unimplemented!("ftCommon_8007EFC8 (ftcommon.c:1335): transforming while cloaked");
+    }
     // ftcommon.c:1249-1252: the forms swap x221F_b4, so the one in play is
     // the player's own fighter (Player_SwapTransformedStates follows it).
     // Fighter_UnkInitReset_80067C98 reads the Player's coordinates, facing

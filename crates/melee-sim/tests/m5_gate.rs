@@ -7406,6 +7406,13 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("start_fd_items_scball", 600),
     ("start_fd_items_scball_cold", 600),
     ("w27_scball_screw", 800),
+    // Metal Boxes (it-metalb): picked up by Fox and broken by Marth's
+    // forward smash (x43_b0), each turns its fighter metal (ftLib_800871A8):
+    // heavier, falling faster, armored (PlCo +6F0), until the 700 frames
+    // run out (ftCo_800C8540).
+    ("start_fd_items_metalb", 600),
+    ("start_fd_items_metalb_cold", 600),
+    ("w27_metalb_metal", 1400),
 ];
 
 #[test]

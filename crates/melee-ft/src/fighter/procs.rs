@@ -733,6 +733,8 @@ impl FighterCore {
         }
         // fighter.c:1486-1498: the Starman's countdown.
         self.tick_starman();
+        // fighter.c:1525-1531: the metal's.
+        self.tick_metal(assets);
         // fighter.c:1562-1574: the cloak's; its end skips the rest.
         if !self.tick_cloak() {
             return false;

@@ -149,3 +149,21 @@ switches between their ground and air rows (flags 0x0C4C5080) are in
   after the bind check) takes DamageScrew / DamageScrewAir: straight up at
   screw_attack_launch_velocity, ft_80083B68 until a command sets
   cmd_vars[0], then AirCatchHit's landing; its end is ftCo_800968C8.
+
+## Metal Box (wave 27)
+
+- Item (itmetalb.c): falls and rests leaning with the floor (it_80276CB8),
+  its ECB upright (xDCE b7). Consumed at the pickup (ftpickupitem.c:188),
+  or broken by a hit (its DmgReceived): when the hit's fighter
+  (it_8027236C) struck with x43_b0 (create_hitbox_3.item_hit_interaction,
+  recorded as xDCF b6 by it_80270E30), that fighter turns metal through
+  an owner request. Its slope slide is guarded; nothing enters state 3.
+- Metal (ftLib_800871A8, ftCo_800C8348): the box's x0 frames and x4
+  damage (fctiwz). ftCo_800D105C recomputes the attributes (Fighter_804D651C
+  multipliers on the jumps, gravity, fall speeds, weight, ledge and wall
+  jumps; the multijumps' rises through ftCo_800D0CBC) and ft_80081C88 the
+  coll data's weight; a small quake. Knockback loses PlCo +6F0
+  (ftCo_Damage_CalcKnockback). The timer runs at fighter.c:1525 and every
+  percent add wears its health (int, fctiwz); ftCo_800C8540 ends it at 0
+  frames, spent health or a death (ft_0D31.c:126). A transformation while
+  metal, cloaked or under a Starman fails closed (ftcommon.c:1317-1340).

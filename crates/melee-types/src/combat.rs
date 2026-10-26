@@ -6,6 +6,10 @@ pub struct HitboxDescriptor {
     pub bone: usize,
     pub common_bone: bool,
     pub requires_throw_owner: bool,
+    /// x43_b0 (create_hitbox_3.item_hit_interaction): an item this hit
+    /// strikes records it (xDCF b6, it_80270E30), which the Metal Box's
+    /// break reads.
+    pub item_hit_interaction: bool,
     pub damage: f32,
     pub shield_damage: i8,
     pub sound_severity: u8,

@@ -40,6 +40,8 @@ pub struct ItemHit {
     pub weight_knockback: u16,
     pub base_knockback: u16,
     pub element: melee_types::HitElement,
+    /// The hitbox's x43_b0 (create_hitbox_3.item_hit_interaction).
+    pub item_hit_interaction: bool,
     pub contact: Vec3,
 }
 
@@ -231,6 +233,7 @@ impl ItemCore {
         self.hit_direction = direction;
         self.knockback_angle = hit.angle;
         self.hit_element = hit.element;
+        self.hit_interacts = hit.item_hit_interaction;
         self.pending_knockback = strongest_knockback;
     }
 

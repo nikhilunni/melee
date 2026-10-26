@@ -102,10 +102,12 @@ impl Fighter {
         let first = attributes.first_actions[self.character.multi_jump_family()];
         assert!(first >= 0, "disabled multijump family");
         let action = ActionId(u16::try_from(first + index as i32).expect("multijump action"));
-        // retail 800D74EC fmuls; vertical impulses are loaded directly.
+        // retail 800D74EC fmuls; vertical impulses are loaded directly,
+        // as ftCo_800D0CBC left them (times its factor, 1 unless metal).
+        let rise = attributes.vertical_impulses[index] * self.core.metal_jump_scale(assets);
         let velocity = Vec3::new(
             self.core.input.current.stick.x * attributes.horizontal_impulse,
-            attributes.vertical_impulses[index],
+            rise,
             0.0,
         );
         let turn_frames = attributes.turn_frames;

@@ -898,6 +898,10 @@ impl Fighter {
         }
     }
     fn finish_death_release(&mut self, assets: &FighterAssets) {
+        // ft_0D31.c:126-128: the metal ends with the death (ftCo_800C8540).
+        if self.core.status.metal.metal {
+            self.core.end_metal(assets);
+        }
         // ft_0D31.c:129-131: a cloak ends with the death (ftCo_800C8A64).
         if self.core.status.cloaked {
             self.core.end_cloak();

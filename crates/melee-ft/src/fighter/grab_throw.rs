@@ -566,6 +566,7 @@ pub(super) fn throw_descriptor(
         bone: 0,
         common_bone: false,
         requires_throw_owner: false,
+        item_hit_interaction: false,
         damage: hit.damage,
         shield_damage: 0,
         sound_severity: hit.sound_severity,

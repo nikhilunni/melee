@@ -1492,6 +1492,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-metalb"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-mewtwo"
 version = "0.0.1"
 dependencies = [
@@ -2043,6 +2053,7 @@ dependencies = [
  "it-luigifire",
  "it-mariocape",
  "it-mariofire",
+ "it-metalb",
  "it-mewtwo",
  "it-monsters",
  "it-msbomb",

@@ -163,6 +163,7 @@ impl Fighter {
                 weight_knockback: desc.weight_knockback,
                 base_knockback: desc.base_knockback,
                 element: desc.element,
+                item_hit_interaction: desc.item_hit_interaction,
                 contact: contact.position,
             };
             let group = desc.group;

@@ -1,0 +1,60 @@
+# Directed witness (wave 27): Fox picks up a Metal Box and Marth breaks one with a forward smash (ftLib_800871A8 both ways); metal, they trade hits and jumps until the metal runs out, then Fox falls off the stage.
+# Boundary start_fd_items_metalb. Step frames count
+# tick records (input_clock = "tick", dolphin/tick_trace.py).
+name = "w27_metalb_metal"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_items_metalb.sav"
+frames = 1400
+render_every_tick = true
+seed = 1
+item_frequency = 4
+item_mask = "0xfffffff900000000"
+stage = "FinalDestination"
+inputs = [
+  { frame = 300, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 320, port = 0, raw = { button = 0 } },
+  { frame = 350, port = 0, raw = { button = 256 } },
+  { frame = 351, port = 0, raw = { button = 0 } },
+  { frame = 362, port = 0, raw = { button = 256 } },
+  { frame = 363, port = 0, raw = { button = 0 } },
+  { frame = 374, port = 0, raw = { button = 256 } },
+  { frame = 375, port = 0, raw = { button = 0 } },
+  { frame = 380, port = 1, raw = { button = 0, stickX = -60 } },
+  { frame = 405, port = 1, raw = { button = 0 } },
+  { frame = 470, port = 1, raw = { button = 256 } },
+  { frame = 471, port = 1, raw = { button = 0 } },
+  { frame = 490, port = 1, raw = { button = 256 } },
+  { frame = 491, port = 1, raw = { button = 0 } },
+  { frame = 530, port = 1, raw = { button = 0, stickX = 127 } },
+  { frame = 534, port = 1, raw = { button = 0 } },
+  { frame = 580, port = 1, raw = { button = 0, substickX = 127 } },
+  { frame = 581, port = 1, raw = { button = 0 } },
+  { frame = 640, port = 0, raw = { button = 1024 } },
+  { frame = 643, port = 0, raw = { button = 0 } },
+  { frame = 700, port = 0, raw = { button = 1024 } },
+  { frame = 702, port = 0, raw = { button = 0 } },
+  { frame = 760, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 772, port = 0, raw = { button = 0 } },
+  { frame = 800, port = 0, raw = { button = 0, substickX = 127 } },
+  { frame = 801, port = 0, raw = { button = 0 } },
+  { frame = 870, port = 0, raw = { button = 0, substickX = 127 } },
+  { frame = 871, port = 0, raw = { button = 0 } },
+  { frame = 930, port = 0, raw = { button = 0, substickX = 127 } },
+  { frame = 931, port = 0, raw = { button = 0 } },
+  { frame = 990, port = 0, raw = { button = 0, substickX = 127 } },
+  { frame = 991, port = 0, raw = { button = 0 } },
+  { frame = 1100, port = 0, raw = { button = 1024 } },
+  { frame = 1103, port = 0, raw = { button = 0 } },
+  { frame = 1300, port = 1, raw = { button = 1024 } },
+  { frame = 1303, port = 1, raw = { button = 0 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

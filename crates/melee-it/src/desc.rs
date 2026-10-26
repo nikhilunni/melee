@@ -1195,6 +1195,8 @@ fn decode_hitbox(w: [u32; 6]) -> HitboxDescriptor {
         bone: ((w[0] >> 13) & 127) as usize,
         common_bone: false,
         requires_throw_owner: false,
+        // itanimlist.c:149: the sixth word's third byte, bit 3.
+        item_hit_interaction: w[5] & (1 << 11) != 0,
         damage: (w[0] & 8191) as f32,
         shield_damage: (w[4] >> 9) as u8 as i8,
         sound_severity: ((w[4] >> 6) & 7) as u8,

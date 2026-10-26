@@ -75,6 +75,8 @@ pub struct PickupCandidate {
     pub shot_offset: Vec3,
     /// The Super Scope's charge table, which its holder reads.
     pub scope: Option<melee_it::scope::ScopeCharges>,
+    /// A Metal Box's frames and damage (it_8026B560 / it_8026B574, fctiwz).
+    pub metal: Option<(i32, i32)>,
 }
 
 /// The items offered to the current proc, in the item list's order.
@@ -139,6 +141,8 @@ pub struct HeldItem {
     pub heal: i32,
     /// The candidate's `scope`.
     pub scope: Option<melee_it::scope::ScopeCharges>,
+    /// The candidate's `metal`.
+    pub metal: Option<(i32, i32)>,
 }
 
 /// fp->item_gobj holding one of the fighter's own articles (Peach's
@@ -1035,6 +1039,7 @@ impl FighterCore {
             shot_offset: item.shot_offset,
             heal: item.heal,
             scope: item.scope,
+            metal: item.metal,
         });
         // ftpickupitem_80094818(gobj, true) -> ftData_OnItemPickupExt:
         // Fighter_OnItemPickup (ft/inlines.h:143) and the Kirby and Purin

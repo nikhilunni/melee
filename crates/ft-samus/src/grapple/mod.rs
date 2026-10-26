@@ -676,6 +676,8 @@ fn code_beam_catch() -> melee_types::combat::HitboxDescriptor {
         // HitCapsule +0x134 bit 3 is copied from the byte past the five
         // words on the caller's stack (802B73F4), which nothing wrote.
         requires_throw_owner: false,
+        // B4990012's low bits: x43_b0 set, as itsamusgrapple.c:202 copies.
+        item_hit_interaction: true,
         damage: 0.0,
         shield_damage: 0,
         sound_severity: 1,

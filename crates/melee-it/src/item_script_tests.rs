@@ -160,6 +160,7 @@ fn preserved_hitbox_command_uses_the_same_programs_parallel_flags() {
         bone: 0,
         common_bone: false,
         requires_throw_owner: false,
+        item_hit_interaction: false,
         damage: 5.0,
         shield_damage: 0,
         sound_severity: 0,
