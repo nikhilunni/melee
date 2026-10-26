@@ -1,5 +1,6 @@
 //! Concrete item engine; retail `it/item.c` and `it/types.h`.
 pub mod bone_motion;
+pub mod coin;
 pub mod desc;
 mod engine;
 mod hit_group;

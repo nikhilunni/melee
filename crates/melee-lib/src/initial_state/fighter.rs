@@ -134,6 +134,18 @@ pub(crate) fn import(
     f.thrown_hitbox.offset = vector(raw, 0x1074);
     f.thrown_hitbox.position = vector(raw, 0x10B0);
     f.thrown_hitbox.previous_position = vector(raw, 0x10BC);
+    // x1614[2] (stride 0x2C): the coin pickup spheres.
+    for (index, sphere) in f.coin_spheres.iter_mut().enumerate() {
+        let at = 0x1614 + index * 0x2C;
+        let data = assets.coins.spheres[index];
+        *sphere = melee_ft::fighter::coins::CoinSphere {
+            part: data.part,
+            offset: data.offset,
+            radius: float(raw, at),
+            center: vector(raw, at + 8),
+            previous_center: vector(raw, at + 0x14),
+        };
+    }
     f.ground_pose =
         GroundPoseFlags(((u16::from_be_bytes([raw[0x221C], raw[0x221D]]) >> 6) & 7) as u8);
     f.dynamics_first_bone = (0..word(raw, 0x3E0) as usize)

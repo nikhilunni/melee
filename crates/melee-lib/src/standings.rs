@@ -26,6 +26,8 @@ pub(crate) struct PlayerRecord {
     /// Player_GetMatchFrameCount: the match frame its last stock went
     /// (Player_UpdateMatchFrameCount); `None` for retail's -1.
     pub eliminated_at: Option<u32>,
+    /// Player_GetCoins.
+    pub coins: i32,
 }
 
 /// One player's tally (MatchPlayerData).
@@ -44,6 +46,8 @@ pub(crate) struct Tally {
     /// x28: the elimination frame, or the match's frame count (gm_80166378
     /// fills -1 with gm_GetFrameCount).
     pub frames: u32,
+    /// x1C: Player_GetCoins (gm_1601.c:2971).
+    pub coins: i32,
 }
 
 impl Tally {
@@ -73,6 +77,8 @@ impl Tally {
         match scoring.match_kind {
             MatchKind::Time => self.time_score(scoring.self_destruct_penalty),
             MatchKind::Stock => self.stock_score(),
+            // fn_8016588C, x5 == 2: the coins held.
+            MatchKind::Coin => self.coins.clamp(-SCORE_LIMIT, SCORE_LIMIT),
             kind => unimplemented!("fn_8016588C: a {kind:?} match's score (coins, bonus points)"),
         }
     }
@@ -97,6 +103,7 @@ pub(crate) fn tallies(players: &[PlayerRecord], kos: &KoCounts, frame_count: u32
             self_destructs: (p.self_destructs as u16).wrapping_add(own_side as u16),
             stocks: p.stocks,
             frames: p.eliminated_at.unwrap_or(frame_count),
+            coins: p.coins,
         };
     }
     out
@@ -186,6 +193,7 @@ pub(crate) fn records(state: &InitialState) -> ([PlayerRecord; SLOTS], usize) {
                     self_destructs: if secondary { 0 } else { sd },
                     stocks,
                     eliminated_at: state.eliminated_at[usize::from(slot)],
+                    coins: state.coins.0[usize::from(slot)].current,
                 };
                 count += 1;
             }

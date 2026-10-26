@@ -994,6 +994,7 @@ pub fn escape(
         height: melee_coll::hurtbox::HurtHeight::Middle,
         knockback,
     };
+    carrier.core.refuse_unwitnessed_coin_spill("ftCo_Shouldered.c:73 (a carrier struck)");
     carrier.begin_damage_reaction(hit, None, None, None, false, aa, rng)?;
     // ftCo_800DC920's lb_8000B1CC rebuilds the victim's XRotN, whose
     // constraint reads the carrier's TransN2 in its new damage pose.
@@ -1015,6 +1016,7 @@ pub fn escape(
         height: melee_coll::hurtbox::HurtHeight::Middle,
         knockback,
     };
+    victim.core.refuse_unwitnessed_coin_spill("ftCo_Shouldered.c:113 (a shouldered fighter thrown)");
     victim.begin_damage_reaction(hit, None, None, None, false, va, rng)?;
     Ok(())
 }

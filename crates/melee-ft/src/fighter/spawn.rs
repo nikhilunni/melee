@@ -395,6 +395,8 @@ impl Fighter {
         self.core
             .thrown_hitbox
             .update(&mut self.core.skeleton, &self.core.animation);
+        // fighter.c:562: ft_8007C630, the coin spheres from the new pose.
+        self.core.place_coin_spheres(assets);
         let position = self.core.physics.position;
         // ftCo_800A0FB0 (0x800A0FB0): no stage the port runs ignores a floor
         // line (ftCo_800A1B38 names Big Blue, Mushroom Kingdom, Corneria
@@ -1475,6 +1477,10 @@ impl FighterCore {
             thrown_hitbox: assets.thrown_hitbox.clone(),
             grab_handicap: 9, // gm default handicap, before any saved-player override.
             standing_rank: 0,
+            coin_rules: None,
+            coin_spheres: Default::default(),
+            coin_spills: Default::default(),
+            fall_payout: None,
             player,
         }
     }

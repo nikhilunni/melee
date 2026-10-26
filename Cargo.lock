@@ -1278,6 +1278,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-coin"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-container"
 version = "0.0.1"
 dependencies = [
@@ -1935,6 +1944,7 @@ dependencies = [
  "hsd-types",
  "it-bombhei",
  "it-climbersice",
+ "it-coin",
  "it-container",
  "it-dosei",
  "it-drmariopill",

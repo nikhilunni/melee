@@ -1173,6 +1173,56 @@ impl Runtime {
     /// efLib_DestroyAll) happens before the item's own Item_8026A8EC
     /// events (`after_teardown` false); from that function's `destroyed`
     /// callback (item.c:1997) it follows them.
+    /// ftCo_800D4E50 (800D4E50) for each fighter whose death this proc
+    /// entered: the purse halves (Player_SetCoins, Player_SetUnk9C), the
+    /// spill's rank is read after that (gm_8016C6C0), and at most PlCo +5C8
+    /// coins spill at PlCo +5CC (it_802E5F8C).
+    fn pay_out_falls(&mut self, row: Registration, world: &mut World) {
+        let state = &mut self.state;
+        for index in 0..state.fighters.len() {
+            let Some(payout) = state.fighters[index].0.fall_payout.take() else {
+                continue;
+            };
+            let (slot, secondary, rules) = {
+                let f = &state.fighters[index].0;
+                (f.player.id, f.player.secondary, f.coin_rules.expect("a Coin match"))
+            };
+            let parameters = state.assets.fighters[index].coins;
+            let count = state.coins.take_fall(slot, parameters.fall_limit);
+            let rank = crate::standings::current_ranks(state)[usize::from(slot)];
+            let spill = melee_it::coin::spill(payout.angle, parameters.fall_speed, payout.collectable);
+            let mut coins = melee_types::fixed::FixedVec::default();
+            melee_it::coin::plan_spill(
+                &rules.attributes,
+                count,
+                usize::from(rank),
+                spill,
+                &mut state.rng,
+                &mut coins,
+            );
+            let bounds = item_bounds(&state.assets);
+            crate::coins::create_spill(
+                &mut state.items,
+                &mut state.effects.gobjs,
+                &state.assets.items,
+                &mut state.map,
+                world,
+                &mut self.item_objects,
+                crate::coins::SpillOwner {
+                    slot,
+                    secondary,
+                    after_hitbox_refresh: row.s_link > 11,
+                    efasync_immediate: row.s_link >= 9,
+                    bounds: &bounds,
+                },
+                payout.position,
+                spill,
+                &coins,
+                &mut state.rng,
+            );
+        }
+    }
+
     fn notify_owner_at_once(&mut self, id: u32, after_teardown: bool) -> Result<()> {
         use crate::scene_items::SceneItems;
         use melee_it::ItemDispatch;
@@ -2054,6 +2104,21 @@ impl Runtime {
                             )
                         }));
                     }
+                    // ft_8007C77C: a Coin match's pickups, after the
+                    // fighters' hits and before the items'.
+                    crate::coins::pick_up(
+                        crate::coins::PickupScene {
+                            items: &mut state.items,
+                            purses: &mut state.coins,
+                            scene_frame: state.scene_frame,
+                            effects: &mut state.effects,
+                            particles: &mut state.particles,
+                            rng: &mut state.rng,
+                            assets,
+                        },
+                        player,
+                        &mut state.fighters[player],
+                    )?;
                     state.items.resolve_group_histories();
                     for index in 0..state.items.len() {
                         let (common, item) = state.items.common_and_item_mut(index);
@@ -3063,6 +3128,32 @@ impl Runtime {
         for (slot, fighter) in state.fighters.iter_mut().enumerate() {
             crate::scene_fighter::with_fighter!(fighter, |f| {
                 f.apply_pending_pickup_pose(&state.assets.fighters[slot]);
+                // ftCommon_8007EA90's it_802E5F8C: the coins a hit spilled
+                // (made inside ProcessHit, ahead of the reaction's own
+                // articles), then Player_SetUnk98.
+                for spill in f.core.coin_spills.take_all() {
+                    let bounds = item_bounds(&state.assets);
+                    crate::coins::create_spill(
+                        &mut state.items,
+                        &mut state.effects.gobjs,
+                        &state.assets.items,
+                        &mut state.map,
+                        world,
+                        &mut self.item_objects,
+                        crate::coins::SpillOwner {
+                            slot: f.player.id,
+                            secondary: f.player.secondary,
+                            after_hitbox_refresh: row.s_link > 11,
+                            efasync_immediate: row.s_link >= 9,
+                            bounds: &bounds,
+                        },
+                        spill.position,
+                        spill.spill,
+                        &spill.coins,
+                        &mut state.rng,
+                    );
+                    state.coins.credit_knockout(spill.striker, spill.total);
+                }
                 while !f.item_requests.is_empty() {
                     let mut request = f.item_requests.remove(0);
                     if let melee_it::ItemRequest::ControlCurrent { kind, control } = request {
@@ -3406,6 +3497,10 @@ impl Runtime {
                 }
             });
         }
+        // ftCo_800D4E50, last in a death's entry: after its quake and
+        // blast, a Coin match's payout.
+        self.pay_out_falls(row, world);
+        let state = &mut self.state;
         crate::quake::request_effect_quakes(state);
         // A request made after the proc's own were taken: a throw's release
         // hit lands on its victim in the thrower's animation proc
@@ -4045,6 +4140,8 @@ impl Simulation {
         }
         // fn_801B96E8 (s_link 0x15, the last proc of the pass).
         run_stamina_rules(state);
+        // gm_801A4D34: gm_80479D58.unk_8 counts the passes that ran a frame.
+        state.scene_frame = state.scene_frame.wrapping_add(1);
         runtime.frame += 1;
         Ok(())
     }

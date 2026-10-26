@@ -186,6 +186,8 @@ impl Fighter {
         // x1848_kb_angle: the truncated aim, possibly negative (0x8009ED24).
         self.core.combat.launch_angle_override = Some(gekko_math::msl::fctiwz(angle));
         // Fighter_UnkTakeDamage_8006CC30, then ftCo_8008DCE0(gobj, 91, 0.0).
+        self.core
+            .refuse_unwitnessed_coin_spill("ftCo_BarrelWait.c:85 (the barrel's shot)");
         self.begin_damage_reaction(hit, Some(S::DamageFlyRoll), None, None, false, assets, rng)?;
         Ok(())
     }

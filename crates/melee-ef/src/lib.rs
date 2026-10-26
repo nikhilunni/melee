@@ -1386,6 +1386,25 @@ impl Effects {
                 spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
                 continue;
             }
+            if let EffectRequest::PositionalGenerator {
+                id: 0x432,
+                position,
+            } = request
+            {
+                // efasync.c:674-686: efLib_CreateGenerator_AddAppSRT(0x145),
+                // the point as the AppSRT's translation and the caller's 1.0
+                // as its uniform scale (a Coin match's pickup, ft_8007C77C).
+                let mut spawn = SpawnRequest::new(0, 0x145, 0);
+                spawn.application_transform = Some(hsd_particle::generator::ApplicationTransform {
+                    translation: position,
+                    scale: Vec3::new(1.0, 1.0, 1.0),
+                    status: 1,
+                    ..Default::default()
+                });
+                self.events.spawn(&spawn, false, false);
+                spawn_particle::<T>(particles, bank, spawn, rng, &mut self.draws)?;
+                continue;
+            }
             if let EffectRequest::PositionalGenerator { id, position } = request {
                 self.spawn_dust_generator::<T>(
                     id,

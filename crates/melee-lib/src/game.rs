@@ -282,6 +282,8 @@ impl Match {
                 let tally = &tallies[player.port.index()];
                 match scoring.match_kind {
                     crate::MatchKind::Time => tally.time_score(scoring.self_destruct_penalty),
+                    // Player_GetCoins.
+                    crate::MatchKind::Coin => tally.coins,
                     _ => i32::from(tally.stocks),
                 }
             })

@@ -30,6 +30,7 @@ members = [
     "crates/it-container",
     "crates/it-monsters",
     "crates/it-klap",
+    "crates/it-coin",
     "crates/it-dosei",
     "crates/it-yoshieggthrow",
     "crates/it-yoshistar",

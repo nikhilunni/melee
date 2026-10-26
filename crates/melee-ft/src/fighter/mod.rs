@@ -19,6 +19,7 @@ pub mod capture_kirby;
 pub mod capture_koopa;
 pub mod capture_yoshi;
 pub mod cargo;
+pub mod coins;
 pub mod clank;
 pub mod color_overlay;
 pub mod commands;
@@ -1369,6 +1370,14 @@ pub struct FighterCore {
     /// Player_80033BB8: this player's stock standing (0 leads; ties share
     /// a rank), refreshed by the scene before Fighter_ProcessHit.
     pub standing_rank: u8,
+    /// A Coin match's rules (gm_8016B0B4); `None` in any other match.
+    pub coin_rules: Option<coins::CoinRules>,
+    /// x1614: the two coin pickup spheres.
+    pub coin_spheres: [coins::CoinSphere; 2],
+    /// The spills this proc's hits made, for the scene to create.
+    pub coin_spills: melee_types::fixed::FixedVec<coins::CoinSpill, 2>,
+    /// A fall's payout this proc asked for, for the scene.
+    pub fall_payout: Option<coins::FallPayout>,
 }
 
 /// Retail inverse trig adapter used by HSD animation.

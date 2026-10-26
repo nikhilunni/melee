@@ -983,6 +983,56 @@ fn special_melee_modes_step_without_allocating() {
     assert!(failures.is_empty(), "{}", failures.join("\n"));
 }
 
+/// A Coin match (gm_8016B0B4) steps random play to TIME! without
+/// allocating: the hits' spills, the falls' payouts, the coins' flights and
+/// rests, their pickups and the cap that makes room for new ones.
+#[test]
+fn coin_match_spills_and_pickups_step_without_allocating() {
+    let root = data_root();
+    let files = root.join("harness/roms/files");
+    if !melee_test_support::require_files([files.join("PlCo.dat")]) {
+        return;
+    }
+    let mut config = MatchConfig::versus(
+        Stage::FinalDestination,
+        [
+            PlayerConfig::new(Port::P1, Character::Fox),
+            PlayerConfig::new(Port::P2, Character::Marth),
+        ],
+    )
+    .with_seed(Seed(0xc011));
+    config.rules.mode = MatchKind::Coin;
+    config.rules.time_limit_seconds = Some(60);
+    let assets = GameAssets::load(&files, &config).unwrap();
+    let mut game = Match::new(&assets, config).unwrap();
+    let mut choices = Choices(0x00c0_1175);
+    let mut held = [(ControllerState::default(), 0); 2];
+    let mut first = None;
+    let mut ticks = 0;
+    while game.status().is_running() {
+        let mut inputs = Inputs::default();
+        for (port, (pad, remaining)) in held.iter_mut().enumerate() {
+            if *remaining == 0 {
+                (*pad, *remaining) = choices.pad();
+            }
+            *remaining -= 1;
+            inputs.0[port] = *pad;
+        }
+        let count = measure(&mut game, &inputs);
+        if count != 0 {
+            first.get_or_insert((ticks, count));
+        }
+        ticks += 1;
+    }
+    assert!(ticks > 3600, "the match ran to its time limit ({ticks} ticks)");
+    assert!(
+        game.scores().iter().any(|&coins| coins != 0),
+        "random play took some coins: {:?}",
+        game.scores()
+    );
+    assert_eq!(first, None, "first allocating tick and count");
+}
+
 /// The public API clones an actual suspended Barrel program after the drop,
 /// then steps both independent copies through its delayed command and End.
 #[test]

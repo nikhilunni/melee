@@ -242,7 +242,7 @@ impl InitialState {
         }
         if matches!(
             scenario.mode,
-            melee_types::MatchKind::Coin | melee_types::MatchKind::Bonus
+            melee_types::MatchKind::Bonus
         ) {
             unimplemented!(
                 "gm_8016B0B4: a {:?} match (coins, bonus points) needs a retail witness",
@@ -298,7 +298,7 @@ impl InitialState {
                     .any(|f| usize::from(f.slot) == slot)
             }))
         });
-        Ok(Self {
+        let mut state = Self {
             items,
             article_poses: Box::new(crate::article_pose::ArticlePoses::new(
                 &assets.items.article_skeletons,
@@ -360,6 +360,8 @@ impl InitialState {
             eliminated_at: [None; 6],
             stamina,
             match_terminated: false,
+            coins: Default::default(),
+            scene_frame: 0,
             frame_timer: crate::frame_timer::FrameTimer::entering(
                 scenario.special.map_or(1.0, crate::SpecialMelee::game_speed),
             ),
@@ -367,7 +369,9 @@ impl InitialState {
                 .slippi
                 .offscreen_damage_by_camera_limits,
             radial_forces,
-        })
+        };
+        crate::coins::start(&mut state, true);
+        Ok(state)
     }
 }
 

@@ -528,6 +528,30 @@ impl ItemAssets {
     }
 
     /// it_804D6D38 (itPublicData +8): the separate monster article bank.
+    /// itPublicData x8[kind - Kuriboh] (it_804D6D38, Item_80267978's
+    /// character bank) for a kind ItCo itself carries: the Coin match's
+    /// coin (It_Kind_Unk4, slot 0x73).
+    pub fn from_bank(
+        archive: &Archive,
+        public: u32,
+        kind: melee_types::ItemKind,
+        article_states: &[i32],
+        special_attributes: u32,
+    ) -> hsd_archive::desc::Result<Self> {
+        let index = (kind as u32)
+            .checked_sub(melee_types::ItemKind::Kuriboh as u32)
+            .expect("a character bank kind");
+        let articles = archive.reader().u32(public + 8)?;
+        let mut assets = Self::from_article_slot_states(
+            archive,
+            articles + index * 4,
+            article_states,
+            special_attributes,
+        )?;
+        assets.read_common_release(archive, public)?;
+        Ok(assets)
+    }
+
     pub fn from_monster(
         archive: &Archive,
         public: u32,

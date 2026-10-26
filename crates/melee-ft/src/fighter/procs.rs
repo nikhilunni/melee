@@ -686,6 +686,8 @@ impl FighterCore {
             }
             self.thrown_hitbox
                 .update(&mut self.skeleton, &self.animation);
+            // ft_8007C6DC: a Coin match's pickup spheres.
+            self.follow_coin_spheres();
         }
     }
     /// Fighter_UnkProcessGrab_8006CA5C (0x8006CA5C), s_link 12.

@@ -7,3 +7,4 @@ pub mod geometry;
 pub mod hitbox;
 pub mod hurtbox;
 pub mod overlap;
+pub mod sweep;

@@ -55,6 +55,8 @@ fn collision_category(kind: ItemKind, hold_kind: u8) -> u8 {
             .contains(&(kind as u32)) => 3,
         // It_PKind_Random (the stage material item, itmaplib.c:207): 5.
         3 if kind == ItemKind::PokemonRandom => 5,
+        // itmaplib.c:205-206: a Coin match's coin (hold kind 12).
+        12 if kind == ItemKind::Unk4 => 5,
         _ => unimplemented!("it_80275E98: collision category for {kind:?}"),
     }
 }
@@ -794,7 +796,7 @@ impl ItemCore {
 
     /// it_80276D9C (80276D9C): a contact already touching last pass nudges
     /// the item 1.5 away instead of counting as a bounce.
-    fn leave_repeated_contact(&mut self, bits: u32) -> bool {
+    pub(crate) fn leave_repeated_contact(&mut self, bits: u32) -> bool {
         let collision = self.collision.as_ref().expect("item map collision");
         let env = collision.env_flags as u32;
         if env & collide::LEFT_WALL_MASK != 0 && env & collide::RIGHT_WALL_MASK != 0 {
@@ -822,9 +824,12 @@ impl ItemCore {
     }
 
     /// it_80277C40 (80277C40): effect 0x405 at the ECB point on the touched
-    /// side, through it_80278800 with no spread. xDCF b0 (no spark) is never
-    /// set for the ported kinds.
-    fn push_bounce_spark(&mut self, bits: u32, rng: Option<&mut gekko_math::HsdRng>) {
+    /// side, through it_80278800 with no spread, unless xDCF b0.
+    pub(crate) fn push_bounce_spark(&mut self, bits: u32, rng: Option<&mut gekko_math::HsdRng>) {
+        // it_80277C40: xDCF b0 (a coin's third landing) keeps the spark.
+        if self.bounce_spark_off {
+            return;
+        }
         let ecb = self.collision.as_ref().expect("item map collision").ecb;
         let mut point = hsd_types::Vec2::default();
         if bits & 8 != 0 {
@@ -873,7 +878,7 @@ impl ItemCore {
 
     /// it_80275640 (80275640) -> it_80272460: each live hitbox's damage
     /// times `scale`, truncated to its count and restaled for the owner.
-    fn scale_hitbox_damage(&mut self, scale: f32) {
+    pub(crate) fn scale_hitbox_damage(&mut self, scale: f32) {
         let stale = self.stale_multiplier;
         for id in 0..self.hitboxes.len() {
             let Some(hit) = &self.hitboxes[id] else {

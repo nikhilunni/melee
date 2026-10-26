@@ -564,9 +564,19 @@ impl MatchConfig {
             crate::MatchKind::Time => {
                 return Err(StartError::InvalidConfig("a Time match needs its time limit"));
             }
-            crate::MatchKind::Coin | crate::MatchKind::Bonus => {
+            crate::MatchKind::Coin if self.rules.time_limit_seconds.is_none() => {
+                return Err(StartError::InvalidConfig("a Coin match needs its time limit"));
+            }
+            // it_8026F8B4: a container's coins have no witness.
+            crate::MatchKind::Coin if self.rules.items.enabled() => {
                 return Err(StartError::InvalidConfig(
-                    "Coin and Bonus matches need a retail witness",
+                    "a Coin match with items (containers' coins) needs a retail witness",
+                ));
+            }
+            crate::MatchKind::Coin => {}
+            crate::MatchKind::Bonus => {
+                return Err(StartError::InvalidConfig(
+                    "Bonus matches need a retail witness",
                 ));
             }
         }

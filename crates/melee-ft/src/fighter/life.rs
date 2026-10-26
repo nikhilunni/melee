@@ -424,6 +424,10 @@ impl Fighter {
                 effect.x = arena.left;
             }
             self.queue_death_explosion(assets, effect, 0.0);
+            // ftCo_800D4E50 at the bottom blast zone, straight up.
+            let payout = Vec3::new(effect.x, arena.bottom, effect.z);
+            self.core
+                .request_fall_payout(payout, true, std::f32::consts::FRAC_PI_2);
             return Ok(());
         }
         self.check_blast_zone(assets, arena, rng)
@@ -438,7 +442,12 @@ impl Fighter {
         if effect.x < arena.left {
             effect.x = arena.left;
         }
-        self.enter_death(assets, S::DeadDown, 0x61, effect, 0.0)
+        self.enter_death(assets, S::DeadDown, 0x61, effect, 0.0)?;
+        // ftCo_800D4E50 at the bottom blast zone, straight up.
+        let payout = Vec3::new(effect.x, arena.bottom, effect.z);
+        self.core
+            .request_fall_payout(payout, true, std::f32::consts::FRAC_PI_2);
+        Ok(())
     }
     /// ftCo_800D3680 / ftCo_800D3950 (800D3680 / 800D3950): the side exits, DeadLeft /
     /// DeadRight. The explosion is clamped to the top/bottom blast zones and rotated
@@ -460,7 +469,15 @@ impl Fighter {
             Side::Left => (S::DeadLeft, 0x88, -std::f32::consts::FRAC_PI_2),
             Side::Right => (S::DeadRight, 0x89, std::f32::consts::FRAC_PI_2),
         };
-        self.enter_death(assets, state, sound, effect, angle)
+        self.enter_death(assets, state, sound, effect, angle)?;
+        // ftCo_800D4E50 at the side blast zone, back toward the stage.
+        let (x, payout_angle) = match side {
+            Side::Left => (arena.left, 0.0),
+            Side::Right => (arena.right, std::f32::consts::PI),
+        };
+        let payout = Vec3::new(x, effect.y, effect.z);
+        self.core.request_fall_payout(payout, true, payout_angle);
+        Ok(())
     }
     /// Shared body of the DeadDown / DeadLeft / DeadRight entries: the fighter
     /// vanishes, loses the stock immediately and counts down PlCo +500.
@@ -526,7 +543,6 @@ impl Fighter {
             angle: effect_angle,
             scale: assets.life.death_effect_scale,
         });
-        // ftCo_800D4E50: the coin-mode payout only.
     }
     /// ftCo_800D40B8 (800D40B8): the star KO entry, DeadUpStar. The stock is only
     /// lost when the star vanishes (ftCo_DeadUpStar_Anim phase 1).
@@ -593,7 +609,11 @@ impl Fighter {
             offset: Vec3::ZERO,
             floor_angle: 0.0,
         });
-        // ftCo_800D4E50: the coin-mode payout only. x221F_b1, the vanish, ft_80088C5C:
+        // ftCo_800D4E50: a Coin match's payout, which no fighter can take.
+        let position = self.core.physics.position;
+        self.core
+            .request_fall_payout(position, false, std::f32::consts::FRAC_PI_2);
+        // x221F_b1, the vanish, ft_80088C5C:
         self.core.effect_state.invisible = true;
         self.core.play_death_sounds(assets, 0x83);
         // ftCo_800D34E0: the stock is lost here, which also fires the HUD explosion.
@@ -741,8 +761,11 @@ impl Fighter {
             let id = voices[rng.randi(voices.len() as i32) as usize];
             self.core.push_voice(id);
         }
-        // ftCo_800D4E50 is the coin-mode payout only; accessory4 becomes
-        // fn_800D4DD4 (screen_ko_accessory).
+        // ftCo_800D4E50: a Coin match's payout, which no fighter can take;
+        // accessory4 becomes fn_800D4DD4 (screen_ko_accessory).
+        let position = self.core.physics.position;
+        self.core
+            .request_fall_payout(position, false, std::f32::consts::FRAC_PI_2);
         Ok(())
     }
     /// ftCo_DeadUpFall_Phys (800D4CE8): the approach interpolates the

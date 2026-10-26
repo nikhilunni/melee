@@ -272,6 +272,8 @@ pub enum ItemScratch {
     /// and, for Food, which dish it is (xDD4_itemVar.foods.x0).
     Heal { amount: i32, dish: u32 },
     Monster(MonsterState),
+    /// Item.xDD4_itemVar.it_2E5A: a Coin match's coin.
+    Coin(crate::coin::CoinState),
     Yaku(YakuAnchor),
     /// One float of a projectile's xDD4 scratch: the Star Rod star's spin
     /// per frame (HSD_JObjAddRotationZ), the spore's slowdown (xDD8).
@@ -1239,6 +1241,9 @@ pub struct ItemCore {
     pub joints_dirty: bool,
     /// xDCD b5 (it_80275444 / it_80275474): hitboxes may hit the owner.
     pub hits_owner: bool,
+    /// xDCF b0: a bounce makes no spark (it_80277C40); a coin sets it at
+    /// its third landing in a row (it_802E5AC4).
+    pub bounce_spark_off: bool,
     /// xC44: the speed the item was thrown or dropped at (Item_8026AD20).
     pub throw_speed: f32,
     /// xC40: the damage scale new hitboxes take, the throw speed after a
@@ -2164,7 +2169,7 @@ impl ItemPool {
             if self
                 .items
                 .iter()
-                .filter(|i| i.hold_kind == spawn.hold_kind)
+                .filter(|i| i.hold_kind == spawn.hold_kind && !i.destroyed)
                 .count()
                 >= limit
             {
@@ -2317,6 +2322,7 @@ impl ItemPool {
             // Item_80268B18 builds a new JObj tree, dirty until set up.
             joints_dirty: true,
             hits_owner: false,
+            bounce_spark_off: false,
             throw_speed: 1.0,
             hitbox_damage_scale: 1.0,
             past_hitbox_refresh: false,

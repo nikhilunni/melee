@@ -204,6 +204,8 @@ pub struct FighterAssets {
     pub instruction_offsets: Vec<u32>,
     pub motion_table_offset: u32,
     pub life: super::life::LifeParameters,
+    /// PlCo +5C0..+5CC and ftData x38: a Coin match's spills and spheres.
+    pub coins: super::coins::CoinAssets,
     pub teeter: super::teeter::TeeterParameters,
     pub lift: super::lift::LiftParameters,
     pub revival_platform: super::life::RevivalPlatform,
@@ -699,6 +701,7 @@ impl FighterAssets {
                 tree.req_anim_all(root, 0.0);
                 super::life::RevivalPlatform { tree, root }
             },
+            coins: super::coins::CoinAssets::read(data, root, common, common_data)?,
             life: super::life::LifeParameters {
                 death_delay: common.reader().s32(common_data + 0x500)?,
                 revival_duration: common.reader().s32(common_data + 0x5D0)?,

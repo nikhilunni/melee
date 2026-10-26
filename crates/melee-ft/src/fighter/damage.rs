@@ -94,6 +94,9 @@ pub struct CombatState {
     pub phantom_lockout: f32,
     /// The hit ftColl_8007AB48 selected from `hit_log`, with its knockback.
     pub pending: Option<ReceivedHit>,
+    /// dmg.x1854_collpos: where the selected hit landed (its log entry's
+    /// position, ftColl_8007A06C). A Coin match's spill reads it.
+    pub hit_position: Vec3,
     /// dmg.x18C4 / x18C8: who is credited with this fighter's next fall.
     pub ko_source: super::ko_source::KoSource,
     /// A phantom's source (a fighter, or an item's owner) to credit (stale
@@ -1113,6 +1116,18 @@ impl Fighter {
                 // ftCo_800C8C84 with kb_applied set, before the knockback.
                 self.core
                     .check_stamina_knockout_before_launch(hit.percent_damage, assets);
+                // Its ftCommon_8007EA90: a Coin match's spill along the launch.
+                if self.core.coin_rules.is_some() {
+                    if self.core.combat.pending_percent_taken {
+                        unimplemented!(
+                            "ftCommon_8007EA90: a Coin match's spill for a captured \
+                             fighter's hit replaced by its captor's throw (ftCo_800DE854)"
+                        );
+                    }
+                    let launch = self.core.coin_launch(&hit, assets);
+                    self.core
+                        .spill_coins_for_hit(hit.percent_damage, Some(launch), assets, rng);
+                }
                 // fighter.c:2860: ftKb_SpecialN_800F5BA4.
                 if let Some(draw) = self.character.table().damage_draw {
                     let cape = hit.descriptor.element == melee_types::HitElement::Cape;
@@ -1268,6 +1283,9 @@ impl Fighter {
         // an expired phantom) still reaches percent.
         if !received_knockback && self.core.combat.frame_damage != 0.0 {
             self.core.physics.percent += self.core.combat.frame_damage;
+            // Its ftCommon_8007EA90: a Coin match's spill, straight up.
+            let damage = self.core.combat.frame_damage;
+            self.core.spill_coins_for_hit(damage, None, assets, rng);
             // fighter.c:2960: ftKb_SpecialN_800F5C34.
             if let Some(draw) = self.character.table().damage_draw {
                 let element = unlaunched_element;

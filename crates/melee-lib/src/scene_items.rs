@@ -39,6 +39,7 @@ melee_it::item_kinds! {
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
         Dosei: it_dosei::Dosei,
+        Unk4: it_coin::Coin,
         YoshiEggThrow: it_yoshieggthrow::YoshiEggThrow,
         YoshiStar: it_yoshistar::YoshiStar,
         PeachExplode: it_peach::PeachExplode,
@@ -754,6 +755,17 @@ impl Resources {
                     ItemKind::Dosei,
                     &it_dosei::ARTICLE_STATES,
                     it_dosei::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                // A Coin match's coin (it_802E609C).
+                ItemKind::Unk4,
+                ItemAssets::from_bank(
+                    &common_archive,
+                    public,
+                    ItemKind::Unk4,
+                    &it_coin::ARTICLE_STATES,
+                    it_coin::SPECIAL_ATTRIBUTES,
                 )?,
             ),
         ];

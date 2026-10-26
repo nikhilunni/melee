@@ -184,6 +184,7 @@ fn launch_by_captor(
     // ftCo_8008E908(gobj, 0.0). The damage motion change zeroes
     // dmg.kb_applied (fighter.c:1043), so the victim's own ProcessHit then
     // takes the no-knockback branch.
+    captured.core.refuse_unwitnessed_coin_spill("ftCo_CaptureCut.c:233 (ftCo_800DCFD4)");
     captured.begin_damage_reaction(hit, None, None, None, false, captured_assets, rng)?;
     Ok(())
 }
@@ -227,6 +228,7 @@ fn take_captor_throw_hit(
     hit.facing = -captor.physics.facing;
     hit.facing_override = None;
     hit.height = melee_coll::hurtbox::HurtHeight::Middle;
+    captured.core.refuse_unwitnessed_coin_spill("ftCo_Thrown.c:202 (ftCo_800DE854)");
     captured.core.take_percent_damage(damage, captured_assets);
     captor.credit_hit(captured.spawn_number, captor_assets);
 }
@@ -267,6 +269,7 @@ pub fn launch_released_captor(
     };
     // Fighter_UnkTakeDamage_8006CC30, ftCo_Damage_CalcKnockback and
     // ftCo_8008E908(gobj, 0.0).
+    captor.core.refuse_unwitnessed_coin_spill("ftCo_Throw.c:612 (ftCo_800DE2F0, a captor launched)");
     captor.begin_damage_reaction(hit, None, None, None, false, assets, rng)?;
     Ok(())
 }

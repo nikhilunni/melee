@@ -171,6 +171,11 @@ pub struct InitialState {
     pub(crate) frame_timer: crate::frame_timer::FrameTimer,
     /// A Stamina match's scene object (gm_804975F8, fn_801B96E8).
     pub(crate) stamina: Option<crate::stamina::StaminaRules>,
+    /// StaticPlayer's coin purses (a Coin match's score).
+    pub(crate) coins: crate::coins::Purses,
+    /// gm_80479D58.unk_8 (0x80479D60, gm_801A4BB8): the frames the scene
+    /// has run; a Coin match's pickups alternate by its parity.
+    pub(crate) scene_frame: u32,
     /// lbl_8046B6A0.terminate_match (gm_8016B328): the next scene frame
     /// decides OUTCOME_TERMINATED.
     pub(crate) match_terminated: bool,
@@ -586,7 +591,7 @@ impl InitialState {
         }
         if matches!(
             clock.scoring.match_kind,
-            melee_types::MatchKind::Coin | melee_types::MatchKind::Bonus
+            melee_types::MatchKind::Bonus
         ) {
             unimplemented!(
                 "gm_8016B0B4: a {:?} match (coins, bonus points) needs a retail witness",
@@ -845,7 +850,7 @@ impl InitialState {
                 anchor,
             );
         }
-        Ok(Self {
+        let mut state = Self {
             items,
             article_poses: Box::new(crate::article_pose::ArticlePoses::new(
                 &assets.items.article_skeletons,
@@ -917,6 +922,8 @@ impl InitialState {
                 (frame != u32::MAX).then_some(frame)
             }),
             match_terminated: false,
+            coins: crate::coins::Purses::saved(|address, len| saved.bytes(address, len).to_vec()),
+            scene_frame: word(saved.bytes(0x8047_9D60, 4), 0),
             stamina: (setup.special == Some(crate::SpecialMelee::Stamina)).then(|| {
                 let (address, len) = crate::stamina::StaminaRules::SAVED_RANGE;
                 let rules = crate::stamina::StaminaRules::saved(saved.bytes(address, len));
@@ -937,7 +944,9 @@ impl InitialState {
             }),
             offscreen_damage_by_camera_limits: setup.slippi.offscreen_damage_by_camera_limits,
             radial_forces,
-        })
+        };
+        crate::coins::start(&mut state, false);
+        Ok(state)
     }
 }
 
