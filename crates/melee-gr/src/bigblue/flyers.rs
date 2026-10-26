@@ -457,7 +457,7 @@ impl Flyers {
                         scene.set_rotation_z(body, std::f32::consts::FRAC_PI_6);
                     }
                     if degrees < -30.0 {
-                        unimplemented!("grbigblue.c:1072: a low flyer tilted past -30 degrees");
+                        scene.set_rotation_z(body, -std::f32::consts::FRAC_PI_6);
                     }
                 }
                 if degrees > 65.0 {
