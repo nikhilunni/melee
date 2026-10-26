@@ -913,6 +913,8 @@ impl Fighter {
                 .push(melee_it::ItemRequest::Destroy { item: held.item });
             self.core.release_held_item(held.item, assets);
         }
+        // ft_0D31.c:116-120: the Bunny Hood goes with the death.
+        self.core.lose_bunny_hood(assets);
         // ftCommon_8007DB24 (ft_0D31.c:132): x2219_b0 = 0, then
         // efLib_DestroyAll, after the Item_8026A8EC of every article and
         // held item above (ft_0D31.c:99-125): those items and their models

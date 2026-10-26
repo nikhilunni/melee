@@ -215,6 +215,9 @@ pub struct CommandState {
     pub first_hit_stale_penalty: Option<f32>,
     pub stale_multiplier: Option<f32>,
     pub jab_followup: bool,
+    /// x197C set: a worn Bunny Hood enables every jab followup
+    /// (ftAction_80071AE8).
+    pub wearing_bunny_hood: bool,
     pub rapid_jab: bool,
     pub rapid_jab_loop_end: bool,
     pub capsule_status: melee_types::combat::HurtStatus,
@@ -547,7 +550,7 @@ impl CommandState {
                 }
                 Command::RapidJab(enabled) => self.rapid_jab = *enabled,
                 Command::JabFollowup(disabled) => {
-                    if !disabled {
+                    if !disabled || self.wearing_bunny_hood {
                         self.jab_followup = true;
                     }
                 }

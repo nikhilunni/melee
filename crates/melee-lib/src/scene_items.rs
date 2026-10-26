@@ -45,6 +45,7 @@ melee_it::item_kinds! {
         Spycloak: it_spycloak::CloakingDevice,
         ScBall: it_scball::ScrewAttack,
         MetalB: it_metalb::MetalBox,
+        RabbitC: it_rabbitc::BunnyHood,
         Klap: it_klap::Klaptrap,
         Kuriboh: it_monsters::Kuriboh,
         Leadead: it_monsters::ReDead,
@@ -513,6 +514,7 @@ fn candidate(
         scope: (item.kind == ItemKind::SScope)
             .then(|| melee_it::scope::ScopeCharges::from_attributes(&assets.special_attributes)),
         metal: (item.kind == ItemKind::MetalB).then(|| it_metalb::metal(assets)),
+        bunny_hood: (item.kind == ItemKind::RabbitC).then(|| it_rabbitc::frames(assets)),
     }
 }
 
@@ -796,6 +798,16 @@ impl Resources {
                     ItemKind::Spycloak,
                     &it_spycloak::ARTICLE_STATES,
                     it_spycloak::SPECIAL_ATTRIBUTES,
+                )?,
+            ),
+            (
+                ItemKind::RabbitC,
+                ItemAssets::from_common(
+                    &common_archive,
+                    public,
+                    ItemKind::RabbitC,
+                    &it_rabbitc::ARTICLE_STATES,
+                    it_rabbitc::SPECIAL_ATTRIBUTES,
                 )?,
             ),
             (

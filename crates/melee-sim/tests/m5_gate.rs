@@ -7440,6 +7440,12 @@ const RANDOM_ITEM_KIND_WITNESSES: &[(&str, usize)] = &[
     ("corpus_v3_fd_items_spycloak_ed97ea327_p2", 4041),
     ("corpus_v3_fd_items_spycloak_ef89b3e70_p0", 4495),
     ("corpus_v3_fd_items_spycloak_efd4a7dd2_p2", 4916),
+    // Bunny Hoods (it-rabbitc): worn on the head (ftCommon_8007FA58), the
+    // hood's attributes (Fighter_804D6520) through dashes, jumps and jabs,
+    // a second hood renewing the frames, both hoods running out.
+    ("start_fd_items_rabbitc", 600),
+    ("start_fd_items_rabbitc_cold", 600),
+    ("w27_rabbitc_hoods", 1500),
 ];
 
 #[test]

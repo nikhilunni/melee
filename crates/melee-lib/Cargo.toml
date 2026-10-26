@@ -20,6 +20,7 @@ it-sscope = { path = "../it-sscope" }
 it-star = { path = "../it-star" }
 it-scball = { path = "../it-scball" }
 it-metalb = { path = "../it-metalb" }
+it-rabbitc = { path = "../it-rabbitc" }
 it-spycloak = { path = "../it-spycloak" }
 it-container = { path = "../it-container" }
 it-monsters = { path = "../it-monsters" }

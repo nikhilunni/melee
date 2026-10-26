@@ -354,7 +354,8 @@ pub struct ModelBones {
     pub animation_translation: u8,
     /// x11; ftCo_Guard.c:197 and ftCo_CatchWait.c:25.
     pub shield: u8,
-    /// x12; ftcommon.c:1541 attaches a held item here.
+    /// x12; the head the Bunny Hood hangs from (ftCommon_8007FA58,
+    /// ftcommon.c:1541).
     pub held_item: u8,
     /// x13/x14; ftaction.c:1172-1174 selects these foot-effect joints.
     pub left_foot: u8,

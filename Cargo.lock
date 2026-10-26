@@ -1572,6 +1572,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "it-rabbitc"
+version = "0.0.1"
+dependencies = [
+ "gekko-math",
+ "hsd-types",
+ "melee-it",
+ "melee-types",
+]
+
+[[package]]
 name = "it-samus"
 version = "0.0.1"
 dependencies = [
@@ -2060,6 +2070,7 @@ dependencies = [
  "it-ness",
  "it-peach",
  "it-pikachu",
+ "it-rabbitc",
  "it-samus",
  "it-scball",
  "it-seak",

@@ -2529,3 +2529,16 @@ stocks = 4
 seed = 2741121390
 item_frequency = 4
 item_mask = "0xfffffff900000000"
+
+# Items on, the Bunny Hood alone (make_boundary.py --item-frequency very-high
+# --items RabbitC --no-containers).
+[[boundary]]
+name = "start_fd_items_rabbitc"
+cold = "start_fd_items_rabbitc_cold"
+savestate = "harness/roms/start_fd_items_rabbitc.sav"
+stage = "FinalDestination"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1989356271
+item_frequency = 4
+item_mask = "0xfffffff880000000"

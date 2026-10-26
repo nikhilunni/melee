@@ -104,7 +104,7 @@ impl Fighter {
         let action = ActionId(u16::try_from(first + index as i32).expect("multijump action"));
         // retail 800D74EC fmuls; vertical impulses are loaded directly,
         // as ftCo_800D0CBC left them (times its factor, 1 unless metal).
-        let rise = attributes.vertical_impulses[index] * self.core.metal_jump_scale(assets);
+        let rise = attributes.vertical_impulses[index] * self.core.multi_jump_rise_scale(assets);
         let velocity = Vec3::new(
             self.core.input.current.stick.x * attributes.horizontal_impulse,
             rise,

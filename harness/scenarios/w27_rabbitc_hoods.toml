@@ -1,0 +1,54 @@
+# Directed witness (wave 27): Fox and Marth each put on a Bunny Hood (ftCommon_8007FA58: dropped from the hand, hung from the head); Fox dashes, jumps, double jumps and jabs in it, survives a forward smash with it on, renews it with a second hood, and both hoods run out.
+# Boundary start_fd_items_rabbitc. Step frames count
+# tick records (input_clock = "tick", dolphin/tick_trace.py).
+name = "w27_rabbitc_hoods"
+input_clock = "tick"
+savestate = "harness/roms/start_fd_items_rabbitc.sav"
+frames = 1500
+render_every_tick = true
+seed = 1
+item_frequency = 4
+item_mask = "0xfffffff880000000"
+stage = "FinalDestination"
+inputs = [
+  { frame = 300, port = 0, raw = { button = 0, stickX = 50 } },
+  { frame = 306, port = 0, raw = { button = 0 } },
+  { frame = 320, port = 0, raw = { button = 256 } },
+  { frame = 321, port = 0, raw = { button = 0 } },
+  { frame = 340, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 350, port = 0, raw = { button = 0 } },
+  { frame = 380, port = 0, raw = { button = 1024 } },
+  { frame = 383, port = 0, raw = { button = 0 } },
+  { frame = 400, port = 0, raw = { button = 1024 } },
+  { frame = 402, port = 0, raw = { button = 0 } },
+  { frame = 460, port = 0, raw = { button = 256 } },
+  { frame = 460, port = 1, raw = { button = 0, stickX = 50 } },
+  { frame = 461, port = 0, raw = { button = 0 } },
+  { frame = 468, port = 0, raw = { button = 256 } },
+  { frame = 469, port = 0, raw = { button = 0 } },
+  { frame = 470, port = 1, raw = { button = 0 } },
+  { frame = 476, port = 0, raw = { button = 256 } },
+  { frame = 477, port = 0, raw = { button = 0 } },
+  { frame = 490, port = 1, raw = { button = 256 } },
+  { frame = 491, port = 1, raw = { button = 0 } },
+  { frame = 520, port = 1, raw = { button = 0, substickX = -127 } },
+  { frame = 521, port = 1, raw = { button = 0 } },
+  { frame = 700, port = 0, raw = { button = 0, stickX = -50 } },
+  { frame = 718, port = 0, raw = { button = 0 } },
+  { frame = 740, port = 0, raw = { button = 256 } },
+  { frame = 741, port = 0, raw = { button = 0 } },
+  { frame = 900, port = 0, raw = { button = 1024 } },
+  { frame = 903, port = 0, raw = { button = 0 } },
+  { frame = 1000, port = 0, raw = { button = 0, stickX = 127 } },
+  { frame = 1012, port = 0, raw = { button = 0 } },
+]
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "scripted"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "scripted"

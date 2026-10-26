@@ -167,3 +167,22 @@ switches between their ground and air rows (flags 0x0C4C5080) are in
   percent add wears its health (int, fctiwz); ftCo_800C8540 ends it at 0
   frames, spent health or a death (ft_0D31.c:126). A transformation while
   metal, cloaked or under a Starman fails closed (ftcommon.c:1317-1340).
+
+## Bunny Hood (wave 27)
+
+- Item (itrabbitc.c): falls and rests; no thrown, hit or reflect logic
+  (its ShieldBounced is itColl_BounceOffShield); the slope slide is
+  guarded. Joint 3's visibility and the worn model's joint offsets and
+  scale (ftCommon_8007FA00) are presentation.
+- Picked up (ftpickupitem.c:185, ftCommon_8007FA58) it leaves the hand
+  (Item_8026ABD8, no push, xC44 0) and hangs from the head (ftData x8
+  +0x12) as x197C for its x0 frames (x2014, fctiwz); a second hood renews
+  the frames and is gone. ftCo_800D105C applies Fighter_804D6520 (the
+  dash, jumps, gravity, fall speeds, ledge and wall jumps; the multijumps'
+  rises, then the metal's, ftCo_800D0CBC); animated aerial jumps rise
+  times its +14 (ft_800851D0); every jab followup is enabled
+  (ftAction_80071AE8). Its countdown (fighter.c:1514) and a death
+  (ft_0D31.c:116) destroy it; a launch draws Randi(PlCo +418) < damage
+  after the hand's draw (fighter.c:2700) and drops it from the head
+  (xC44 1). Sounds, rumble and Pikachu's ear hook (ftCommon_8007F8E8)
+  are not simulated.

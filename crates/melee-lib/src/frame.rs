@@ -3459,6 +3459,7 @@ impl Runtime {
                                 shot_offset: crate::scene_items::shot_offset(kind, item),
                                 scope: None,
                                 metal: None,
+                                bunny_hood: None,
                                 heal: 0,
                             },
                             catch_item,

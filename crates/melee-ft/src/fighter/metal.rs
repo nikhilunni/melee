@@ -91,13 +91,16 @@ impl FighterCore {
     /// dat's attributes, the model scale's curves, the metal's
     /// multipliers (separate fmuls each), then the coll data's weight.
     /// The kind's LoadSpecialAttrs recopies attributes the port keeps
-    /// unscaled; the multijumps' rises take the metal at the jump
-    /// (`metal_jump_scale`).
+    /// unscaled; the multijumps' rises take the hood and the metal at the
+    /// jump (`multi_jump_rise_scale`).
     pub(super) fn recompute_attributes(&mut self, assets: &FighterAssets) {
         let mut attributes = assets.attributes.clone();
         assets
             .scale_curves
             .scale_attributes(&mut attributes, self.player.scale);
+        if self.status.bunny_hood.is_some() {
+            assets.bunny_hood.apply(&mut attributes);
+        }
         if self.status.metal.metal {
             let m = &assets.metal;
             attributes.jumping.jump_v_initial_velocity *= m.jump;
@@ -115,14 +118,18 @@ impl FighterCore {
         self.collision.data.x50 = self.attributes.size.weight;
     }
 
-    /// ftCo_800D0CBC (800D0CBC)'s factor on the multijumps' rises: the
-    /// metal's +4 (1 otherwise).
-    pub fn metal_jump_scale(&self, assets: &FighterAssets) -> f32 {
-        if self.status.metal.metal {
-            assets.metal.jump
-        } else {
-            1.0
+    /// ftCo_800D0CBC (800D0CBC)'s factor on the multijumps' rises: 1, times
+    /// the hood's +14 while worn, times the metal's +4 while metal (fmuls
+    /// each, in that order).
+    pub fn multi_jump_rise_scale(&self, assets: &FighterAssets) -> f32 {
+        let mut scale = 1.0;
+        if self.status.bunny_hood.is_some() {
+            scale *= assets.bunny_hood.jump_v;
         }
+        if self.status.metal.metal {
+            scale *= assets.metal.jump;
+        }
+        scale
     }
 
     /// Fighter_TakeDamage_8006CC7C (fighter.c:2652): while timed, the

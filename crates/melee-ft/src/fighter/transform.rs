@@ -51,6 +51,9 @@ pub fn transfer(
     if src.core.status.star_invincible {
         unimplemented!("ftCommon_8007EFC8 (ftcommon.c:1317): transforming under a Starman");
     }
+    if src.core.status.bunny_hood.is_some() {
+        unimplemented!("ftCommon_8007EFC8 (ftcommon.c:1342): transforming in a Bunny Hood");
+    }
     if src.core.status.metal.metal {
         unimplemented!("ftCommon_8007EFC8 (ftcommon.c:1331): transforming while metal");
     }

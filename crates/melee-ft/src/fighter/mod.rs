@@ -53,6 +53,7 @@ pub mod power_up;
 pub mod item_scope;
 pub mod item_screw;
 pub mod metal;
+pub mod bunny_hood;
 pub mod item_shoot;
 pub mod item_swing;
 pub mod item_throw;
@@ -1046,6 +1047,8 @@ pub struct Status {
     pub cloak_frames: i32,
     /// is_metal, metal_timer, metal_health (a Metal Box).
     pub metal: metal::MetalState,
+    /// x197C / x2014: the Bunny Hood worn and its frames.
+    pub bunny_hood: Option<bunny_hood::BunnyHood>,
 }
 impl Status {
     pub fn reset(shield_health: f32) -> Self {
@@ -1085,6 +1088,7 @@ impl Status {
             cloaked: false,
             cloak_frames: 0,
             metal: metal::MetalState::default(),
+            bunny_hood: None,
         }
     }
 }

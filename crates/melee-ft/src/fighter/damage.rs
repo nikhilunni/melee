@@ -2603,6 +2603,10 @@ impl FighterCore {
         rng: &mut gekko_math::HsdRng,
     ) -> (S, f32) {
         self.maybe_drop_held_item(hit, assets, rng);
+        // fighter.c:2700-2706: the Bunny Hood's own draw, after the hand's.
+        if hit.descriptor.element != melee_types::HitElement::Cape {
+            self.maybe_knock_off_bunny_hood(fctiwz(hit.percent_damage), assets, rng);
+        }
         let airborne = self.physics.ground_or_air == GroundOrAir::Air;
         let stun = hit.knockback * assets.damage.hitstun_scale;
         let base_level = assets.damage.reaction_level(stun);
@@ -2753,7 +2757,8 @@ impl FighterCore {
     /// Fighter_8006CDA4 (8006CDA4), first in ftCo_8008DCE0: a launch draws
     /// whether it knocks a held light item loose. The armour flags
     /// (x2220_b3/b4), x2226_b2 and the excluded Kirby/ice states are
-    /// unreachable here; Fox and Marth hold no second item (x1978/x197C).
+    /// unreachable here; Fox and Marth hold no second item (x1978). The
+    /// Bunny Hood's draw (x197C) follows (`maybe_knock_off_bunny_hood`).
     fn maybe_drop_held_item(
         &mut self,
         hit: &ReceivedHit,

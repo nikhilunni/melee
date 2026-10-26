@@ -64,6 +64,11 @@ impl FighterCore {
         if held.use_kind != CONSUMED {
             return false;
         }
+        if held.kind == ItemKind::RabbitC {
+            // ftCommon_8007FA58: worn, not eaten.
+            self.wear_bunny_hood(held, assets);
+            return true;
+        }
         match held.kind {
             ItemKind::Heart | ItemKind::Tomato | ItemKind::Foods => self.heal(held.heal, assets),
             // ftCo_800C88D4(gobj, PlCo +7CC, 1).

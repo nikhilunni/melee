@@ -392,7 +392,7 @@ impl FighterCore {
         // retail 800CC6A4: fmadds.
         self.physics.self_velocity.x =
             gekko_math::fma::fmadds(offset.z, self.physics.facing, impulse);
-        self.physics.self_velocity.y = offset.y;
+        self.physics.self_velocity.y = super::bunny_hood::animated_rise(offset.y, self.hood_jump_v());
     }
     /// ftCo_Jump_Phys_Inner (800CB438): calculation after jump-style selection.
     fn airborne_physics(&mut self, assets: &FighterAssets, animation_driven: bool) {
@@ -404,7 +404,7 @@ impl FighterCore {
                 self.input.current.stick.x,
                 &self.attributes.air,
             );
-            self.physics.self_velocity.y = self
+            let rise = self
                 .animation
                 .root_motion
                 .as_ref()
@@ -412,6 +412,7 @@ impl FighterCore {
                 .primary_history
                 .offset
                 .y;
+            self.physics.self_velocity.y = super::bunny_hood::animated_rise(rise, self.hood_jump_v());
             return;
         }
         // ftCo_Jump_Phys skips its first frame; other states sharing this
