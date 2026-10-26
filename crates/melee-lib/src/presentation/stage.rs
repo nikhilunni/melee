@@ -7,7 +7,7 @@ use melee_gr::last::animation::BackgroundAnimation;
 use melee_types::GrKind;
 
 /// Ground scheduler keys a stage may use (`scene_stage::StageObjects`).
-const KEYS: u8 = 40;
+pub(super) const KEYS: u8 = 40;
 
 /// `Ground.x11_flags.b012 == 2`: the main camera draws these maps first, in
 /// its background pass (`fn_800301D0`, 0x800301D0: passes 2, 1, then 0).

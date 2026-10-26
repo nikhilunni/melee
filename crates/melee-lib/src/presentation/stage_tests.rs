@@ -71,7 +71,7 @@ fn every_stage_draws_exactly_its_live_ground_models() {
                 .unwrap_or_else(|e| panic!("{stage:?} tick {tick}: {e}"));
         }
         let mut drawn = 0;
-        for key in 0..16 {
+        for key in 0..stage::KEYS {
             let (visible, any) = stage_meshes(&view, key);
             if !stage::live(&game, key) {
                 assert_eq!(visible, 0, "{stage:?}: map {key} is not live but drawn");

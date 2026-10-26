@@ -382,11 +382,19 @@ impl Stage {
     /// items (grinishie1.c:465, not ported); two players on each
     /// (`w26_start_<Stage>_items_all`, `w27_start_<Stage>_items_all`), three
     /// and four on Final Destination, Battlefield and Kongo Jungle.
-    /// Brinstar and Venom (wave 27) have no item witness yet.
+    /// Brinstar, Venom, Mute City and Poké Floats (wave 27) have no item
+    /// witness yet.
     pub fn items_supported(self, players: usize) -> bool {
         (2..=4).contains(&players)
             && self.is_ported()
-            && !matches!(self, Self::MushroomKingdom | Self::Brinstar | Self::Venom)
+            && !matches!(
+                self,
+                Self::MushroomKingdom
+                    | Self::Brinstar
+                    | Self::Venom
+                    | Self::MuteCity
+                    | Self::PokeFloats
+            )
     }
     pub(crate) fn descriptor(self) -> Option<&'static crate::scene_stage::StageDescriptor> {
         crate::scene_stage::descriptor(self.name())
