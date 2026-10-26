@@ -3,6 +3,7 @@
 //!
 //! See AGENTS.md for the porting rules that apply to every crate.
 mod camera;
+pub mod fixed;
 pub mod params;
 pub mod quake;
 pub mod stage;
@@ -11,6 +12,7 @@ pub mod subject;
 pub mod view;
 
 pub use camera::{GameCamera, Mode, Transform};
+pub use fixed::FixedView;
 pub use quake::{Quake, QuakeKind};
 pub use stage::{Rect, StageCamera};
 pub use subject::{Extents, Subject, SubjectState};

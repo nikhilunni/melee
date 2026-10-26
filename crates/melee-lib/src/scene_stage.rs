@@ -13,6 +13,7 @@ pub(crate) mod oldkongo;
 pub(crate) mod oldyoshi;
 pub(crate) mod onett;
 pub(crate) mod pupupu;
+pub(crate) mod pura;
 pub(crate) mod shrine;
 pub(crate) mod stadium;
 pub(crate) mod yorster;
@@ -286,6 +287,14 @@ pub const MUTE_CITY: StageDescriptor = StageDescriptor {
     kind: melee_types::GrKind::MuteCity,
     read: melee_gr::desc::read_mute_city,
 };
+/// grPu_StageData: GrPu.dat; StageParam row 0x17 (StKind).
+pub const POKE_FLOATS: StageDescriptor = StageDescriptor {
+    name: "PokeFloats",
+    file: "GrPu.dat",
+    music_id: 0x17,
+    kind: melee_types::GrKind::Pura,
+    read: melee_gr::desc::read_pura,
+};
 pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
     [
         &FINAL_DESTINATION,
@@ -308,6 +317,7 @@ pub fn descriptor(name: &str) -> Option<&'static StageDescriptor> {
         &BRINSTAR,
         &VENOM,
         &MUTE_CITY,
+        &POKE_FLOATS,
     ]
     .into_iter()
     .find(|d| d.name == name)
@@ -334,6 +344,7 @@ pub enum SceneStage {
     Zebes(Box<melee_gr::zebes::procs::ZebesStage>),
     Venom(Box<melee_gr::venom::procs::VenomStage>),
     MuteCity(Box<melee_gr::mutecity::procs::MuteCityStage>),
+    Pura(Box<melee_gr::pura::Pura>),
 }
 impl SceneStage {
     /// Install the frozen-stage code (`SlippiCodes::frozen_stages`) on the
@@ -344,7 +355,7 @@ impl SceneStage {
             Self::Story(s) => s.shy_guys_disabled = frozen,
             Self::Pupupu(s) => s.wind_disabled = frozen,
             Self::Stadium(s) => s.transformation.disabled = frozen,
-            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) => {}
+            Self::Battlefield(_) | Self::Izumi(_) | Self::OldYoshi(_) | Self::OldKongo(_) | Self::Garden(_) | Self::Kongo(_) | Self::Shrine(_) | Self::Fourside(_) | Self::Kraid(_) | Self::FlatZone(_) | Self::Yorster(_) | Self::Inishie1(_) | Self::Onett(_) | Self::Zebes(_) | Self::Venom(_) | Self::MuteCity(_) | Self::Pura(_) => {}
         }
     }
     pub fn proc_table(&self) -> Vec<ProcRegistration> {
@@ -369,6 +380,7 @@ impl SceneStage {
             Self::Zebes(s) => s.proc_table(),
             Self::Venom(s) => s.proc_table(),
             Self::MuteCity(s) => s.proc_table(),
+            Self::Pura(s) => s.proc_table(),
         }
     }
     /// Procs whose GObjs the stage creates when the countdown releases it.
@@ -411,6 +423,7 @@ impl SceneStage {
             Self::Zebes(_) => unreachable!("Brinstar callbacks run in scene_stage::zebes"),
             Self::Venom(_) => unreachable!("Venom callbacks run in scene_stage::venom"),
             Self::MuteCity(_) => unreachable!("Mute City callbacks run in scene_stage::mutecity"),
+            Self::Pura(_) => unreachable!("Poké Floats callbacks run in scene_stage::pura"),
             Self::FinalDestination(_) => unreachable!("FD callbacks require animation state"),
             Self::Story(stage) => match map {
                 1 => {}

@@ -46,6 +46,8 @@ pub struct StageCamera {
     /// Camera_8002AF68's stage-specific lowest eye height (Castle, Corneria,
     /// Zebes, Garden, Kinoko Route, Home-Run); `-F32_MAX` elsewhere.
     pub min_eye_height: f32,
+    /// The fixed mode's view (cam_info fixed_cam_*).
+    pub fixed: crate::fixed::FixedView,
 }
 
 /// `Stage_GetCamPanAngleRadians`'s literal 0.0174532923847F.
@@ -81,6 +83,12 @@ impl StageCamera {
         },
         floor: -10000.0,
         min_eye_height: -f32::MAX,
+        fixed: crate::fixed::FixedView {
+            position: hsd_types::Vec3::ZERO,
+            fov: 0.0,
+            vertical_angle: 0.0,
+            horizontal_angle: 0.0,
+        },
     };
 
     /// Stage_GetCamBoundsLeftOffset and its three siblings.

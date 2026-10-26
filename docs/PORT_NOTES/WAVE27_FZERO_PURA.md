@@ -75,3 +75,34 @@ and lower the track's floor and set its ends' shape.
   map 0, so the per-tick re-aim (ftCo_Rebirth_Phys) is the entry's.
 - The revival reads the live camera top (`stage_limits`), which Mute
   City's script moves.
+
+## Poké Floats (grpura.c)
+
+Creation: maps 0, 1, 4; map 4's on_init (stageGObj4_OnInit) binds its
+collision joints, plays its animation, makes 25 camera subjects on the
+first 25 bones under its root (grPura_80212CD4) and creates every Pokémon
+(grPura_802125F0: maps 2, 3, 5..26, map 13 three times under keys 28 and
+29), placing each Ground's JObj on its bone (Ground_801C33C0(4, joint)).
+Map 4's proc follows the Pokémon's. Map 1's on_init draws the sky's two
+colours (HSD_Randi(4) until they differ): a variable setup draw count the
+cold start inverts by searching the count whose creation draws it.
+
+- The match camera is fixed (grGroundParam x4C_fixed_cam, so
+  Ground_EnableMatchCamera picks CAMERA_FIXED): `melee_cm::fixed`,
+  Camera_8002DDC4 with Stage_80224CAC's interest and grGroundParam
+  +0x50..+0x64. The 25 subjects are still linked and updated
+  (grPura_80212EF4), after the fighters'.
+- grPura_80211D00 scales the camera limits by 0.8 about the camera's
+  centre at creation (in `Assets::stage_camera`).
+- Each tick: the Pokémon copy their bones' translation, rotation, scale
+  and hidden flag (stageGObj2_GObjProc); map 4 moves the subjects, the
+  collision joints (Ground_801C2FE0), 41 vertices onto joints of maps 2,
+  8, 12 and 25 (grPura_80213030) with the joints' bounds, then
+  mpLib_80055E24(0x18) and lb_800115F4. Map 1 counts its 3600-tick fade
+  and draws the next colour.
+- A fighter KO'd standing on a rising Pokémon star-KOs while still
+  grounded: DeadUpStar rides the floor (mpGetSpeed) like the side deaths,
+  and the twinkle (efAsync 0x42D, no JObj) spawns at the position queued,
+  not the root's at the flush.
+- Display only: the toon texture, the sky colour (Ground_801C205C,
+  Camera_SetBackgroundColor).

@@ -28,11 +28,13 @@ impl Transform {
     };
 }
 
-/// CameraType. Only the standard mode is ported.
+/// CameraType. The standard and fixed modes are ported.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Mode {
     #[default]
     Standard = 0,
+    /// CAMERA_FIXED (Camera_SetModeToFixed).
+    Fixed = 4,
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -89,6 +91,32 @@ impl GameCamera {
             single_player_zoom: false,
             lock_depth: false,
             screen: crate::view::Screen::Standard,
+        }
+    }
+
+    /// Ground_EnableMatchCamera (0x801C5800): the fixed mode where the
+    /// stage's grGroundParam sets `x4C_fixed_cam`, else the standard one.
+    pub fn enable_match_camera(&mut self, fixed: bool) {
+        self.mode = if fixed { Mode::Fixed } else { Mode::Standard };
+    }
+
+    /// The mode's callback (cm_803BCB18): Camera_8002B3D4 or
+    /// Camera_8002DDC4.
+    pub fn update(&mut self, subjects: &mut [Option<&mut crate::Subject>], stage: &crate::StageCamera) {
+        match self.mode {
+            Mode::Standard => self.update_standard(subjects, stage),
+            Mode::Fixed => self.update_fixed(stage),
+        }
+    }
+
+    /// Camera_8002F3AC (0x8002F3AC): the mode's callback, then every
+    /// transform at its targets.
+    pub fn snap(&mut self, subjects: &mut [Option<&mut crate::Subject>], stage: &crate::StageCamera) {
+        self.update(subjects, stage);
+        for t in [&mut self.transform, &mut self.transform_copy] {
+            t.position = t.target_position;
+            t.interest = t.target_interest;
+            t.fov = t.target_fov;
         }
     }
 

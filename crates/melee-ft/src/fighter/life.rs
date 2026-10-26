@@ -785,7 +785,7 @@ impl Fighter {
     /// Fighter_procUpdate's tail then integrates the world position as usual.
     /// The hitlag-slowdown gate (x2222_b6, ftAnim_80070FD0) is not reachable
     /// in a Vs match.
-    pub(crate) fn screen_ko_physics(&mut self, assets: &FighterAssets, wind: Wind) {
+    pub(crate) fn screen_ko_step(&mut self, assets: &FighterAssets) {
         let parameters = assets.life.screen_ko;
         let MotionData::Life(LifeState::ScreenKo(ko)) = &mut self.core.state_data else {
             panic!("screen KO scratch");
@@ -822,7 +822,6 @@ impl Fighter {
             }
             _ => {}
         }
-        self.core.free_flight_physics(assets, wind);
     }
     /// fn_800D4DD4 (800D4DD4): the accessory4 that ftCo_800D481C installs once
     /// the fighter hits the screen. A fall below the camera bounds stops

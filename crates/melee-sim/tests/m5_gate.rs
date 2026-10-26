@@ -5408,7 +5408,7 @@ fn sword_ground_inputs_and_entries_match_retail() {
 /// releases its victim (ftCo_800DD100), that thrown positioning waits out
 /// hitlag (Fighter_CallAcessoryCallbacks_8006C624) and that a motion change
 /// drops the Counter volume (fighter.c:1049, `x221B_b0`).
-static CORPUS_V3_MATCHES: [(&str, usize); 932] = [
+static CORPUS_V3_MATCHES: [(&str, usize); 944] = [
     // Marth grabbed out of Counter takes the pummel as CaptureDamageLw.
     ("corpus_v3_s1_e9943b4ab_p0", 700),
     ("corpus_v3_s1_ec0a10b25_p1", 420),
@@ -6778,6 +6778,21 @@ static CORPUS_V3_MATCHES: [(&str, usize); 932] = [
     ("corpus_v3_mc_fox_marth4_eb17a6598_p0", 5530),
     ("corpus_v3_mc_fox_marth4_e70b3084c_p2", 6001),
     ("corpus_v3_mc_fox_marth4_e05625e18_p1", 5162),
+    // Poké Floats (grpura.c): the fixed camera, the sequence carrying the
+    // Pokémon, their collision and vertices, the sky's draws, and fighters
+    // KO'd (star and screen) standing on a rising Pokémon.
+    ("pf27_idle_fox_marth4", 3800),
+    ("pf27_screenko_cam_e1b05b110", 3540),
+    ("corpus_v3_pf_fox_marth4_ef89b3e70_p0", 3922),
+    ("corpus_v3_pf_fox_marth4_e9943b4ab_p0", 2603),
+    ("corpus_v3_pf_fox_marth4_e19f8579b_p0", 5732),
+    ("corpus_v3_pf_fox_marth4_e50814092_p0", 2817),
+    ("corpus_v3_pf_fox_marth4_eeda0d0fc_p0", 5492),
+    ("corpus_v3_pf_fox_marth4_ee133b82f_p0", 3513),
+    ("corpus_v3_pf_fox_marth4_e4213e6a5_p0", 3126),
+    ("corpus_v3_pf_fox_marth4_e1b05b110_p0", 4090),
+    ("corpus_v3_pf_fox_marth4_e6cc80d32_p0", 3533),
+    ("corpus_v3_pf_fox_marth4_ef9b6d16d_p0", 5782),
     // Fourside (grfourside.c): the crane's swings and its beam raised,
     // lowered and settling; the helicopter arriving, hovering and leaving;
     // the UFO landing on each building (framed by the camera while it

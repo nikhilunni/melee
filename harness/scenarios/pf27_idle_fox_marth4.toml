@@ -1,0 +1,19 @@
+# Fox vs Marth on Poke Floats from start_pf_fox_marth4, nobody moving: the
+# floating platforms' sequence over a minute.
+name = "pf27_idle_fox_marth4"
+savestate = "harness/roms/start_pf_fox_marth4.sav"
+frames = 3800
+seed = 1
+stage = "PokeFloats"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

@@ -179,6 +179,10 @@ fn setup_snapshot(state: &InitialState) -> Record {
         SceneStage::MuteCity(stage) => {
             sink.field("stage.mutecity.script", &i32::from(stage.script.entry));
         }
+        SceneStage::Pura(stage) => {
+            sink.field("stage.pura.sky_from", &i32::from(stage.sky.from));
+            sink.field("stage.pura.sky_to", &i32::from(stage.sky.to));
+        }
         SceneStage::Inishie1(stage) => {
             sink.field("stage.inishie1.lift_base", &stage.lifts.base_y);
         }
@@ -427,6 +431,11 @@ fn start_venom_fox_marth4_cold_600() {
 #[test]
 fn start_mc_fox_marth4_cold_600() {
     verify("start_mc_fox_marth4");
+}
+
+#[test]
+fn start_pf_fox_marth4_cold_600() {
+    verify("start_pf_fox_marth4");
 }
 
 #[test]

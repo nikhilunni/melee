@@ -224,7 +224,7 @@ const fn names(name: &'static str, display: &'static str, st_kind: u8) -> StageN
 }
 impl Stage {
     /// The stages a match can start on, in the order menus offer them.
-    pub const PORTED: [Self; 20] = [
+    pub const PORTED: [Self; 21] = [
         Self::Battlefield,
         Self::FinalDestination,
         Self::DreamLand,
@@ -245,6 +245,7 @@ impl Stage {
         Self::Brinstar,
         Self::Venom,
         Self::MuteCity,
+        Self::PokeFloats,
     ];
     /// The ported stages where CPU players are witnessed against retail
     /// (docs/PORT_NOTES/CPU_PLAYERS.md); hosts offer a CPU only here.

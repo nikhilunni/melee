@@ -148,13 +148,26 @@ impl InitialState {
         // it_8026D018 draws its first interval when it creates the spawner.
         let spawner_draws =
             usize::from(create_item_spawner(scenario, &assets, &mut HsdRng::default()).is_some());
-        let mut rng = HsdRng::new(before_setup(
-            boundary_seed,
-            setup_draws(
-                assets.stage_desc.kind,
-                scenario.roster().iter().map(|entry| entry.descriptor.kind),
-            )? + spawner_draws,
-        ));
+        let fixed_draws = setup_draws(
+            assets.stage_desc.kind,
+            scenario.roster().iter().map(|entry| entry.descriptor.kind),
+        )? + spawner_draws;
+        let mut rng = HsdRng::new(before_setup(boundary_seed, fixed_draws));
+        if assets.stage_desc.kind == GrKind::Pura {
+            // The sky's draws depend on what it draws: the one count whose
+            // creation, run from the seed it implies, draws that many.
+            let start = (1..=MAX_VARIABLE_DRAWS)
+                .map(|n| HsdRng::new(before_setup(boundary_seed, fixed_draws + n)))
+                .find(|&start| {
+                    let mut at_stage = start;
+                    for _ in 0..spawner_draws {
+                        at_stage.rand();
+                    }
+                    let n = variable_stage_draws(GrKind::Pura, at_stage);
+                    HsdRng::new(before_setup(boundary_seed, fixed_draws + n)) == start
+                });
+            rng = start.context("Poké Floats: no sky draw count reaches the boundary seed")?;
+        }
         // fn_8016E730: Item_80266FCC, then it_8026D018 (the random item
         // spawner), after the stage's files load (Stage_802251E8) and before
         // its maps are created (Stage_8022524C), where every stage draws.
@@ -198,6 +211,7 @@ impl InitialState {
                 | SceneStage::Zebes(_)
                 | SceneStage::Venom(_)
                 | SceneStage::MuteCity(_)
+                | SceneStage::Pura(_)
         );
         if matches!(stage, SceneStage::Stadium(_)) {
             crate::scene_stage::stadium::initialize_collision(&mut map, &mut stage_animations);
@@ -219,11 +233,21 @@ impl InitialState {
         // StageCamera::fov), then Camera_8002F3AC snaps to the players.
         let mut camera = melee_cm::GameCamera::new();
         camera.screen = scenario.slippi.screen;
+        // Ground_EnableMatchCamera, then Camera_8002F3AC.
+        camera.enable_match_camera(assets.stage_desc.parameters.fixed_camera);
         {
             // cm_804D6468 runs newest first: the reverse of creation.
-            let subjects = fighters.iter_mut().rev().map(|f| &mut f.0.camera);
+            let live_camera = crate::scene_stage::live_camera(&stage, &assets.stage_camera);
+            let stage_subjects: &mut [melee_cm::Subject] = match &mut stage {
+                SceneStage::Pura(stage) => &mut stage.subjects[..],
+                _ => &mut [],
+            };
+            let subjects = stage_subjects
+                .iter_mut()
+                .rev()
+                .chain(fighters.iter_mut().rev().map(|f| &mut f.0.camera));
             crate::frame::with_subjects(subjects, |subjects| {
-                camera.snap_standard(subjects, &crate::scene_stage::live_camera(&stage, &assets.stage_camera))
+                camera.snap(subjects, &live_camera)
             });
         }
         let quakes =
@@ -469,6 +493,9 @@ fn setup_draws(
         GrKind::Venom => 0,
         // grMuteCity_801EFC6C draws nothing.
         GrKind::MuteCity => 0,
+        // stageGObj1_OnInit's sky draws until its colours differ
+        // (variable_stage_draws); GrPu.dat has no particle keys.
+        GrKind::Pura => 0,
         kind => anyhow::bail!("cold setup: {kind:?} has no audited setup draws"),
     };
     let fighter_draws: usize = fighters
@@ -488,12 +515,32 @@ pub(crate) fn boundary_seed_after(
     fighters: impl Iterator<Item = melee_types::FighterKind>,
 ) -> Result<u32> {
     let mut rng = HsdRng::new(seed);
-    for _ in 0..setup_draws(stage, fighters)? {
+    let draws = setup_draws(stage, fighters)? + variable_stage_draws(stage, rng);
+    for _ in 0..draws {
         rng.rand();
     }
     Ok(rng.seed)
 }
 
+/// More draws than any variable stage creation takes.
+const MAX_VARIABLE_DRAWS: usize = 64;
+
+/// The draws a stage's creation takes from `rng` when their count depends
+/// on what it draws: Poké Floats' sky (stageGObj1_OnInit).
+fn variable_stage_draws(stage: GrKind, rng: HsdRng) -> usize {
+    if stage != GrKind::Pura {
+        return 0;
+    }
+    let mut probe = rng;
+    melee_gr::pura::Sky::new(&mut probe);
+    let mut walk = rng;
+    let mut draws = 0;
+    while walk != probe {
+        walk.rand();
+        draws += 1;
+    }
+    draws
+}
 
 fn before_setup(mut seed: u32, draws: usize) -> u32 {
     const INVERSE_MULTIPLIER: u32 = 0xB9B3_3155;
@@ -748,6 +795,12 @@ fn initialize_stage(
         GrKind::MuteCity => {
             let (stage, animations) =
                 crate::scene_stage::mutecity::initialize(assets, rng, particles, map)?;
+            stage_animations = animations;
+            stage
+        }
+        GrKind::Pura => {
+            let (stage, animations) =
+                crate::scene_stage::pura::initialize(assets, rng, particles, map)?;
             stage_animations = animations;
             stage
         }

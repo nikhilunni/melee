@@ -97,6 +97,9 @@ fn stage_edges(stage: Stage) -> StageEdges {
         // The platform's main floor ends at about x -84 and 84; it moves
         // (an approximation for the policies).
         Stage::MuteCity => (80.0, 55.0),
+        // The Pokémon float by and change every few seconds (an
+        // approximation for the policies).
+        Stage::PokeFloats => (70.0, 45.0),
         stage => panic!("{}", melee_lib::unported_stage(stage)),
     };
     StageEdges {

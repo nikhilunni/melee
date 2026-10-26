@@ -2428,3 +2428,13 @@ stage = "MuteCity"
 players = ["Fox", "Marth"]
 stocks = 4
 seed = 1137482494
+
+# Poké Floats (make_boundary.py --stage PokeFloats --players Fox Marth).
+[[boundary]]
+name = "start_pf_fox_marth4"
+cold = "start_pf_fox_marth4_cold"
+savestate = "harness/roms/start_pf_fox_marth4.sav"
+stage = "PokeFloats"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 161380360

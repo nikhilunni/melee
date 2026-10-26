@@ -16,6 +16,7 @@ pub mod last;
 pub mod music;
 pub mod mutecity;
 pub mod onett;
+pub mod pura;
 pub mod rand;
 pub mod shrine;
 pub mod stadium;

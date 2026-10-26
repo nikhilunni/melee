@@ -76,6 +76,8 @@ fn drawn_by_main_camera(kind: GrKind, map: u8) -> bool {
 fn model_map(kind: GrKind, key: u8) -> Option<u8> {
     if kind == GrKind::Izumi {
         melee_gr::izumi::procs::model(key)
+    } else if kind == GrKind::Pura {
+        Some(melee_gr::pura::procs::model(key))
     } else {
         Some(key)
     }
@@ -120,6 +122,8 @@ pub(super) fn light_map(kind: GrKind) -> Result<usize, PresentationError> {
         GrKind::Venom => 5,
         // grMc_StageCallbacks[0x1E] carries 0xC0000000.
         GrKind::MuteCity => 0x1E,
+        // stage_callbacks[27] carries 0x80000000 (map 27 is never created).
+        GrKind::Pura => 27,
         _ => return Err(error("stage light set unknown")),
     })
 }

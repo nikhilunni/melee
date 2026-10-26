@@ -1278,6 +1278,14 @@ fn start_mc_fox_marth4_600() {
     movement_gate_ticks("start_mc_fox_marth4_cold", 600);
     particle_rng_sites_with_ledger("start_mc_fox_marth4", 600, "ledger600");
 }
+/// Poké Floats' start boundary: the fixed camera and the sequence's first
+/// 600 ticks (the first Pokémon floating in), the sky's draws.
+#[test]
+fn start_pf_fox_marth4_600() {
+    movement_gate_ticks("start_pf_fox_marth4", 600);
+    movement_gate_ticks("start_pf_fox_marth4_cold", 600);
+    particle_rng_sites_with_ledger("start_pf_fox_marth4", 600, "ledger600");
+}
 #[test]
 fn start_jj_and_kj_fox_marth4_600() {
     movement_gate_ticks("start_jj_fox_marth4", 600);

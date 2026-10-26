@@ -44,7 +44,9 @@ fn ride_floor_dead(fighter: &mut Fighter, map: &melee_mp::CollMap, wind: melee_g
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpStar (4): no retail callback; Fighter_procUpdate's
-/// tail still integrates the flight velocity.
+/// tail still integrates the flight velocity, and a fighter KO'd standing
+/// (Poké Floats' rising Pokémon carry it past the top) still rides its
+/// floor, as the side and bottom deaths do.
 pub fn dead_star(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
     let PhysicsPhase { assets, map, wind } = phase;
     if !ride_floor_dead(fighter, map, wind) {
@@ -53,14 +55,11 @@ pub fn dead_star(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
 }
 
 /// ftData_MotionStateList: ftCo_MS_DeadUpFall (6), ftCo_MS_DeadUpFallHitCamera (7),
-/// ftCo_MS_DeadUpFallHitCameraFlat (8): ftCo_DeadUpFall_Phys, then procUpdate's tail.
+/// ftCo_MS_DeadUpFallHitCameraFlat (8): ftCo_DeadUpFall_Phys, then procUpdate's
+/// tail, which rides the floor of a fighter KO'd standing (Poké Floats).
 pub fn dead_screen(fighter: &mut Fighter, phase: PhysicsPhase<'_>) {
-    let PhysicsPhase {
-        assets,
-        map: _,
-        wind,
-    } = phase;
-    fighter.screen_ko_physics(assets, wind)
+    fighter.screen_ko_step(phase.assets);
+    dead(fighter, phase)
 }
 
 /// ftData_MotionStateList: ftCo_MS_Rebirth (12), ftCo_MS_RebirthWait (13).

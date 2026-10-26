@@ -51,6 +51,9 @@ pub struct GroundParam {
     pub map_scale: f32,
     pub camera: CameraParam,
     pub fixed_camera: bool,
+    /// +0x50..+0x64: the fixed mode's eye, field of view and angles
+    /// (Ground_801C0800 -> Ground_801C392C).
+    pub fixed_view: melee_cm::FixedView,
     pub environment_colors: [[u8; 4]; 9],
     pub stage_param_count: usize,
 }
@@ -352,6 +355,11 @@ pub fn read_onett_parameters(archive: &Archive) -> ReadResult<crate::onett::Para
 /// carries flags 0xC0000000, so map 0x1E selects the lights and fog.
 pub fn read_mute_city(archive: &Archive) -> ReadResult<StageDesc> {
     read_stage(archive, GrKind::MuteCity, 0x1E)
+}
+/// grPu_StageData / grDatFiles_801C6038: GrPu.dat. stage_callbacks[4]
+/// carries flags 0x40000000 (the fog); row 27's 0x80000000 is the lights.
+pub fn read_pura(archive: &Archive) -> ReadResult<StageDesc> {
+    read_stage(archive, GrKind::Pura, 4)
 }
 /// grBb_StageData / grDatFiles_801C6038: GrBb.dat. grBb_StageCallbacks[1]
 /// carries flags 0x40000000 (the fog); row 0x23's 0x80000000 is the lights.
@@ -800,6 +808,12 @@ fn read_parameters(archive: &Archive) -> ReadResult<GroundParam> {
             track_smooth: r.f32(p + 0x28)?,
         },
         fixed_camera: r.s32(p + 0x4C)? != 0,
+        fixed_view: melee_cm::FixedView {
+            position: hsd_types::Vec3::new(r.f32(p + 0x50)?, r.f32(p + 0x54)?, r.f32(p + 0x58)?),
+            fov: r.f32(p + 0x5C)?,
+            vertical_angle: r.f32(p + 0x60)?,
+            horizontal_angle: r.f32(p + 0x64)?,
+        },
         environment_colors: colors,
         stage_param_count: count(&r, p + 0xB4)?,
     })

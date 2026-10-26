@@ -39,11 +39,15 @@ fn extents(raw: &[u8], at: usize) -> Extents {
     }
 }
 
-/// struct Camera (cm/types.h, 0x39C bytes), standard mode only.
+/// struct Camera (cm/types.h, 0x39C bytes), standard or fixed mode.
 pub fn decode_camera(raw: &[u8]) -> Result<GameCamera> {
     ensure!(raw.len() == CAMERA_BYTES, "Camera dump length");
-    ensure!(word(raw, 4) == 0, "only the standard camera mode is ported (mode {})", word(raw, 4));
     let mut camera = GameCamera::new();
+    camera.mode = match word(raw, 4) {
+        0 => melee_cm::Mode::Standard,
+        4 => melee_cm::Mode::Fixed,
+        mode => bail!("only the standard and fixed camera modes are ported (mode {mode})"),
+    };
     camera.near = float(raw, 0xC);
     camera.far = float(raw, 0x10);
     camera.transform = transform(raw, 0x14);

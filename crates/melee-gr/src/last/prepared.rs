@@ -211,6 +211,34 @@ impl BackgroundAnimation {
         hsd_anim::mtx::mtx_mult_vec(&matrix, &offset, &mut out);
         out
     }
+    /// `lb_8000B1CC(bone, NULL, &out)` (0x8000B1CC) on a bone with a parent:
+    /// HSD_JObjSetupMatrix, then the matrix's translation column.
+    pub fn joint_world_translation(&mut self, bone: usize) -> hsd_types::Vec3 {
+        let m = self.joint_matrix(bone);
+        hsd_types::Vec3::new(m.0[0][3], m.0[1][3], m.0[2][3])
+    }
+    /// `HSD_JObjGetRotation` of a model bone, the whole quaternion.
+    pub fn joint_rotation_quat(&self, bone: usize) -> hsd_anim::quat::Quaternion {
+        self.tree.rotation(self.joints[bone])
+    }
+    /// The bones under `bone` (HSD_JObjGetChild, then HSD_JObjGetNext), in
+    /// sibling order.
+    pub fn child_bones(&self, bone: usize) -> Vec<usize> {
+        self.tree
+            .children(self.joints[bone])
+            .map(|id| {
+                self.joints
+                    .iter()
+                    .position(|&joint| joint == id)
+                    .expect("a model bone's child is a model bone")
+            })
+            .collect()
+    }
+    /// `HSD_JObjSetRotation` on the Ground GObj's JObj, the whole quaternion.
+    pub fn set_gobj_rotation_quat(&mut self, rotation: &hsd_anim::quat::Quaternion) {
+        let joint = self.tree.parent(self.root).unwrap_or(self.root);
+        self.tree.set_rotation(joint, rotation);
+    }
     /// `HSD_JObjGetFlags(bone) & JOBJ_HIDDEN`.
     pub fn joint_hidden(&self, bone: usize) -> bool {
         self.tree.flags(self.joints[bone]) & hsd_anim::jobj::JOBJ_HIDDEN != 0

@@ -301,6 +301,14 @@ impl Assets {
                 stage_camera.blast_bottom() - melee_gr::flatzone::BLAST_BOTTOM_DROP;
             arena.bottom = stage_camera.blast_bottom();
         }
+        if stage_desc.kind == melee_types::GrKind::Pura {
+            let mut limits = crate::stage_limits::StageLimits {
+                camera: stage_camera,
+                arena,
+            };
+            limits.shrink_pura_camera();
+            (stage_camera, arena) = (limits.camera, limits.arena);
+        }
         // Ground_801C2D24 fails for a marker the stage binds no joint to.
         let bound_marker = |index: i16| -> Result<Option<hsd_types::Vec3>> {
             if stage_desc
@@ -589,6 +597,7 @@ fn stage_camera(
             GrKind::Garden => melee_gr::garden::MIN_EYE_HEIGHT,
             _ => -f32::MAX,
         },
+        fixed: stage.parameters.fixed_view,
     })
 }
 /// Each drop marker's (model, joint) binding, if the stage binds one.

@@ -1911,17 +1911,22 @@ impl Runtime {
                 // creation order.
                 // The stage subject sits among the items by when it was made.
                 let stage_camera = crate::scene_stage::live_camera(&state.stage, &state.stage_limits.camera);
-                let (stage_subject, made_after) = match &mut state.stage {
-                    SceneStage::Stadium(stage) => (stage.screen.subject.as_mut(), 0),
-                    // grFourside_801F3894: the arriving UFO.
-                    SceneStage::Fourside(stage) => {
-                        (stage.ufo.subject.as_mut(), stage.ufo_subject_items)
-                    }
-                    // grOnett_801E3930: lane A's subject, made at the stage's
-                    // start.
-                    SceneStage::Onett(stage) => (stage.subject.as_mut(), 0),
-                    _ => (None, 0),
-                };
+                let (stage_subject, stage_subjects, made_after): (_, &mut [melee_cm::Subject], _) =
+                    match &mut state.stage {
+                        SceneStage::Stadium(stage) => (stage.screen.subject.as_mut(), &mut [], 0),
+                        // grFourside_801F3894: the arriving UFO.
+                        SceneStage::Fourside(stage) => {
+                            (stage.ufo.subject.as_mut(), &mut [], stage.ufo_subject_items)
+                        }
+                        // grOnett_801E3930: lane A's subject, made at the stage's
+                        // start.
+                        SceneStage::Onett(stage) => (stage.subject.as_mut(), &mut [], 0),
+                        // grPura_80212CD4: the sequence's 25, made at the
+                        // stage's start, newest first.
+                        SceneStage::Pura(stage) => (None, &mut stage.subjects[..], 0),
+                        _ => (None, &mut [], 0),
+                    };
+                let stage_subject = stage_subject.into_iter().chain(stage_subjects.iter_mut().rev());
                 let (older, newer) = state.items.split_at_id_mut(made_after);
                 let newer = newer.iter_mut().rev().filter_map(|i| i.camera.as_mut());
                 let older = older.iter_mut().rev().filter_map(|i| i.camera.as_mut());
@@ -1929,7 +1934,7 @@ impl Runtime {
                 let camera = &mut state.camera;
                 let subjects = newer.chain(stage_subject).chain(older).chain(fighters);
                 with_subjects(subjects, |subjects| {
-                    camera.update_standard(subjects, &stage_camera)
+                    camera.update(subjects, &stage_camera)
                 });
                 state
                     .quakes
@@ -2879,6 +2884,7 @@ impl Runtime {
                         || (address == melee_gr::venom::procs::DYNAMICS_PROC
                             && matches!(state.stage, SceneStage::Venom(_)))
                         || address == melee_gr::mutecity::procs::DYNAMICS_PROC
+                        || address == melee_gr::pura::procs::SEQUENCE_PROC
                         || address == 0x8020_2E48
                         || address == 0x801D_557C
                         || address == melee_gr::flatzone::procs::CONTROLLER_PROC
@@ -2970,6 +2976,8 @@ impl Runtime {
                             world,
                             &mut self.item_objects,
                         )?;
+                    } else if matches!(state.stage, SceneStage::Pura(_)) {
+                        crate::scene_stage::pura::run_proc(state, map_id)?;
                     } else if matches!(state.stage, SceneStage::Shrine(_)) {
                         // grShrine_80201E3C and 80201E90 are empty; 80201F1C's
                         // Ground_801C2FE0 has no collision joints to move and

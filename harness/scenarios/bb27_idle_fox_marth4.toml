@@ -1,0 +1,19 @@
+# Fox vs Marth on Big Blue from start_bb_fox_marth4, nobody moving: the
+# road's segments, the cars, the flyers and the platforms over a minute.
+name = "bb27_idle_fox_marth4"
+savestate = "harness/roms/start_bb_fox_marth4.sav"
+frames = 3800
+seed = 1
+stage = "BigBlue"
+
+inputs = []
+
+[[fighters]]
+slot = 0
+kind = "Fox"
+controller = "idle"
+
+[[fighters]]
+slot = 1
+kind = "Marth"
+controller = "idle"

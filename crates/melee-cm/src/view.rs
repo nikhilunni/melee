@@ -74,10 +74,10 @@ pub struct ScreenPoint {
 }
 
 impl GameCamera {
-    /// Camera_8002A4AC (0x8002A4AC) for the standard mode, through
+    /// Camera_8002A4AC (0x8002A4AC) for the standard and fixed modes, through
     /// Camera_8002AF68: the main CObj as this tick's render sees it.
     pub fn render_camera(&self, stage: &StageCamera) -> PerspectiveCamera {
-        let Mode::Standard = self.mode;
+        let (Mode::Standard | Mode::Fixed) = self.mode;
         self.render_transform(&self.transform, stage)
     }
 
@@ -85,7 +85,7 @@ impl GameCamera {
     /// that follows `transform_copy`. Camera_800310B8 hands it to the screen
     /// KO, which places the fighter through its inverse viewing matrix.
     pub fn render_copy_camera(&self, stage: &StageCamera) -> PerspectiveCamera {
-        let Mode::Standard = self.mode;
+        let (Mode::Standard | Mode::Fixed) = self.mode;
         self.render_transform(&self.transform_copy, stage)
     }
 

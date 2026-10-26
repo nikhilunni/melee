@@ -34,6 +34,7 @@ mod stage_yorster;
 mod stage_inishie1;
 mod stage_onett;
 mod stage_mutecity;
+mod stage_pura;
 mod stock;
 use hsd_types::Vec3;
 /// The match's StartMeleeRules (lbl_8046B6A0 +24C8) a boundary was saved with.
@@ -442,6 +443,9 @@ impl InitialState {
         if assets.stage_desc.kind == melee_types::GrKind::MuteCity {
             stage_mutecity::restore_collision(&saved, &assets, &mut map)?;
         }
+        if assets.stage_desc.kind == melee_types::GrKind::Pura {
+            stage_pura::restore_collision(&saved, &assets, &mut map)?;
+        }
         if assets.stage_desc.kind == melee_types::GrKind::Inishie1 {
             stage_inishie1::restore_collision(&saved, &assets, &mut map)?;
         }
@@ -612,8 +616,20 @@ impl InitialState {
                 clock.scoring.match_kind
             );
         }
-        let (mut camera, subjects) = camera::restore(&saved)?;
+        let (mut camera, mut subjects) = camera::restore(&saved)?;
         camera.screen = setup.slippi.screen;
+        // Poké Floats' sequence links its 25 subjects after the fighters'
+        // (grPura_80212CD4): newest first, they lead the list.
+        let stage_subjects = if assets.stage_desc.kind == melee_types::GrKind::Pura {
+            ensure!(
+                subjects.len() >= melee_gr::pura::SUBJECTS,
+                "Poké Floats' camera subjects: {}",
+                subjects.len()
+            );
+            subjects.drain(..melee_gr::pura::SUBJECTS).collect()
+        } else {
+            Vec::new()
+        };
         ensure!(
             subjects.len() <= fighters.len(),
             "unsupported camera subjects: {} for {} fighters",
@@ -733,6 +749,11 @@ impl InitialState {
             &metadata,
             &setup.slippi,
         )?;
+        if let crate::scene_stage::SceneStage::Pura(pura) = &mut stage {
+            for (ours, saved) in pura.subjects.iter_mut().rev().zip(stage_subjects) {
+                *ours = saved;
+            }
+        }
         let radial_forces = saved_radial_forces(&saved)?;
         stage.set_frozen_stages(setup.slippi.frozen_stages);
         crate::frame::validate_saved_resume(
