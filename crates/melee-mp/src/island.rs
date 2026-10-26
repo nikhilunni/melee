@@ -236,6 +236,61 @@ impl CollMap {
         joint.flags & (joint_flag::B8 | joint_flag::B9 | joint_flag::B10) != 0
     }
 
+    /// Relink the static floor and ceiling lists in a saved order, each
+    /// island named by its first line (`x24`): a savestate import whose
+    /// joint restores ran mpIsland_8005B334 (which reverses the static
+    /// lists on every call) keeps the order retail saved. Every live
+    /// static island must be named once; the dynamic lists stay linked
+    /// after them. Returns false, changing nothing, when the names do not
+    /// match the live islands.
+    pub fn restore_static_island_order(&mut self, floors: &[i16], ceilings: &[i16]) -> bool {
+        let islands = &self.islands;
+        let static_part = |head: Option<usize>, tail: Option<usize>| -> Vec<usize> {
+            let Some(tail) = tail else { return Vec::new() };
+            let mut nodes = Vec::new();
+            for node in islands.list(head) {
+                nodes.push(node);
+                if node == tail {
+                    break;
+                }
+            }
+            nodes
+        };
+        let pick = |live: &[usize], saved: &[i16]| -> Option<Vec<usize>> {
+            if live.len() != saved.len() {
+                return None;
+            }
+            saved
+                .iter()
+                .map(|&line| live.iter().copied().find(|&n| islands.nodes[n].first_line == line))
+                .collect()
+        };
+        let live_floors = static_part(islands.floors, islands.floor_tail);
+        let live_ceilings = static_part(islands.ceilings, islands.ceiling_tail);
+        let (Some(floors), Some(ceilings)) = (pick(&live_floors, floors), pick(&live_ceilings, ceilings))
+        else {
+            return false;
+        };
+        let dynamic = (islands.dynamic_floors, islands.dynamic_ceilings);
+        let relink = |nodes: &mut Vec<Island>, order: &[usize], after: Option<usize>| {
+            for (i, &node) in order.iter().enumerate() {
+                nodes[node].next = order.get(i + 1).copied().or(after);
+            }
+        };
+        let islands = &mut self.islands;
+        relink(&mut islands.nodes, &floors, dynamic.0);
+        relink(&mut islands.nodes, &ceilings, dynamic.1);
+        if let (Some(&first), Some(&last)) = (floors.first(), floors.last()) {
+            islands.floors = Some(first);
+            islands.floor_tail = Some(last);
+        }
+        if let (Some(&first), Some(&last)) = (ceilings.first(), ceilings.last()) {
+            islands.ceilings = Some(first);
+            islands.ceiling_tail = Some(last);
+        }
+        true
+    }
+
     /// An island's data.
     pub fn island(&self, node: usize) -> &Island {
         &self.islands.nodes[node]

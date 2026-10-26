@@ -187,11 +187,11 @@ const FULL: u8 = 0x7F;
 pub fn recover(fp: &mut Fighter, scene: &mut Scene, rng: &mut gekko_math::HsdRng) {
     belay_recovery(fp, scene);
     if fp.core.physics.ground_or_air == GroundOrAir::Ground {
-        if matches!(
-            scene.stage(),
-            GrKind::BigBlue | GrKind::Inishie1 | GrKind::Corneria | GrKind::Venom
-        ) {
-            unimplemented!("ftCo_800B2790 case 4: a stage's moving floor (ftCo_800A0148)");
+        // 800B2854..800B28A8: landed on a floor the CPU ignores (a moving
+        // one), it jumps off (ftCo_800A0148).
+        if scene.ignored_floor(fp.core.collision.data.floor.index) {
+            crate::island_route::jump(fp, scene);
+            return;
         }
         script::return_to_previous(&mut fp.core.cpu);
         fp.core.cpu.xfa_b2 = false;

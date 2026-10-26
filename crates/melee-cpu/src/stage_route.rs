@@ -60,6 +60,31 @@ static TEMPLE: [RouteEntry; 5] = [
         x_range: Some((-25.0, 1000.0)) },
 ];
 
+/// ftCo_803C6594[Gr_Kind_GreatBay] (ft_3C61.c list1_0..list1_5, 0x803C639C):
+/// the left platforms (-130, 6) and (-100, 34) and the hut's roof (-10, 6),
+/// read from the DOL.
+#[rustfmt::skip]
+static GREAT_BAY: [RouteEntry; 6] = [
+    RouteEntry { island_probe: [-130.0, 6.0], up: w(-130.0, 6.0, 0.0), down: w(0.0, 0.0, -1.0),
+        right: w(-130.0, 6.0, 0.0), left: w(0.0, 0.0, -1.0), up_angle: QUARTER, down_angle: -QUARTER,
+        x_range: Some((-120.0, 1000.0)) },
+    RouteEntry { island_probe: [-130.0, 6.0], up: w(-100.0, 34.0, 0.0), down: w(0.0, 0.0, -1.0),
+        right: w(-100.0, 34.0, 0.0), left: w(0.0, 0.0, -1.0), up_angle: QUARTER, down_angle: -QUARTER,
+        x_range: None },
+    RouteEntry { island_probe: [-10.0, 6.0], up: w(-10.0, 6.0, 0.0), down: w(0.0, 0.0, -1.0),
+        right: w(0.0, 0.0, -1.0), left: w(-10.0, 6.0, 0.0), up_angle: QUARTER, down_angle: -QUARTER,
+        x_range: Some((-1000.0, -20.0)) },
+    RouteEntry { island_probe: [-10.0, 6.0], up: w(-30.0, 34.0, 0.0), down: w(0.0, 0.0, -1.0),
+        right: w(0.0, 0.0, -1.0), left: w(-30.0, 34.0, 0.0), up_angle: QUARTER, down_angle: -QUARTER,
+        x_range: None },
+    RouteEntry { island_probe: [-100.0, 34.0], up: w(0.0, 0.0, -1.0), down: w(-10.0, 6.0, 0.0),
+        right: w(0.0, 0.0, -1.0), left: w(0.0, 0.0, -1.0), up_angle: QUARTER, down_angle: -QUARTER,
+        x_range: Some((-50.0, 0.0)) },
+    RouteEntry { island_probe: [-100.0, 34.0], up: w(0.0, 0.0, -1.0), down: w(-130.0, 6.0, 0.0),
+        right: w(0.0, 0.0, -1.0), left: w(0.0, 0.0, -1.0), up_angle: QUARTER, down_angle: -QUARTER,
+        x_range: Some((-200.0, -80.0)) },
+];
+
 /// x60 = 300 when a waypoint is taken (800A1DF4: li r0, 0x12C).
 const WAYPOINT_FRAMES: i32 = 300;
 /// x38 = 5.0 for a waypoint (800A1E18: @297).
@@ -70,7 +95,7 @@ const PROBE_DEPTH: f32 = -10.0;
 fn table(stage: GrKind) -> Option<&'static [RouteEntry]> {
     match stage {
         GrKind::Shrine => Some(&TEMPLE),
-        GrKind::GreatBay => unimplemented!("ftCo_800A1CC4: Great Bay's route table (ft_3C61.c list1_0)"),
+        GrKind::GreatBay => Some(&GREAT_BAY),
         _ => None,
     }
 }

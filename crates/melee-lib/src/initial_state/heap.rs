@@ -71,6 +71,14 @@ static AFTER_BOOT: &[BootAddress] = &[
     BootAddress { stage: G::Fourside, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_7DC0 },
     BootAddress { stage: G::Kraid, before: &[(K::Fox, costumes(&[0]))], address: 0x80CC_5180 },
     BootAddress { stage: G::Flatzone, before: &[(K::Fox, costumes(&[0]))], address: 0x80CB_53A0 },
+    // Wave 27's stages (2026-10-26: the `w27s_start_*_fox_cpu9fox4` boundaries).
+    BootAddress { stage: G::Inishie2, before: &[(K::Fox, costumes(&[0]))], address: 0x80CA_6B80 },
+    BootAddress { stage: G::GreatBay, before: &[(K::Fox, costumes(&[0]))], address: 0x80CE_C260 },
+    BootAddress { stage: G::Zebes, before: &[(K::Fox, costumes(&[0]))], address: 0x80CD_0AC0 },
+    BootAddress { stage: G::Icemt, before: &[(K::Fox, costumes(&[0]))], address: 0x80CC_E020 },
+    BootAddress { stage: G::Venom, before: &[(K::Fox, costumes(&[0]))], address: 0x80CD_A5E0 },
+    BootAddress { stage: G::MuteCity, before: &[(K::Fox, costumes(&[0]))], address: 0x80D0_6760 },
+    BootAddress { stage: G::Pura, before: &[(K::Fox, costumes(&[0]))], address: 0x80D0_3560 },
     // A CPU Zelda's Sheik after a person's Fox (`start_fd_fox_cpu9zelda4`).
     BootAddress { stage: G::Last, before: &[(K::Fox, costumes(&[0])), (K::Zelda, costumes(&[0]))], address: 0x80CF_E8E0 },
     // The second player after a first of another kind (2026-10-24).

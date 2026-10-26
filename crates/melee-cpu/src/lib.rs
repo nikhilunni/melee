@@ -46,7 +46,7 @@ mod versus;
 mod world;
 
 pub use targets::{nearest_fighter, FighterView};
-pub use world::{distance, ItemHitView, ItemView, Scene};
+pub use world::{distance, Acid, ItemHitView, ItemView, Scene};
 
 use gekko_math::HsdRng;
 use melee_ft::fighter::{cpu::CpuState, Fighter};
