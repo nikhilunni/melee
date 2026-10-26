@@ -131,11 +131,12 @@ impl ItemCore {
     /// it_80274990: the rotation about xDC8 x17's axis (Z, X, then Y) of
     /// the model's spin joint (it_802746F8).
     pub(crate) fn ecb_angle(&self) -> f32 {
-        let rotation = self.spin_joint_rotation.unwrap_or(self.rotation);
+        // it_802746F8's joint.
+        let joint = self.spin_joint_rotation.as_ref().unwrap_or(&self.rotation);
         match self.rotation_axis {
-            0 => rotation.z,
-            1 => rotation.x,
-            _ => rotation.y,
+            0 => joint.z,
+            1 => joint.x,
+            _ => joint.y,
         }
     }
 
@@ -462,12 +463,7 @@ impl ItemCore {
         self.land_count = 0;
         self.land_on_floor();
         if !self.slides(assets) {
-            self.spin_speed = 0.0;
-            match self.rotation_axis {
-                0 => self.rotation.z = 0.0,
-                1 => self.rotation.x = 0.0,
-                _ => self.rotation.y = 0.0,
-            }
+            self.reset_spin();
             self.remember_rest_surface();
             return true;
         }
@@ -1022,7 +1018,7 @@ impl ItemCore {
         self.hurt_intangible = false;
         // it_80274990 reads the spin axis before lb_8000B804 resets the pose.
         let rotation = self.ecb_angle();
-        self.rotation = crate::engine::rest_rotation(assets);
+        self.reset_model_rotation(assets);
         self.model_scale = hsd_types::Vec3::new(self.scale, self.scale, self.scale);
         self.update_spin(rotation);
         // retail 80273C3C..54: three fmuls by ItemAttr x4.

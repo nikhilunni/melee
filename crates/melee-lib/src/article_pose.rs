@@ -292,6 +292,15 @@ impl ArticlePoses {
         tree.set_rotation_y(root, item.rotation.y);
         tree.set_rotation_z(root, item.rotation.z);
         tree.set_scale(root, &item.model_scale);
+        if let Some(spin) = item.spin_joint_rotation {
+            // it_802746F8: the spin joint is that many first children down,
+            // which is that depth-first index.
+            let depth = usize::from(item.spin_joint_depth);
+            let joint = tree.bone(root, depth).expect("item spin joint");
+            tree.set_rotation_x(joint, spin.x);
+            tree.set_rotation_y(joint, spin.y);
+            tree.set_rotation_z(joint, spin.z);
+        }
         let attach = tree.bone(root, attach_bone).expect("article attach bone");
         tree.set_position_constraint(
             attach,

@@ -1191,6 +1191,8 @@ pub struct ItemCore {
     pub platform_velocity: Vec3,
     pub facing: f32,
     pub rotation: Vec3,
+    /// ItemModelDesc xC bits 6-7: how many first children down that joint is.
+    pub spin_joint_depth: u8,
     pub model_scale: Vec3,
     pub motion: u16,
     pub life_timer: f32,
@@ -1349,9 +1351,9 @@ pub struct ItemCore {
     /// kind that clears it keeps the ECB upright while its model spins.
     pub ecb_follows_rotation: bool,
     /// The rotation of the joint ItemModelDesc xC bits 6-7 name when it is
-    /// not the root (it_802746F8), for a kind that turns that joint apart
-    /// from the root: the push box (it_80271A58) and the ECB angle
-    /// (it_80274990) read it. `None`: the root's (`rotation`).
+    /// not the root (it_802746F8): the spin turns it, and the push box
+    /// (it_80271A58) and the ECB angle (it_80274990) read it. `None`: the
+    /// root's (`rotation`).
     pub spin_joint_rotation: Option<Vec3>,
     /// xDC8 x15 (it_8026B390 / it_8026B3A8): Item_IsGrabbable requires it,
     /// and it gates the common lifetime countdown (Item_80269528).
@@ -1509,6 +1511,17 @@ impl ItemCore {
     /// lb_8000B804 on the model: back to its authored rotation.
     pub fn reset_model_rotation(&mut self, assets: &ItemAssets) {
         self.rotation = rest_rotation(assets);
+        self.spin_joint_rotation = assets.spin_joint_rest();
+    }
+    /// The spin joint's (it_802746F8) rotation about xDC8 x17's axis: Z, X,
+    /// then Y.
+    pub(crate) fn spin_axis_angle_mut(&mut self) -> &mut f32 {
+        let joint = self.spin_joint_rotation.as_mut().unwrap_or(&mut self.rotation);
+        match self.rotation_axis {
+            0 => &mut joint.z,
+            1 => &mut joint.x,
+            _ => &mut joint.y,
+        }
     }
 }
 /// lb_8000B804: the model root's authored rotation.
@@ -1617,7 +1630,7 @@ impl ItemCore {
         half_life_scale: f32,
     ) {
         // lb_8000B804, then Item_8026849C.
-        self.rotation = rest_rotation(assets);
+        self.reset_model_rotation(assets);
         self.model_scale = Vec3::new(self.scale, self.scale, self.scale);
         // ftLib_80086960: fighters only; xDC8 x0 (a secondary owner) is
         // never set on a pickup-capable kind here.
@@ -1678,11 +1691,7 @@ impl ItemCore {
     /// and the spin speed return to zero.
     pub fn reset_spin(&mut self) {
         self.spin_speed = 0.0;
-        match self.rotation_axis {
-            0 => self.rotation.z = 0.0,
-            1 => self.rotation.x = 0.0,
-            _ => self.rotation.y = 0.0,
-        }
+        *self.spin_axis_angle_mut() = 0.0;
     }
     /// Item_80268D34 then HSD_JObjAnimAll (itlinkbomb.c's lit fuse): the
     /// model plays `article_state`'s joint animation from its first frame
@@ -1727,11 +1736,8 @@ impl ItemCore {
     /// it_80274A64 (80274A64): add the spin about xDC8 x17's axis (retail
     /// 80274AE4 and siblings: fadds into the JObj rotation).
     pub fn spin(&mut self) {
-        match self.rotation_axis {
-            0 => self.rotation.z += self.spin_speed,
-            1 => self.rotation.x += self.spin_speed,
-            _ => self.rotation.y += self.spin_speed,
-        }
+        let speed = self.spin_speed;
+        *self.spin_axis_angle_mut() += speed;
     }
 
     /// Item_80268E5C (80268E5C) with its flags: the frame restarts; without
@@ -2470,6 +2476,7 @@ impl ItemPool {
                 },
                 0.0,
             ),
+            spin_joint_depth: assets.visual.spin_joint_depth,
             model_scale: [assets.scale; 3].into(),
             motion: 0,
             // Item_80268B18's it_80275158: both timers.
@@ -2542,7 +2549,7 @@ impl ItemPool {
             spin_speed: 0.0,
             spin_ignores_facing: assets.rotate_to_facing,
             ecb_follows_rotation: true,
-            spin_joint_rotation: None,
+            spin_joint_rotation: assets.spin_joint_rest(),
             // Item_80267130 (item.c:233): it_8026B390.
             grabbable: true,
             grab_offset: assets.grab_offset,

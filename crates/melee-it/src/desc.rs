@@ -439,6 +439,24 @@ impl ItemAssets {
     pub fn has_joint_animation(&self, article_state: usize) -> bool {
         self.joint_animated.get(article_state).copied().unwrap_or(true)
     }
+    /// it_802746F8 (802746F8): the joint ItemModelDesc xC bits 6-7 name,
+    /// that many first children below the root, whose authored rotation
+    /// lb_8000B804 restores. None when the spin turns the root itself.
+    pub fn spin_joint_rest(&self) -> Option<hsd_types::Vec3> {
+        let depth = self.visual.spin_joint_depth;
+        if depth == 0 {
+            return None;
+        }
+        let mut joint = &self.visual.model;
+        for _ in 0..depth {
+            joint = joint
+                .child
+                .as_deref()
+                .unwrap_or_else(|| panic!("it_802746F8: no joint {depth} below the item root"));
+        }
+        let r = joint.rotation;
+        Some(hsd_types::Vec3::new(r.x, r.y, r.z))
+    }
     /// it_80272C90 / it_2725_JObjGetTranslation: the local translation of
     /// the model's attach joint (ItemModelDesc x8), in depth-first order.
     pub fn attach_translation(&self) -> hsd_types::Vec3 {
