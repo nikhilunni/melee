@@ -97,9 +97,19 @@ pub fn first_hurt_contact<C: Collider>(
     hit: &HitCapsule,
     attacker_scale: f32,
 ) -> Option<(Contact, HurtHeight, melee_types::combat::HurtStatus)> {
+    first_hurt_contact_of(victim, hit, attacker_scale, false)
+}
+/// [`first_hurt_contact`] for an item hitbox whose x42_b6 limits it to
+/// the grabbable hurt capsules (ftColl_8007925C, ftcoll.c:2303-2306).
+pub fn first_hurt_contact_of<C: Collider>(
+    victim: &mut C,
+    hit: &HitCapsule,
+    attacker_scale: f32,
+    grabbable_only: bool,
+) -> Option<(Contact, HurtHeight, melee_types::combat::HurtStatus)> {
     let desc = &hit.descriptor;
     for index in 0..victim.hurt_count() {
-        if desc.element == HitElement::Catch && !victim.grabbable(index) {
+        if (desc.element == HitElement::Catch || grabbable_only) && !victim.grabbable(index) {
             continue;
         }
         // lbColl_80007ECC (a grab) contacts only an enabled capsule;

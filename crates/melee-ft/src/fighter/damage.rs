@@ -3124,9 +3124,13 @@ impl Fighter {
             if intangible {
                 continue;
             }
-            let Some((contact, height, capsule_status)) =
-                melee_coll::detection::first_hurt_contact(&mut self.core, &hit, item.scale)
-            else {
+            // ftcoll.c:2303-2306: x42_b6 skips the capsules a grab misses.
+            let Some((contact, height, capsule_status)) = melee_coll::detection::first_hurt_contact_of(
+                &mut self.core,
+                &hit,
+                item.scale,
+                item.hit_flags[id].grabbable_hurtboxes_only,
+            ) else {
                 continue;
             };
             // ftColl_80077C60 (retail 0x80077F08 phantom, 0x80078188
