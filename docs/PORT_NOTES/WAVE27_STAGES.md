@@ -1,4 +1,4 @@
-# Wave 27 stages: Brinstar, Venom
+# Wave 27 stages: Brinstar, Venom, Peach's Castle, Green Greens, Rainbow Cruise
 
 Wave 27's stage work. Each stage has start boundaries (warm and cold gated in
 `m4_gate`) and explorer matches in `CORPUS_V3_MATCHES`.
