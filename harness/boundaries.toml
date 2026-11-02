@@ -2392,3 +2392,14 @@ seed = 2977880427
 cpu_levels = [0, 9, 9, 9]
 item_frequency = 4
 item_mask = "0xfffffff8014018d7"
+
+[[boundary]]
+name = "w27_start_MushroomKingdom_items_all"
+cold = "w27_start_MushroomKingdom_items_all_cold"
+savestate = "harness/roms/w27_start_MushroomKingdom_items_all.sav"
+stage = "MushroomKingdom"
+players = ["Fox", "Marth"]
+stocks = 4
+seed = 1787017934
+item_frequency = 4
+item_mask = "0xfffffff8014018d7"

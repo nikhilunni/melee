@@ -7,8 +7,6 @@ witnesses in `m5_gate` (`WIDENED_LAYOUT_BOUNDARIES`,
 
 ## Still guarded (explorer scan of 5040 cases over every widened layout)
 
-- Mushroom Kingdom with items: the `?` blocks (grinishie1.c:465; the
-  boundary's creation draws and the hatena ground objects).
 - Octarock (12) and Ottosea (22) out of containers: constructors
   (it_8026F6BC) and lifecycles (itoctarock.c, itoctarockstone.c,
   itoldottosea.c, itwhitebea.c; the Ottosea pushes a Freezie only with the
@@ -22,5 +20,7 @@ witnesses in `m5_gate` (`WIDENED_LAYOUT_BOUNDARIES`,
 - 3-4 player CPUs elsewhere than FD and Battlefield: a CPU's tumble reads
   its Fighter's address, which `initial_state::heap` knows only there
   (and only for the recorded rosters).
-- Kongo Jungle's own guards (audio envelope, log Sink, path choice) occur
-  with or without items.
+- Kongo Jungle: the barrel catching a Klaptrap (grKongo_801D8078,
+  3 in 360 cases) and its launch (it_802E2330); see
+  `docs/PORT_NOTES/WAVE27_STAGE_FOLLOWUPS.md` (logs, the path rider and
+  the Klaptrap's fall are ported).
